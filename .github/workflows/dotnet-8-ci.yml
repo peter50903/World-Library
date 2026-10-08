@@ -1,0 +1,50 @@
+name: .NET 8 environment and project CI
+
+# CI does not call Claude. It only checks the .NET SDK and any future solution.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dotnet:
+    name: .NET 8 SDK and build verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify toolchain using temporary C# project
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet --info
+          temp_dir="$(mktemp -d)"
+          dotnet new classlib --framework net8.0 --name ToolchainSmoke --output "$temp_dir/ToolchainSmoke" --no-restore
+          dotnet restore "$temp_dir/ToolchainSmoke/ToolchainSmoke.csproj"
+          dotnet build "$temp_dir/ToolchainSmoke/ToolchainSmoke.csproj" --no-restore --configuration Release
+          echo "SDK smoke passed; this does NOT validate game code."
+
+      - name: Build and test actual solution when present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f WorldSimulation.sln ]]; then
+            dotnet restore WorldSimulation.sln
+            dotnet build WorldSimulation.sln --no-restore --configuration Release
+            dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal"
+          else
+            echo "WorldSimulation.sln not present yet. Skipping game build and tests."
+          fi
