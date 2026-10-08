@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 
 namespace WorldSimulation.Core.Config;
@@ -27,7 +28,13 @@ public sealed class ConfigRegistry
 
     private readonly Dictionary<string, Parameter> _parameters;
 
-    private readonly record struct Parameter(ConfigDataType Type, string Raw, int IntValue, bool BoolValue);
+    private readonly record struct Parameter(
+        ConfigDataType Type,
+        string Raw,
+        int IntValue = 0,
+        bool BoolValue = false,
+        decimal NumberValue = 0m,
+        IReadOnlyList<string>? ListValue = null);
 
     private ConfigRegistry(Dictionary<string, Parameter> parameters)
     {
@@ -39,9 +46,11 @@ public sealed class ConfigRegistry
 
     /// <summary>
     /// Validates all rows and, only if every check passes, creates the registry from a snapshot of them.
-    /// Rules: a non-blank ParameterID must be unique regardless of Enabled; disabled rows are never exposed
-    /// and not value-checked; disabled rows without an ID are ignored as placeholders; enabled rows need an
-    /// ID, a non-blank Value and a supported DataType (int / bool "0"|"1" / enum non-blank).
+    /// Rules: a non-blank ParameterID must have no leading/trailing whitespace (never auto-trimmed) and must be
+    /// unique regardless of Enabled; disabled rows are never exposed and their Value is not format-checked;
+    /// a disabled row without an ID is ignored only if its Value and DataType are also blank, otherwise it is an error;
+    /// enabled rows need an ID, a non-blank Value and a supported lowercase DataType:
+    /// int, bool ("0"|"1"), enum (non-blank), enum_list ("|"-separated, no empty items), number (finite decimal).
     /// </summary>
     public static ConfigValidationResult ValidateAndCreate(IEnumerable<ParameterRow> rows)
     {
@@ -67,10 +76,20 @@ public sealed class ConfigRegistry
                 {
                     errors.Add(new ConfigError(row.RowNumber, null, "Enabled row has a blank ParameterID."));
                 }
+                else if (!string.IsNullOrWhiteSpace(row.Value) || !string.IsNullOrWhiteSpace(row.DataType))
+                {
+                    errors.Add(new ConfigError(row.RowNumber, null, "Disabled row has no ParameterID but has a Value or DataType."));
+                }
                 continue;
             }
 
             var id = row.ParameterId!;
+            if (id.Length != id.Trim().Length)
+            {
+                errors.Add(new ConfigError(row.RowNumber, id, "ParameterID has leading or trailing whitespace."));
+                continue;
+            }
+
             if (!seenIds.Add(id))
             {
                 errors.Add(new ConfigError(row.RowNumber, id, "Duplicate ParameterID."));
@@ -111,6 +130,15 @@ public sealed class ConfigRegistry
     /// <exception cref="InvalidOperationException">The parameter is not of type enum.</exception>
     public string GetEnum(string parameterId) => Get(parameterId, ConfigDataType.Enum).Raw;
 
+    /// <summary>Ordered items of an enum_list parameter; the returned list cannot be modified by the caller.</summary>
+    /// <exception cref="KeyNotFoundException">Unknown or disabled ParameterID.</exception>
+    /// <exception cref="InvalidOperationException">The parameter is not of type enum_list.</exception>
+    public IReadOnlyList<string> GetEnumList(string parameterId) => Get(parameterId, ConfigDataType.EnumList).ListValue!;
+
+    /// <exception cref="KeyNotFoundException">Unknown or disabled ParameterID.</exception>
+    /// <exception cref="InvalidOperationException">The parameter is not of type number.</exception>
+    public decimal GetNumber(string parameterId) => Get(parameterId, ConfigDataType.Number).NumberValue;
+
     private Parameter Get(string parameterId, ConfigDataType expected)
     {
         if (parameterId is null || !_parameters.TryGetValue(parameterId, out var parameter))
@@ -146,7 +174,7 @@ public sealed class ConfigRegistry
                     reason = $"Value '{value}' is not a valid int.";
                     return false;
                 }
-                parameter = new Parameter(ConfigDataType.Int, value, i, false);
+                parameter = new Parameter(ConfigDataType.Int, value, IntValue: i);
                 return true;
 
             case "bool":
@@ -155,11 +183,32 @@ public sealed class ConfigRegistry
                     reason = $"Value '{value}' is not a valid bool (expected 0 or 1).";
                     return false;
                 }
-                parameter = new Parameter(ConfigDataType.Bool, value, 0, value == "1");
+                parameter = new Parameter(ConfigDataType.Bool, value, BoolValue: value == "1");
                 return true;
 
             case "enum":
-                parameter = new Parameter(ConfigDataType.Enum, value, 0, false);
+                parameter = new Parameter(ConfigDataType.Enum, value);
+                return true;
+
+            case "enum_list":
+                var items = value.Split('|');
+                if (items.Any(string.IsNullOrWhiteSpace))
+                {
+                    reason = $"Value '{value}' has an empty enum_list item.";
+                    return false;
+                }
+                parameter = new Parameter(ConfigDataType.EnumList, value, ListValue: new ReadOnlyCollection<string>(items));
+                return true;
+
+            case "number":
+                if (!decimal.TryParse(
+                        value, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                        CultureInfo.InvariantCulture, out var n))
+                {
+                    reason = $"Value '{value}' is not a valid finite number.";
+                    return false;
+                }
+                parameter = new Parameter(ConfigDataType.Number, value, NumberValue: n);
                 return true;
 
             default:

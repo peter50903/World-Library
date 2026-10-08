@@ -13,6 +13,8 @@ public enum ConfigDataType
     Int,
     Bool,
     Enum,
+    EnumList,
+    Number,
 }
 
 /// <summary>A validation failure naming the row, ParameterID (if any) and reason.</summary>
