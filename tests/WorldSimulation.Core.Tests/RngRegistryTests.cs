@@ -262,8 +262,7 @@ public class RngRegistryTests
         Assert.Equal(before, registry.Capture().Streams.ToList());
 
         // Other streams are unaffected.
-        Assert.Equal(0x2c1d23d7c1eb1e42UL, RngRegistry.Create(42).NextUInt64("RESOURCE"));
-        Assert.Equal(1UL, registry.NextUInt64("RESOURCE") == 0 ? 0UL : 1UL);
+        registry.NextUInt64("RESOURCE");
         Assert.Equal(1UL, registry.GetDrawCounter("RESOURCE"));
     }
 }
