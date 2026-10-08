@@ -6,4 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="WorldSimulation.Core.Tests" />
+  </ItemGroup>
+
 </Project>
