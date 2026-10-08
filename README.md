@@ -28,11 +28,11 @@ GitHub Actions 還會用輸入腳本真正啟動 CLI，確認可推進事件、�
 
 ## 文件快速入口（請勿每輪全文讀歷史）
 
-- [AI 最少讀取路由｜Notion](https://app.notion.com/p/3f36939dab09817daa31c7b8a086dcbe)
-- [當前實作與可玩切片｜Notion](https://app.notion.com/p/3f36939dab09816c8366efc669451796)
-- [世界模擬遊戲設定表](https://docs.google.com/spreadsheets/d/136wf0Deyl9oAt4vTSIxwZXu3HUZZt7lrj9rX3Ja91Rw/edit)：只讀 `00E_AI任務讀取路由`、`00F_目前工程狀態`，依實際任務再精確取分頁。
-- [正式 Notion 導航](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)：舊 M0 工程歷程已保留於分期封存，不當成每次預設上下文。
+1. [02｜遊戲規則總綱（AI 精簡版）](https://app.notion.com/p/3f36939dab09811a8e1bf888e2f9030a)：全部規則的精簡版。
+2. [03｜給 GPT 的下一步製作指示](https://app.notion.com/p/3f36939dab0981ba9906efe357a45813)：任務順序與製作原則。
+3. [01｜目前實作狀態](https://app.notion.com/p/3f36939dab09816c8366efc669451796)：一段最新進度。
+- [Notion 入口頁](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)、[Google Sheets 設定檔](https://docs.google.com/spreadsheets/d/136wf0Deyl9oAt4vTSIxwZXu3HUZZt7lrj9rX3Ja91Rw/edit)（只讀任務需要的單一分頁範圍）。
 
 ## 權威與開發規則
 
-Notion 記錄正式規則、理由和決策；Google Sheets 記錄結構化設定、參數與程式可讀資料；GitHub `main` 與對應新Head真實 CI 決定程式目前到底能做什麼。遵守 [CLAUDE.md](CLAUDE.md) 與 [docs/AI_HANDOFF.md](docs/AI_HANDOFF.md) 的已更新工程委託與安全閘門。
+資料權威：Notion ＞ Google Sheets ＞ 本倉庫。AI 開發規範見 [CLAUDE.md](CLAUDE.md)。
