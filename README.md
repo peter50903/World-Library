@@ -1,24 +1,38 @@
-# World-Simulation-Game
+# 世界模擬遊戲｜World-Library
 
-《世界模擬遊戲》正式實作倉庫（2026-10-08 **重新建立**；未沿用前次實驗倉庫的 Git 歷史）。
+正在開發的「世界自主演化 → 神祇降臨 → 人物降臨」遊戲。正式遊戲預計使用 Godot 2D + C#；純 .NET 8 `WorldSimulation.Core` 負責世界模擬、決定性RNG、排程等，不依賴 Godot。
 
-## 正式資料來源
+## 立即試玩第一個可執行切片（Observer CLI v0）
 
-- **Notion**：遊戲規則、設計理由、決策、變更紀錄。https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213
-- **Google Sheets**：結構化設定、參數、可供程式讀取的資料。https://docs.google.com/spreadsheets/d/136wf0Deyl9oAt4vTSIxwZXu3HUZZt7lrj9rX3Ja91Rw/edit
-- 從 `00D_設計總覽與待辦` 定位規格，再由 `00A_資料索引` 查閱需要的工作表。
-- **GitHub**：程式碼、測試、工程 Issue、PR；不取代 Notion／Sheets 的正式規則。
+請先安裝 [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)，在本倉庫根目錄執行：
 
-## 固定開發分工
+```bash
+dotnet run --project src/WorldSimulation.ObserverCli -- --demo --seed 42
+```
 
-GPT 依正式規則提出小範圍企劃與可執行方案 → Claude Code 先做短版技術可行性審查 → 可行才在當次已授權範圍內實作 → CI 執行真實測試 → GPT 驗收 → 使用者確認合併。詳見 [CLAUDE.md](CLAUDE.md) 與 [docs/AI_HANDOFF.md](docs/AI_HANDOFF.md)。
+操作：`n` 推進一日；輸入 `1`～`1000` 快轉多日；`s` 查看人口／食物；`h` 查事件歷史；`q` 離開。觀察與閱讀時世界時間不會自行前進。
 
-## 技術方向
+這個切片**確實執行世界排程**：使用 `WorldClock` + `Scheduler` 推進時間，`RngResolutionDraft` 進行隔離的 Seed 決定性每日資源收穫試算，進行食物生產／消耗／不足量帳務，結算後增加一筆歷史。相同 Seed/情境/輸入可重現事件與狀態。
 
-Godot 2D + C# 呈現，獨立純 .NET 的 `WorldSimulation.Core` Headless 世界模擬核心，不引用 Godot API。分階段從 M0 開始，不一次製作整個世界。完整 M0 設計仍以正式 Notion／Sheets 為準。
+**重要限制：此CLI是一個非正式平衡的Demo scenario**，不是完整世界生成、人口生死、正式 M1 經濟、Godot UI、存檔或正式跨系統 Atomic Commit。Demo 預設人口、食物與消耗數字只是本地示範資料，**不是** Google Sheets `01_世界參數` 的正式值，也不會寫入該表。此切片只示範「世界時間 → 事件 → 變化 → 可讀歷史」的第一條可執行路徑。
 
-## 目前狀態
+## CI／驗收
 
-**只建立工程規範與 .NET 8 CI 開發環境；尚無任何正式遊戲程式，也尚未宣稱 M0 完成。** 舊倉庫中未驗證的 .NET 骨架與 PR 不視為此新倉庫的已通過成果。
+```bash
+dotnet restore WorldSimulation.sln
+dotnet build WorldSimulation.sln --no-restore --configuration Release
+dotnet test WorldSimulation.sln --no-build --configuration Release
+```
 
-[.NET 8 CI](.github/workflows/dotnet-8-ci.yml) 初期僅檢查 SDK 能否建置臨時 class library。未加入真正的世界模擬 solution 前，**綠燈不代表遊戲測試已通過**。建置及測試過程可能消耗 GitHub Actions 分鐘數，但不會消耗 Claude Pro 額度。
+GitHub Actions 還會用輸入腳本真正啟動 CLI，確認可推進事件、查看狀態與歷史。SDK smoke test 不等於遊戲功能已驗證。
+
+## 文件快速入口（請勿每輪全文讀歷史）
+
+- [AI 最少讀取路由｜Notion](https://app.notion.com/p/3f36939dab09817daa31c7b8a086dcbe)
+- [當前實作與可玩切片｜Notion](https://app.notion.com/p/3f36939dab09816c8366efc669451796)
+- [世界模擬遊戲設定表](https://docs.google.com/spreadsheets/d/136wf0Deyl9oAt4vTSIxwZXu3HUZZt7lrj9rX3Ja91Rw/edit)：只讀 `00E_AI任務讀取路由`、`00F_目前工程狀態`，依實際任務再精確取分頁。
+- [正式 Notion 導航](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)：舊 M0 工程歷程已保留於分期封存，不當成每次預設上下文。
+
+## 權威與開發規則
+
+Notion 記錄正式規則、理由和決策；Google Sheets 記錄結構化設定、參數與程式可讀資料；GitHub `main` 與對應新Head真實 CI 決定程式目前到底能做什麼。遵守 [CLAUDE.md](CLAUDE.md) 與 [docs/AI_HANDOFF.md](docs/AI_HANDOFF.md) 的已更新工程委託與安全閘門。
