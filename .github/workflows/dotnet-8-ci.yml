@@ -45,6 +45,11 @@ jobs:
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
             dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal"
+            # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
+            printf 'n\ns\nh\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
+            grep -q '已處理事件' /tmp/observer-demo-smoke.log
+            grep -q '歷史（共' /tmp/observer-demo-smoke.log
+            grep -q 'Day 1' /tmp/observer-demo-smoke.log
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
