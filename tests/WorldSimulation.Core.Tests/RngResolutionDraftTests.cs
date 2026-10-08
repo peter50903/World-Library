@@ -211,9 +211,10 @@ public sealed class RngResolutionDraftTests
         Assert.Throws<InvalidOperationException>(() => draft.NextUInt64(RngStreams.Event));
         AssertSameSnapshot(proposed, draft.CaptureProposed());
         AssertSameSnapshot(before, live.Capture());
-        Assert.Equal(1UL, draft.NextUInt64(RngStreams.Combat) == 0UL
-            ? draft.CaptureProposed().Streams.Single(s => s.StreamId == RngStreams.Combat).DrawCounter
-            : draft.CaptureProposed().Streams.Single(s => s.StreamId == RngStreams.Combat).DrawCounter);
+        draft.NextUInt64(RngStreams.Combat);
+        Assert.Equal(
+            1UL,
+            draft.CaptureProposed().Streams.Single(s => s.StreamId == RngStreams.Combat).DrawCounter);
         AssertSameSnapshot(before, live.Capture());
     }
 
