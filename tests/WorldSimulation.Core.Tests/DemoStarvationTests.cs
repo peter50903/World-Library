@@ -282,4 +282,51 @@ public sealed class DemoStarvationTests
         Assert.Throws<ArgumentOutOfRangeException>(() => new DemoObserverWorld(
             DemoScenario.Sample(1), DemoWeeklyTempConfig.Sample with { HungerRecoveryPerPersonPerWeek = -1 }));
     }
+
+    [Theory]
+    [InlineData(42UL)]
+    [InlineData(7UL)]
+    [InlineData(20261009UL)]
+    public void SettlementStaysStarvingInAWeekWhoseDeathsClearedAllHungerDebt(ulong seed)
+    {
+        // #59：餓死把飢餓債全部扣光、但當週仍有缺糧時，狀態必須仍是「飢餓中」（45C FOOD_UNMET）。
+        var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.FamineSample);
+        var sawDebtClearedWhileShort = false;
+        for (var day = 1; day <= 12 * 7; day++)
+        {
+            world.AdvanceOneDay();
+            foreach (var s in world.Sites.Settlements)
+            {
+                var ledger = world.LatestWeek?.Settlements.Single(l => l.SettlementId == s.Id);
+                var shortage = ledger?.FoodShortage ?? 0;
+                Assert.Equal(shortage, world.LatestWeekShortage(s.Id));
+
+                var people = world.SettlementPopulation(s.Id);
+                var debt = world.SettlementHungerDebt(s.Id);
+                Assert.Equal(people > 0 && (debt > 0 || shortage > 0), world.IsStarving(s.Id));
+                if (people > 0 && debt == 0 && shortage > 0)
+                {
+                    sawDebtClearedWhileShort = true;
+                    Assert.True(world.IsStarving(s.Id));
+                }
+            }
+        }
+
+        Assert.True(sawDebtClearedWhileShort);
+    }
+
+    [Fact]
+    public void FedSettlementIsNotStarvingAndNothingIsStarvingBeforeTheFirstWeek()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(42));
+        Assert.All(world.Sites.Settlements, s =>
+        {
+            Assert.Equal(0, world.LatestWeekShortage(s.Id));
+            Assert.False(world.IsStarving(s.Id));
+        });
+
+        for (var i = 0; i < 7; i++) world.AdvanceOneDay();
+        Assert.All(world.LatestWeek!.Settlements.Where(l => l.FoodShortage == 0 && l.HungerDebtClosing == 0),
+            l => Assert.False(world.IsStarving(l.SettlementId)));
+    }
 }

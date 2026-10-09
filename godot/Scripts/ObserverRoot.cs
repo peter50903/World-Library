@@ -283,7 +283,7 @@ public partial class ObserverRoot : Control
         lines.Add($"目前人口：{_world.SettlementPopulation(settlement.Id)}");
         lines.Add($"糧食庫存：{_world.SettlementFood(settlement.Id)}");
         lines.Add(_world.IsStarving(settlement.Id)
-            ? $"飢餓狀態：飢餓中（飢餓債 {_world.SettlementHungerDebt(settlement.Id)}）"
+            ? $"飢餓狀態：飢餓中（飢餓債 {_world.SettlementHungerDebt(settlement.Id)}，最近一週缺糧 {_world.LatestWeekShortage(settlement.Id)}）"
             : _world.SettlementPopulation(settlement.Id) == 0 ? "飢餓狀態：聚落已無人口" : "飢餓狀態：正常");
         _cellInfo.Text += string.Join("\n", lines);
     }
