@@ -18,10 +18,28 @@ public partial class ObserverRoot : Control
     // V0-06A: CI can opt into the TEMP local-famine scenario (only settlement #1 has no food)
     // to see starving people leave for a fed settlement cell by cell. Normal players never set it.
     private static readonly bool MigrationSmoke = OS.HasEnvironment("WORLD_SIM_MIGRATION_SMOKE");
+    // #61: news now needs time to travel, so seed 42 may no longer migrate within the smoke window.
+    // The CI-only migration smoke picks the first TEMP seed (42, then 1..30) whose Core world has a
+    // batch on the road within 70 days; normal players always get DemoSeed.
+    private static readonly ulong WorldSeed = MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
     private readonly DemoObserverWorld _world = new(
-        DemoScenario.Sample(DemoSeed),
+        DemoScenario.Sample(WorldSeed),
         MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
             : FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
+    private static ulong PickMigrationSmokeSeed()
+    {
+        foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
+        {
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LocalFamineSample);
+            for (var day = 0; day < 70 && probe.MigrationsInTransit().Count == 0; day++)
+                probe.AdvanceOneDay();
+            if (probe.MigrationsInTransit().Count > 0)
+                return seed;
+        }
+
+        throw new InvalidOperationException("No TEMP seed produced a migrant batch for the migration smoke.");
+    }
+
     private DemoHexMap _hexMap = null!;
     private Label _cellInfo = null!;
 
@@ -425,7 +443,7 @@ public partial class ObserverRoot : Control
             $"每日示範食物庫存：{snapshot.FoodStock}\n" +
             $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
-            $"亂數種子：{DemoSeed}";
+            $"亂數種子：{WorldSeed}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();

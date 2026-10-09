@@ -370,8 +370,11 @@ public sealed class DemoMigrationTests
     [Fact]
     public void LocalFamineCenturyRunsWithZeroConservationErrors()
     {
+        // #61：消息要時間傳到，固定種子未必會遷徙；另外加入第一個 20 週內確實有人出發的種子。
+        var migratingSeed = ManySeeds.First(seed => Run(seed, DemoWeeklyTempConfig.LocalFamineSample, 20 * 7)
+            .SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.Emigration));
         var anyMigration = false;
-        foreach (var seed in new[] { 42UL, 7UL, 20261009UL })
+        foreach (var seed in new[] { 42UL, 7UL, 20261009UL, migratingSeed }.Distinct())
         {
             var report = DemoCenturyRun.Run(seed, 100, DemoWeeklyTempConfig.LocalFamineSample);
             Assert.Empty(report.ConservationErrors);
