@@ -51,7 +51,7 @@ var world = new DemoObserverWorld(DemoScenario.Sample(seed),
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
 Console.WriteLine("注意：人口、初始食物與每日收支為非正式的示範數值；尚未載入試算表的正式世界設定。");
 Console.WriteLine($"亂數種子：{seed}。世界在你閱讀時不會自行推進。");
-Console.WriteLine("指令：n 下一日｜1-1000 快轉天數｜s 世界狀態｜h 最近歷史｜q 離開");
+Console.WriteLine("指令：n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save 存檔｜load 讀檔｜q 離開");
 PrintStatus();
 
 while (true)
@@ -63,12 +63,42 @@ while (true)
 
     if (command is "q" or "quit" or "exit")
     {
-        Console.WriteLine("離開觀察者；示範世界未儲存。");
+        Console.WriteLine("離開觀察者；未執行 save 的後續進度不會儲存。");
         return 0;
     }
     if (command is "s" or "status")
     {
         PrintStatus();
+        continue;
+    }
+    if (command is "save")
+    {
+        try
+        {
+            world.SaveTempFile(DemoObserverWorld.DefaultTempSavePath);
+            Console.WriteLine($"已儲存 TEMP 世界：{DemoObserverWorld.DefaultTempSavePath}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or ArgumentException or InvalidOperationException)
+        {
+            Console.WriteLine($"存檔失敗，世界未改變：{ex.Message}");
+        }
+        continue;
+    }
+    if (command is "load")
+    {
+        try
+        {
+            var candidate = DemoObserverWorld.LoadTempFile(DemoObserverWorld.DefaultTempSavePath);
+            world = candidate; // Replace only after the entire replay checkpoint is verified.
+            Console.WriteLine($"已讀取 TEMP 世界：{DemoObserverWorld.DefaultTempSavePath}");
+            PrintStatus();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or ArgumentException or InvalidOperationException)
+        {
+            Console.WriteLine($"讀檔失敗，現在的世界沒有改變：{ex.Message}");
+        }
         continue;
     }
     if (command is "h" or "history")
@@ -82,7 +112,7 @@ while (true)
     }
     if (command is "?" or "help")
     {
-        Console.WriteLine("n 下一日｜1-1000 快轉天數｜s 世界狀態｜h 最近歷史｜q 離開");
+        Console.WriteLine("n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save 存檔｜load 讀檔｜q 離開");
         continue;
     }
 
