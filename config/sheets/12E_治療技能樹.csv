@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+HEAL_MINOR,生命回復,Minor Heal,Spell,1,生命,,,KNOW_HEAL_BASIC,1,15,短,短,restore_hp,恢復少量HP,不治Disease/Injury,治療系根節點,TRUE
+STABILIZE,生命穩定,Stabilize,Spell,1,急救,HEAL_MINOR,,KNOW_STABILIZE,1,12,短,短,prevent_deterioration,降低瀕死/惡化風險,不能逆轉已死亡,急救,TRUE
+MEND_WOUND,傷勢治療,Mend Wound,Spell,2,傷勢,"HEAL_MINOR,STABILIZE",,KNOW_MEND_WOUND,2,30,中,中,treat_injury,治療一般Injury,不能重生肢體,傷勢支線,TRUE
+PURIFY_POISON,淨毒,Purify Poison,Spell,2,淨化,STABILIZE,,KNOW_PURIFY_POISON,2,25,中,中,remove_poison,解除相容Poison,不等同治Disease,淨化支線,TRUE
+CURE_DISEASE,疾病治療,Cure Disease,Spell,3,淨化,"PURIFY_POISON,MEND_WOUND",,KNOW_CURE_DISEASE,3,40,中,長,treat_disease,治療一般Disease,需Disease允許此治療方式,疾病治療,TRUE
+RESTORE_STAMINA,活力回復,Restore Stamina,Spell,2,生命,HEAL_MINOR,,KNOW_RESTORE_STAMINA,2,22,短,短,restore_stamina,恢復Stamina,不消除長期疲勞原因,支援法術,TRUE
+REGENERATION,再生,Regeneration,Spell,3,生命,"MEND_WOUND,RESTORE_STAMINA",,KNOW_REGENERATION,3,55,長,長,enhance_natural_recovery,持續HP/可恢復組織修復,不能重生Lost Limb,高階生命修復,TRUE
+GROUP_HEAL,群體治療,Group Heal,Spell,4,生命,"REGENERATION,CURE_DISEASE",,KNOW_GROUP_HEAL,4,90,長,長,area_heal,小範圍多目標恢復HP,疾病需另外處理,群體支援,TRUE
+VITAL_WARD,生命護持,Vital Ward,Spell,4,防護,"STABILIZE,REGENERATION",,KNOW_VITAL_WARD,4,80,長,長,survival_protection,降低短期致命惡化,不能提供Plot Armor,高階防護,TRUE
+GREATER_HEALING,大治療術,Greater Healing,Spell,5,生命,"GROUP_HEAL,VITAL_WARD",,KNOW_GREATER_HEALING,5,160,極長,長,major_heal,大幅恢復HP並處理多項可治Injury,不能復活、不能重生Lost Limb,治療系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

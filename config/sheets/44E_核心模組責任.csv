@@ -1,0 +1,35 @@
+ModuleID,中文名稱,唯一責任,可讀資料,可寫資料,禁止事項,輸出/介面,Enabled
+MOD_CONFIG,設定登錄表,載入、驗證並提供不可變規則／定義／參數,正式設定檔匯出（config/sheets）／本地設定,已驗證設定／設定雜湊,執行期中任意改基礎設定,GetDefinition（取得定義）/GetParameter（取得參數）,TRUE
+MOD_RNG,亂數登錄表,提供可重現的世界／歷史／系統／實體局部亂數情境,種子／亂數流狀態／結算情境,亂數計數器／國家（必要時）,讓各系統直接new Random（另建亂數產生器）或共用單一全域隨機,GetStream（取得亂數流）/GetLocalContext（取得局部情境）,TRUE
+MOD_ENTITY,實體登錄,分配永久實體ID、追蹤實體生命週期與類型,權威實體狀態,建立實體／經正式提交的生命週期中繼資料,重用ID、直接刪歷史實體,ResolveID（解析ID）/CreateProposal（建立提議）/LifecycleQuery（生命週期查詢）,TRUE
+MOD_CLOCK,世界時鐘,維護唯一世界時間並只向前推進,排程器下一個到期項,世界時間,系統私自維護另一條世界時間,AdvanceTo（推進到）/Now（目前時間）,TRUE
+MOD_SCHED,排程器,保存NextDue（下一個到期）/行動／週期觸發並提供下一批到期工作,排程項目,排程佇列,把尚未發生的觸發當歷史事件,PeekNext（查看下一個）/TakeDue（取出到期項）/排程／取消,TRUE
+MOD_RULE,規則引擎,依權威快照與指令／觸發計算合法結果,狀態快照／設定／亂數情境,無直接寫入,直接修改實體／金幣／人口／歷史,結算→提議變更／事件事實／後續,TRUE
+MOD_COMMAND,指令閘道,接收AI/系統／未來玩家意圖並做基本格式／來源驗證,行動者／來源／指令資料,指令封裝／結算ID,把指令本身當已發生事實,Submit（送出）/Normalize（正規化）,TRUE
+MOD_COMMIT,提交引擎,唯一正式世界狀態提交入口；原子驗證並寫入,提議變更／事件事實／帳本,權威狀態／帳本／排程器／亂數推進／事件追加,部分成功、跨系統直接旁路寫入,ValidateAndCommit（驗證並提交）,TRUE
+MOD_LEDGER,帳本服務,維護金幣／人口／資源等守恆帳,已提交變更,帳本列／餘額,從摘要倒推覆寫個體真實結果,ApplyDelta（套用變更）/對帳/InvariantQuery（不變量查詢）,TRUE
+MOD_HISTORY,歷史核心,將已提交事實轉成不可改寫事件真相、因果邊與重要度,已提交事件事實,事件／阿卡西紀錄／因果索引／實體歷史,記錄未正式提交結果、用摘要覆蓋真實欄位,AppendCommittedEvent（追加已提交事件）/升格／釘選,TRUE
+MOD_DIRTY,待更新相依圖,將狀態變更傳播到真正受影響的系統/索引,已提交變更集,待更新佇列／原因,每次變更掃描全世界,標記/ConsumeDirty（取出待更新項）,TRUE
+MOD_QUERY,查詢／索引層,提供UI/AI/觀察者快速唯讀查詢,權威狀態 + 衍生索引,可重建索引／快取,成為第二套權威真相,GetEntity（取得實體）/SearchHistory（搜尋歷史）/前N名,TRUE
+MOD_SAVE,存檔管理器,一致性快照／檢查點／讀檔／版本驗證,正式狀態／事件/RNG/排程器／中繼,持久存檔,只存種子、不驗校驗碼直接覆寫舊存檔,CreateCheckpoint（建立檢查點）/讀檔／驗證,TRUE
+MOD_TEST,模擬測試框架,執行固定種子測試、不變量與指標,執行期公開介面／僅測試用情境,測試報告,生產世界偷偷補資源／人口／事件,RunScenario（執行情境）/斷言／報告,TRUE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE

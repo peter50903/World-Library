@@ -1,0 +1,34 @@
+Domain,Authoritative Owner,其他系統如何修改,允許直接讀,禁止,Enabled
+Entity State,Commit Engine + Entity Store,提交提議變更,是，經快照／查詢,系統直接設定欄位繞過正式提交,TRUE
+Gold,Ledger/Commit Engine,交易變更,是,UI/AI直接加減金幣,TRUE
+Population,Population Ledger/Commit Engine,出生／死亡／遷徙／具體化變更,是,聚落目標值直接覆寫人口,TRUE
+Resource/Inventory,Resource/Inventory Ledger + Commit,生產／消耗／轉移變更,是,建築/政策憑空寫庫存,TRUE
+Ownership/Holder,Ownership service through Commit,合法轉移／持有者變更事件,是,偷竊直接把擁有者改成小偷,TRUE
+Relationship,Relationship domain through Commit,互動／婚姻／看法變化,是,觀察者/UI直接編輯NPC關係,TRUE
+Knowledge,Knowledge service through Commit,學習／觀察／研究／資訊事件,是,用世界真相直接塞角色知識,TRUE
+Scheduler,Scheduler via Commit/Runtime,排程／在有效包內取消變更,執行期可讀,任意系統直接改優先佇列內部結構,TRUE
+History,History Kernel,只接受已提交事件事實,觀察者可讀；角色走知識視圖,修改舊事件真相,TRUE
+Derived Cache,Query/Index Layer,由待更新重建／增量索引更新,是,把快取反寫成正式狀態,TRUE
+Godot UI,無Authoritative ownership,送指令／查詢,只讀檢視模型,直接持有並修改核心實體參照,TRUE
+Test Harness,無Production ownership,只走公開執行期介面；僅測試覆寫明確標記,是,測試為通過而偷偷改世界狀態,TRUE
+Migration Tool,離線Schema Migration,版本化資料轉換,備份副本,執行期中途偷偷遷移後正式狀態,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

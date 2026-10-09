@@ -1,0 +1,27 @@
+DoctrineID,中文名稱,英文名稱,子類型,EffectKey,EffectValue,對國家法律的關係,看法／信仰值影響,國家AI偏好,互斥群組,說明,Enabled
+RDX_MISSIONARY,積極傳教,Missionary,改宗,conversion_activity,1.35,無強制法律效果,傳教成功提高宗教聲望,提高傳教目標,CONVERSION_STANCE,改宗仍需角色信仰值真正變化,TRUE
+RDX_PLURALIST,寬容共存,Pluralist,改宗,other_religion_opinion_penalty,0.5,不改國家宗教法,對其他宗教較少看法懲罰,降低強制改宗偏好,CONVERSION_STANCE,不代表所有角色彼此喜歡,TRUE
+RDX_ISOLATIONIST,封閉信仰,Isolationist,改宗,foreign_conversion_weight,0.6,無強制法律效果,離教／外來傳教造成較大負面看法,降低對外傳教但提高內部維持,CONVERSION_STANCE,與核心隔離信條可協同,TRUE
+RDX_EXCLUSIVIST,唯一正統,Exclusivist,異教態度,other_religion_opinion_penalty,1.5,不直接使異教違法,其他宗教承受較高宗教看法懲罰,提高限制異教AI偏好,CONVERSION_STANCE,真正法律限制仍由國家法律決定,TRUE
+RDX_APOSTASY_SEVERE,脫教重罪觀,Severe Apostasy,脫教,apostasy_opinion_penalty,1.5,不等於國家犯罪,離開宗教大幅降低原信徒看法,提高宗教組織處分偏好,APOSTASY_STANCE,不創造司法罪名,TRUE
+RDX_APOSTASY_TOLERANT,允許離教,Tolerant Apostasy,脫教,apostasy_opinion_penalty,0.25,不改國家法律,離教只有低宗教看法影響,低處分偏好,APOSTASY_STANCE,信仰值仍依原規則變化,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

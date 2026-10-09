@@ -1,0 +1,48 @@
+ResourceID,中文名稱,英文名稱,分類,可再生,來源類型,生成／取得環境,單位重量,單位體積,腐敗／損耗,採集／製作方式,可種植建立,可神蹟建立,ParentResourceIDs,說明,Enabled
+RES_WOOD,木材,Timber,建築/工藝材料,TRUE,自然資源,森林,1,1,低,伐木,TRUE,TRUE,,森林可自然更新，也可人工種樹建立新資源點,TRUE
+RES_STONE,石材,Stone,建築材料,FALSE,自然資源,山地/丘陵/採石場,2,1,無,採石,FALSE,TRUE,,一般石材儲量有限,TRUE
+RES_IRON_ORE,鐵礦,Iron Ore,礦物,FALSE,自然資源,礦脈/山地,1.5,1,無,採礦,FALSE,TRUE,,未發現礦脈仍存在於世界真相,TRUE
+RES_GOLD_ORE,金礦,Gold Ore,礦物/貨幣來源,FALSE,自然資源,稀有礦脈,1.5,1,無,採礦,FALSE,TRUE,,開採後依世界金幣規則轉為金幣供給,TRUE
+RES_COAL,煤礦,Coal,燃料/礦物,FALSE,自然資源,礦脈,1,0.8,無,採礦,FALSE,TRUE,,冶煉與燃料,TRUE
+RES_CLAY,黏土,Clay,建築/工藝材料,TRUE,自然資源,河岸/濕地,1.5,1,無,採集,FALSE,TRUE,,可製磚/陶器,TRUE
+RES_SALT,鹽,Salt,食物/工藝資源,FALSE,自然/加工資源,鹽礦/海岸鹽田,0.5,0.3,無,採礦/曬鹽,FALSE,TRUE,,食物保存的重要物資,TRUE
+RES_GRAIN,穀物,Grain,食物原料,TRUE,農業資源,農地,0.5,0.5,會腐敗,農耕/收成,TRUE,TRUE,,可加工成麵包/乾糧,TRUE
+RES_RAW_MEAT,生肉,Raw Meat,食物原料,TRUE,生物資源,動物/怪物屍體/畜牧,0.5,0.5,快速腐敗,屠宰/狩獵,FALSE,FALSE,,來源必須是實際生物,TRUE
+RES_HIDE,獸皮,Hide,生物材料,TRUE,生物資源,動物/怪物屍體,0.5,0.4,會腐敗,剝皮,FALSE,FALSE,,可加工成皮革或皮紙,TRUE
+RES_FIBER,纖維,Fiber,工藝原料,TRUE,農業/生物資源,纖維作物/羊毛來源,0.2,0.3,低,採收/剪毛,TRUE,FALSE,,布料原料,TRUE
+RES_VEGETABLE,蔬果,Vegetable/Fruit,食物原料,TRUE,農業/採集資源,農地/野外,0.4,0.5,快速腐敗,農耕/採集,TRUE,TRUE,,蔬果類資源,TRUE
+RES_DAIRY_EGG,乳蛋,Dairy/Egg,食物原料,TRUE,畜牧資源,畜牧場,0.4,0.4,快速腐敗,畜牧生產,FALSE,FALSE,,需真實牲畜,TRUE
+RES_WATER,淡水,Fresh Water,生存資源,TRUE,自然資源,河流/湖泊/泉水/井,1,1,可能污染,取水,FALSE,TRUE,,裝入容器／處理後可形成CONS_WATER,TRUE
+RES_MED_HERB,藥草,Medicinal Herb,藥材,TRUE,自然/農業資源,森林/濕地/藥草田,0.1,0.1,會腐敗,採集/種植,TRUE,TRUE,,藥品與藥水原料,TRUE
+RES_MANA_CRYSTAL,魔晶石,Mana Crystal,魔法材料,FALSE,特殊自然資源,高魔力區/地下城,0.2,0.1,無,採集/採礦,FALSE,TRUE,,魔法工藝與研究材料,TRUE
+RES_MAGIC_WOOD,魔力木材,Arcane Wood,魔法材料,TRUE,特殊生物資源,魔力森林,1,1,低,伐採,TRUE,TRUE,RES_WOOD,特殊高魔力木材,TRUE
+RES_LEATHER,皮革,Leather,加工材料,TRUE,加工資源,鞣革設施,0.5,0.3,低,鞣製,FALSE,FALSE,RES_HIDE,由獸皮加工,TRUE
+RES_CLOTH,布料,Cloth,加工材料,TRUE,加工資源,紡織設施,0.2,0.2,低,紡織,FALSE,FALSE,RES_FIBER,服裝、繃帶、帳篷原料,TRUE
+RES_PARCHMENT,皮紙/紙張,Parchment/Paper,加工材料,TRUE,加工資源,抄寫/製紙設施,0.1,0.1,低,製紙/製皮紙,FALSE,FALSE,"RES_HIDE,RES_FIBER",書籍與文件原料,TRUE
+RES_IRON_INGOT,鐵錠,Iron Ingot,加工材料,FALSE,加工資源,冶煉爐,1,0.5,無,冶煉,FALSE,FALSE,"RES_IRON_ORE,RES_COAL",由真實鐵礦與燃料轉換,TRUE
+RES_SAND,石英砂,Silica Sand,工藝礦物,TRUE,自然資源,河岸/沙地/特定礦床,1,0.8,無,採集,FALSE,TRUE,,玻璃製作原料,TRUE
+RES_GEMSTONE,寶石原礦,Gemstone,稀有礦物,FALSE,自然資源,稀有礦脈/河床,0.1,0.05,無,採礦/淘洗,FALSE,TRUE,,珠寶與魔法工藝材料,TRUE
+RES_SILVER_ORE,銀礦,Silver Ore,礦物,FALSE,自然資源,礦脈,1.5,1,無,採礦,FALSE,TRUE,,非金幣貨幣，主要供精工與奢侈品,TRUE
+RES_SILVER_INGOT,銀錠,Silver Ingot,加工材料,FALSE,加工資源,冶煉爐,1,0.5,無,冶煉,FALSE,FALSE,"RES_SILVER_ORE,RES_COAL",由銀礦與燃料加工,TRUE
+RES_GLASS,玻璃材料,Glass,加工材料,FALSE,加工資源,玻璃工坊,0.5,0.4,易碎,高溫熔製,FALSE,FALSE,"RES_SAND,RES_COAL",器皿、光學與魔法工藝材料,TRUE
+RES_CERAMIC,陶瓷材料,Ceramic,加工材料,FALSE,加工資源,窯場,0.8,0.5,易碎,燒製,FALSE,FALSE,RES_CLAY,耐熱/儲存容器材料,TRUE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE
+,,,,FALSE,,,,,,FALSE,FALSE,FALSE,,,FALSE

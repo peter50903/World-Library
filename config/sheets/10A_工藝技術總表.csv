@@ -1,0 +1,34 @@
+TechSystemID,中文名稱,英文名稱,RelatedSkillIDs,核心定位,主要分支,RootTechIDs,MaxTier,全世界同步時代限制,可失傳,研究規則,說明,Enabled
+TS_AGRI,農業與畜牧,Agriculture & Husbandry,"SK_FARMING,SK_ANIMAL_HUSBANDRY",糧食、生育、農地效率與畜牧,作物／灌溉／畜牧,"TECH_CROP_CULTIVATION,TECH_ANIMAL_DOMESTICATION",5,FALSE,TRUE,角色時間+真實資源,不同地區可處於不同技術階段，不存在全球同步年齡,TRUE
+TS_METAL,採礦與冶金,Mining & Metallurgy,"SK_MINING,SK_SMITHING",礦物發現、冶煉、鍛造與材料品質,採礦／冶煉／鍛造,TECH_PROSPECTING,5,FALSE,TRUE,角色時間+真實資源,技術知識與鐵匠技能分離,TRUE
+TS_BUILD,建築與土木,Construction & Civil Engineering,"SK_CONSTRUCTION,SK_CARPENTRY",住宅、道路、橋梁、防禦與大型工程,木構／石造／道路水利,TECH_BASIC_CONSTRUCTION,5,FALSE,TRUE,角色時間+真實資源,建築知識不等於有材料或工人,TRUE
+TS_WOOD_SHIP,木工與造船,Carpentry & Shipbuilding,"SK_CARPENTRY,SK_SHIPBUILDING,SK_SAILING",木製工具、車輛、船舶與航海載具,木工／車輪／造船,TECH_BASIC_CARPENTRY,5,FALSE,TRUE,角色時間+真實資源,船舶仍需真實木材、工坊、船匠與船員,TRUE
+TS_TEXTILE,紡織與皮革,Textile & Leathercraft,"SK_TEXTILE,SK_LEATHERWORK",布料、皮革、服裝與軟甲工藝,紡織／鞣革／裁縫,"TECH_FIBER_PROCESSING,TECH_HIDE_CURING",5,FALSE,TRUE,角色時間+真實資源,原料必須來自農業/畜牧/生物,TRUE
+TS_FOOD,食品與保存,Food Processing & Preservation,"SK_COOKING,SK_FARMING",烹調、保存、軍糧與城市糧食耐久,烹調／鹽漬／乾燥／發酵,TECH_BASIC_COOKING,5,FALSE,TRUE,角色時間+真實資源,不取消食物腐敗，只改善保存曲線,TRUE
+TS_MED,醫療與藥學,Medicine & Pharmacy,"SK_MEDICINE,SK_PHARMACY",傷勢、疾病、藥品與公共醫療,草藥／外傷／疾病／公共衛生,TECH_HERBALISM,5,FALSE,TRUE,角色時間+真實資源,研究完成給知識，不直接治病或增加技能,TRUE
+TS_MILENG,軍事工程,Military Engineering,"SK_SIEGE_ENGINEERING,SK_CONSTRUCTION,SK_SMITHING",攻城、防城、軍用工程與大型武器,攻城／防禦／工事,TECH_FIELD_ENGINEERING,5,FALSE,TRUE,角色時間+真實資源,軍事科技只解鎖可能性，不生成兵器或軍隊,TRUE
+TS_WRITING,書寫、教育與行政技術,"Writing, Education & Administration","SK_TEACHING,SK_RESEARCH",書籍、檔案、教育、計量與行政效率,書寫／保存／教育／標準化,TECH_WRITING_MATERIALS,5,FALSE,TRUE,角色時間+真實資源,知識仍需透過角色、書籍、學校實際傳播,TRUE
+TS_ARCANECRAFT,魔法工藝,Arcane Crafting,"SK_MAGIC_CONTROL,SK_ARCANE_CRAFT",魔晶、符文、附魔與魔法器具,材料／符文／附魔／大型魔法工程,TECH_MANA_MATERIAL_HANDLING,5,FALSE,TRUE,角色時間+真實資源,不能研究世界法則不存在的魔法效果；10Q正式採六大工廠共用普通／魔法／混合配方，魔導自動化需合法實體工藝與材料／魔力。,TRUE
+TS_CERAMIC_GLASS,陶瓷與玻璃,Ceramics & Glasswork,"SK_CERAMICS,SK_GLASSWORK",陶器、玻璃、容器、光學材料,陶瓷／窯爐／玻璃／光學,TECH_POTTERY_FIRING,5,FALSE,TRUE,角色時間+真實資源,支援食品、醫療、學術與魔法工藝的基礎材料技術,TRUE
+TS_JEWEL,珠寶與精工,Jewelcraft & Fine Metalwork,"SK_JEWELCRAFT,SK_SMITHING",寶石、精密金工、印璽與魔法飾品,寶石／細金工／印璽／魔導珠寶,"TECH_GEM_CUTTING,TECH_PRECIOUS_METALWORK",5,FALSE,TRUE,角色時間+真實資源,高價值小型工藝；不直接產生金幣,TRUE
+TS_VEHICLE,運輸車輛,Land Vehicle Engineering,"SK_WAGONMAKING,SK_CARPENTRY,SK_ANIMAL_HUSBANDRY",車輪、貨車、載客馬車與重載物流,車輪／車軸／貨運／重載,TECH_CARTWRIGHT,5,FALSE,TRUE,角色時間+真實資源,改善陸運能力，但貨物/役畜/道路仍必須真實存在,TRUE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE

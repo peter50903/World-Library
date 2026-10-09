@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+EARTH_SHAPE,土石操控,Earth Manipulation,Spell,1,土石,,,KNOW_EARTH_BASIC,1,10,短,無,move_real_earth,移動少量真實土石,真實物質改動可保留,土系根節點,TRUE
+STONE_SHOT,石彈,Stone Shot,Spell,1,攻擊,EARTH_SHAPE,,KNOW_STONE_SHOT,1,12,短,短,stone_projectile,真實石塊投射,需要可用土石,基礎攻擊,TRUE
+STONE_SKIN,石膚,Stone Skin,Spell,2,防禦,EARTH_SHAPE,,KNOW_STONE_SKIN,2,25,中,中,physical_resistance,暫時提高物理防護,不改BaseStat,防禦支線,TRUE
+EARTH_WALL,土石壁,Earth Wall,Spell,2,工程,EARTH_SHAPE,,KNOW_EARTH_WALL,2,30,中,中,real_earth_wall,搬運真實土石形成牆,使用真實材料可永久保留,戰鬥/工程,TRUE
+GROUND_SPIKE,地刺,Ground Spike,Spell,2,攻擊,STONE_SHOT,,KNOW_GROUND_SPIKE,2,28,短,短,earth_spike_damage,從地面突起造成傷害,需適合地面,地形攻擊,TRUE
+FORTIFY_STRUCTURE,建築強化,Fortify Structure,Spell,3,工程,EARTH_WALL,,KNOW_FORTIFY_STRUCTURE,3,45,長,中,building_repair_assist,輔助施工/臨時加固,不能憑空補材料,工程魔法,TRUE
+TREMOR,震地,Tremor,Spell,3,控制,GROUND_SPIKE,,KNOW_TREMOR,3,50,中,中,local_tremor,小範圍失衡/結構壓力,不等於自然地震災害,戰場控制,TRUE
+STONE_PRISON,岩牢,Stone Prison,Spell,4,控制,"TREMOR,EARTH_WALL",,KNOW_STONE_PRISON,4,80,長,長,earth_entrapment,土石拘束目標,目標力量可破壞,高階控制,TRUE
+EARTH_WAVE,地脈衝擊,Earth Wave,Spell,4,攻擊,"TREMOR,STONE_SHOT",,KNOW_EARTH_WAVE,4,90,長,長,earth_wave_damage,大範圍地面衝擊,依地形限制,高階攻擊,TRUE
+LOCAL_QUAKE,局部地震術,Local Quake,Spell,5,範圍,"EARTH_WAVE,FORTIFY_STRUCTURE",,KNOW_LOCAL_QUAKE,5,190,極長,極長,local_quake,大型局部震動/建築破壞,屬Magic Event，不等於自然Disaster生成；不改板塊規則,土系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

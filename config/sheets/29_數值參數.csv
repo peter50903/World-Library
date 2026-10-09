@@ -1,0 +1,105 @@
+ParameterID,系統,參數名稱,預設值,最小值,最大值,單位,資料型別,說明,是否已平衡,Enabled
+P_FOOD_LOSS_YEAR,生存,食物整體年平均損耗率,0.5,0,1,比例,number,世界基準；每種食物定義再有自己的腐敗率,FALSE,TRUE
+P_WATER_DEHYDRATION_RATE,生存,缺水惡化倍率,2,1,5,x,number,相對飢餓惡化速度的暫定倍率,FALSE,TRUE
+P_HP_PREGNANCY_THRESHOLD,生育,正常受孕HP門檻,0.5,0,1,比例,number,HP低於50%降低受孕並提高流產風險,TRUE,TRUE
+P_FAITH_THRESHOLD,宗教,正式信仰值門檻,50,0,100,信仰,int,>=50正式信徒,TRUE,TRUE
+P_STATE_LANDLESS_YEARS,政治,國家無領土滅亡年限,10,1,100,年,int,已定案,TRUE,TRUE
+P_OCCUPATION_YEARS,政治,長期占領轉主權年限,10,1,100,年,int,已定案,TRUE,TRUE
+P_SLAVE_RECAPTURE_YEARS,法律,逃奴追捕年限,10,1,100,年,int,已定案,TRUE,TRUE
+P_WORLD_PRE_SIM_YEARS,世界生成,預演年數預設值,300,0,5000,年,int,建立世界時可由玩家調整；300年作第一版預設,FALSE,TRUE
+P_DUNGEON_RESET_DEFAULT,地下城,一般地下城重置次數預設,3,1,20,數量,int,目前第一版預設，模板可覆寫,FALSE,TRUE
+P_KING_VARIANT_BASE_WEIGHT,威脅,王種變異體條件生成基礎權重,1,0,100,權重,number,不是固定per_year率；只有物種／人口／年齡／環境／魔力密度等生成條件成立後才參與權重計算,FALSE,TRUE
+P_MAJOR_REPUTATION_SPREAD,聲望,廣域聲望傳播效率,1,0.1,5,x,number,資訊傳播後的影響倍率,FALSE,TRUE
+P_NATURALIZATION_GOLD_BASE,國籍,一般歸化基礎金額,1000,0,1000000,金幣,number,國家可覆寫；一般歸化唯一正常途徑,FALSE,TRUE
+P_NOBILITY_PURCHASE_BASE,貴族,購買最低貴族身分基礎金額,5000,0,10000000,金幣,number,只有允許購買的國家適用,FALSE,TRUE
+P_PRISON_OVERCROWD_WARN,司法,監獄擁擠警戒倍率,1.2,1,5,x_capacity,number,超過正常容量後逐步增加疾病/暴動風險,FALSE,TRUE
+P_HOUSING_OVERCROWD_WARN,住宅,住宅擁擠警戒倍率,1.25,1,5,x_capacity,number,超額居住不刪人口，只降低生活品質,FALSE,TRUE
+P_LANGUAGE_LV2_EXP,語言,語言Lv2 EXP,100,1,10000,EXP,int,第一版預設,FALSE,TRUE
+P_LANGUAGE_LV3_EXP,語言,語言Lv3 EXP,300,1,50000,EXP,int,需識字來源,FALSE,TRUE
+P_BASIC_RESEARCH_PARALLEL_LIMIT,研究,一般研究同時有效參與人數,10,1,10000,角色,int,避免無限線性疊加；模板可覆寫,FALSE,TRUE
+P_PLAYER_ACTIVE_INTERVENTION,玩家,玩家同時干預數,1,1,1,數量,int,已定案,TRUE,TRUE
+P_EQUIPMENT_SLOT_COUNT,裝備,裝備格數,20,20,20,欄位,int,已定案,TRUE,TRUE
+P_DIAGNOSIS_FALSE_RESULT,醫療,誤診機率,0,0,0,比例,number,不足就未知，不模擬錯誤診斷,TRUE,TRUE
+P_WRONGFUL_CONVICTION,司法,冤罪率,0,0,0,比例,number,不足就未破案，不模擬冤罪,TRUE,TRUE
+P_DUNGEON_DENSITY_MULTIPLIER,地下城,地下城目標數量倍率,1,0.25,4,x,number,世界大小+有效地形+魔力密度算出的基準目標數量再乘玩家可調倍率,FALSE,TRUE
+P_FAITH_POWER_SCALE,宗教,信仰力量生成縮放,1,0.1,10,x,number,信徒信仰值×宗教熱忱×活動×聖地／儀式等彙總後的全局縮放；公式保持簡化,FALSE,TRUE
+P_RES_DELTA_FACTOR,核心判定,對抗分差轉成功率係數,0.0075,0.001,0.02,機率／評分,number,Chance=0.5+(Actor-Target)*factor,FALSE,TRUE
+P_RES_MIN_CHANCE,核心判定,最低成功率,0.05,0,0.5,比例,number,一般可嘗試行動最低機率,FALSE,TRUE
+P_RES_MAX_CHANCE,核心判定,最高成功率,0.95,0.5,1,比例,number,一般可嘗試行動最高機率,FALSE,TRUE
+P_RES_PARTIAL_MARGIN,核心判定,部分成功失敗邊界,0.1,0,0.5,比例,number,定義允許部分時使用,FALSE,TRUE
+P_NPC_TOP_BAND,NPC AI,高分候選帶寬,10,0,100,評分,number,只在距最高分<=此值內隨機,FALSE,TRUE
+P_NPC_MAX_CANDIDATES,NPC AI,每次主要候選上限,8,1,32,數量,int,需求／目標／責任／事件先各自篩選,FALSE,TRUE
+P_SKILL_XP_PER_HOUR,成長,有效行為每小時基礎經驗值,1,0.1,10,XP/小時,number,長時間行動結束一次結算,FALSE,TRUE
+P_SKILL_XP_PER_POINT,成長,技能正規化每點所需XP,100,10,1000,XP,int,內部0~100 精通尺度,FALSE,TRUE
+P_ABILITY_STIMULUS_PER_POINT,成長,能力每點所需刺激,500,100,5000,刺激,int,能力成長慢於技能,FALSE,TRUE
+P_GROWTH_MOD_MIN,成長,總學習倍率下限,0.25,0,1,x,number,所有修正值相乘後限制範圍,FALSE,TRUE
+P_GROWTH_MOD_MAX,成長,總學習倍率上限,3,1,10,x,number,沿用32F總上限,FALSE,TRUE
+P_FOOD_LOSS_WEEK,生存,一般食物週腐敗基準,0.01324,0,1,比例／週,number,約等價全年50%損耗,FALSE,TRUE
+P_HUNGER_HP_SEVERE,生存,嚴重飢餓每日HP損失,0.01,0,1,最大生命值／日,number,債務 3~7,FALSE,TRUE
+P_HUNGER_HP_CRITICAL,生存,餓死每日HP損失,0.04,0,1,最大生命值／日,number,Debt>=7,FALSE,TRUE
+P_THIRST_HP_SEVERE,生存,嚴重缺水每日HP損失,0.03,0,1,最大生命值／日,number,口渴債 3~7,FALSE,TRUE
+P_THIRST_HP_CRITICAL,生存,危急脫水每日HP損失,0.15,0,1,最大生命值／日,number,Thirst Debt>=7,FALSE,TRUE
+P_MISCARRIAGE_BASE_MONTH,生育,流產基準月機率,0.005,0,0.5,機率／月,number,健康／飢餓／疾病另加,FALSE,TRUE
+P_INCARNATION_EXISTENCE_MIN,存在值,正式降臨最低有效存在值,20,0,100,存在值,int,只限智慧角色；暫時可計入,FALSE,TRUE
+P_FULL_PROMOTION_EXISTENCE,存在值,基礎存在值自動完整門檻,40,0,100,存在值,int,角色定位／事件仍可直接升格,FALSE,TRUE
+P_OBSERVER_GLOBAL_TOP_N,觀察者,世界總覽每類前N名,30,5,200,數量,int,關注索引快取,FALSE,TRUE
+P_OBSERVER_REGION_TOP_N,觀察者,地區每類前N名,15,5,100,數量,int,關注索引快取,FALSE,TRUE
+P_OBSERVER_GLOBAL_MIN,觀察者,世界主動推送最低關注度,40,0,100,關注度,int,重大事件可例外,FALSE,TRUE
+P_OBSERVER_REGION_MIN,觀察者,地區主動推送最低關注度,20,0,100,關注度,int,低於仍可搜尋,FALSE,TRUE
+P_L4_TICK_SECONDS,模擬,L4邏輯刻,0.5,0.1,2,秒,number,僅限即時場景,FALSE,TRUE
+P_L4_ENTITY_TARGET,模擬,L4完整實體目標數,128,32,512,實體,int,超過開始聚合非核心單位,FALSE,TRUE
+P_L4_ENTITY_HARD_MAX,模擬,L4完整實體硬上限,256,64,1024,實體,int,超過必須單位／群組化,FALSE,TRUE
+P_REMOTE_FULL_BATCH_DAYS,模擬,遠距完整日常最大批次,7,1,30,日,int,事件可提前截斷,FALSE,TRUE
+P_REMOTE_LIGHT_BATCH_DAYS,模擬,遠距輕量日常最大批次,30,1,180,日,int,事件可提前截斷,FALSE,TRUE
+P_ARMY_COMBAT_PULSE_SECONDS,戰鬥,遠距軍隊戰鬥脈衝,60,5,300,秒,int,單位層級聚合,FALSE,TRUE
+P_ARMY_BASE_LOSS_MINUTE,戰鬥,主戰基準傷亡係數,0.003,0.0001,0.05,比例／最小值,number,再乘敵方戰力占比與階段係數,FALSE,TRUE
+P_FAITH_POWER_FOLLOWER_MONTH,宗教,每正式信徒月基礎信仰力量,0.1,0.001,10,FP/月,number,再乘信仰值／宗教熱忱／活動／聖地,FALSE,TRUE
+P_FAITH_POWER_DECAY_YEAR,宗教,信仰力量年自然耗散,0.1,0,1,比例／年,number,避免數千年無限囤積,FALSE,TRUE
+P_KING_VARIANT_CLUSTER_BASE,威脅,王種變異體每合格群組年基礎機率,0.0002,0,0.1,機率／年,number,只在合法條件成立後檢查,FALSE,TRUE
+P_KING_VARIANT_CLUSTER_MAX,威脅,王種變異體單群組年機率上限,0.02,0,1,機率／年,number,避免倍率堆疊失控,FALSE,TRUE
+P_DUNGEON_REGION_BASE,地下城,每有效地區基礎地下城密度,0.25,0,5,地下城／地區,number,目標數量公式基礎,FALSE,TRUE
+P_DUNGEON_MAGIC_ADD,地下城,魔力密度對每地區額外地下城密度,0.75,0,5,地下城／地區,number,MagicDensity01=1時額外+0.75,FALSE,TRUE
+P_DRAGON_MATING_VISIT_YEARS,龍族,龍族求偶/交配共處期,5,1,20,年,number,第二隻成年龍可在同地區以暫時求偶訪客身分停留約5年；不是第二隻定居龍,TRUE,TRUE
+P_DRAGON_ADULT_REGION_CAP,龍族,每地區定居成年龍上限,1,1,1,adult_resident_dragon,int,只計定居成年龍；交配訪客與未成年子代不計入,TRUE,TRUE
+P_DRAGON_OFFSPRING_LEAVE_AT_ADULT,龍族,幼龍成年後強制離開母地區,1,1,1,布林值,bool,到達成年期即觸發離巢／遷移目標；不能在母龍地區建立成年定居龍域,TRUE,TRUE
+P_GOD_DETAILED_PERCEPTION_FAITH,宗教,神明高解析感知信仰值門檻,75,50,100,信仰,int,,FALSE,FALSE
+P_DUNGEON_OVERFLOW_THRESHOLD_RATIO,地下城,地下城綁定怪物溢出臨界倍率,1.25,1,5,x_capacity,number,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+P_CHARACTER_GOLD_WEIGHT_PER_UNIT,經濟,角色個人金幣每單位負重,0,0,0,權重／金幣,number,,FALSE,FALSE
+P_CHARACTER_GOLD_VOLUME_PER_UNIT,經濟,角色個人金幣每單位體積,0,0,0,體積／金幣,number,,FALSE,FALSE
+P_SELF_REFLECTION_REEVAL_COOLDOWN_DAYS,心理,主動自我反思有效重評估間隔（每角色一年一次）,365,365,365,world_day,int,,FALSE,FALSE
+P_SELF_REFLECTION_BASE_DURATION_MIN,心理,自我反思基礎行動時長,30,10,120,分鐘,int,,FALSE,FALSE
+P_CHARACTER_LIFE_TARGET_REAL_MIN,玩家,人物降臨完整人生主要現實時間目標,60,60,60,real_minute,int,以角色完整人生為單位；不再與固定世界年數綁定。一般角色主要目標約60分鐘。,FALSE,FALSE
+P_CHARACTER_LIFE_MAX_REAL_MIN,玩家,人物降臨完整人生現實時間硬上限,90,90,90,real_minute,int,超長壽角色亦不得因世界年數線性增加遊玩時間；例如約1000年壽命仍須在約90分鐘內完成整段人生。,FALSE,FALSE
+P_PLAYER_LIFE_GOAL_MAX_ACTIVE,玩家,人物降臨玩家人生目標同時上限,1,1,1,目標,int,,FALSE,FALSE
+P_PLAYER_LIFE_GOAL_REVIEW_TARGET_CHECKPOINTS,玩家,完整人生固定人生目標檢視目標上限,100,100,100,檢查點,int,"用於壽命縮放公式的基準值；檢視間隔年數=最大值(1,向上取整(種族典型壽命年數/100))，使固定檢視停點大致不超過100次。",FALSE,FALSE
+P_PLAYER_LIFE_GOAL_RECOMMENDATION_MIN,玩家,玩家人生目標情境推薦最少數,3,3,3,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選下限。,FALSE,FALSE
+P_PLAYER_LIFE_GOAL_RECOMMENDATION_MAX,玩家,玩家人生目標情境推薦最多數,5,5,5,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選上限；不展開完整可行清單。,FALSE,FALSE
+P_PLAYER_LIFE_GOAL_REVIEW_MIN_INTERVAL_YEARS,玩家,玩家人生目標固定檢視最短間隔,1,1,1,world_year,int,短壽命與一般壽命角色仍至少每1世界年檢視一次；避免週期短於1年。,FALSE,FALSE
+P_MONSTER_REPRODUCTION_MULTIPLIER,觀察者調整,怪物繁殖倍率,1,0.25,4,x,number,觀察者可調倍率；調整方式見 41B TUNE_MONSTER_REPRO。只修改之後的怪物繁殖／補充檢查；不直接增加或刪除現有怪物,FALSE,TRUE
+P_KING_VARIANT_WEIGHT_MULTIPLIER,觀察者調整,王種出現倍率,1,0,10,x,number,觀察者可調倍率；調整方式見 41B TUNE_KING_VARIANT。乘在合法王種變異體生成權重上；0可停用未來生成，但不刪除現存王種變異體,FALSE,TRUE
+P_DISASTER_FREQUENCY_MULTIPLIER,觀察者調整,自然災害頻率倍率,1,0.25,4,x,number,觀察者可調倍率；調整方式見 41B TUNE_DISASTER_FREQ。影響後續自然災害生成權重，不改寫已發生災害,FALSE,TRUE
+P_RENEWABLE_RESOURCE_REGEN_MULTIPLIER,觀察者調整,可再生資源恢復倍率,1,0.25,4,x,number,觀察者可調倍率；調整方式見 41B TUNE_RENEWABLE_REGEN。只影響森林／漁業等既有可再生規則；不作用於非再生礦產,FALSE,TRUE
+P_MONSTER_AGGRESSION_MULTIPLIER,觀察者調整,怪物主動攻擊倍率,1,0.5,2,x,number,觀察者可調倍率；調整方式見 41B TUNE_MONSTER_AGGRESSION。調整怪物AI攻擊傾向，不直接改能力值,FALSE,TRUE
+P_DISEASE_TRANSMISSION_MULTIPLIER,觀察者調整,疾病傳播倍率,1,0.5,2,x,number,觀察者可調倍率；調整方式見 41B TUNE_DISEASE_SPREAD。影響後續感染判定；既有病例不回滾,FALSE,TRUE
+P_OBSERVER_ATTENTION_THRESHOLD_MULTIPLIER,觀察者調整,觀察者事件推送密度,1,0.5,2,x,number,觀察者可調倍率；調整方式見 41B TUNE_OBSERVER_EVENT_PUSH。只改觀察者主動推送密度，不改世界本身,FALSE,TRUE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE
+,,,,,,,,,FALSE,FALSE

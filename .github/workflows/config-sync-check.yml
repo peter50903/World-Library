@@ -1,0 +1,28 @@
+name: 設定檔文字副本同步檢查
+
+# 確認 config/sheets/ 的每分頁 CSV 與正式 Excel 一致，並把逐格差異印在記錄中。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  config:
+    name: 設定檔同步檢查
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安裝 openpyxl
+        run: pip install openpyxl==3.1.5
+      - name: 檢查 config/sheets/ 是否與 Excel 同步
+        run: python3 tools/config_export.py --check

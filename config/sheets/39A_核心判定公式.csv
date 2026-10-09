@@ -1,0 +1,28 @@
+FormulaID,中文名稱,適用,V1公式／規則,輸入尺度,限制範圍／分級,結算時機,效能原則,說明,Enabled
+RES_NORMALIZE,判定輸入正規化,所有對抗行動,SkillRatio/AbilityRatio/EquipmentRatio/StateRatio 都轉為0~1；SituationOffset使用-20~+20分,比例 0~1,超界先限制範圍,行動結算,只對實際行動計算,不要求所有系統用相同原始數值，只在判定入口正規化,TRUE
+RES_ACTOR_SCORE,行動方分數,戰鬥/逃跑/交涉/工作難題,ActorScore=50*SkillRatio+25*AbilityRatio+15*EquipmentRatio+10*StateRatio+SituationOffset,0~100附近,最終0~100,行動結算,5次乘加,技能是主要來源；沒有裝備的行動由定義把該權重轉到其他合法來源,TRUE
+RES_TARGET_SCORE,目標方分數,對抗行動,TargetScore使用同一0~100尺度；環境難度可直接作TargetScore,0~100,0~100,行動結算,不建立新常駐狀態,靜態難度也可當目標評分,TRUE
+RES_SUCCESS_CHANCE,成功率,對抗／難度判定,"Chance=clamp(0.05,0.95,0.50+(ActorScore-TargetScore)*0.0075)",0~1,5%~95%,需要隨機結果時,一次均勻擲骰,差20分約65%；差40分約80%,TRUE
+RES_OUTCOME_MARGIN,結果幅度,允許部分／強的行動,"Margin=Chance-Roll；Margin>=0.25=Strong Success；>=0=Success；[-0.10,0)=Partial(若Definition允許)；其餘Fail",擲骰 0~1,定義可關閉部分／強,一次判定後,不二次擲骰,傷害／產量等可再用差值作小幅品質修正,TRUE
+NPC_PRIORITY,NPC候選分數,Entity15 決策AI,Score=BasePriority+Urgency+Goal/Responsibility+Personality/Values/Relation-ExpectedCostRisk,約0~200,0~200,目前行動結束或事件觸發,只評估需求／目標／責任／事件候選,禁止掃描所有可能行動,TRUE
+NPC_SELECT,NPC選擇,Entity15 決策AI,先取最高分；只保留距最高分<=10的合理候選，再按Score權重隨機選,候選<=8,每次最多8個主要候選,排程式,最高級距小集合,保留角色非最佳但合理的決策,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

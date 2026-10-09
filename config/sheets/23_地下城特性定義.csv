@@ -1,0 +1,31 @@
+DungeonTraitID,中文名稱,英文名稱,效果Key,效果值,前置條件,禁止條件,權重,說明,Enabled
+DTR_DARK,黑暗,Dark,vision_penalty,1,,,1,降低能見度,TRUE
+DTR_NARROW,狹窄,Narrow,movement_restriction,1,,,1,大型生物與隊伍行動受限,TRUE
+DTR_TRAP_HEAVY,陷阱密集,Trap Heavy,trap_density,1.5,,,0.8,提高陷阱數量,TRUE
+DTR_LORE_RICH,歷史豐富,Lore Rich,book_ruin_content,1.5,ruin_dungeon,,0.6,提高書籍/歷史遺留物出現,TRUE
+DTR_HIGH_MANA,高魔力,High Mana,mana_environment,1.5,,,0.7,影響魔法與特殊材料,TRUE
+DTR_MAGIC_TRAPS,魔法陷阱,Magic Traps,magic_trap_density,1.5,high_mana,,0.5,增加魔法型陷阱,TRUE
+DTR_DEAD_ZONE,死域侵蝕,Dead Zone,dead_zone_generation,1,死靈術,,0.4,可對周邊地點造成死域,TRUE
+DTR_HEAT,高熱,Extreme Heat,temperature_modifier,1.5,,,0.5,高溫生存壓力,TRUE
+DTR_COLD,極寒,Extreme Cold,temperature_modifier,-1.5,,,0.5,低溫生存壓力,TRUE
+DTR_OVERFLOW_PRONE,易溢出,Overflow Prone,overflow_rate,1.5,,,0.4,更容易發生地下城溢出,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

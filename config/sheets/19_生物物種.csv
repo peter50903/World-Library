@@ -1,0 +1,35 @@
+SpeciesID,中文名稱,英文名稱,生物分類,可使用魔法,可學習魔法,可馴養,可作坐騎,食物需求,棲地條件,GuaranteedTraitIDs,RandomTraitPoolIDs,說明,Enabled
+SP_WOLF,狼,Wolf,動物,FALSE,FALSE,TRUE,FALSE,肉食,森林/草原,CTR_PACK,POOL_CREATURE_ANIMAL,一般掠食動物,TRUE
+SP_DEER,鹿,Deer,動物,FALSE,FALSE,TRUE,FALSE,草食,森林/草原,CTR_HERBIVORE,POOL_CREATURE_ANIMAL,獵物族群,TRUE
+SP_HORSE,馬,Horse,動物,FALSE,FALSE,TRUE,TRUE,草食,草原/農地,CTR_MOUNTABLE,POOL_CREATURE_ANIMAL,主要坐騎與工作獸,TRUE
+SP_COW,牛,Cattle,動物,FALSE,FALSE,TRUE,FALSE,草食,農地/草原,CTR_LIVESTOCK,POOL_CREATURE_ANIMAL,畜牧、農耕、食物,TRUE
+SP_BEAR,熊,Bear,動物,FALSE,FALSE,低,FALSE,雜食,森林/山區,CTR_LARGE_BODY,POOL_CREATURE_ANIMAL,難馴養的大型動物,TRUE
+SP_GOBLIN,哥布林怪,Goblin Monster,怪物,TRUE,FALSE,TRUE,FALSE,雜食,洞穴/森林,CTR_INNATE_MAGIC_MINOR,POOL_CREATURE_MONSTER,非文明怪物版本，可有天生小型魔法,TRUE
+SP_FIRE_LIZARD,火焰蜥蜴,Fire Lizard,怪物,TRUE,FALSE,TRUE,TRUE,肉食,火山/乾燥高魔力區,CTR_FIRE_BREATH,POOL_CREATURE_MONSTER,天生火焰魔法，不可學新魔法,TRUE
+SP_THUNDER_BIRD,雷鳥,Thunder Bird,怪物,TRUE,FALSE,低,TRUE,肉食,山岳/高空,"CTR_LIGHTNING_INNATE,CTR_FLYING",POOL_CREATURE_MONSTER,天生雷電與飛行能力,TRUE
+SP_ICE_WOLF,冰狼,Ice Wolf,怪物,TRUE,FALSE,TRUE,TRUE,肉食,寒冷森林/雪原,CTR_COLD_AURA,POOL_CREATURE_MONSTER,天生寒氣能力,TRUE
+SP_WYVERN,飛龍,Wyvern,怪物,TRUE,FALSE,極低,TRUE,肉食/高需求,山脈/高魔力區,"CTR_DRAGON_BODY,CTR_FLYING,CTR_INNATE_MAGIC_MAJOR",POOL_CREATURE_MONSTER,飛龍屬怪物，不屬龍族；可有龍類體魄、飛行與天生魔法，但不能學後天魔法或取得文明種族身分,TRUE
+SP_SLIME,史萊姆,Slime,怪物,TRUE,FALSE,TRUE,FALSE,特殊,潮濕/地下城,CTR_INNATE_MAGIC_MINOR,POOL_CREATURE_MONSTER,低智慧怪物,TRUE
+SP_GIANT_SPIDER,巨型蜘蛛,Giant Spider,怪物,TRUE,FALSE,低,FALSE,肉食,森林/洞穴,CTR_WEB,POOL_CREATURE_MONSTER,具天生特殊能力/魔法,TRUE
+SP_UNDEAD_BASIC,基礎不死生物,Basic Undead,不死生物,TRUE,FALSE,FALSE,FALSE,不需普通食物,死域/死靈事件,CTR_UNDEAD,,由死靈規則建立新實體，不是原角色,TRUE
+SP_DEMONIZED_GENERIC,魔物狀態模板（傳承）,Demonized Monster Legacy Row,魔物狀態,TRUE,FALSE,FALSE,FALSE,依原物種,魔氣區域,"CTR_DEMONIZED,CTR_DISEASE_IMMUNE",POOL_CREATURE_DEMONIZED,非獨立物種；正式改由ST_DEMONIZED / 魔化影響狀態處理。保留舊列供版本追蹤,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE

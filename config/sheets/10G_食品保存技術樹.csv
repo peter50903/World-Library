@@ -1,0 +1,29 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_BASIC_COOKING,基礎烹調,Basic Cooking,1,烹調,,60,"RES_GRAIN:5,RES_RAW_MEAT:3",完成多類食物烹調,研究時間-20%,SK_COOKING,"REC_BREAD,REC_COOK_MEAT,REC_VEG_MEAL",BUILD_KITCHEN,food_safety+,BUILD_KITCHEN,食品處理根技術,TRUE
+TECH_MILLING,磨粉,Milling,2,主食,TECH_BASIC_COOKING,100,"RES_GRAIN:10,RES_STONE:3",加工大量穀物,研究時間-15%,SK_COOKING,,,grain_processing_efficiency+,BUILD_KITCHEN,提高穀物利用率,TRUE
+TECH_SALTING,鹽漬保存,Salting,2,保存,TECH_BASIC_COOKING,100,"RES_SALT:5,RES_RAW_MEAT:5",保存一批易腐食物,研究時間-20%,SK_COOKING,REC_RATION,,food_spoilage_rate-,BUILD_KITCHEN,降低肉類等食物腐敗速度,TRUE
+TECH_DRYING,乾燥保存,Drying,2,保存,TECH_BASIC_COOKING,100,"RES_RAW_MEAT:3,RES_VEGETABLE:3",在乾燥環境保存食物,研究時間-15%,SK_COOKING,,,food_spoilage_rate-,BUILD_KITCHEN,以時間/環境換取保存性,TRUE
+TECH_FERMENTATION,發酵,Fermentation,3,加工,TECH_BASIC_COOKING,160,"RES_GRAIN:8,RES_VEGETABLE:4",維持多批發酵成功,研究時間-15%,SK_COOKING,,,fermented_foods_enabled,BUILD_KITCHEN,增加可保存加工食品種類,TRUE
+TECH_BULK_RATIONS,軍糧製作,Bulk Rations,3,保存,"TECH_SALTING,TECH_DRYING",200,"RES_GRAIN:15,RES_SALT:5",供應大型商隊或軍隊,研究時間-20%,SK_COOKING,REC_RATION,,ration_storage_efficiency+,BUILD_KITCHEN,改善旅行/軍隊糧食保存與運輸,TRUE
+TECH_GRANARY_MANAGEMENT,糧倉管理,Granary Management,4,儲存,"TECH_MILLING,TECH_BULK_RATIONS",280,"RES_WOOD:15,RES_STONE:10",管理大型糧食庫存,研究時間-15%,"SK_COOKING,SK_TRADE",,,bulk_food_loss_rate-,"BUILD_MARKET,BUILD_FARM",改善大型庫存腐敗與輪替,TRUE
+TECH_ADVANCED_PRESERVATION,進階保存,Advanced Preservation,5,保存,"TECH_GRANARY_MANAGEMENT,TECH_FERMENTATION",450,"RES_SALT:15,RES_PARCHMENT:5",長期比較不同保存法,研究時間-15%,"SK_COOKING,SK_RESEARCH",,,food_preservation_cap+,"BUILD_KITCHEN,BUILD_SCHOOL",仍不讓食物永久不腐敗,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

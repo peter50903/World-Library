@@ -1,0 +1,102 @@
+KnowledgeID,中文名稱,英文名稱,分類,SystemID,RelatedDefinitionID,PrerequisiteKnowledgeIDs,AcquisitionSourceTypes,CanResearch,說明,Enabled
+KNOW_ANIMATE_CORPSE,屍體活化知識,Animate Corpse Knowledge,魔法知識,MS_NECROMANCY,ANIMATE_CORPSE,KNOW_PRESERVE_CORPSE,"Teacher,Book,Research",TRUE,核心死靈術,TRUE
+KNOW_ANTI_BASIC,反魔法基礎知識,Basic Anti-Magic Knowledge,魔法知識,MS_ANTIMAGIC,ANTI_SENSE,,"Teacher,Book,Research",TRUE,反魔法根節點,TRUE
+KNOW_ANTI_MAGIC_ZONE,禁魔場知識,Anti-Magic Zone Knowledge,魔法知識,MS_ANTIMAGIC,ANTI_MAGIC_ZONE,"KNOW_SILENCE_FIELD,KNOW_MAGIC_WARD","Teacher,Book,Research",TRUE,高階反魔法,TRUE
+KNOW_BIND_UNDEAD,不死束縛知識,Bind Undead Knowledge,魔法知識,MS_NECROMANCY,BIND_UNDEAD,KNOW_ANIMATE_CORPSE,"Teacher,Book,Research",TRUE,控制分支,TRUE
+KNOW_BLINK,閃現知識,Blink Knowledge,魔法知識,MS_SPACE,BLINK,KNOW_SPACE_BASIC,"Teacher,Book,Research",TRUE,戰術位移,TRUE
+KNOW_BONE_SERVANT,骸骨僕役知識,Bone Servant Knowledge,魔法知識,MS_NECROMANCY,BONE_SERVANT,KNOW_ANIMATE_CORPSE,"Teacher,Book,Research",TRUE,不死兵力,TRUE
+KNOW_BREAK_ENCHANTMENT,破除附魔知識,Break Enchantment Knowledge,魔法知識,MS_ANTIMAGIC,BREAK_ENCHANTMENT,"KNOW_DISPEL,KNOW_MAGIC_WARD","Teacher,Book,Research",TRUE,物品反魔法,TRUE
+KNOW_CALL_STORM,召集風暴知識,Call Storm Knowledge,魔法知識,MS_WEATHER,CALL_STORM,"KNOW_LOCAL_RAIN,KNOW_WIND_SHIFT","Teacher,Book,Research",TRUE,高階天候法術,TRUE
+KNOW_CALM,安撫知識,Calm Knowledge,魔法知識,MS_MENTAL,CALM,KNOW_MENTAL_BASIC,"Teacher,Book,Research",TRUE,基礎支援,TRUE
+KNOW_CALM_STORM,平息風暴知識,Calm Storm Knowledge,魔法知識,MS_WEATHER,CALM_STORM,"KNOW_WIND_SHIFT,KNOW_DISPERSE_CLOUDS","Teacher,Book,Research",TRUE,海運/救災,TRUE
+KNOW_CHAIN_LIGHTNING,連鎖雷電知識,Chain Lightning Knowledge,魔法知識,MS_WIND_LIGHTNING,CHAIN_LIGHTNING,KNOW_LIGHTNING_BOLT,"Teacher,Book,Research",TRUE,群體雷法,TRUE
+KNOW_CHARM,魅惑知識,Charm Knowledge,魔法知識,MS_MENTAL,CHARM,"KNOW_CALM,KNOW_COURAGE","Teacher,Book,Research",TRUE,社交控制,TRUE
+KNOW_COMBUSTION,燃燒精通知識,Combustion Mastery Knowledge,魔法知識,MS_FIRE,FIRE_COMBUSTION,KNOW_FIRE_BURST,"Teacher,Book,Research",TRUE,高階燃燒強化,TRUE
+KNOW_COMMAND,精神命令知識,Command Knowledge,魔法知識,MS_MENTAL,COMMAND,"KNOW_CHARM,KNOW_PANIC","Teacher,Book,Research",TRUE,高階精神控制,TRUE
+KNOW_CONFUSION,迷亂知識,Confusion Knowledge,魔法知識,MS_MENTAL,CONFUSION,"KNOW_DROWSINESS,KNOW_FEAR","Teacher,Book,Research",TRUE,控制法術,TRUE
+KNOW_COUNTERSPELL,反制施法知識,Counterspell Knowledge,魔法知識,MS_ANTIMAGIC,COUNTERSPELL,KNOW_DISPEL,"Teacher,Book,Research",TRUE,戰鬥反制,TRUE
+KNOW_COURAGE,勇氣鼓舞知識,Courage Knowledge,魔法知識,MS_MENTAL,COURAGE,KNOW_CALM,"Teacher,Book,Research",TRUE,支援法術,TRUE
+KNOW_CURE_DISEASE,疾病治療知識,Cure Disease Knowledge,魔法知識,MS_HEALING,CURE_DISEASE,"KNOW_PURIFY_POISON,KNOW_MEND_WOUND","Teacher,Book,Research",TRUE,疾病治療,TRUE
+KNOW_DEAD_ZONE_SEED,死域播種知識,Dead Zone Seed Knowledge,魔法知識,MS_NECROMANCY,DEAD_ZONE_SEED,"KNOW_DRAIN_LIFE,KNOW_MASS_ANIMATION","Teacher,Book,Research",TRUE,環境型死靈術,TRUE
+KNOW_DEEP_FREEZE,深度凍結知識,Deep Freeze Knowledge,魔法知識,MS_WATER_ICE,DEEP_FREEZE,"KNOW_FROZEN_GROUND,KNOW_ICE_ARMOR","Teacher,Book,Research",TRUE,高階控制,TRUE
+KNOW_DISPEL,解除術知識,Minor Dispel Knowledge,魔法知識,MS_ANTIMAGIC,DISPEL_MINOR,KNOW_ANTI_BASIC,"Teacher,Book,Research",TRUE,基礎反制,TRUE
+KNOW_DISPERSE_CLOUDS,散雲知識,Disperse Clouds Knowledge,魔法知識,MS_WEATHER,DISPERSE_CLOUDS,"KNOW_GATHER_CLOUDS,KNOW_WIND_SHIFT","Teacher,Book,Research",TRUE,天候調整,TRUE
+KNOW_DRAIN_LIFE,生命汲取知識,Life Drain Knowledge,魔法知識,MS_NECROMANCY,DRAIN_LIFE,KNOW_NECRO_BASIC,"Teacher,Book,Research",TRUE,攻擊分支,TRUE
+KNOW_DROWSINESS,睡意知識,Drowsiness Knowledge,魔法知識,MS_MENTAL,DROWSINESS,KNOW_CALM,"Teacher,Book,Research",TRUE,非致命控制,TRUE
+KNOW_EARTH_BASIC,土系魔法基礎知識,Basic Earth Magic Knowledge,魔法知識,MS_EARTH,EARTH_SHAPE,,"Teacher,Book,Research",TRUE,土系根節點,TRUE
+KNOW_EARTH_WALL,土石壁知識,Earth Wall Knowledge,魔法知識,MS_EARTH,EARTH_WALL,KNOW_EARTH_BASIC,"Teacher,Book,Research",TRUE,戰鬥/工程,TRUE
+KNOW_EARTH_WAVE,地脈衝擊知識,Earth Wave Knowledge,魔法知識,MS_EARTH,EARTH_WAVE,"KNOW_TREMOR,KNOW_STONE_SHOT","Teacher,Book,Research",TRUE,高階攻擊,TRUE
+KNOW_FEAR,恐懼術知識,Fear Knowledge,魔法知識,MS_MENTAL,FEAR,KNOW_MENTAL_BASIC,"Teacher,Book,Research",TRUE,基礎控制,TRUE
+KNOW_FIRE_BASIC,火焰魔法基礎知識,Basic Fire Magic Knowledge,魔法知識,MS_FIRE,FIRE_SPARK,,"Teacher,Book,Research",TRUE,火焰系根節點,TRUE
+KNOW_FIRE_BOLT,火焰彈知識,Fire Bolt Knowledge,魔法知識,MS_FIRE,FIRE_BOLT,KNOW_FIRE_BASIC,"Teacher,Book,Research",TRUE,低階遠程攻擊,TRUE
+KNOW_FIRE_BURST,烈焰爆發知識,Flame Burst Knowledge,魔法知識,MS_FIRE,FIRE_BURST,"KNOW_FIREBALL,KNOW_FIRE_WALL","Teacher,Book,Research",TRUE,高階範圍攻擊,TRUE
+KNOW_FIRE_CLOAK,火焰護體知識,Flame Cloak Knowledge,魔法知識,MS_FIRE,FIRE_CLOAK,KNOW_FIRE_CONTROL,"Teacher,Book,Research",TRUE,近戰防護,TRUE
+KNOW_FIRE_CONTROL,熱能控制知識,Heat Control Knowledge,魔法知識,MS_FIRE,FIRE_CONTROL,KNOW_FIRE_BASIC,"Teacher,Book,Research",TRUE,提高火焰法術控制,TRUE
+KNOW_FIRE_WALL,火牆知識,Flame Wall Knowledge,魔法知識,MS_FIRE,FIRE_WALL,KNOW_FIRE_CONTROL,"Teacher,Book,Research",TRUE,區域封鎖,TRUE
+KNOW_FIREBALL,火球知識,Fireball Knowledge,魔法知識,MS_FIRE,FIREBALL,KNOW_FIRE_BOLT,"Teacher,Book,Research",TRUE,主力中階攻擊,TRUE
+KNOW_FLOW_CONTROL,水流精通知識,Flow Mastery Knowledge,魔法知識,MS_WATER_ICE,FLOW_CONTROL,KNOW_WATER_JET,"Teacher,Book,Research",TRUE,提高操水效率,TRUE
+KNOW_FOG,聚霧知識,Call Fog Knowledge,魔法知識,MS_WEATHER,FOG_CALL,KNOW_WEATHER_BASIC,"Teacher,Book,Research",TRUE,低階天候操控,TRUE
+KNOW_FORTIFY_STRUCTURE,建築強化知識,Fortify Structure Knowledge,魔法知識,MS_EARTH,FORTIFY_STRUCTURE,KNOW_EARTH_WALL,"Teacher,Book,Research",TRUE,工程魔法,TRUE
+KNOW_FROST_DOMAIN,寒霜領域知識,Frost Domain Knowledge,魔法知識,MS_WATER_ICE,FROST_DOMAIN,"KNOW_DEEP_FREEZE,KNOW_FLOW_CONTROL","Teacher,Book,Research",TRUE,水冰系頂階,TRUE
+KNOW_FROST_TOUCH,寒霜之觸知識,Frost Touch Knowledge,魔法知識,MS_WATER_ICE,FROST_TOUCH,KNOW_WATER_BASIC,"Teacher,Book,Research",TRUE,冰系入口,TRUE
+KNOW_FROZEN_GROUND,冰封地面知識,Frozen Ground Knowledge,魔法知識,MS_WATER_ICE,FROZEN_GROUND,KNOW_ICE_SHARD,"Teacher,Book,Research",TRUE,戰場控制,TRUE
+KNOW_GALE_STEP,疾風步知識,Gale Step Knowledge,魔法知識,MS_WIND_LIGHTNING,GALE_STEP,KNOW_WIND_BLADE,"Teacher,Book,Research",TRUE,機動法術,TRUE
+KNOW_GATHER_CLOUDS,聚雲知識,Gather Clouds Knowledge,魔法知識,MS_WEATHER,GATHER_CLOUDS,KNOW_WEATHER_BASIC,"Teacher,Book,Research",TRUE,祈雨前置,TRUE
+KNOW_GRAND_DISPEL,大解除術知識,Grand Dispel Knowledge,魔法知識,MS_ANTIMAGIC,GRAND_DISPEL,"KNOW_MAGIC_SEAL,KNOW_ANTI_MAGIC_ZONE","Teacher,Book,Research",TRUE,反魔法頂階之一,TRUE
+KNOW_GREATER_HEALING,大治療術知識,Greater Healing Knowledge,魔法知識,MS_HEALING,GREATER_HEALING,"KNOW_GROUP_HEAL,KNOW_VITAL_WARD","Teacher,Book,Research",TRUE,治療系頂階,TRUE
+KNOW_GROUND_SPIKE,地刺知識,Ground Spike Knowledge,魔法知識,MS_EARTH,GROUND_SPIKE,KNOW_STONE_SHOT,"Teacher,Book,Research",TRUE,地形攻擊,TRUE
+KNOW_GROUP_HEAL,群體治療知識,Group Heal Knowledge,魔法知識,MS_HEALING,GROUP_HEAL,"KNOW_REGENERATION,KNOW_CURE_DISEASE","Teacher,Book,Research",TRUE,群體支援,TRUE
+KNOW_GROUP_TELEPORT,群體傳送知識,Group Teleport Knowledge,魔法知識,MS_SPACE,GROUP_TELEPORT,KNOW_PORTAL,"Teacher,Book,Research",TRUE,高階群體移動,TRUE
+KNOW_HEAL_BASIC,治療魔法基礎知識,Basic Healing Magic Knowledge,魔法知識,MS_HEALING,HEAL_MINOR,,"Teacher,Book,Research",TRUE,治療系根節點,TRUE
+KNOW_ICE_ARMOR,冰甲知識,Ice Armor Knowledge,魔法知識,MS_WATER_ICE,ICE_ARMOR,KNOW_ICE_WALL,"Teacher,Book,Research",TRUE,角色防禦,TRUE
+KNOW_ICE_SHARD,冰刃知識,Ice Shard Knowledge,魔法知識,MS_WATER_ICE,ICE_SHARD,KNOW_FROST_TOUCH,"Teacher,Book,Research",TRUE,遠程攻擊,TRUE
+KNOW_ICE_WALL,冰牆知識,Ice Wall Knowledge,魔法知識,MS_WATER_ICE,ICE_WALL,"KNOW_FROST_TOUCH,KNOW_WATER_BASIC","Teacher,Book,Research",TRUE,防禦/地形控制,TRUE
+KNOW_INFERNO,煉獄領域知識,Inferno Field Knowledge,魔法知識,MS_FIRE,FIRE_INFERNO,"KNOW_COMBUSTION,KNOW_FIRE_CLOAK","Teacher,Book,Research",TRUE,火焰系頂階法術,TRUE
+KNOW_LEGION_COMMAND,亡者軍團支配知識,Legion Command Knowledge,魔法知識,MS_NECROMANCY,LEGION_COMMAND,"KNOW_MASS_ANIMATION,KNOW_DEAD_ZONE_SEED","Teacher,Book,Research",TRUE,死靈系頂階,TRUE
+KNOW_LIGHTNING_BOLT,雷擊術知識,Lightning Bolt Knowledge,魔法知識,MS_WIND_LIGHTNING,LIGHTNING_BOLT,KNOW_SHOCK,"Teacher,Book,Research",TRUE,主力雷法,TRUE
+KNOW_LOCAL_QUAKE,局部地震術知識,Local Quake Knowledge,魔法知識,MS_EARTH,LOCAL_QUAKE,"KNOW_EARTH_WAVE,KNOW_FORTIFY_STRUCTURE","Teacher,Book,Research",TRUE,土系頂階,TRUE
+KNOW_LOCAL_RAIN,局部降雨知識,Local Rain Knowledge,魔法知識,MS_WEATHER,LOCAL_RAIN,KNOW_GATHER_CLOUDS,"Teacher,Book,Research",TRUE,農業/救災,TRUE
+KNOW_LONG_TELEPORT,長距傳送知識,Long Teleport Knowledge,魔法知識,MS_SPACE,LONG_TELEPORT,"KNOW_PORTAL,KNOW_SPACE_ANCHOR","Teacher,Book,Research",TRUE,頂階傳送,TRUE
+KNOW_MAGIC_SEAL,魔法封印知識,Magic Seal Knowledge,魔法知識,MS_ANTIMAGIC,MAGIC_SEAL,"KNOW_BREAK_ENCHANTMENT,KNOW_SILENCE_FIELD","Teacher,Book,Research",TRUE,高階封印,TRUE
+KNOW_MAGIC_WARD,魔法結界知識,Magic Ward Knowledge,魔法知識,MS_ANTIMAGIC,MAGIC_WARD,KNOW_ANTI_BASIC,"Teacher,Book,Research",TRUE,防禦分支,TRUE
+KNOW_MASS_ANIMATION,群體活化知識,Mass Animation Knowledge,魔法知識,MS_NECROMANCY,MASS_ANIMATION,"KNOW_BONE_SERVANT,KNOW_UNDEAD_EMPOWER","Teacher,Book,Research",TRUE,高階死靈術,TRUE
+KNOW_MEND_WOUND,傷勢治療知識,Mend Wound Knowledge,魔法知識,MS_HEALING,MEND_WOUND,"KNOW_HEAL_BASIC,KNOW_STABILIZE","Teacher,Book,Research",TRUE,傷勢支線,TRUE
+KNOW_MENTAL_BASIC,精神魔法基礎知識,Basic Mental Magic Knowledge,魔法知識,MS_MENTAL,MENTAL_SENSE,,"Teacher,Book,Research",TRUE,精神系根節點,TRUE
+KNOW_MENTAL_WARD,心靈屏障知識,Mental Ward Knowledge,魔法知識,MS_MENTAL,MENTAL_WARD,"KNOW_COURAGE,KNOW_MENTAL_BASIC","Teacher,Book,Research",TRUE,精神防禦,TRUE
+KNOW_MIND_DOMAIN,心靈領域知識,Mind Domain Knowledge,魔法知識,MS_MENTAL,MIND_DOMAIN,"KNOW_COMMAND,KNOW_SLEEP,KNOW_MENTAL_WARD","Teacher,Book,Research",TRUE,精神系頂階,TRUE
+KNOW_NECRO_BASIC,死靈魔法基礎知識,Basic Necromancy Knowledge,魔法知識,MS_NECROMANCY,NECRO_CORPSE_SENSE,,"Teacher,Book,Research",TRUE,死靈根節點,TRUE
+KNOW_NULL_FIELD,虛無領域知識,Null Field Knowledge,魔法知識,MS_ANTIMAGIC,NULL_FIELD,"KNOW_ANTI_MAGIC_ZONE,KNOW_COUNTERSPELL","Teacher,Book,Research",TRUE,反魔法最高控制,TRUE
+KNOW_PANIC,驚恐知識,Panic Knowledge,魔法知識,MS_MENTAL,PANIC,KNOW_FEAR,"Teacher,Book,Research",TRUE,強化恐懼,TRUE
+KNOW_PORTAL,空間門知識,Portal Knowledge,魔法知識,MS_SPACE,PORTAL,"KNOW_SHORT_TELEPORT,KNOW_SPACE_ANCHOR","Teacher,Book,Research",TRUE,高階交通,TRUE
+KNOW_PRESERVE_CORPSE,遺骸保存知識,Preserve Corpse Knowledge,魔法知識,MS_NECROMANCY,PRESERVE_CORPSE,KNOW_NECRO_BASIC,"Teacher,Book,Research",TRUE,屍體處理,TRUE
+KNOW_PURIFY_POISON,淨毒知識,Purify Poison Knowledge,魔法知識,MS_HEALING,PURIFY_POISON,KNOW_STABILIZE,"Teacher,Book,Research",TRUE,淨化支線,TRUE
+KNOW_REGENERATION,再生知識,Regeneration Knowledge,魔法知識,MS_HEALING,REGENERATION,"KNOW_MEND_WOUND,KNOW_RESTORE_STAMINA","Teacher,Book,Research",TRUE,高階生命修復,TRUE
+KNOW_RESTORE_STAMINA,活力回復知識,Restore Stamina Knowledge,魔法知識,MS_HEALING,RESTORE_STAMINA,KNOW_HEAL_BASIC,"Teacher,Book,Research",TRUE,支援法術,TRUE
+KNOW_SHOCK,電擊知識,Shock Knowledge,魔法知識,MS_WIND_LIGHTNING,SHOCK,KNOW_WIND_BASIC,"Teacher,Book,Research",TRUE,雷電入口,TRUE
+KNOW_SHORT_TELEPORT,短距傳送知識,Short Teleport Knowledge,魔法知識,MS_SPACE,SHORT_TELEPORT,"KNOW_BLINK,KNOW_SPACE_MARK","Teacher,Book,Research",TRUE,中階傳送,TRUE
+KNOW_SILENCE_FIELD,沉默領域知識,Silence Field Knowledge,魔法知識,MS_ANTIMAGIC,SILENCE_FIELD,"KNOW_COUNTERSPELL,KNOW_MAGIC_WARD","Teacher,Book,Research",TRUE,區域控制,TRUE
+KNOW_SLEEP,沉睡知識,Sleep Knowledge,魔法知識,MS_MENTAL,SLEEP,"KNOW_DROWSINESS,KNOW_CONFUSION","Teacher,Book,Research",TRUE,高階非致命控制,TRUE
+KNOW_SPACE_ANCHOR,空間錨定知識,Spatial Anchor Knowledge,魔法知識,MS_SPACE,SPACE_ANCHOR,KNOW_SPACE_MARK,"Teacher,Book,Research",TRUE,支援節點,TRUE
+KNOW_SPACE_BASIC,空間魔法基礎知識,Basic Spatial Magic Knowledge,魔法知識,MS_SPACE,SPACE_SENSE,,"Teacher,Book,Research",TRUE,空間系根節點,TRUE
+KNOW_SPACE_MARK,空間標記知識,Mark Location Knowledge,魔法知識,MS_SPACE,MARK_LOCATION,KNOW_SPACE_BASIC,"Teacher,Book,Research",TRUE,傳送基礎,TRUE
+KNOW_SPATIAL_STORAGE,空間儲存知識,Spatial Storage Knowledge,魔法知識,MS_SPACE,SPATIAL_STORAGE,KNOW_SPACE_BASIC,"Teacher,Book,Research",TRUE,物流輔助,TRUE
+KNOW_STABILIZE,生命穩定知識,Stabilize Knowledge,魔法知識,MS_HEALING,STABILIZE,KNOW_HEAL_BASIC,"Teacher,Book,Research",TRUE,急救,TRUE
+KNOW_STATIC_FIELD,靜電領域知識,Static Field Knowledge,魔法知識,MS_WIND_LIGHTNING,STATIC_FIELD,"KNOW_SHOCK,KNOW_WIND_BARRIER","Teacher,Book,Research",TRUE,區域控制,TRUE
+KNOW_STONE_PRISON,岩牢知識,Stone Prison Knowledge,魔法知識,MS_EARTH,STONE_PRISON,"KNOW_TREMOR,KNOW_EARTH_WALL","Teacher,Book,Research",TRUE,高階控制,TRUE
+KNOW_STONE_SHOT,石彈知識,Stone Shot Knowledge,魔法知識,MS_EARTH,STONE_SHOT,KNOW_EARTH_BASIC,"Teacher,Book,Research",TRUE,基礎攻擊,TRUE
+KNOW_STONE_SKIN,石膚知識,Stone Skin Knowledge,魔法知識,MS_EARTH,STONE_SKIN,KNOW_EARTH_BASIC,"Teacher,Book,Research",TRUE,防禦支線,TRUE
+KNOW_STORM_LANCE,雷霆之槍知識,Storm Lance Knowledge,魔法知識,MS_WIND_LIGHTNING,STORM_LANCE,"KNOW_CHAIN_LIGHTNING,KNOW_GALE_STEP","Teacher,Book,Research",TRUE,高階單體/直線攻擊,TRUE
+KNOW_STRATEGIC_GATE,戰略空間門知識,Strategic Gate Knowledge,魔法知識,MS_SPACE,STRATEGIC_GATE,"KNOW_LONG_TELEPORT,KNOW_GROUP_TELEPORT","Teacher,Book,Research",TRUE,空間系最高戰略法術,TRUE
+KNOW_TEMP_SHIFT,局部溫度調節知識,Temperature Shift Knowledge,魔法知識,MS_WEATHER,TEMPERATURE_SHIFT,KNOW_WEATHER_BASIC,"Teacher,Book,Research",TRUE,農業/生存,TRUE
+KNOW_THUNDER_DOMAIN,雷暴領域知識,Thunder Domain Knowledge,魔法知識,MS_WIND_LIGHTNING,THUNDER_DOMAIN,"KNOW_STORM_LANCE,KNOW_STATIC_FIELD","Teacher,Book,Research",TRUE,風雷系頂階,TRUE
+KNOW_TREMOR,震地知識,Tremor Knowledge,魔法知識,MS_EARTH,TREMOR,KNOW_GROUND_SPIKE,"Teacher,Book,Research",TRUE,戰場控制,TRUE
+KNOW_UNDEAD_EMPOWER,不死強化知識,Empower Undead Knowledge,魔法知識,MS_NECROMANCY,UNDEAD_EMPOWER,KNOW_BIND_UNDEAD,"Teacher,Book,Research",TRUE,支援死靈軍,TRUE
+KNOW_VITAL_WARD,生命護持知識,Vital Ward Knowledge,魔法知識,MS_HEALING,VITAL_WARD,"KNOW_STABILIZE,KNOW_REGENERATION","Teacher,Book,Research",TRUE,高階防護,TRUE
+KNOW_WATER_BASIC,水冰魔法基礎知識,Basic Water & Ice Magic Knowledge,魔法知識,MS_WATER_ICE,WATER_SHAPE,,"Teacher,Book,Research",TRUE,水冰系根節點,TRUE
+KNOW_WATER_JET,水流衝擊知識,Water Jet Knowledge,魔法知識,MS_WATER_ICE,WATER_JET,KNOW_WATER_BASIC,"Teacher,Book,Research",TRUE,攻擊與控制,TRUE
+KNOW_WEATHER_BASIC,天候魔法基礎知識,Basic Weather Magic Knowledge,魔法知識,MS_WEATHER,WEATHER_SENSE,,"Teacher,Book,Research",TRUE,天候系根節點,TRUE
+KNOW_WEATHER_DOMAIN,天候領域知識,Weather Domain Knowledge,魔法知識,MS_WEATHER,WEATHER_DOMAIN,"KNOW_CALL_STORM,KNOW_CALM_STORM,KNOW_TEMP_SHIFT","Teacher,Book,Research",TRUE,天候系頂階,TRUE
+KNOW_WIND_BARRIER,風障知識,Wind Barrier Knowledge,魔法知識,MS_WIND_LIGHTNING,WIND_BARRIER,KNOW_WIND_BASIC,"Teacher,Book,Research",TRUE,防護,TRUE
+KNOW_WIND_BASIC,風雷魔法基礎知識,Basic Wind & Lightning Magic Knowledge,魔法知識,MS_WIND_LIGHTNING,WIND_GUST,,"Teacher,Book,Research",TRUE,風雷系根節點,TRUE
+KNOW_WIND_BLADE,風刃知識,Wind Blade Knowledge,魔法知識,MS_WIND_LIGHTNING,WIND_BLADE,KNOW_WIND_BASIC,"Teacher,Book,Research",TRUE,基礎攻擊,TRUE
+KNOW_WIND_SHIFT,轉風知識,Wind Shift Knowledge,魔法知識,MS_WEATHER,WIND_SHIFT,KNOW_WEATHER_BASIC,"Teacher,Book,Research",TRUE,航海/火災應用,TRUE

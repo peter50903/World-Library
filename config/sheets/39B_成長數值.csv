@@ -1,0 +1,39 @@
+RuleID,中文名稱,適用,V1數值／公式,結算單位,說明,Enabled
+G_SKILL_BASE,技能基礎EXP,技能,有效Long Action每1小時=1 Base XP,行動完成時計總有效小時,不逐小時跑刻；一次工作8小時可一次結算8 基礎經驗值,TRUE
+G_SKILL_POINT,技能內部進度尺度,技能,100 XP = 1 normalized mastery point；100 points僅為內部正規化尺度,XP,不同技能介面仍可使用自己的等級顯示,TRUE
+G_CHALLENGE_TRIVIAL,過低挑戰倍率,技能,0.10,乘數,宗師做極簡工作幾乎不成長,TRUE
+G_CHALLENGE_NORMAL,正常挑戰倍率,技能,1.00,乘數,標準,TRUE
+G_CHALLENGE_HIGH,高挑戰倍率,技能,1.35,乘數,仍必須是合理可嘗試工作,TRUE
+G_CHALLENGE_IMPOSSIBLE,遠超能力倍率,技能,0.25,乘數,失敗不是高效練功,TRUE
+G_SAFE_TRAINING,正式安全訓練倍率,技能,0.75,乘數,真實場地/老師/工具/時間,TRUE
+G_LEARNING_CLAMP,總學習倍率,技能,Talent*Profession*Teacher*Book*Facility*Condition後Clamp到0.25~3.00,乘數,避免增益乘爆,TRUE
+G_CAP_00_50,上限遞減0~50%,技能／能力,1.00,乘數,前半段正常成長,TRUE
+G_CAP_50_75,上限遞減50~75%,技能／能力,0.80,乘數,熟練後略慢,TRUE
+G_CAP_75_90,上限遞減75~90%,技能／能力,0.50,乘數,高階變慢,TRUE
+G_CAP_90_98,上限遞減90~98%,技能／能力,0.20,乘數,宗師區間,TRUE
+G_CAP_98_100,上限遞減98~100%,技能／能力,0.05,乘數,接近個人極限極慢,TRUE
+G_CAP_REACHED,達個人上限,技能／能力,0,乘數,普通訓練不能突破,TRUE
+G_SKILL_FORMULA,技能最終EXP,技能,XP=EffectiveHours*1*Challenge*LearningModifier*CapEfficiency*CompletionModifier,行動／工作段,完成修正預設1，定義可在里程碑給額外固定XP,TRUE
+G_ABILITY_STIMULUS,能力刺激,STR/DEX/CON/INT/WIS/CHA,有效活動每1小時產生1 Stimulus Unit；500 Stimulus=1 Base Ability Point,長時間行動,能力比技能成長約慢5倍,TRUE
+G_PHYS_RECOVERY,體能刺激轉化,STR/DEX/CON,Fed+Rested+Healthy=1.0；一項明顯不足=0.5；Severe缺乏=0.2；Critical=0,休息/睡眠結算,未轉化刺激可短期保留，不要求逐分鐘恢復,TRUE
+G_MENTAL_SETTLE,心智能力結算,INT/WIS/CHA,有效Complex/Decision/Social Action完成時直接結算Stimulus；仍乘Stress/Fatigue與CapEfficiency,行動完成,不建立額外神經恢復模擬,TRUE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE

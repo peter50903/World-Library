@@ -1,0 +1,33 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+MENTAL_SENSE,情緒感知,Emotion Sense,Spell,1,感知,,,KNOW_MENTAL_BASIC,1,8,短,短,read_emotion,感知當前主要Emotion,不讀取未知Knowledge/思想內容,精神系根節點,TRUE
+CALM,安撫,Calm,Spell,1,安撫,MENTAL_SENSE,,KNOW_CALM,1,18,短,短,emotion_modifier,降低Anger/Fear,不永久改Opinion,基礎支援,TRUE
+FEAR,恐懼術,Fear,Spell,1,恐懼,MENTAL_SENSE,,KNOW_FEAR,1,25,短,短,temporary_fear,提高Fear,只改短期Emotion/Decision權重,基礎控制,TRUE
+COURAGE,勇氣鼓舞,Courage,Spell,2,安撫,CALM,,KNOW_COURAGE,2,25,短,中,fear_resistance_temp,暫時降低Fear影響,不永久改Personality,支援法術,TRUE
+DROWSINESS,睡意,Drowsiness,Spell,2,控制,CALM,,KNOW_DROWSINESS,2,28,中,中,sleep_pressure,提高Sleep/疲倦傾向,不能忽略目標生理/抗性,非致命控制,TRUE
+PANIC,驚恐,Panic,Spell,2,恐懼,FEAR,,KNOW_PANIC,2,35,短,中,panic_modifier,短期強化Fear與逃跑權重,不保證所有目標逃跑,強化恐懼,TRUE
+CONFUSION,迷亂,Confusion,Spell,3,控制,"DROWSINESS,FEAR",,KNOW_CONFUSION,3,45,中,中,decision_noise,降低短期決策穩定性,不建立False Knowledge,控制法術,TRUE
+CHARM,魅惑,Charm,Spell,3,控制,"CALM,COURAGE",,KNOW_CHARM,3,50,中,中,temporary_social_modifier,暫時提高合作/親近行為權重,不永久改Opinion/Relationship/Loyalty,社交控制,TRUE
+MENTAL_WARD,心靈屏障,Mental Ward,Spell,3,防禦,"COURAGE,MENTAL_SENSE",,KNOW_MENTAL_WARD,3,40,中,中,mental_resistance,提高精神魔法抗性,不改BaseWIS,精神防禦,TRUE
+SLEEP,沉睡,Sleep,Spell,4,控制,"DROWSINESS,CONFUSION",,KNOW_SLEEP,4,75,長,長,induce_sleep,使合適目標進入Sleep,受抗性/狀態限制,高階非致命控制,TRUE
+COMMAND,精神命令,Command,Spell,4,控制,"CHARM,PANIC",,KNOW_COMMAND,4,95,中,長,temporary_command,短時間提高指定行動權重,不能永久改Personality/Values/Loyalty,高階精神控制,TRUE
+MIND_DOMAIN,心靈領域,Mind Domain,Spell,5,範圍,"COMMAND,SLEEP,MENTAL_WARD",,KNOW_MIND_DOMAIN,5,220,極長,極長,area_mental_modifier,大型區域暫時Emotion/Decision修正,不能永久重寫角色；不得抹除Knowledge,精神系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

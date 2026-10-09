@@ -1,0 +1,40 @@
+RuleID,中文名稱,適用,V1數值／公式,說明,Enabled
+EX_BASE,基礎存在值,角色,"clamp(0,100,sum(Persistent Source Values))",普通無重要來源角色可以是0,TRUE
+EX_NOBLE,貴族／王族,持續來源,Noble +15；Royal +25,角色同時只取其實際最高適用身分值，避免重複灌滿,TRUE
+EX_ORG,組織權力,持續來源,Cadre +10；Leader +20,依組織實際規模可由定義±5,TRUE
+EX_ELITE,高階人才,持續來源,+15,必須由真實技能／能力達精英條件,TRUE
+EX_OFFICE,重要官職,持續來源,+15,普通低階職位不加,TRUE
+EX_MAJOR_EVENT,重大事件核心參與,持續來源,+20,一次事件只記一次來源；不同重大事件可累積但總值Clamp100,TRUE
+EX_ACHIEVEMENT,大型成就,持續來源,+25,戰爭英雄、屠龍者、建國功臣等,TRUE
+EX_RELATION,重要關係網,情境／持續,+5,不因認識多人無限堆疊；同類來源最多一次,TRUE
+EX_TEMP_ITEM,物品臨時存在值,暫時,Magic特殊+5；Legendary+15；Mythic+25；World Equipment依Definition +10~40,只有持有／生效時加入有效存在值,TRUE
+EX_TEMP_EVENT,事件焦點,暫時,+10,只在事件有效期間,TRUE
+EX_EFFECTIVE,有效存在值,角色,"clamp(0,100,BaseExistence+TemporaryBonus)",事件選中與降臨使用,TRUE
+EX_PROMOTION,數值自動升完整門檻,角色,BaseExistence>=40,角色定位／事件可直接觸發升格，不必等數值,TRUE
+EX_INCARNATION_RANDOM,隨機降臨門檻,智慧角色 / 隨機一人 + 候選名單,EffectiveExistence>=20,暫時加成可計入；只限制隨機一人／候選名單。直接指定不受存在值門檻。,TRUE
+EX_EVENT_WEIGHT,事件候選權重,角色,0~9=1.0x;10~19=1.25x;20~39=1.5x;40~59=2x;60~79=3x;80~100=5x,只在先通過事件合法條件的候選中使用,TRUE
+OBS_CHAR,角色關注度,觀察者,0.7*EffectiveExistence+0.3*HistoricalImportance,0~100,TRUE
+OBS_TOPN,觀察者首頁前N名,觀察者,World每類30；Region每類15,不足門檻時可少顯示，不用硬塞,TRUE
+OBS_MIN,觀察者主動推送門檻,觀察者,World Attention>=40；Region>=20；Major Event可無視門檻,低於門檻仍可搜尋／阿卡西紀錄下鑽,TRUE
+OBS_UPDATE,索引更新,觀察者,Dirty Entity/Event Driven,不逐幀全表掃描,TRUE
+EX_INCARNATION_DIRECT,指定降臨與存在值分離,智慧角色 / 直接指定,No Existence Threshold,直接指定只要求個體角色真實存在、存活、智慧；若輕量則先補完整資料。被玩家指定不增加基礎／有效存在值，退出後仍依原存在值參與事件與觀察者關注度。,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

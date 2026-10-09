@@ -1,0 +1,51 @@
+DoctrineTraitID,中文名稱,英文名稱,分類,效果Key,效果值,前置條件,禁止條件,互斥特性,協同特性,基礎權重,說明,Enabled
+DOC_WAR,戰爭,War,價值觀,war_support,1.25,,,DOC_PEACE,DOC_HONOR,1,崇尚戰爭、征服與勇武,TRUE
+DOC_PEACE,和平,Peace,價值觀,peace_preference,1.25,,,DOC_WAR,DOC_MERCY,1,降低主動戰爭偏好，鼓勵和解,TRUE
+DOC_ORDER,秩序,Order,價值觀,law_obedience,1.25,,,DOC_FREEDOM,,1,重視法律、階序與穩定,TRUE
+DOC_FREEDOM,自由,Freedom,價值觀,authority_resistance,1.2,,,DOC_ORDER,,1,重視個人自由與反抗壓迫,TRUE
+DOC_HONOR,榮譽,Honor,價值觀,honor_weight,1.3,,,,DOC_WAR,1,重視誓言、決鬥、名聲與忠誠,TRUE
+DOC_MERCY,慈悲,Mercy,價值觀,mercy_weight,1.3,,,DOC_REVENGE,DOC_PEACE,1,提高救助、寬恕與慈善傾向,TRUE
+DOC_REVENGE,復仇,Revenge,價值觀,revenge_weight,1.35,,,DOC_MERCY,,0.8,對背叛與傷害更重視報復,TRUE
+DOC_NATURE,自然,Nature,世界觀,nature_protection,1.3,,,,DOC_ISOLATION,1,重視自然、生態與野外聖地,TRUE
+DOC_DEATH,死亡,Death,世界觀,death_ritual_importance,1.3,,,,,0.8,重視死亡、墓葬、死後秩序,TRUE
+DOC_ANCESTOR,祖先,Ancestor,世界觀,ancestor_ritual,1.3,,,,,0.8,重視祖先、血統與家族祭祀,TRUE
+DOC_KNOWLEDGE,知識,Knowledge,價值觀,education_demand,1.3,,,,,1,鼓勵教育、研究、記錄,TRUE
+DOC_WEALTH,財富,Wealth,價值觀,wealth_goal_weight,1.3,,,DOC_POVERTY,,0.8,把富裕與交易視為正面價值,TRUE
+DOC_POVERTY,清貧,Poverty,價值觀,luxury_demand,0.65,,,DOC_WEALTH,DOC_ASCETICISM,0.8,鼓勵簡樸與節制,TRUE
+DOC_FAMILY,家庭,Family,價值觀,family_goal_weight,1.3,,,,,1,提高婚姻、育兒、家族責任的重要性,TRUE
+DOC_FERTILITY,生育,Fertility,價值觀,fertility_desire,1.25,,,,DOC_FAMILY,0.8,提高生育與人口延續的文化宗教壓力,TRUE
+DOC_ASCETICISM,禁慾,Asceticism,價值觀,pleasure_demand,0.65,,,,DOC_POVERTY,0.8,降低享樂與奢侈需求,TRUE
+DOC_EXPANSION,擴張,Expansion,政治,expansion_goal_weight,1.25,,,DOC_ISOLATION,DOC_WAR,0.8,鼓勵領土、影響力與勢力擴張,TRUE
+DOC_CONVERSION,傳教,Conversion,宗教,missionary_activity,1.35,,,DOC_ISOLATION,,1,提高傳教與改宗行為,TRUE
+DOC_ISOLATION,孤立,Isolation,宗教,foreign_contact,0.7,,,"DOC_CONVERSION,DOC_EXPANSION",DOC_NATURE,0.7,降低對外傳教與外來文化接觸,TRUE
+DOC_SACRIFICE,獻祭,Sacrifice,儀式,offering_demand,1.4,,,,,0.5,某些神蹟／儀式會偏好祭品或大型奉獻,TRUE
+DOC_PILGRIMAGE,朝聖傳統,Pilgrimage Tradition,儀式,pilgrimage_goal_weight,1.3,,,,DOC_CONVERSION,0.8,鼓勵前往聖地/重要宗教地點；旅行必須真實進行,TRUE
+DOC_HOSPITALITY,聖客庇護,Sacred Hospitality,社會,hospitality_goal_weight,1.3,,,,,0.7,鼓勵接待旅人、難民與宗教訪客；實際消耗住宿與食物,TRUE
+DOC_SCHOLASTIC,神學求知,Sacred Scholarship,知識,religious_research_weight,1.3,,,,DOC_KNOWLEDGE,0.8,鼓勵書籍、教育、研究與神學辯論,TRUE
+DOC_MONASTIC,修行傳統,Monastic Tradition,生活,religious_seclusion_weight,1.25,,,,DOC_ASCETICISM,0.6,鼓勵部分信徒選擇長期修行／宗教服務，不強制所有信徒,TRUE
+DOC_RITUAL_FEAST,聖宴,Sacred Feast,儀式,religious_feast_weight,1.25,,,DOC_ASCETICISM,,0.7,節慶與共同進食可提高宗教活動與社群關係，但消耗真實食物／金幣,TRUE
+DOC_SACRED_HEALING,神聖療癒,Sacred Healing,宗教服務,healing_ministry_weight,1.3,,,,DOC_MERCY,0.7,鼓勵教會投入醫療、照護與治療神蹟,TRUE
+DOC_HOLY_CRAFT,神聖工藝,Sacred Craft,工藝,religious_craft_patronage,1.3,,,,DOC_KNOWLEDGE,0.5,鼓勵打造神殿、聖物、藝術與宗教工藝；仍需真實材料與工匠,TRUE
+DOC_ORACLE,神諭傳統,Oracular Tradition,啟示,revelation_activity_weight,1.3,,,,,0.5,重視神諭與啟示神蹟；不讓角色直接讀世界真相,TRUE
+DOC_MARTYR,殉道榮耀,Martyr Tradition,價值觀,sacrifice_for_faith_weight,1.3,,,DOC_PEACE,,0.4,提高為信仰承擔重大風險的行為權重，不強制自殺或死亡,TRUE
+DOC_GUARDIAN,守護聖地,Sacred Guardianship,宗教/軍事,holy_site_defense_weight,1.3,,,,DOC_HONOR,0.6,鼓勵保護聖地、信徒與宗教資產，不自動產生戰爭,TRUE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE

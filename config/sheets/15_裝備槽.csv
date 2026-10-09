@@ -1,0 +1,41 @@
+SlotID,中文名稱,英文名稱,允許分類,是否可被雙手／多槽占用,排序,說明,Enabled
+HEAD,頭部,Head,頭盔/帽子,TRUE,1,頭部裝備,TRUE
+FACE,臉部,Face,面具/眼部裝備,TRUE,2,臉部配件,TRUE
+NECK,頸部,Neck,項鍊/護符,TRUE,3,頸部配件,TRUE
+SHOULDER,肩部,Shoulder,披肩/護肩,TRUE,4,肩部裝備,TRUE
+BODY,身體,Body,衣物/護甲,TRUE,5,主要身體裝備,TRUE
+BACK,背部,Back,披風/背包,TRUE,6,背部裝備,TRUE
+WAIST,腰部,Waist,腰帶,TRUE,7,腰部裝備,TRUE
+HAND_MAIN,主手,Main Hand,武器/工具,TRUE,8,主手，可與副手被雙手物品同時占用,TRUE
+HAND_OFF,副手,Off Hand,盾/副手/武器,TRUE,9,副手,TRUE
+GLOVE,手套,Gloves,手套/護手,TRUE,10,手部防具,TRUE
+WRIST,手腕,Wrist,護腕/手環,TRUE,11,手腕裝備,TRUE
+RING_L,左戒,Left Ring,戒指,TRUE,12,左手戒指,TRUE
+RING_R,右戒,Right Ring,戒指,TRUE,13,右手戒指,TRUE
+LEG,腿部,Legs,褲/腿甲,TRUE,14,腿部防具,TRUE
+FOOT,足部,Feet,鞋/靴,TRUE,15,足部裝備,TRUE
+ACCESSORY_1,配件1,Accessory 1,配件,TRUE,16,自由配件槽,TRUE
+ACCESSORY_2,配件2,Accessory 2,配件,TRUE,17,自由配件槽,TRUE
+ACCESSORY_3,配件3,Accessory 3,配件,TRUE,18,自由配件槽,TRUE
+AMMO,彈藥,Ammo,箭矢/投射物,TRUE,19,遠程武器彈藥槽,TRUE
+UTILITY,實用配件,Utility,護符/工具掛件/實用配件,TRUE,20,角色第20格；坐騎鞍具／馬鎧等改由坐騎／生物自己的配置管理,TRUE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE

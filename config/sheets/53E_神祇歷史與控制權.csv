@@ -1,0 +1,26 @@
+RuleID,中文名稱,正式規則,保存,世界內可見,Enabled
+DCTRL_META,玩家控制權是中繼,玩家進入／退出神祇只改決策控制者，不改神祇本體。,玩家遊戲階段中繼資料,世界居民不可知『玩家』,TRUE
+DCTRL_EVENT,神的行為仍是神祇事件,玩家下達的神諭／神蹟在世界史只記為該神祇的行為。,神祇事件ID + 選填遊戲階段參照,只看神祇行動,TRUE
+DCTRL_AI_CONT,AI與玩家共享同一歷史,AI先前行動、玩家行動、退出後AI行動都在同一神祇時間線。,神祇傳記,可被宗教解讀,TRUE
+DCTRL_NO_RETCON,玩家切換不回溯,進入神祇模式不能改掉神祇之前做過的神蹟／神諭，也不能恢復已耗信仰力量。,歷史／池,,TRUE
+DCTRL_REENTER,可再次降臨同神祇,只要神祇存在，玩家未來可重新接管同一神祇當下狀態。,同一神祇ID,中間AI歷史保留,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

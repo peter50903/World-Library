@@ -1,0 +1,31 @@
+TraditionID,中文名稱,英文名稱,分類,EffectKey,EffectValue,政治行為傾向,互斥群組,說明,Enabled
+NTR_BLOOD_PRIMACY,血統至上,Blood Primacy,合法性,blood_claim_weight,1.4,優先家族血親繼承與聯姻,NOBLE_LEGITIMACY,強化血統宣稱的重要性，不創造不存在的宣稱,TRUE
+NTR_SERVICE_NOBILITY,功績貴族,Service Nobility,合法性,merit_nobility_weight,1.4,更接受因軍功/行政服務獲爵,NOBLE_LEGITIMACY,可與允許購買貴族身分的國家並存,TRUE
+NTR_WEALTH_NOBILITY,財富貴族,Wealth Nobility,合法性,wealth_nobility_weight,1.4,更接受商業財富換取貴族身分,NOBLE_LEGITIMACY,只有國家法律允許時才可真正購買,TRUE
+NTR_LAND_RETENTION,封地不分,Fief Preservation,土地,fief_partition_resistance,1.5,偏好單一繼承與保持封地完整,FIEF_POLICY,不禁止其他頭銜分配；單一頭銜本來就不可切碎,TRUE
+NTR_CADET_AUTONOMY,支系自治,Cadet Autonomy,家族,cadet_house_autonomy,1.3,成年支系更願建立獨立家族／政治基礎,HOUSE_CONTROL,不自動生成領地,TRUE
+NTR_HOUSE_CENTRAL,家主集權,Strong House Head,家族,house_head_authority,1.3,重要婚姻、繼承、資產決策更服從家主,HOUSE_CONTROL,家主仍不能任意奪取個人財產,TRUE
+NTR_COURT_SERVICE,宮廷服務,Court Service,政治,court_office_weight,1.3,鼓勵家族成員進入王室／政府官職,,提高擔任官職目標權重,TRUE
+NTR_MILITARY_SERVICE,封建軍役,Noble Military Service,軍事,noble_military_obligation_weight,1.3,貴族更重視騎士/軍事義務,,實際義務仍由條約／法律／封地關係決定,TRUE
+NTR_CHURCH_ALLIANCE,教會聯盟,Clerical Alliance,宗教/政治,church_alliance_weight,1.3,透過神職、捐贈與宗教關係鞏固政治,,不保證宗教支持,TRUE
+NTR_LOCAL_PATRON,地方庇護,Local Patronage,領地,local_investment_weight,1.3,優先投資本地建築、道路與治安,,提高領地長期治理投入,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

@@ -1,0 +1,32 @@
+RuleID,中文名稱,適用,V1公式／數值,頻率,說明,Enabled
+WORLD_PRESIM,世界預演,世界,Default=300年；玩家0~5000可調,建立世界,沿同一正式規則模擬,TRUE
+DUNGEON_TARGET,地下城目標數量,世界,"max(1,round(ValidRegionCount*(0.25+0.75*MagicDensity01)*DensityMultiplier))",世界生成一次/地理大改變重算,生成後以目標數量維持替代；密度倍率玩家可調0.25~4,TRUE
+DUNGEON_RESET,一般地下城重置,地下城,Default ResetCount=3,完全清除,模板可覆寫；耗盡／已摧毀生成新實體替代,TRUE
+KING_CHECK,王種變異體生成檢查,合格物種族群,每個Eligible Cluster每年最多檢查一次,L0 每年,不是每隻怪物逐日檢查,TRUE
+KING_BASE,王種變異體基礎機率,合格群組,0.0002/year,每年,再乘下列級距係數,TRUE
+KING_POP,族群倍率,合格群組,Population<50=0.5x；50~499=1x；>=500=2x,每年,,TRUE
+KING_AGE,年齡倍率,合格群組,Mature=0.5x；Veteran=1x；Ancient=2x；Extreme=4x,每年,物種依自身壽命分類別,TRUE
+KING_MAGIC,魔力環境倍率,合格群組,Low=0.5x；Normal=1x；High=2x,每年,,TRUE
+KING_ENV,環境倍率,合格群組,Unsuitable=0；Normal=1x；Ideal=1.5x,每年,,TRUE
+KING_CAP,單群組年機率上限,合格群組,2%,每年,避免倍率堆疊失控；仍可長期為0,TRUE
+KING_NO_REPLACE,外部擊殺不即時替補,王種變異體,Kill後不建立Replacement,事件驅動,未來仍只走正常年度生成條件,TRUE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE

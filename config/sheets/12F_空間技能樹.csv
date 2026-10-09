@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+SPACE_SENSE,空間感知,Spatial Sense,Spell,1,感知,,,KNOW_SPACE_BASIC,1,10,短,短,spatial_awareness,感知近距空間異常/定位,不提供WorldTruth全知,空間系根節點,TRUE
+BLINK,閃現,Blink,Spell,1,位移,SPACE_SENSE,,KNOW_BLINK,1,20,短,短,teleport_short,自身極短距位移,需可達合法位置,戰術位移,TRUE
+MARK_LOCATION,空間標記,Mark Location,Spell,2,錨點,SPACE_SENSE,,KNOW_SPACE_MARK,2,18,中,短,create_spatial_anchor,記錄可用傳送錨點,不是Character Knowledge替代品,傳送基礎,TRUE
+SPATIAL_STORAGE,空間儲存,Spatial Storage,Spell,2,儲存,SPACE_SENSE,,KNOW_SPATIAL_STORAGE,2,60,中,中,spatial_storage,有限重量/體積儲存,一般不可存活物、不可無限巢狀,物流輔助,TRUE
+SHORT_TELEPORT,短距傳送,Short Teleport,Spell,3,位移,"BLINK,MARK_LOCATION",,KNOW_SHORT_TELEPORT,3,50,中,中,teleport,中距離自身/少量物體,需目的地Knowledge、重量限制,中階傳送,TRUE
+SPACE_ANCHOR,空間錨定,Spatial Anchor,Spell,3,錨點,MARK_LOCATION,,KNOW_SPACE_ANCHOR,3,45,長,中,stabilize_location,降低傳送偏差/空間干擾,不創造永久Portal,支援節點,TRUE
+PORTAL,空間門,Portal,Spell,4,傳送,"SHORT_TELEPORT,SPACE_ANCHOR",,KNOW_PORTAL,4,120,長,長,temporary_portal,兩已知錨點間短時通道,距離/重量/人數/時間限制,高階交通,TRUE
+GROUP_TELEPORT,群體傳送,Group Teleport,Spell,4,傳送,PORTAL,,KNOW_GROUP_TELEPORT,4,160,極長,極長,teleport_group,小隊級傳送,不能免費搬運軍隊/物流,高階群體移動,TRUE
+LONG_TELEPORT,長距傳送,Long Teleport,Spell,5,傳送,"PORTAL,SPACE_ANCHOR",,KNOW_LONG_TELEPORT,5,250,極長,極長,teleport_long,跨區域長距傳送,需可靠目的地Knowledge與高成本,頂階傳送,TRUE
+STRATEGIC_GATE,戰略空間門,Strategic Gate,Spell,5,傳送,"LONG_TELEPORT,GROUP_TELEPORT",,KNOW_STRATEGIC_GATE,5,600,極長,極長,temporary_mass_portal,有限時間大型Portal,需巨大MP/材料/準備；不得無成本繞過物流,空間系最高戰略法術,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

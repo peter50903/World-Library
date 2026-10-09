@@ -1,0 +1,28 @@
+RuleID,中文名稱,適用,核心公式概念,低熟練,中熟練,高熟練,接近上限,超過上限,種族作用,個人作用,說明,Enabled
+CAP_ABILITY,能力個人上限,STR/DEX/CON/INT/WIS/CHA,CurrentBase <= PersonalCap,快,正常,慢,極慢,不可正常成長,提供上限分布／範圍,出生時生成個人上限,不以全球固定100作世界法則,TRUE
+CAP_SKILL,技能精通上限,一般技能,SkillDefinition/Character條件共同限制,快,正常,慢,極慢,停止或需特殊條件,可透過種族特性影響,可由天賦／能力條件影響,不強制所有技能同一級數；內部都用EXP,TRUE
+DIM_CURVE,高階遞減曲線,能力／技能,依MasteryRatio分Band,1.0,0.8,0.5,0.2→0.05,0,無,依個人上限計算,V1正式類別：0~50%=1；50~75%=0.8；75~90%=0.5；90~98%=0.2；98~100%=0.05,TRUE
+CAP_LONGEVITY,長壽優勢,角色,長壽種族只有更多可用時間,依正常規則,依正常規則,依正常規則,依正常規則,仍不可突破上限,壽命較長,無免費加成,避免精靈出生就比人類技能高,TRUE
+CAP_CHILD,成長期限制,兒童,生命階段可暫時限制可達Effective/Base區間,可學習,可學習,受成熟度限制,成熟後解除部分限制,不能靠訓練繞過生理成熟,種族生命階段,個人上限仍固定,詳細兒童曲線後續數值化,TRUE
+CAP_AGING,衰老不刪基礎,長老,Aging只修改Effective Ability，不刪除Base Ability/Skill,N/A,N/A,N/A,N/A,N/A,種族老化曲線,健康差異,符合既定老化規則,TRUE
+CAP_SPECIAL_EFFECT,特殊突破,特殊世界效果,只有明確World Rule/Miracle/Transformation可改Cap,N/A,N/A,N/A,N/A,定義決定,可能,可能,普通訓練不能無限突破個人極限,TRUE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE

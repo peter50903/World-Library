@@ -1,0 +1,33 @@
+GrowthRuleID,中文名稱,作用層,核心規則,參考概念,與既有規則關係,說明,Enabled
+GROW_NO_CHAR_LEVEL,無角色總等級,角色,角色沒有統一角色等級；各能力／技能獨立成長,Valheim/PZ技能獨立,符合Entity13,避免殺怪後把點數任意灌到無關技能,TRUE
+GROW_USE_BASED,使用即學習,技能,只有實際執行對應有效行為才得到主要技能經驗值,Project Zomboid/Valheim,符合既定成長-依使用,做什麼練什麼,TRUE
+GROW_MEANINGFUL_ACTION,有效行為判定,技能,無效空揮、無成本重複點擊、明顯低難度刷取不給或只給極低EXP,反刷取補強,新增固定規則,必須有真實時間、目標、工作量、風險、材料或互動之一,TRUE
+GROW_ABILITY_STIMULUS,能力成長刺激,能力,STR/DEX/CON/INT/WIS/CHA由相關活動累積成長刺激，不直接沿用技能經驗值,使用成長+世界模擬,符合基礎能力與技能分離,能力值成長比技能慢很多,TRUE
+GROW_PHYSICAL_RECOVERY,體能需恢復,能力,STR/DEX/CON的主要成長刺激須經休息／營養／恢復後轉為長期能力進度,訓練恢復概念,不改生存規則,過度訓練只會提高疲勞與傷病，不無限加速,TRUE
+GROW_MENTAL_EXPERIENCE,心智能力靠有效經驗,能力,INT/WIS/CHA從研究、決策、診療、教學、管理、社交等有意義活動成長,依使用成長,不把知識等同INT,重複已完全掌握的低複雜度行為收益遞減,TRUE
+GROW_PERSONAL_CAP,個人上限,能力／技能,成長受種族分布與個人上限限制；接近上限時效率大幅降低,既定世界規則,已批准,長壽只代表有更多時間接近上限，不保證無限強,TRUE
+GROW_NO_DISUSE_LOSS,不用不退步,技能／基礎能力,不因長期未使用而永久降低已取得技能或基礎能力,刻意不採Valheim衰退,已批准,可有短期生疏/狀態表現修正，但不刪歷史成長,TRUE
+GROW_NO_DEATH_DRAIN,死亡不扣技能,技能／基礎能力,死亡不永久扣技能或基礎能力；真復活保留累積成果,刻意不採Valheim死亡扣技,已批准復活規則,死亡成本來自死亡本身、財產/職位/關係與世界結果,TRUE
+GROW_KNOWLEDGE_SEPARATE,知識與技能分離,知識／技能,知道配方／法術原理不等於會熟練實作；技能高也不能使用未知配方／法術,Project Zomboid 式配方與技能分離概念,符合Entity14/26/27,知識 + 技能 + 真實條件共同決定能否高品質完成,TRUE
+GROW_LEARNING_MODIFIERS,學習效率修正,技能／能力,職業、種族特性、天賦、教師、書籍、設施、休息狀態只修改學習效率,PZ職業／書籍加速概念,不直接改世界結果,不會因加成直接生成技能等級,TRUE
+GROW_DIMINISHING,高階遞減,技能／能力,越接近高熟練／個人上限，每單位行為帶來的永久成長越少,PZ/Valheim高階較慢,新增固定規則,讓普通工作者自然停在熟練區，宗師需要多年實踐,TRUE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
+,,,,,,,FALSE
