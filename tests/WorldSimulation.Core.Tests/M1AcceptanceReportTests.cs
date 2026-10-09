@@ -158,6 +158,55 @@ public sealed class M1AcceptanceReportTests
     }
 
     [Fact]
+    public void FamineWithoutMeasuredLaborBoundHarvestDropIsWarningNotPass()
+    {
+        // 反例：把每一週的資源點剩餘都改成 0（產量看起來受存量限制），
+        // 就算人口因餓死／外移下降，也不能從人口前後推斷「產能隨之改變」而判通過。
+        var run = LocalFamine42.Value;
+        var weeks = run.Weeks
+            .Select(w => w with { Settlements = w.Settlements.Select(l => l with { ReserveClosing = 0 }).ToList() })
+            .ToList();
+
+        var famine = Result(M1Evaluator.Evaluate(run with { Weeks = weeks }, Checks.Value), "M1_FAMINE");
+        Assert.Equal(M1Verdict.Warn, famine.Verdict);
+        Assert.Contains("量測不到生產力", famine.Diagnosis);
+        Assert.DoesNotContain("產量受勞力限制）", famine.Diagnosis);
+    }
+
+    [Fact]
+    public void HarvestAboveLaborCapacityIsReportedByM1Famine()
+    {
+        // 反例：證據中的 TEMP 每人每週產量改成 0 → 任何採收都超過勞動力上限，必須被指出（Behavior Check → 警告）。
+        var run = LocalFamine42.Value;
+        var zeroYield = run.Preset with { Config = run.Preset.Config with { YieldPerWorkerPerWeek = 0 } };
+
+        var famine = Result(M1Evaluator.Evaluate(run with { Preset = zeroYield }, Checks.Value), "M1_FAMINE");
+        Assert.Equal(M1Verdict.Warn, famine.Verdict);
+        Assert.Contains("超過勞動力上限", famine.Diagnosis);
+    }
+
+    [Fact]
+    public void FaminePassAlwaysCitesMeasuredHarvestAndCoverageLimitsAreLabelled()
+    {
+        foreach (var report in Matrix.Value)
+        {
+            var famine = Result(report, "M1_FAMINE");
+            if (famine.Verdict == M1Verdict.Pass)
+            {
+                Assert.Contains("實際採收", famine.Diagnosis);
+                Assert.Contains("產量受勞力限制", famine.Diagnosis);
+            }
+
+            // 出生、具體化、43F 因果索引尚未實作：通過時也必須標明 TEMP 覆蓋限制。
+            Assert.Contains("【覆蓋限制 TEMP】", Result(report, "M1_POP").Diagnosis);
+            Assert.Contains("具體化", Result(report, "M1_POP").Diagnosis);
+            var history = Result(report, "M1_HISTORY");
+            if (history.Verdict == M1Verdict.Pass)
+                Assert.Contains("【覆蓋限制 TEMP】正式 43F 因果索引尚未實作", history.Diagnosis);
+        }
+    }
+
+    [Fact]
     public void NonHardViolationIsOnlyAWarning()
     {
         Assert.Equal(M1Verdict.Fail, M1Evaluator.ToVerdict(M1Raw.Violation, M1Category.Hard));

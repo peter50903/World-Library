@@ -561,8 +561,9 @@ public static class M1Evaluator
         return Judge(problems,
             $"世界人口（各聚落＋途中隊伍，只計一次）期初 {run.Initial.Population}＋出生 {births}"
             + $"－死亡 {settledDeaths + roadDeaths}（聚落餓死 {settledDeaths}、途中餓死 {roadDeaths}，全部有帶原因事件）"
-            + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）；"
-            + "示範出生固定為 0（TEMP）、尚無個體「具體化」，這兩項只確認沒有憑空增減");
+            + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）"
+            + "。【覆蓋限制 TEMP】出生：示範規則固定為 0，本報告沒有量測到任何出生；"
+            + "具體化：個體具體化尚未實作，沒有量測；這兩項只確認沒有憑空增減，不代表已驗證");
     }
 
     // ── M1_NO_MAGIC_FOOD：食物增量只能來自合法採集／農牧／配方／神蹟定義 ──────────
@@ -615,7 +616,7 @@ public static class M1Evaluator
             "聚落內分組取用尚未實作（示範聚落整體共用糧倉）；本情境也沒有出現跨聚落「一處缺糧、另一處有糧」的週");
     }
 
-    // ── M1_FAMINE：缺糧沿需求→生產力→死亡／遷徙傳導，恢復也有實際來源 ────────────
+    // ── M1_FAMINE：缺糧沿需求→死亡／遷徙→勞動力→實際採收傳導（量測，不推斷），恢復也有實際來源 ──
     private static M1Finding Famine(M1RunData run)
     {
         var events = run.Weeks.SelectMany(w => w.Events).ToList();
@@ -651,24 +652,65 @@ public static class M1Evaluator
         if (firstHunger is null)
             return new M1Finding(M1Raw.NotObserved, $"本情境 {run.Years} 年內沒有缺糧，無法觀察危機傳導（不是通過）");
 
-        // 需求→（勞動力＝人口）→死亡／遷徙：找第一個缺糧後在同一聚落發生的餓死或外移。
-        string? chain = null;
-        foreach (var hunger in events.Where(e => e.Kind == DemoSettlementEventKind.Hunger))
+        // 生產力是量測值，不是由人口前後推斷：每週採收不得超過「期初人口×TEMP 每人每週產量」的勞動力上限。
+        var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
+        foreach (var report in run.Weeks)
         {
-            var effect = events.FirstOrDefault(e => e.SettlementId == hunger.SettlementId && e.Week >= hunger.Week
-                && (e.Kind == DemoSettlementEventKind.StarvationDeath || e.Kind == DemoSettlementEventKind.Emigration));
-            if (effect is null)
+            foreach (var l in report.Settlements)
+            {
+                var cap = l.PopulationOpening * yieldPerWorker;
+                if (l.FoodProduced > cap)
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 採收 {l.FoodProduced} 超過勞動力上限 {cap}"
+                        + $"（期初人口 {l.PopulationOpening}×TEMP 每人每週產量 {yieldPerWorker}）");
+            }
+        }
+
+        if (problems.Count > 0)
+            return new M1Finding(M1Raw.Violation, $"{problems.Count} 處違反；第一處：{problems[0]}");
+
+        // 需求→死亡／遷徙→勞動力→生產力：找缺糧後同一聚落的餓死或外移，且下一週實際採收
+        // 「等於降低後的勞動力上限、資源點仍有剩」（產量受勞力限制而下降），才算量測到生產力傳導。
+        string? chain = null;
+        string? unmeasured = null;
+        var hungersOf = events.Where(e => e.Kind == DemoSettlementEventKind.Hunger)
+            .GroupBy(e => e.SettlementId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var effect in events.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath || e.Kind == DemoSettlementEventKind.Emigration))
+        {
+            // 原因：同一聚落在效果當週或之前最近一次缺糧（事件依週次發布，清單已排序）。
+            if (!hungersOf.TryGetValue(effect.SettlementId, out var hungers))
                 continue;
-            var before = ledgerOf[(hunger.Week, hunger.SettlementId)].PopulationOpening;
-            var labor = ledgerOf.TryGetValue((effect.Week + 1, effect.SettlementId), out var next)
-                ? $"下週勞動力（人口）{before}→{next.PopulationOpening}，產能隨之改變"
-                : "效果發生在最後一週，下週勞動力不在本次量測範圍";
+            var hunger = hungers.LastOrDefault(e => e.Week <= effect.Week);
+            if (hunger is null)
+                continue;
             var what = effect.Kind == DemoSettlementEventKind.StarvationDeath ? $"{effect.Count} 人餓死" : $"{effect.Count} 人外移";
-            chain = $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）缺糧 {hunger.Count}（{hunger.Cause}）"
-                + $"→ {At(run, effect.Week)} {what} → {labor}";
+            var head = $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）缺糧 {hunger.Count}（{hunger.Cause}）"
+                + $"→ {At(run, effect.Week)} {what}";
+            if (!ledgerOf.TryGetValue((effect.Week, effect.SettlementId), out var during)
+                || !ledgerOf.TryGetValue((effect.Week + 1, effect.SettlementId), out var next))
+            {
+                unmeasured ??= $"{head}，但效果發生在最後一週，下週生產力不在量測範圍";
+                continue;
+            }
+
+            var capBefore = during.PopulationOpening * yieldPerWorker;
+            var capAfter = next.PopulationOpening * yieldPerWorker;
+            var laborBound = capAfter < capBefore && next.FoodProduced == capAfter && next.ReserveClosing > 0;
+            if (!laborBound)
+            {
+                unmeasured ??= $"{head}，但下週勞動力上限 {capBefore}→{capAfter}、實際採收 {during.FoodProduced}→{next.FoodProduced}"
+                    + $"（資源點剩 {next.ReserveClosing}）：產量受資源點存量限制或勞動力未下降，量測不到生產力因人口減少而下降";
+                continue;
+            }
+
+            chain = $"{head} → 下週勞動力 {during.PopulationOpening}→{next.PopulationOpening} 人，"
+                + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {yieldPerWorker}），"
+                + $"實際採收 {during.FoodProduced}→{next.FoodProduced}＝新上限（資源點仍剩 {next.ReserveClosing}，產量受勞力限制）";
             break;
         }
 
+        if (chain is null && unmeasured is not null)
+            return new M1Finding(M1Raw.NotObserved, $"{unmeasured}（不是通過）");
         if (chain is null)
             return new M1Finding(M1Raw.NotObserved,
                 $"有缺糧（{At(run, firstHunger.Week)} {firstHunger.SettlementName}），但 {run.Years} 年內沒有傳導到餓死或遷徙");
@@ -882,7 +924,7 @@ public static class M1Evaluator
         if (events.Count == 0)
             return new M1Finding(M1Raw.NotObserved, $"本情境 {run.Years} 年內沒有任何聚落事件，地方史沒有可讀的危機");
 
-        const string index = "（正式 43F 因果索引尚未實作；此處以事件原因文字與隊伍編號串接）";
+        const string index = "。【覆蓋限制 TEMP】正式 43F 因果索引尚未實作，此處只以事件原因文字與隊伍編號串接，不代表 43F 已驗證";
         foreach (var leave in events.Where(e => e.Kind == DemoSettlementEventKind.Emigration))
         {
             var hunger = events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.Hunger
