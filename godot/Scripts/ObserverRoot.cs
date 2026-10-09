@@ -1,5 +1,6 @@
 using Godot;
 using WorldSimulation.Core.World;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.GodotClient;
 
@@ -12,6 +13,9 @@ public partial class ObserverRoot : Control
 {
     private const ulong DemoSeed = 42;
     private readonly DemoObserverWorld _world = new(DemoScenario.Sample(DemoSeed));
+    private readonly DemoHexWorld _mapWorld = DemoHexWorld.Generate(DemoSeed);
+    private DemoHexMap _hexMap = null!;
+    private Label _cellInfo = null!;
 
     private Label _status = null!;
     private Label _notice = null!;
@@ -58,7 +62,9 @@ public partial class ObserverRoot : Control
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
         middle.AddChild(mapPanel);
-        mapPanel.AddChild(new DemoHexMap { DemoSeed = DemoSeed });
+        _hexMap = new DemoHexMap { World = _mapWorld };
+        _hexMap.CellSelected += OnCellSelected;
+        mapPanel.AddChild(_hexMap);
 
         var sidebar = new PanelContainer
         {
@@ -77,6 +83,13 @@ public partial class ObserverRoot : Control
 
         _status = new Label();
         side.AddChild(_status);
+
+        _cellInfo = new Label
+        {
+            Text = "TEMP 六角格：請點選地圖中的一格查看其資料。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        };
+        side.AddChild(_cellInfo);
 
         side.AddChild(new Label
         {
@@ -146,8 +159,40 @@ public partial class ObserverRoot : Control
             }
 
             GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 History=31");
+
+            // Godot runs the same input handler used by real mouse clicks;
+            // selected terrain must be from Core's immutable demo cell.
+            var cell = _mapWorld.GetCell(2, 2);
+            _hexMap._GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left,
+                Pressed = true,
+                Position = _hexMap.CellCenter(cell)
+            });
+            if (!_cellInfo.Text.Contains($"軸向座標 ({cell.AxialQ}, {cell.AxialR})", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains(TerrainName(cell.Terrain), StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot selection did not display Core's actual TEMP terrain data.");
+            }
+            GD.Print($"WORLD_SIM_HEX_CLICK_OK: Col={cell.Column} Row={cell.Row}");
         }
     }
+
+    private void OnCellSelected(DemoHexCell cell)
+    {
+        _cellInfo.Text =
+            $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})\n" +
+            $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\n" +
+            $"核心地形：{TerrainName(cell.Terrain)}";
+    }
+
+    private static string TerrainName(DemoTerrain terrain) => terrain switch
+    {
+        DemoTerrain.Grassland => "草原（TEMP）",
+        DemoTerrain.Forest => "森林（TEMP）",
+        DemoTerrain.Water => "水域（TEMP）",
+        _ => "未定義（TEMP）"
+    };
 
     private void Advance(int days)
     {

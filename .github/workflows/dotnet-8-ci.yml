@@ -93,4 +93,11 @@ jobs:
           fi
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
+          grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
+          # Terrain generation belongs to Core, never the Godot UI.
+          if grep -Rq 'TerrainCode' godot/Scripts; then
+            echo "Forbidden independent Godot terrain generator detected."
+            exit 1
+          fi
+          grep -q 'RngStreams.Geography' src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs
           echo "Actual Godot .NET scene loaded and ran headlessly."
