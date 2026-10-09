@@ -13,6 +13,7 @@ public readonly record struct DemoCellRef(int Column, int Row)
 /// Id 是示範用遞增序號，永不重用（不是正式 EntityID）。Path 是出發時決定的路線，
 /// 第 0 格是來源聚落、最後一格是目的地聚落；StepIndex 是目前所在格。
 /// 隊伍攜帶的糧食與飢餓債隨人移動，不會憑空增減。
+/// NewsWeek 是出發決定所依據的目的地週報週次（MIG_PULL 稽核用；0＝測試直接建立、無消息來源）。
 /// </summary>
 public sealed record DemoMigrationBatch(
     int Id,
@@ -25,7 +26,8 @@ public sealed record DemoMigrationBatch(
     long People,
     long Food,
     long HungerDebt,
-    int DepartedWeek)
+    int DepartedWeek,
+    int NewsWeek = 0)
 {
     /// <summary>目前所在格。</summary>
     public DemoCellRef Cell => Path[StepIndex];
@@ -36,7 +38,7 @@ public sealed record DemoMigrationBatch(
     /// <summary>決定性的文字指紋（ImmutableArray 的 ToString 不含內容，所以另外展開路線）。</summary>
     internal string Fingerprint()
         => $"batch{Id}:{FromSettlementId}->{ToSettlementId}@{StepIndex}/{string.Join("", Path)}"
-         + $":p{People}:f{Food}:d{HungerDebt}:w{DepartedWeek}";
+         + $":p{People}:f{Food}:d{HungerDebt}:w{DepartedWeek}:n{NewsWeek}";
 }
 
 /// <summary>
@@ -90,6 +92,49 @@ public sealed record DemoMigrationWeekLedger(
 
     public bool IsBalanced
         => PopulationBalanced && FoodBalanced && HungerDebtBalanced && NoTeleport && NonNegative;
+}
+
+/// <summary>
+/// V0-06A 補修（#61）45E MIG_PULL 的 TEMP 消息模型：聚落不是全知的。
+/// 一個聚落的週報消息沿 TEMP 陸路（與 <see cref="DemoMigrationRoutes"/> 同一條路）傳遞，
+/// 每格需要 TEMP <c>NewsDelayWeeksPerCell</c> 週；所以第 W 週、路程 d 格的來源，
+/// 只收得到目的地第 W－d×延遲 週的已發布週報，更新的週報還在路上。沒有陸路就沒有消息。
+/// 純函式、不抽亂數。這是暫代規則，正式的消息／情報傳播未定案。
+/// </summary>
+public static class DemoMigrationNews
+{
+    /// <summary>來源在第 <paramref name="week"/> 週能收到的最新消息週次（可能 ≤ 0＝還沒有任何消息）。</summary>
+    public static int NewsWeekFor(int week, int routeSteps, int delayWeeksPerCell)
+    {
+        if (routeSteps < 1 || delayWeeksPerCell < 1)
+            throw new ArgumentOutOfRangeException(nameof(routeSteps), "News needs at least one cell and one week per cell.");
+        return week - checked(routeSteps * delayWeeksPerCell);
+    }
+
+    /// <summary>
+    /// 從已發布的週報中找出已傳到來源的那一週、關於 <paramref name="settlementId"/> 的帳目；
+    /// 還沒有任何消息傳到時回傳 null。只看 <paramref name="publishedWeeks"/>，不讀世界目前狀態。
+    /// </summary>
+    public static (int Week, DemoSettlementWeekLedger Ledger)? Received(
+        IReadOnlyList<DemoWeekReport> publishedWeeks, int week, int settlementId, int routeSteps, int delayWeeksPerCell)
+    {
+        ArgumentNullException.ThrowIfNull(publishedWeeks);
+        var newsWeek = NewsWeekFor(week, routeSteps, delayWeeksPerCell);
+        if (newsWeek < 1)
+            return null;
+        // 已發布週報依週次 1、2、3… 排列，先用索引直接取；不符時才逐一尋找。
+        var report = publishedWeeks.Count >= newsWeek && publishedWeeks[newsWeek - 1].Week == newsWeek
+            ? publishedWeeks[newsWeek - 1]
+            : publishedWeeks.FirstOrDefault(w => w.Week == newsWeek);
+        var ledger = report?.Settlements.FirstOrDefault(l => l.SettlementId == settlementId);
+        if (ledger is null)
+            return null;
+        return (newsWeek, ledger);
+    }
+
+    /// <summary>消息中的聚落是否「有糧」：仍有人、當週沒有缺糧、沒有飢餓債。</summary>
+    public static bool SaysFed(DemoSettlementWeekLedger ledger)
+        => ledger.PopulationClosing > 0 && ledger.FoodShortage == 0 && ledger.HungerDebtClosing == 0;
 }
 
 /// <summary>

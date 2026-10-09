@@ -18,10 +18,28 @@ public partial class ObserverRoot : Control
     // V0-06A: CI can opt into the TEMP local-famine scenario (only settlement #1 has no food)
     // to see starving people leave for a fed settlement cell by cell. Normal players never set it.
     private static readonly bool MigrationSmoke = OS.HasEnvironment("WORLD_SIM_MIGRATION_SMOKE");
+    // #61: news now needs time to travel, so seed 42 may no longer migrate within the smoke window.
+    // The CI-only migration smoke picks the first TEMP seed (42, then 1..30) whose Core world has a
+    // batch on the road within 70 days; normal players always get DemoSeed.
+    private static readonly ulong WorldSeed = MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
     private readonly DemoObserverWorld _world = new(
-        DemoScenario.Sample(DemoSeed),
+        DemoScenario.Sample(WorldSeed),
         MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
             : FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
+    private static ulong PickMigrationSmokeSeed()
+    {
+        foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
+        {
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LocalFamineSample);
+            for (var day = 0; day < 70 && probe.MigrationsInTransit().Count == 0; day++)
+                probe.AdvanceOneDay();
+            if (probe.MigrationsInTransit().Count > 0)
+                return seed;
+        }
+
+        throw new InvalidOperationException("No TEMP seed produced a migrant batch for the migration smoke.");
+    }
+
     private DemoHexMap _hexMap = null!;
     private Label _cellInfo = null!;
 
@@ -184,6 +202,17 @@ public partial class ObserverRoot : Control
                 || !_ledger.Text.Contains("遷出", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Godot did not show Core's migrant batch and emigration event.");
+            }
+
+            // #61: the status panel shows ONE population ledger (settled + in transit = world) and labels
+            // the V0-01 daily demo population as a separate TEMP account.
+            if (!_status.Text.Contains($"聚落人口合計：{_world.SettledPopulation}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"遷徙途中人口：{_world.PopulationInTransit}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}", StringComparison.Ordinal)
+                || !_status.Text.Contains("V0-01 每日示範帳（舊版獨立 TEMP 帳", StringComparison.Ordinal)
+                || _world.WorldPopulation != _world.SettledPopulation + _world.PopulationInTransit)
+            {
+                throw new InvalidOperationException("Godot status panel mixed the population ledgers.");
             }
 
             var batch = travelling[0];
@@ -404,12 +433,17 @@ public partial class ObserverRoot : Control
         var snapshot = _world.Snapshot();
         _status.Text =
             $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
-            $"人口：{snapshot.Population}\n" +
+            // #61: one population ledger (settlements + migrants, each person counted once) ...
+            $"聚落人口合計：{_world.SettledPopulation}\n" +
             $"遷徙途中人口：{_world.PopulationInTransit}\n" +
-            $"食物庫存：{snapshot.FoodStock}\n" +
-            $"累積食物不足：{snapshot.TotalShortage}\n" +
+            $"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}\n" +
+            // ... kept apart from the older V0-01 daily demo ledger, which is a separate TEMP account.
+            "—— V0-01 每日示範帳（舊版獨立 TEMP 帳，與上方聚落人口無關）——\n" +
+            $"每日示範人口：{snapshot.Population}\n" +
+            $"每日示範食物庫存：{snapshot.FoodStock}\n" +
+            $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
-            $"亂數種子：{DemoSeed}";
+            $"亂數種子：{WorldSeed}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();

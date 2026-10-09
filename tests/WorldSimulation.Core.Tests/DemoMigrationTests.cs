@@ -370,8 +370,11 @@ public sealed class DemoMigrationTests
     [Fact]
     public void LocalFamineCenturyRunsWithZeroConservationErrors()
     {
+        // #61：消息要時間傳到，固定種子未必會遷徙；另外加入第一個 20 週內確實有人出發的種子。
+        var migratingSeed = ManySeeds.First(seed => Run(seed, DemoWeeklyTempConfig.LocalFamineSample, 20 * 7)
+            .SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.Emigration));
         var anyMigration = false;
-        foreach (var seed in new[] { 42UL, 7UL, 20261009UL })
+        foreach (var seed in new[] { 42UL, 7UL, 20261009UL, migratingSeed }.Distinct())
         {
             var report = DemoCenturyRun.Run(seed, 100, DemoWeeklyTempConfig.LocalFamineSample);
             Assert.Empty(report.ConservationErrors);
@@ -414,6 +417,153 @@ public sealed class DemoMigrationTests
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Settle(
             2, TimeSpan.FromDays(14), world.Map, sites,
             sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => 0L), zero, zero, zero,
-            ImmutableList.Create(batch), nextMigrationBatchId: 5, previousWeek: null, DemoWeeklyTempConfig.Sample));
+            ImmutableList.Create(batch), nextMigrationBatchId: 5,
+            publishedWeeks: Array.Empty<DemoWeekReport>(), DemoWeeklyTempConfig.Sample));
     }
+
+    // ── #61：MIG_PULL 消息不可全知（GPT 審查 PR #58 意見 1）──
+
+    [Fact]
+    public void NewsTravelsAlongTheRouteOneCellPerTempWeek()
+    {
+        Assert.Equal(4, DemoMigrationNews.NewsWeekFor(5, 1, 1));
+        Assert.Equal(2, DemoMigrationNews.NewsWeekFor(5, 3, 1));
+        Assert.Equal(-1, DemoMigrationNews.NewsWeekFor(5, 3, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DemoMigrationNews.NewsWeekFor(5, 0, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DemoMigrationNews.NewsWeekFor(5, 1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new DemoObserverWorld(
+            DemoScenario.Sample(1), DemoWeeklyTempConfig.Sample with { NewsDelayWeeksPerCell = 0 }));
+
+        // 只看已發布的週報：第 3 週路程 2 格 → 只收得到第 1 週；第 1 週路程 1 格 → 還沒有任何消息。
+        var world = Run(42, DemoWeeklyTempConfig.Sample, 2 * 7);
+        var target = world.Sites.Settlements[1];
+        var news = DemoMigrationNews.Received(world.WeekReports(), 3, target.Id, 2, 1);
+        Assert.NotNull(news);
+        Assert.Equal(1, news!.Value.Week);
+        Assert.Same(world.WeekReports()[0].Settlements.Single(l => l.SettlementId == target.Id), news.Value.Ledger);
+        Assert.Null(DemoMigrationNews.Received(world.WeekReports(), 1, target.Id, 1, 1));
+        Assert.Null(DemoMigrationNews.Received(world.WeekReports(), 3, target.Id, 3, 1));
+    }
+
+    [Fact]
+    public void EveryDepartureUsesOnlyNewsThatHadTimeToArrive()
+    {
+        var departures = 0;
+        var farDepartures = 0;
+        foreach (var seed in ManySeeds)
+        {
+            var world = Run(seed, Gentle, 30 * 7);
+            var weeks = world.WeekReports();
+            var replay = new DemoObserverWorld(DemoScenario.Sample(seed), Gentle);
+            var departedBatches = new Dictionary<int, DemoMigrationBatch>();
+            for (var day = 1; day <= 30 * 7; day++)
+            {
+                replay.AdvanceOneDay();
+                if (day % 7 != 0)
+                    continue;
+                foreach (var b in replay.MigrationsInTransit().Where(b => b.DepartedWeek == day / 7))
+                    departedBatches[b.Id] = b;
+            }
+
+            foreach (var week in weeks)
+            foreach (var m in week.Migrations.Where(m => m.Departed))
+            {
+                departures++;
+                var batch = departedBatches[m.BatchId];
+                var steps = batch.Path.Length - 1;
+                if (steps > 1) farDepartures++;
+
+                // 依據的消息週＝出發週－路程×延遲；那一週的消息確實說目的地有糧。
+                Assert.Equal(m.Week, batch.DepartedWeek);
+                Assert.Equal(m.Week - steps * Gentle.NewsDelayWeeksPerCell, batch.NewsWeek);
+                Assert.True(batch.NewsWeek >= 1);
+                var news = weeks[batch.NewsWeek - 1].Settlements.Single(l => l.SettlementId == m.ToSettlementId);
+                Assert.True(DemoMigrationNews.SaysFed(news));
+
+                var departure = week.Events.Single(e => e.Kind == DemoSettlementEventKind.Emigration
+                    && e.MigrationBatchId == m.BatchId);
+                Assert.Contains($"依第 {batch.NewsWeek} 週傳來的消息", departure.Cause);
+            }
+        }
+
+        Assert.True(departures > 0);
+        Assert.True(farDepartures > 0, "Need at least one departure to a destination more than one cell away.");
+    }
+
+    [Fact]
+    public void FreshNewsFromAFarSettlementHasNotArrivedYet()
+    {
+        // 找一個路程 ≥ 2 格的出發，用直接結算重現：只給「上一週」週報（全知時代的做法）時不得出發，
+        // 給完整已發布週報（含真正傳到的那一週）時才出發。
+        foreach (var seed in ManySeeds)
+        {
+            var cfg = Gentle;
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), cfg);
+            for (var day = 1; day <= 30 * 7; day++)
+            {
+                probe.AdvanceOneDay();
+                if (day % 7 != 0)
+                    continue;
+                var departed = probe.LatestWeek!.Migrations.FirstOrDefault(m => m.Departed);
+                if (departed is null)
+                    continue;
+                var batch = probe.MigrationsInTransit().Single(b => b.Id == departed.BatchId);
+                if (batch.Path.Length - 1 < 2)
+                    continue;
+
+                // 每週輸入只在週結算時改變，所以出發前一週結束時的狀態就是本週結算的輸入。
+                var before = Run(seed, cfg, day - 7);
+                var week = departed.Week;
+                var published = before.WeekReports();
+                var latestOnly = published.Where(w => w.Week == week - 1).ToArray();
+                var withoutArrived = published.Where(w => w.Week != batch.NewsWeek).ToArray();
+
+                var full = before.SettleNextWeekForTest(published);
+                Assert.Contains(full.Report.Migrations, m => m.Departed && m.FromSettlementId == departed.FromSettlementId);
+
+                // 只有上一週（太新、還在路上）的消息：該來源不能前往這個目的地。
+                var onlyFresh = before.SettleNextWeekForTest(latestOnly);
+                Assert.DoesNotContain(onlyFresh.Report.Migrations, m => m.Departed
+                    && m.FromSettlementId == departed.FromSettlementId && m.ToSettlementId == departed.ToSettlementId);
+
+                // 拿掉真正傳到的那一週：同樣不能依據那份消息出發。
+                var noNews = before.SettleNextWeekForTest(withoutArrived);
+                Assert.DoesNotContain(noNews.Report.Migrations, m => m.Departed
+                    && m.FromSettlementId == departed.FromSettlementId && m.ToSettlementId == departed.ToSettlementId);
+                return;
+            }
+        }
+
+        Assert.Fail("No seed produced a departure to a destination at least two cells away.");
+    }
+
+    [Fact]
+    public void SettleRejectsReportsFromTheCurrentOrFutureWeek()
+    {
+        var world = Run(42, DemoWeeklyTempConfig.Sample, 2 * 7);
+        var sites = world.Sites;
+        var zero = sites.Settlements.ToImmutableSortedDictionary(s => s.Id, _ => 0L);
+        Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Settle(
+            2, TimeSpan.FromDays(14), world.Map, sites,
+            sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => 0L), zero, zero, zero,
+            ImmutableList<DemoMigrationBatch>.Empty, nextMigrationBatchId: 1,
+            publishedWeeks: world.WeekReports(), DemoWeeklyTempConfig.Sample));
+    }
+
+    [Fact]
+    public void WorldPopulationIsSettledPlusInTransitCountedOnce()
+    {
+        foreach (var seed in new[] { 42UL, 1UL, 7UL })
+        {
+            var world = new DemoObserverWorld(DemoScenario.Sample(seed), Gentle);
+            for (var day = 1; day <= 20 * 7; day++)
+            {
+                world.AdvanceOneDay();
+                Assert.Equal(world.Sites.Settlements.Sum(s => world.SettlementPopulation(s.Id)), world.SettledPopulation);
+                Assert.Equal(world.SettledPopulation + world.PopulationInTransit, world.WorldPopulation);
+                Assert.Equal(WorldPopulation(world), world.WorldPopulation);
+            }
+        }
+    }
+
 }
