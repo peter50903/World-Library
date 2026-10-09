@@ -65,10 +65,13 @@ public partial class DemoHexMap : Control
             outline[6] = vertices[0];
             DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
 
-            if (Sites?.SettlementAt(cell.Column, cell.Row) is not null)
+            if (Sites?.SettlementAt(cell.Column, cell.Row) is { } settlement)
             {
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
+                // V0-06B: settlements founded by migrants get a white ring so the new dot stands out.
+                if (settlement.IsFounded)
+                    DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
             }
         }
 

@@ -21,11 +21,31 @@ public partial class ObserverRoot : Control
     // #61: news now needs time to travel, so seed 42 may no longer migrate within the smoke window.
     // The CI-only migration smoke picks the first TEMP seed (42, then 1..30) whose Core world has a
     // batch on the road within 70 days; normal players always get DemoSeed.
-    private static readonly ulong WorldSeed = MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
+    // V0-06B: CI can opt into the TEMP frontier scenario (every starting settlement has no food; migrants
+    // may found a new settlement on an empty cell). The smoke picks the first TEMP seed (42, then 1..30)
+    // whose Core world founds a settlement within SettleSmokeDays days. Normal players never set it.
+    private static readonly bool SettleSmoke = OS.HasEnvironment("WORLD_SIM_SETTLE_SMOKE");
+    private const int SettleSmokeDays = 30 * 7;
+    private static readonly ulong WorldSeed = SettleSmoke ? PickSettleSmokeSeed()
+        : MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
     private readonly DemoObserverWorld _world = new(
         DemoScenario.Sample(WorldSeed),
-        MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
+        SettleSmoke ? DemoWeeklyTempConfig.FrontierSample
+            : MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
             : FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
+    private static ulong PickSettleSmokeSeed()
+    {
+        foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
+        {
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.FrontierSample);
+            for (var day = 0; day < SettleSmokeDays && !probe.Sites.Settlements.Any(s => s.IsFounded); day++)
+                probe.AdvanceOneDay();
+            if (probe.Sites.Settlements.Any(s => s.IsFounded))
+                return seed;
+        }
+
+        throw new InvalidOperationException("No TEMP seed founded a settlement for the settle smoke.");
+    }
     private static ulong PickMigrationSmokeSeed()
     {
         foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
@@ -171,7 +191,7 @@ public partial class ObserverRoot : Control
         var historyColumn = new VBoxContainer();
         historyPanel.AddChild(historyColumn);
 
-        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除／外移／抵達）" };
+        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除／外移／抵達／建立新聚落）" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
         historyColumn.AddChild(historyTitle);
 
@@ -230,6 +250,43 @@ public partial class ObserverRoot : Control
 
             GD.Print($"WORLD_SIM_MIGRATION_OK: Day={_world.Snapshot().DaysElapsed} Batches={travelling.Count} " +
                 $"People={_world.PopulationInTransit} From={batch.FromSettlementId} To={batch.ToSettlementId}");
+        }
+
+        // V0-06B CI-only smoke (separate Godot run): advance with the real button until Core founds a
+        // settlement, then check the new map marker, the caused history line and the clicked cell panel.
+        if (SettleSmoke)
+        {
+            for (var i = 0; i < SettleSmokeDays && !_world.Sites.Settlements.Any(s => s.IsFounded); i++)
+                nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+
+            var founded = _world.Sites.Settlements.FirstOrDefault(s => s.IsFounded);
+            var foundedEvent = _world.SettlementEvents()
+                .FirstOrDefault(e => e.Kind == DemoSettlementEventKind.SettlementFounded);
+            if (founded is null || foundedEvent is null || foundedEvent.SettlementId != founded.Id
+                || !ReferenceEquals(_hexMap.Sites, _world.Sites)
+                || _hexMap.Sites?.SettlementAt(founded.Column, founded.Row) is null
+                || !_history.Text.Contains(foundedEvent.Describe(), StringComparison.Ordinal)
+                || !_history.Text.Contains("建立新聚落", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot did not show Core's newly founded settlement.");
+            }
+
+            _hexMap._GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left,
+                Pressed = true,
+                Position = _hexMap.CellCenter(_world.Map.GetCell(founded.Column, founded.Row))
+            });
+            var source = _world.Sites.Settlements.Single(s => s.Id == founded.FoundedFromSettlementId);
+            if (!_cellInfo.Text.Contains($"聚落：{founded.Name}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"來源聚落：{source.Name}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"目前人口：{_world.SettlementPopulation(founded.Id)}", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot cell panel did not show the founded settlement.");
+            }
+
+            GD.Print($"WORLD_SIM_SETTLE_OK: Seed={WorldSeed} Day={_world.Snapshot().DaysElapsed} Id={founded.Id} " +
+                $"From={founded.FoundedFromSettlementId} Founders={foundedEvent.Count} Week={founded.FoundedWeek}");
         }
 
         // CI-only, opt-in engine smoke: exercise the actual Godot Button.Pressed
@@ -352,6 +409,13 @@ public partial class ObserverRoot : Control
             return;
 
         var lines = new List<string> { "", $"聚落：{settlement.Name}（TEMP 示範編號 {settlement.Id}）" };
+        if (settlement.IsFounded)
+        {
+            // V0-06B: a settlement founded by migrants (population came only from its founding batch).
+            var source = _world.Sites.Settlements.FirstOrDefault(s => s.Id == settlement.FoundedFromSettlementId);
+            lines.Add($"第 {settlement.FoundedWeek} 週由遷徙隊伍 #{settlement.FoundedByBatchId} 建立；" +
+                $"來源聚落：{source?.Name ?? "未知"}（人口全部來自開拓隊，不憑空）");
+        }
         foreach (var resource in _world.Sites.ResourcePointsOf(settlement.Id))
             lines.Add($"資源點 #{resource.Id}：{ResourceName(resource.Kind)}");
         foreach (var pop in _world.Sites.PopGroupsOf(settlement.Id))
@@ -447,6 +511,7 @@ public partial class ObserverRoot : Control
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
+        _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
         _hexMap.QueueRedraw();
 
         // V0-04B: merge daily events with weekly settlement events by world time
@@ -454,9 +519,14 @@ public partial class ObserverRoot : Control
         // Shows the 12 latest daily events plus the 10 latest settlement events.
         var daily = _world.History().TakeLast(12).Select(e => (Time: e.WorldTime, Order: 0,
             Text: $"第 {e.Day} 天  |  收穫 {e.Harvested}  消耗 {e.Consumed}  缺糧 {e.Shortage}  食物結餘 {e.FoodAfter}"));
-        var settlementEvents = _world.SettlementEvents()
-            .Select((e, i) => (Time: e.WorldTime, Order: 1 + i, Text: e.Describe()))
-            .TakeLast(10);
+        // V0-06B: the 5 latest "settlement founded" events always stay listed, even when a busy famine
+        // week pushes them out of the 10 latest settlement events.
+        var allSettlementEvents = _world.SettlementEvents()
+            .Select((e, i) => (Time: e.WorldTime, Order: 1 + i, Text: e.Describe(), e.Kind))
+            .ToList();
+        var settlementEvents = allSettlementEvents.TakeLast(10)
+            .Union(allSettlementEvents.Where(x => x.Kind == DemoSettlementEventKind.SettlementFounded).TakeLast(5))
+            .Select(x => (x.Time, x.Order, x.Text));
         var lines = daily.Concat(settlementEvents)
             .OrderBy(x => x.Time).ThenBy(x => x.Order)
             .Select(x => x.Text);

@@ -59,7 +59,8 @@ internal enum DemoCommitStage
 /// resource regeneration → labour and production → consumption, with a resource
 /// ledger and a population ledger checked before anything is published, and (V0-04B)
 /// hunger debt → starvation death with append-only, caused settlement events, and (V0-06A)
-/// starving settlements sending migrant batches cell by cell to a known fed settlement.
+/// starving settlements sending migrant batches cell by cell to a known fed settlement, and (V0-06B)
+/// founding batches that turn their survivors into a new settlement on an empty cell.
 /// It does NOT implement official population rules, EntityStore, canonical History,
 /// durability or Save/Load.
 /// </summary>
@@ -85,6 +86,7 @@ public sealed class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _hungerDebt;
     private ImmutableList<DemoMigrationBatch> _migrations = ImmutableList<DemoMigrationBatch>.Empty;
     private int _nextMigrationBatchId = 1;
+    private DemoWorldSites _sites;
     private long _food;
     private long _totalShortage;
 
@@ -114,7 +116,7 @@ public sealed class DemoObserverWorld
         // using the RESOURCE stream of this same registry.
         _rng = RngRegistry.Create(scenario.Seed);
         Map = DemoHexWorld.Generate(_rng);
-        Sites = DemoWorldSites.Generate(Map, _rng);
+        _sites = DemoWorldSites.Generate(Map, _rng);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.
@@ -136,8 +138,12 @@ public sealed class DemoObserverWorld
     /// <summary>The cached TEMP hex map generated from this world's registry (never regenerated).</summary>
     public DemoHexWorld Map { get; }
 
-    /// <summary>The cached TEMP settlements / resource points / population groups.</summary>
-    public DemoWorldSites Sites { get; }
+    /// <summary>
+    /// The TEMP settlements / resource points / population groups. Generated once from the seed;
+    /// V0-06B: settlements founded by migrant batches are appended in the weekly commit (never removed,
+    /// IDs never reused). Each call returns the committed, immutable copy.
+    /// </summary>
+    public DemoWorldSites Sites => _sites;
 
     /// <summary>TEST ONLY: invoked at each commit checkpoint so tests can inject a mid-commit failure.</summary>
     internal Action<DemoCommitStage>? FaultInjector { get; set; }
@@ -200,7 +206,7 @@ public sealed class DemoObserverWorld
     {
         var week = checked(_weeks.Count + 1);
         return DemoWeeklySettlement.Settle(
-            week, TimeSpan.FromDays(7L * week), Map, Sites,
+            week, TimeSpan.FromDays(7L * week), Map, _sites,
             _reserves, _settlementFood, _population, _hungerDebt,
             _migrations, _nextMigrationBatchId, publishedWeeks, _weekly);
     }
@@ -280,10 +286,11 @@ public sealed class DemoObserverWorld
         var nextHungerDebt = _hungerDebt;
         var nextMigrations = _migrations;
         var nextMigrationBatchId = _nextMigrationBatchId;
+        var nextSites = _sites;
         if (weekly.Count == 1)
         {
             var outcome = DemoWeeklySettlement.Settle(
-                checked(_weeks.Count + 1), dueTime, Map, Sites,
+                checked(_weeks.Count + 1), dueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
                 _migrations, _nextMigrationBatchId, _weeks, _weekly);
             nextWeeks = _weeks.Add(outcome.Report);
@@ -293,6 +300,7 @@ public sealed class DemoObserverWorld
             nextHungerDebt = outcome.HungerDebt;
             nextMigrations = outcome.Migrations;
             nextMigrationBatchId = outcome.NextMigrationBatchId;
+            nextSites = outcome.Sites;
         }
 
         Checkpoint(DemoCommitStage.AfterLedgerStaged);
@@ -312,6 +320,7 @@ public sealed class DemoObserverWorld
         _hungerDebt = nextHungerDebt;
         _migrations = nextMigrations;
         _nextMigrationBatchId = nextMigrationBatchId;
+        _sites = nextSites;
         return evt;
     }
 
@@ -337,6 +346,8 @@ public sealed class DemoObserverWorld
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
         foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
         sb.Append(inv, $"nextBatch={_nextMigrationBatchId};");
+        foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
+        foreach (var point in _sites.ResourcePoints) sb.Append(inv, $"{point};");
         foreach (var batch in _migrations) sb.Append(inv, $"{batch.Fingerprint()};");
         foreach (var evt in _history) sb.Append(inv, $"{evt};");
         foreach (var week in _weeks)
