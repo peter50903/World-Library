@@ -129,6 +129,24 @@ public partial class ObserverRoot : Control
         historyColumn.AddChild(_history);
 
         Refresh();
+
+        // CI-only, opt-in engine smoke: exercise the actual Godot Button.Pressed
+        // signals and confirm both the Core state and visible history updated.
+        // Normal users never set this flag; there is no auto-ticking in the game.
+        if (OS.HasEnvironment("WORLD_SIM_UI_SMOKE"))
+        {
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+            skipButton.EmitSignal(BaseButton.SignalName.Pressed);
+
+            var state = _world.Snapshot();
+            if (state.DaysElapsed != 31 || _world.History().Count != 31 ||
+                !_history.Text.Contains("第 31 天", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot button signal did not update world and history.");
+            }
+
+            GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 History=31");
+        }
     }
 
     private void Advance(int days)
