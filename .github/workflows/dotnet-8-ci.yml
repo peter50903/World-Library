@@ -50,6 +50,11 @@ jobs:
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
             grep -q '歷史（共' /tmp/observer-demo-smoke.log
             grep -q '第 1 日' /tmp/observer-demo-smoke.log
+            # V0-05: actually run the headless 100-year command once and check its output.
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
+            grep -q '第 100 年（至第 36400 日）' /tmp/observer-century.log
+            grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
+            grep -q '守恆錯誤 0，' /tmp/observer-century.log
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
