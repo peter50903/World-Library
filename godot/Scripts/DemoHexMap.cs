@@ -24,18 +24,28 @@ public partial class DemoHexMap : Control
 
     public event Action<DemoHexCell>? CellSelected;
 
+    // TEMP display-only controls. Never change simulation state or formal settings.
+    private const float TempZoomStep = 1.2f;
+    private const float TempMinZoom = 0.6f;
+    private const float TempMaxZoom = 3f;
+    private float _zoom = 1f;
+    private Vector2 _pan = Vector2.Zero;
+    private bool _middleDragging;
+
     public DemoHexMap()
     {
         CustomMinimumSize = new Vector2(540, 460);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         SizeFlagsVertical = SizeFlags.ExpandFill;
         MouseFilter = MouseFilterEnum.Stop;
-        TooltipText = "TEMP：地形與金色示範聚落都由模擬核心依世界種子生成；不是正式世界設定。";
+        ClipContents = true;
+        TooltipText = "滾輪縮放、中鍵拖曳、左鍵點格；地形與聚落資料來自模擬核心（TEMP）。";
     }
 
     public override void _Ready()
     {
         Resized += QueueRedraw;
+        MouseExited += () => _middleDragging = false;
         QueueRedraw();
     }
 
@@ -44,7 +54,7 @@ public partial class DemoHexMap : Control
         if (World is null)
             return;
 
-        var (start, radius) = Layout();
+        var (start, radius) = ViewLayout();
 
         foreach (var cell in World.Cells)
         {
@@ -92,23 +102,60 @@ public partial class DemoHexMap : Control
 
     public override void _GuiInput(InputEvent @event)
     {
-        if (@event is not InputEventMouseButton
-            {
-                ButtonIndex: MouseButton.Left,
-                Pressed: true
-            } click)
-            return;
         if (World is null)
             return;
 
-        var (start, radius) = Layout();
+        if (@event is InputEventMouseMotion motion)
+        {
+            // Clear a missed release (e.g. when the pointer leaves the map).
+            if (_middleDragging && !motion.ButtonMask.HasFlag(MouseButtonMask.Middle))
+                _middleDragging = false;
+            if (_middleDragging)
+            {
+                _pan += motion.Relative;
+                QueueRedraw();
+                AcceptEvent();
+            }
+            return;
+        }
+
+        if (@event is not InputEventMouseButton button)
+            return;
+
+        if (button.ButtonIndex == MouseButton.Middle)
+        {
+            _middleDragging = button.Pressed;
+            AcceptEvent();
+            return;
+        }
+
+        if (button.Pressed && button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
+        {
+            // Cursor-anchored zoom: the point under the pointer does not jump.
+            var next = Mathf.Clamp(
+                _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),
+                TempMinZoom, TempMaxZoom);
+            if (!Mathf.IsEqualApprox(next, _zoom))
+            {
+                var cursorFromCenter = button.Position - Size * 0.5f;
+                _pan = cursorFromCenter - (cursorFromCenter - _pan) * (next / _zoom);
+                _zoom = next;
+                QueueRedraw();
+            }
+            AcceptEvent();
+            return;
+        }
+
+        if (!button.Pressed || button.ButtonIndex != MouseButton.Left || _middleDragging)
+            return;
+
+        var (start, radius) = ViewLayout();
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            // Hit-test the full hex (the -1.4 inset is only a visual gap) so clicks on
-            // the seam between two cells still select a cell.
+            // The visible gap must not select an invisible cell.
             if (!Geometry2D.IsPointInPolygon(
-                    click.Position, HexCoordinates.Polygon(center, radius)))
+                    button.Position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
                 continue;
 
             CellSelected?.Invoke(cell);
@@ -120,8 +167,17 @@ public partial class DemoHexMap : Control
     /// <summary>Used by the in-engine smoke test to inject a TEMP cell click.</summary>
     public Vector2 CellCenter(DemoHexCell cell)
     {
-        var (start, radius) = Layout();
+        var (start, radius) = ViewLayout();
         return start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+    }
+
+    /// <summary>Shared geometry for drawing, hit-testing and all Core cell markers (TEMP view only).</summary>
+    private (Vector2 Start, float Radius) ViewLayout()
+    {
+        var (baseStart, baseRadius) = Layout();
+        var viewportCenter = Size * 0.5f;
+        return (viewportCenter + (baseStart - viewportCenter) * _zoom + _pan,
+            baseRadius * _zoom);
     }
 
     private (Vector2 Start, float Radius) Layout()
