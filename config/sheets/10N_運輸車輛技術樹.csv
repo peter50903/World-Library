@@ -1,0 +1,28 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_CARTWRIGHT,手推車與車輪,Cartwrighting,1,車輛,,100,RES_WOOD:12,製作/維修簡單車輪,研究時間-20%,"SK_WAGONMAKING,SK_CARPENTRY",,BUILD_WAINWRIGHT,cart_enabled,BUILD_WAINWRIGHT,陸路載具根技術,TRUE
+TECH_AXLE_BEARING,車軸結構,Axle Engineering,2,車輛,TECH_CARTWRIGHT,160,"RES_WOOD:15,RES_IRON_INGOT:2",維修長途車輛,研究時間-15%,SK_WAGONMAKING,,,vehicle_durability+,BUILD_WAINWRIGHT,降低車輛磨耗與故障,TRUE
+TECH_WAGON,貨運馬車,Cargo Wagon,2,物流,"TECH_CARTWRIGHT,TECH_DRAFT_ANIMALS",180,"RES_WOOD:20,RES_IRON_INGOT:3,RES_LEATHER:2",用役畜完成貨運,研究時間-20%,"SK_WAGONMAKING,SK_ANIMAL_HUSBANDRY",,,wagon_capacity+,BUILD_WAINWRIGHT,提高陸運載重但仍需道路/役畜,TRUE
+TECH_SUSPENSION,車體減震,Vehicle Suspension,3,車輛,TECH_AXLE_BEARING,240,"RES_WOOD:15,RES_IRON_INGOT:5,RES_LEATHER:3",長距離載客運行,研究時間-15%,SK_WAGONMAKING,,,passenger_vehicle_quality+,BUILD_WAINWRIGHT,改善速度/舒適與物品破損風險,TRUE
+TECH_HEAVY_HAUL,重載運輸,Heavy Haulage,3,物流,"TECH_WAGON,TECH_AXLE_BEARING",260,"RES_WOOD:30,RES_IRON_INGOT:8",運送大型石材/攻城器械,研究時間-20%,"SK_WAGONMAKING,SK_SIEGE_ENGINEERING",,,heavy_cargo_transport+,BUILD_WAINWRIGHT,支援工程與軍事重載物流,TRUE
+TECH_CARRIAGE,載客馬車,Carriage Craft,4,車輛,"TECH_SUSPENSION,TECH_WAGON",320,"RES_WOOD:25,RES_IRON_INGOT:6,RES_LEATHER:5,RES_CLOTH:5",長途載運重要乘客,研究時間-15%,SK_WAGONMAKING,,,carriage_enabled,BUILD_WAINWRIGHT,旅客與貴族交通載具,TRUE
+TECH_LOGISTICS_STANDARD,車輛規格標準化,Transport Standardization,5,物流,"TECH_HEAVY_HAUL,TECH_CARRIAGE,TECH_STANDARD_MEASURES",500,"RES_PARCHMENT:10,RES_WOOD:20,RES_IRON_INGOT:10",管理大型商隊車輛群,研究時間-15%,"SK_WAGONMAKING,SK_TRADE,SK_RESEARCH",,,land_logistics_efficiency+,"BUILD_WAINWRIGHT,BUILD_MARKET",提高車輛維修與物流協同，不瞬間搬運貨物,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

@@ -1,0 +1,29 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_MANA_MATERIAL_HANDLING,魔力材料處理,Mana Material Handling,1,材料,,120,RES_MANA_CRYSTAL:2,安全處理多批魔晶材料,研究時間-20%,"SK_ARCANE_CRAFT,SK_MAGIC_CONTROL",,BUILD_MAGIC_WORKSHOP,mana_material_processing,BUILD_MAGIC_WORKSHOP,魔法工藝根技術,TRUE
+TECH_RUNE_INSCRIPTION,符文刻寫,Rune Inscription,2,符文,TECH_MANA_MATERIAL_HANDLING,180,"RES_MANA_CRYSTAL:3,RES_PARCHMENT:5",完成多次穩定符文刻寫,研究時間-20%,SK_ARCANE_CRAFT,,,rune_crafting_enabled,BUILD_MAGIC_WORKSHOP,符文只可承載世界法則允許效果,TRUE
+TECH_BASIC_ENCHANTING,基礎附魔,Basic Enchanting,2,附魔,TECH_MANA_MATERIAL_HANDLING,200,RES_MANA_CRYSTAL:5,成功製作魔法裝備,研究時間-15%,"SK_ARCANE_CRAFT,SK_MAGIC_CONTROL",REC_STAFF,BUILD_MAGIC_WORKSHOP,magic_item_trait_tier+,BUILD_MAGIC_WORKSHOP,從合法魔法物品特性池產生效果,TRUE
+TECH_MAGIC_WARDING,魔法結界工藝,Arcane Warding,3,防護,"TECH_RUNE_INSCRIPTION,TECH_BASIC_ENCHANTING",280,"RES_MANA_CRYSTAL:8,RES_IRON_INGOT:3",製作/維修多件防護魔法物,研究時間-15%,SK_ARCANE_CRAFT,,,magic_ward_item_enabled,BUILD_MAGIC_WORKSHOP,物品型防護知識,TRUE
+TECH_MANA_STORAGE,魔力儲存,Mana Storage,3,能源,TECH_RUNE_INSCRIPTION,300,RES_MANA_CRYSTAL:10,長期觀察魔力充放,研究時間-20%,"SK_ARCANE_CRAFT,SK_MAGIC_CONTROL",,,mana_storage_item_enabled,BUILD_MAGIC_WORKSHOP,儲存容量有限，不能產生無限MP,TRUE
+TECH_COMPLEX_ENCHANTING,複合附魔,Complex Enchanting,4,附魔,"TECH_MAGIC_WARDING,TECH_MANA_STORAGE",420,"RES_MANA_CRYSTAL:15,RES_MAGIC_WOOD:5",製作多Trait魔法裝備,研究時間-15%,"SK_ARCANE_CRAFT,SK_MAGIC_CONTROL",,,multi_trait_magic_item,BUILD_MAGIC_WORKSHOP,受特性互斥與稀有度規則限制,TRUE
+TECH_ARTIFACT_CRAFT,神器級工藝,Artifact Craft,5,神器,TECH_COMPLEX_ENCHANTING,700,"RES_MANA_CRYSTAL:30,RES_MAGIC_WOOD:10,RES_IRON_INGOT:10",成功維護高階Unique魔法物,研究時間-10%,"SK_ARCANE_CRAFT,SK_RESEARCH",,,artifact_crafting_enabled,BUILD_MAGIC_WORKSHOP,不保證產出唯一；只解鎖製作可能性,TRUE
+TECH_ARCANE_ENGINEERING,魔導工程,Arcane Engineering,5,工程,"TECH_COMPLEX_ENCHANTING,TECH_MANA_STORAGE",750,"RES_MANA_CRYSTAL:35,RES_STONE:20,RES_IRON_INGOT:15",建立大型穩定魔法裝置,研究時間-10%,"SK_ARCANE_CRAFT,SK_CONSTRUCTION",,,large_arcane_device_enabled,BUILD_MAGIC_WORKSHOP,大型魔導設施仍消耗材料、MP與維護成本,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

@@ -1,0 +1,34 @@
+SourceType,中文名稱,是否可硬解鎖,例子,Rule,說明,Enabled
+COMMON,通用行動,TRUE,移動／協助／互動,所有具備身體條件的Character可用,狀態仍可禁止,TRUE
+EQUIPMENT,裝備提供,TRUE,武器攻擊／盾牌格擋,裝備中或可立即取用的Item提供Action,物品毀壞／掉落後失去,TRUE
+SKILL,技能能力,TRUE,進階戰術/專業操作,達到定義條件後可使用,技能不是階級,TRUE
+KNOWLEDGE,知識前置,TRUE,配方／法術／程序,必須知道正確方法,知識永遠正確但可能未知,TRUE
+MAGIC_NODE,魔法技能樹,TRUE,火球／傳送門／反制法術,已學Node轉成Cast Action,沿用12A~12J,TRUE
+RACE_INNATE,種族天生,TRUE,魔物控制等,Race Definition明確授予,不能由普通職業取代,TRUE
+SPECIES_INNATE,生物天生,TRUE,怪物天生魔法,Species Definition授予,怪物不能從書本學新魔法,TRUE
+TRAIT,特性,TRUE,特殊反應／行動成本覆寫,Trait明確提供,不能因描述文字自動推導,TRUE
+STATUS,狀態情境,TRUE,倒地→站起、被擒抱→掙脫,狀態存在時暫時提供,狀態消失即移除,TRUE
+POSITION,職位權限,TRUE,發布合法命令/司法處置,Office/Authority提供行為授權,不等於私人所有權,TRUE
+PROFESSION,職業,FALSE,鐵匠／廚師等工作選單偏好,通常只影響AI選擇/效率/學習,符合職業非硬使用門檻,TRUE
+RELIGION_GOD,神祇權能,TRUE,神蹟,God+Domain/Doctrine/FaithPower條件,角色一般不能當作法術使用,TRUE
+ITEM_CONSUMABLE,消耗品,TRUE,藥水／食物／卷軸,Item本身提供一次或有限次Action,使用後真實消耗,TRUE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE

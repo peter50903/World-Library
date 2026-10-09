@@ -1,0 +1,27 @@
+DoctrineID,中文名稱,英文名稱,子類型,EffectKey,EffectValue,對國家法律的關係,看法／信仰值影響,國家AI偏好,互斥群組,說明,Enabled
+RDD_BURIAL,土葬,Burial,葬儀,preferred_funeral,burial,不直接禁止其他葬法,按教義處理屍體提高信仰值,偏好墓地/葬禮,FUNERAL_TYPE,屍體仍遵守腐化／死域規則,TRUE
+RDD_CREMATION,火葬,Cremation,葬儀,preferred_funeral,cremation,不直接禁止其他葬法,火葬符合宗教認同,偏好火葬設施,FUNERAL_TYPE,會實際破壞屍體，影響普通復活條件,TRUE
+RDD_NATURE_RETURN,自然歸還,Return to Nature,葬儀,preferred_funeral,nature_return,不直接禁止其他葬法,自然葬提高信仰值,偏好自然葬,FUNERAL_TYPE,遺骸仍可腐化/被生態利用,TRUE
+RDD_ANCESTOR_TOMB,祖墓傳統,Ancestral Tomb,祖先,ancestral_burial,1,無直接法律效果,家族墓葬／祭祖提高信仰值,偏好保存家族墓地,,增加家族與祖先記憶活動，不創造靈魂效果,TRUE
+RDD_RESURRECTION_SACRED,復生神聖,Resurrection Sacred,復活,resurrection_attitude,sacred,不改神蹟可用條件,復活通常被視為神聖,偏好保存重要遺骸,RESURRECTION_STANCE,不增加復活成功率,TRUE
+RDD_RESURRECTION_TABOO,復生禁忌,Resurrection Taboo,復活,resurrection_attitude,taboo,不禁止世界法則中的復活,復活者／施術者承受宗教看法成本,偏好限制復活儀式,RESURRECTION_STANCE,復活仍保持同角色,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

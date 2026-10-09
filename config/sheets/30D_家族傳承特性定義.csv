@@ -1,0 +1,34 @@
+LegacyTraitID,中文名稱,英文名稱,分類,EffectKey,EffectValue,行為／投資傾向,傳承方式,互斥群組,說明,Enabled
+HLEG_MARTIAL,武門傳統,Martial Legacy,教育/軍事,house_martial_training_weight,1.3,優先培養騎士、軍官、武藝教育,家族長期社會化／教育，不直接遺傳能力,,後代較常接受軍事訓練，但能力仍靠角色成長,TRUE
+HLEG_SCHOLAR,學術世家,Scholarly Legacy,教育,house_education_weight,1.3,投資學校、書籍、研究與學者,家族教育環境,,不直接增加INT,TRUE
+HLEG_DIPLOMATIC,聯姻世家,Marriage Diplomacy Legacy,婚姻/外交,marriage_alliance_weight,1.35,優先政治婚姻、跨國關係與家族網絡,家族婚姻政策,,婚姻仍需角色同意／文化／法律條件,TRUE
+HLEG_MERCHANT,商業世家,Mercantile Legacy,經濟,trade_investment_weight,1.3,鼓勵經商、商隊、企業與城市投資,家庭教育/資產配置,,不直接生成金幣,TRUE
+HLEG_ADMIN,治政世家,Administrative Legacy,政治,office_service_weight,1.3,培養官員、財政與行政人才,教育／官職經驗,,不保證後代獲得官職,TRUE
+HLEG_RELIGIOUS,宗教庇護世家,Religious Patron Legacy,宗教,religious_patronage_weight,1.3,捐贈宗教組織、培養祭司、建立神殿,家族目標,,不強制所有成員同一信仰值,TRUE
+HLEG_ARCANE,魔法世家,Arcane Patron Legacy,魔法,magic_education_weight,1.3,尋找法師師資、魔法教育、魔法工藝投資,教育/資產配置,,不是遺傳魔法技能；種族／個人才決定天賦,TRUE
+HLEG_BUILDERS,築城世家,Builder Legacy,工程,construction_investment_weight,1.3,城堡、道路、橋梁與領地工程投入,家族資產／領地政策,,工程仍需材料、勞工與技術,TRUE
+HLEG_SEAFARING,海運世家,Seafaring Legacy,航海,naval_trade_weight,1.3,投資港口、船舶、航海教育,家族產業傳承,,需真實港口/船舶,TRUE
+HLEG_HUNTERS,獵魔世家,Monster Hunter Legacy,冒險,monster_hunt_goal_weight,1.3,培養獵人、冒險者並追求大型威脅聲望,家族故事/訓練,,不直接給戰鬥加成,TRUE
+HLEG_HONOR,守誓世家,Oathbound Legacy,價值,promise_honor_weight,1.3,重視契約、誓言、家族名聲,家族社會化,HOUSE_ETHOS,違約更容易造成家族內看法下降,TRUE
+HLEG_RUTHLESS,鐵血世家,Ruthless Legacy,價值,power_preservation_weight,1.3,更願使用強硬政治手段保住家族地位,家族社會化,HOUSE_ETHOS,不強制角色殘酷；只影響目標／教育／壓力,TRUE
+HLEG_CHARITY,仁善世家,Benevolent Legacy,價值,charity_goal_weight,1.3,救濟、庇護、慈善與低壓統治,家族社會化,HOUSE_ETHOS,實際救濟仍消耗金幣／物資,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

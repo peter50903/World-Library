@@ -1,0 +1,27 @@
+CompareID,比較類型,比較內容,資料來源,輸出方式,Enabled
+CMP_WORLD,世界時點,人口、國家數、疆界、宗教、金幣、威脅、主要人物,快照 + 事件,顯著變化量 + 主要原因,TRUE
+CMP_REGION,地區時點,人口、產業、資源、控制、文化／宗教、安全,地區快照,之前／之後 + 因果事件,TRUE
+CMP_STATE,國家時點,領土、統治者、國庫、軍隊、條約、派系,國家快照,政治變化摘要,TRUE
+CMP_ENTITY,角色／組織,狀態／官職／財產／關係／技能等,實體快照／歷史,人生/組織轉折,TRUE
+CMP_MAP,地圖差異,主權／控制／聚落／地下城／威脅,地圖快照,視覺疊圖/時間滑桿,TRUE
+CMP_PERIOD,期間摘要,指定起訖時間內L2+事件與統計變化,歷史查詢,年代報告,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

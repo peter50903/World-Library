@@ -1,0 +1,30 @@
+EligibilityRuleID,中文名稱,英文名稱,類型,ConditionKey,ConditionValue,PriorityModifier,ReligiousPressureKey,說明,Enabled
+ELIG_HOUSE_MEMBER,家族成員,House Member,必要資格,is_house_member,TRUE,0,,要求屬於對應家族,TRUE
+ELIG_RECOGNIZED_DESCENDANT,承認後代,Recognized Descendant,必要資格,recognized_descendant,TRUE,0,,合法／承認後代才進直系繼承序列；具體出生身分另由家庭規則決定,TRUE
+ELIG_ADULT,成年,Adult,必要資格,is_adult,TRUE,0,,需要成年；若制度允許幼主則可不採此規則,TRUE
+ELIG_SAME_FAITH,同宗教,Same Religion,條件資格,same_formal_religion,TRUE,0,religion_succession_preference,只有採此規則的制度才限制宗教,TRUE
+ELIG_NOBLE_STATUS,貴族身分,Noble Status,必要資格,is_noble,TRUE,0,,候選人需仍具有貴族身分,TRUE
+ELIG_LANDED,有領地,Landed Candidate,條件資格,has_recognized_fief,TRUE,0,,適合選舉/家主制度，不是全世界通則,TRUE
+ELIG_NO_TRAITOR,非叛徒,No Active Treason,排除資格,active_treason_status,FALSE,0,,只排除仍有有效法律/家族處分者；歷史罪行不自動永久剝奪,TRUE
+ELIG_MIN_REPUTATION,最低聲望,Minimum Reputation,門檻,reputation_min,configurable,0,,用於選舉/能力制,TRUE
+ELIG_RELIGIOUS_APPROVAL,宗教認可,Religious Approval,門檻,faith_legitimacy,configurable,0,religious_legitimacy,只在宗教化繼承制度使用,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

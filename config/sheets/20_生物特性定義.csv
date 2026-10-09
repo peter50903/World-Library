@@ -1,0 +1,50 @@
+CreatureTraitID,中文名稱,英文名稱,分類,效果Key,效果值,前置條件,禁止條件,權重,說明,Enabled
+CTR_PACK,群居,Pack Animal,行為,pack_behavior,1,,,1,提高群體行動傾向,TRUE
+CTR_FAST,快速,Fast,能力,movement_modifier,1.2,,,1,提高移動速度,TRUE
+CTR_SCENT,嗅覺敏銳,Strong Scent,感知,tracking_modifier,1.2,,,1,提高追蹤,TRUE
+CTR_HERBIVORE,草食,Herbivore,飲食,diet,草食動物,,,1,主要依植物資源生存,TRUE
+CTR_MOUNTABLE,可騎乘,Mountable,用途,mount_capability,1,size_sufficient,,1,可訓練作坐騎,TRUE
+CTR_LIVESTOCK,家畜適性,Livestock,用途,husbandry_efficiency,1.2,,,1,適合畜牧,TRUE
+CTR_ENDURANCE,耐力,Endurance,能力,stamina_modifier,1.2,,,1,長途工作/移動更穩定,TRUE
+CTR_LARGE_BODY,大型體型,Large Body,體型,body_size,1.5,,,1,增加食物、空間與力量需求,TRUE
+CTR_STRONG,強壯,Strong,能力,physical_modifier,1.2,,,1,提高物理能力,TRUE
+CTR_INNATE_MAGIC_MINOR,低階天生魔法,Minor Innate Magic,魔法,innate_magic_tier,1,monster_only,,1,怪物出生即有固定魔法能力,TRUE
+CTR_INNATE_MAGIC_MAJOR,高階天生魔法,Major Innate Magic,魔法,innate_magic_tier,3,monster_only,,0.5,高階固定天生魔法,TRUE
+CTR_FIRE_BREATH,火焰吐息,Fire Breath,天生魔法,innate_fire_breath,1,monster_only,,0.8,消耗自身魔力/體力，不能無限使用,TRUE
+CTR_COLD_BREATH,冰霜吐息,Cold Breath,天生魔法,innate_cold_breath,1,monster_only,,0.5,寒冰天生魔法,TRUE
+CTR_LIGHTNING_INNATE,天生雷電,Innate Lightning,天生魔法,innate_lightning,1,monster_only,,0.5,雷電怪物能力,TRUE
+CTR_COLD_AURA,寒氣,Cold Aura,天生魔法,innate_cold_aura,1,monster_only,,0.7,近距離寒冷效果,TRUE
+CTR_FLYING,飛行,Flying,生理/魔法,flight,1,,,0.8,允許飛行移動，仍受體力/天候限制,TRUE
+CTR_MAGIC_RESIST,魔法抗性,Magic Resistance,防禦,magic_resistance,0.2,,,0.5,降低魔法效果,TRUE
+CTR_HEAT_RESIST,耐熱,Heat Resistance,防禦,heat_resistance,0.5,,,0.8,適合高溫環境,TRUE
+CTR_COLD_RESIST,耐寒,Cold Resistance,防禦,cold_resistance,0.5,,,0.8,適合低溫環境,TRUE
+CTR_AGGRESSIVE,高攻擊性,Aggressive,行為,aggression_modifier,1.5,,,1,提高主動攻擊傾向,TRUE
+CTR_DEMONIZED,魔化,Demonized,狀態,demonic_influence,1,monster_only,,1,大幅提升攻擊性並啟用魔物規則,TRUE
+CTR_DISEASE_IMMUNE,疾病免疫,Disease Immune,生理,disease_immunity,1,,,1,免疫一般疾病,TRUE
+CTR_UNDEAD,不死體,Undead,生理,undead_rules,1,,,1,不使用一般生理需求，視不死生物定義決定,TRUE
+CTR_WEB,蛛網,Web,天生能力,web_attack,1,,,0.7,限制移動,TRUE
+CTR_POISON,毒素,Poison,生理,poison_attack,1,,,0.7,造成毒性狀態,TRUE
+CTR_CLIMB,攀爬,Climber,移動,climb_modifier,1.3,,,0.8,高攀爬適性,TRUE
+CTR_ACID,酸液,Acid,天生能力,acid_damage,1,,,0.5,腐蝕效果,TRUE
+CTR_REGEN_MINOR,低階再生,Minor Regeneration,生理,hp_regen_modifier,1.2,,,0.4,只恢復可恢復組織，不重生肢體,TRUE
+CTR_DRAGON_BODY,龍之軀,Draconic Body,體型/生理,dragon_body_rules,1,monster_only,,0.2,大型、長壽、高資源需求且具高耐久潛力的龍類身體；實際能力仍由個體成長、物種與個人上限決定,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

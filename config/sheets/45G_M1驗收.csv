@@ -1,0 +1,31 @@
+CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled
+M1_RES,資源守恆,每個資源點／期初庫存+流入減流出=結束，所有差額有原因,Hard,資源帳,TRUE
+M1_POP,人口守恆,出生／死亡／遷徙／具體化全部對帳,Hard,人口帳,TRUE
+M1_NO_MAGIC_FOOD,無魔法糧食,食物增量只能來自合法採集／農牧／配方／神蹟定義,Hard,生產原因,TRUE
+M1_ACCESS,取得與庫存分離,存在有糧但部分取用分組飢餓的情境可合法出現,Behavior Check,食物取用,TRUE
+M1_FAMINE,危機有因果,缺糧可沿需求→生產力→死亡／遷徙傳導，恢復也有實際來源,Behavior Check,因果圖,TRUE
+M1_MIG,遷徙不瞬移,來源／途中／目的地人口帳一致；路線／成本有效,Hard,遷徙帳,TRUE
+M1_SETTLE,新聚落不憑空,建立人口／物資從來源扣除，失敗也能回寫,Hard,建立計畫,TRUE
+M1_STABILITY,穩定聚落可長期存在,不是所有種子都因數值失控在100年內全滅或無限爆人口,Warning,出生／死亡／食物分配,TRUE
+M1_VARIETY,不同環境有不同結果,資源／氣候／路線不同的地區應產生可觀察人口／產業差異,Warning,地區指標,TRUE
+M1_HISTORY,危機可讀,觀察者能從地方史看出至少饑荒／遷徙／資源枯竭等原因→效果,Behavior Check,43F 因果索引,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

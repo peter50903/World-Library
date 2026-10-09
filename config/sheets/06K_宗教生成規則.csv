@@ -1,0 +1,46 @@
+GenerationRuleID,階段,PoolSheet,PoolID,DrawMin,DrawMax,Mandatory,WeightInputs,GlobalLimitGroup,GlobalLimit,說明,Enabled
+REL_CORE_VALUE,核心信條,P04A_宗教核心信條池,POOL_REL_CORE_VALUES,0,2,FALSE,"Founder Personality,Values,Culture,LifeHistory",CORE_TENETS,2~4,核心信條總數受CORE_TENETS限制,TRUE
+REL_CORE_WORLDVIEW,核心信條,P04A_宗教核心信條池,POOL_REL_CORE_WORLDVIEW,0,2,FALSE,"Founder Personality,Values,Culture,Environment",CORE_TENETS,2~4,世界觀類核心信條,TRUE
+REL_CORE_RITUAL,核心信條,P04A_宗教核心信條池,POOL_REL_CORE_RITUAL,0,2,FALSE,"Founder ReligionExperience,Culture,Profession",CORE_TENETS,2~4,儀式與生活類核心信條,TRUE
+REL_MARRIAGE,制度教義,P04B_婚姻家庭教義池,POOL_REL_MARRIAGE,1,1,TRUE,"Culture,FounderValues",,,婚姻結構,TRUE
+REL_DIVORCE,制度教義,P04B_婚姻家庭教義池,POOL_REL_DIVORCE,1,1,TRUE,"Culture,FounderValues",,,離婚態度,TRUE
+REL_FAMILY,制度教義,P04B_婚姻家庭教義池,POOL_REL_FAMILY_NORM,0,1,FALSE,"Culture,FounderValues",,,家庭規範附加項,TRUE
+REL_GENDER,制度教義,P04C_性別繼承教義池,POOL_REL_GENDER,1,1,TRUE,"Culture,FounderValues",,,宗教性別規範，不直接覆蓋國家法律,TRUE
+REL_CLERGY_GENDER,制度教義,P04C_性別繼承教義池,POOL_REL_CLERGY_GENDER,1,1,TRUE,"FounderValues,Culture",,,神職性別偏好,TRUE
+REL_CLERGY_APPOINT,制度教義,P04D_神職制度教義池,POOL_REL_CLERGY_APPOINT,1,1,TRUE,"PoliticalEnvironment,FounderValues",,,神職任命制度,TRUE
+REL_CLERGY_TERM,制度教義,P04D_神職制度教義池,POOL_REL_CLERGY_TERM,1,1,TRUE,PoliticalEnvironment,,,神職任期,TRUE
+REL_CLERGY_MARRIAGE,制度教義,P04D_神職制度教義池,POOL_REL_CLERGY_MARRIAGE,1,1,TRUE,"Culture,FounderValues",,,神職婚姻,TRUE
+REL_CLERGY_PROPERTY,制度教義,P04D_神職制度教義池,POOL_REL_CLERGY_PROPERTY,1,1,TRUE,"Economy,FounderValues",,,神職財產觀,TRUE
+REL_WAR,制度教義,P04E_戰爭和平教義池,POOL_REL_WAR,1,1,TRUE,"FounderHistory,Culture,CurrentThreats",,,戰爭觀,TRUE
+REL_HOLY_DEFENSE,制度教義,P04E_戰爭和平教義池,POOL_REL_HOLY_DEFENSE,0,1,FALSE,"ThreatHistory,CoreTenets",,,護教戰爭附加項,TRUE
+REL_WEALTH,制度教義,P04F_財富戒律教義池,POOL_REL_WEALTH,1,1,TRUE,"FounderValues,Economy,Culture",,,財富觀,TRUE
+REL_TITHE,制度教義,P04F_財富戒律教義池,POOL_REL_TITHE,0,1,FALSE,"ChurchOrganizationNeed,Economy",,,奉獻制度,TRUE
+REL_FUNERAL,制度教義,P04G_死亡喪葬教義池,POOL_REL_FUNERAL,1,1,TRUE,"Culture,Environment,FounderValues",,,葬儀形式,TRUE
+REL_ANCESTOR,制度教義,P04G_死亡喪葬教義池,POOL_REL_ANCESTOR,0,1,FALSE,"Culture,HouseTradition",,,祖先崇敬附加項,TRUE
+REL_RESURRECTION,制度教義,P04G_死亡喪葬教義池,POOL_REL_RESURRECTION,1,1,TRUE,"CoreTenets,MiracleAccess",,,復活態度,TRUE
+REL_CONVERSION,制度教義,P04H_改宗異端教義池,POOL_REL_CONVERSION,1,1,TRUE,"FounderValues,PoliticalEnvironment",,,改宗態度,TRUE
+REL_APOSTASY,制度教義,P04H_改宗異端教義池,POOL_REL_APOSTASY,1,1,TRUE,FounderValues,,,離教態度,TRUE
+REL_MAGIC,制度教義,P04I_魔法死靈教義池,POOL_REL_MAGIC,1,1,TRUE,"FounderMagicExperience,Culture",,,一般魔法態度,TRUE
+REL_NECRO,制度教義,P04I_魔法死靈教義池,POOL_REL_NECRO,1,1,TRUE,"FounderDeathExperience,CoreTenets",,,死靈態度,TRUE
+REL_SLAVERY,制度教義,P04J_奴隸身分教義池,POOL_REL_SLAVERY,1,1,TRUE,"Culture,FounderValues,SocialStructure",,,奴役態度,TRUE
+REL_MANUMISSION,制度教義,P04J_奴隸身分教義池,POOL_REL_MANUMISSION,0,1,FALSE,"MercyTenet,FounderValues",,,解放奴隸附加宗教行為,TRUE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE
+,,,,,,FALSE,,,,,FALSE

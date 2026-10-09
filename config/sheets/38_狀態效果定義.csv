@@ -1,0 +1,26 @@
+StatusID,中文名稱,英文名稱,分類,來源,核心效果,可自然解除,解除條件,擁有者／控制者關聯,死亡後保留,說明,Enabled
+ST_ENSLAVEMENT_CURSE,奴役詛咒,Enslavement Curse,詛咒/法律身分,奴隸身分成立,必須絕對服從合法擁有者／控制者可理解命令,FALSE,自由／合法解除／特殊世界效果,是；命令權隨合法控制關係同步,FALSE,不改寫人格／看法／知識；擁有者死亡立即自由並解除,TRUE
+ST_BLEEDING,流血,Bleeding,傷勢,傷勢／攻擊,持續造成HP損失,真,止血/治療/自然停止,否,FALSE,嚴重度與持續時間由傷勢決定,TRUE
+ST_UNCONSCIOUS,昏迷,Unconscious,健康,損傷／健康,不能正常行動但不提供死亡保護,真,恢復條件/治療,否,FALSE,玩家可離開附身，角色仍在世界中,TRUE
+ST_OVERLOADED,超重,Overloaded,負重,有效負重不足,降低移動/閃避/體力效率,真,降低負重或恢復耐力／容量,否,FALSE,裝備不會自動消失,TRUE
+ST_DEMONIZED,魔化,Demonized,魔氣狀態,魔化影響,啟用魔物高攻擊性與一般疾病免疫規則,假,淨化／特殊效果,可有魔物控制者但≠擁有者,FALSE,不改物種；一般疾病於魔化時清除,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

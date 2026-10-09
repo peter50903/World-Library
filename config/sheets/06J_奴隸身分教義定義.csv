@@ -1,0 +1,25 @@
+DoctrineID,中文名稱,英文名稱,子類型,EffectKey,EffectValue,對國家法律的關係,看法／信仰值影響,國家AI偏好,互斥群組,說明,Enabled
+RDS_OPPOSE,反對奴役,Anti-Slavery,奴隸,slavery_attitude,opposed,不直接使奴隸制度非法,擁有／販賣奴隸降低信仰值／宗教看法,偏好國家禁奴,SLAVERY_STANCE,國家法律仍決定合法性,TRUE
+RDS_RESTRICT,限制奴役,Restricted Slavery,奴隸,slavery_attitude,restricted,不直接改奴隸法律,殘酷奴役/大規模販運宗教成本較高,偏好限制來源/待遇,SLAVERY_STANCE,具體限制需法律／宗教組織實作,TRUE
+RDS_ACCEPT,容許奴役,Slavery Accepted,奴隸,slavery_attitude,accepted,不直接建立奴隸制度,奴隸所有本身無宗教懲罰,低干預,SLAVERY_STANCE,擁有者死亡釋放等世界規則仍不變,TRUE
+RDS_REDEMPTION,贖身慈善,Redemptive Manumission,奴隸,manumission_goal_weight,1.3,不改擁有者權利,釋放/贖買奴隸提高宗教聲望,提高解放奴隸偏好,,實際解放仍需合法身分事件,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

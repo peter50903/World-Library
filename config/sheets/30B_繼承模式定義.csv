@@ -1,0 +1,40 @@
+RuleID,中文名稱,英文名稱,RuleType,RuleValue,EffectKey,RequiredConditions,ForbiddenConditions,CompatibilityTags,說明,Enabled
+DIST_SINGLE_HEIR,單一繼承,Single Heir,Distribution,single,title_distribution,至少1名EligibleHeir,,SINGLE_TITLE,每一頭銜由單一角色繼承,TRUE
+DIST_TITLE_PARTITION,多頭銜分配,Title Partition,Distribution,partition_existing_titles,title_distribution,持有多個可繼承Title,,MULTI_TITLE,只分配既有頭銜；不把單一頭銜／行省自動切碎,TRUE
+DIST_PRIMARY_HEAVY,主繼承人優先分配,Primary-Heir Weighted Partition,Distribution,primary_heir_majority,title_distribution,持有多個Title,,MULTI_TITLE,主繼承人取得最高頭銜與較多附屬頭銜，其他合資格者取得剩餘既有頭銜,TRUE
+PRI_ELDEST,長子女優先,Primogeniture Priority,Priority,eldest,heir_priority,有直系後代,,DESCENDANT_ORDER,按年齡由長至幼排序，不代表性別資格,TRUE
+PRI_YOUNGEST,幼子女優先,Ultimogeniture Priority,Priority,youngest,heir_priority,有直系後代,,DESCENDANT_ORDER,按年齡由幼至長排序,TRUE
+PRI_HOUSE_SENIORITY,家族尊長,House Seniority,Priority,oldest_house_member,heir_priority,House存在,,HOUSE_ORDER,在合資格家族成員中偏向年長／高輩分,TRUE
+PRI_PROXIMITY,血緣親近,Proximity of Blood,Priority,closest_kin,heir_priority,FamilyGraph可計算,,KIN_ORDER,先比親等，再用次排序解決同級,TRUE
+PRI_ELECTIVE,選舉,Elective,Priority,election,heir_priority,存在Elector規則,,ELECTIVE,由真實選帝角色投票；知識限制其判斷,TRUE
+PRI_APPOINTED,指定繼承,Appointment,Priority,appointment,heir_priority,有合法AppointmentAuthority,,APPOINTMENT,指定者仍須符合資格,TRUE
+PRI_MERIT,能力推舉,Merit Selection,Priority,merit_score,heir_priority,存在候選評選機制,,MERIT,評分來自真實能力、聲望、支持、軍功、財富等，不看世界真相未知資訊,TRUE
+GEN_MALE_ONLY,男性限定,Male Only,Gender,male_only,gender_eligibility,,,GENDER,只在採用此法律的頭銜／國家生效,TRUE
+GEN_MALE_PREF,男性優先,Male Preference,Gender,male_preference,gender_priority,,,GENDER,男性優先，同層無男性時女性可繼承,TRUE
+GEN_EQUAL,性別平等,Equal Gender,Gender,equal,gender_priority,,,GENDER,男／女同等資格,TRUE
+GEN_FEMALE_PREF,女性優先,Female Preference,Gender,female_preference,gender_priority,,,GENDER,女性優先，同層無女性時男性可繼承,TRUE
+GEN_FEMALE_ONLY,女性限定,Female Only,Gender,female_only,gender_eligibility,,,GENDER,只在採用此法律的頭銜／國家生效,TRUE
+HEAD_SENIOR_ELIGIBLE,尊長家主,Senior House Head,HouseHead,senior_eligible,house_head_selection,House存在,,HOUSE_HEAD,家主不等於所有頭銜的法定繼承人,TRUE
+HEAD_ELECTIVE,家族選舉家主,Elective House Head,HouseHead,house_election,house_head_selection,成年House Members存在,,HOUSE_HEAD,由有投票資格家族成員選舉,TRUE
+HEAD_APPOINTED,指定家主,Appointed House Head,HouseHead,appointment,house_head_selection,現任HouseHead可合法指定,,HOUSE_HEAD,被指定人須符合家族資格,TRUE
+HEAD_MERIT,能力家主,Merit House Head,HouseHead,merit_score,house_head_selection,House存在,,HOUSE_HEAD,依家族內部聲望、能力、財富、支持等選出,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

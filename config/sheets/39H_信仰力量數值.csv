@@ -1,0 +1,31 @@
+RuleID,中文名稱,適用,V1公式／數值,頻率,說明,Enabled
+FP_FOLLOWER,正式信徒,宗教／神祇,Faith>=50,持續,信仰值同時=相信+虔誠+重要程度,TRUE
+FP_NORM,平均信仰值正規化,神祇,"FaithNorm=clamp(0,1,(AvgFaithOfThisGodFormalFollowers-49)/51)",每月彙總,只統計守護神ID=此神祇且信仰值>=50,TRUE
+FP_FERVOR,宗教熱忱倍率,宗教→神祇修正,0.5+ReligionFervor/100,每月,同一宗教神系可共享宗教熱忱環境,TRUE
+FP_ACTIVITY,宗教活動倍率,宗教／神祇,Low=0.5x；Normal=1x；High=1.25x,每月,祈禱／儀式活動需按神祇歸屬彙總，再可受宗教整體活動修正,TRUE
+FP_HOLY,聖地倍率,神祇,"min(1.5,1+0.1*DedicatedActiveHolySiteCount)",每月,只計奉獻神祇ID包含此神祇的活躍聖地,TRUE
+FP_GENERATE,信仰力量月產生,神祇,GodFollowerCount*GodFaithNorm*ReligionFervorFactor*GodActivityFactor*GodHolyFactor*0.10*P_FAITH_POWER_SCALE,每月,每位神祇獨立池；多神宗教不重複計算同一信徒,TRUE
+FP_DECAY,信仰力量自然耗散,神祇,10%/year,每年,每位神祇池獨立衰減,TRUE
+FP_NONEXIST,神祇不存在,神祇,該God FormalFollowerCount=0時Generation=0且不能施放Miracle；既有Pool照常Decay,事件/年度,同宗教其他神祇可繼續存在,TRUE
+FP_CAST,神蹟支付,神祇／神蹟,若GodPool>=FaithPowerCost且Definition前置合法：先原子扣Cost，再100%執行Effect,施放時,不得從神系其他神祇池代付,TRUE
+FP_PLAYER,玩家神祇,玩家／神祇,與NPC God完全共用各God獨立FaithPower規則,施放時,玩家不獲免費資源,TRUE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE

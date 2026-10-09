@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+NECRO_CORPSE_SENSE,屍骸感知,Corpse Sense,Spell,1,屍體,,,KNOW_NECRO_BASIC,1,8,短,短,detect_corpse,感知附近Corpse/Remains,不提供死者Knowledge,死靈根節點,TRUE
+PRESERVE_CORPSE,遺骸保存,Preserve Corpse,Spell,1,屍體,NECRO_CORPSE_SENSE,,KNOW_PRESERVE_CORPSE,1,15,中,中,corpse_decay_modifier,降低腐化速度,不復活Character,屍體處理,TRUE
+ANIMATE_CORPSE,屍體活化,Animate Corpse,Spell,2,不死,PRESERVE_CORPSE,,KNOW_ANIMATE_CORPSE,2,60,中,長,create_undead,由Corpse建立新Undead Entity,Undead不是原Character,核心死靈術,TRUE
+BIND_UNDEAD,不死束縛,Bind Undead,Spell,2,控制,ANIMATE_CORPSE,,KNOW_BIND_UNDEAD,2,35,中,中,undead_control,控制合法Undead目標,控制有容量/強度限制,控制分支,TRUE
+BONE_SERVANT,骸骨僕役,Bone Servant,Spell,3,不死,ANIMATE_CORPSE,,KNOW_BONE_SERVANT,3,70,長,長,create_undead_variant,建立較穩定骸骨型Undead,需真實遺骸,不死兵力,TRUE
+UNDEAD_EMPOWER,不死強化,Empower Undead,Spell,3,強化,BIND_UNDEAD,,KNOW_UNDEAD_EMPOWER,3,50,中,中,undead_modifier,+暫時戰力,不永久改Species,支援死靈軍,TRUE
+DRAIN_LIFE,生命汲取,Life Drain,Spell,3,死亡,NECRO_CORPSE_SENSE,,KNOW_DRAIN_LIFE,3,45,短,中,hp_transfer,傷害活體並回復自身HP,遵守HP/傷勢系統,攻擊分支,TRUE
+MASS_ANIMATION,群體活化,Mass Animation,Spell,4,不死,"BONE_SERVANT,UNDEAD_EMPOWER",,KNOW_MASS_ANIMATION,4,140,極長,極長,create_multiple_undead,一次活化多具Corpse,每具仍建立獨立Undead Entity,高階死靈術,TRUE
+DEAD_ZONE_SEED,死域播種,Dead Zone Seed,Spell,4,死域,"DRAIN_LIFE,MASS_ANIMATION",,KNOW_DEAD_ZONE_SEED,4,180,極長,極長,create_dead_zone,建立/擴大局部DeadZone,屬Magic-origin環境效果，可能長期存在,環境型死靈術,TRUE
+LEGION_COMMAND,亡者軍團支配,Legion Command,Spell,5,控制,"MASS_ANIMATION,DEAD_ZONE_SEED",,KNOW_LEGION_COMMAND,5,300,極長,極長,undead_control_capacity,大幅提高可控Undead規模,仍需真實Undead，不生成免費軍隊,死靈系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

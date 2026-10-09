@@ -1,0 +1,45 @@
+TraitID,中文名稱,英文名稱,類型,效果Key,效果值,前置條件,禁止條件,權重,可後天取得,可消失,說明,Enabled
+RTRAIT_ADAPTABLE,適應性,Adaptable,種族固定,environment_adaptation,1,,,1,FALSE,FALSE,對多數環境的適應懲罰較低,TRUE
+RTRAIT_LONG_LIVED,長壽,Long Lived,種族固定,lifespan_multiplier,3,,,1,FALSE,FALSE,延長自然壽命與生命階段,TRUE
+RTRAIT_LOW_FERTILITY,低生育率,Low Fertility,種族固定,fertility_multiplier,0.45,,,1,FALSE,FALSE,用較低生育率平衡長壽人口,TRUE
+RTRAIT_MAGIC_AFFINITY,魔法親和,Magic Affinity,可能特性,magic_learning_speed,1.25,,,1,FALSE,FALSE,只影響學習效率，不賦予免費魔法,TRUE
+RTRAIT_NATURE_AFFINITY,自然親和,Nature Affinity,可能特性,nature_environment_bonus,1.2,,,0.8,FALSE,FALSE,在森林／自然環境行動較有優勢,TRUE
+RTRAIT_STURDY,強韌體格,Sturdy,種族固定,con_effective_modifier,1.15,,,1,FALSE,FALSE,提高體質相關有效表現,TRUE
+RTRAIT_CRAFT_AFFINITY,工藝親和,Craft Affinity,可能特性,craft_exp_rate,1.2,,,0.9,FALSE,FALSE,工藝技能成長較快,TRUE
+RTRAIT_DISEASE_RESIST,疾病抗性,Disease Resistance,可能特性,disease_resistance,0.2,,,0.8,FALSE,FALSE,降低一般疾病惡化／感染風險，不等於免疫,TRUE
+RTRAIT_PHYSICAL_POWER,強大體能,Physical Power,種族固定,physical_cap_modifier,1.2,,,1,FALSE,FALSE,提高力量／體質個人上限分布,TRUE
+RTRAIT_RESILIENT,堅韌,Resilient,可能特性,stress_resistance,1.15,,,1,FALSE,FALSE,對長期壓力較不容易崩潰,TRUE
+RTRAIT_WAR_AFFINITY,戰鬥傾向,War Affinity,可能特性,combat_exp_rate,1.15,,,0.8,FALSE,FALSE,戰鬥技能成長較快，不強制好戰,TRUE
+RTRAIT_DEMON_CONTROL,魔物控制,Demon Control,種族固定,demonized_monster_control,1,,,1,FALSE,FALSE,魔族天生可以控制魔物，受個人控制上限限制,TRUE
+RTRAIT_FAST_LEARN,快速學習,Fast Learner,可能特性,skill_exp_rate,1.15,,,0.6,FALSE,FALSE,通用技能經驗值成長較快,TRUE
+RTRAIT_SMALL_BODY,小型體型,Small Body,種族固定,body_size,0.7,,,1,FALSE,FALSE,較低負重與食物需求，較高狹窄地形適應,TRUE
+RTRAIT_AGILE,靈巧,Agile,可能特性,dex_cap_modifier,1.15,,,0.8,FALSE,FALSE,提高 DEX 個人上限分布,TRUE
+RTRAIT_SOCIAL,社交親和,Social Affinity,可能特性,social_interaction_modifier,1.1,,,0.7,FALSE,FALSE,較容易進行正向社交互動,TRUE
+RTRAIT_GIANT_BODY,巨型體型,Giant Body,種族固定,body_size,2.5,,,1,FALSE,FALSE,提高負重、食物需求與大型裝備需求,TRUE
+RTRAIT_COLD_BLOODED,變溫體質,Cold Blooded,種族固定,temperature_dependence,1,,,1,FALSE,FALSE,低溫環境效率下降，高溫環境較適應,TRUE
+RTRAIT_SWAMP_ADAPT,濕地適應,Swamp Adaptation,可能特性,swamp_movement_bonus,1.2,,,0.8,FALSE,FALSE,濕地移動與生存更有利,TRUE
+RTRAIT_DRAGON_BODY,龍族體魄,Dragon Physiology,種族固定,dragon_physiology,1,race=dragon,,1,FALSE,FALSE,大型高耐久生理基礎；不是怪物特性,TRUE
+RTRAIT_DRAGON_POWER,龍之力量,Draconic Power,種族固定,physical_cap_modifier,1.6,race=dragon,,1,FALSE,FALSE,顯著提高STR/CON等個人上限分布，不直接送滿能力值,TRUE
+RTRAIT_DRAGON_GENIUS,龍之天賦,Draconic Genius,種族固定,talent_level_bonus,2,race=dragon,,1,FALSE,FALSE,各廣域天賦生成等級顯著提高，仍不直接送技能,TRUE
+RTRAIT_DRAGON_WISDOM,龍之智慧,Draconic Wisdom,種族固定,int_wis_cap_modifier,1.5,race=dragon,,1,FALSE,FALSE,提高INT/WIS個人上限分布；知識仍靠真實學習,TRUE
+RTRAIT_DRAGON_SOLITARY,獨居龍域,Solitary Dragon,種族固定,resident_adult_dragon_cap,1,race=dragon,,1,FALSE,FALSE,每個地區最多一隻定居成年龍。求偶／交配時允許第二隻成年龍作為暫時求偶訪客停留約5年且不建立第二龍域；幼龍由母龍撫養且不計入成年定居上限，成年後必須離開母龍地區,TRUE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE
+,,,,,,,,,FALSE,FALSE,,FALSE

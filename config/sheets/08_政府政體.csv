@@ -1,0 +1,28 @@
+GovernmentTypeID,中文名稱,英文名稱,最高權力類型,核心官職模板,繼承／產生方式,可購買貴族身分,說明,Enabled
+GOV_MONARCHY,君主制,Monarchy,國王／女王,"統治者,宰相,財政大臣,軍隊指揮官,總督",世襲／繼承法,否,單一王權為核心，可搭配貴族封建結構,TRUE
+GOV_EMPIRE,帝國制,Empire,皇帝,"皇帝,宰相,財政大臣,大元帥,總督,附庸王",帝位繼承法,否,可有從屬王國,TRUE
+GOV_FEUDAL,封建王國,Feudal Kingdom,國王,"國王,大領主,地方領主,元帥,管家",王位繼承＋封臣階層,部分,貴族與領地政治比重高,TRUE
+GOV_MERCHANT_CITY,商業城邦,Merchant City-State,最富有的合格統治者,"統治者,司庫,商會主,衛隊長",依財富評估週期產生,是,最富有合資格者在評估週期成為統治者,TRUE
+GOV_TRIBE,部落制,Tribal,酋長,"酋長,長老,戰爭首領,薩滿",血統／力量／聲望／支持／宗教文化加權,否,繼承非固定單一規則,TRUE
+GOV_COUNCIL,議會制,Council State,議會,"議員,使用者,司庫,軍隊指揮官",議會內部選舉／任命,是,可由多個官職共同形成主權機關,TRUE
+GOV_THEOCRATIC_PROXY,神權代理制,Theocratic Proxy,大祭司／攝政,"大祭司,神諭,管家,神殿衛隊指揮官",宗教制度產生代理統治者,否,神祇不直接跑日常官職AI，由代理人執政,TRUE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE

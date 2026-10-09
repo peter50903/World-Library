@@ -1,0 +1,33 @@
+BuildingDefID,LocationRequirement,ResourceRequirement,AccessRequirement,SafetyConstraint,NetworkRequirement,ForbiddenCondition,說明,Enabled
+BUILD_FARM,可耕地,,Land access,受Climate/Weather影響,,無可用農地,農場建築不能讓不可耕地憑空肥沃,TRUE
+BUILD_MINE,礦脈Location,有效ResourcePoint,Transport access,坍塌/通風風險,,無可採礦脈,,TRUE
+BUILD_QUARRY,石材ResourcePoint,Stone source,Transport access,工程安全,,無石材來源,,TRUE
+BUILD_PORT,海岸/可航河岸,,Water+Land access,Storm/Wave,Water Route,無可用岸線,,TRUE
+BUILD_WALL_WOOD,合法邊界/防線位置,,Construction access,,Connected Segments,,牆段逐段施工,TRUE
+BUILD_WALL_STONE,合法邊界/防線位置,,Construction access,,Connected Segments,,,TRUE
+BUILD_GATE_WOOD,Wall Line,,Road/Passage,,Adjacent Wall,沒有連接牆段,,TRUE
+BUILD_GATE_STONE,Wall Line,,Road/Passage,,Adjacent Wall,沒有連接牆段,,TRUE
+BUILD_STABLE,Settlement/estate,,Road access,需Water/Fodder,,,坐騎照護需真實資源,TRUE
+BUILD_GRANARY,Settlement/Farm network,,Cart/Worker access,Fire/Pest risk,Food Logistics,,位置影響糧食運輸效率,TRUE
+BUILD_WAREHOUSE,Trade/Production node,,Road/Port access,Fire/Theft risk,Logistics,,,TRUE
+BUILD_CASTLE,Strategic site,,Supply access,Siege/Water needs,Road/Defense network,,孤立城堡仍需要補給,TRUE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE

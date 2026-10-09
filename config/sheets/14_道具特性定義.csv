@@ -1,0 +1,40 @@
+ItemTraitID,中文名稱,英文名稱,分類,效果Key,效果值範圍,前置條件,禁止條件,互斥特性,協同特性,權重,稀有度,說明,Enabled
+ITR_STR,力量增幅,Strength Boost,能力,str_modifier,1~5,裝備類,,,,1,少見,提高有效STR，不改基礎數值,TRUE
+ITR_DEX,靈巧增幅,Dexterity Boost,能力,dex_modifier,1~5,裝備類,,,,1,少見,提高有效DEX,TRUE
+ITR_CON,體質增幅,Constitution Boost,能力,con_modifier,1~5,裝備類,,,,1,少見,提高有效CON,TRUE
+ITR_INT,智力增幅,Intelligence Boost,能力,int_modifier,1~5,裝備類,,,,1,稀有,提高有效INT,TRUE
+ITR_MANA,魔力上限,Mana Capacity,魔法,max_mp_modifier,5~30,魔法裝備,,,,1,稀有,提高最大MP,TRUE
+ITR_MANA_EFF,魔力效率,Mana Efficiency,魔法,mp_cost_modifier,-5%~-15%,魔法裝備,,,,0.6,稀有,降低後天魔法MP成本，受疊加上限,TRUE
+ITR_FIRE_RESIST,火焰抗性,Fire Resistance,防禦,fire_resistance,5%~25%,防具,,,,1,稀有,降低火焰效果,TRUE
+ITR_COLD_RESIST,寒冷抗性,Cold Resistance,防禦,cold_resistance,5%~25%,防具,,,,1,稀有,降低寒冷／冰效果,TRUE
+ITR_MAGIC_RESIST,魔法抗性,Magic Resistance,防禦,magic_resistance,3%~15%,防具,,,,0.5,史詩,廣義魔法防禦,TRUE
+ITR_DURABLE,耐久,Durable,品質,durability_modifier,10%~50%,可損耗道具,,ITR_FRAGILE,,1,普通,提高最大耐久,TRUE
+ITR_FRAGILE,脆弱,Fragile,缺陷,durability_modifier,-10%~-40%,可損耗道具,,ITR_DURABLE,,0.5,普通,降低最大耐久,TRUE
+ITR_LIGHTWEIGHT,輕量,Lightweight,品質,weight_modifier,-10%~-35%,裝備,,ITR_HEAVY,,0.8,少見,降低重量,TRUE
+ITR_HEAVY,沉重,Heavy,品質,weight_modifier,10%~40%,裝備,,ITR_LIGHTWEIGHT,,0.8,普通,提高重量，可配合高防護,TRUE
+ITR_SHARP,鋒利,Sharp,武器,physical_damage_modifier,5%~20%,刀劍武器,,,,1,少見,提高物理傷害,TRUE
+ITR_HEALING,治療增幅,Healing Amplifier,魔法,healing_effect_modifier,5%~20%,魔法裝備,,,,0.5,稀有,提高治療魔法效果,TRUE
+ITR_FIRE_MAGIC,火焰增幅,Flame Affinity,魔法,fire_magic_modifier,5%~20%,魔法裝備,,,,0.6,稀有,提高火焰魔法效果,TRUE
+ITR_CURSED,詛咒,Cursed,特殊,negative_trait_pool,1,特殊物品,,,,0.2,史詩,從負面效果池附加一種代價,TRUE
+ITR_SOULBOUND,靈魂綁定,Soulbound,特殊,transfer_restriction,1,特殊物品,,,,0.1,傳說,限制正常交易／持有轉移，具體規則由定義設定,TRUE
+ITR_EXISTENCE_RESONANCE,存在共鳴,Existence Resonance,特殊,temporary_existence_bonus_while_held,依階級／定義,傳說／神話／世界或特殊事件來源,,,,0.05,傳說／神話,持有期間提高有效存在值；可讓智慧種族低基礎存在值角色暫時進入降臨候選，不直接提升數值／技能,TRUE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,FALSE

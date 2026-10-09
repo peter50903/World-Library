@@ -1,0 +1,31 @@
+MagicSystemID,中文名稱,英文名稱,SystemSkillID,核心定位,主要分支,RootNodeID,MaxTier,可跨系統學習,世界法則限制,Enabled
+MS_FIRE,火焰魔法,Fire Magic,SK_MAGIC_FIRE,直接傷害、燃燒、區域壓制,投射／燃燒／範圍,FIRE_SPARK,5,TRUE,魔法能量可造成真實火災，但不能永久無中生有創造物質,TRUE
+MS_WATER_ICE,水冰魔法,Water & Ice Magic,SK_MAGIC_WATER_ICE,操水、冰凍、控制、防禦,水流／冰凍／防禦,WATER_SHAPE,5,TRUE,優先操控既有水；臨時魔法水／冰不能永久增加世界資源,TRUE
+MS_WIND_LIGHTNING,風雷魔法,Wind & Lightning Magic,SK_MAGIC_WIND_LIGHTNING,移動、擊退、雷擊、高速攻擊,風壓／機動／雷電,WIND_GUST,5,TRUE,不直接改長期氣候；飛行／高速移動仍受MP、體力、天候限制,TRUE
+MS_EARTH,土系魔法,Earth Magic,SK_MAGIC_EARTH,地形操控、防禦、工程、震擊,土石／防禦／工程,EARTH_SHAPE,5,TRUE,操控真實土石可留下永久結果；臨時造物消散,TRUE
+MS_HEALING,治療魔法,Healing Magic,SK_MAGIC_HEALING,HP、傷勢、疾病輔助治療,生命／傷勢／淨化,HEAL_MINOR,5,TRUE,普通治療魔法不能重生失去肢體，也不能真正復活,TRUE
+MS_SPACE,空間魔法,Spatial Magic,SK_MAGIC_SPACE,位移、傳送、空間儲存,位移／錨點／傳送,SPACE_SENSE,5,TRUE,目的地知識、距離、重量、人數與MP限制；一般空間儲存不可放活物,TRUE
+MS_WEATHER,天候魔法,Weather Magic,SK_MAGIC_WEATHER,局部天候操控、農業、航海、救災,降水／風場／溫度,WEATHER_SENSE,5,TRUE,只改天氣，不直接永久改氣候；大範圍效果成本極高,TRUE
+MS_ANTIMAGIC,反魔法,Anti-Magic,SK_MAGIC_ANTIMAGIC,偵測、解除、反制、抑制魔法,偵測／結界／抑制,ANTI_SENSE,5,TRUE,不得永久刪除角色已學技能；永久魔法物品只能依其自身規則解除,TRUE
+MS_NECROMANCY,死靈魔法,Necromancy,SK_MAGIC_NECROMANCY,屍體操縱、不死生物、死域,屍體／不死／死域,NECRO_CORPSE_SENSE,5,TRUE,驅動屍體建立新不死生物實體，不是復活原角色,TRUE
+MS_MENTAL,精神魔法,Mental Magic,SK_MAGIC_MENTAL,短期情緒與決策修正值,安撫／恐懼／控制,MENTAL_SENSE,5,TRUE,不得永久重寫人格、價值觀、看法、關係、忠誠或正式知識,TRUE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE
+,,,,,,,,FALSE,,FALSE

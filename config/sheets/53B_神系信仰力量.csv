@@ -1,0 +1,27 @@
+RuleID,中文名稱,正式規則,公式/處理,結果,Enabled
+PFP_GOD_POOL,信仰力量屬各神祇,神系內每位神祇有自己的信仰力量池；不建立整個宗教共用池。,GodID keyed pool,神力與神祇實體一致,TRUE
+PFP_FOLLOWER_SET,只計該神祇正式信徒,某神祇的信徒數／平均信仰值只統計守護神ID=該神祇且信仰值>=50的角色。,per-God aggregate,不把宗教全部信徒算給每位神,TRUE
+PFP_REL_MOD,宗教層修正可共享,宗教熱忱、整體活動等共同環境可作為每位神祇生成公式的修正值。,39H religion modifier,同教神受共同宗教興衰影響,TRUE
+PFP_HOLY_SITE,聖地依奉獻影響,聖地需標明奉獻神祇ID；只有被供奉的神祇取得聖地係數。共同神系神殿可列多神祇。,dedication list,避免每個神殿全神吃滿,TRUE
+PFP_PRAYER,祈禱貢獻歸守護神,一般祈禱與儀式預設貢獻給祈禱者守護神；若儀式明確供奉另一神系神祇，需合法宗教行為並產生相應信仰值／守護者影響。,event attribution,可形成改主神趨勢,TRUE
+PFP_NO_TRANSFER,神祇間不能自由轉信仰力量,神系神祇不能把自己的池直接轉給另一神祇，除非未來有明確神蹟／世界規則定義。,no direct transfer,防止共享錢包化,TRUE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE
+,,,,,FALSE

@@ -1,0 +1,27 @@
+RuleID,中文名稱,Trigger,FromTier,ToTier,RequiredConditions,TraitHandling,ItemIDHandling,CurseHandling,HistoryHandling,說明,Enabled
+EQR_MAGIC,取得第一條魔法/特殊特性,Item取得合法非Curse Trait,EQ_NORMAL,EQ_MAGIC,positive_trait_count>=1,保留並新增Trait,同一ItemID,不要求Curse,保留完整Item History,一般裝備可因附魔、工藝或事件成為魔法裝備,TRUE
+EQR_CURSE,受到詛咒,Item取得至少一條Curse Trait,EQ_NORMAL/EQ_MAGIC,EQ_CURSED,curse_trait_count>=1,追加Curse Trait,同一ItemID,Cursed標記獨立保存,保留完整Item History,若同時已達傳說／神話門檻，顯示高階階級並附詛咒標記,TRUE
+EQR_LEGENDARY,晉升傳說,Trait/Ability門檻+重大歷史或製作條件,Any below Legendary,EQ_LEGENDARY,total_traits>=4 + ability_bonus_band>=Medium + major_condition,既有Trait全保留，可再取得Legendary級Trait,同一ItemID,可有或無Curse,重大功績/製作者/事件成為晉升原因,不因單純抽到多條弱特性就自動成傳說,TRUE
+EQR_MYTHIC,晉升神話,高Trait/Ability門檻+世界級條件,EQ_LEGENDARY,EQ_MYTHIC,total_traits>=7 + ability_bonus_band=High + world_scale_condition,既有Trait全保留，可再取得Mythic級Trait,同一ItemID,可有或無Curse,必須有可追溯世界級來源,神話裝備極少，但不是人工固定唯一,TRUE
+EQR_NO_AUTO_DOWNGRADE,已晉升階級不因一般數值波動自動降級,Tier已正式晉升,Any,Same,除非Definition/特殊事件明確降級,Trait可被移除但歷史階級保留,同一ItemID,Curse解除只移除Cursed標記,保留,避免臨時增益消失造成裝備反覆跳階級,TRUE
+EQR_WORLD,世界裝備獨立,Handcrafted Unique Definition,N/A,WORLD_EQUIPMENT,作者明確設計,固定/專屬Trait與規則,獨立唯一ItemID,依Definition,固定背景+世界歷史,世界裝備不屬一般→神話一般晉升鏈,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

@@ -1,0 +1,37 @@
+EventTemplateID,中文名稱,分類,Trigger,參與者條件,世界條件,結果規則,是否重大世界事件,歷史重要度,說明,Enabled
+EV_BIRTH,出生,角色,Pregnancy完成,懷孕角色,存活/分娩條件,建立新角色，設定父母／出生地／國籍／種族,FALSE,5,角色人生基礎事件,TRUE
+EV_DEATH,死亡,角色,HP/致命條件/自然死亡,存活角色,死亡條件成立,角色→死亡 + 屍體,FALSE,8,死亡本身保存歷史真相；若死者存在值／身分／後果達重大條件，再由事件重要度升格正式世界史,TRUE
+EV_RESURRECT,復活,角色/宗教,Resurrection效果成功,死亡角色,符合遺骸／特殊神蹟條件,同角色ID重新存活,TRUE,9,不回滾財產／婚姻／官職,TRUE
+EV_STATE_FOUND,建國,政治,Faction建立穩定主權,派系／領袖,領土+政府+宣稱成立,建立新國家,TRUE,10,大型世界歷史,TRUE
+EV_STATE_EXTINCT,國家滅亡,政治,符合State Extinct規則,國家,無領土10年或其他明確條件,國家→滅絕，人民／軍隊／資產不刪,TRUE,10,大型世界歷史,TRUE
+EV_WAR_START,戰爭開始,戰爭,外交/政治決策,國家,合法敵對條件,建立戰爭狀態,TRUE,9,重大戰爭進世界史,TRUE
+EV_PEACE,和平條約,外交,Treaty完成,國家,雙方履約,結束戰爭並執行條款,TRUE,9,不修復既有破壞,TRUE
+EV_RELIGION_FOUND,宗教創立,宗教,Founder成功創教,角色,創教條件,建立宗教+神祇／神系+創立者信徒,TRUE,9,教義由特性池產生,TRUE
+EV_SCHISM,宗教分裂,宗教,內部Doctrine/政治條件,宗教／派系,分裂成立,建立新宗教實體,TRUE,8,神祇分配需唯一,TRUE
+EV_PLAGUE,大瘟疫,疾病,Disease大量傳播,人口／地區,感染規模超過門檻,升格重大瘟疫事件,TRUE,9,由真實疾病傳播形成,TRUE
+EV_DISASTER,重大災害,災害,Disaster規模超門檻,地區／聚落,受災規模超門檻,建立重大災害事件,TRUE,9,不做平衡型災害,TRUE
+EV_DUNGEON_REPLACE,地下城替換,地下城,ResetCount=0或Destroyed,地下城,合法地點可生成,舊地下城歷史保留，新地下城新ID,FALSE,6,世界始終維持替換機制,TRUE
+EV_THREAT_RISE,威脅升格,威脅,Threat條件提升,實體／地區,戰力/範圍達門檻,更新威脅分類,TRUE,8,不複製原實體,TRUE
+EV_CULTURE_SPLIT,文化分裂,文化,差異累積,文化／人口,分裂條件成立,建立新文化並保留衍生自,TRUE,7,歷史文化演化,TRUE
+EV_LANGUAGE_EXTINCT,語言滅絕,語言,最後Lv2+ Speaker消失,語言,speaker_count=0,語言→滅絕,TRUE,7,真實使用者復活可重新進行中,TRUE
+EV_DIVINE_DESCENT,神降世／神祇顯現,宗教/神蹟,MIR_DIVINE_MANIFESTATION完成且Witness/Impact達Major門檻,存在中的神祇／宗教／地點／目擊者,神蹟已合法正式提交；神祇無物理身體／化身／容器,建立重大神蹟顯現歷史；保存地點／時長／目擊者／傳述版本及連結的其他神蹟效果,TRUE,9,『神降世』是世界內歷史名稱；模擬真相仍為神蹟顯現，不代表神祇肉身進入世界,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

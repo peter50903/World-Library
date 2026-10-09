@@ -1,0 +1,35 @@
+RuleID,中文名稱,適用,V1公式／數值,結算頻率,說明,Enabled
+COMBAT_TICK,L4邏輯刻,即時場景,0.5 sec,L4,文字／自動戰鬥不做0.05秒物理刻,TRUE
+COMBAT_DECISION,基礎戰鬥決策間隔,角色自動戰鬥,2 sec基準；Action Definition/CastTime可覆寫,行動完成,不是固定回合UI,TRUE
+COMBAT_HIT,命中／對抗,角色,使用39A RES_SUCCESS_CHANCE,每次行動,技能／能力／裝備／國家／情勢正規化,TRUE
+COMBAT_RAW_DAMAGE,物理原始傷害,角色,WeaponPower*(0.75+0.5*SkillRatio)*(0.75+0.5*PrimaryAbilityRatio),命中後,武器是基礎，能力與熟練作0.75~1.25倍率,TRUE
+COMBAT_ARMOR,護甲減傷,角色,"Mitigation=min(0.80,ArmorRating/(ArmorRating+100))",受擊時,簡單飽和曲線，避免100%物防,TRUE
+COMBAT_FINAL_DAMAGE,最終物傷,角色,"max(MinDamage,RawDamage*(1-Mitigation)*StatusModifier)",受擊時,最低傷害依武器／護甲定義可為0或1,TRUE
+COMBAT_INJURY,傷勢嚴重度,角色,Damage/MaxHP:<10%無/輕微；10~25% Minor；25~50% Moderate；>=50% Severe/Critical,受擊後,身體部位／武器特性可上下修一級,TRUE
+COMBAT_FATAL,致命效果,角色,只有Definition允許Fatal且命中合法致命要害/條件成立才直接Death Pipeline,事件式,不要求先扣到HP=0,TRUE
+COMBAT_ESCAPE,逃跑,玩家/NPC,使用39A Opposed Score；Actor=Movement/DEX/Skill/Route，Target=EnemyControl/Terrain/Status,介入視窗/AI決策,成功後才改地點；可能追擊,TRUE
+ARMY_PULSE,遠距軍隊戰鬥脈衝,軍隊／單位,60 sec world time,每脈衝,不逐兵逐秒模擬,TRUE
+ARMY_POWER,單位有效戰力,軍事單位,Headcount*AvgCombatQuality*Equipment*Morale*Supply*Terrain*Counter + EliteContribution,每脈衝/重大變化,各倍率通常0.5~1.5；精英個體另加,TRUE
+ARMY_LOSS,主戰基準傷亡,軍事單位,LossRate=0.003*(EnemyPower/(OwnPower+EnemyPower))*PhaseFactor per minute,每60秒脈衝,相近軍力約單方0.15%/最小值，後續靠士氣／撤退縮短戰鬥,TRUE
+ARMY_BREAK,崩潰門檻,軍隊／單位,Morale<30 或 Cohesion<25 進Break評估；<15且無退路可提高Surrender,脈衝/重大事件,不是自動投降，仍看指揮官／路線／恐懼,TRUE
+ARMY_PURSUIT,追擊傷亡基準,撤退／追擊,0.006*(PursuitPower/(PursuitPower+ScreenPower)) per minute,追擊脈衝,騎兵/速度/地形修正,TRUE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE
+,,,,,,FALSE

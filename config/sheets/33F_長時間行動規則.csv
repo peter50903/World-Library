@@ -1,0 +1,32 @@
+LongActionID,中文名稱,TimeScale,ProgressUnit,RequiredInputs,Interruptible,ProgressOnInterrupt,CompletionEffect,RelatedSkill,說明,Enabled
+LONG_SLEEP,睡眠,小時,RestProgress,安全位置/睡眠條件,TRUE,保留已睡時間,降低Fatigue/恢復,,遭攻擊/災害可喚醒,TRUE
+LONG_EAT,進食,分鐘,ConsumeProgress,Food,TRUE,依Item規則處理部分消耗,補Nutrition/Hunger,,食物真實扣除,TRUE
+LONG_CRAFT,製作,分鐘~天,WorkProgress,Recipe/Materials/Tool/Facility,TRUE,保留已完成合法工序,產生Item/Resource,對應Craft Skill,失敗/中斷不得複製材料,TRUE
+LONG_BUILD,施工,小時~年,LaborProgress,Materials/Tool/Site,TRUE,保留,Building Project進度,SK_CONSTRUCTION,接18F施工規則,TRUE
+LONG_RESEARCH,研究,小時~年,ResearchProgress,ResearchTarget/Resources,TRUE,保留,Research Progress,SK_RESEARCH,符合時間+資源規則,TRUE
+LONG_TEACH,教學,分鐘~小時,LessonProgress,Teacher/Student/Knowledge,TRUE,部分保留,Knowledge/Skill EXP,SK_TEACHING,雙方都花時間,TRUE
+LONG_TRAIN,訓練,分鐘~小時,TrainingProgress,合法Training/Tool/Facility,TRUE,保留當次有效活動,Skill EXP/Ability Stimulus,依Skill,受疲勞與挑戰遞減,TRUE
+LONG_TRAVEL,旅行,分鐘~月,DistanceProgress,Route/Movement/Supply,TRUE,位置保留,Location改變,SK_SURVIVAL等,遭遇事件可切戰鬥循環,TRUE
+LONG_MEDICAL,醫療處置,分鐘~小時,TreatmentProgress,Patient/Medicine/Tool,TRUE,依療程,Health Treatment,SK_MEDICINE,嚴重程序中斷可能有風險,TRUE
+LONG_RITUAL,宗教儀式,分鐘~天,RitualProgress,Clergy/Participants/Items,TRUE,依儀式,Religion Activity/Miracle條件,SK_RELIGION,神蹟仍依07B成本與條件,TRUE
+LONG_WORK,一般工作,分鐘~小時,WorkProgress,Employment/Task/Tool,TRUE,保留可完成部分,產出/服務/薪資,依工作,所有就業最終落到實際行動,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

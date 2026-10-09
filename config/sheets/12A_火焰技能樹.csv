@@ -1,0 +1,30 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+FIRE_SPARK,火花,Spark,Spell,1,基礎,,,KNOW_FIRE_BASIC,1,5,短,無,ignite_small,點燃小型可燃物,不能永久創造物質,火焰系根節點,TRUE
+FIRE_BOLT,火焰彈,Fire Bolt,Spell,1,投射,FIRE_SPARK,,KNOW_FIRE_BOLT,1,10,短,短,fire_projectile,單體火焰傷害,真實命中與距離判定,低階遠程攻擊,TRUE
+FIRE_CONTROL,熱能控制,Heat Control,Mastery,2,燃燒,FIRE_SPARK,FIRE_BOLT,KNOW_FIRE_CONTROL,2,0,被動,無,fire_efficiency,+燃燒控制/-MP,不能直接改BaseStat,提高火焰法術控制,TRUE
+FIREBALL,火球,Fireball,Spell,2,投射,FIRE_BOLT,,KNOW_FIREBALL,2,20,短,短,fire_projectile_aoe,單體命中後小範圍爆炸,爆炸可引燃真實環境,主力中階攻擊,TRUE
+FIRE_WALL,火牆,Flame Wall,Spell,2,範圍,FIRE_CONTROL,,KNOW_FIRE_WALL,2,25,中,短,fire_area,持續燃燒區域,可引發真實火災,區域封鎖,TRUE
+FIRE_CLOAK,火焰護體,Flame Cloak,Spell,3,防禦,FIRE_CONTROL,,KNOW_FIRE_CLOAK,3,35,中,中,fire_aura,近身火焰傷害+寒冷抵抗,不提供無敵,近戰防護,TRUE
+FIRE_BURST,烈焰爆發,Flame Burst,Spell,3,範圍,"FIREBALL,FIRE_WALL",,KNOW_FIRE_BURST,3,45,中,中,area_fire_damage,中型範圍高傷害,可能引發真實火災,高階範圍攻擊,TRUE
+FIRE_COMBUSTION,燃燒精通,Combustion Mastery,Mastery,4,燃燒,FIRE_BURST,"FIRE_BURST,FIRE_WALL",KNOW_COMBUSTION,4,0,被動,無,burn_modifier,+燃燒持續與強度,只影響本系統合法效果,高階燃燒強化,TRUE
+FIRE_INFERNO,煉獄領域,Inferno Field,Spell,5,範圍,"FIRE_COMBUSTION,FIRE_CLOAK",,KNOW_INFERNO,5,150,長,長,large_fire_field,大型局部火焰區,不能成為全球/永久氣候效果,火焰系頂階法術,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

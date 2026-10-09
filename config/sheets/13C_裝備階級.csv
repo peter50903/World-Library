@@ -1,0 +1,26 @@
+EquipmentTierID,中文名稱,英文名稱,DisplayPriority,MinPositiveTraits,MinCurseTraits,MinTotalTraits,AbilityBonusBand,PromotionRequiresHistory,GenericProgression,顯示規則,說明,Enabled
+EQ_NORMAL,一般裝備,Normal Equipment,1,0,0,0,None,FALSE,TRUE,一般,共用基礎物品模板；沒有特殊特性,TRUE
+EQ_MAGIC,魔法裝備,Magic Equipment,2,1,0,1,Low,FALSE,TRUE,魔法,至少一條非詛咒特性；特性可由製作／附魔／事件取得,TRUE
+EQ_CURSED,詛咒裝備,Cursed Equipment,3,0,1,1,Variable,FALSE,TRUE,詛咒,至少一條詛咒特性；不是所有傳說都必須經過詛咒,TRUE
+EQ_LEGENDARY,傳說裝備,Legendary Equipment,4,3,0,4,Medium+,TRUE,TRUE,傳說 (+若有則標記詛咒),需要一定特性數、能力加成，以及重大製作或真實歷史條件；初版門檻可調,TRUE
+EQ_MYTHIC,神話裝備,Mythic Equipment,5,6,0,7,High,TRUE,TRUE,神話 (+若有則標記詛咒),大量特性與能力加成，並要求極高歷史／世界條件；初版門檻可調,TRUE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE

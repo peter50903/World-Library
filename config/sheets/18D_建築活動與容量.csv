@@ -1,0 +1,35 @@
+BuildingDefID,ActivityTag,ActivityType,BaseConcurrentSlots,CapacityUnit,RequiredWorkerSkillIDs,RequiredInputs,OutputOrService,QueueModel,說明,Enabled
+BUILD_BARRACK,TRAIN_INFANTRY,Training,40,Character,"SK_MELEE,SK_LEADERSHIP","Food,Equipment,TrainerTime",Combat Skill/Unit Formation,ConcurrentSlots,不生成士兵,TRUE
+BUILD_STABLE,TRAIN_CAVALRY,Training,24,Rider+Mount,"SK_RIDING,SK_MELEE","Mount,Food,Equipment,TrainerTime",Cavalry Training,ConcurrentSlots,每名騎手需真實坐騎,TRUE
+BUILD_ARCHERY_RANGE,TRAIN_RANGED,Training,30,Character,SK_RANGED,Bow/Ammo/Target/TrainerTime,Ranged Skill,ConcurrentSlots,靶場練習消耗時間與耗材,TRUE
+BUILD_SIEGE_WORKSHOP,MAKE_SIEGE,Production,6,Workstation,"SK_SIEGE_ENGINEERING,SK_CARPENTRY,SK_SMITHING",Recipe Materials,Siege Equipment,WorkOrders,真實製作,TRUE
+BUILD_SCHOOL,TEACH_GENERAL,Education,30,Student,SK_TEACHING,"TeacherTime,Book",Knowledge/Skill EXP,ClassSlots,,TRUE
+BUILD_ACADEMY,RESEARCH_ADVANCED,Research,12,Researcher,SK_RESEARCH,"ResearchResource,Book,Time",Research Progress,ProjectSlots,不自動完成科技,TRUE
+BUILD_MAGIC_ACADEMY,TEACH_MAGIC,Education,20,Student,"SK_MAGIC_CONTROL,SK_TEACHING","MageTeacher,Book,MP/Material",Magic Knowledge/Skill EXP,ClassSlots,,TRUE
+BUILD_SMITHY,CRAFT_METAL,Production,4,Workstation,SK_SMITHING,"Recipe Materials,Fuel,Tools",Item/Repair,WorkOrders,,TRUE
+BUILD_HOSPITAL,TREAT_PATIENT,Healthcare,40,Bed,SK_MEDICINE,"Medicine,Food,StaffTime",Treatment,Bed+Staff,床位不等於醫療能力，仍需人員,TRUE
+BUILD_GRANARY,STORE_FOOD,Storage,200,BulkUnit,,"Food,HandlerTime",ReducedStorageLoss,Capacity,不停止腐敗,TRUE
+BUILD_WAREHOUSE,STORE_GOODS,Storage,300,BulkUnit,,"Goods,HandlerTime",Storage/Transfer,Capacity,,TRUE
+BUILD_PORT,LOAD_UNLOAD,Logistics,12,ShipBerth,SK_SAILING,"Ship,Labor,Cargo",Cargo Transfer,BerthSlots,大型船沒有港口仍可冒險靠岸但有風險,TRUE
+BUILD_CHURCH,RITUAL,Religion,100,Participant,SK_RELIGION,"ClergyTime,OptionalOfferings",Religious Activity,EventCapacity,,TRUE
+BUILD_PRISON,HOLD_PRISONER,Custody,100,Prisoner,,"Guard,Food,Space",Custody,Capacity,超載產生後果，不刪除囚犯,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

@@ -1,0 +1,27 @@
+DoctrineID,中文名稱,英文名稱,子類型,EffectKey,EffectValue,對國家法律的關係,看法／信仰值影響,國家AI偏好,互斥群組,說明,Enabled
+RDG_MALE_PREF,男性優先,Male Preference,性別規範,religious_gender_preference,male_preference,不直接改法定繼承資格,女性統治者可能承受部分保守信徒看法,偏好男性優先繼承法,GENDER_NORM,宗教壓力，不是全世界硬規則,TRUE
+RDG_EQUAL,性別平等,Gender Equal,性別規範,religious_gender_preference,equal,不直接改法定繼承資格,性別不產生宗教看法差異,偏好平等繼承法,GENDER_NORM,與家族／國家法律仍分離,TRUE
+RDG_FEMALE_PREF,女性優先,Female Preference,性別規範,religious_gender_preference,female_preference,不直接改法定繼承資格,男性統治者可能承受部分保守信徒看法,偏好女性優先繼承法,GENDER_NORM,宗教壓力，不是全世界硬規則,TRUE
+RDG_MALE_CLERGY_PREF,男性神職偏好,Male Clergy Preference,神職性別,clergy_gender_preference,male,不直接禁止其他性別官職,非偏好者任神職造成部分看法成本,偏好男性神職任命,CLERGY_GENDER,可與國家／組織制度衝突,TRUE
+RDG_EQUAL_CLERGY,神職平等,Equal Clergy,神職性別,clergy_gender_preference,equal,無直接法律效果,不因性別產生神職宗教成本,性別中立,CLERGY_GENDER,神職資格仍需組織條件,TRUE
+RDG_FEMALE_CLERGY_PREF,女性神職偏好,Female Clergy Preference,神職性別,clergy_gender_preference,female,不直接禁止其他性別官職,非偏好者任神職造成部分看法成本,偏好女性神職任命,CLERGY_GENDER,可與國家／組織制度衝突,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
