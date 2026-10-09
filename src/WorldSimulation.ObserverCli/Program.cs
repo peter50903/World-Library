@@ -144,7 +144,7 @@ while (true)
 void PrintStatus()
 {
     var s = world.Snapshot();
-    Console.WriteLine($"世界狀態｜第 {s.DaysElapsed} 日｜人口 {s.Population}｜食物 {s.FoodStock}｜累計食物不足 {s.TotalShortage}｜亂數抽樣次數 {s.ResourceRngDraws}");
+    Console.WriteLine($"世界狀態｜種子 {world.TempWorldSeed}｜第 {s.DaysElapsed} 日｜人口 {s.Population}｜食物 {s.FoodStock}｜累計食物不足 {s.TotalShortage}｜亂數抽樣次數 {s.ResourceRngDraws}");
 }
 
 // V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。
