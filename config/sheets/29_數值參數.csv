@@ -68,7 +68,7 @@ P_DUNGEON_OVERFLOW_THRESHOLD_RATIO,地下城,地下城綁定怪物溢出臨界�
 P_CHARACTER_GOLD_WEIGHT_PER_UNIT,經濟,角色個人金幣每單位負重,0,0,0,權重／金幣,number,個人金幣全額隨身、不計重量，故為 0。〔Notion 02 第 G 節〕,FALSE,TRUE
 P_CHARACTER_GOLD_VOLUME_PER_UNIT,經濟,角色個人金幣每單位體積,0,0,0,體積／金幣,number,【TEMP】Notion 02 第 G 節只定「不計重量」，未定體積；暫比照不計體積為 0，待使用者確認。,FALSE,TRUE
 P_SELF_REFLECTION_REEVAL_COOLDOWN_DAYS,心理,主動自我反思有效重評估間隔（每角色一年一次）,365,365,365,world_day,int,每世界年最多一次有效重評估。〔Notion 02 第 N 節；舊「每 24 世界小時」已作廢，見第 P 節〕,FALSE,TRUE
-P_SELF_REFLECTION_BASE_DURATION_MIN,心理,自我反思基礎行動時長,30,10,120,分鐘,int,自我反思行動耗時 30 分鐘。〔Notion 02 第 N 節〕最小／最大值 10～120 只是可調範圍，不是定案。,FALSE,TRUE
+P_SELF_REFLECTION_BASE_DURATION_MIN,心理,自我反思基礎行動時長,30,10,120,分鐘,int,【TEMP】最小／最大值 10～120 為暫定可調範圍，尚未定案；預設 30 分鐘已定案：自我反思行動耗時 30 分鐘。〔Notion 02 第 N 節〕,FALSE,TRUE
 P_CHARACTER_LIFE_TARGET_REAL_MIN,玩家,人物降臨完整人生主要現實時間目標,60,60,60,real_minute,int,以角色完整人生為單位；不再與固定世界年數綁定。一般角色主要目標約60分鐘。〔Notion 02 第 N 節〕,FALSE,TRUE
 P_CHARACTER_LIFE_MAX_REAL_MIN,玩家,人物降臨完整人生現實時間硬上限,90,90,90,real_minute,int,超長壽角色亦不得因世界年數線性增加遊玩時間；例如約1000年壽命仍須在約90分鐘內完成整段人生。〔Notion 02 第 N 節〕,FALSE,TRUE
 P_PLAYER_LIFE_GOAL_MAX_ACTIVE,玩家,人物降臨玩家人生目標同時上限,1,1,1,目標,int,同一角色同時只有 1 個玩家人生目標。〔Notion 02 第 N 節；舊「最多 3 個」已作廢〕,FALSE,TRUE
