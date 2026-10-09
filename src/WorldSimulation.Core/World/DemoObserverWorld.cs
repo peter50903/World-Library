@@ -1,3 +1,6 @@
+using System.Collections.Immutable;
+using System.Globalization;
+using System.Text;
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.Scheduling;
 using WorldSimulation.Core.Time;
@@ -40,37 +43,68 @@ public sealed record DemoWorldSnapshot(
     int DaysElapsed,
     ulong ResourceRngDraws);
 
+/// <summary>V0-04A：一次原子提交內可注入故障的檢查點（只供自動測試使用）。</summary>
+internal enum DemoCommitStage
+{
+    AfterScheduleStaged,
+    AfterRngStaged,
+    AfterLedgerStaged,
+    BeforePublish
+}
+
 /// <summary>
 /// Runnable, headless Observer vertical slice. A one-settlement survival accounting
-/// demonstration driven by the existing WorldClock, Scheduler and deterministic RNG.
-/// It does NOT implement official population rules, EntityStore, a durable transaction,
-/// canonical History, Godot rendering or Save/Load.
+/// demonstration driven by the existing WorldClock, Scheduler and deterministic RNG,
+/// plus (V0-04A) a TEMP weekly L2 settlement for every demo settlement:
+/// resource regeneration → labour and production → consumption, with a resource
+/// ledger and a population ledger checked before anything is published, and (V0-04B)
+/// hunger debt → starvation death with append-only, caused settlement events.
+/// It does NOT implement official population rules, EntityStore, canonical History,
+/// durability or Save/Load.
 /// </summary>
 public sealed class DemoObserverWorld
 {
     private static readonly TimeSpan OneDay = TimeSpan.FromDays(1);
+    private static readonly TimeSpan OneWeek = TimeSpan.FromDays(7);
     private const string DailyWorkKey = "DEMO_DAILY_FOOD_ACCOUNTING";
+    private const string WeeklyWorkKey = "DEMO_WEEKLY_SETTLEMENT";
 
-    private readonly WorldClock _clock = new();
-    private readonly Scheduler _scheduler;
     private readonly DemoScenario _scenario;
-    private readonly List<DemoDayEvent> _history = new();
+    private readonly DemoWeeklyTempConfig _weekly;
+
+    // Every field below is replaced only in the publish step of AdvanceOneDay.
+    private WorldClock _clock = new();
+    private Scheduler _scheduler;
     private RngRegistry _rng;
+    private ImmutableList<DemoDayEvent> _history = ImmutableList<DemoDayEvent>.Empty;
+    private ImmutableList<DemoWeekReport> _weeks = ImmutableList<DemoWeekReport>.Empty;
+    private ImmutableSortedDictionary<int, long> _reserves;
+    private ImmutableSortedDictionary<int, long> _settlementFood;
+    private ImmutableSortedDictionary<int, long> _population;
+    private ImmutableSortedDictionary<int, long> _hungerDebt;
     private long _food;
     private long _totalShortage;
 
     public DemoObserverWorld(DemoScenario scenario)
+        : this(scenario, DemoWeeklyTempConfig.Sample)
+    {
+    }
+
+    public DemoObserverWorld(DemoScenario scenario, DemoWeeklyTempConfig weekly)
     {
         ArgumentNullException.ThrowIfNull(scenario);
+        ArgumentNullException.ThrowIfNull(weekly);
         if (scenario.Population <= 0)
             throw new ArgumentOutOfRangeException(nameof(scenario), "Demo population must be positive.");
         if (scenario.InitialFood < 0 || scenario.MaxDailyHarvest < 0 || scenario.FoodPerPersonPerDay < 0)
             throw new ArgumentOutOfRangeException(nameof(scenario), "Demo inputs cannot be negative.");
+        weekly.Validate();
 
         // Check that even the first-day demand fits in the signed accounting model.
         _ = checked((long)scenario.Population * scenario.FoodPerPersonPerDay);
 
         _scenario = scenario;
+        _weekly = weekly;
         _food = scenario.InitialFood;
         // V0-03B: ONE world RngRegistry. The TEMP map (GEOGRAPHY) and TEMP sites
         // (ECOLOGY_INIT, POP) are generated once here and cached; daily harvest keeps
@@ -78,8 +112,19 @@ public sealed class DemoObserverWorld
         _rng = RngRegistry.Create(scenario.Seed);
         Map = DemoHexWorld.Generate(_rng);
         Sites = DemoWorldSites.Generate(Map, _rng);
+
+        // V0-04A TEMP opening balances: every resource point starts with the same reserve,
+        // every settlement with InitialFoodPerPerson per member of its population groups.
+        _reserves = Sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => weekly.InitialReservePerPoint);
+        _population = Sites.Settlements.ToImmutableSortedDictionary(
+            s => s.Id, s => Sites.PopGroupsOf(s.Id).Sum(p => (long)p.Size));
+        _settlementFood = _population.ToImmutableSortedDictionary(
+            kv => kv.Key, kv => checked(kv.Value * weekly.InitialFoodPerPerson));
+        _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
+
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
+        _scheduler.Schedule(OneWeek, WeeklyWorkKey);
     }
 
     /// <summary>The cached TEMP hex map generated from this world's registry (never regenerated).</summary>
@@ -87,6 +132,9 @@ public sealed class DemoObserverWorld
 
     /// <summary>The cached TEMP settlements / resource points / population groups.</summary>
     public DemoWorldSites Sites { get; }
+
+    /// <summary>TEST ONLY: invoked at each commit checkpoint so tests can inject a mid-commit failure.</summary>
+    internal Action<DemoCommitStage>? FaultInjector { get; set; }
 
     public DemoWorldSnapshot Snapshot()
         => new(_clock.Now, _scenario.Population, _food, _totalShortage,
@@ -96,21 +144,65 @@ public sealed class DemoObserverWorld
     public IReadOnlyList<DemoDayEvent> History()
         => Array.AsReadOnly(_history.ToArray());
 
+    /// <summary>All committed weekly settlement reports, oldest first (detached copy).</summary>
+    public IReadOnlyList<DemoWeekReport> WeekReports()
+        => Array.AsReadOnly(_weeks.ToArray());
+
+    /// <summary>The most recent weekly settlement, or null before the first one (day 7).</summary>
+    public DemoWeekReport? LatestWeek => _weeks.IsEmpty ? null : _weeks[_weeks.Count - 1];
+
+    /// <summary>Current TEMP food stock of a demo settlement.</summary>
+    public long SettlementFood(int settlementId) => _settlementFood[settlementId];
+
+    /// <summary>Current TEMP reserve of a demo resource point.</summary>
+    public long ResourceReserve(int resourcePointId) => _reserves[resourcePointId];
+
     /// <summary>
-    /// Resolve the next scheduled demo day using a private RNG draft, validate all
-    /// accounting BEFORE advancing the scheduler, then publish a new state and event.
-    /// This simple in-memory demo path must not be mistaken for the future multi-domain
-    /// Atomic Commit / durability / rollback engine.
+    /// Current TEMP population of a demo settlement. Starts as the sum of its population
+    /// groups; V0-04B starvation deaths are subtracted through the weekly population ledger.
+    /// </summary>
+    public long SettlementPopulation(int settlementId) => _population[settlementId];
+
+    /// <summary>V0-04B: current TEMP hunger debt (unmet food demand not yet recovered).</summary>
+    public long SettlementHungerDebt(int settlementId) => _hungerDebt[settlementId];
+
+    /// <summary>V0-04B: a settlement is starving while it carries hunger debt and still has people.</summary>
+    public bool IsStarving(int settlementId) => _hungerDebt[settlementId] > 0 && _population[settlementId] > 0;
+
+    /// <summary>All committed V0-04B settlement events (hunger, starvation death, recovery), oldest first.</summary>
+    public IReadOnlyList<DemoSettlementEvent> SettlementEvents()
+        => Array.AsReadOnly(_weeks.SelectMany(w => w.Events).ToArray());
+
+    /// <summary>
+    /// Advances to the next scheduled day as ONE atomic commit (03 §4):
+    /// stage → validate → publish. Everything (clock, scheduler, RNG, daily event,
+    /// weekly ledger and settlement stocks) is first computed on private copies; the
+    /// live world is replaced only by the final field assignments, which cannot fail.
+    /// Any exception before that leaves Entity, RNG, Scheduler, History and Ledger unchanged.
     /// </summary>
     public DemoDayEvent AdvanceOneDay()
     {
-        var work = _scheduler.PeekNext()
+        // ① Scheduler and clock: private copies.
+        var clock = _clock.Clone();
+        var scheduler = _scheduler.CloneOnto(clock);
+        var head = scheduler.PeekNext()
             ?? throw new InvalidOperationException("No future work was scheduled.");
-        if (work.WorkKey != DailyWorkKey)
-            throw new InvalidOperationException("Unsupported demo work.");
-        if (work.DueTime > TimeSpan.MaxValue - OneDay)
+        if (head.DueTime > TimeSpan.MaxValue - OneWeek)
             throw new InvalidOperationException("Demo timeline is exhausted.");
 
+        var batch = scheduler.TakeNextDueBatch();
+        var daily = batch.Where(w => w.WorkKey == DailyWorkKey).ToList();
+        var weekly = batch.Where(w => w.WorkKey == WeeklyWorkKey).ToList();
+        if (daily.Count != 1 || weekly.Count > 1 || daily.Count + weekly.Count != batch.Count)
+            throw new InvalidOperationException("Unexpected demo schedule batch.");
+
+        var dueTime = daily[0].DueTime;
+        scheduler.Schedule(dueTime + OneDay, DailyWorkKey);
+        if (weekly.Count == 1)
+            scheduler.Schedule(dueTime + OneWeek, WeeklyWorkKey);
+        Checkpoint(DemoCommitStage.AfterScheduleStaged);
+
+        // ② V0-01 daily accounting on a private RNG draft (unchanged behaviour).
         var trial = RngResolutionDraft.Begin(_rng);
         var proposedFood = (long)(trial.NextUInt64(RngStreams.Resource)
             % ((ulong)_scenario.MaxDailyHarvest + 1UL));
@@ -125,20 +217,80 @@ public sealed class DemoObserverWorld
 
         if (!RngCandidatePreflight.IsCompatible(_rng.Capture(), trial.BaseSnapshot, proposedRng))
             throw new InvalidOperationException("Demo RNG candidate failed preflight.");
+        var nextRng = RngRegistry.Restore(proposedRng);
+        Checkpoint(DemoCommitStage.AfterRngStaged);
 
         var evt = new DemoDayEvent(
-            nextHistoryCount, work.DueTime, _food, proposedFood, consumed, newFood, shortage);
+            nextHistoryCount, dueTime, _food, proposedFood, consumed, newFood, shortage);
+        var nextHistory = _history.Add(evt);
 
-        // All arithmetic, RNG validation and next-due validation occurred first.
-        // The scheduler and state are private, not externally writable, in this demo.
-        var due = _scheduler.TakeNextDueBatch();
-        if (due.Count != 1 || due[0] != work)
-            throw new InvalidOperationException("Unexpected demo schedule batch.");
-        _scheduler.Schedule(work.DueTime + OneDay, DailyWorkKey);
-        _rng = RngRegistry.Restore(proposedRng);
+        // ③ V0-04A weekly settlement + ledger check (throws before publish if unbalanced).
+        var nextWeeks = _weeks;
+        var nextReserves = _reserves;
+        var nextSettlementFood = _settlementFood;
+        var nextPopulation = _population;
+        var nextHungerDebt = _hungerDebt;
+        if (weekly.Count == 1)
+        {
+            var outcome = DemoWeeklySettlement.Settle(
+                checked(_weeks.Count + 1), dueTime, Sites,
+                _reserves, _settlementFood, _population, _hungerDebt, _weekly);
+            nextWeeks = _weeks.Add(outcome.Report);
+            nextReserves = outcome.Reserves;
+            nextSettlementFood = outcome.SettlementFood;
+            nextPopulation = outcome.Population;
+            nextHungerDebt = outcome.HungerDebt;
+        }
+
+        Checkpoint(DemoCommitStage.AfterLedgerStaged);
+        Checkpoint(DemoCommitStage.BeforePublish);
+
+        // ④ Publish: plain reference/value assignments only.
+        _clock = clock;
+        _scheduler = scheduler;
+        _rng = nextRng;
         _food = newFood;
         _totalShortage = accumulatedShortage;
-        _history.Add(evt);
+        _history = nextHistory;
+        _weeks = nextWeeks;
+        _reserves = nextReserves;
+        _settlementFood = nextSettlementFood;
+        _population = nextPopulation;
+        _hungerDebt = nextHungerDebt;
         return evt;
     }
+
+    /// <summary>
+    /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and
+    /// population), RNG, Scheduler (clock and queue), History and Ledger. Used by tests to
+    /// prove that a failed commit changed nothing and that the same seed gives the same world.
+    /// </summary>
+    internal string StateFingerprint()
+    {
+        var sb = new StringBuilder();
+        var inv = CultureInfo.InvariantCulture;
+        sb.Append(inv, $"clock={_clock.Now.Ticks};seq={_scheduler.NextSequence};");
+        foreach (var work in _scheduler.PendingInOrder())
+            sb.Append(inv, $"work={work.Handle.Value}@{work.DueTime.Ticks}:{work.WorkKey};");
+        var rng = _rng.Capture();
+        sb.Append(inv, $"rng={rng.WorldSeed}/{rng.HistorySeed};");
+        foreach (var stream in rng.Streams)
+            sb.Append(inv, $"{stream.StreamId}={stream.State}#{stream.DrawCounter};");
+        sb.Append(inv, $"food={_food};shortage={_totalShortage};");
+        foreach (var kv in _reserves) sb.Append(inv, $"reserve{kv.Key}={kv.Value};");
+        foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
+        foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
+        foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
+        foreach (var evt in _history) sb.Append(inv, $"{evt};");
+        foreach (var week in _weeks)
+        {
+            sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks};");
+            foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
+            foreach (var e in week.Events) sb.Append(inv, $"{e};");
+        }
+
+        return sb.ToString();
+    }
+
+    private void Checkpoint(DemoCommitStage stage) => FaultInjector?.Invoke(stage);
 }

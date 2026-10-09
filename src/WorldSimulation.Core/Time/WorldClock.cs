@@ -11,6 +11,13 @@ public sealed class WorldClock
     public TimeSpan Now { get; private set; } = TimeSpan.Zero;
 
     /// <summary>
+    /// V0-04A atomic commit support: an independent clock at the same time. A commit
+    /// advances only its private copy and publishes it as a whole, so a failed commit
+    /// leaves the live clock untouched (time is never moved backwards).
+    /// </summary>
+    internal WorldClock Clone() => new() { Now = Now };
+
+    /// <summary>
     /// Moves world time to <paramref name="nextDue"/>. Equal time is a no-op (several events may share a DueTime).
     /// A time before <see cref="Now"/> (including any negative time) is rejected and <see cref="Now"/> is left unchanged.
     /// </summary>

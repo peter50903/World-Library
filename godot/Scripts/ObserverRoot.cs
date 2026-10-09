@@ -12,13 +12,19 @@ namespace WorldSimulation.GodotClient;
 public partial class ObserverRoot : Control
 {
     private const ulong DemoSeed = 42;
-    private readonly DemoObserverWorld _world = new(DemoScenario.Sample(DemoSeed));
+    // V0-04B: CI can opt into the TEMP famine scenario to see hunger / starvation events
+    // in the real Godot UI. Normal players never set this flag.
+    private static readonly bool FamineSmoke = OS.HasEnvironment("WORLD_SIM_FAMINE_SMOKE");
+    private readonly DemoObserverWorld _world = new(
+        DemoScenario.Sample(DemoSeed),
+        FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
     private DemoHexMap _hexMap = null!;
     private Label _cellInfo = null!;
 
     private Label _status = null!;
     private Label _notice = null!;
     private RichTextLabel _history = null!;
+    private RichTextLabel _ledger = null!;
 
     public override void _Ready()
     {
@@ -85,6 +91,20 @@ public partial class ObserverRoot : Control
         _status = new Label();
         side.AddChild(_status);
 
+        // V0-04A: weekly settlement ledger computed by Core; Godot only displays it.
+        var ledgerHeading = new Label { Text = "本週帳目（TEMP，每 7 日結算）" };
+        ledgerHeading.AddThemeFontSizeOverride("font_size", 18);
+        side.AddChild(ledgerHeading);
+
+        _ledger = new RichTextLabel
+        {
+            BbcodeEnabled = false,
+            ScrollActive = true,
+            CustomMinimumSize = new Vector2(0, 200),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        side.AddChild(_ledger);
+
         _cellInfo = new Label
         {
             Text = "TEMP 六角格：請點選地圖中的一格或金色聚落查看其資料。",
@@ -129,7 +149,7 @@ public partial class ObserverRoot : Control
         var historyColumn = new VBoxContainer();
         historyPanel.AddChild(historyColumn);
 
-        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆示範日結算事件" };
+        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除）" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
         historyColumn.AddChild(historyTitle);
 
@@ -161,6 +181,18 @@ public partial class ObserverRoot : Control
 
             GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 History=31");
 
+            // V0-04A: after 31 days the panel shows Core's 4th weekly ledger, all balanced.
+            var latest = _world.LatestWeek;
+            if (latest is null || latest.Week != 4 || _world.WeekReports().Count != 4
+                || !_ledger.Text.Contains("第 4 週帳目", StringComparison.Ordinal)
+                || !_ledger.Text.Contains(latest.Settlements[0].SettlementName, StringComparison.Ordinal)
+                || !latest.Settlements.All(l => l.IsBalanced)
+                || _ledger.Text.Contains("不平衡", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot weekly ledger panel did not show Core's balanced ledger.");
+            }
+            GD.Print($"WORLD_SIM_WEEKLY_LEDGER_OK: Weeks={_world.WeekReports().Count} Settlements={latest.Settlements.Count}");
+
             // Godot runs the same input handler used by real mouse clicks;
             // selected terrain must be from Core's immutable demo cell.
             var cell = _world.Map.GetCell(2, 2);
@@ -189,12 +221,46 @@ public partial class ObserverRoot : Control
                 Position = _hexMap.CellCenter(_world.Map.GetCell(settlement.Column, settlement.Row))
             });
             if (!_cellInfo.Text.Contains(settlement.Name, StringComparison.Ordinal)
-                || !_cellInfo.Text.Contains($"人口群體 #{pop.Id}：{pop.Size} 人", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"人口群體 #{pop.Id}：初始 {pop.Size} 人", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"目前人口：{_world.SettlementPopulation(settlement.Id)}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains("飢餓狀態：", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains(ResourceName(resource.Kind), StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Godot selection did not display Core's TEMP settlement data.");
             }
             GD.Print($"WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements={_world.Sites.Settlements.Count} Id={settlement.Id}");
+
+            // V0-04B: in the famine scenario the visible history must list Core's caused
+            // hunger and starvation events, and the settlement panel must show starvation.
+            if (FamineSmoke)
+            {
+                var events = _world.SettlementEvents();
+                var hunger = events.Count(e => e.Kind == DemoSettlementEventKind.Hunger);
+                var deaths = events.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath).Sum(e => e.Count);
+                var anyDeath = events.LastOrDefault(e => e.Kind == DemoSettlementEventKind.StarvationDeath);
+                if (hunger == 0 || deaths == 0 || anyDeath is null
+                    || !_history.Text.Contains("飢餓：缺糧", StringComparison.Ordinal)
+                    || !_history.Text.Contains(anyDeath.Describe(), StringComparison.Ordinal)
+                    || !_ledger.Text.Contains("死亡", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Godot history did not show Core's hunger / starvation events.");
+                }
+
+                var starving = _world.Sites.Settlements.FirstOrDefault(s => _world.IsStarving(s.Id));
+                if (starving is not null)
+                {
+                    _hexMap._GuiInput(new InputEventMouseButton
+                    {
+                        ButtonIndex = MouseButton.Left,
+                        Pressed = true,
+                        Position = _hexMap.CellCenter(_world.Map.GetCell(starving.Column, starving.Row))
+                    });
+                    if (!_cellInfo.Text.Contains("飢餓狀態：飢餓中", StringComparison.Ordinal))
+                        throw new InvalidOperationException("Godot settlement panel did not show starvation.");
+                }
+
+                GD.Print($"WORLD_SIM_FAMINE_OK: HungerEvents={hunger} Deaths={deaths}");
+            }
         }
     }
 
@@ -213,7 +279,12 @@ public partial class ObserverRoot : Control
         foreach (var resource in _world.Sites.ResourcePointsOf(settlement.Id))
             lines.Add($"資源點 #{resource.Id}：{ResourceName(resource.Kind)}");
         foreach (var pop in _world.Sites.PopGroupsOf(settlement.Id))
-            lines.Add($"人口群體 #{pop.Id}：{pop.Size} 人（TEMP）");
+            lines.Add($"人口群體 #{pop.Id}：初始 {pop.Size} 人（TEMP）");
+        lines.Add($"目前人口：{_world.SettlementPopulation(settlement.Id)}");
+        lines.Add($"糧食庫存：{_world.SettlementFood(settlement.Id)}");
+        lines.Add(_world.IsStarving(settlement.Id)
+            ? $"飢餓狀態：飢餓中（飢餓債 {_world.SettlementHungerDebt(settlement.Id)}）"
+            : _world.SettlementPopulation(settlement.Id) == 0 ? "飢餓狀態：聚落已無人口" : "飢餓狀態：正常");
         _cellInfo.Text += string.Join("\n", lines);
     }
 
@@ -232,6 +303,27 @@ public partial class ObserverRoot : Control
         DemoTerrain.Water => "水域（TEMP）",
         _ => "未定義（TEMP）"
     };
+
+    private static string LedgerText(DemoWeekReport? week)
+    {
+        if (week is null)
+            return "尚未到第一次週結算（第 7 日）。請按「下一天」推進。";
+
+        var lines = new List<string> { $"第 {week.Week} 週帳目（第 {(int)week.WorldTime.TotalDays} 日結算）" };
+        foreach (var l in week.Settlements)
+        {
+            lines.Add("");
+            lines.Add($"{l.SettlementName}");
+            lines.Add($"  資源點存量：期初 {l.ReserveOpening} ＋再生 {l.Regenerated} －採收 {l.Harvested} ＝期末 {l.ReserveClosing}");
+            lines.Add($"  糧食：期初 {l.FoodOpening} ＋生產 {l.FoodProduced} －消耗 {l.FoodConsumed} ＝期末 {l.FoodClosing}（缺糧 {l.FoodShortage}）");
+            lines.Add($"  糧食來源：農牧 {l.FoodFromFarming} ＋採集 {l.FoodFromGathering}");
+            lines.Add($"  人口：期初 {l.PopulationOpening} ＋出生 {l.Births} －死亡 {l.Deaths} ＝期末 {l.PopulationClosing}");
+            lines.Add($"  飢餓債：期初 {l.HungerDebtOpening} ＋缺糧 {l.FoodShortage} －恢復 {l.HungerDebtRecovered} －隨死者移除 {l.HungerDebtRemovedByDeath} ＝期末 {l.HungerDebtClosing}");
+            lines.Add(l.IsBalanced ? "  帳目平衡：是" : "  【錯誤】帳目不平衡！");
+        }
+
+        return string.Join("\n", lines);
+    }
 
     private void Advance(int days)
     {
@@ -261,9 +353,19 @@ public partial class ObserverRoot : Control
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
             $"亂數種子：{DemoSeed}";
 
-        var recent = _world.History().TakeLast(12);
-        var lines = recent.Select(e =>
-            $"第 {e.Day} 天  |  收穫 {e.Harvested}  消耗 {e.Consumed}  缺糧 {e.Shortage}  食物結餘 {e.FoodAfter}");
+        _ledger.Text = LedgerText(_world.LatestWeek);
+
+        // V0-04B: merge daily events with weekly settlement events by world time
+        // (same day: the daily event first, then the weekly settlement's events).
+        // Shows the 12 latest daily events plus the 10 latest settlement events.
+        var daily = _world.History().TakeLast(12).Select(e => (Time: e.WorldTime, Order: 0,
+            Text: $"第 {e.Day} 天  |  收穫 {e.Harvested}  消耗 {e.Consumed}  缺糧 {e.Shortage}  食物結餘 {e.FoodAfter}"));
+        var settlementEvents = _world.SettlementEvents()
+            .Select((e, i) => (Time: e.WorldTime, Order: 1 + i, Text: e.Describe()))
+            .TakeLast(10);
+        var lines = daily.Concat(settlementEvents)
+            .OrderBy(x => x.Time).ThenBy(x => x.Order)
+            .Select(x => x.Text);
         _history.Text = string.Join("\n", lines);
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
