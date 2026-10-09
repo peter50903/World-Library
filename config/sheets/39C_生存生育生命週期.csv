@@ -14,15 +14,6 @@ REP_HOUSING,受孕住房倍率,繁殖,Stable=1；Overcrowded=0.8；Homeless=0.5,
 REP_MISCARRIAGE,流產基準,繁殖,0.5%/month；HP<50% +3%；Severe Hunger +5%；Disease/Injury按Definition追加,機率／月,每月/危機事件,只對懷孕檢查,TRUE
 REP_CHILD_RACE,跨種族子代種族,繁殖,父母各50%基準權重，再乘各自Race Fertility/Compatibility後正規化,權重,出生時一次,不生成混合,TRUE
 LIFE_DEATH_BANDS,自然死亡年齡風險,生命週期,Age/ExpectedLife:<0.6=0.05%;0.6~0.8=0.2%;0.8~1.0=1%;1.0~1.2=5%;1.2~1.5=15%;>=1.5=35%,年度機率,每年,無固定死亡日；疾病／戰爭等另算,TRUE
-RACE_HUMAN,人類生命週期（已移至 02_種族）,種族,Adult18;Expected75;FertilityBase0.08;Food1.0;Water1.0,年／每月機率/x,種族定義,第一版可調,FALSE
-RACE_ELF,精靈生命週期（已移至 02_種族）,種族,Adult30;Expected450;FertilityBase0.01;Food0.9;Water0.9,年／每月機率/x,種族定義,長壽低生育,FALSE
-RACE_DWARF,矮人生命週期（已移至 02_種族）,種族,Adult25;Expected180;FertilityBase0.03;Food1.0;Water1.0,年／每月機率/x,種族定義,,FALSE
-RACE_ORC,獸人生命週期（已移至 02_種族）,種族,Adult15;Expected55;FertilityBase0.12;Food1.2;Water1.1,年／每月機率/x,種族定義,中短壽高生育,FALSE
-RACE_DEMON,魔族生命週期（已移至 02_種族）,種族,Adult25;Expected250;FertilityBase0.02;Food1.0;Water1.0,年／每月機率/x,種族定義,,FALSE
-RACE_HALFLING,半身人生命週期（已移至 02_種族）,種族,Adult18;Expected110;FertilityBase0.07;Food0.7;Water0.8,年／每月機率/x,種族定義,,FALSE
-RACE_GIANT,巨人族生命週期（已移至 02_種族）,種族,Adult25;Expected160;FertilityBase0.02;Food3.0;Water2.5,年／每月機率/x,種族定義,高資源需求,FALSE
-RACE_LIZARDFOLK,蜥蜴人生命週期（已移至 02_種族）,種族,Adult16;Expected70;FertilityBase0.08;Food1.0;Water1.0,年／每月機率/x,種族定義,溫度效果另走種族特性,FALSE
-RACE_DRAGON,龍族生命週期（已移至 02_種族）,種族,Adult80;Expected1500;FertilityBase=SpecialEvent;Food8.0;Water5.0;ResidentAdultCap=1;MateVisit≈5y,年／特殊/x,種族定義,同地區最多1隻定居成年龍；交配訪客例外約5年；母龍獨自生育撫養；幼龍不計成年定居上限，成年後必須離開母地區,FALSE
 DRAGON_MATE_VISIT,龍族求偶/交配訪問,龍族繁殖,第二隻成年龍可進入已有定居龍的Region，狀態=Temporary Mate Visitor；最多約5年,~5 年／事件,事件排程,訪客不建立第二龍域；期限到或交配結束後必須離開,TRUE
 DRAGON_MOTHER_CARE,母龍單獨撫養,龍族繁殖,成功交配後非母方離開；母龍承擔Pregnancy/Birth/Care,照顧者規則,出生／童年,仍保留生父母關係，但父方不具預設照顧者責任,TRUE
 DRAGON_JUVENILE_EXCEPTION,幼龍區域例外,龍族生命週期,未成年Dragon可與母龍同Region且不計ResidentAdultCap,直到成年,童年,這不是第二隻成年定居龍,TRUE

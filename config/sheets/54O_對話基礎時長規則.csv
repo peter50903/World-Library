@@ -1,8 +1,5 @@
 DecisionID,待決問題,方案,基礎時長範例（分鐘）,優點,缺點,推薦,Status,Enabled
-DEC_DIALOGUE_BASE_DURATION_SCALE,主要對話／社交意圖的基礎時長應採什麼時間尺度？,A｜快速節奏,問候 1 / 詢問 2 / 告知 2 / 說服 3 / 威脅 2 / 貿易 3 / 談判 5,節奏快。,正式交流時間感較弱。,未採用,未採用,FALSE
 DEC_DIALOGUE_BASE_DURATION_SCALE,主要對話／社交意圖的基礎時長應採什麼時間尺度？,B｜中等寫實,問候 1 / 詢問 3 / 告知 3 / 說服 5 / 威脅 3 / 貿易 5 / 談判 10,一般交流數分鐘、正式談判約十分鐘起；與分鐘級世界時間協調。,頻繁社交會有真實時間成本。,正式採用,已定案,TRUE
-DEC_DIALOGUE_BASE_DURATION_SCALE,主要對話／社交意圖的基礎時長應採什麼時間尺度？,C｜偏長寫實,問候 2 / 詢問 5 / 告知 5 / 說服 10 / 威脅 5 / 貿易 10 / 談判 20,正式社交時間成本強。,多次對話容易耗掉大量世界時間。,未採用,未採用,FALSE
-DEC_DIALOGUE_BASE_DURATION_SCALE,主要對話／社交意圖的基礎時長應採什麼時間尺度？,D｜只定相對級距,極短／短／中／長，不鎖分鐘。,保留原型彈性。,缺乏可立即執行參數。,未採用,未採用,FALSE
 DIALOGUE_BASE_GREETING,問候基礎時長,INTENT_GREETING,1,分鐘,54N結構化修正值後再得最終時長,中等寫實B,已定案,TRUE
 DIALOGUE_BASE_ASK,詢問基礎時長,INTENT_ASK,3,分鐘,54N結構化修正值後再得最終時長,中等寫實B,已定案,TRUE
 DIALOGUE_BASE_INFORM,告知基礎時長,INTENT_INFORM,3,分鐘,54N結構化修正值後再得最終時長,中等寫實B,已定案,TRUE

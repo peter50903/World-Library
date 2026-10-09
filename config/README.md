@@ -19,6 +19,10 @@
 ## AI：怎麼讀與改
 
 - **讀：** 只讀需要的 `sheets/<分頁名>.csv`，不要整本讀；中英文欄名對照見 `sheets/00B_術語對照.csv`。
-- **改：** 用 openpyxl 修改 xlsx 後執行 `python3 tools/config_export.py`，把 xlsx 與 `sheets/` 一起提交，開合併請求由另一方審查（逐格差異看 `sheets/` 的 diff）。
-- **使用者上傳的合併請求：** 由 Claude 在該分支執行 `python3 tools/config_export.py` 並推送，讓「設定檔同步檢查」通過，再審查 `sheets/` 的差異。
+- **改：** 用 openpyxl 修改 xlsx 後依序執行 `python3 tools/config_compact.py`（重新壓縮、去除格式殘留）與 `python3 tools/config_export.py`，把 xlsx 與 `sheets/` 一起提交，開合併請求由另一方審查（逐格差異看 `sheets/` 的 diff）。
+- **使用者上傳的合併請求：** 由 Claude 在該分支執行 `python3 tools/config_compact.py` 與 `python3 tools/config_export.py` 並推送，讓「設定檔同步檢查」通過，再審查 `sheets/` 的差異。
 - **未定案的數值不得編造**，示範值放程式內並標 `TEMP`，不寫進這個檔案。
+
+## 不放進設定檔的東西
+
+設定檔只放遊戲要用的 ID、數值、列舉、模板與規則細節。以下不放：工程進度（記在 Notion 01）、修改歷史與整理紀錄（看 Git 提交紀錄）、已作廢或未採用的方案（決策過程記在 Notion 與 Git 歷史）、封存與審查摘要。2026-10-10 已依此清理一次。
