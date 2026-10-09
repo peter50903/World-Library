@@ -123,16 +123,16 @@ public static class DemoMigrationRoutes
     /// <summary>
     /// 最短陸路（含起點與終點），找不到則回傳空陣列（45E MIG_NO_TARGET：沒有可達目的地就留下）。
     /// </summary>
-    public static ImmutableArray<DemoCellRef> FindRoute(DemoHexWorld map, DemoCellRef from, DemoCellRef to)
+    public static ImmutableArray<DemoCellRef> FindRoute(DemoHexWorld map, DemoCellRef origin, DemoCellRef destination)
     {
         ArgumentNullException.ThrowIfNull(map);
-        var start = map.GetCell(from.Column, from.Row);
-        var goal = map.GetCell(to.Column, to.Row);
-        if (from == to)
-            return ImmutableArray.Create(from);
+        var start = map.GetCell(origin.Column, origin.Row);
+        var goal = map.GetCell(destination.Column, destination.Row);
+        if (origin == destination)
+            return ImmutableArray.Create(origin);
 
         var byAxial = map.Cells.ToDictionary(c => (c.AxialQ, c.AxialR));
-        var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [from] = null };
+        var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [origin] = null };
         var queue = new Queue<DemoHexCell>();
         queue.Enqueue(start);
 
@@ -156,11 +156,11 @@ public static class DemoMigrationRoutes
             }
         }
 
-        if (!previous.ContainsKey(to))
+        if (!previous.ContainsKey(destination))
             return ImmutableArray<DemoCellRef>.Empty;
 
         var path = new List<DemoCellRef>();
-        DemoCellRef? at = to;
+        DemoCellRef? at = destination;
         while (at is { } current)
         {
             path.Add(current);

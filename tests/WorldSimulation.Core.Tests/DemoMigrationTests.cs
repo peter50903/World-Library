@@ -72,16 +72,16 @@ public sealed class DemoMigrationTests
             foreach (var a in world.Sites.Settlements)
             foreach (var b in world.Sites.Settlements.Where(s => s.Id != a.Id))
             {
-                var from = new DemoCellRef(a.Column, a.Row);
-                var to = new DemoCellRef(b.Column, b.Row);
-                var route = DemoMigrationRoutes.FindRoute(world.Map, from, to);
-                Assert.Equal(route, DemoMigrationRoutes.FindRoute(world.Map, from, to));
+                var source = new DemoCellRef(a.Column, a.Row);
+                var target = new DemoCellRef(b.Column, b.Row);
+                var route = DemoMigrationRoutes.FindRoute(world.Map, source, target);
+                Assert.Equal(route, DemoMigrationRoutes.FindRoute(world.Map, source, target));
                 if (route.IsEmpty)
                     continue; // MIG_NO_TARGET：沒有陸路就沒有這個目的地。
 
                 found++;
-                Assert.Equal(from, route[0]);
-                Assert.Equal(to, route[^1]);
+                Assert.Equal(source, route[0]);
+                Assert.Equal(target, route[^1]);
                 Assert.Equal(route.Length, route.Distinct().Count());
                 for (var i = 1; i < route.Length; i++)
                     Assert.True(DemoMigrationRoutes.AreAdjacent(route[i - 1], route[i]));
@@ -307,13 +307,13 @@ public sealed class DemoMigrationTests
     [Fact]
     public void VerifyRejectsTeleportsAndOneSidedMigrationLedgers()
     {
-        var from = new DemoSettlementWeekLedger(
+        var source = new DemoSettlementWeekLedger(
             2, 1, "甲", 0, 0, 0, 0,
             FoodOpening: 0, FoodProduced: 0, FoodConsumed: 0, FoodClosing: 0, FoodShortage: 8,
             PopulationOpening: 2, Births: 0, Deaths: 0, PopulationClosing: 1,
             HungerDebtOpening: 0, HungerDebtRecovered: 0, HungerDebtRemovedByDeath: 0, HungerDebtClosing: 4,
             Emigrants: 1, HungerDebtCarriedOut: 4);
-        var to = new DemoSettlementWeekLedger(
+        var target = new DemoSettlementWeekLedger(
             2, 2, "乙", 0, 0, 0, 0,
             FoodOpening: 0, FoodProduced: 0, FoodConsumed: 0, FoodClosing: 0, FoodShortage: 0,
             PopulationOpening: 3, Births: 0, Deaths: 0, PopulationClosing: 3);
@@ -328,13 +328,13 @@ public sealed class DemoMigrationTests
         };
 
         // 合法：一人出發、停在來源格。
-        DemoWeeklySettlement.Verify(new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { from, to }, events, new[] { departed }));
+        DemoWeeklySettlement.Verify(new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { source, target }, events, new[] { departed }));
 
         // 瞬移：出發週就跑到兩格外。
         var teleport = departed with { CellAfter = new DemoCellRef(6, 2) };
         Assert.False(teleport.NoTeleport);
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Verify(
-            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { from, to }, events, new[] { teleport })));
+            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { source, target }, events, new[] { teleport })));
 
         // 途中一週走兩格。
         var jump = departed with
@@ -346,12 +346,12 @@ public sealed class DemoMigrationTests
 
         // 來源扣了人卻沒有隊伍（人口憑空消失）。
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Verify(
-            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { from, to }, events)));
+            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { source, target }, events)));
 
         // 隊伍憑空出現（來源沒有扣人）。
-        var fromNoOut = from with { PopulationClosing = 2, Emigrants = 0, HungerDebtClosing = 8, HungerDebtCarriedOut = 0 };
+        var sourceNoOut = source with { PopulationClosing = 2, Emigrants = 0, HungerDebtClosing = 8, HungerDebtCarriedOut = 0 };
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Verify(
-            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { fromNoOut, to }, events, new[] { departed })));
+            new DemoWeekReport(2, TimeSpan.FromDays(14), new[] { sourceNoOut, target }, events, new[] { departed })));
 
         // 抵達的人數與目的地遷入對不上。
         var arrived = departed with
@@ -360,9 +360,9 @@ public sealed class DemoMigrationTests
             FoodShortage = 4, HungerDebtClosing = 8
         };
         Assert.True(arrived.IsBalanced);
-        var fromNone = from with { PopulationClosing = 2, Emigrants = 0, HungerDebtClosing = 8, HungerDebtCarriedOut = 0 };
+        var sourceNone = source with { PopulationClosing = 2, Emigrants = 0, HungerDebtClosing = 8, HungerDebtCarriedOut = 0 };
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Verify(
-            new DemoWeekReport(3, TimeSpan.FromDays(21), new[] { fromNone, to }, Array.Empty<DemoSettlementEvent>(),
+            new DemoWeekReport(3, TimeSpan.FromDays(21), new[] { sourceNone, target }, Array.Empty<DemoSettlementEvent>(),
                 new[] { arrived })));
     }
 
