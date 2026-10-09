@@ -53,3 +53,14 @@ jobs:
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
+
+      - name: Restore and compile actual Godot observer C# project (V0-02)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Compiles against the real Godot.NET.Sdk, not merely a .NET smoke app.
+          test -f godot/project.godot
+          test -f godot/Scenes/Observer.tscn
+          dotnet restore godot/WorldSimulation.Godot.csproj
+          dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Release
+          echo "Godot C# build succeeded. Interactive scene still needs Godot .NET editor to view."
