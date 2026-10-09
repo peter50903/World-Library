@@ -1,26 +1,43 @@
 using System.Globalization;
 using System.Text;
 using WorldSimulation.Core.World;
+using WorldSimulation.Core.World.Demo;
 
 Console.OutputEncoding = Encoding.UTF8;
 
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");
-    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42]");
+    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42] [--years 100]");
+    Console.WriteLine("  --years N：不開互動介面，直接跑 N 年（1～1000）並輸出年度摘要（V0-05 無畫面長測）。");
     return 2;
 }
 
 ulong seed = 42;
-if (args.Length > 1)
+int? years = null;
+for (var i = 1; i < args.Length; i += 2)
 {
-    if (args.Length != 3 || args[1] != "--seed" ||
-        !ulong.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out seed))
+    var value = i + 1 < args.Length ? args[i + 1] : null;
+    if (args[i] == "--seed" && value is not null &&
+        ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedSeed))
     {
-        Console.WriteLine("請以 --demo --seed <非負整數> 指定情境亂數種子。");
+        seed = parsedSeed;
+    }
+    else if (args[i] == "--years" && value is not null &&
+             int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedYears) &&
+             parsedYears is >= 1 and <= DemoCenturyRun.MaxYears)
+    {
+        years = parsedYears;
+    }
+    else
+    {
+        Console.WriteLine($"請以 --demo [--seed <非負整數>] [--years <1～{DemoCenturyRun.MaxYears}>] 指定參數。");
         return 2;
     }
 }
+
+if (years is int runYears)
+    return RunHeadless(seed, runYears);
 
 var world = new DemoObserverWorld(DemoScenario.Sample(seed));
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
@@ -90,4 +107,34 @@ void PrintStatus()
 {
     var s = world.Snapshot();
     Console.WriteLine($"世界狀態｜第 {s.DaysElapsed} 日｜人口 {s.Population}｜食物 {s.FoodStock}｜累計食物不足 {s.TotalShortage}｜亂數抽樣次數 {s.ResourceRngDraws}");
+}
+
+// V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。
+static int RunHeadless(ulong seed, int years)
+{
+    Console.WriteLine("=== 世界觀察者 v0｜無畫面長測（V0-05）===");
+    Console.WriteLine("注意：所有人口、糧食、資源與飢餓數值都是 TEMP 示範值；「一年＝52 週＝364 日」也是 TEMP 示範曆法。");
+    Console.WriteLine($"亂數種子：{seed}｜年數：{years}");
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    DemoCenturyReport report;
+    try
+    {
+        report = DemoCenturyRun.Run(seed, years, onYear: y => Console.WriteLine(y.Describe()));
+    }
+    catch (Exception ex) when (ex is OverflowException or InvalidOperationException)
+    {
+        Console.WriteLine($"長測中止（守恆或帳目錯誤）：{ex.Message}");
+        return 1;
+    }
+
+    watch.Stop();
+    var last = report.Years[^1];
+    var totalDeaths = report.Years.Sum(y => y.Deaths);
+    var totalEvents = report.Years.Sum(y => (long)y.SettlementEvents);
+    Console.WriteLine($"長測完成：種子 {seed}，{years} 年（第 {last.LastDay} 日），期末人口 {last.PopulationClosing}，"
+        + $"累計死亡 {totalDeaths}，累計聚落事件 {totalEvents}，守恆錯誤 {report.ConservationErrors.Count}，"
+        + $"耗時 {watch.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture)} 秒");
+    foreach (var error in report.ConservationErrors)
+        Console.WriteLine($"  守恆錯誤：{error}");
+    return report.ConservationErrors.Count == 0 ? 0 : 1;
 }
