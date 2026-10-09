@@ -124,9 +124,17 @@ public partial class ObserverRoot : Control
         };
         middle.AddChild(sidebar);
 
-        var side = new VBoxContainer();
+        // V0-07: the added save/load buttons must remain reachable on smaller windows.
+        // Scroll only the information sidebar; map wheel input stays within the map.
+        var sidebarScroll = new ScrollContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        sidebar.AddChild(sidebarScroll);
+        var side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         side.AddThemeConstantOverride("separation", 18);
-        sidebar.AddChild(side);
+        sidebarScroll.AddChild(side);
 
         var worldHeading = new Label { Text = "示範世界狀態" };
         worldHeading.AddThemeFontSizeOverride("font_size", 20);
