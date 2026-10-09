@@ -165,12 +165,12 @@ public sealed class DemoStarvationTests
                 {
                     // M1_RES：每個資源點／期初庫存＋流入－流出＝結束，差額都有原因（再生、採收、消耗）。
                     Assert.Equal(l.ReserveClosing, l.ReserveOpening + l.Regenerated - l.Harvested);
-                    Assert.Equal(l.FoodClosing, l.FoodOpening + l.FoodProduced - l.FoodConsumed);
+                    Assert.Equal(l.FoodClosing, l.FoodOpening + l.FoodProduced + l.FoodCarriedIn - l.FoodConsumed - l.FoodCarriedOut);
                     Assert.Equal(l.ReserveClosing + l.FoodClosing,
-                        l.ReserveOpening + l.FoodOpening + l.Regenerated - l.FoodConsumed);
+                        l.ReserveOpening + l.FoodOpening + l.Regenerated + l.FoodCarriedIn - l.FoodConsumed - l.FoodCarriedOut);
 
                     // M1_POP：期初＋出生－死亡＝期末；死亡全部由帶原因事件對帳。
-                    Assert.Equal(l.PopulationClosing, l.PopulationOpening + l.Births - l.Deaths);
+                    Assert.Equal(l.PopulationClosing, l.PopulationOpening + l.Births - l.Deaths + l.Immigrants - l.Emigrants);
                     Assert.Equal(l.Deaths, week.Events
                         .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.StarvationDeath)
                         .Sum(e => e.Count));
@@ -185,7 +185,8 @@ public sealed class DemoStarvationTests
 
                     // 飢餓債帳平衡。
                     Assert.Equal(l.HungerDebtClosing,
-                        l.HungerDebtOpening + l.FoodShortage - l.HungerDebtRecovered - l.HungerDebtRemovedByDeath);
+                        l.HungerDebtOpening + l.FoodShortage - l.HungerDebtRecovered - l.HungerDebtRemovedByDeath
+                        + l.HungerDebtCarriedIn - l.HungerDebtCarriedOut);
                     Assert.True(l.IsBalanced);
 
                     if (previous is not null)

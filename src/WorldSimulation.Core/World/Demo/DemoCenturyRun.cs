@@ -4,6 +4,8 @@ namespace WorldSimulation.Core.World.Demo;
 /// V0-05 一個 TEMP 示範年的摘要（全部聚落合計）。期初／期末值直接讀世界狀態，
 /// 流量（死亡、生產、消耗、再生、採收、事件數）由該年各週已提交的週報加總，
 /// 所以兩者能互相對帳：任何不一致都列在 <see cref="Problems"/>。
+/// V0-06A 起人口與糧食的期初／期末都含「途中」遷徙隊伍（只計一次），死亡、消耗與缺糧也含途中隊伍；
+/// 遷出／遷入是聚落之間的轉移，不改變世界總數。
 /// </summary>
 public sealed record DemoYearSummary(
     int Year,
@@ -27,10 +29,15 @@ public sealed record DemoYearSummary(
     long StarvationDeathsInEvents,
     int RecoveryEvents,
     int InhabitedSettlements,
-    long DailyDemoHarvest)
+    long DailyDemoHarvest,
+    long Emigrants = 0,
+    long Immigrants = 0,
+    long PopulationInTransit = 0,
+    int EmigrationEvents = 0,
+    int ArrivalEvents = 0)
 {
-    /// <summary>本年所有帶原因的聚落事件數（飢餓＋餓死＋飢餓解除）。</summary>
-    public int SettlementEvents => HungerEvents + StarvationEvents + RecoveryEvents;
+    /// <summary>本年所有帶原因的聚落事件數（飢餓＋餓死＋飢餓解除＋外移＋抵達）。</summary>
+    public int SettlementEvents => HungerEvents + StarvationEvents + RecoveryEvents + EmigrationEvents + ArrivalEvents;
 
     /// <summary>
     /// 年度守恆檢查（M1_RES、M1_POP、M1_NO_MAGIC_FOOD 在年尺度的對帳）。空清單＝零錯誤。
@@ -50,7 +57,10 @@ public sealed record DemoYearSummary(
             problems.Add($"第 {Year} 年出現魔法糧食：生產 {FoodProduced}≠採收 {Harvested}");
         if (Deaths != StarvationDeathsInEvents)
             problems.Add($"第 {Year} 年死亡 {Deaths} 人，但帶原因的餓死事件只有 {StarvationDeathsInEvents} 人");
-        if (PopulationClosing < 0 || FoodClosing < 0 || ReserveClosing < 0 || InhabitedSettlements < 0)
+        if (PopulationInTransit > PopulationClosing)
+            problems.Add($"第 {Year} 年途中人口 {PopulationInTransit} 超過世界人口 {PopulationClosing}");
+        if (PopulationClosing < 0 || FoodClosing < 0 || ReserveClosing < 0 || InhabitedSettlements < 0
+            || Emigrants < 0 || Immigrants < 0 || PopulationInTransit < 0)
             problems.Add($"第 {Year} 年出現負值");
         return problems;
     }
@@ -59,9 +69,11 @@ public sealed record DemoYearSummary(
     public string Describe()
         => $"第 {Year} 年（至第 {LastDay} 日）｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}）"
          + $"｜有人聚落 {InhabitedSettlements}"
+         + $"｜遷出 {Emigrants}、遷入 {Immigrants}、年底途中 {PopulationInTransit}"
          + $"｜糧食 {FoodClosing}（生產 {FoodProduced}、消耗 {FoodConsumed}、缺糧 {FoodShortage}）"
          + $"｜資源存量 {ReserveClosing}"
-         + $"｜事件 {SettlementEvents}（飢餓 {HungerEvents}、餓死 {StarvationEvents}、飢餓解除 {RecoveryEvents}）"
+         + $"｜事件 {SettlementEvents}（飢餓 {HungerEvents}、餓死 {StarvationEvents}、飢餓解除 {RecoveryEvents}"
+         + $"、外移 {EmigrationEvents}、抵達 {ArrivalEvents}）"
          + $"｜示範每日收穫合計 {DailyDemoHarvest}";
 }
 
@@ -102,8 +114,9 @@ public static class DemoCenturyRun
         var settlements = world.Sites.Settlements.Select(s => s.Id).OrderBy(id => id).ToArray();
         var points = world.Sites.ResourcePoints.Select(p => p.Id).OrderBy(id => id).ToArray();
 
-        long TotalPopulation() => settlements.Sum(id => world.SettlementPopulation(id));
-        long TotalFood() => settlements.Sum(id => world.SettlementFood(id));
+        // V0-06A：世界總數＝各聚落＋途中隊伍（只計一次）。
+        long TotalPopulation() => settlements.Sum(id => world.SettlementPopulation(id)) + world.PopulationInTransit;
+        long TotalFood() => settlements.Sum(id => world.SettlementFood(id)) + world.FoodInTransit;
         long TotalReserve() => points.Sum(id => world.ResourceReserve(id));
 
         var summaries = new List<DemoYearSummary>(years);
@@ -116,6 +129,8 @@ public static class DemoCenturyRun
             var foodOpening = TotalFood();
             var reserveOpening = TotalReserve();
             int weeks = 0, hungerEvents = 0, starvationEvents = 0, recoveryEvents = 0;
+            int emigrationEvents = 0, arrivalEvents = 0;
+            long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0, dailyHarvest = 0;
             var lastDay = 0;
@@ -142,6 +157,15 @@ public static class DemoCenturyRun
                     shortage = checked(shortage + l.FoodShortage);
                     regenerated = checked(regenerated + l.Regenerated);
                     harvested = checked(harvested + l.Harvested);
+                    emigrants = checked(emigrants + l.Emigrants);
+                    immigrants = checked(immigrants + l.Immigrants);
+                }
+
+                foreach (var m in latest.Migrations)
+                {
+                    deaths = checked(deaths + m.Deaths);
+                    consumed = checked(consumed + m.FoodConsumed);
+                    shortage = checked(shortage + m.FoodShortage);
                 }
 
                 foreach (var e in latest.Events)
@@ -158,6 +182,16 @@ public static class DemoCenturyRun
                         case DemoSettlementEventKind.HungerRecovered:
                             recoveryEvents++;
                             break;
+                        case DemoSettlementEventKind.MigrantStarvationDeath:
+                            starvationEvents++;
+                            deathsInEvents = checked(deathsInEvents + e.Count);
+                            break;
+                        case DemoSettlementEventKind.Emigration:
+                            emigrationEvents++;
+                            break;
+                        case DemoSettlementEventKind.Arrival:
+                            arrivalEvents++;
+                            break;
                     }
                 }
             }
@@ -169,7 +203,9 @@ public static class DemoCenturyRun
                 reserveOpening, regenerated, harvested, TotalReserve(),
                 hungerEvents, starvationEvents, deathsInEvents, recoveryEvents,
                 settlements.Count(id => world.SettlementPopulation(id) > 0),
-                dailyHarvest);
+                dailyHarvest,
+                emigrants, immigrants, world.PopulationInTransit,
+                emigrationEvents, arrivalEvents);
             errors.AddRange(summary.Problems());
             summaries.Add(summary);
             onYear?.Invoke(summary);

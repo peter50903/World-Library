@@ -59,14 +59,14 @@ public sealed class DemoWeeklySettlementTests
             {
                 // 資源帳、糧食帳、人口帳：期初＋流入－流出＝期末。
                 Assert.Equal(l.ReserveClosing, l.ReserveOpening + l.Regenerated - l.Harvested);
-                Assert.Equal(l.FoodClosing, l.FoodOpening + l.FoodProduced - l.FoodConsumed);
-                Assert.Equal(l.PopulationClosing, l.PopulationOpening + l.Births - l.Deaths);
+                Assert.Equal(l.FoodClosing, l.FoodOpening + l.FoodProduced + l.FoodCarriedIn - l.FoodConsumed - l.FoodCarriedOut);
+                Assert.Equal(l.PopulationClosing, l.PopulationOpening + l.Births - l.Deaths + l.Immigrants - l.Emigrants);
                 // M1_NO_MAGIC_FOOD：生產只來自採收，採收不超過再生後的存量。
                 Assert.Equal(l.Harvested, l.FoodProduced);
                 Assert.True(l.Harvested <= l.ReserveOpening + l.Regenerated);
                 // M1_RES：總資源只因再生增加、只因消耗減少。
                 Assert.Equal(l.ReserveClosing + l.FoodClosing,
-                    l.ReserveOpening + l.FoodOpening + l.Regenerated - l.FoodConsumed);
+                    l.ReserveOpening + l.FoodOpening + l.Regenerated + l.FoodCarriedIn - l.FoodConsumed - l.FoodCarriedOut);
                 // 消耗與缺糧合計等於需求；存量不超過上限。
                 Assert.Equal(l.PopulationOpening * cfg.FoodPerPersonPerWeek, l.FoodConsumed + l.FoodShortage);
                 Assert.True(l.ReserveClosing <= cfg.ReserveCapPerPoint * world.Sites.ResourcePointsOf(l.SettlementId).Count);
