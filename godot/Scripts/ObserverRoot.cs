@@ -186,6 +186,17 @@ public partial class ObserverRoot : Control
                 throw new InvalidOperationException("Godot did not show Core's migrant batch and emigration event.");
             }
 
+            // #61: the status panel shows ONE population ledger (settled + in transit = world) and labels
+            // the V0-01 daily demo population as a separate TEMP account.
+            if (!_status.Text.Contains($"聚落人口合計：{_world.SettledPopulation}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"遷徙途中人口：{_world.PopulationInTransit}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}", StringComparison.Ordinal)
+                || !_status.Text.Contains("V0-01 每日示範帳（舊版獨立 TEMP 帳", StringComparison.Ordinal)
+                || _world.WorldPopulation != _world.SettledPopulation + _world.PopulationInTransit)
+            {
+                throw new InvalidOperationException("Godot status panel mixed the population ledgers.");
+            }
+
             var batch = travelling[0];
             _hexMap._GuiInput(new InputEventMouseButton
             {
@@ -404,10 +415,15 @@ public partial class ObserverRoot : Control
         var snapshot = _world.Snapshot();
         _status.Text =
             $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
-            $"人口：{snapshot.Population}\n" +
+            // #61: one population ledger (settlements + migrants, each person counted once) ...
+            $"聚落人口合計：{_world.SettledPopulation}\n" +
             $"遷徙途中人口：{_world.PopulationInTransit}\n" +
-            $"食物庫存：{snapshot.FoodStock}\n" +
-            $"累積食物不足：{snapshot.TotalShortage}\n" +
+            $"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}\n" +
+            // ... kept apart from the older V0-01 daily demo ledger, which is a separate TEMP account.
+            "—— V0-01 每日示範帳（舊版獨立 TEMP 帳，與上方聚落人口無關）——\n" +
+            $"每日示範人口：{snapshot.Population}\n" +
+            $"每日示範食物庫存：{snapshot.FoodStock}\n" +
+            $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
             $"亂數種子：{DemoSeed}";
 

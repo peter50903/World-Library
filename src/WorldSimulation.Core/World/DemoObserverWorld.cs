@@ -192,6 +192,25 @@ public sealed class DemoObserverWorld
     /// <summary>V0-06A: people currently travelling (counted once: not in any settlement).</summary>
     public long PopulationInTransit => _migrations.Sum(b => b.People);
 
+    /// <summary>
+    /// #61 TEST hook: run the NEXT week's settlement on the current committed state with a chosen set of
+    /// published reports (to prove MIG_PULL uses only news that has arrived). Pure: publishes nothing.
+    /// </summary>
+    internal DemoWeeklyOutcome SettleNextWeekForTest(IReadOnlyList<DemoWeekReport> publishedWeeks)
+    {
+        var week = checked(_weeks.Count + 1);
+        return DemoWeeklySettlement.Settle(
+            week, TimeSpan.FromDays(7L * week), Map, Sites,
+            _reserves, _settlementFood, _population, _hungerDebt,
+            _migrations, _nextMigrationBatchId, publishedWeeks, _weekly);
+    }
+
+    /// <summary>#61: people living in settlements (sum of every settlement's current population).</summary>
+    public long SettledPopulation => _population.Values.Sum();
+
+    /// <summary>#61: world population = settled + in transit (each person counted once).</summary>
+    public long WorldPopulation => checked(SettledPopulation + PopulationInTransit);
+
     /// <summary>V0-06A: food carried by travelling migrant batches.</summary>
     public long FoodInTransit => _migrations.Sum(b => b.Food);
 
@@ -266,7 +285,7 @@ public sealed class DemoObserverWorld
             var outcome = DemoWeeklySettlement.Settle(
                 checked(_weeks.Count + 1), dueTime, Map, Sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
-                _migrations, _nextMigrationBatchId, LatestWeek, _weekly);
+                _migrations, _nextMigrationBatchId, _weeks, _weekly);
             nextWeeks = _weeks.Add(outcome.Report);
             nextReserves = outcome.Reserves;
             nextSettlementFood = outcome.SettlementFood;

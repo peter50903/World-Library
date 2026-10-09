@@ -22,7 +22,8 @@ public sealed record DemoWeeklyTempConfig(
     long MinPopulationToEmigrate = 2,
     long EmigrationShareDivisor = 2,
     int KnownRouteMaxSteps = 6,
-    int TempFamineSettlementId = 0)
+    int TempFamineSettlementId = 0,
+    int NewsDelayWeeksPerCell = 1)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -62,7 +63,7 @@ public sealed record DemoWeeklyTempConfig(
             || YieldPerWorkerPerWeek < 0 || FoodPerPersonPerWeek < 0 || InitialFoodPerPerson < 0
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
-            || TempFamineSettlementId < 0)
+            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1)
             throw new ArgumentOutOfRangeException(nameof(DemoWeeklyTempConfig), "Invalid TEMP weekly settlement config.");
     }
 
@@ -279,7 +280,8 @@ internal sealed record DemoWeeklyOutcome(
 /// 純函式：只讀入目前狀態、回傳候選結果，不改動任何輸入。
 /// 不使用亂數，因此不影響 RESOURCE 流（V0-01 每日收穫）的抽樣次數；餓死人數與遷徙都是確定性的。
 /// 不做隱藏救濟（45D SURV_NO_RESCUE）：人口即將滅亡也不生成糧食或人口。
-/// 遷徙只看上一週已發布的週報（45E MIG_PULL：只用已知資訊，不讀本週的世界真相）。
+/// 遷徙只用已經傳到來源聚落的消息（45E MIG_PULL：只用已知資訊，不讀本週的世界真相，
+/// 也不讀還沒傳到的較新週報；見 <see cref="DemoMigrationNews"/>）。
 /// </summary>
 internal static class DemoWeeklySettlement
 {
@@ -294,7 +296,8 @@ internal static class DemoWeeklySettlement
         ImmutableSortedDictionary<int, long> hungerDebt,
         DemoWeeklyTempConfig config)
         => Settle(week, worldTime, map: null, sites, reserves, settlementFood, population, hungerDebt,
-            ImmutableList<DemoMigrationBatch>.Empty, nextMigrationBatchId: 1, previousWeek: null, config);
+            ImmutableList<DemoMigrationBatch>.Empty, nextMigrationBatchId: 1,
+            publishedWeeks: Array.Empty<DemoWeekReport>(), config);
 
     public static DemoWeeklyOutcome Settle(
         int week,
@@ -307,10 +310,13 @@ internal static class DemoWeeklySettlement
         ImmutableSortedDictionary<int, long> hungerDebt,
         ImmutableList<DemoMigrationBatch> migrations,
         int nextMigrationBatchId,
-        DemoWeekReport? previousWeek,
+        IReadOnlyList<DemoWeekReport> publishedWeeks,
         DemoWeeklyTempConfig config)
     {
         ArgumentNullException.ThrowIfNull(migrations);
+        ArgumentNullException.ThrowIfNull(publishedWeeks);
+        if (publishedWeeks.Count > 0 && publishedWeeks[publishedWeeks.Count - 1].Week >= week)
+            throw new InvalidOperationException("Only weeks published before this settlement can be known (MIG_PULL).");
         if (nextMigrationBatchId < 1 || migrations.Any(b => b.Id >= nextMigrationBatchId))
             throw new InvalidOperationException("Migration batch IDs must stay below the next ID (IDs are never reused).");
 
@@ -469,7 +475,7 @@ internal static class DemoWeeklySettlement
             long emigrants = 0, foodOut = 0, debtOut = 0;
             if (map is not null && config.MigrationEnabled && shortage > 0
                 && survivors >= config.MinPopulationToEmigrate
-                && ChooseDestination(map, sites, settlement, previousWeek, config) is { } target)
+                && ChooseDestination(map, sites, settlement, week, publishedWeeks, config) is { } target)
             {
                 emigrants = survivors / config.EmigrationShareDivisor;
                 if (emigrants > 0)
@@ -479,13 +485,15 @@ internal static class DemoWeeklySettlement
                     var batch = new DemoMigrationBatch(
                         nextMigrationBatchId, settlement.Id, settlement.Name,
                         target.Settlement.Id, target.Settlement.Name, target.Route,
-                        StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week);
+                        StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
+                        NewsWeek: target.NewsWeek);
                     nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
                     events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
-                        $"本週缺糧 {shortage}；前往上週消息中有糧的{target.Settlement.Name}，"
+                        $"本週缺糧 {shortage}；依第 {target.NewsWeek} 週傳來的消息前往有糧的{target.Settlement.Name}"
+                        + $"（消息沿路傳 {target.Route.Length - 1} 格，TEMP 每格 {config.NewsDelayWeeksPerCell} 週），"
                         + $"路線 {target.Route.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
                         batch.Id));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
@@ -532,31 +540,32 @@ internal static class DemoWeeklySettlement
     }
 
     /// <summary>
-    /// 45E MIG_PULL：只考慮上一週已發布週報裡「沒有缺糧、沒有飢餓債、仍有人」的聚落，
-    /// 且 TEMP 路線長度不超過已知範圍；取路線最短者，同長取編號小者。第一週沒有任何消息，所以不會遷徙。
+    /// 45E MIG_PULL：只考慮「已經傳到來源聚落」的消息（<see cref="DemoMigrationNews"/>）：
+    /// 路程 d 格的目的地，來源在第 W 週只知道它第 W－d×延遲 週的週報；該週報中目的地沒有缺糧、
+    /// 沒有飢餓債、仍有人，且 TEMP 路線長度不超過已知範圍，才是候選。取路線最短者，同長取編號小者。
+    /// 第一週沒有任何消息，所以不會遷徙；沒有陸路就沒有消息（MIG_NO_TARGET）。
     /// </summary>
-    private static (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route)? ChooseDestination(
-        DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, DemoWeekReport? previousWeek,
-        DemoWeeklyTempConfig config)
+    private static (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? ChooseDestination(
+        DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, int week,
+        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config)
     {
-        if (previousWeek is null)
-            return null;
-
-        (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route)? best = null;
+        (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? best = null;
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
         {
             if (candidate.Id == source.Id)
-                continue;
-            var news = previousWeek.Settlements.FirstOrDefault(l => l.SettlementId == candidate.Id);
-            if (news is null || news.FoodShortage > 0 || news.HungerDebtClosing > 0 || news.PopulationClosing == 0)
                 continue;
 
             var route = DemoMigrationRoutes.FindRoute(map,
                 new DemoCellRef(source.Column, source.Row), new DemoCellRef(candidate.Column, candidate.Row));
             if (route.Length < 2 || route.Length - 1 > config.KnownRouteMaxSteps)
                 continue;
+
+            var news = DemoMigrationNews.Received(publishedWeeks, week, candidate.Id, route.Length - 1,
+                config.NewsDelayWeeksPerCell);
+            if (news is null || !DemoMigrationNews.SaysFed(news.Value.Ledger))
+                continue;
             if (best is null || route.Length < best.Value.Route.Length)
-                best = (candidate, route);
+                best = (candidate, route, news.Value.Week);
         }
 
         return best;
