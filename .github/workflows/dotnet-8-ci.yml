@@ -64,3 +64,29 @@ jobs:
           dotnet restore godot/WorldSimulation.Godot.csproj
           dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Release
           echo "Godot C# build succeeded. Interactive scene still needs Godot .NET editor to view."
+
+      - name: Headless Godot 4.7.2 .NET project import and scene launch (V0-02)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Download the official matching .NET-enabled engine release, not plain Godot.
+          url="https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip"
+          curl -fL --retry 3 --connect-timeout 20 --max-time 180 "$url" -o /tmp/godot-dotnet.zip
+          mkdir -p /tmp/godot-dotnet
+          unzip -q /tmp/godot-dotnet.zip -d /tmp/godot-dotnet
+          engine="$(find /tmp/godot-dotnet -type f -name 'Godot*mono_linux*.x86_64' -print -quit)"
+          test -n "$engine"
+          chmod +x "$engine"
+
+          # The Godot editor normally uses its Debug script build on first open.
+          dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Debug
+          timeout 90 "$engine" --headless --path godot --editor --import 2>&1 | tee /tmp/godot-import.log
+          timeout 45 "$engine" --headless --path godot --quit-after 4 2>&1 | tee /tmp/godot-scene.log
+
+          # Fail on Godot's own scene/script errors even if the process returns zero.
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-import.log /tmp/godot-scene.log; then
+            echo "Godot reported an import or scene runtime error."
+            exit 1
+          fi
+          grep -q 'Godot Engine' /tmp/godot-scene.log
+          echo "Actual Godot .NET scene loaded and ran headlessly."
