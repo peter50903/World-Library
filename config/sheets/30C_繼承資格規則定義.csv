@@ -8,23 +8,3 @@ ELIG_LANDED,有領地,Landed Candidate,條件資格,has_recognized_fief,TRUE,0,,
 ELIG_NO_TRAITOR,非叛徒,No Active Treason,排除資格,active_treason_status,FALSE,0,,只排除仍有有效法律/家族處分者；歷史罪行不自動永久剝奪,TRUE
 ELIG_MIN_REPUTATION,最低聲望,Minimum Reputation,門檻,reputation_min,configurable,0,,用於選舉/能力制,TRUE
 ELIG_RELIGIOUS_APPROVAL,宗教認可,Religious Approval,門檻,faith_legitimacy,configurable,0,religious_legitimacy,只在宗教化繼承制度使用,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

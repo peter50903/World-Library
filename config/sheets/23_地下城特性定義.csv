@@ -9,23 +9,3 @@ DTR_DEAD_ZONE,死域侵蝕,Dead Zone,dead_zone_generation,1,死靈術,,0.4,可�
 DTR_HEAT,高熱,Extreme Heat,temperature_modifier,1.5,,,0.5,高溫生存壓力,TRUE
 DTR_COLD,極寒,Extreme Cold,temperature_modifier,-1.5,,,0.5,低溫生存壓力,TRUE
 DTR_OVERFLOW_PRONE,易溢出,Overflow Prone,overflow_rate,1.5,,,0.4,更容易發生地下城溢出,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

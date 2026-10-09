@@ -5,23 +5,3 @@ RDMG_MAGIC_SACRED,魔法神聖,Magic Sacred,魔法,magic_religious_attitude,sacr
 RDMG_NECRO_FORBID,死靈禁忌,Necromancy Taboo,死靈,necromancy_attitude,forbidden,不等於自動犯罪,使用死靈大幅降低信仰值／宗教看法,偏好國家限制死靈術,NECRO_STANCE,不抹除死靈知識／技能,TRUE
 RDMG_NECRO_TOLERATE,死靈容忍,Necromancy Tolerated,死靈,necromancy_attitude,tolerated,不改國家法律,死靈不產生額外宗教懲罰,中立,NECRO_STANCE,仍受屍體所有權／法律等規則,TRUE
 RDMG_NECRO_SACRED,死靈聖儀,Sacred Necromancy,死靈,necromancy_attitude,sacred,不生成免費不死生物,特定死靈儀式提高宗教認同,偏好允許受控死靈,NECRO_STANCE,不死生物仍是新實體，不是原角色,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

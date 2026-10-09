@@ -10,23 +10,3 @@ LONG_TRAVEL,旅行,分鐘~月,DistanceProgress,Route/Movement/Supply,TRUE,位置
 LONG_MEDICAL,醫療處置,分鐘~小時,TreatmentProgress,Patient/Medicine/Tool,TRUE,依療程,Health Treatment,SK_MEDICINE,嚴重程序中斷可能有風險,TRUE
 LONG_RITUAL,宗教儀式,分鐘~天,RitualProgress,Clergy/Participants/Items,TRUE,依儀式,Religion Activity/Miracle條件,SK_RELIGION,神蹟仍依07B成本與條件,TRUE
 LONG_WORK,一般工作,分鐘~小時,WorkProgress,Employment/Task/Tool,TRUE,保留可完成部分,產出/服務/薪資,依工作,所有就業最終落到實際行動,TRUE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE

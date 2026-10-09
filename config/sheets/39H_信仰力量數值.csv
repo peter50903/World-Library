@@ -9,23 +9,3 @@ FP_DECAY,信仰力量自然耗散,神祇,10%/year,每年,每位神祇池獨立�
 FP_NONEXIST,神祇不存在,神祇,該God FormalFollowerCount=0時Generation=0且不能施放Miracle；既有Pool照常Decay,事件/年度,同宗教其他神祇可繼續存在,TRUE
 FP_CAST,神蹟支付,神祇／神蹟,若GodPool>=FaithPowerCost且Definition前置合法：先原子扣Cost，再100%執行Effect,施放時,不得從神系其他神祇池代付,TRUE
 FP_PLAYER,玩家神祇,玩家／神祇,與NPC God完全共用各God獨立FaithPower規則,施放時,玩家不獲免費資源,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

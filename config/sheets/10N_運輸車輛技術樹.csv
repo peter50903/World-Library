@@ -6,23 +6,3 @@ TECH_SUSPENSION,車體減震,Vehicle Suspension,3,車輛,TECH_AXLE_BEARING,240,"
 TECH_HEAVY_HAUL,重載運輸,Heavy Haulage,3,物流,"TECH_WAGON,TECH_AXLE_BEARING",260,"RES_WOOD:30,RES_IRON_INGOT:8",運送大型石材/攻城器械,研究時間-20%,"SK_WAGONMAKING,SK_SIEGE_ENGINEERING",,,heavy_cargo_transport+,BUILD_WAINWRIGHT,支援工程與軍事重載物流,TRUE
 TECH_CARRIAGE,載客馬車,Carriage Craft,4,車輛,"TECH_SUSPENSION,TECH_WAGON",320,"RES_WOOD:25,RES_IRON_INGOT:6,RES_LEATHER:5,RES_CLOTH:5",長途載運重要乘客,研究時間-15%,SK_WAGONMAKING,,,carriage_enabled,BUILD_WAINWRIGHT,旅客與貴族交通載具,TRUE
 TECH_LOGISTICS_STANDARD,車輛規格標準化,Transport Standardization,5,物流,"TECH_HEAVY_HAUL,TECH_CARRIAGE,TECH_STANDARD_MEASURES",500,"RES_PARCHMENT:10,RES_WOOD:20,RES_IRON_INGOT:10",管理大型商隊車輛群,研究時間-15%,"SK_WAGONMAKING,SK_TRADE,SK_RESEARCH",,,land_logistics_efficiency+,"BUILD_WAINWRIGHT,BUILD_MARKET",提高車輛維修與物流協同，不瞬間搬運貨物,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

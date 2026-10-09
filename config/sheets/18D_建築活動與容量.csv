@@ -13,23 +13,3 @@ BUILD_WAREHOUSE,STORE_GOODS,Storage,300,BulkUnit,,"Goods,HandlerTime",Storage/Tr
 BUILD_PORT,LOAD_UNLOAD,Logistics,12,ShipBerth,SK_SAILING,"Ship,Labor,Cargo",Cargo Transfer,BerthSlots,大型船沒有港口仍可冒險靠岸但有風險,TRUE
 BUILD_CHURCH,RITUAL,Religion,100,Participant,SK_RELIGION,"ClergyTime,OptionalOfferings",Religious Activity,EventCapacity,,TRUE
 BUILD_PRISON,HOLD_PRISONER,Custody,100,Prisoner,,"Guard,Food,Space",Custody,Capacity,超載產生後果，不刪除囚犯,TRUE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE

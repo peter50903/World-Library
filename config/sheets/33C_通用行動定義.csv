@@ -11,26 +11,6 @@ ACT_PICKUP,拾取,Context/Quick,0,0~1,0,CarryCapacity/Time,Item,可觸及、可�
 ACT_DROP,放下物品,Context,0,0,0,None,Item,Currently held,Location改變,FALSE,不可藉此複製／刪除物品,TRUE
 ACT_STAND,起身,Movement/Quick,0,0~1,部分Movement,Stamina,Self,Prone且可行動,移除Prone,FALSE,重傷/束縛可阻止,TRUE
 ACT_OBSERVE,觀察,Main/Context,0~1,0,0,Time,Area/Entity,可感知,取得可觀察Information,TRUE,不取得世界真相,TRUE
-ACT_GO_TO_LOCAL,前往地點,Long/World,0,0,0,Time/Stamina,Location/SubLocation,Known/Selectable target + legal route/path,依距離/路徑/速度/地形/負重/傷勢推進World Time並改變Location,TRUE,Phase3不手動走路；地方移動也以行動／地點指令解析。長距離沿用LONG_TRAVEL。,FALSE
-ACT_DIALOGUE,交談／社交對話,World/Social,0~1,0,0,Time,Character,Target reachable/contactable + legal communication path + option-specific requirements,Conversation Exchange才Commit；Duration=Intent BaseDuration經結構化Modifier修正，僅由Simulation資料決定，不讀AI實際字數。,TRUE,合法修正值：條件複雜度／資訊量／參與人數／翻譯或語言障礙／正式情境；正式提交時鎖定時長。,FALSE
-ACT_SELF_REFLECT,自我反思,World/Context,0,0,0,Time,Self,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
+ACT_GO_TO_LOCAL,前往地點,Long/World,0,0,0,Time/Stamina,Location/SubLocation,Known/Selectable target + legal route/path,依距離/路徑/速度/地形/負重/傷勢推進World Time並改變Location,TRUE,Phase3不手動走路；地方移動也以行動／地點指令解析。長距離沿用LONG_TRAVEL。,TRUE
+ACT_DIALOGUE,交談／社交對話,World/Social,0~1,0,0,Time,Character,Target reachable/contactable + legal communication path + option-specific requirements,Conversation Exchange才Commit；Duration=Intent BaseDuration經結構化Modifier修正，僅由Simulation資料決定，不讀AI實際字數。,TRUE,合法修正值：條件複雜度／資訊量／參與人數／翻譯或語言障礙／正式情境；正式提交時鎖定時長。,TRUE
+ACT_SELF_REFLECT,自我反思,World/Context,0,0,0,Time,Self,每世界年最多一次有效重評估（P_SELF_REFLECTION_REEVAL_COOLDOWN_DAYS）,耗時 P_SELF_REFLECTION_BASE_DURATION_MIN 分鐘；重新評估並更新角色的「自我認知版」心理描述（可缺漏、不可錯標）,TRUE,依 Notion 02 N「心理顯示」。,TRUE

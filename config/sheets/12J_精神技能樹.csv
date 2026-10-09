@@ -11,23 +11,3 @@ MENTAL_WARD,心靈屏障,Mental Ward,Spell,3,防禦,"COURAGE,MENTAL_SENSE",,KNOW
 SLEEP,沉睡,Sleep,Spell,4,控制,"DROWSINESS,CONFUSION",,KNOW_SLEEP,4,75,長,長,induce_sleep,使合適目標進入Sleep,受抗性/狀態限制,高階非致命控制,TRUE
 COMMAND,精神命令,Command,Spell,4,控制,"CHARM,PANIC",,KNOW_COMMAND,4,95,中,長,temporary_command,短時間提高指定行動權重,不能永久改Personality/Values/Loyalty,高階精神控制,TRUE
 MIND_DOMAIN,心靈領域,Mind Domain,Spell,5,範圍,"COMMAND,SLEEP,MENTAL_WARD",,KNOW_MIND_DOMAIN,5,220,極長,極長,area_mental_modifier,大型區域暫時Emotion/Decision修正,不能永久重寫角色；不得抹除Knowledge,精神系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

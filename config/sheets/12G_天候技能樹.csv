@@ -9,23 +9,3 @@ TEMPERATURE_SHIFT,局部溫度調節,Temperature Shift,Spell,3,溫度,WEATHER_SE
 CALM_STORM,平息風暴,Calm Storm,Spell,4,風暴,"WIND_SHIFT,DISPERSE_CLOUDS",,KNOW_CALM_STORM,4,180,極長,極長,reduce_storm_intensity,降低Storm強度,不能保證極端災害完全消失,海運/救災,TRUE
 CALL_STORM,召集風暴,Call Storm,Spell,4,風暴,"LOCAL_RAIN,WIND_SHIFT",,KNOW_CALL_STORM,4,220,極長,極長,increase_storm_intensity,形成/加強局部Storm,可造成真實災害後果,高階天候法術,TRUE
 WEATHER_DOMAIN,天候領域,Weather Domain,Spell,5,綜合,"CALL_STORM,CALM_STORM,TEMPERATURE_SHIFT",,KNOW_WEATHER_DOMAIN,5,500,極長,極長,large_weather_control,大範圍短期Weather操控,不能永久改Climate；世界級範圍需特殊WorldEffect,天候系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

@@ -9,23 +9,3 @@ TREMOR,震地,Tremor,Spell,3,控制,GROUND_SPIKE,,KNOW_TREMOR,3,50,中,中,local
 STONE_PRISON,岩牢,Stone Prison,Spell,4,控制,"TREMOR,EARTH_WALL",,KNOW_STONE_PRISON,4,80,長,長,earth_entrapment,土石拘束目標,目標力量可破壞,高階控制,TRUE
 EARTH_WAVE,地脈衝擊,Earth Wave,Spell,4,攻擊,"TREMOR,STONE_SHOT",,KNOW_EARTH_WAVE,4,90,長,長,earth_wave_damage,大範圍地面衝擊,依地形限制,高階攻擊,TRUE
 LOCAL_QUAKE,局部地震術,Local Quake,Spell,5,範圍,"EARTH_WAVE,FORTIFY_STRUCTURE",,KNOW_LOCAL_QUAKE,5,190,極長,極長,local_quake,大型局部震動/建築破壞,屬Magic Event，不等於自然Disaster生成；不改板塊規則,土系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

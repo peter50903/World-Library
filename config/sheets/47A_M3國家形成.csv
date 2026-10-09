@@ -6,23 +6,3 @@ STATE_GOV,政體從合法政治結果選定,政體類型由創建者、文化、
 STATE_CAPITAL,首都需真實聚落,首都是政治官職／行政中心所在地，可遷移或失去。,受控聚落,首都關係,無首都不等於立即滅國,TRUE
 STATE_LANDLESS,失地國家可暫存,沒有主權領土後進無領土狀態；持續10年才滅絕。,P_STATE_LANDLESS_YEARS=10,無領土計時／滅亡事件,已定案,TRUE
 STATE_EXTINCT,滅國不刪實體,已滅亡國家不能正常行使主權，但實體、條約紀錄、宣稱、文化／宗教影響與國史永久可查。,生命週期變更,歷史國家,實體毀滅 ≠ 歷史刪除,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

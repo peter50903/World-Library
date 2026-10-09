@@ -43,23 +43,3 @@ BUILD_WALL_STONE,石牆,Stone Wall,軍事/防禦,高耐久區域阻隔,0,"RES_ST
 BUILD_GATE_WOOD,木城門,Wooden Gate,軍事/防禦,控制通行,0,"RES_WOOD:35,RES_IRON_INGOT:2",100,中,BUILD_GATE_STONE,需要連接城牆段,TRUE
 BUILD_GATE_STONE,石造城門,Stone Gate,軍事/防禦,控制通行/高耐久入口,0,"RES_STONE:80,RES_WOOD:20,RES_IRON_INGOT:8",300,高,,閘門毀壞形成真實通路缺口,TRUE
 BUILD_ACADEMY,高等學院,Academy,教育/研究,高等教育/研究/學術保存,120,"RES_STONE:100,RES_WOOD:60,RES_PARCHMENT:20",900,極高,,不自動產生科技；需教師／研究者／書籍／資源,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

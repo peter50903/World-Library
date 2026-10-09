@@ -7,23 +7,3 @@ SUP_PAY,軍餉,Gold,需付薪單位到期,Gold從Treasury轉給Soldiers/Organiza
 SUP_LINE,補給線,Route,Army遠離補給來源,需要有效Road/Caravan/Port/Depot,被切斷→依庫存逐日惡化,重新連線或當地採集,不是抽象連線；貨物真的移動,TRUE
 SUP_FORAGE,就地徵糧,LocalResource,Army決定Forage/Requisition,取得當地真實Food/Water,過度使用→地區短缺/Opinion/犯罪/反抗,停止徵用/外部補給,可合法徵用或掠奪,TRUE
 SUP_OVERLOAD,超過地方承載,SupplyLimit,Army需求>當地可供應,補給消耗/疾病/行軍壓力增加,長期超載→快速惡化,分兵/撤離/增設補給,借鑑CK3 補給上限，但由真實產出與物流推導,TRUE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE

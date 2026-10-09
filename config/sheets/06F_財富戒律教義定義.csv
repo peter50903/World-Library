@@ -4,23 +4,3 @@ RDF_PROSPERITY,繁榮信仰,Prosperity Doctrine,財富,wealth_goal_weight,1.2,�
 RDF_CHARITY,慈善義務,Charity Duty,財富,charity_goal_weight,1.3,無強制國家稅制,救濟行為提高信仰值／宗教聲望,提高救濟與捐贈偏好,WEALTH_STANCE,慈善必須實際轉移金幣／物資,TRUE
 RDF_TITHE,宗教奉獻,Religious Tithe,奉獻,religious_donation_weight,1.25,只有國家／宗教另有制度才形成強制費用,捐獻提高信仰值／宗教聲望,偏好建立固定奉獻制度,,金幣實際轉入教會／宗教組織資產,TRUE
 RDF_SIMPLICITY,反奢華,Anti-Luxury,生活規範,luxury_opinion_penalty,1,無直接法律效果,高奢華角色受宗教看法懲罰,偏好低奢華公共活動,WEALTH_STANCE,與文化享樂特性可能衝突,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

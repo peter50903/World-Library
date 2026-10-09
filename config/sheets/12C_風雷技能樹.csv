@@ -9,23 +9,3 @@ CHAIN_LIGHTNING,連鎖雷電,Chain Lightning,Spell,3,雷電,LIGHTNING_BOLT,,KNOW
 STATIC_FIELD,靜電領域,Static Field,Spell,3,控制,"SHOCK,WIND_BARRIER",,KNOW_STATIC_FIELD,3,45,中,中,static_area,區域減速/觸電,持續時間有限,區域控制,TRUE
 STORM_LANCE,雷霆之槍,Storm Lance,Spell,4,雷電,"CHAIN_LIGHTNING,GALE_STEP",,KNOW_STORM_LANCE,4,85,長,長,piercing_lightning,高穿透雷擊,高MP成本,高階單體/直線攻擊,TRUE
 THUNDER_DOMAIN,雷暴領域,Thunder Domain,Spell,5,範圍,"STORM_LANCE,STATIC_FIELD",,KNOW_THUNDER_DOMAIN,5,170,長,長,large_storm_damage,局部雷電戰場,不是Weather Climate永久變更,風雷系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

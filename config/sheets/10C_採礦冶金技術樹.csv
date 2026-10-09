@@ -7,23 +7,3 @@ TECH_WEAPON_SMITHING,武器鍛造,Weapon Smithing,3,鍛造,TECH_BASIC_FORGING,24
 TECH_ARMOR_SMITHING,甲冑鍛造,Armor Smithing,3,鍛造,TECH_BASIC_FORGING,280,"RES_IRON_INGOT:15,RES_LEATHER:5",完成大型金屬防具,研究時間-15%,SK_SMITHING,REC_PLATE_ARMOR,BUILD_SMITHY,heavy_armor_crafting,BUILD_SMITHY,解鎖複雜重甲,TRUE
 TECH_HEAT_TREATMENT,熱處理,Heat Treatment,4,冶金,"TECH_WEAPON_SMITHING,TECH_ARMOR_SMITHING",320,"RES_IRON_INGOT:20,RES_COAL:10",比較不同加熱冷卻流程,研究時間-20%,SK_SMITHING,,,metal_durability_quality+,BUILD_SMITHY,提高耐久與品質上限,TRUE
 TECH_STEELWORKING,精煉鋼工藝,Advanced Steelworking,5,冶金,"TECH_HEAT_TREATMENT,TECH_ORE_SORTING",600,"RES_IRON_ORE:30,RES_COAL:30",長期高品質冶煉紀錄,研究時間-15%,"SK_SMITHING,SK_RESEARCH",,,advanced_metal_materials,"BUILD_SMELTER,BUILD_SMITHY",高階金屬技術；仍需真實礦石與燃料,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

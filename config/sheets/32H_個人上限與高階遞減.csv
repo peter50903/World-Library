@@ -6,23 +6,3 @@ CAP_LONGEVITY,長壽優勢,角色,長壽種族只有更多可用時間,依正常
 CAP_CHILD,成長期限制,兒童,生命階段可暫時限制可達Effective/Base區間,可學習,可學習,受成熟度限制,成熟後解除部分限制,不能靠訓練繞過生理成熟,種族生命階段,個人上限仍固定,詳細兒童曲線後續數值化,TRUE
 CAP_AGING,衰老不刪基礎,長老,Aging只修改Effective Ability，不刪除Base Ability/Skill,N/A,N/A,N/A,N/A,N/A,種族老化曲線,健康差異,符合既定老化規則,TRUE
 CAP_SPECIAL_EFFECT,特殊突破,特殊世界效果,只有明確World Rule/Miracle/Transformation可改Cap,N/A,N/A,N/A,N/A,定義決定,可能,可能,普通訓練不能無限突破個人極限,TRUE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE

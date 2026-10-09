@@ -18,23 +18,3 @@ HEAD_SENIOR_ELIGIBLE,尊長家主,Senior House Head,HouseHead,senior_eligible,ho
 HEAD_ELECTIVE,家族選舉家主,Elective House Head,HouseHead,house_election,house_head_selection,成年House Members存在,,HOUSE_HEAD,由有投票資格家族成員選舉,TRUE
 HEAD_APPOINTED,指定家主,Appointed House Head,HouseHead,appointment,house_head_selection,現任HouseHead可合法指定,,HOUSE_HEAD,被指定人須符合家族資格,TRUE
 HEAD_MERIT,能力家主,Merit House Head,HouseHead,merit_score,house_head_selection,House存在,,HOUSE_HEAD,依家族內部聲望、能力、財富、支持等選出,TRUE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE

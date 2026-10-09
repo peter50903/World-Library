@@ -8,23 +8,3 @@ PROP_HEIR,私人遺產與頭銜分離,一般財產繼承走遺產規則；貴族
 PROP_NO_HEIR,無合法繼承人需有制度去向,剩餘遺產依適用法律／遺囑／組織／歸屬國家等合法規則處理；不憑空刪除。,遺產備援,金幣／物品守恆,TRUE
 PROP_ABANDON,放棄／遺失可成無主或原擁有者仍在,遺失持有者≠擁有者喪失；真正遺棄／合法扣押才改所有權。,不同事件類型,Topic74,TRUE
 PROP_THEFT,偷竊只改持有者,竊盜成功後竊賊持有，但合法擁有者保持直到買賣、追訴時效／法律處置等正式規則改變。,持有者事件 + 犯罪,Topic74/39,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

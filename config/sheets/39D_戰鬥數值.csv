@@ -13,23 +13,3 @@ ARMY_POWER,單位有效戰力,軍事單位,Headcount*AvgCombatQuality*Equipment*
 ARMY_LOSS,主戰基準傷亡,軍事單位,LossRate=0.003*(EnemyPower/(OwnPower+EnemyPower))*PhaseFactor per minute,每60秒脈衝,相近軍力約單方0.15%/最小值，後續靠士氣／撤退縮短戰鬥,TRUE
 ARMY_BREAK,崩潰門檻,軍隊／單位,Morale<30 或 Cohesion<25 進Break評估；<15且無退路可提高Surrender,脈衝/重大事件,不是自動投降，仍看指揮官／路線／恐懼,TRUE
 ARMY_PURSUIT,追擊傷亡基準,撤退／追擊,0.006*(PursuitPower/(PursuitPower+ScreenPower)) per minute,追擊脈衝,騎兵/速度/地形修正,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

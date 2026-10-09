@@ -6,23 +6,3 @@ TECH_SEAL_ENGRAVING,印璽雕刻,Seal Engraving,2,精工,TECH_PRECIOUS_METALWORK
 TECH_FINE_ORNAMENT,高級飾品工藝,Fine Ornamentation,3,珠寶,TECH_GEM_SETTING,260,"RES_GEMSTONE:8,RES_SILVER_INGOT:8",製作高品質珠寶,研究時間-15%,SK_JEWELCRAFT,,,luxury_item_quality+,BUILD_JEWELER,提高奢侈品價值與聲望用途,TRUE
 TECH_ARCANE_JEWELRY,魔導珠寶,Arcane Jewelry,4,魔法精工,"TECH_GEM_SETTING,TECH_BASIC_ENCHANTING",420,"RES_GEMSTONE:10,RES_MANA_CRYSTAL:8,RES_SILVER_INGOT:8",成功穩定附魔於小型飾品,研究時間-15%,"SK_JEWELCRAFT,SK_ARCANE_CRAFT",,,magic_accessory_enabled,"BUILD_JEWELER,BUILD_MAGIC_WORKSHOP",可從魔法裝備池抽合法特性,TRUE
 TECH_MASTER_JEWELCRAFT,宗師精工,Master Jewelcraft,5,珠寶,"TECH_FINE_ORNAMENT,TECH_ARCANE_JEWELRY",650,"RES_GEMSTONE:20,RES_SILVER_INGOT:15,RES_MANA_CRYSTAL:5",長期製作Unique級精工作品,研究時間-10%,"SK_JEWELCRAFT,SK_RESEARCH",,,master_jewel_quality+,BUILD_JEWELER,只提高製作可能性，不保證唯一,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

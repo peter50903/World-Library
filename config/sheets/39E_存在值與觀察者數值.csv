@@ -18,23 +18,3 @@ OBS_TOPN,觀察者首頁前N名,觀察者,World每類30；Region每類15,不足�
 OBS_MIN,觀察者主動推送門檻,觀察者,World Attention>=40；Region>=20；Major Event可無視門檻,低於門檻仍可搜尋／阿卡西紀錄下鑽,TRUE
 OBS_UPDATE,索引更新,觀察者,Dirty Entity/Event Driven,不逐幀全表掃描,TRUE
 EX_INCARNATION_DIRECT,指定降臨與存在值分離,智慧角色 / 直接指定,No Existence Threshold,直接指定只要求個體角色真實存在、存活、智慧；若輕量則先補完整資料。被玩家指定不增加基礎／有效存在值，退出後仍依原存在值參與事件與觀察者關注度。,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

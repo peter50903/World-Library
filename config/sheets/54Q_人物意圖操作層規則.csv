@@ -17,23 +17,3 @@ P3_INTERNAL_SUBGOAL_ARCHITECTURE,單一人生目標＋內部子目標,正式移�
 P3_LIFE_MAJOR_B,人生重大差異採類別＋門檻,只有固定人生類別且嚴重度達重大門檻才停玩家；一般實質差異交AI。,人生重大決策,一般差異,類別 + 嚴重度,已定案,B,TRUE
 P3_LIFE_MAJOR_CATEGORIES,人生重大差異類別,BODY_LIFE；FAMILY_RELATIONSHIP；IDENTITY_STATUS；LAW_CRIME；ALLEGIANCE_FAITH；IRREVERSIBLE_BINDING；LIFE_LOCATION；UNIQUE_HISTORY。,類別標籤,分類器,需再通過嚴重度,已定案,固定類別,TRUE
 P3_LIFE_MAJOR_THRESHOLD,人生重大嚴重度門檻,重大條件含死亡／永久傷殘或不可逆身體變化、長期正式關係／身分／職位／組織／信仰／法律狀態建立或終止、重大不可逆承諾、長期監禁／流放、使當前玩家人生目標核心失效，以及唯一歷史資產不可逆處置造成長期後果。,重大性摘要,嚴重度評估器,至少一項重大條件,已定案,嚴重度門檻,TRUE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE

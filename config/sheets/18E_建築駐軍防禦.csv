@@ -8,23 +8,3 @@ BUILD_GATE_WOOD,4,2,TRUE,TRUE,TRUE,TRUE,Gate Open/Breached,,TRUE
 BUILD_GATE_STONE,8,4,TRUE,TRUE,TRUE,TRUE,Gate Open/Breached,,TRUE
 BUILD_TOWN_HALL,20,6,TRUE,TRUE,TRUE,FALSE,行政中心暴露,若有人駐守可防禦，不自動攻擊,TRUE
 BUILD_PORT,20,4,TRUE,TRUE,TRUE,FALSE,碼頭控制能力下降,港口防禦取決於實際守備,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

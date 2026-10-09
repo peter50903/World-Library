@@ -17,23 +17,3 @@ G_SKILL_FORMULA,技能最終EXP,技能,XP=EffectiveHours*1*Challenge*LearningMod
 G_ABILITY_STIMULUS,能力刺激,STR/DEX/CON/INT/WIS/CHA,有效活動每1小時產生1 Stimulus Unit；500 Stimulus=1 Base Ability Point,長時間行動,能力比技能成長約慢5倍,TRUE
 G_PHYS_RECOVERY,體能刺激轉化,STR/DEX/CON,Fed+Rested+Healthy=1.0；一項明顯不足=0.5；Severe缺乏=0.2；Critical=0,休息/睡眠結算,未轉化刺激可短期保留，不要求逐分鐘恢復,TRUE
 G_MENTAL_SETTLE,心智能力結算,INT/WIS/CHA,有效Complex/Decision/Social Action完成時直接結算Stimulus；仍乘Stress/Fatigue與CapEfficiency,行動完成,不建立額外神經恢復模擬,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

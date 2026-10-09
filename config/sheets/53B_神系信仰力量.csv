@@ -5,23 +5,3 @@ PFP_REL_MOD,宗教層修正可共享,宗教熱忱、整體活動等共同環境�
 PFP_HOLY_SITE,聖地依奉獻影響,聖地需標明奉獻神祇ID；只有被供奉的神祇取得聖地係數。共同神系神殿可列多神祇。,dedication list,避免每個神殿全神吃滿,TRUE
 PFP_PRAYER,祈禱貢獻歸守護神,一般祈禱與儀式預設貢獻給祈禱者守護神；若儀式明確供奉另一神系神祇，需合法宗教行為並產生相應信仰值／守護者影響。,event attribution,可形成改主神趨勢,TRUE
 PFP_NO_TRANSFER,神祇間不能自由轉信仰力量,神系神祇不能把自己的池直接轉給另一神祇，除非未來有明確神蹟／世界規則定義。,no direct transfer,防止共享錢包化,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

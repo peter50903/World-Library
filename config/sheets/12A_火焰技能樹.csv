@@ -8,23 +8,3 @@ FIRE_CLOAK,火焰護體,Flame Cloak,Spell,3,防禦,FIRE_CONTROL,,KNOW_FIRE_CLOAK
 FIRE_BURST,烈焰爆發,Flame Burst,Spell,3,範圍,"FIREBALL,FIRE_WALL",,KNOW_FIRE_BURST,3,45,中,中,area_fire_damage,中型範圍高傷害,可能引發真實火災,高階範圍攻擊,TRUE
 FIRE_COMBUSTION,燃燒精通,Combustion Mastery,Mastery,4,燃燒,FIRE_BURST,"FIRE_BURST,FIRE_WALL",KNOW_COMBUSTION,4,0,被動,無,burn_modifier,+燃燒持續與強度,只影響本系統合法效果,高階燃燒強化,TRUE
 FIRE_INFERNO,煉獄領域,Inferno Field,Spell,5,範圍,"FIRE_COMBUSTION,FIRE_CLOAK",,KNOW_INFERNO,5,150,長,長,large_fire_field,大型局部火焰區,不能成為全球/永久氣候效果,火焰系頂階法術,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
