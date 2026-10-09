@@ -108,6 +108,14 @@ jobs:
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
+          # V0-04B: TEMP famine scenario — hunger and caused starvation events must appear
+          # in the real Godot history list.
+          WORLD_SIM_UI_SMOKE=1 WORLD_SIM_FAMINE_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-famine.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-famine.log; then
+            echo "Godot reported a runtime error in the famine scenario."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_FAMINE_OK: HungerEvents=[1-9][0-9]* Deaths=[1-9][0-9]*' /tmp/godot-famine.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."

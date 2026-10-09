@@ -218,7 +218,7 @@ public sealed class DemoWeeklySettlementTests
         var ex = Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Verify(report));
         Assert.Contains("帳目不平衡", ex.Message);
 
-        var popBad = bad with { FoodProduced = 30, FoodClosing = 28, PopulationClosing = 4 };
+        var popBad = bad with { FoodProduced = 30, FoodFromFarming = 30, FoodClosing = 28, PopulationClosing = 4 };
         Assert.True(popBad.NoMagicFood);
         Assert.True(popBad.FoodBalanced);
         Assert.False(popBad.PopulationBalanced);

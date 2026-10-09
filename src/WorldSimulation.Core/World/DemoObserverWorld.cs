@@ -57,7 +57,8 @@ internal enum DemoCommitStage
 /// demonstration driven by the existing WorldClock, Scheduler and deterministic RNG,
 /// plus (V0-04A) a TEMP weekly L2 settlement for every demo settlement:
 /// resource regeneration → labour and production → consumption, with a resource
-/// ledger and a population ledger checked before anything is published.
+/// ledger and a population ledger checked before anything is published, and (V0-04B)
+/// hunger debt → starvation death with append-only, caused settlement events.
 /// It does NOT implement official population rules, EntityStore, canonical History,
 /// durability or Save/Load.
 /// </summary>
@@ -80,6 +81,7 @@ public sealed class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _reserves;
     private ImmutableSortedDictionary<int, long> _settlementFood;
     private ImmutableSortedDictionary<int, long> _population;
+    private ImmutableSortedDictionary<int, long> _hungerDebt;
     private long _food;
     private long _totalShortage;
 
@@ -118,6 +120,7 @@ public sealed class DemoObserverWorld
             s => s.Id, s => Sites.PopGroupsOf(s.Id).Sum(p => (long)p.Size));
         _settlementFood = _population.ToImmutableSortedDictionary(
             kv => kv.Key, kv => checked(kv.Value * weekly.InitialFoodPerPerson));
+        _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
 
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
@@ -154,8 +157,21 @@ public sealed class DemoObserverWorld
     /// <summary>Current TEMP reserve of a demo resource point.</summary>
     public long ResourceReserve(int resourcePointId) => _reserves[resourcePointId];
 
-    /// <summary>Current TEMP population of a demo settlement (sum of its population groups).</summary>
+    /// <summary>
+    /// Current TEMP population of a demo settlement. Starts as the sum of its population
+    /// groups; V0-04B starvation deaths are subtracted through the weekly population ledger.
+    /// </summary>
     public long SettlementPopulation(int settlementId) => _population[settlementId];
+
+    /// <summary>V0-04B: current TEMP hunger debt (unmet food demand not yet recovered).</summary>
+    public long SettlementHungerDebt(int settlementId) => _hungerDebt[settlementId];
+
+    /// <summary>V0-04B: a settlement is starving while it carries hunger debt and still has people.</summary>
+    public bool IsStarving(int settlementId) => _hungerDebt[settlementId] > 0 && _population[settlementId] > 0;
+
+    /// <summary>All committed V0-04B settlement events (hunger, starvation death, recovery), oldest first.</summary>
+    public IReadOnlyList<DemoSettlementEvent> SettlementEvents()
+        => Array.AsReadOnly(_weeks.SelectMany(w => w.Events).ToArray());
 
     /// <summary>
     /// Advances to the next scheduled day as ONE atomic commit (03 §4):
@@ -212,14 +228,18 @@ public sealed class DemoObserverWorld
         var nextWeeks = _weeks;
         var nextReserves = _reserves;
         var nextSettlementFood = _settlementFood;
+        var nextPopulation = _population;
+        var nextHungerDebt = _hungerDebt;
         if (weekly.Count == 1)
         {
             var outcome = DemoWeeklySettlement.Settle(
                 checked(_weeks.Count + 1), dueTime, Sites,
-                _reserves, _settlementFood, _population, _weekly);
+                _reserves, _settlementFood, _population, _hungerDebt, _weekly);
             nextWeeks = _weeks.Add(outcome.Report);
             nextReserves = outcome.Reserves;
             nextSettlementFood = outcome.SettlementFood;
+            nextPopulation = outcome.Population;
+            nextHungerDebt = outcome.HungerDebt;
         }
 
         Checkpoint(DemoCommitStage.AfterLedgerStaged);
@@ -235,6 +255,8 @@ public sealed class DemoObserverWorld
         _weeks = nextWeeks;
         _reserves = nextReserves;
         _settlementFood = nextSettlementFood;
+        _population = nextPopulation;
+        _hungerDebt = nextHungerDebt;
         return evt;
     }
 
@@ -258,11 +280,13 @@ public sealed class DemoObserverWorld
         foreach (var kv in _reserves) sb.Append(inv, $"reserve{kv.Key}={kv.Value};");
         foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
+        foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
         foreach (var evt in _history) sb.Append(inv, $"{evt};");
         foreach (var week in _weeks)
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks};");
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
+            foreach (var e in week.Events) sb.Append(inv, $"{e};");
         }
 
         return sb.ToString();
