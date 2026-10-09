@@ -25,6 +25,8 @@ public partial class ObserverRoot : Control
     // may found a new settlement on an empty cell). The smoke picks the first TEMP seed (42, then 1..30)
     // whose Core world founds a settlement within SettleSmokeDays days. Normal players never set it.
     private static readonly bool SettleSmoke = OS.HasEnvironment("WORLD_SIM_SETTLE_SMOKE");
+    // #64: true Godot mouse-input smoke, only enabled in CI.
+    private static readonly bool MapInputSmoke = OS.HasEnvironment("WORLD_SIM_MAP_INPUT_SMOKE");
     private const int SettleSmokeDays = 30 * 7;
     private static readonly ulong WorldSeed = SettleSmoke ? PickSettleSmokeSeed()
         : MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
@@ -158,6 +160,11 @@ public partial class ObserverRoot : Control
         {
             Text = "● 綠色：草原   ● 深綠：森林\n● 藍色：水域   ● 金色：示範聚落\n● 紅色：遷徙隊伍（數字＝人數，每週沿相鄰格走 1 格）",
         });
+        side.AddChild(new Label
+        {
+            Text = "地圖操作：滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點格查詢（TEMP）。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        });
 
         var nextButton = new Button
         {
@@ -205,6 +212,8 @@ public partial class ObserverRoot : Control
         historyColumn.AddChild(_history);
 
         Refresh();
+        if (MapInputSmoke)
+            VerifyMapInputSmoke();
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -387,6 +396,88 @@ public partial class ObserverRoot : Control
                 GD.Print($"WORLD_SIM_FAMINE_OK: HungerEvents={hunger} Deaths={deaths}");
             }
         }
+    }
+
+    // #64: exercise the real Godot Control._GuiInput path, not a reimplementation of its math.
+    private void VerifyMapInputSmoke()
+    {
+        var cell = _world.Map.GetCell(2, 2);
+        var neighbor = _world.Map.GetCell(3, 2);
+        var dayBefore = _world.Snapshot().DaysElapsed;
+        var rngBefore = _world.Snapshot().ResourceRngDraws;
+        var peopleBefore = _world.WorldPopulation;
+        var foodBefore = _world.Snapshot().FoodStock;
+        var sitesBefore = _world.Sites;
+        var anchor = _hexMap.CellCenter(cell);
+        var baselineSpan = anchor.DistanceTo(_hexMap.CellCenter(neighbor));
+
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.WheelUp, Pressed = true, Position = anchor
+        });
+        var zoomed = _hexMap.CellCenter(cell);
+        if (zoomed.DistanceTo(anchor) > 0.1f
+            || _hexMap.CellCenter(neighbor).DistanceTo(zoomed) <= baselineSpan * 1.1f)
+            throw new InvalidOperationException("Map wheel-up did not zoom around the mouse position.");
+
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.WheelDown, Pressed = true, Position = anchor
+        });
+        if (_hexMap.CellCenter(cell).DistanceTo(anchor) > 0.1f
+            || Mathf.Abs(_hexMap.CellCenter(neighbor).DistanceTo(anchor) - baselineSpan) > 0.1f)
+            throw new InvalidOperationException("Map wheel-down did not restore the initial view.");
+
+        var dragDelta = new Vector2(44f, -18f);
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Middle, Pressed = true, Position = anchor
+        });
+        _hexMap._GuiInput(new InputEventMouseMotion
+        {
+            ButtonMask = MouseButtonMask.Middle, Position = anchor + dragDelta, Relative = dragDelta
+        });
+        var afterDrag = _hexMap.CellCenter(cell);
+        if (afterDrag.DistanceTo(anchor + dragDelta) > 0.1f)
+            throw new InvalidOperationException("Map middle-button drag did not pan the view.");
+
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Middle, Pressed = false, Position = afterDrag
+        });
+        _hexMap._GuiInput(new InputEventMouseMotion
+        {
+            ButtonMask = (MouseButtonMask)0, Position = afterDrag + dragDelta, Relative = dragDelta
+        });
+        if (_hexMap.CellCenter(cell).DistanceTo(afterDrag) > 0.1f)
+            throw new InvalidOperationException("Map continued dragging after middle-button release.");
+
+        // Verify hit testing uses the *transformed* Core cell, not its former screen coordinates.
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = afterDrag
+        });
+        if (!_cellInfo.Text.Contains($"偏移座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal))
+            throw new InvalidOperationException("Map click after panning selected the wrong Core cell.");
+
+        // Between adjacent visible hexes is a visual gap, never an invisible selectable cell.
+        _cellInfo.Text = "MAP_GAP_UNSELECTED";
+        var seam = (_hexMap.CellCenter(cell) + _hexMap.CellCenter(neighbor)) * 0.5f;
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = seam
+        });
+        if (_cellInfo.Text != "MAP_GAP_UNSELECTED")
+            throw new InvalidOperationException("Map selected an invisible hex gap.");
+
+        if (_world.Snapshot().DaysElapsed != dayBefore
+            || _world.Snapshot().ResourceRngDraws != rngBefore
+            || _world.Snapshot().FoodStock != foodBefore
+            || _world.WorldPopulation != peopleBefore
+            || !ReferenceEquals(_world.Sites, sitesBefore))
+            throw new InvalidOperationException("Map viewport inputs changed the simulated world.");
+
+        GD.Print($"WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day={dayBefore}");
     }
 
     private void OnCellSelected(DemoHexCell cell)
