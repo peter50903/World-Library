@@ -81,7 +81,7 @@ jobs:
           # The Godot editor normally uses its Debug script build on first open.
           dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Debug
           timeout 90 "$engine" --headless --path godot --editor --import 2>&1 | tee /tmp/godot-import.log
-          timeout 45 "$engine" --headless --path godot --quit-after 4 2>&1 | tee /tmp/godot-scene.log
+          WORLD_SIM_UI_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-scene.log
 
           # Fail on Godot's own scene/script errors even if the process returns zero.
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-import.log /tmp/godot-scene.log; then
@@ -89,4 +89,5 @@ jobs:
             exit 1
           fi
           grep -q 'Godot Engine' /tmp/godot-scene.log
+          grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
           echo "Actual Godot .NET scene loaded and ran headlessly."
