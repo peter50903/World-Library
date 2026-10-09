@@ -447,7 +447,7 @@ public partial class ObserverRoot : Control
         });
         _hexMap._GuiInput(new InputEventMouseMotion
         {
-            ButtonMask = MouseButtonMask.None, Position = afterDrag + dragDelta, Relative = dragDelta
+            ButtonMask = (MouseButtonMask)0, Position = afterDrag + dragDelta, Relative = dragDelta
         });
         if (_hexMap.CellCenter(cell).DistanceTo(afterDrag) > 0.1f)
             throw new InvalidOperationException("Map continued dragging after middle-button release.");
