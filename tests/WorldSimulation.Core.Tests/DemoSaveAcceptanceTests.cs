@@ -76,10 +76,12 @@ public sealed class DemoSaveAcceptanceTests
             Assert.Contains(checkpoints, c => c.Point == SavePoint.MidWeek);
             Assert.Contains(checkpoints, c => c.Point == SavePoint.WeekBoundary);
 
+            // 搜尋可能已跑過頭（沒觸發的存檔點會一路找到第 728 日），所以另開一個從未存讀的世界直接跑到終點。
             var endDay = checkpoints.Max(c => c.Day) + ContinueDays;
-            while (direct.Snapshot().DaysElapsed < endDay)
-                direct.AdvanceOneDay();
-            var expected = direct.ExportTempSave();
+            var uninterrupted = new DemoObserverWorld(DemoScenario.Sample(seed), config);
+            while (uninterrupted.Snapshot().DaysElapsed < endDay)
+                uninterrupted.AdvanceOneDay();
+            var expected = uninterrupted.ExportTempSave();
 
             foreach (var (point, day, json) in checkpoints)
             {
