@@ -106,6 +106,12 @@ jobs:
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
+          grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
+          # V0-03B: Godot must render the injected Core map, never generate its own.
+          if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
+            echo "Forbidden Godot-side map or site generation detected."
+            exit 1
+          fi
           # Terrain generation belongs to Core, never the Godot UI.
           if grep -Rq 'TerrainCode' godot/Scripts; then
             echo "Forbidden independent Godot terrain generator detected."

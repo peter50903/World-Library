@@ -1,6 +1,7 @@
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.Scheduling;
 using WorldSimulation.Core.Time;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.World;
 
@@ -71,10 +72,21 @@ public sealed class DemoObserverWorld
 
         _scenario = scenario;
         _food = scenario.InitialFood;
+        // V0-03B: ONE world RngRegistry. The TEMP map (GEOGRAPHY) and TEMP sites
+        // (ECOLOGY_INIT, POP) are generated once here and cached; daily harvest keeps
+        // using the RESOURCE stream of this same registry.
         _rng = RngRegistry.Create(scenario.Seed);
+        Map = DemoHexWorld.Generate(_rng);
+        Sites = DemoWorldSites.Generate(Map, _rng);
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
     }
+
+    /// <summary>The cached TEMP hex map generated from this world's registry (never regenerated).</summary>
+    public DemoHexWorld Map { get; }
+
+    /// <summary>The cached TEMP settlements / resource points / population groups.</summary>
+    public DemoWorldSites Sites { get; }
 
     public DemoWorldSnapshot Snapshot()
         => new(_clock.Now, _scenario.Population, _food, _totalShortage,
