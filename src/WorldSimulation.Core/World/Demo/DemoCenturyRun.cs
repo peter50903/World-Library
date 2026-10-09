@@ -34,10 +34,13 @@ public sealed record DemoYearSummary(
     long Immigrants = 0,
     long PopulationInTransit = 0,
     int EmigrationEvents = 0,
-    int ArrivalEvents = 0)
+    int ArrivalEvents = 0,
+    int SettlementsFounded = 0,
+    int SettlementsClosing = 0)
 {
-    /// <summary>本年所有帶原因的聚落事件數（飢餓＋餓死＋飢餓解除＋外移＋抵達）。</summary>
-    public int SettlementEvents => HungerEvents + StarvationEvents + RecoveryEvents + EmigrationEvents + ArrivalEvents;
+    /// <summary>本年所有帶原因的聚落事件數（飢餓＋餓死＋飢餓解除＋外移＋抵達＋建立新聚落）。</summary>
+    public int SettlementEvents
+        => HungerEvents + StarvationEvents + RecoveryEvents + EmigrationEvents + ArrivalEvents + SettlementsFounded;
 
     /// <summary>
     /// 年度守恆檢查（M1_RES、M1_POP、M1_NO_MAGIC_FOOD 在年尺度的對帳）。空清單＝零錯誤。
@@ -59,8 +62,10 @@ public sealed record DemoYearSummary(
             problems.Add($"第 {Year} 年死亡 {Deaths} 人，但帶原因的餓死事件只有 {StarvationDeathsInEvents} 人");
         if (PopulationInTransit > PopulationClosing)
             problems.Add($"第 {Year} 年途中人口 {PopulationInTransit} 超過世界人口 {PopulationClosing}");
+        if (InhabitedSettlements > SettlementsClosing && SettlementsClosing > 0)
+            problems.Add($"第 {Year} 年有人聚落 {InhabitedSettlements} 超過聚落總數 {SettlementsClosing}");
         if (PopulationClosing < 0 || FoodClosing < 0 || ReserveClosing < 0 || InhabitedSettlements < 0
-            || Emigrants < 0 || Immigrants < 0 || PopulationInTransit < 0)
+            || Emigrants < 0 || Immigrants < 0 || PopulationInTransit < 0 || SettlementsFounded < 0)
             problems.Add($"第 {Year} 年出現負值");
         return problems;
     }
@@ -68,7 +73,7 @@ public sealed record DemoYearSummary(
     /// <summary>玩家可讀的一行年度摘要（繁體中文）。</summary>
     public string Describe()
         => $"第 {Year} 年（至第 {LastDay} 日）｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}）"
-         + $"｜有人聚落 {InhabitedSettlements}"
+         + $"｜有人聚落 {InhabitedSettlements}、新建聚落 {SettlementsFounded}"
          + $"｜遷出 {Emigrants}、遷入 {Immigrants}、年底途中 {PopulationInTransit}"
          + $"｜糧食 {FoodClosing}（生產 {FoodProduced}、消耗 {FoodConsumed}、缺糧 {FoodShortage}）"
          + $"｜資源存量 {ReserveClosing}"
@@ -111,13 +116,12 @@ public static class DemoCenturyRun
             throw new ArgumentOutOfRangeException(nameof(years), $"Years must be between 1 and {MaxYears}.");
 
         var world = new DemoObserverWorld(DemoScenario.Sample(seed), config ?? DemoWeeklyTempConfig.Sample);
-        var settlements = world.Sites.Settlements.Select(s => s.Id).OrderBy(id => id).ToArray();
-        var points = world.Sites.ResourcePoints.Select(p => p.Id).OrderBy(id => id).ToArray();
-
         // V0-06A：世界總數＝各聚落＋途中隊伍（只計一次）。
-        long TotalPopulation() => settlements.Sum(id => world.SettlementPopulation(id)) + world.PopulationInTransit;
-        long TotalFood() => settlements.Sum(id => world.SettlementFood(id)) + world.FoodInTransit;
-        long TotalReserve() => points.Sum(id => world.ResourceReserve(id));
+        // V0-06B：聚落與資源點會因開拓而增加，所以每次都讀目前的 Sites；新聚落建立前不存在，期初視為 0
+        // （它的期初人口／糧食／存量本來就是 0，全部由開拓隊帶入，M1_SETTLE）。
+        long TotalPopulation() => world.Sites.Settlements.Sum(s => world.SettlementPopulation(s.Id)) + world.PopulationInTransit;
+        long TotalFood() => world.Sites.Settlements.Sum(s => world.SettlementFood(s.Id)) + world.FoodInTransit;
+        long TotalReserve() => world.Sites.ResourcePoints.Sum(p => world.ResourceReserve(p.Id));
 
         var summaries = new List<DemoYearSummary>(years);
         var errors = new List<string>();
@@ -129,7 +133,7 @@ public static class DemoCenturyRun
             var foodOpening = TotalFood();
             var reserveOpening = TotalReserve();
             int weeks = 0, hungerEvents = 0, starvationEvents = 0, recoveryEvents = 0;
-            int emigrationEvents = 0, arrivalEvents = 0;
+            int emigrationEvents = 0, arrivalEvents = 0, foundedEvents = 0;
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0, dailyHarvest = 0;
@@ -192,6 +196,9 @@ public static class DemoCenturyRun
                         case DemoSettlementEventKind.Arrival:
                             arrivalEvents++;
                             break;
+                        case DemoSettlementEventKind.SettlementFounded:
+                            foundedEvents++;
+                            break;
                     }
                 }
             }
@@ -202,10 +209,10 @@ public static class DemoCenturyRun
                 foodOpening, produced, consumed, shortage, TotalFood(),
                 reserveOpening, regenerated, harvested, TotalReserve(),
                 hungerEvents, starvationEvents, deathsInEvents, recoveryEvents,
-                settlements.Count(id => world.SettlementPopulation(id) > 0),
+                world.Sites.Settlements.Count(s => world.SettlementPopulation(s.Id) > 0),
                 dailyHarvest,
                 emigrants, immigrants, world.PopulationInTransit,
-                emigrationEvents, arrivalEvents);
+                emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count);
             errors.AddRange(summary.Problems());
             summaries.Add(summary);
             onYear?.Invoke(summary);

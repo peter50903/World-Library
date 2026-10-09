@@ -5,7 +5,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// <summary>
 /// TEMP（暫定）每週結算示範設定：資源點初始存量、存量上限、每週再生量、每人每週產量／消耗、
 /// 聚落初始糧食；V0-06A 起另含遷徙門檻（最少幾人才會外移、外移比例的除數、已知路線的最遠格數）
-/// 與 TEST 用局部饑荒聚落編號。這些值沒有定案，只供 V0-04A 示範畫面與測試；不得寫回正式設定檔或 Notion 規則。
+/// 與 TEST 用局部饑荒聚落編號；V0-06B 起另含開拓開關、開拓選址的最遠格數與 TEST 用「開局聚落全部饑荒」。這些值沒有定案，只供 V0-04A 示範畫面與測試；不得寫回正式設定檔或 Notion 規則。
 /// </summary>
 public sealed record DemoWeeklyTempConfig(
     long InitialReservePerPoint,
@@ -23,7 +23,10 @@ public sealed record DemoWeeklyTempConfig(
     long EmigrationShareDivisor = 2,
     int KnownRouteMaxSteps = 6,
     int TempFamineSettlementId = 0,
-    int NewsDelayWeeksPerCell = 1)
+    int NewsDelayWeeksPerCell = 1,
+    bool FoundingEnabled = false,
+    int FoundingSearchMaxSteps = 3,
+    bool TempFamineAllOriginal = false)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -56,6 +59,17 @@ public sealed record DemoWeeklyTempConfig(
     /// </summary>
     public static DemoWeeklyTempConfig LocalFamineSample { get; } = Sample with { TempFamineSettlementId = 1 };
 
+    /// <summary>
+    /// TEST／CI 用 TEMP 開拓情境（V0-06B）：開局的每個聚落都沒有存量、再生與初始糧食（舊土地耗竭），
+    /// 遷徙隊伍建立的新聚落則照 <see cref="Sample"/> 的再生（新資源點存量從 0 開始，只靠再生）；開啟開拓。
+    /// 用來重現「附近沒有已知有糧聚落 → 缺糧人口出發到空格建立新聚落」。不是正式數值。
+    /// </summary>
+    public static DemoWeeklyTempConfig FrontierSample { get; } = Sample with
+    {
+        TempFamineAllOriginal = true,
+        FoundingEnabled = true
+    };
+
     internal void Validate()
     {
         if (InitialReservePerPoint < 0 || ReserveCapPerPoint < InitialReservePerPoint
@@ -63,13 +77,20 @@ public sealed record DemoWeeklyTempConfig(
             || YieldPerWorkerPerWeek < 0 || FoodPerPersonPerWeek < 0 || InitialFoodPerPerson < 0
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
-            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1)
+            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1)
             throw new ArgumentOutOfRangeException(nameof(DemoWeeklyTempConfig), "Invalid TEMP weekly settlement config.");
     }
 
-    /// <summary>TEMP 局部饑荒情境下，這個聚落是否為沒有存量、再生與初始糧食的饑荒聚落。</summary>
+    /// <summary>
+    /// TEMP 饑荒情境下，這個「開局」聚落是否為沒有存量、再生與初始糧食的饑荒聚落
+    /// （局部饑荒的指定聚落，或 V0-06B 開拓情境的所有開局聚落）。
+    /// </summary>
     internal bool IsFamineSettlement(int settlementId)
-        => TempFamineSettlementId != 0 && settlementId == TempFamineSettlementId;
+        => TempFamineAllOriginal || (TempFamineSettlementId != 0 && settlementId == TempFamineSettlementId);
+
+    /// <summary>V0-06B：新建的聚落不是開局聚落，不套用 TEMP 饑荒情境（新土地照常再生）。</summary>
+    internal bool IsFamineSettlement(DemoSettlement settlement)
+        => !settlement.IsFounded && IsFamineSettlement(settlement.Id);
 
     internal long RegenFor(DemoResourceKind kind) => kind switch
     {
@@ -121,7 +142,13 @@ public enum DemoSettlementEventKind
     Arrival = 4,
 
     /// <summary>V0-06A 途中餓死：遷徙隊伍攜帶的糧食不足，飢餓債越過門檻（45E MIG_COST／MIG_FAIL）。Count＝人數。</summary>
-    MigrantStarvationDeath = 5
+    MigrantStarvationDeath = 5,
+
+    /// <summary>
+    /// V0-06B 建立新聚落：開拓隊走到空格，以倖存者建立新聚落（45F SETTLE_NEW；M1_SETTLE 人口全部來自隊伍）。
+    /// SettlementId＝新聚落；Count＝人數。
+    /// </summary>
+    SettlementFounded = 6
 }
 
 /// <summary>
@@ -149,6 +176,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.Emigration => $"第 {day} 天  |  {SettlementName} {Count} 人因缺糧外移（{Cause}）",
             DemoSettlementEventKind.Arrival => $"第 {day} 天  |  {SettlementName} {Count} 名遷徙者抵達（{Cause}）",
             DemoSettlementEventKind.MigrantStarvationDeath => $"第 {day} 天  |  自{SettlementName}出發的遷徙隊伍 {Count} 人途中餓死（原因：{Cause}）",
+            DemoSettlementEventKind.SettlementFounded => $"第 {day} 天  |  建立新聚落「{SettlementName}」：{Count} 名遷徙者定居（{Cause}）",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -239,6 +267,7 @@ public sealed record DemoSettlementWeekLedger(
 /// 一次週結算的結果：第幾週、結算時的世界時間、各聚落帳目（依聚落編號排序），
 /// 本週產生的帶原因事件（V0-04B，依聚落編號、事件順序排列），
 /// 以及本週每支遷徙隊伍的帳目（V0-06A，依隊伍編號排列）。
+/// V0-06B：本週建立的新聚落也在 Settlements 中（期初全部為 0、人口只來自遷入）。
 /// </summary>
 public sealed record DemoWeekReport(
     int Week,
@@ -270,7 +299,8 @@ internal sealed record DemoWeeklyOutcome(
     ImmutableSortedDictionary<int, long> Population,
     ImmutableSortedDictionary<int, long> HungerDebt,
     ImmutableList<DemoMigrationBatch> Migrations,
-    int NextMigrationBatchId);
+    int NextMigrationBatchId,
+    DemoWorldSites Sites);
 
 /// <summary>
 /// V0-04A／V0-04B／V0-06A 每週 L2 聚落結算（TEMP 示範），順序依 44B：
@@ -282,6 +312,9 @@ internal sealed record DemoWeeklyOutcome(
 /// 不做隱藏救濟（45D SURV_NO_RESCUE）：人口即將滅亡也不生成糧食或人口。
 /// 遷徙只用已經傳到來源聚落的消息（45E MIG_PULL：只用已知資訊，不讀本週的世界真相，
 /// 也不讀還沒傳到的較新週報；見 <see cref="DemoMigrationNews"/>）。
+/// V0-06B（TEMP 開拓）：缺糧聚落在已知範圍內每個可達聚落的消息都已傳到、且沒有一個有糧時，
+/// 改派開拓隊到附近 TEMP 範圍內有水源的空格；開拓隊抵達時以倖存者建立新聚落（新編號、期初全部為 0、
+/// 人口／糧食／飢餓債全部來自隊伍；45F SETTLE_NEW／SETTLE_KNOW／SETTLE_SUPPLY／SETTLE_FAIL、45G M1_SETTLE）。
 /// </summary>
 internal static class DemoWeeklySettlement
 {
@@ -329,6 +362,7 @@ internal static class DemoWeeklySettlement
         var migrationLedgers = new List<DemoMigrationWeekLedger>();
         var nextMigrations = ImmutableList.CreateBuilder<DemoMigrationBatch>();
         var arrivals = new Dictionary<int, (long People, long Food, long Debt)>();
+        var weekSites = sites; // V0-06B：本週建立的新聚落會加進這份副本，輸入的 sites 不變。
 
         // 途中隊伍（V0-06A）：只靠攜帶的糧食，飢餓與死亡規則與聚落相同；活著的人沿路線前進一格。
         foreach (var batch in migrations.OrderBy(b => b.Id))
@@ -361,13 +395,40 @@ internal static class DemoWeeklySettlement
             {
                 events.Add(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
                     DemoSettlementEventKind.MigrantStarvationDeath, deaths,
-                    survivors == 0
+                    survivors == 0 && batch.Founding
+                        ? $"開拓隊前往{batch.ToName}途中攜帶的糧食耗盡，全數死亡，開拓失敗、沒有建立聚落"
+                        : survivors == 0
                         ? $"前往{batch.ToName}途中攜帶的糧食耗盡，隊伍全數死亡"
                         : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）",
                     batch.Id));
             }
 
-            if (arrived)
+            var toSettlementId = batch.ToSettlementId;
+            if (arrived && batch.Founding)
+            {
+                // V0-06B SETTLE_NEW：開拓隊走到目的空格，以倖存者建立新聚落。新編號只會遞增；
+                // 期初人口、糧食、飢餓債、資源點存量全部為 0，全部由隊伍帶入（M1_SETTLE 不憑空）。
+                if (map is null)
+                    throw new InvalidOperationException("A founding batch needs the TEMP map.");
+                var cell = batch.Destination;
+                var founded = new DemoSettlement(weekSites.NextSettlementId, $"新聚落{weekSites.NextSettlementId}號",
+                    cell.Column, cell.Row, FoundedWeek: week, FoundedFromSettlementId: batch.FromSettlementId,
+                    FoundedByBatchId: batch.Id);
+                weekSites = weekSites.WithFoundedSettlement(founded, map);
+                var point = weekSites.ResourcePointsOf(founded.Id).Single();
+                reserves = reserves.Add(point.Id, 0);
+                settlementFood = settlementFood.Add(founded.Id, 0);
+                population = population.Add(founded.Id, 0);
+                hungerDebt = hungerDebt.Add(founded.Id, 0);
+                toSettlementId = founded.Id;
+                arrivals[founded.Id] = (survivors, foodClosing, debt);
+                events.Add(new DemoSettlementEvent(week, worldTime, founded.Id, founded.Name,
+                    DemoSettlementEventKind.SettlementFounded, survivors,
+                    $"來自{batch.FromName}的開拓隊，第 {batch.DepartedWeek} 週出發，沿相鄰格走了 {batch.Path.Length - 1} 格到 {cell}；"
+                    + $"人口、糧食 {foodClosing}、飢餓債 {debt} 全部由隊伍帶來，新資源點存量從 0 開始（TEMP）",
+                    batch.Id));
+            }
+            else if (arrived)
             {
                 arrivals.TryGetValue(batch.ToSettlementId, out var inbound);
                 arrivals[batch.ToSettlementId] = (checked(inbound.People + survivors),
@@ -383,14 +444,14 @@ internal static class DemoWeeklySettlement
             }
 
             migrationLedgers.Add(new DemoMigrationWeekLedger(
-                week, batch.Id, batch.FromSettlementId, batch.ToSettlementId,
+                week, batch.Id, batch.FromSettlementId, toSettlementId,
                 batch.Cell, batch.Path[step], Departed: false, Arrived: arrived,
                 people, deaths, survivors,
                 batch.Food, consumed, foodClosing, shortage,
-                batch.HungerDebt, recovered, removedByDeath, debt));
+                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding));
         }
 
-        foreach (var settlement in sites.Settlements.OrderBy(s => s.Id))
+        foreach (var settlement in weekSites.Settlements.OrderBy(s => s.Id))
         {
             var people = population[settlement.Id];
             long reserveOpening = 0, regenerated = 0, harvested = 0, reserveClosing = 0;
@@ -399,10 +460,10 @@ internal static class DemoWeeklySettlement
             // ① 資源再生，② 勞動與生產：勞力依資源點編號順序採收，不能超過再生後的存量。
             // 勞動力＝目前人口，所以死亡會降低下週產量（45D SURV_CASCADE）。
             var laborLeft = checked(people * config.YieldPerWorkerPerWeek);
-            foreach (var point in sites.ResourcePointsOf(settlement.Id).OrderBy(p => p.Id))
+            foreach (var point in weekSites.ResourcePointsOf(settlement.Id).OrderBy(p => p.Id))
             {
                 var opening = reserves[point.Id];
-                var regenPerWeek = config.IsFamineSettlement(settlement.Id) ? 0 : config.RegenFor(point.Kind);
+                var regenPerWeek = config.IsFamineSettlement(settlement) ? 0 : config.RegenFor(point.Kind);
                 var regen = Math.Max(0, Math.Min(regenPerWeek, config.ReserveCapPerPoint - opening));
                 var afterRegen = checked(opening + regen);
                 var take = Math.Min(laborLeft, afterRegen);
@@ -473,9 +534,51 @@ internal static class DemoWeeklySettlement
             // 一部分人帶著等比例的糧食與飢餓債組成隊伍出發（原子出發；本週停在來源格）。
             // 沒有已知可達的目的地就留下（45E MIG_NO_TARGET）；這不是人口自動平衡器。
             long emigrants = 0, foodOut = 0, debtOut = 0;
-            if (map is not null && config.MigrationEnabled && shortage > 0
-                && survivors >= config.MinPopulationToEmigrate
-                && ChooseDestination(map, sites, settlement, week, publishedWeeks, config) is { } target)
+            var wantsToLeave = map is not null && config.MigrationEnabled && shortage > 0
+                && survivors >= config.MinPopulationToEmigrate;
+            var target = wantsToLeave
+                ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config)
+                : null;
+            if (wantsToLeave && target is null && config.FoundingEnabled
+                && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
+                && AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config))
+            {
+                // V0-06B：已知範圍內每個可達聚落的消息都已傳到、沒有一個有糧（或根本沒有可達聚落）→
+                // 改派開拓隊到附近 TEMP 範圍內有水源的空格（不能是聚落，也不能是別支開拓隊的目的格）。
+                // 每個聚落同時最多一支開拓隊在路上（TEMP）。
+                var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
+                    config.FoundingSearchMaxSteps,
+                    c => weekSites.SettlementAt(c.Column, c.Row) is null
+                        && !nextMigrations.Any(b => b.Founding && b.Destination == c));
+                emigrants = site.Length >= 2 ? survivors / config.EmigrationShareDivisor : 0;
+                if (emigrants > 0)
+                {
+                    foodOut = checked(foodClosing * emigrants) / survivors;
+                    debtOut = checked(debt * emigrants) / survivors;
+                    var destination = site[site.Length - 1];
+                    var batch = new DemoMigrationBatch(
+                        nextMigrationBatchId, settlement.Id, settlement.Name,
+                        0, $"新聚落預定地{destination}", site,
+                        StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
+                        NewsWeek: 0, Founding: true);
+                    nextMigrationBatchId = checked(nextMigrationBatchId + 1);
+                    nextMigrations.Add(batch);
+
+                    events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                        DemoSettlementEventKind.Emigration, emigrants,
+                        $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，"
+                        + $"前往 {destination} 開拓新聚落（TEMP 選址：{config.FoundingSearchMaxSteps} 格內有水源的空地），"
+                        + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
+                        batch.Id));
+                    migrationLedgers.Add(new DemoMigrationWeekLedger(
+                        week, batch.Id, settlement.Id, 0,
+                        batch.Cell, batch.Cell, Departed: true, Arrived: false,
+                        emigrants, 0, emigrants,
+                        foodOut, 0, foodOut, 0,
+                        debtOut, 0, 0, debtOut, Founding: true));
+                }
+            }
+            else if (target is { } chosen)
             {
                 emigrants = survivors / config.EmigrationShareDivisor;
                 if (emigrants > 0)
@@ -484,20 +587,20 @@ internal static class DemoWeeklySettlement
                     debtOut = checked(debt * emigrants) / survivors;
                     var batch = new DemoMigrationBatch(
                         nextMigrationBatchId, settlement.Id, settlement.Name,
-                        target.Settlement.Id, target.Settlement.Name, target.Route,
+                        chosen.Settlement.Id, chosen.Settlement.Name, chosen.Route,
                         StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
-                        NewsWeek: target.NewsWeek);
+                        NewsWeek: chosen.NewsWeek);
                     nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
                     events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
-                        $"本週缺糧 {shortage}；依第 {target.NewsWeek} 週傳來的消息前往有糧的{target.Settlement.Name}"
-                        + $"（消息沿路傳 {target.Route.Length - 1} 格，TEMP 每格 {config.NewsDelayWeeksPerCell} 週），"
-                        + $"路線 {target.Route.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
+                        $"本週缺糧 {shortage}；依第 {chosen.NewsWeek} 週傳來的消息前往有糧的{chosen.Settlement.Name}"
+                        + $"（消息沿路傳 {chosen.Route.Length - 1} 格，TEMP 每格 {config.NewsDelayWeeksPerCell} 週），"
+                        + $"路線 {chosen.Route.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
                         batch.Id));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
-                        week, batch.Id, settlement.Id, target.Settlement.Id,
+                        week, batch.Id, settlement.Id, chosen.Settlement.Id,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
                         emigrants, 0, emigrants,
                         foodOut, 0, foodOut, 0,
@@ -528,7 +631,7 @@ internal static class DemoWeeklySettlement
                 HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut));
         }
 
-        if (arrivals.Keys.Any(id => sites.Settlements.All(s => s.Id != id)))
+        if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
             throw new InvalidOperationException("A migration batch arrived at an unknown settlement.");
 
         var report = new DemoWeekReport(week, worldTime, Array.AsReadOnly(ledgers.ToArray()),
@@ -536,7 +639,33 @@ internal static class DemoWeeklySettlement
             Array.AsReadOnly(migrationLedgers.OrderBy(m => m.BatchId).ToArray()));
         Verify(report);
         return new DemoWeeklyOutcome(report, nextReserves.ToImmutable(), nextFood.ToImmutable(),
-            nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), nextMigrationBatchId);
+            nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), nextMigrationBatchId,
+            weekSites);
+    }
+
+    /// <summary>
+    /// V0-06B SETTLE_KNOW：開拓前，來源對 TEMP 已知範圍內每個陸路可達的聚落都已經收到消息
+    /// （本週才建立、消息還沒傳到的聚落也算「還不知道」）。有任何一個還沒有消息就先等，不冒然開拓；
+    /// 範圍內根本沒有可達聚落則視為已知。純函式、只讀已發布週報。
+    /// </summary>
+    private static bool AllReachableNewsArrived(
+        DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, int week,
+        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config)
+    {
+        foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
+        {
+            if (candidate.Id == source.Id)
+                continue;
+            var route = DemoMigrationRoutes.FindRoute(map,
+                new DemoCellRef(source.Column, source.Row), new DemoCellRef(candidate.Column, candidate.Row));
+            if (route.Length < 2 || route.Length - 1 > config.KnownRouteMaxSteps)
+                continue;
+            if (DemoMigrationNews.Received(publishedWeeks, week, candidate.Id, route.Length - 1,
+                    config.NewsDelayWeeksPerCell) is null)
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -611,7 +740,11 @@ internal static class DemoWeeklySettlement
         var settlementIds = report.Settlements.Select(l => l.SettlementId).ToHashSet();
         foreach (var m in migrations)
         {
-            if (!m.IsBalanced || !settlementIds.Contains(m.FromSettlementId) || !settlementIds.Contains(m.ToSettlementId)
+            // V0-06B：開拓隊抵達前沒有目的聚落（ToSettlementId＝0）；抵達那一週必須指向它建立的聚落。
+            var destinationOk = m.Founding && !m.Arrived
+                ? m.ToSettlementId == 0
+                : settlementIds.Contains(m.ToSettlementId);
+            if (!m.IsBalanced || !settlementIds.Contains(m.FromSettlementId) || !destinationOk
                 || m.FromSettlementId == m.ToSettlementId)
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 帳目不平衡或瞬移（M1_MIG）。");
@@ -626,6 +759,28 @@ internal static class DemoWeeklySettlement
 
         if (migrations.Select(m => m.BatchId).Distinct().Count() != migrations.Count)
             throw new InvalidOperationException($"第 {report.Week} 週遷徙隊伍編號重複。");
+
+        // 45G M1_SETTLE：新聚落不憑空。每個「建立新聚落」事件都對應一支本週抵達的開拓隊，
+        // 新聚落的期初人口／糧食／飢餓債／資源點存量全部為 0、沒有出生，人口＝隊伍抵達人數；
+        // 每支抵達的開拓隊都建立了一個聚落（一對一）。糧食與飢餓債由上面的兩端對帳檢查。
+        var foundedEvents = report.Events.Where(e => e.Kind == DemoSettlementEventKind.SettlementFounded).ToList();
+        var foundingArrivals = migrations.Where(m => m.Founding && m.Arrived).ToList();
+        if (foundedEvents.Count != foundingArrivals.Count
+            || foundedEvents.Select(e => e.SettlementId).Distinct().Count() != foundedEvents.Count)
+            throw new InvalidOperationException($"第 {report.Week} 週新聚落與開拓隊對不上（M1_SETTLE）。");
+        foreach (var founded in foundedEvents)
+        {
+            var batch = foundingArrivals.SingleOrDefault(m => m.BatchId == founded.MigrationBatchId);
+            var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == founded.SettlementId);
+            if (batch is null || ledger is null || batch.ToSettlementId != founded.SettlementId
+                || string.IsNullOrWhiteSpace(founded.Cause)
+                || founded.Count != batch.PopulationClosing || founded.Count <= 0
+                || ledger.PopulationOpening != 0 || ledger.FoodOpening != 0 || ledger.HungerDebtOpening != 0
+                || ledger.ReserveOpening != 0 || ledger.Births != 0
+                || ledger.Immigrants != batch.PopulationClosing)
+                throw new InvalidOperationException(
+                    $"第 {report.Week} 週新聚落 {founded.SettlementName} 不是完全由開拓隊建立（M1_SETTLE：新聚落不憑空）。");
+        }
 
         // M1_POP（世界）：聚落人口＋途中人口在一週內只因出生與死亡改變；途中人口只計一次。
         var opening = report.Settlements.Sum(l => l.PopulationOpening)

@@ -14,6 +14,8 @@ public readonly record struct DemoCellRef(int Column, int Row)
 /// 第 0 格是來源聚落、最後一格是目的地聚落；StepIndex 是目前所在格。
 /// 隊伍攜帶的糧食與飢餓債隨人移動，不會憑空增減。
 /// NewsWeek 是出發決定所依據的目的地週報週次（MIG_PULL 稽核用；0＝測試直接建立、無消息來源）。
+/// V0-06B：Founding＝true 的隊伍是開拓隊，目的地是一個空格（ToSettlementId＝0，路線最後一格），
+/// 抵達時以隊伍倖存者建立新聚落（45F SETTLE_NEW）；全數死於途中則開拓失敗（SETTLE_FAIL），不留下聚落。
 /// </summary>
 public sealed record DemoMigrationBatch(
     int Id,
@@ -27,7 +29,8 @@ public sealed record DemoMigrationBatch(
     long Food,
     long HungerDebt,
     int DepartedWeek,
-    int NewsWeek = 0)
+    int NewsWeek = 0,
+    bool Founding = false)
 {
     /// <summary>目前所在格。</summary>
     public DemoCellRef Cell => Path[StepIndex];
@@ -38,7 +41,10 @@ public sealed record DemoMigrationBatch(
     /// <summary>決定性的文字指紋（ImmutableArray 的 ToString 不含內容，所以另外展開路線）。</summary>
     internal string Fingerprint()
         => $"batch{Id}:{FromSettlementId}->{ToSettlementId}@{StepIndex}/{string.Join("", Path)}"
-         + $":p{People}:f{Food}:d{HungerDebt}:w{DepartedWeek}:n{NewsWeek}";
+         + $":p{People}:f{Food}:d{HungerDebt}:w{DepartedWeek}:n{NewsWeek}:found{Founding}";
+
+    /// <summary>V0-06B：開拓隊的目的格（路線最後一格）。</summary>
+    public DemoCellRef Destination => Path[Path.Length - 1];
 }
 
 /// <summary>
@@ -47,6 +53,8 @@ public sealed record DemoMigrationBatch(
 /// 途中週：糧食帳 期初－消耗＝期末；飢餓債帳 期初＋缺糧－恢復－隨死者移除＝期末；
 /// 人口帳 期初－死亡＝期末（途中沒有出生）。
 /// M1_MIG：每週只能停在原格或移動到相鄰格（CellBefore→CellAfter）。
+/// V0-06B：Founding＝true 是開拓隊；途中 ToSettlementId＝0（目的地還不是聚落），
+/// 抵達那一週 ToSettlementId＝它建立的新聚落編號。
 /// </summary>
 public sealed record DemoMigrationWeekLedger(
     int Week,
@@ -67,7 +75,8 @@ public sealed record DemoMigrationWeekLedger(
     long HungerDebtOpening,
     long HungerDebtRecovered,
     long HungerDebtRemovedByDeath,
-    long HungerDebtClosing)
+    long HungerDebtClosing,
+    bool Founding = false)
 {
     public bool PopulationBalanced => PopulationOpening - Deaths == PopulationClosing;
 
@@ -163,6 +172,71 @@ public static class DemoMigrationRoutes
         var dq = bq - aq;
         var dr = br - ar;
         return Directions.Contains((dq, dr));
+    }
+
+    /// <summary>TEMP 水源：格子本身不是水域，且至少一個六角鄰格是水域（45F SETTLE_NEW 的「水」）。</summary>
+    public static bool HasWaterAccess(DemoHexWorld map, DemoCellRef cell)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var (q, r) = ToAxial(cell);
+        return map.Cells.Any(c => c.Terrain == DemoTerrain.Water && Directions.Contains((c.AxialQ - q, c.AxialR - r)));
+    }
+
+    /// <summary>
+    /// V0-06B TEMP 開拓選址（45F SETTLE_NEW／SETTLE_KNOW）：從 <paramref name="origin"/> 沿陸路
+    /// （與遷徙同一套 TEMP 規則：六鄰格、水域不可通行）走最多 <paramref name="maxSteps"/> 格，
+    /// 找第一個「陸地、沒有聚落、<paramref name="isFree"/> 允許、有 TEMP 水源」的空格；
+    /// 回傳含起點與終點的路線，找不到回傳空陣列。只看出發聚落附近 TEMP 範圍內的地形（在地人知道的土地），
+    /// 不全知地挑全世界最好的地點。廣度優先、鄰格固定順序，所以結果是決定性的；不抽亂數。
+    /// </summary>
+    public static ImmutableArray<DemoCellRef> FindFoundingSite(
+        DemoHexWorld map, DemoCellRef origin, int maxSteps, Func<DemoCellRef, bool> isFree)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(isFree);
+        if (maxSteps < 1)
+            throw new ArgumentOutOfRangeException(nameof(maxSteps));
+        var start = map.GetCell(origin.Column, origin.Row);
+        var byAxial = map.Cells.ToDictionary(c => (c.AxialQ, c.AxialR));
+        var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [origin] = null };
+        var depth = new Dictionary<DemoCellRef, int> { [origin] = 0 };
+        var queue = new Queue<DemoHexCell>();
+        queue.Enqueue(start);
+
+        while (queue.Count > 0)
+        {
+            var cell = queue.Dequeue();
+            var here = new DemoCellRef(cell.Column, cell.Row);
+            if (depth[here] > 0 && isFree(here) && HasWaterAccess(map, here))
+            {
+                var path = new List<DemoCellRef>();
+                DemoCellRef? at = here;
+                while (at is { } current)
+                {
+                    path.Add(current);
+                    at = previous[current];
+                }
+
+                path.Reverse();
+                return path.ToImmutableArray();
+            }
+
+            if (depth[here] == maxSteps)
+                continue;
+            foreach (var (dq, dr) in Directions)
+            {
+                if (!byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
+                    continue;
+                var key = new DemoCellRef(next.Column, next.Row);
+                if (previous.ContainsKey(key) || next.Terrain == DemoTerrain.Water)
+                    continue;
+                previous[key] = here;
+                depth[key] = depth[here] + 1;
+                queue.Enqueue(next);
+            }
+        }
+
+        return ImmutableArray<DemoCellRef>.Empty;
     }
 
     /// <summary>
