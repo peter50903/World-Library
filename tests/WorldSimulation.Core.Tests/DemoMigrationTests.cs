@@ -75,7 +75,8 @@ public sealed class DemoMigrationTests
                 var source = new DemoCellRef(a.Column, a.Row);
                 var target = new DemoCellRef(b.Column, b.Row);
                 var route = DemoMigrationRoutes.FindRoute(world.Map, source, target);
-                Assert.Equal(route, DemoMigrationRoutes.FindRoute(world.Map, source, target));
+                // ImmutableArray 的 Equals 是參照相等，所以比較展開後的內容。
+                Assert.Equal(route.ToArray(), DemoMigrationRoutes.FindRoute(world.Map, source, target).ToArray());
                 if (route.IsEmpty)
                     continue; // MIG_NO_TARGET：沒有陸路就沒有這個目的地。
 
