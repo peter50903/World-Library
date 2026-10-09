@@ -6,16 +6,20 @@
 2. [Notion「03｜給 GPT 的下一步製作指示」](https://app.notion.com/p/3f36939dab0981ba9906efe357a45813)：目前的任務順序、製作原則與禁止事項。**與本檔衝突時以 03 為準。**
 3. [Notion「01｜目前實作狀態」](https://app.notion.com/p/3f36939dab09816c8366efc669451796)：一段最新進度。
 
-需要細節時，只開總綱條目後面標示的單一規格分冊，或單一 Google 試算表分頁範圍。不要整本讀試算表，不要讀 Notion 封存頁或試算表的 `00D`、`封存_` 開頭分頁。試算表中英文欄位標題的中文意義見分頁 `00B_術語對照`。
+需要細節時，只開總綱條目後面標示的單一規格分冊，或設定檔的單一分頁範圍。不要整本讀設定檔，不要讀 Notion 封存頁或設定檔的 `00D`、`封存_` 開頭分頁。設定檔中英文欄位標題的中文意義見分頁 `00B_術語對照`。
+
+## 設定檔位置
+
+唯一正式設定檔是 [Google Drive 設定檔資料夾](https://drive.google.com/drive/folders/1T9G9deDLRYD4rILfT8H4p_dRoJYnCUBx) 裡的 Excel 檔「世界模擬遊戲｜遊戲設定檔」。一律從這個資料夾讀取；更新時上傳為同一檔案的新版本，不另建新檔。
 
 ## 資料權威
 
-Notion ＞ [Google 試算表](https://docs.google.com/spreadsheets/d/136wf0Deyl9oAt4vTSIxwZXu3HUZZt7lrj9rX3Ja91Rw/edit) ＞ 本程式倉庫。Notion 定規則，試算表存 ID 與數值，本程式倉庫只代表程式做到哪裡。
+Notion ＞ [設定檔](https://drive.google.com/drive/folders/1T9G9deDLRYD4rILfT8H4p_dRoJYnCUBx) ＞ 本程式倉庫。Notion 定規則，設定檔存 ID 與數值，本程式倉庫只代表程式做到哪裡。
 
 ## 硬性規則
 
 - 模擬核心 `WorldSimulation.Core` 是純 .NET 程式庫，不得引用任何 Godot 介面；Godot 專案只負責呈現。
-- 未定案的世界數值不得編造；開發時放在示範設定檔並標 `TEMP`（暫定），不得寫回正式試算表或 Notion 規則。
+- 未定案的世界數值不得編造；開發時放在示範設定檔並標 `TEMP`（暫定），不得寫回正式設定檔或 Notion 規則。
 - 世界時間單調前進、實體 ID（`EntityID`）不重用、歷史不改寫、同一種子可重現。
 - 一次一個小任務；每個任務都要讓使用者看得到或能驗證新東西（詳見 03）。
 - 同一次提交（commit）的自動測試必須真正執行建置與測試並全部通過，才能合併；只驗證開發套件安裝的冒煙測試不算通過。
