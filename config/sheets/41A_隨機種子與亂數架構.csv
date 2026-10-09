@@ -1,0 +1,42 @@
+FieldID,中文名稱,層級,來源,是否玩家可見,是否存入存檔,是否影響重現性,用途,規則,Enabled
+SEED_WORLD,世界種子,根種子,玩家輸入或隨機,是,是,是,決定世界初始程序生成根,同種子+規則+設定應得到相同初始世界,TRUE
+SEED_HISTORY,歷史種子,根種子,玩家輸入或隨機；預設可由世界種子衍生,是,是,是,決定世界預演與後續歷史亂數根,同世界可搭配不同歷史種子產生不同歷史,TRUE
+SEED_GEOGRAPHY,地理亂數流,衍生,"雜湊(世界種子,'GEOGRAPHY')",否,可重建,是,地形／地區／河流／海岸等,與歷史亂數分離,TRUE
+SEED_RESOURCE,資源亂數流,衍生,"雜湊(世界種子,'RESOURCE')",否,可重建,是,初始資源點與分布,不因事件多抽一次而改變地圖資源,TRUE
+SEED_ECOLOGY_INIT,初始生態亂數流,衍生,"雜湊(世界種子,'ECOLOGY_INIT')",否,可重建,是,初始物種／人口／棲地分布,只管初始世界,TRUE
+SEED_CHARACTER,角色亂數流,衍生,"雜湊(歷史種子,'CHARACTER')",否,保存計數器／國家,是,新角色初始程序資料,建立順序變化不應污染其他系統,TRUE
+SEED_POP,人口亂數流,衍生,"雜湊(歷史種子,'POP')",否,保存計數器／國家,是,出生／死亡／繁殖等,人口亂數獨立,TRUE
+SEED_EVENT,事件流,衍生,"雜湊(歷史種子,'EVENT')",否,保存計數器／國家,是,事件選擇/權重抽樣,不污染戰鬥／宗教,TRUE
+SEED_COMBAT,戰鬥亂數流,衍生,"雜湊(歷史種子,'COMBAT')",否,保存計數器／國家,是,戰鬥命中/結果抽樣,戰鬥獨立,TRUE
+SEED_RELIGION,宗教亂數流,衍生,"雜湊(歷史種子,'RELIGION')",否,保存計數器／國家,是,宗教生成/事件,,TRUE
+SEED_DUNGEON,地下城亂數流,衍生,"雜湊(歷史種子,'DUNGEON')",否,保存計數器／國家,是,地下城位置／模板／替代,,TRUE
+SEED_THREAT,威脅亂數流,衍生,"雜湊(歷史種子,'THREAT')",否,保存計數器／國家,是,王種變異體等稀有威脅生成,,TRUE
+SEED_ENTITY_LOCAL,實體局部種子,局部,"雜湊(根／亂數流,命名空間,實體ID)",否,通常可重建,是,物品特性／角色細節／地下城局部程序生成,避免世界全域抽樣次序改變時連鎖污染,TRUE
+SEED_SAVE_STATE,亂數流狀態,執行期,各亂數流計數器／國家,否,是,是,存檔／讀檔後繼續同一歷史,不能只存種子不存執行期亂數狀態,TRUE
+RNG_V1_SEED_DERIVATION,確定性種子衍生 v1,協定,SHA256(UTF8(WSIM-RNG-v1)||0x00||UTF8(用途)||0x00||UInt64LE(parentSeed（父種子）)||UTF8(命名空間));First8LE,否,是（版本及根種子）,是,版本化衍生歷史種子與各命名空間亂數流種子,用途=HISTORY_SEED(命名空間空)|WORLD_STREAM(世界種子)|HISTORY_STREAM(歷史種子)；歷史種子可明給；不得用GetHashCode（雜湊函式）、系統.隨機。,TRUE
+RNG_V1_STREAM_IDS,固定亂數命名空間集合,衍生,WORLD:GEOGRAPHY|RESOURCE|ECOLOGY_INIT;HISTORY:CHARACTER|POP|EVENT|COMBAT|RELIGION|DUNGEON|THREAT,否,是（各亂數流計數器／國家）,是,M0-05 官方 10條獨立亂數流ID,固定大小寫及次序；不同根種子隔離；多抽一條不影響其他；實體局部不在本微任務。,TRUE
+RNG_V1_PRNG,SplitMix64 uint64 v1,執行期,uint64 state+0x9E3779B97F4A7C15，mix*0xBF58476D1CE4E5B9，mix*0x94D049BB133111EB,否,是（各亂數流狀態／計數器）,是,純.NET8跨平台決定性亂數輸出，使用unchecked ulong（不檢查溢位的64位元整數）運算,固定右移30、27、31與上述兩個乘法因子；輸出NextUInt64；不得省略版本化固定向量；計數器溢位拒絕。,TRUE
+RNG_V1_STATE_SNAPSHOT,記憶體內亂數快照 v1,執行期,"ProtocolVersion=1;WorldSeed:uint64;HistorySeed:uint64;StreamId→(State:uint64,DrawCounter:uint64)",否,是（快照資料；非存檔管理器）,是,記憶體擷取／恢復所有亂數流的執行位置,禁止只存根種子；須驗版本、根種子、完整亂數流集合；快照外部不能修改已建立登錄表；正式序列化／正式提交交易後置。,TRUE
+RNG_ENTITY_LOCAL_V1,實體局部索引亂數 v1,局部,SHA256(UTF8(WSIM-ENTITY-LOCAL-v1)||0x00||UInt64LE(父亂數流種子)||UInt32LE(namespaceUtf8Length)||UTF8(命名空間)||UInt64LE(實體ID));First8LE,否,通常可重建（純索引式不耗亂數流）,是,每實體、每局部命名空間的獨立可重算原始亂數，不污染十條全域亂數流,父亂數流種子由世界種子／歷史種子與正式10種亂數流ID按既有v1派生；實體ID>0；GetUInt64(ulong 索引)依SplitMix64(localSeed（局部種子）+Gamma 常數*(索引+1)mod2^64)；不替代交易性RNG/正式提交／存檔管理器。,TRUE
+RNG_RESOLUTION_DRAFT_V1,亂數結算草稿 v1,結算,Begin(live)=capture full RngSnapshot v1 + RngRegistry.Restore(base) private worker; NextUInt64 draws private worker; CaptureProposed provides immutable full candidate snapshot,否,候選非存檔、目前僅記憶體,是（將來可驗證決定性）,結算中未提交試算不污染全域亂數狀態／計數器,不提供正式提交／套用到即時；拋棄候選不改即時；未實作預先檢查權限、衝突驗證、RNG+國家的原子正式提交與存檔。,TRUE
+RNG_CANDIDATE_PREFLIGHT_V1,亂數候選預檢 v1,結算驗證,"IsCompatible(current: RngSnapshot, baseline: RngSnapshot, candidate: RngSnapshot) -> bool；validates all 3 via RngRegistry.Restore; current==baseline Version/Roots/10 Streams(State,Counter); candidate Roots same and all Counter>=baseline",否,僅快照不可作持久存檔,是,確認未提交RNG候選沒有用過期基準或計數器回退,資料空值／格式錯誤即拋出例外；有效但過期／根種子不合／回退則假；真只代表RNG快照相容、不做即時套用／鎖定／正式提交；原子提交仍須原子重驗及世界全部系統交易。,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

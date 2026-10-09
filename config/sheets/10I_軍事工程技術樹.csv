@@ -1,0 +1,29 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_FIELD_ENGINEERING,野戰工程,Field Engineering,1,工事,,120,"RES_WOOD:10,RES_STONE:5",建立營地/簡易障礙,研究時間-20%,"SK_SIEGE_ENGINEERING,SK_CONSTRUCTION",,,field_fortification,ConstructionSite,軍事工程根技術,TRUE
+TECH_RAM_ENGINEERING,攻城槌,Battering Ram Engineering,2,攻城,TECH_FIELD_ENGINEERING,180,"RES_WOOD:25,RES_IRON_INGOT:3",參與城門/城牆攻防,研究時間-20%,"SK_SIEGE_ENGINEERING,SK_CARPENTRY",,,ram_enabled,BUILD_WORKSHOP,簡易攻城器械,TRUE
+TECH_DEFENSIVE_WORKS,防禦工事,Defensive Works,2,防禦,TECH_FIELD_ENGINEERING,180,"RES_WOOD:20,RES_STONE:10",構築防禦陣地,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_CONSTRUCTION",,,field_defense_quality+,ConstructionSite,壕溝、拒馬、臨時防禦等,TRUE
+TECH_COUNTERWEIGHT,配重機械,Counterweight Mechanics,3,攻城,TECH_RAM_ENGINEERING,260,"RES_WOOD:30,RES_IRON_INGOT:5",研究大型槓桿/配重裝置,研究時間-20%,"SK_SIEGE_ENGINEERING,SK_CARPENTRY",,,siege_engine_tier2,BUILD_WORKSHOP,大型投射攻城機械基礎,TRUE
+TECH_SIEGE_LOGISTICS,攻城補給,Siege Logistics,3,後勤,"TECH_FIELD_ENGINEERING,TECH_RAM_ENGINEERING",240,"RES_WOOD:20,RES_PARCHMENT:5",移動大型攻城裝備,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_LEADERSHIP",,,siege_transport_efficiency+,BUILD_BARRACK,攻城器具仍需真實運輸與補給,TRUE
+TECH_ADVANCED_FORTIFICATION,進階要塞,Advanced Fortification,4,防禦,"TECH_DEFENSIVE_WORKS,TECH_COUNTERWEIGHT",380,"RES_STONE:40,RES_IRON_INGOT:10",參與大型要塞攻防,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_CONSTRUCTION",,BUILD_CASTLE,fortification_defense+,BUILD_CASTLE,與土木要塞知識互補,TRUE
+TECH_TREBUCHET_ENGINEERING,大型投石機,Trebuchet Engineering,4,攻城,"TECH_COUNTERWEIGHT,TECH_SIEGE_LOGISTICS",420,"RES_WOOD:60,RES_IRON_INGOT:10",操作大型攻城機械,研究時間-15%,SK_SIEGE_ENGINEERING,,,trebuchet_enabled,BUILD_WORKSHOP,高階遠距攻城,TRUE
+TECH_SIEGE_SCIENCE,攻城學,Siege Science,5,綜合,"TECH_ADVANCED_FORTIFICATION,TECH_TREBUCHET_ENGINEERING",650,"RES_PARCHMENT:15,RES_WOOD:30,RES_IRON_INGOT:10",多次大型攻城戰經驗,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_RESEARCH",,,siege_efficiency_cap+,"BUILD_SCHOOL,BUILD_BARRACK",提高攻城/防城規劃，但不直接增加軍隊數量,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

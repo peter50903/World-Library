@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+WEATHER_SENSE,觀天,Weather Sense,Spell,1,感知,,,KNOW_WEATHER_BASIC,1,8,短,短,weather_read,感知當地Weather趨勢,不等於精確未來預知,天候系根節點,TRUE
+FOG_CALL,聚霧,Call Fog,Spell,1,水氣,WEATHER_SENSE,,KNOW_FOG,1,18,中,中,local_fog,局部降低能見度,只改短期Weather,低階天候操控,TRUE
+WIND_SHIFT,轉風,Wind Shift,Spell,2,風場,WEATHER_SENSE,,KNOW_WIND_SHIFT,2,25,中,中,local_wind_change,改變局部風向/風速,不等於風雷直接攻擊,航海/火災應用,TRUE
+GATHER_CLOUDS,聚雲,Gather Clouds,Spell,2,降水,WEATHER_SENSE,,KNOW_GATHER_CLOUDS,2,30,長,中,cloud_density,+局部雲量,需合理大氣條件,祈雨前置,TRUE
+LOCAL_RAIN,局部降雨,Local Rain,Spell,3,降水,GATHER_CLOUDS,,KNOW_LOCAL_RAIN,3,120,長,長,local_weather_rain,局部Rain,不直接產生永久ResourcePoint,農業/救災,TRUE
+DISPERSE_CLOUDS,散雲,Disperse Clouds,Spell,3,降水,"GATHER_CLOUDS,WIND_SHIFT",,KNOW_DISPERSE_CLOUDS,3,70,長,長,reduce_clouds,降低局部降水機率,不永久改Climate,天候調整,TRUE
+TEMPERATURE_SHIFT,局部溫度調節,Temperature Shift,Spell,3,溫度,WEATHER_SENSE,,KNOW_TEMP_SHIFT,3,80,長,長,local_temperature,+/-局部溫度,範圍與幅度有限,農業/生存,TRUE
+CALM_STORM,平息風暴,Calm Storm,Spell,4,風暴,"WIND_SHIFT,DISPERSE_CLOUDS",,KNOW_CALM_STORM,4,180,極長,極長,reduce_storm_intensity,降低Storm強度,不能保證極端災害完全消失,海運/救災,TRUE
+CALL_STORM,召集風暴,Call Storm,Spell,4,風暴,"LOCAL_RAIN,WIND_SHIFT",,KNOW_CALL_STORM,4,220,極長,極長,increase_storm_intensity,形成/加強局部Storm,可造成真實災害後果,高階天候法術,TRUE
+WEATHER_DOMAIN,天候領域,Weather Domain,Spell,5,綜合,"CALL_STORM,CALM_STORM,TEMPERATURE_SHIFT",,KNOW_WEATHER_DOMAIN,5,500,極長,極長,large_weather_control,大範圍短期Weather操控,不能永久改Climate；世界級範圍需特殊WorldEffect,天候系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

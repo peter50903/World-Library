@@ -1,0 +1,35 @@
+CultureTraitID,中文名稱,英文名稱,效果Key,效果值,前置條件,互斥特性,加權條件,基礎權重,說明,Enabled
+CT_FAMILY_EXTENDED,大家庭同住,Extended Household,household_size_tendency,1.3,,,家庭,1,偏好多代同堂,TRUE
+CT_FAMILY_NUCLEAR,小家庭,Nuclear Household,household_size_tendency,0.8,,,家庭,1,偏好成年後獨立居住,TRUE
+CT_MARTIAL,尚武,Martial,military_service_tendency,1.25,,,戰爭,1,提高從軍與尊重戰士的文化傾向,TRUE
+CT_PACIFIST,厭戰,Pacifist,war_support_modifier,0.75,,,和平,0.8,降低主動戰爭支持,TRUE
+CT_MERCHANT,重商,Mercantile,trade_tendency,1.25,,,商業,1,提高經商、遠距貿易與商人地位,TRUE
+CT_ASCETIC,節制,Ascetic,luxury_demand,0.7,,,宗教,0.8,降低奢侈品需求,TRUE
+CT_LUXURY,享樂,Luxury Seeking,luxury_demand,1.3,,,財富,0.8,提高娛樂與奢侈品需求,TRUE
+CT_HONOR,重榮譽,Honor Culture,honor_goal_weight,1.3,,,貴族,1,提高名譽、決鬥、履約等行為權重,TRUE
+CT_CLAN,宗族本位,Clan Focused,house_loyalty,1.3,,,家庭,1,提高家族／親族忠誠,TRUE
+CT_INDIVIDUAL,個人主義,Individualist,personal_goal_weight,1.2,,,城市,0.8,個人目標相對群體責任更高,TRUE
+CT_RELIGIOUS,虔敬社會,Devout,religious_activity,1.3,,,宗教,1,提高祈禱、儀式與宗教參與,TRUE
+CT_SCHOLARLY,重學,Scholarly,education_demand,1.3,,,教育,0.8,提高識字、教育與研究投入傾向,TRUE
+CT_TRADITIONAL,守舊,Traditional,culture_change_resistance,1.25,,,鄉村,1,文化特性變動較慢,TRUE
+CT_OPEN,開放,Open,foreign_culture_acceptance,1.25,,,貿易,0.9,對外來文化與移民接受度較高,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

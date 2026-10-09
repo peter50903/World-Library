@@ -1,0 +1,29 @@
+DiseaseID,中文名稱,英文名稱,可感染類型,傳播方式,潛伏期,嚴重度,自然克服規則,治療方式,魔物免疫,說明,Enabled
+DIS_COMMON_FEVER,一般熱病,Common Fever,"文明種族,動物,怪物",接觸/飛沫,2~5日,低中,CON對抗可自然康復,"休息,藥品,治療魔法,神蹟",TRUE,魔物免疫一般疾病,TRUE
+DIS_RED_POX,赤痘,Red Pox,文明種族,接觸,5~10日,高,高CON可降低惡化與死亡,"藥品,隔離,治療魔法,神蹟",TRUE,高傳染性，可形成瘟疫,TRUE
+DIS_WATER_ROT,腐水症,Water Rot,"文明種族,動物,怪物",污染水源,1~3日,中高,CON對抗,"乾淨水,藥品,治療魔法,神蹟",TRUE,城市水源污染時易大量爆發,TRUE
+DIS_LUNG_BLIGHT,黑肺熱,Black Lung Fever,文明種族,近距離/密集環境,3~7日,高,CON對抗,"休養,藥品,治療魔法,神蹟",TRUE,軍營/監獄/城市高密度環境風險高,TRUE
+DIS_WOUND_FEVER,傷口熱,Wound Fever,"文明種族,動物,怪物",嚴重傷口/污染,1~4日,中,CON對抗,"清創,藥品,治療魔法,神蹟",TRUE,由傷勢引發的疾病,TRUE
+DIS_LIVESTOCK_PLAGUE,牲畜瘟疫,Livestock Plague,動物,接觸/群聚,3~8日,高,個體體質對抗,"隔離,藥品,神蹟",TRUE,可造成畜牧與糧食危機,TRUE
+DIS_MONSTER_FUNGUS,怪物真菌症,Monster Fungus,"怪物,動物",環境/接觸,5~15日,中,體質對抗,"特殊藥品,治療魔法,神蹟",TRUE,魔化後疾病清除並免疫,TRUE
+DIS_CHRONIC_WASTE,慢性衰弱症,Chronic Wasting,文明種族,低傳染/特殊條件,10~30日,中,高CON可控制但未必迅速痊癒,"長期醫療,治療魔法,神蹟",TRUE,可留下永久狀態,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

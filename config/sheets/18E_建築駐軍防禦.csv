@@ -1,0 +1,30 @@
+BuildingDefID,GarrisonCapacity,FiringPosition,ProvidesCover,RequiresDefender,RequiresAmmo,PassiveBarrier,BreachEffect,說明,Enabled
+BUILD_OUTPOST,8,4,TRUE,TRUE,TRUE,FALSE,失去觀察/射擊平台,無守衛只能提供高處與實體障礙,TRUE
+BUILD_STONE_TOWER,16,8,TRUE,TRUE,TRUE,TRUE,局部防線弱化,,TRUE
+BUILD_CASTLE,120,30,TRUE,TRUE,TRUE,TRUE,內部區域暴露/控制下降,每個防禦部分仍可獨立受損,TRUE
+BUILD_WALL_WOOD,0,0,TRUE,FALSE,FALSE,TRUE,形成可通行缺口,牆段是實體基礎設施,TRUE
+BUILD_WALL_STONE,0,0,TRUE,FALSE,FALSE,TRUE,形成可通行缺口,,TRUE
+BUILD_GATE_WOOD,4,2,TRUE,TRUE,TRUE,TRUE,Gate Open/Breached,,TRUE
+BUILD_GATE_STONE,8,4,TRUE,TRUE,TRUE,TRUE,Gate Open/Breached,,TRUE
+BUILD_TOWN_HALL,20,6,TRUE,TRUE,TRUE,FALSE,行政中心暴露,若有人駐守可防禦，不自動攻擊,TRUE
+BUILD_PORT,20,4,TRUE,TRUE,TRUE,FALSE,碼頭控制能力下降,港口防禦取決於實際守備,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

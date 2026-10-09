@@ -1,0 +1,29 @@
+FormationRuleID,軍力來源,Owner/Authority,成員來源,動員方式,維持成本,解除方式,與人口關係,說明,Enabled
+FORM_LEVY,徵召軍,State/Lord,合資格平民/封建義務人口,徵兵命令,食物/裝備/部分軍餉,解散／義務結束,直接抽離勞動人口,高比例徵召會衝擊農業與經濟,TRUE
+FORM_STANDING,常備軍,State/Organization,專職士兵僱傭,持續存在,固定軍餉/食物/裝備/營舍,解僱/裁軍,職業人口,類似重裝兵概念,TRUE
+FORM_ELITE,騎士與菁英,State/Lord/Organization,高能力角色 + 正式關係,召集/契約/誓約,高裝備與待遇,解除誓約/死亡/離職,個體角色,國家精英戰鬥天賦來源之一,TRUE
+FORM_MERC,傭兵,Mercenary Organization,組織成員,契約,合約金幣+補給,合約結束/違約,不屬國家固定人口,真正組織可另接雇主,TRUE
+FORM_HOLY_ORDER,宗教軍事組織,Religious Military Organization,信徒/專職戰士,宗教義務／契約,組織資產+補給,任務結束,真實角色,是否參戰取決於宗教／組織／目標,TRUE
+FORM_WARMAGE,軍用法師,State/Organization,具魔法技能角色,軍事僱傭／官職,軍餉+魔法材料+補給,離職/死亡,高價值專業人口,不會因編成而複製法師,TRUE
+FORM_CREATURE,生物輔助軍,Controller/Organization,真實已馴養／受控生物,召集/控制,食物/控制資源,釋放/死亡/失控,真實生物,失控可能反噬己方,TRUE
+FORM_VASSAL,封臣軍,Vassal State/Lord,依條約／法律動員,履行軍事義務,通常由原擁有者負擔部分成本,義務終止/撤回,仍屬原附庸人口,參戰不代表軍隊所有權轉移,TRUE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE
+,,,,,,,,,FALSE

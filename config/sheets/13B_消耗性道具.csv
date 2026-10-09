@@ -1,0 +1,35 @@
+ConsumableID,中文名稱,英文名稱,分類,RequiredResourceIDs,重量,體積,StackLimit,保存／腐敗,UseEffectKey,EffectValue／Params,TargetType,UseTime,使用後消耗,說明,Enabled
+CONS_WATER,飲用水,Potable Water,飲水,RES_WATER:1,1,1,100,依容器/污染狀態,restore_thirst,基準1份飲水,Character,短,TRUE,滿足飲水需求；水源本身是資源，不是物品,TRUE
+CONS_BREAD,麵包,Bread,食物-主食,RES_GRAIN:1,0.4,0.4,50,中等腐敗,restore_nutrition,主食營養,Character,短,TRUE,加工後可直接食用的消耗品,TRUE
+CONS_COOKED_MEAT,熟肉,Cooked Meat,食物-肉類,"RES_RAW_MEAT:1,RES_SALT:0.05",0.4,0.35,50,較快腐敗,restore_nutrition,肉類營養,Character,短,TRUE,需烹煮或處理,TRUE
+CONS_VEGETABLE_MEAL,蔬果餐,Vegetable Meal,食物-蔬果,RES_VEGETABLE:1,0.4,0.4,50,較快腐敗,restore_nutrition,蔬果營養,Character,短,TRUE,蔬果類食物,TRUE
+CONS_DAIRY_EGG_MEAL,乳蛋食品,Dairy/Egg Food,食物-乳蛋,RES_DAIRY_EGG:1,0.4,0.35,50,較快腐敗,restore_nutrition,高營養,Character,短,TRUE,乳蛋/高營養類,TRUE
+CONS_RATION,乾糧,Travel Ration,食物-加工,"RES_GRAIN:1,RES_RAW_MEAT:0.3,RES_SALT:0.1",0.5,0.4,50,慢腐敗,restore_nutrition,中等營養+高保存,Character,短,TRUE,旅行與軍隊常用,TRUE
+CONS_BASIC_MEDICINE,基礎藥劑,Basic Medicine,藥品,"RES_MED_HERB:3,RES_WATER:0.2",0.1,0.1,20,會失效,disease_treatment_modifier,+一般治療效果,Character,短,TRUE,需對應疾病治療規則,TRUE
+CONS_HEALING_POTION,治療藥水,Healing Potion,藥水,"RES_MED_HERB:4,RES_MANA_CRYSTAL:0.2,RES_WATER:0.2",0.2,0.15,10,長期,restore_hp,恢復中量HP,Character,短,TRUE,不能自動治永久傷勢/疾病,TRUE
+CONS_MANA_POTION,魔力藥水,Mana Potion,藥水,"RES_MANA_CRYSTAL:0.5,RES_MED_HERB:1,RES_WATER:0.2",0.2,0.15,10,長期,restore_mp,恢復中量MP,Character,短,TRUE,真實消耗生產資源,TRUE
+CONS_ANTIDOTE,解毒劑,Antidote,藥品,"RES_MED_HERB:2,RES_WATER:0.1",0.1,0.1,20,會失效,remove_poison,降低/解除Poison,Character,短,TRUE,只處理相容毒性狀態,TRUE
+CONS_BANDAGE,繃帶,Bandage,醫療用品,RES_CLOTH:1,0.1,0.1,50,不易腐敗,bleeding_control,降低Bleeding,Character,短,TRUE,不等於恢復HP或治療疾病,TRUE
+CONS_ARROW,箭矢,Arrow,彈藥,"RES_WOOD:0.1,RES_IRON_INGOT:0.05",0.05,0.03,200,不腐敗,ammo,1次遠程射擊,Weapon/Character,即時,TRUE,放在AMMO槽，可回收與否由戰鬥結果決定,TRUE
+CONS_TORCH,火把,Torch,旅行用品,"RES_WOOD:0.5,RES_CLOTH:0.1",0.5,0.3,20,燃燒耗盡,light_source,持續照明,Character/Location,短,TRUE,使用時間結束後消耗,TRUE
+CONS_HOLY_WATER,聖水,Holy Water,宗教消耗品,RES_WATER:1,0.2,0.2,10,長期,religious_effect,依Religion/Miracle定義,Character/Location,短,TRUE,必須經合法宗教儀式製作，不自帶萬能效果,TRUE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,FALSE,,FALSE

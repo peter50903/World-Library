@@ -1,0 +1,68 @@
+SkillID,中文名稱,英文名稱,分類,等級制,EXP來源,前置技能,能力需求,說明,Enabled
+SK_FARMING,農業,Farming,生產,連續EXP,耕作／收成,,CON/WIS,農業效率與產量品質,TRUE
+SK_HUNTING,狩獵,Hunting,生產,連續EXP,追蹤／狩獵,,DEX/WIS,狩獵成功與材料取得,TRUE
+SK_FISHING,漁業,Fishing,生產,連續EXP,捕魚,,DEX/WIS,水域採集,TRUE
+SK_MINING,採礦,Mining,生產,連續EXP,採礦,,STR/CON,礦物採集效率,TRUE
+SK_LUMBER,伐木,Lumbering,生產,連續EXP,伐木,,STR/CON,木材採集效率,TRUE
+SK_SMITHING,鍛造,Smithing,工藝,連續EXP,製作／修理,,STR/DEX,金屬裝備與工具,TRUE
+SK_CARPENTRY,木工,Carpentry,工藝,連續EXP,製作／建築,,DEX,木製品與建築,TRUE
+SK_CONSTRUCTION,建築,Construction,工藝,連續EXP,施工／修繕,,CON/DEX,建築施工效率,TRUE
+SK_TRADE,交易,Trade,商業,連續EXP,交易／議價,,CHA/WIS,價格判斷與商業效率,TRUE
+SK_SAILING,航海,Sailing,交通,連續EXP,駕船／航行,,DEX/WIS,船舶操作與海上旅行,TRUE
+SK_MEDICINE,醫療,Medicine,醫療,連續EXP,診療／照護,,WIS/INT,疾病／傷勢醫療,TRUE
+SK_MELEE,近戰,Melee Combat,戰鬥,連續EXP,戰鬥／訓練,,STR/DEX,近戰攻防,TRUE
+SK_RANGED,遠程,Ranged Combat,戰鬥,連續EXP,射擊／投擲,,DEX,遠距攻擊,TRUE
+SK_RIDING,騎乘,Riding,交通,連續EXP,騎乘／訓練,,DEX,坐騎控制與高速移動,TRUE
+SK_SURVIVAL,野外生存,Survival,生存,連續EXP,旅行／採集／露營,,WIS/CON,野外生存與路線判斷,TRUE
+SK_TEACHING,教學,Teaching,教育,連續EXP,實際教學,,INT/WIS,提高教學效率,TRUE
+SK_RESEARCH,研究,Research,知識,連續EXP,研究活動,,INT,不影響研究能否成功，主要作角色經歷／能力表現,TRUE
+SK_RELIGION,宗教學識,Religious Practice,宗教,連續EXP,儀式／教學／傳教,,WIS/CHA,宗教活動與組織工作,TRUE
+SK_LEADERSHIP,領導,Leadership,社會,連續EXP,指揮／管理,,CHA/WIS,軍隊／組織領導效率,TRUE
+SK_MAGIC_CONTROL,魔力控制,Magic Control,魔法,連續EXP,施法／訓練,,INT/WIS,後天魔法的通用施法控制,TRUE
+SK_STEALTH,潛行,Stealth,行動,連續EXP,潛行／躲藏,,DEX,降低被發現機率,TRUE
+SK_LOCKPICK,開鎖,Lockpicking,行動,連續EXP,開鎖,,DEX,鎖具處理,TRUE
+SK_TAMING,馴養,Taming,生物,連續EXP,餵食／訓練,,WIS/CHA,動物／怪物普通馴養，不取代魔族控制,TRUE
+SK_MAGIC_FIRE,火焰魔法,Fire Magic,魔法系統,連續EXP,火焰法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,火焰技能樹的系統熟練度,TRUE
+SK_MAGIC_WATER_ICE,水冰魔法,Water & Ice Magic,魔法系統,連續EXP,水冰法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,水冰技能樹熟練度,TRUE
+SK_MAGIC_WIND_LIGHTNING,風雷魔法,Wind & Lightning Magic,魔法系統,連續EXP,風雷法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,風雷技能樹熟練度,TRUE
+SK_MAGIC_EARTH,土系魔法,Earth Magic,魔法系統,連續EXP,土系法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,土系技能樹熟練度,TRUE
+SK_MAGIC_HEALING,治療魔法,Healing Magic,魔法系統,連續EXP,治療法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,治療技能樹熟練度,TRUE
+SK_MAGIC_SPACE,空間魔法,Spatial Magic,魔法系統,連續EXP,空間法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,空間技能樹熟練度,TRUE
+SK_MAGIC_WEATHER,天候魔法,Weather Magic,魔法系統,連續EXP,天候法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,天候技能樹熟練度,TRUE
+SK_MAGIC_ANTIMAGIC,反魔法,Anti-Magic,魔法系統,連續EXP,反制／結界／禁魔訓練,SK_MAGIC_CONTROL,INT/WIS,反魔法技能樹熟練度,TRUE
+SK_MAGIC_NECROMANCY,死靈魔法,Necromancy Magic,魔法系統,連續EXP,死靈法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,死靈技能樹熟練度；法律狀態依國家,TRUE
+SK_MAGIC_MENTAL,精神魔法,Mental Magic,魔法系統,連續EXP,精神法術施放／訓練,SK_MAGIC_CONTROL,INT/WIS,精神技能樹熟練度,TRUE
+SK_ANIMAL_HUSBANDRY,畜牧,Animal Husbandry,生產,連續EXP,餵養／繁殖／照護牲畜,,WIS/CON,實際畜牧與品種培育能力,TRUE
+SK_SHIPBUILDING,造船,Shipbuilding,工藝,連續EXP,建造／修理船舶,SK_CARPENTRY,DEX/INT,船舶製造與大型木構工藝,TRUE
+SK_TEXTILE,紡織,Textile Craft,工藝,連續EXP,紡紗／織布／裁縫,,DEX,布料與服裝製作,TRUE
+SK_LEATHERWORK,皮革工藝,Leatherworking,工藝,連續EXP,剝皮／鞣革／皮具製作,,DEX/CON,皮革材料與皮甲製作,TRUE
+SK_COOKING,烹調,Cooking,生產,連續EXP,烹調／保存食物,,WIS/DEX,食物加工與保存,TRUE
+SK_PHARMACY,藥學製作,Pharmacy,醫療/工藝,連續EXP,製藥／藥材處理,SK_MEDICINE,INT/WIS,藥品、解毒劑與魔法藥水製作,TRUE
+SK_SIEGE_ENGINEERING,軍事工程,Siege Engineering,工藝/軍事,連續EXP,攻城器具建造／工事施工,SK_CONSTRUCTION,INT/DEX,攻城、防城與大型軍用工程,TRUE
+SK_ARCANE_CRAFT,魔法工藝,Arcane Craft,魔法工藝,連續EXP,附魔／符文／魔法物製作,SK_MAGIC_CONTROL,INT/WIS,魔法材料、符文、附魔與神器級工藝,TRUE
+SK_CERAMICS,陶瓷工藝,Ceramics,工藝,連續EXP,製陶／燒窯,,DEX/WIS,陶器、窯爐與耐熱容器製作,TRUE
+SK_GLASSWORK,玻璃工藝,Glasswork,工藝,連續EXP,熔製／吹製玻璃,SK_CERAMICS,DEX/INT,玻璃器皿與光學玻璃,TRUE
+SK_JEWELCRAFT,珠寶精工,Jewelcraft,工藝,連續EXP,寶石切磨／鑲嵌／細金工,,DEX/INT,珠寶、印璽與精密飾品製作,TRUE
+SK_WAGONMAKING,車輛製作,Wagonmaking,工藝,連續EXP,車輪／車軸／車體製作,SK_CARPENTRY,DEX/INT,手推車、馬車與重載車輛製作,TRUE
+SK_TACTICS,戰術,Tactics,軍事,連續EXP,指揮戰鬥／戰術演練,SK_LEADERSHIP,INT/WIS,地形、兵種克制、陣形與戰術選擇能力,TRUE
+SK_LOGISTICS,軍事後勤,Military Logistics,軍事/物流,連續EXP,軍隊補給／行軍／運輸管理,SK_LEADERSHIP,INT/WIS,補給線、庫存、行軍與大型軍隊維持能力,TRUE
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,
+,,,,,,,,FALSE,

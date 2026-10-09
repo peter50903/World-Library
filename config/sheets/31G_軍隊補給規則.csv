@@ -1,0 +1,29 @@
+SupplyRuleID,中文名稱,ResourceType,Trigger,Effect,Escalation,Recovery,說明,Enabled
+SUP_FOOD,軍糧,Food,Army每日存在,消耗實際Food Inventory,不足→飢餓→體力/士氣下降→死亡/逃亡,補充實際Food,沿用Entity19生存規則,TRUE
+SUP_WATER,飲水,Water,Army每日存在,消耗實際Water,不足比缺糧更快惡化,補充乾淨Water,熱區/大體型需求更高,TRUE
+SUP_AMMO,彈藥,Ammo,遠程/攻城作戰,消耗箭矢/弩矢/特殊彈藥,不足→對應兵種效率下降,補給/回收/製作,不使用無限彈藥,TRUE
+SUP_MED,醫療物資,Medicine,有傷患,影響傷患存活與恢復,不足→可避免死亡增加,補充藥品/醫者,治療魔法不能替代所有醫療,TRUE
+SUP_PAY,軍餉,Gold,需付薪單位到期,Gold從Treasury轉給Soldiers/Organization,欠餉→Morale下降/逃亡/叛變風險,實際付款,徵召義務兵可有不同薪餉制度,TRUE
+SUP_LINE,補給線,Route,Army遠離補給來源,需要有效Road/Caravan/Port/Depot,被切斷→依庫存逐日惡化,重新連線或當地採集,不是抽象連線；貨物真的移動,TRUE
+SUP_FORAGE,就地徵糧,LocalResource,Army決定Forage/Requisition,取得當地真實Food/Water,過度使用→地區短缺/Opinion/犯罪/反抗,停止徵用/外部補給,可合法徵用或掠奪,TRUE
+SUP_OVERLOAD,超過地方承載,SupplyLimit,Army需求>當地可供應,補給消耗/疾病/行軍壓力增加,長期超載→快速惡化,分兵/撤離/增設補給,借鑑CK3 補給上限，但由真實產出與物流推導,TRUE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE

@@ -1,0 +1,31 @@
+NodeID,中文名稱,英文名稱,NodeType,Tier,Branch,ParentNodeIDs,TargetNodeID,RequiredKnowledgeID,RequiredSkillTier,MPBase,CastTime,Cooldown,EffectKey,EffectParams,WorldLawLimit,說明,Enabled
+WATER_SHAPE,水流操控,Water Manipulation,Spell,1,水流,,,KNOW_WATER_BASIC,1,8,短,無,move_real_water,操控少量既有水,不永久造水,水冰系根節點,TRUE
+WATER_JET,水流衝擊,Water Jet,Spell,1,水流,WATER_SHAPE,,KNOW_WATER_JET,1,12,短,短,water_impact,水壓傷害/擊退,需要可用水或額外MP形成臨時水,攻擊與控制,TRUE
+FROST_TOUCH,寒霜之觸,Frost Touch,Spell,1,冰凍,WATER_SHAPE,,KNOW_FROST_TOUCH,1,10,短,短,cold_slow,短距降溫/減速,不永久改氣候,冰系入口,TRUE
+ICE_SHARD,冰刃,Ice Shard,Spell,2,冰凍,FROST_TOUCH,,KNOW_ICE_SHARD,2,18,短,短,ice_projectile,冰傷害,臨時魔法冰事後消散,遠程攻擊,TRUE
+ICE_WALL,冰牆,Ice Wall,Spell,2,防禦,"FROST_TOUCH,WATER_SHAPE",,KNOW_ICE_WALL,2,28,中,中,temporary_ice_wall,形成臨時障礙,若非使用真實水則消散,防禦/地形控制,TRUE
+FLOW_CONTROL,水流精通,Flow Mastery,Mastery,3,水流,WATER_JET,"WATER_SHAPE,WATER_JET",KNOW_FLOW_CONTROL,3,0,被動,無,water_control_efficiency,+操水量/-MP,不增加永久水資源,提高操水效率,TRUE
+FROZEN_GROUND,冰封地面,Frozen Ground,Spell,3,控制,ICE_SHARD,,KNOW_FROZEN_GROUND,3,35,中,中,terrain_slow,區域滑倒/減速,效果結束後臨時冰消散,戰場控制,TRUE
+ICE_ARMOR,冰甲,Ice Armor,Spell,3,防禦,ICE_WALL,,KNOW_ICE_ARMOR,3,40,中,中,temporary_armor,提高防護與耐熱,不取代Item Armor ownership,角色防禦,TRUE
+DEEP_FREEZE,深度凍結,Deep Freeze,Spell,4,冰凍,"FROZEN_GROUND,ICE_ARMOR",,KNOW_DEEP_FREEZE,4,75,長,長,freeze_target,高強度冰凍/行動抑制,不能無條件即死高級目標,高階控制,TRUE
+FROST_DOMAIN,寒霜領域,Frost Domain,Spell,5,範圍,"DEEP_FREEZE,FLOW_CONTROL",,KNOW_FROST_DOMAIN,5,160,長,長,large_cold_field,大型局部寒冷區,不永久改Climate,水冰系頂階,TRUE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,,FALSE

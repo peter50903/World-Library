@@ -1,0 +1,27 @@
+TalentID,中文名稱,英文名稱,涵蓋技能範圍,主要意義,種族特性可修正,角色特性可修正,說明,Enabled
+TAL_COMBAT,戰鬥天賦,Combat Talent,近戰／遠程／戰術／相關戰鬥技能,戰鬥技能學習效率,TRUE,TRUE,不直接增加傷害或技能等級,TRUE
+TAL_MAGIC,魔法天賦,Magic Talent,魔法控制與各魔法系統,魔法學習與理解效率,TRUE,TRUE,不決定施法資格；仍需知識+技能+MP,TRUE
+TAL_CRAFT,工藝天賦,Craft Talent,鍛造/木工/建築/紡織/藥學/魔法工藝等,製作類技能學習效率,TRUE,TRUE,不直接生成配方／科技,TRUE
+TAL_SOCIAL,社交天賦,Social Talent,交易/領導/教學/宗教/交涉等,社交類技能學習效率,TRUE,TRUE,看法／關係仍是獨立狀態,TRUE
+TAL_RESEARCH,研究天賦,Research Talent,研究／知識型技能,研究與學術技能成長效率,TRUE,TRUE,研究完成仍依時間+資源，天賦只影響相關學習效率,TRUE
+TAL_SURVIVAL,生存天賦,Survival Talent,狩獵/野外/航海/騎乘/馴養等,生存與環境類技能學習效率,TRUE,TRUE,不取代種族環境適應,TRUE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE
+,,,,,,,,FALSE

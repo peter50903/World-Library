@@ -1,0 +1,29 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_HERBALISM,草藥學,Herbalism,1,藥學,,100,RES_MED_HERB:10,採集並記錄多種藥草用途,研究時間-20%,"SK_MEDICINE,SK_PHARMACY",REC_BASIC_MED,,herb_treatment_enabled,BUILD_CLINIC,藥學根技術,TRUE
+TECH_WOUND_CARE,傷口照護,Wound Care,1,外傷,,100,"RES_CLOTH:5,RES_WATER:5",照護多種實際Injury,研究時間-20%,SK_MEDICINE,REC_BANDAGE,,bleeding_treatment+,BUILD_CLINIC,改善外傷與出血處理,TRUE
+TECH_BASIC_PHARMACY,基礎藥劑學,Basic Pharmacy,2,藥學,TECH_HERBALISM,160,"RES_MED_HERB:15,RES_WATER:5",製作多批藥劑,研究時間-15%,"SK_PHARMACY,SK_MEDICINE","REC_BASIC_MED,REC_ANTIDOTE",,medicine_quality+,BUILD_CLINIC,穩定製作藥品,TRUE
+TECH_SURGICAL_CARE,外科照護,Surgical Care,3,外傷,TECH_WOUND_CARE,240,"RES_CLOTH:10,RES_IRON_INGOT:3",治療複雜Injury,研究時間-15%,SK_MEDICINE,,,severe_injury_treatment+,"BUILD_CLINIC,BUILD_HOSPITAL",提高可處理傷勢嚴重度，但不重生肢體,TRUE
+TECH_DISEASE_CARE,疾病照護,Disease Care,3,疾病,TECH_BASIC_PHARMACY,260,"RES_MED_HERB:20,RES_PARCHMENT:5",照護多例同類Disease,研究時間-15%,"SK_MEDICINE,SK_PHARMACY",,,disease_treatment_efficiency+,BUILD_CLINIC,醫療知識仍需對應疾病,TRUE
+TECH_QUARANTINE,隔離制度,Quarantine,3,公共衛生,TECH_DISEASE_CARE,220,RES_PARCHMENT:5,實際處理傳染病群聚,研究時間-20%,"SK_MEDICINE,SK_LEADERSHIP",,,quarantine_policy_enabled,BUILD_HOSPITAL,需要國家／組織實際執行移動限制,TRUE
+TECH_HOSPITAL_ORGANIZATION,醫院制度,Hospital Organization,4,公共醫療,"TECH_SURGICAL_CARE,TECH_DISEASE_CARE",360,"RES_PARCHMENT:10,RES_MED_HERB:20",管理大型醫療設施,研究時間-15%,"SK_MEDICINE,SK_LEADERSHIP",,BUILD_HOSPITAL,hospital_efficiency+,BUILD_HOSPITAL,解鎖大型醫療體系,TRUE
+TECH_ADVANCED_PHARMACOLOGY,進階藥學,Advanced Pharmacology,5,藥學,"TECH_BASIC_PHARMACY,TECH_HOSPITAL_ORGANIZATION",520,"RES_MED_HERB:40,RES_MANA_CRYSTAL:2,RES_PARCHMENT:10",長期比較藥品效果,研究時間-15%,"SK_PHARMACY,SK_RESEARCH","REC_HEALING_POTION,REC_MANA_POTION",,medicine_effect_cap+,"BUILD_CLINIC,BUILD_MAGIC_WORKSHOP",魔法藥水仍消耗真實資源,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

@@ -1,0 +1,36 @@
+ActionID,中文名稱,ActionType,MainCost,QuickCost,MovementCost,OtherCost,TargetType,Requirement,Effect,Interruptible,說明,Enabled
+ACT_INTERACT,互動,Context/Main,0~1,0,0,Time,Object/Building,Target reachable,依Object提供互動,TRUE,戰鬥中複雜互動可升為主要,TRUE
+ACT_USE_ITEM,使用道具,Quick/Main,0~1,0~1,0,ItemCharge/Consume,Self/Target,Item usable,依Item Definition,TRUE,物品可覆寫行動成本,TRUE
+ACT_HELP,協助,Main,1,0,0,Stamina/Time,Character,Target reachable,支援起身/脫困/特定任務,TRUE,不等於萬用治療,TRUE
+ACT_DASH,疾跑,Main,1,0,0,Stamina,Self,Can move,增加本Cycle Movement,FALSE,負重/傷勢可限制,TRUE
+ACT_DISENGAGE,脫離接戰,Main,1,0,0,Stamina,Self,Engaged,降低離開近戰時觸發Opportunity Reaction,FALSE,特定特性可改快速成本,TRUE
+ACT_HIDE,隱藏,Main,1,0,0,Stamina,Self,有遮蔽/可隱匿環境,進入Stealth attempt,TRUE,由SK_STEALTH與觀察者決定結果,TRUE
+ACT_JUMP,跳躍,Quick,0,1,部分Movement,Stamina,Location,可跨越距離/落點有效,位置改變,FALSE,距離由STR/移動／負重等決定,TRUE
+ACT_SHOVE,推擠,Quick,0,1,0,Stamina,Character,近距/體型可作用,位置/失衡嘗試,FALSE,不是固定成功,TRUE
+ACT_PICKUP,拾取,Context/Quick,0,0~1,0,CarryCapacity/Time,Item,可觸及、可持有；仍受Weight／Volume、Owner／Law與物品狀態限制,合法成功時Holder改變；人物降臨可由例行人工智慧對普通低影響物資連續執行，多件介面可彙整但不瞬移,TRUE,若有所有權可能構成偷竊,TRUE
+ACT_DROP,放下物品,Context,0,0,0,None,Item,Currently held,Location改變,FALSE,不可藉此複製／刪除物品,TRUE
+ACT_STAND,起身,Movement/Quick,0,0~1,部分Movement,Stamina,Self,Prone且可行動,移除Prone,FALSE,重傷/束縛可阻止,TRUE
+ACT_OBSERVE,觀察,Main/Context,0~1,0,0,Time,Area/Entity,可感知,取得可觀察Information,TRUE,不取得世界真相,TRUE
+ACT_GO_TO_LOCAL,前往地點,Long/World,0,0,0,Time/Stamina,Location/SubLocation,Known/Selectable target + legal route/path,依距離/路徑/速度/地形/負重/傷勢推進World Time並改變Location,TRUE,Phase3不手動走路；地方移動也以行動／地點指令解析。長距離沿用LONG_TRAVEL。,FALSE
+ACT_DIALOGUE,交談／社交對話,World/Social,0~1,0,0,Time,Character,Target reachable/contactable + legal communication path + option-specific requirements,Conversation Exchange才Commit；Duration=Intent BaseDuration經結構化Modifier修正，僅由Simulation資料決定，不讀AI實際字數。,TRUE,合法修正值：條件複雜度／資訊量／參與人數／翻譯或語言障礙／正式情境；正式提交時鎖定時長。,FALSE
+ACT_SELF_REFLECT,自我反思,World/Context,0,0,0,Time,Self,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,FALSE

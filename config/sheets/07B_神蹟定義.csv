@@ -1,0 +1,49 @@
+MiracleID,中文名稱,英文名稱,分類,RequiredDomainIDs,DomainMatchMode,RequiredDoctrineIDs,DoctrineMatchMode,FaithPowerCost,TargetType,Range,CastTime,Duration,EffectKey,EffectValue／Params,RequiredConditions,ForbiddenConditions,SuccessRule,是否重大事件,說明,Enabled
+MIR_HEAL_HP,神聖治癒,Divine Healing,治療,DOM_HEALING,ANY,DOC_MERCY,ANY,20,Character,單體,即時,即時,restore_hp,大量恢復HP,Target=Alive,,GuaranteedAfterValidCost,FALSE,只恢復HP，不自動治療疾病或永久傷勢,TRUE
+MIR_HEAL_INJURY,神聖療傷,Mend Injury,治療,DOM_HEALING,ANY,DOC_MERCY,ANY,50,Character,單體,短,即時,treat_injury,可治療高嚴重度Injury,Target=Alive,,GuaranteedAfterValidCost,FALSE,不重生失去肢體,TRUE
+MIR_CURE_DISEASE,祛除疾病,Cure Disease,治療,DOM_HEALING,ANY,DOC_MERCY,ANY,60,Character/Population,單體/小範圍,短,即時,remove_disease,清除一般Disease,Target has Disease,,GuaranteedAfterValidCost,FALSE,可直接治病；不自動移除既有後遺症,TRUE
+MIR_REGENERATE_LIMB,肢體再生,Regenerate Limb,高階治療,DOM_HEALING,ANY,DOC_MERCY,ANY,300,Character,單體,長,永久,regenerate_limb,重建失去主要肢體,LostLimb=true,,GuaranteedAfterValidCost,TRUE,神蹟級再生專屬能力,TRUE
+MIR_RESURRECTION,死者復生,Resurrection,復活,"DOM_HEALING,DOM_DEATH",ANY,,ANY,600,DeadCharacter,單體,長,永久,true_resurrection,沿用原CharacterID重新Alive,Dead + 可辨識Corpse/Remains,Undead Entity本身不可視為原Character,GuaranteedAfterValidCost,TRUE,不回復財產、婚姻、官職、頭銜,TRUE
+MIR_GREATER_RESURRECTION,神聖大復活,Greater Resurrection,最高階復活,"DOM_HEALING,DOM_DEATH",ALL,DOC_MERCY,ANY,1800,DeadCharacter,單體,極長,永久,true_resurrection_exception,可例外處理遺骸嚴重缺失,WorldTruth可唯一辨識原Character,原Character歷史不存在,GuaranteedAfterValidCost,TRUE,極特殊世界級神蹟，不改寫死亡歷史,TRUE
+MIR_BLESS_HARVEST,豐收祝福,Bless Harvest,農業,"DOM_HARVEST,DOM_NATURE,DOM_FERTILITY",ANY,,ANY,80,Farmland/Settlement,區域,中,一季,crop_yield_modifier,+25%基準,存在真實農地/種子/勞力/水源,,GuaranteedAfterValidCost,FALSE,提高真實農業效率，不憑空生成未種植食物,TRUE
+MIR_RAIN,祈雨,Call Rain,天候,"DOM_NATURE,DOM_STORM,DOM_HARVEST",ANY,,ANY,120,Location/Region,區域,長,數小時~數日,change_weather,Rain,環境可形成降雨,,GuaranteedAfterValidCost,FALSE,只改局部天氣，不直接永久改氣候,TRUE
+MIR_END_DROUGHT,解旱,Break Drought,天候/救災,"DOM_HARVEST,DOM_NATURE,DOM_STORM",ANY,DOC_MERCY,ANY,300,Region,大型區域,極長,數日~數週,reduce_drought,大幅降低DroughtSeverity,存在Drought/WaterCrisis,,GuaranteedAfterValidCost,TRUE,透過降雨與水循環緩解旱災，不生成食物,TRUE
+MIR_CALM_STORM,平息風暴,Calm Storm,天候/海洋,"DOM_SEA,DOM_STORM,DOM_PEACE",ANY,,ANY,180,WeatherSystem/SeaArea,區域,中,數小時,reduce_storm_intensity,-50%基準,存在Storm,,GuaranteedAfterValidCost,FALSE,降低風暴，不保證所有船舶安全,TRUE
+MIR_FAVORABLE_WIND,順風,Favorable Wind,海洋,"DOM_SEA,DOM_STORM",ANY,,ANY,50,Ship/SeaRoute,區域,短,數小時,travel_speed_modifier,+20%海上速度,存在可航行船舶/路線,,GuaranteedAfterValidCost,FALSE,不瞬移，只改善航行條件,TRUE
+MIR_PROTECT_SHIP,海神庇護,Sea Ward,海洋/保護,DOM_SEA,ANY,,ANY,100,Ship,單體船舶,短,數小時,ship_hazard_resistance,+40%基準,Ship at Sea,,GuaranteedAfterValidCost,FALSE,降低風浪、沉船與大型海難風險,TRUE
+MIR_STOP_WILDFIRE,止息野火,Quench Wildfire,救災,"DOM_NATURE,DOM_STORM",ANY,DOC_MERCY,ANY,160,WildfireArea,區域,中,即時/短,reduce_fire_intensity,大幅降低火勢,存在Wildfire,,GuaranteedAfterValidCost,TRUE,可停止大型森林火災擴張,TRUE
+MIR_CREATE_SPRING,創生泉源,Create Sacred Spring,資源創造,"DOM_NATURE,DOM_EARTH,DOM_HARVEST",ANY,,ANY,500,Location,局部,極長,永久,create_resource_point,RES_WATER,合法Location且符合世界地理條件,已有互斥ResourcePoint,GuaranteedAfterValidCost,TRUE,建立新的淡水資源點，不是直接把水放進庫存,TRUE
+MIR_GROW_FOREST,神木繁生,Grow Forest,資源創造,DOM_NATURE,ANY,DOC_NATURE,ANY,450,Location,區域,極長,永久,create_resource_point,RES_WOOD/Forest,有土地與可生長環境,極端荒蕪/不相容地形,GuaranteedAfterValidCost,TRUE,可建立新森林資源點；效果仍需時間形成成熟森林,TRUE
+MIR_CREATE_MINERAL_VEIN,大地賜礦,Create Mineral Vein,資源創造,DOM_EARTH,ANY,,ANY,800,Location,局部,極長,永久,create_resource_point,合法非Gold礦產,合適地質Location,已達ResourcePoint上限,GuaranteedAfterValidCost,TRUE,建立新礦脈資源點，普通魔法不能做到,TRUE
+MIR_CREATE_GOLD_VEIN,黃金礦脈,Create Gold Vein,資源創造,"DOM_EARTH,DOM_WEALTH",ALL,,ANY,2000,Location,局部,極長,永久,create_resource_point,RES_GOLD_ORE,合適地質Location,直接生成流通Gold,GuaranteedAfterValidCost,TRUE,只建立金礦資源點；金幣仍需真實開採／鑄造後進入世界,TRUE
+MIR_BLESS_TRADE,商旅祝福,Bless Commerce,財富,DOM_WEALTH,ANY,,ANY,70,Business/Market/Caravan,區域,短,數日,trade_efficiency,+15%基準,存在真實交易/商旅活動,,GuaranteedAfterValidCost,FALSE,改善交易與商旅效率，不創造金幣或商品,TRUE
+MIR_REVELATION,神諭啟示,Divine Revelation,知識,DOM_KNOWLEDGE,ANY,DOC_KNOWLEDGE,ANY,120,Character/Organization,單體/小群體,中,即時,grant_knowledge,1項正確Knowledge,God本身已合法知道該Knowledge,神未知的WorldTruth,GuaranteedAfterValidCost,TRUE,不建立錯誤知識，也不讓神祇自動全知,TRUE
+MIR_WAR_BLESSING,戰神祝福,War Blessing,戰爭,DOM_WAR,ANY,DOC_WAR,ANY,100,MilitaryUnit/Characters,小範圍,短,數小時,combat_modifier,+15%基準,實際參戰單位,,GuaranteedAfterValidCost,FALSE,暫時提高戰鬥表現與勇氣，不永久改能力,TRUE
+MIR_SANCTUARY,聖域庇護,Sanctuary,保護,"DOM_ORDER,DOM_PEACE,DOM_HEALING",ANY,,ANY,150,Location/Building,區域,中,數小時~數日,protection_field,降低傷害/恐慌/疾病風險,合法聖域/施放地點,,GuaranteedAfterValidCost,FALSE,保護不是無敵；極強攻擊仍可突破,TRUE
+MIR_PEACE_CALM,平息怒火,Calm Hostility,和平,DOM_PEACE,ANY,"DOC_PEACE,DOC_MERCY",ANY,80,Characters,小範圍,短,數小時,emotion_modifier,降低Anger/Fear,目標Alive,不永久改Opinion/Personality,GuaranteedAfterValidCost,FALSE,只影響短期情緒與決策權重,TRUE
+MIR_FAMILY_GUARD,家族守護,Family Ward,家庭,DOM_FAMILY,ANY,DOC_FAMILY,ANY,60,Household/Family,小範圍,短,數日,family_protection,+安全/StressRecovery,存在Family/Household,,GuaranteedAfterValidCost,FALSE,保護家庭成員，不改關係歷史,TRUE
+MIR_FERTILITY_BLESSING,生育祝福,Bless Fertility,生育,"DOM_FERTILITY,DOM_FAMILY",ANY,DOC_FERTILITY,ANY,90,Character/Couple,單體/雙人,短,一段時間,fertility_modifier,+受孕機率,符合基本生理條件,不繞過Species絕對限制,GuaranteedAfterValidCost,FALSE,提高機率但不保證懷孕,TRUE
+MIR_PRESERVE_REMAINS,聖骸保存,Preserve Remains,死亡,"DOM_DEATH,DOM_ORDER",ANY,,ANY,40,Corpse/Remains,單體,短,長期,corpse_decay_modifier,大幅降低腐化,存在Corpse/Remains,,GuaranteedAfterValidCost,FALSE,有助埋葬、歷史保存與普通復活條件,TRUE
+MIR_CLEANSE_DEAD_ZONE,淨化死域,Cleanse Dead Zone,死亡/救災,"DOM_DEATH,DOM_HEALING,DOM_NATURE",ANY,DOC_MERCY,ANY,700,DeadZone,區域,極長,永久,reduce_dead_zone,大幅縮小/清除DeadZone,存在DeadZone,,GuaranteedAfterValidCost,TRUE,大型淨化可成為重大世界事件,TRUE
+MIR_SACRED_FLAME,神聖火焰,Sacred Flame,火焰,DOM_FIRE,ANY,,ANY,50,Character/Item/Location,單體/小範圍,短,短,holy_fire_effect,依目標造成火焰/照明/淨化效果,合法目標,,GuaranteedAfterValidCost,FALSE,仍透過正常損傷／火系統產生結果,TRUE
+MIR_DIVINE_MANIFESTATION,神祇顯現,Divine Manifestation,顯現/啟示,,ANY,,ANY,150,Location/Region,局部/區域,中,短~數小時,divine_manifestation,產生神光、巨大非實體神影、神聲、天象或其他可觀測非肉身顯現；若同時造成治療/傷害/天候等效果，必須另外綁定並支付對應Miracle成本,God=Existing；Target符合Perception/Target規則,不得建立God Body/Avatar/Vessel；不得賦予HP/Inventory/Movement,GuaranteedAfterValidCost,FALSE,可被居民與歷史稱為『神降世』；是否升格重大世界事件由目擊者／影響／歷史重要度判定,TRUE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE
+,,,,,,,,,,,,,,,,,,FALSE,,FALSE

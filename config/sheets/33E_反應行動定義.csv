@@ -1,0 +1,29 @@
+ReactionID,中文名稱,Trigger,ReactionCost,Requirements,Target/Range,Effect,PriorityInput,CanAuto,說明,Enabled
+REACT_OPPORTUNITY,機會攻擊,敵對目標脫離近戰威脅範圍,1,可攻擊且未被限制,Triggering Enemy,立即近戰攻擊嘗試,Threat/Goal/Rules,TRUE,脫離可抑制或避免,TRUE
+REACT_PARRY,招架,受到可招架近戰攻擊,1,SK_MELEE+合適Weapon,Incoming Attack,降低/改變命中或傷害結果,Survival/Skill,TRUE,消耗體力；正式公式後定,TRUE
+REACT_SHIELD_BLOCK,盾牌格擋,受到正面物理攻擊,1,持盾且可反應,Incoming Attack,以盾牌Durability/Skill吸收部分效果,Survival,TRUE,盾可損壞,TRUE
+REACT_DODGE,閃避反應,即將受到可躲避攻擊,1,有Movement空間/未束縛,Self,位置/命中修正,Survival,TRUE,重甲/負重/疲勞影響,TRUE
+REACT_COUNTERSPELL,反制施法,感知範圍內敵人施法,1,已知可用Counterspell+MP,Enemy Caster/Spell,嘗試中斷/解除Spell,Threat/MP/Knowledge,TRUE,需要實際知道或感知施法,TRUE
+REACT_PROTECT,保護他人,附近友方遭攻擊,1,可移動/有合適防護方式,Ally,轉移/降低部分攻擊效果,Relationship/Loyalty,TRUE,可能讓保護者承受風險,TRUE
+REACT_INTERCEPT,攔截移動,敵人穿越控制區域,1,位置/武器/體力允許,Enemy,阻擋/減速/攻擊嘗試,Tactic/Goal,TRUE,不保證成功,TRUE
+REACT_CATCH_FALL,防墜/抓扶,自己或鄰近者因推擠等墜落,1,有可抓點/距離可及,Self/Ally,降低墜落或抓住目標,Survival/Relationship,TRUE,需要真實位置條件,TRUE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE
+,,,,,,,,,,FALSE

@@ -1,0 +1,30 @@
+DoctrineID,中文名稱,英文名稱,子類型,EffectKey,EffectValue,對國家法律的關係,看法／信仰值影響,國家AI偏好,互斥群組,說明,Enabled
+RDC_SPIRITUAL_APPOINT,宗教內部任命,Spiritual Appointment,神職任命,clergy_appointment,religious_org,教會組織決定,符合制度提高神職合法性,偏好教會掌握任命,CLERGY_APPOINT,類似精神權威任命，但仍由真實組織／官職執行,TRUE
+RDC_TEMPORAL_APPOINT,世俗任命,Temporal Appointment,神職任命,clergy_appointment,state_ruler,國家／統治者可任命,統治者干預被視為正當,偏好統治者任命,CLERGY_APPOINT,官職仍不是統治者私人財產,TRUE
+RDC_ELECTIVE_CLERGY,神職選舉,Elective Clergy,神職任命,clergy_appointment,clergy_election,宗教組織內選舉,選舉結果合法性較高,偏好宗教內部選舉,CLERGY_APPOINT,候選人須滿足真實資格條件,TRUE
+RDC_LIFETIME_CLERGY,神職終身制,Clergy for Life,任期,clergy_term,lifetime,除特殊法律/罪責不易撤職,撤職產生信仰值／看法成本,偏好終身任期,CLERGY_TERM,死亡／辭職仍終止官職,TRUE
+RDC_REVOCABLE_CLERGY,神職可撤換,Revocable Clergy,任期,clergy_term,revocable,允許合法撤職,低撤職宗教成本,偏好可撤換,CLERGY_TERM,不等於可以無理由處刑或沒收私人財產,TRUE
+RDC_CLERGY_MARRIED,神職可婚,Married Clergy,生活規範,clergy_marriage,allowed,無直接法律效果,神職婚姻無宗教懲罰,中立,CLERGY_MARRIAGE,婚姻仍受一般婚姻規則,TRUE
+RDC_CLERGY_CELIBATE,神職禁婚,Celibate Clergy,生活規範,clergy_marriage,forbidden,不直接讓婚姻無效,違反降低信仰值／神職合法性,偏好未婚神職,CLERGY_MARRIAGE,是否被撤職由組織規則決定,TRUE
+RDC_CLERGY_PROPERTY,神職可持產,Clergy Property,財產,clergy_private_property,allowed,一般財產規則照常,無懲罰,中立,CLERGY_PROPERTY,教會資產仍和個人資產分離,TRUE
+RDC_CLERGY_POVERTY,神職清貧,Clergy Poverty,財產,clergy_private_property,discouraged,不直接沒收私人財產,大量私人財富降低信仰值／宗教看法,偏好教會資產集中,CLERGY_PROPERTY,財富不會魔法消失,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

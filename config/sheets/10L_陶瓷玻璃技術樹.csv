@@ -1,0 +1,28 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_POTTERY_FIRING,陶器燒製,Pottery Firing,1,陶瓷,,100,"RES_CLAY:10,RES_WOOD:5",成功燒製多批陶器,研究時間-20%,SK_CERAMICS,,BUILD_KILN,ceramic_container_enabled,BUILD_KILN,陶瓷與耐熱容器基礎,TRUE
+TECH_KILN_CONTROL,窯爐控溫,Kiln Temperature Control,2,陶瓷,TECH_POTTERY_FIRING,160,"RES_CLAY:15,RES_WOOD:8",比較不同燒製溫度,研究時間-20%,SK_CERAMICS,,,ceramic_quality+,BUILD_KILN,提升成品一致性與耐久,TRUE
+TECH_GLAZING,釉料技術,Glazing,2,陶瓷,TECH_POTTERY_FIRING,150,"RES_CLAY:10,RES_SAND:5",製作防水器皿,研究時間-15%,SK_CERAMICS,,,ceramic_storage_quality+,BUILD_KILN,改善食物/藥品容器保存性,TRUE
+TECH_GLASSMAKING,玻璃熔製,Glassmaking,2,玻璃,TECH_KILN_CONTROL,220,"RES_SAND:20,RES_COAL:8",成功熔製透明材料,研究時間-20%,SK_GLASSWORK,,BUILD_GLASSWORKS,glass_resource_enabled,BUILD_GLASSWORKS,需要高溫與適合原料,TRUE
+TECH_GLASSBLOWING,吹製玻璃,Glassblowing,3,玻璃,TECH_GLASSMAKING,240,"RES_SAND:20,RES_COAL:10",製作多種中空玻璃器皿,研究時間-15%,SK_GLASSWORK,,,glass_container_quality+,BUILD_GLASSWORKS,提高藥瓶、器皿與精密容器品質,TRUE
+TECH_OPTICAL_GLASS,光學玻璃,Optical Glass,4,玻璃,TECH_GLASSBLOWING,380,"RES_SAND:30,RES_COAL:15",比較多種透明度/曲率,研究時間-15%,"SK_GLASSWORK,SK_RESEARCH",,,lens_crafting_enabled,BUILD_GLASSWORKS,可支援精密觀測與學術工具,TRUE
+TECH_MASTER_GLASS,高階玻璃工藝,Advanced Glasscraft,5,玻璃,"TECH_OPTICAL_GLASS,TECH_KILN_CONTROL",560,"RES_SAND:50,RES_COAL:25",長期製作高品質玻璃,研究時間-10%,"SK_GLASSWORK,SK_RESEARCH",,,advanced_glass_quality+,BUILD_GLASSWORKS,高品質玻璃可支援魔法/醫療/學術工藝,TRUE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE
+,,,,,,,,,,,,,,,,FALSE

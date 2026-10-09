@@ -1,0 +1,65 @@
+BuildingDefID,中文名稱,英文名稱,分類,功能,容量,材料需求,工時需求（小時）,維護需求,可升級為,說明,Enabled
+BUILD_HOUSE_BASIC,普通住宅,Basic House,住宅,居住,5,"RES_WOOD:20,RES_STONE:10",120,定期修繕,,基礎住宅，容量可超載但生活品質下降,TRUE
+BUILD_HOUSE_LARGE,大型住宅,Large House,住宅,居住,12,"RES_WOOD:50,RES_STONE:30",300,定期修繕,,富裕家庭/大家庭,TRUE
+BUILD_INN,旅店,Inn,商業,住宿/飲食,20,"RES_WOOD:40,RES_STONE:20",250,高,,旅客短期住所,TRUE
+BUILD_MARKET,市場,Market,商業,交易,100,"RES_WOOD:30,RES_STONE:30",220,中,,集中交易與價格形成場所,TRUE
+BUILD_SMITHY,鐵匠鋪,Smithy,工坊,鍛造,6,"RES_WOOD:20,RES_STONE:20,RES_IRON_INGOT:5",180,中,,武器防具工坊,TRUE
+BUILD_WORKSHOP,工坊,Workshop,工坊,一般製造,8,"RES_WOOD:30,RES_STONE:10",180,中,,木工/工藝,TRUE
+BUILD_SMELTER,冶煉爐,Smelter,生產,冶煉,6,"RES_STONE:40,RES_IRON_INGOT:5",240,高,,金屬冶煉設備,TRUE
+BUILD_LUMBERYARD,木材場,Lumber Yard,生產,木材加工,10,RES_WOOD:20,100,低,,木材儲存與加工,TRUE
+BUILD_QUARRY,採石場,Quarry,生產,採石,20,RES_WOOD:10,80,低,,需靠近石材資源,TRUE
+BUILD_FARM,農舍/農場,Farm,生產,農業/畜牧,20,"RES_WOOD:25,RES_STONE:5",150,中,,農業與牲畜活動基地,TRUE
+BUILD_CLINIC,診療所,Clinic,醫療,醫療,12,"RES_WOOD:20,RES_STONE:10",140,中,,需要真實醫者才可提供醫療,TRUE
+BUILD_HOSPITAL,醫院,Hospital,醫療,大量醫療,60,"RES_WOOD:60,RES_STONE:80",500,高,,大型城市醫療設施,TRUE
+BUILD_SCHOOL,學校,School,教育,教育,50,"RES_WOOD:40,RES_STONE:20",260,中,,組織可在此營運,TRUE
+BUILD_MAGIC_ACADEMY,魔法學院,Magic Academy,教育/魔法,魔法教育研究,100,"RES_STONE:100,RES_WOOD:50,RES_MANA_CRYSTAL:20",1000,極高,,組織與建築分離,TRUE
+BUILD_CHURCH,神殿/教堂,Temple,宗教,儀式/宗教活動,100,"RES_STONE:80,RES_WOOD:30",600,高,,宗教不等於教會組織,TRUE
+BUILD_PRISON,監獄,Prison,司法,監禁,100,"RES_STONE:100,RES_IRON_INGOT:20",700,高,,具有真實容量、守衛、食物需求,TRUE
+BUILD_BARRACK,兵營,Barracks,軍事,駐軍,150,"RES_WOOD:50,RES_STONE:50",400,高,,軍隊住宿與訓練,TRUE
+BUILD_CASTLE,城堡,Castle,軍事/政治,防禦/行政,300,"RES_STONE:500,RES_WOOD:100,RES_IRON_INGOT:50",4000,極高,,不是城市HP條，只是大型建築,TRUE
+BUILD_PORT,港口,Port,交通,海運,200,"RES_WOOD:100,RES_STONE:150",1500,高,,大型船舶靠港與物流節點,TRUE
+BUILD_BANK,國家銀行,State Bank,財政,存款/放貸,30,"RES_STONE:80,RES_WOOD:30",600,高,,資金即國庫，不創造信用貨幣,TRUE
+BUILD_SCRIPTORIUM,抄寫室,Scriptorium,知識,抄書/翻譯,20,"RES_WOOD:30,RES_STONE:10",180,中,,書籍複製與內容版本,TRUE
+BUILD_MAGIC_WORKSHOP,魔法工坊,Arcane Workshop,魔法工藝,附魔/魔法製作,12,"RES_STONE:40,RES_WOOD:20,RES_MANA_CRYSTAL:10",420,高,,魔法道具製作,TRUE
+BUILD_SHELTER,臨時收容所,Shelter,公共,暫時居住,50,RES_WOOD:15,40,低,,難民/災民臨時住宿,TRUE
+BUILD_KITCHEN,廚房/食物工坊,Kitchen,生產,食品加工,10,"RES_WOOD:15,RES_STONE:10",80,中,,烹煮與保存食物,TRUE
+BUILD_MINE,礦場,Mine,生產,採礦,30,"RES_WOOD:20,RES_STONE:10",120,高,,需要鄰近有效礦脈資源點,TRUE
+BUILD_TANNERY,鞣革場,Tannery,生產,皮革加工,12,"RES_WOOD:15,RES_STONE:10",100,中,,將RES_HIDE加工成RES_LEATHER,TRUE
+BUILD_WEAVERY,紡織坊,Weavery,生產,紡織,15,RES_WOOD:20,100,中,,將RES_FIBER加工成RES_CLOTH,TRUE
+BUILD_KILN,窯場,Kiln,生產,陶瓷/高溫燒製,12,"RES_STONE:20,RES_CLAY:10,RES_WOOD:10",140,中,,陶瓷燒製與部分高溫工藝,TRUE
+BUILD_GLASSWORKS,玻璃工坊,Glassworks,生產,玻璃熔製/吹製,12,"RES_STONE:30,RES_WOOD:15,RES_IRON_INGOT:5",220,高,,需要高溫與穩定燃料供應,TRUE
+BUILD_JEWELER,珠寶工坊,Jeweler Workshop,工坊,寶石/精細金工,8,"RES_STONE:10,RES_WOOD:15,RES_IRON_INGOT:2",120,中,,高價值小型工藝與印璽製作,TRUE
+BUILD_WAINWRIGHT,車輛工坊,Wainwright Workshop,工坊,車輪/車體/馬車,15,"RES_WOOD:30,RES_STONE:10,RES_IRON_INGOT:5",180,中,,陸路運輸載具製造與維修,TRUE
+BUILD_TOWN_HALL,市政廳,Town Hall,政治/行政,地方行政/登記/公共決策,80,"RES_WOOD:80,RES_STONE:100,RES_IRON_INGOT:10",800,高,,聚落行政中心；不生成居民或金幣,TRUE
+BUILD_GRANARY,糧倉,Granary,儲存,食物儲存/輪替,200,"RES_WOOD:50,RES_STONE:30",240,中,,降低大量食物儲存損耗，但不能停止腐敗,TRUE
+BUILD_WAREHOUSE,倉庫,Warehouse,儲存,一般貨物儲存/裝卸,300,"RES_WOOD:70,RES_STONE:30",280,中,,真實庫存與物流節點,TRUE
+BUILD_STABLE,馬廄/騎兵訓練場,Stable,軍事/畜牧,坐騎照護/騎兵訓練,80,"RES_WOOD:60,RES_STONE:20",300,高,,不生成馬；必須有真實坐騎與訓練者,TRUE
+BUILD_ARCHERY_RANGE,弓弩訓練場,Archery Range,軍事,遠程訓練/靶場,100,"RES_WOOD:50,RES_STONE:10",240,中,,訓練消耗真實時間與部分彈藥/靶材,TRUE
+BUILD_SIEGE_WORKSHOP,攻城工坊,Siege Workshop,軍事/工坊,攻城器械製造/維修,30,"RES_WOOD:100,RES_STONE:50,RES_IRON_INGOT:15",600,高,,攻城器械是真實物品／裝備，不是瞬間單位,TRUE
+BUILD_OUTPOST,前哨塔,Outpost,軍事/防禦,觀察/警戒/少量駐軍,12,"RES_WOOD:30,RES_STONE:5",120,中,BUILD_STONE_TOWER,提供視野與警戒，需真實守衛,TRUE
+BUILD_STONE_TOWER,石造塔樓,Stone Tower,軍事/防禦,觀察/防禦/射擊平台,24,"RES_STONE:80,RES_WOOD:20,RES_IRON_INGOT:5",400,高,,可由前哨站升級或直接建造,TRUE
+BUILD_WALL_WOOD,木牆,Wooden Wall,軍事/防禦,區域阻隔,0,RES_WOOD:20,60,低,BUILD_WALL_STONE,線性基礎設施段，不提供人口容量,TRUE
+BUILD_WALL_STONE,石牆,Stone Wall,軍事/防禦,高耐久區域阻隔,0,"RES_STONE:50,RES_WOOD:5",180,中,,可由木牆升級；每段都是實體,TRUE
+BUILD_GATE_WOOD,木城門,Wooden Gate,軍事/防禦,控制通行,0,"RES_WOOD:35,RES_IRON_INGOT:2",100,中,BUILD_GATE_STONE,需要連接城牆段,TRUE
+BUILD_GATE_STONE,石造城門,Stone Gate,軍事/防禦,控制通行/高耐久入口,0,"RES_STONE:80,RES_WOOD:20,RES_IRON_INGOT:8",300,高,,閘門毀壞形成真實通路缺口,TRUE
+BUILD_ACADEMY,高等學院,Academy,教育/研究,高等教育/研究/學術保存,120,"RES_STONE:100,RES_WOOD:60,RES_PARCHMENT:20",900,極高,,不自動產生科技；需教師／研究者／書籍／資源,TRUE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE
+,,,,,,,,,,,FALSE

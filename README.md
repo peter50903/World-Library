@@ -114,7 +114,7 @@ GitHub 的自動測試（GitHub Actions）還會用輸入腳本實際啟動文�
 1. [02｜遊戲規則總綱（AI 精簡版）](https://app.notion.com/p/3f36939dab09811a8e1bf888e2f9030a)：全部規則的精簡版。
 2. [03｜給 GPT 的下一步製作指示](https://app.notion.com/p/3f36939dab0981ba9906efe357a45813)：任務順序與製作原則。
 3. [01｜目前實作狀態](https://app.notion.com/p/3f36939dab09816c8366efc669451796)：一段最新進度。
-- [Notion 入口頁](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)、[設定檔資料夾（Google Drive）](https://drive.google.com/drive/folders/1T9G9deDLRYD4rILfT8H4p_dRoJYnCUBx)（只讀任務需要的單一分頁範圍）。
+- [Notion 入口頁](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)、[設定檔（config/）](https://github.com/peter50903/World-Library/tree/main/config)（只讀任務需要的單一分頁範圍）。
 
 ## 資料權威與開發規範
 

@@ -14,11 +14,11 @@
 
 ## 設定檔位置
 
-唯一正式設定檔是 [Google Drive 設定檔資料夾](https://drive.google.com/drive/folders/1T9G9deDLRYD4rILfT8H4p_dRoJYnCUBx) 裡的 Excel 檔「世界模擬遊戲｜遊戲設定檔」。一律從這個資料夾讀取；更新時上傳為同一檔案的新版本，不另建新檔。
+唯一正式設定檔是本程式倉庫的 [`config/世界模擬遊戲設定檔.xlsx`](config/)（2026-10-10 起，Google Drive 資料夾只是舊版備份）。讀取時只開 `config/sheets/<分頁名>.csv`；修改 Excel 後必須執行 `python3 tools/config_export.py` 一起提交，並經對方審查。使用者上傳的修改依 [config/README.md](config/README.md) 處理。
 
 ## 資料權威
 
-Notion ＞ [設定檔](https://drive.google.com/drive/folders/1T9G9deDLRYD4rILfT8H4p_dRoJYnCUBx) ＞ 本程式倉庫。Notion 定規則，設定檔存 ID 與數值，本程式倉庫只代表程式做到哪裡。
+Notion ＞ [設定檔](config/) ＞ 本程式倉庫。Notion 定規則，設定檔存 ID 與數值，本程式倉庫只代表程式做到哪裡。
 
 ## 硬性規則
 
