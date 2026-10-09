@@ -172,8 +172,18 @@ public sealed class DemoObserverWorld
     /// <summary>V0-04B: current TEMP hunger debt (unmet food demand not yet recovered).</summary>
     public long SettlementHungerDebt(int settlementId) => _hungerDebt[settlementId];
 
-    /// <summary>V0-04B: a settlement is starving while it carries hunger debt and still has people.</summary>
-    public bool IsStarving(int settlementId) => _hungerDebt[settlementId] > 0 && _population[settlementId] > 0;
+    /// <summary>
+    /// V0-04B (#59): a settlement with people is starving while it carries hunger debt OR its latest
+    /// committed week had unmet food demand (45C FOOD_UNMET). Starvation deaths can remove all the
+    /// debt in the same week the shortage happened; that week must still read as starving.
+    /// </summary>
+    public bool IsStarving(int settlementId)
+        => _population[settlementId] > 0
+        && (_hungerDebt[settlementId] > 0 || LatestWeekShortage(settlementId) > 0);
+
+    /// <summary>V0-04B (#59): unmet food demand of the settlement in the latest committed week (0 before day 7).</summary>
+    public long LatestWeekShortage(int settlementId)
+        => LatestWeek?.Settlements.FirstOrDefault(l => l.SettlementId == settlementId)?.FoodShortage ?? 0;
 
     /// <summary>V0-06A: migrant batches currently travelling between settlements (detached copy).</summary>
     public IReadOnlyList<DemoMigrationBatch> MigrationsInTransit()
