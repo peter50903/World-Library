@@ -7,23 +7,3 @@ TECH_TAILORING,裁縫,Tailoring,3,服裝,TECH_WEAVING,180,RES_CLOTH:10,製作不
 TECH_LEATHER_ARMOR,皮甲工藝,Leather Armorcraft,3,皮革裝備,TECH_TANNING,220,RES_LEATHER:12,製作並修理皮甲,研究時間-15%,SK_LEATHERWORK,REC_LEATHER_ARMOR,,light_armor_quality+,BUILD_WORKSHOP,提升皮甲品質,TRUE
 TECH_ADVANCED_LOOM,進階織具,Advanced Loom,4,紡織,"TECH_WEAVING,TECH_TAILORING",300,"RES_WOOD:15,RES_IRON_INGOT:5,RES_FIBER:20",大量布料生產,研究時間-20%,SK_TEXTILE,,,cloth_throughput+,BUILD_WEAVERY,提高紡織產量與一致性,TRUE
 TECH_COMPOSITE_SOFT_ARMOR,複合軟甲,Composite Soft Armor,5,裝備,"TECH_LEATHER_ARMOR,TECH_ADVANCED_LOOM",480,"RES_LEATHER:20,RES_CLOTH:20",測試多層材料防護,研究時間-15%,"SK_TEXTILE,SK_LEATHERWORK",,,advanced_light_armor,BUILD_WORKSHOP,高階非金屬防護工藝,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

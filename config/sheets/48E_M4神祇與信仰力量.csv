@@ -8,23 +8,3 @@ GOD_ACT,神祇不能靠觀察者全知,NPC/玩家神祇使用神祇實體合法�
 GOD_ZERO_STATE,零信徒轉不存在,最後一名正式信徒消失時，神祇由存在→不存在；不能行動、不能施放神蹟、不能成為神祇降臨對象。,0 信徒,同一神祇ID與歷史保留,TRUE
 GOD_RESIDUAL,殘餘信仰力量衰減,不存在狀態不生成新信仰力量；既有池繼續依39H既定衰減。,不存在,不代表神祇可行動,TRUE
 GOD_REVIVE,古神復甦,當唯一綁定的歷史宗教以同一宗教ID復興並重新形成正式信徒時，該不存在的神祇恢復同一神祇ID為存在。,同宗教ID復興,神祇ID不變,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

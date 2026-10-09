@@ -2,23 +2,3 @@ LanguageRuleID,規則名稱,Level,能力,EXP需求,前置條件,說明,Enabled
 LANG_LV1,語言Lv1,1,完全不理解,0,無,不算使用者，不可讀寫,TRUE
 LANG_LV2,語言Lv2,2,可聽／說,100,日常接觸、教學或訓練,Lv2+ 算活著的使用者,TRUE
 LANG_LV3,語言Lv3,3,可聽／說／讀／寫,300,Lv2 + 識字／讀寫教育來源,只有 Lv3 算完整掌握，可正常閱讀書籍,TRUE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE

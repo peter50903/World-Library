@@ -30,23 +30,3 @@ M_DIRTY_RATE,待更新實體處理量,效能,執行期,待更新系統,每模擬
 M_L4_ACTIVE,L4 實體峰值,效能,執行期,即時場景,最大值／平均,即時場景負載,Diagnostic,TRUE
 M_RUNTIME,模擬耗時,效能,測試執行,測試計時器,每模擬年實際耗時,效能基準,Diagnostic,TRUE
 M_MEMORY,記憶體峰值,效能,測試執行,執行期,記憶體峰值,長期資料增長,Diagnostic,TRUE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE

@@ -6,23 +6,3 @@ GOV_MERCHANT_CITY,商業城邦,Merchant City-State,最富有的合格統治者,"
 GOV_TRIBE,部落制,Tribal,酋長,"酋長,長老,戰爭首領,薩滿",血統／力量／聲望／支持／宗教文化加權,否,繼承非固定單一規則,TRUE
 GOV_COUNCIL,議會制,Council State,議會,"議員,使用者,司庫,軍隊指揮官",議會內部選舉／任命,是,可由多個官職共同形成主權機關,TRUE
 GOV_THEOCRATIC_PROXY,神權代理制,Theocratic Proxy,大祭司／攝政,"大祭司,神諭,管家,神殿衛隊指揮官",宗教制度產生代理統治者,否,神祇不直接跑日常官職AI，由代理人執政,TRUE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE

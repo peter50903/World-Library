@@ -15,23 +15,3 @@ EV_THREAT_RISE,威脅升格,威脅,Threat條件提升,實體／地區,戰力/範
 EV_CULTURE_SPLIT,文化分裂,文化,差異累積,文化／人口,分裂條件成立,建立新文化並保留衍生自,TRUE,7,歷史文化演化,TRUE
 EV_LANGUAGE_EXTINCT,語言滅絕,語言,最後Lv2+ Speaker消失,語言,speaker_count=0,語言→滅絕,TRUE,7,真實使用者復活可重新進行中,TRUE
 EV_DIVINE_DESCENT,神降世／神祇顯現,宗教/神蹟,MIR_DIVINE_MANIFESTATION完成且Witness/Impact達Major門檻,存在中的神祇／宗教／地點／目擊者,神蹟已合法正式提交；神祇無物理身體／化身／容器,建立重大神蹟顯現歷史；保存地點／時長／目擊者／傳述版本及連結的其他神蹟效果,TRUE,9,『神降世』是世界內歷史名稱；模擬真相仍為神蹟顯現，不代表神祇肉身進入世界,TRUE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE

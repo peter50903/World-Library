@@ -9,23 +9,3 @@ STATE_STARVATION,飢餓脫水,需求危機,不直接刪除,大幅降低,不降�
 STATE_FATIGUE,疲勞,疲勞,不降低,降低,不降低,暫時下降,休息/睡眠,自然阻止無限連續訓練,TRUE
 STATE_STRESS,高壓,壓力,不降低,部分技能降低,不降低,INT/WIS/CHA等表現可受影響,安全/休息/社交等,短期壓力事件可能提高挑戰但不能變成無限加成,TRUE
 STATE_MAGIC_DRAIN,MP耗盡,低MP,不降低,魔法訓練停止/低效,不降低,非魔法能力通常不變,MP恢復,不能靠0 MP反覆施法刷魔法技能,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

@@ -6,23 +6,3 @@ Stage,神蹟流程,處理,依據系統,硬性檢查,成功後,失敗,Enabled
 5,原子正式提交,扣信仰力量 + 套用效果 + 歷史事件,提交引擎（Commit Engine）,任一正式寫入失敗全部回滾,神蹟事件 100%生效,回滾,TRUE
 6,世界解讀,目擊者／資訊／宗教系統產生已知／傳述版本,資訊圖（Information Graph）,不自動改全部信仰值,改宗／宗教熱忱／看法可能變化,不適用,TRUE
 7,歷史後果,依影響升格歷史／存在值／聲望,歷史核心（History Kernel）,實際影響,神祇／宗教／目標對象歷史更新,不適用,TRUE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE

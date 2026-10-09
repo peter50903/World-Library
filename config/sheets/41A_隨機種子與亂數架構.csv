@@ -20,23 +20,3 @@ RNG_V1_STATE_SNAPSHOT,記憶體內亂數快照 v1,執行期,"ProtocolVersion=1;W
 RNG_ENTITY_LOCAL_V1,實體局部索引亂數 v1,局部,SHA256(UTF8(WSIM-ENTITY-LOCAL-v1)||0x00||UInt64LE(父亂數流種子)||UInt32LE(namespaceUtf8Length)||UTF8(命名空間)||UInt64LE(實體ID));First8LE,否,通常可重建（純索引式不耗亂數流）,是,每實體、每局部命名空間的獨立可重算原始亂數，不污染十條全域亂數流,父亂數流種子由世界種子／歷史種子與正式10種亂數流ID按既有v1派生；實體ID>0；GetUInt64(ulong 索引)依SplitMix64(localSeed（局部種子）+Gamma 常數*(索引+1)mod2^64)；不替代交易性RNG/正式提交／存檔管理器。,TRUE
 RNG_RESOLUTION_DRAFT_V1,亂數結算草稿 v1,結算,Begin(live)=capture full RngSnapshot v1 + RngRegistry.Restore(base) private worker; NextUInt64 draws private worker; CaptureProposed provides immutable full candidate snapshot,否,候選非存檔、目前僅記憶體,是（將來可驗證決定性）,結算中未提交試算不污染全域亂數狀態／計數器,不提供正式提交／套用到即時；拋棄候選不改即時；未實作預先檢查權限、衝突驗證、RNG+國家的原子正式提交與存檔。,TRUE
 RNG_CANDIDATE_PREFLIGHT_V1,亂數候選預檢 v1,結算驗證,"IsCompatible(current: RngSnapshot, baseline: RngSnapshot, candidate: RngSnapshot) -> bool；validates all 3 via RngRegistry.Restore; current==baseline Version/Roots/10 Streams(State,Counter); candidate Roots same and all Counter>=baseline",否,僅快照不可作持久存檔,是,確認未提交RNG候選沒有用過期基準或計數器回退,資料空值／格式錯誤即拋出例外；有效但過期／根種子不合／回退則假；真只代表RNG快照相容、不做即時套用／鎖定／正式提交；原子提交仍須原子重驗及世界全部系統交易。,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

@@ -9,23 +9,3 @@ NTR_COURT_SERVICE,宮廷服務,Court Service,政治,court_office_weight,1.3,鼓�
 NTR_MILITARY_SERVICE,封建軍役,Noble Military Service,軍事,noble_military_obligation_weight,1.3,貴族更重視騎士/軍事義務,,實際義務仍由條約／法律／封地關係決定,TRUE
 NTR_CHURCH_ALLIANCE,教會聯盟,Clerical Alliance,宗教/政治,church_alliance_weight,1.3,透過神職、捐贈與宗教關係鞏固政治,,不保證宗教支持,TRUE
 NTR_LOCAL_PATRON,地方庇護,Local Patronage,領地,local_investment_weight,1.3,優先投資本地建築、道路與治安,,提高領地長期治理投入,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

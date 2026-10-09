@@ -9,23 +9,3 @@ DRAIN_LIFE,生命汲取,Life Drain,Spell,3,死亡,NECRO_CORPSE_SENSE,,KNOW_DRAIN
 MASS_ANIMATION,群體活化,Mass Animation,Spell,4,不死,"BONE_SERVANT,UNDEAD_EMPOWER",,KNOW_MASS_ANIMATION,4,140,極長,極長,create_multiple_undead,一次活化多具Corpse,每具仍建立獨立Undead Entity,高階死靈術,TRUE
 DEAD_ZONE_SEED,死域播種,Dead Zone Seed,Spell,4,死域,"DRAIN_LIFE,MASS_ANIMATION",,KNOW_DEAD_ZONE_SEED,4,180,極長,極長,create_dead_zone,建立/擴大局部DeadZone,屬Magic-origin環境效果，可能長期存在,環境型死靈術,TRUE
 LEGION_COMMAND,亡者軍團支配,Legion Command,Spell,5,控制,"MASS_ANIMATION,DEAD_ZONE_SEED",,KNOW_LEGION_COMMAND,5,300,極長,極長,undead_control_capacity,大幅提高可控Undead規模,仍需真實Undead，不生成免費軍隊,死靈系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

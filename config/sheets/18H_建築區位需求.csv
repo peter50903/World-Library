@@ -11,23 +11,3 @@ BUILD_STABLE,Settlement/estate,,Road access,需Water/Fodder,,,坐騎照護需真
 BUILD_GRANARY,Settlement/Farm network,,Cart/Worker access,Fire/Pest risk,Food Logistics,,位置影響糧食運輸效率,TRUE
 BUILD_WAREHOUSE,Trade/Production node,,Road/Port access,Fire/Theft risk,Logistics,,,TRUE
 BUILD_CASTLE,Strategic site,,Supply access,Siege/Water needs,Road/Defense network,,孤立城堡仍需要補給,TRUE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE
-,,,,,,,,FALSE

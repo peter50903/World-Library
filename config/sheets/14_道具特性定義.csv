@@ -18,23 +18,3 @@ ITR_FIRE_MAGIC,火焰增幅,Flame Affinity,魔法,fire_magic_modifier,5%~20%,魔
 ITR_CURSED,詛咒,Cursed,特殊,negative_trait_pool,1,特殊物品,,,,0.2,史詩,從負面效果池附加一種代價,TRUE
 ITR_SOULBOUND,靈魂綁定,Soulbound,特殊,transfer_restriction,1,特殊物品,,,,0.1,傳說,限制正常交易／持有轉移，具體規則由定義設定,TRUE
 ITR_EXISTENCE_RESONANCE,存在共鳴,Existence Resonance,特殊,temporary_existence_bonus_while_held,依階級／定義,傳說／神話／世界或特殊事件來源,,,,0.05,傳說／神話,持有期間提高有效存在值；可讓智慧種族低基礎存在值角色暫時進入降臨候選，不直接提升數值／技能,TRUE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,FALSE

@@ -6,23 +6,3 @@ RES_SUCCESS_CHANCE,成功率,對抗／難度判定,"Chance=clamp(0.05,0.95,0.50+
 RES_OUTCOME_MARGIN,結果幅度,允許部分／強的行動,"Margin=Chance-Roll；Margin>=0.25=Strong Success；>=0=Success；[-0.10,0)=Partial(若Definition允許)；其餘Fail",擲骰 0~1,定義可關閉部分／強,一次判定後,不二次擲骰,傷害／產量等可再用差值作小幅品質修正,TRUE
 NPC_PRIORITY,NPC候選分數,Entity15 決策AI,Score=BasePriority+Urgency+Goal/Responsibility+Personality/Values/Relation-ExpectedCostRisk,約0~200,0~200,目前行動結束或事件觸發,只評估需求／目標／責任／事件候選,禁止掃描所有可能行動,TRUE
 NPC_SELECT,NPC選擇,Entity15 決策AI,先取最高分；只保留距最高分<=10的合理候選，再按Score權重隨機選,候選<=8,每次最多8個主要候選,排程式,最高級距小集合,保留角色非最佳但合理的決策,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

@@ -8,23 +8,3 @@ RDC_CLERGY_MARRIED,神職可婚,Married Clergy,生活規範,clergy_marriage,allo
 RDC_CLERGY_CELIBATE,神職禁婚,Celibate Clergy,生活規範,clergy_marriage,forbidden,不直接讓婚姻無效,違反降低信仰值／神職合法性,偏好未婚神職,CLERGY_MARRIAGE,是否被撤職由組織規則決定,TRUE
 RDC_CLERGY_PROPERTY,神職可持產,Clergy Property,財產,clergy_private_property,allowed,一般財產規則照常,無懲罰,中立,CLERGY_PROPERTY,教會資產仍和個人資產分離,TRUE
 RDC_CLERGY_POVERTY,神職清貧,Clergy Poverty,財產,clergy_private_property,discouraged,不直接沒收私人財產,大量私人財富降低信仰值／宗教看法,偏好教會資產集中,CLERGY_PROPERTY,財富不會魔法消失,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

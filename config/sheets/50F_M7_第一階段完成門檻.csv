@@ -9,23 +9,3 @@ P1_M6,歷史可讀,觀察者能回答發生什麼、為什麼、造成什麼、�
 P1_1000,長期驗收,1000年固定種子 0 FATAL；警告可解釋；佇列／記憶／存檔可持續,硬性失敗／不可重現／資料爆炸,40A~40H,TRUE
 P1_PLAYABLE,觀察者可玩性,即使沒有神祇／角色控制，玩家能建立世界、快轉、暫停、搜尋、追歷史與理解世界,只能看除錯數表,Godot 灰盒觀察者,TRUE
 P1_DONE,Phase1正式完成,以上全部通過後才進入Phase2作為主要開發目標,以未穩定世界核心直接堆玩家神祇玩法,發布門檻,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

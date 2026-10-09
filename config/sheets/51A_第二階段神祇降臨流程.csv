@@ -6,23 +6,3 @@ DEITY_NO_OBS,觀察者記憶不注入神祇,玩家切入神祇後不能把觀察
 DEITY_ENTER,降臨不改世界,進入神祇模式只改決策控制者=玩家，不自動改宗教、信徒、信仰力量或歷史。,存在中的神祇,只提交控制者中繼資料,中繼／玩家遊戲階段可記錄,TRUE
 DEITY_EXIT,退出恢復神祇AI,玩家離開後神祇恢復NPC神祇AI，既有宗教／信徒／歷史繼續。,玩家退出,神祇AI恢復運作,世界不停止,TRUE
 DEITY_NONEXIST,失去最後信徒時強制退出,玩家控制中的神祇若因世界發展變不存在，神祇模式立即結束回觀察者。,FollowerCount=0 commit,玩家→觀察者,不允許玩家阻止生命周期,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

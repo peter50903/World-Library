@@ -5,23 +5,3 @@ WHAT_AFTER,後果查詢,由事件反向索引效果子項與關聯國家變化�
 WHY_DIFF,時點差異解釋,比較快照A/B後，用期間事件解釋顯著變化量。,快照差異 + 事件範圍,差異+原因,只解釋顯著變化,TRUE
 WHY_TRUTH,真相/傳聞對照,世界真相與已知／傳述版本並列。,歷史真相 + 資訊網,真相、史書、傳聞,僅觀察者,TRUE
 WHY_CONF,不顯示虛假確定度,因果關係若只是關聯而非直接原因要明確標示。,因果邊類型,直接／促成／相關,避免UI替世界編故事,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

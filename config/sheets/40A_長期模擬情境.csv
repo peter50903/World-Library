@@ -8,23 +8,3 @@ SIM_STRESS_WAR_300,300年戰爭壓力,300,5,預設 V1,TestOnly: year50建立合�
 SIM_STRESS_PLAGUE_300,300年瘟疫壓力,300,5,預設 V1,TestOnly: year80在高人口Settlement建立高傳染Disease outbreak,檢查真實傳播、醫療、隔離、人口與物流後果,硬性 + 疾病指標,75~120年每年，其餘每5年,TRUE
 SIM_STRESS_DISASTER_300,300年災害壓力,300,5,預設 V1,TestOnly: year100觸發大型區域災害,檢查建築、基礎設施、資源、難民、救濟、恢復鏈,硬性 + 災害指標,95~130年每年，其餘每5年,TRUE
 SIM_STRESS_MAGIC_300,300年高魔力世界,300,5,高魔力密度,None,檢查地下城、怪物、王種變異體、魔法經濟、信仰值與文明是否仍可穩定,硬性 + 威脅指標,每5年,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

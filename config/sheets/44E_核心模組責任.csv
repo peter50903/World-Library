@@ -13,23 +13,3 @@ MOD_DIRTY,待更新相依圖,將狀態變更傳播到真正受影響的系統/�
 MOD_QUERY,查詢／索引層,提供UI/AI/觀察者快速唯讀查詢,權威狀態 + 衍生索引,可重建索引／快取,成為第二套權威真相,GetEntity（取得實體）/SearchHistory（搜尋歷史）/前N名,TRUE
 MOD_SAVE,存檔管理器,一致性快照／檢查點／讀檔／版本驗證,正式狀態／事件/RNG/排程器／中繼,持久存檔,只存種子、不驗校驗碼直接覆寫舊存檔,CreateCheckpoint（建立檢查點）/讀檔／驗證,TRUE
 MOD_TEST,模擬測試框架,執行固定種子測試、不變量與指標,執行期公開介面／僅測試用情境,測試報告,生產世界偷偷補資源／人口／事件,RunScenario（執行情境）/斷言／報告,TRUE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE

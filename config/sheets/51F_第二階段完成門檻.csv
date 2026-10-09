@@ -10,23 +10,3 @@ P2_AI,退出後世界續跑,神祇／宗教由AI接管且歷史不中斷,玩家�
 P2_DOCTRINE,神祇教義修改可追溯,神意教義修訂保存神祇ID/宗教ID/變更／時間／來源；神系衝突保留各神祇神意並建立教義衝突。,只存在UI文字、無事件／歷史；或後寫神祇直接抹除前一神祇真實指令,TRUE
 P2_MANIFEST,神祇物理邊界成立,神祇無物理肉身／化身／容器；『神降世』只能是神蹟顯現；真正肉身玩家介入只屬Phase3 人物降臨。,神祇生成可走動神祇肉身、化身角色或附身信徒作自身肉身,TRUE
 P2_DONE,Phase2正式完成,以上所有閘門通過後，才把人物降臨作主要開發目標。,在神祇規則未封閉前堆Phase3,TRUE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE
-,,,,FALSE

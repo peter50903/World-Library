@@ -7,23 +7,3 @@ DIS_WOUND_FEVER,傷口熱,Wound Fever,"文明種族,動物,怪物",嚴重傷口/
 DIS_LIVESTOCK_PLAGUE,牲畜瘟疫,Livestock Plague,動物,接觸/群聚,3~8日,高,個體體質對抗,"隔離,藥品,神蹟",TRUE,可造成畜牧與糧食危機,TRUE
 DIS_MONSTER_FUNGUS,怪物真菌症,Monster Fungus,"怪物,動物",環境/接觸,5~15日,中,體質對抗,"特殊藥品,治療魔法,神蹟",TRUE,魔化後疾病清除並免疫,TRUE
 DIS_CHRONIC_WASTE,慢性衰弱症,Chronic Wasting,文明種族,低傳染/特殊條件,10~30日,中,高CON可控制但未必迅速痊癒,"長期醫療,治療魔法,神蹟",TRUE,可留下永久狀態,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

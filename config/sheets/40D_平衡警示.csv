@@ -13,23 +13,3 @@ WARN_FULL_RATIO,完整角色比例過高,完整／總智慧人口,世界人口>1
 WARN_QUEUE_GROW,事件佇列持續增長,佇列最大值／中位數,連續100年單調增長且無回落,可能代表重複排程/清理問題,排程器,TRUE
 WARN_OBS_CHURN,觀察者首頁過度跳動,前N名替換率,>50%/月長期,不違反世界規則但可讀性差,關注門檻,TRUE
 WARN_DRAGON_EXTINCT,龍族長期滅絕,Dragon population=0,持續300年以上,滅絕完全合法；只確認繁殖/復活規則沒有壞掉,龍族生命週期,TRUE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE
-,,,,,,FALSE

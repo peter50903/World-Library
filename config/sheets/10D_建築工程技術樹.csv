@@ -7,23 +7,3 @@ TECH_BRIDGE_ENGINEERING,橋梁工程,Bridge Engineering,3,交通,"TECH_TIMBER_FR
 TECH_WATERWORKS,水利工程,Waterworks,3,水利,"TECH_MASONRY,TECH_ROAD_ENGINEERING",280,"RES_STONE:25,RES_WOOD:10",建立排水/導水設施,研究時間-15%,SK_CONSTRUCTION,,,settlement_water_infrastructure,ConstructionSite,提高城市取水、排水與洪水應對能力,TRUE
 TECH_FORTIFICATION,要塞工程,Fortification,4,防禦,"TECH_MASONRY,TECH_BRIDGE_ENGINEERING",380,"RES_STONE:50,RES_IRON_INGOT:10",參與城牆/城堡工程,研究時間-15%,SK_CONSTRUCTION,,BUILD_CASTLE,fortification_quality+,ConstructionSite,大型防禦建築知識,TRUE
 TECH_MONUMENTAL_ENGINEERING,大型工程,Monumental Engineering,5,大型工程,"TECH_FORTIFICATION,TECH_WATERWORKS",700,"RES_STONE:80,RES_WOOD:40,RES_IRON_INGOT:20",完成大型State工程,研究時間-15%,"SK_CONSTRUCTION,SK_RESEARCH",,,large_project_coordination+,ConstructionSite,允許更大型、更複雜工程，不減免真實材料與勞力,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

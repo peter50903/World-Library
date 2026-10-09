@@ -7,23 +7,3 @@ M5_DUN,地下城生命週期一致,目標對象／重置／耗盡／替代實體
 M5_OVER,溢出真實影響世界,外溢怪物/魔境能影響道路、人口、經濟、控制且不因核心消失自動刪除,Behavior,領域指標,TRUE
 M5_THREAT,威脅可追來源,任何大型威脅都有來源實體／狀態與升格原因,Hard behavior,威脅來歷,TRUE
 M5_HISTORY,危機史可讀,觀察者能追疫情／災害／魔境／王種的原因、反應與長期後果,Behavior,歷史瀏覽器,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

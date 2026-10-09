@@ -4,23 +4,3 @@ RDW_DEFENSIVE,防衛戰正當,Defensive War,戰爭,war_religious_attitude,defens
 RDW_JUST_WAR,正當戰爭,Just War,戰爭,war_religious_attitude,justified,不改客觀外交狀態,有宗教／道德理由時較少信仰值成本,提高有理由戰爭權重,WAR_STANCE,不是免費宣戰權,TRUE
 RDW_WARRIOR_FAITH,武勇信仰,Warrior Faith,戰爭,war_religious_attitude,martial,不直接強制戰爭,參戰與軍功可能提高宗教聲望,提高軍事目標權重,WAR_STANCE,仍受人格／利益／風險影響,TRUE
 RDW_HOLY_DEFENSE,護教戰爭,Defense of Faith,宗教戰爭,religious_war_weight,1.3,不直接創造宣戰理由,保護信徒／聖地提高信仰值,提高護教戰爭AI權重,,只有真實宗教威脅時才影響決策,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

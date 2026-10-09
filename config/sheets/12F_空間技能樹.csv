@@ -9,23 +9,3 @@ PORTAL,空間門,Portal,Spell,4,傳送,"SHORT_TELEPORT,SPACE_ANCHOR",,KNOW_PORTA
 GROUP_TELEPORT,群體傳送,Group Teleport,Spell,4,傳送,PORTAL,,KNOW_GROUP_TELEPORT,4,160,極長,極長,teleport_group,小隊級傳送,不能免費搬運軍隊/物流,高階群體移動,TRUE
 LONG_TELEPORT,長距傳送,Long Teleport,Spell,5,傳送,"PORTAL,SPACE_ANCHOR",,KNOW_LONG_TELEPORT,5,250,極長,極長,teleport_long,跨區域長距傳送,需可靠目的地Knowledge與高成本,頂階傳送,TRUE
 STRATEGIC_GATE,戰略空間門,Strategic Gate,Spell,5,傳送,"LONG_TELEPORT,GROUP_TELEPORT",,KNOW_STRATEGIC_GATE,5,600,極長,極長,temporary_mass_portal,有限時間大型Portal,需巨大MP/材料/準備；不得無成本繞過物流,空間系最高戰略法術,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

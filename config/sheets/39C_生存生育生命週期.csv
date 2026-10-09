@@ -18,23 +18,3 @@ DRAGON_MATE_VISIT,龍族求偶/交配訪問,龍族繁殖,第二隻成年龍可�
 DRAGON_MOTHER_CARE,母龍單獨撫養,龍族繁殖,成功交配後非母方離開；母龍承擔Pregnancy/Birth/Care,照顧者規則,出生／童年,仍保留生父母關係，但父方不具預設照顧者責任,TRUE
 DRAGON_JUVENILE_EXCEPTION,幼龍區域例外,龍族生命週期,未成年Dragon可與母龍同Region且不計ResidentAdultCap,直到成年,童年,這不是第二隻成年定居龍,TRUE
 DRAGON_ADULT_DISPERSAL,成年離巢,龍族生命週期,Dragon達Adult life stage後必須離開母龍Region並尋找可合法定居的其他Region,成年時,成年轉換事件,可旅行穿越其他地區，但不能在已有定居成年龍的地區建立龍域,TRUE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE

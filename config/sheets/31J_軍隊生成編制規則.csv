@@ -7,23 +7,3 @@ FORM_HOLY_ORDER,宗教軍事組織,Religious Military Organization,信徒/專職
 FORM_WARMAGE,軍用法師,State/Organization,具魔法技能角色,軍事僱傭／官職,軍餉+魔法材料+補給,離職/死亡,高價值專業人口,不會因編成而複製法師,TRUE
 FORM_CREATURE,生物輔助軍,Controller/Organization,真實已馴養／受控生物,召集/控制,食物/控制資源,釋放/死亡/失控,真實生物,失控可能反噬己方,TRUE
 FORM_VASSAL,封臣軍,Vassal State/Lord,依條約／法律動員,履行軍事義務,通常由原擁有者負擔部分成本,義務終止/撤回,仍屬原附庸人口,參戰不代表軍隊所有權轉移,TRUE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE
-,,,,,,,,,FALSE

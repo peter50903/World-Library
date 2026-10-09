@@ -7,23 +7,3 @@ TECH_DISEASE_CARE,疾病照護,Disease Care,3,疾病,TECH_BASIC_PHARMACY,260,"RE
 TECH_QUARANTINE,隔離制度,Quarantine,3,公共衛生,TECH_DISEASE_CARE,220,RES_PARCHMENT:5,實際處理傳染病群聚,研究時間-20%,"SK_MEDICINE,SK_LEADERSHIP",,,quarantine_policy_enabled,BUILD_HOSPITAL,需要國家／組織實際執行移動限制,TRUE
 TECH_HOSPITAL_ORGANIZATION,醫院制度,Hospital Organization,4,公共醫療,"TECH_SURGICAL_CARE,TECH_DISEASE_CARE",360,"RES_PARCHMENT:10,RES_MED_HERB:20",管理大型醫療設施,研究時間-15%,"SK_MEDICINE,SK_LEADERSHIP",,BUILD_HOSPITAL,hospital_efficiency+,BUILD_HOSPITAL,解鎖大型醫療體系,TRUE
 TECH_ADVANCED_PHARMACOLOGY,進階藥學,Advanced Pharmacology,5,藥學,"TECH_BASIC_PHARMACY,TECH_HOSPITAL_ORGANIZATION",520,"RES_MED_HERB:40,RES_MANA_CRYSTAL:2,RES_PARCHMENT:10",長期比較藥品效果,研究時間-15%,"SK_PHARMACY,SK_RESEARCH","REC_HEALING_POTION,REC_MANA_POTION",,medicine_effect_cap+,"BUILD_CLINIC,BUILD_MAGIC_WORKSHOP",魔法藥水仍消耗真實資源,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

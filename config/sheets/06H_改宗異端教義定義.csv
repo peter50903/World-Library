@@ -5,23 +5,3 @@ RDX_ISOLATIONIST,封閉信仰,Isolationist,改宗,foreign_conversion_weight,0.6,
 RDX_EXCLUSIVIST,唯一正統,Exclusivist,異教態度,other_religion_opinion_penalty,1.5,不直接使異教違法,其他宗教承受較高宗教看法懲罰,提高限制異教AI偏好,CONVERSION_STANCE,真正法律限制仍由國家法律決定,TRUE
 RDX_APOSTASY_SEVERE,脫教重罪觀,Severe Apostasy,脫教,apostasy_opinion_penalty,1.5,不等於國家犯罪,離開宗教大幅降低原信徒看法,提高宗教組織處分偏好,APOSTASY_STANCE,不創造司法罪名,TRUE
 RDX_APOSTASY_TOLERANT,允許離教,Tolerant Apostasy,脫教,apostasy_opinion_penalty,0.25,不改國家法律,離教只有低宗教看法影響,低處分偏好,APOSTASY_STANCE,信仰值仍依原規則變化,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

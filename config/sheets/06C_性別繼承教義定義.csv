@@ -5,23 +5,3 @@ RDG_FEMALE_PREF,女性優先,Female Preference,性別規範,religious_gender_pre
 RDG_MALE_CLERGY_PREF,男性神職偏好,Male Clergy Preference,神職性別,clergy_gender_preference,male,不直接禁止其他性別官職,非偏好者任神職造成部分看法成本,偏好男性神職任命,CLERGY_GENDER,可與國家／組織制度衝突,TRUE
 RDG_EQUAL_CLERGY,神職平等,Equal Clergy,神職性別,clergy_gender_preference,equal,無直接法律效果,不因性別產生神職宗教成本,性別中立,CLERGY_GENDER,神職資格仍需組織條件,TRUE
 RDG_FEMALE_CLERGY_PREF,女性神職偏好,Female Clergy Preference,神職性別,clergy_gender_preference,female,不直接禁止其他性別官職,非偏好者任神職造成部分看法成本,偏好女性神職任命,CLERGY_GENDER,可與國家／組織制度衝突,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

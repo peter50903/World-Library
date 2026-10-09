@@ -7,23 +7,3 @@ TECH_SIEGE_LOGISTICS,攻城補給,Siege Logistics,3,後勤,"TECH_FIELD_ENGINEERI
 TECH_ADVANCED_FORTIFICATION,進階要塞,Advanced Fortification,4,防禦,"TECH_DEFENSIVE_WORKS,TECH_COUNTERWEIGHT",380,"RES_STONE:40,RES_IRON_INGOT:10",參與大型要塞攻防,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_CONSTRUCTION",,BUILD_CASTLE,fortification_defense+,BUILD_CASTLE,與土木要塞知識互補,TRUE
 TECH_TREBUCHET_ENGINEERING,大型投石機,Trebuchet Engineering,4,攻城,"TECH_COUNTERWEIGHT,TECH_SIEGE_LOGISTICS",420,"RES_WOOD:60,RES_IRON_INGOT:10",操作大型攻城機械,研究時間-15%,SK_SIEGE_ENGINEERING,,,trebuchet_enabled,BUILD_WORKSHOP,高階遠距攻城,TRUE
 TECH_SIEGE_SCIENCE,攻城學,Siege Science,5,綜合,"TECH_ADVANCED_FORTIFICATION,TECH_TREBUCHET_ENGINEERING",650,"RES_PARCHMENT:15,RES_WOOD:30,RES_IRON_INGOT:10",多次大型攻城戰經驗,研究時間-15%,"SK_SIEGE_ENGINEERING,SK_RESEARCH",,,siege_efficiency_cap+,"BUILD_SCHOOL,BUILD_BARRACK",提高攻城/防城規劃，但不直接增加軍隊數量,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

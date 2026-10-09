@@ -12,23 +12,3 @@ TS_ARCANECRAFT,魔法工藝,Arcane Crafting,"SK_MAGIC_CONTROL,SK_ARCANE_CRAFT",�
 TS_CERAMIC_GLASS,陶瓷與玻璃,Ceramics & Glasswork,"SK_CERAMICS,SK_GLASSWORK",陶器、玻璃、容器、光學材料,陶瓷／窯爐／玻璃／光學,TECH_POTTERY_FIRING,5,FALSE,TRUE,角色時間+真實資源,支援食品、醫療、學術與魔法工藝的基礎材料技術,TRUE
 TS_JEWEL,珠寶與精工,Jewelcraft & Fine Metalwork,"SK_JEWELCRAFT,SK_SMITHING",寶石、精密金工、印璽與魔法飾品,寶石／細金工／印璽／魔導珠寶,"TECH_GEM_CUTTING,TECH_PRECIOUS_METALWORK",5,FALSE,TRUE,角色時間+真實資源,高價值小型工藝；不直接產生金幣,TRUE
 TS_VEHICLE,運輸車輛,Land Vehicle Engineering,"SK_WAGONMAKING,SK_CARPENTRY,SK_ANIMAL_HUSBANDRY",車輪、貨車、載客馬車與重載物流,車輪／車軸／貨運／重載,TECH_CARTWRIGHT,5,FALSE,TRUE,角色時間+真實資源,改善陸運能力，但貨物/役畜/道路仍必須真實存在,TRUE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,FALSE

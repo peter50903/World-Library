@@ -7,23 +7,3 @@ TECH_SAIL_RIGGING,帆裝與索具,Sail & Rigging,3,造船,TECH_BASIC_BOATBUILDIN
 TECH_HULL_DESIGN,船體結構,Hull Design,3,造船,"TECH_JOINERY,TECH_BASIC_BOATBUILDING",260,"RES_WOOD:30,RES_IRON_INGOT:5",維修受損大型船體,研究時間-15%,SK_SHIPBUILDING,,,ship_durability_capacity+,BUILD_PORT,大型船體與載重設計,TRUE
 TECH_OCEAN_SHIPBUILDING,遠洋造船,Ocean Shipbuilding,4,造船,"TECH_SAIL_RIGGING,TECH_HULL_DESIGN",420,"RES_WOOD:60,RES_CLOTH:20,RES_IRON_INGOT:10",完成長距海航,研究時間-15%,"SK_SHIPBUILDING,SK_SAILING",,BUILD_PORT,ocean_ship_enabled,BUILD_PORT,支援遠洋航行與大型商船/軍船,TRUE
 TECH_ADVANCED_SHIPYARD,大型船塢工藝,Advanced Shipyard,5,造船,TECH_OCEAN_SHIPBUILDING,650,"RES_WOOD:100,RES_STONE:40,RES_IRON_INGOT:20",建造多艘大型船舶,研究時間-15%,"SK_SHIPBUILDING,SK_CONSTRUCTION",,,shipyard_throughput+,BUILD_PORT,提高大型船舶生產與修理能力,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

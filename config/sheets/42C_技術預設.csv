@@ -9,23 +9,3 @@ TECH_AUDIO,音效音樂,後置整合,核心與UI先可玩；事件先提供音�
 TECH_ENGINE_VERSION,Godot版本,實作開案時鎖定當時穩定.NET版本,避免現在把未來可能過期的次版號寫成永久世界規則。,版本更新需先通過回歸測試。,TRUE
 TECH_ART_STYLE,正式美術方向,高像素解析度的Pixel Art／像素風格,保留像素美術辨識度，同時承載大量角色、城市、地貌與UI資訊。,美術製作階段可調實際像素密度、精靈圖尺寸與渲染技法，不改模擬。,TRUE
 TECH_SCENE_DIMENSION,場景維度方向,全遊戲採平面 2D，不使用 2.5D。,依 Notion 規則總綱定案；維持 Godot 2D 製作效率。,呈現層可替換，但不得改世界規則。,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

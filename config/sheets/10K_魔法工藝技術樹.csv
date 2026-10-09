@@ -7,23 +7,3 @@ TECH_MANA_STORAGE,魔力儲存,Mana Storage,3,能源,TECH_RUNE_INSCRIPTION,300,R
 TECH_COMPLEX_ENCHANTING,複合附魔,Complex Enchanting,4,附魔,"TECH_MAGIC_WARDING,TECH_MANA_STORAGE",420,"RES_MANA_CRYSTAL:15,RES_MAGIC_WOOD:5",製作多Trait魔法裝備,研究時間-15%,"SK_ARCANE_CRAFT,SK_MAGIC_CONTROL",,,multi_trait_magic_item,BUILD_MAGIC_WORKSHOP,受特性互斥與稀有度規則限制,TRUE
 TECH_ARTIFACT_CRAFT,神器級工藝,Artifact Craft,5,神器,TECH_COMPLEX_ENCHANTING,700,"RES_MANA_CRYSTAL:30,RES_MAGIC_WOOD:10,RES_IRON_INGOT:10",成功維護高階Unique魔法物,研究時間-10%,"SK_ARCANE_CRAFT,SK_RESEARCH",,,artifact_crafting_enabled,BUILD_MAGIC_WORKSHOP,不保證產出唯一；只解鎖製作可能性,TRUE
 TECH_ARCANE_ENGINEERING,魔導工程,Arcane Engineering,5,工程,"TECH_COMPLEX_ENCHANTING,TECH_MANA_STORAGE",750,"RES_MANA_CRYSTAL:35,RES_STONE:20,RES_IRON_INGOT:15",建立大型穩定魔法裝置,研究時間-10%,"SK_ARCANE_CRAFT,SK_CONSTRUCTION",,,large_arcane_device_enabled,BUILD_MAGIC_WORKSHOP,大型魔導設施仍消耗材料、MP與維護成本,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

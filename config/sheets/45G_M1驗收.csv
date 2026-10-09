@@ -9,23 +9,3 @@ M1_SETTLE,新聚落不憑空,建立人口／物資從來源扣除，失敗也能
 M1_STABILITY,穩定聚落可長期存在,不是所有種子都因數值失控在100年內全滅或無限爆人口,Warning,出生／死亡／食物分配,TRUE
 M1_VARIETY,不同環境有不同結果,資源／氣候／路線不同的地區應產生可觀察人口／產業差異,Warning,地區指標,TRUE
 M1_HISTORY,危機可讀,觀察者能從地方史看出至少饑荒／遷徙／資源枯竭等原因→效果,Behavior Check,43F 因果索引,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

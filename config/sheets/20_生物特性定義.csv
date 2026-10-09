@@ -28,23 +28,3 @@ CTR_CLIMB,攀爬,Climber,移動,climb_modifier,1.3,,,0.8,高攀爬適性,TRUE
 CTR_ACID,酸液,Acid,天生能力,acid_damage,1,,,0.5,腐蝕效果,TRUE
 CTR_REGEN_MINOR,低階再生,Minor Regeneration,生理,hp_regen_modifier,1.2,,,0.4,只恢復可恢復組織，不重生肢體,TRUE
 CTR_DRAGON_BODY,龍之軀,Draconic Body,體型/生理,dragon_body_rules,1,monster_only,,0.2,大型、長壽、高資源需求且具高耐久潛力的龍類身體；實際能力仍由個體成長、物種與個人上限決定,TRUE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE
-,,,,,,,,,,FALSE

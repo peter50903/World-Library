@@ -9,23 +9,3 @@ MAGIC_SEAL,魔法封印,Magic Seal,Spell,4,封印,"BREAK_ENCHANTMENT,SILENCE_FIE
 ANTI_MAGIC_ZONE,禁魔場,Anti-Magic Zone,Spell,4,抑制,"SILENCE_FIELD,MAGIC_WARD",,KNOW_ANTI_MAGIC_ZONE,4,120,長,長,suppress_magic,局部大幅抑制施法,有範圍/時間限制,高階反魔法,TRUE
 GRAND_DISPEL,大解除術,Grand Dispel,Spell,5,解除,"MAGIC_SEAL,ANTI_MAGIC_ZONE",,KNOW_GRAND_DISPEL,5,200,極長,極長,area_dispel,大範圍解除可解除魔法,不改HistoricalTruth、不刪Skill,反魔法頂階之一,TRUE
 NULL_FIELD,虛無領域,Null Field,Spell,5,抑制,"ANTI_MAGIC_ZONE,COUNTERSPELL",,KNOW_NULL_FIELD,5,260,極長,極長,strong_magic_suppression,短時間高強度禁魔區,不影響God Miracle除非Miracle Definition明確受影響,反魔法最高控制,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

@@ -7,23 +7,3 @@ TECH_STANDARD_MEASURES,標準度量,Standard Measures,3,行政,TECH_ARCHIVES,200
 TECH_ACCOUNTING,會計記錄,Accounting,3,行政,"TECH_ARCHIVES,TECH_STANDARD_MEASURES",220,RES_PARCHMENT:10,管理大型Business/State帳目,研究時間-15%,"SK_TRADE,SK_RESEARCH",,,financial_record_efficiency+,"BUILD_MARKET,BUILD_BANK",不創造金幣，只改善記錄與管理,TRUE
 TECH_BOOK_REPRODUCTION,大量書籍複製,Book Reproduction,4,書寫,"TECH_SCRIBAL_METHOD,TECH_FORMAL_SCHOOLING",320,RES_PARCHMENT:25,組織多人抄寫/複製,研究時間-15%,"SK_TEACHING,SK_RESEARCH",,,book_copy_throughput+,BUILD_SCRIPTORIUM,提高知識傳播速度,TRUE
 TECH_ADVANCED_ACADEMIA,高等學術體系,Advanced Academia,5,教育,"TECH_BOOK_REPRODUCTION,TECH_ACCOUNTING",520,RES_PARCHMENT:40,維持大型學術組織,研究時間-15%,"SK_TEACHING,SK_RESEARCH",,BUILD_SCHOOL,research_education_capacity+,BUILD_SCHOOL,提高多人教育研究組織能力；研究仍只用時間+資源,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

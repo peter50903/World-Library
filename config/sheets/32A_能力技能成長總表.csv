@@ -11,23 +11,3 @@ GROW_NO_DEATH_DRAIN,死亡不扣技能,技能／基礎能力,死亡不永久扣�
 GROW_KNOWLEDGE_SEPARATE,知識與技能分離,知識／技能,知道配方／法術原理不等於會熟練實作；技能高也不能使用未知配方／法術,Project Zomboid 式配方與技能分離概念,符合Entity14/26/27,知識 + 技能 + 真實條件共同決定能否高品質完成,TRUE
 GROW_LEARNING_MODIFIERS,學習效率修正,技能／能力,職業、種族特性、天賦、教師、書籍、設施、休息狀態只修改學習效率,PZ職業／書籍加速概念,不直接改世界結果,不會因加成直接生成技能等級,TRUE
 GROW_DIMINISHING,高階遞減,技能／能力,越接近高熟練／個人上限，每單位行為帶來的永久成長越少,PZ/Valheim高階較慢,新增固定規則,讓普通工作者自然停在熟練區，宗師需要多年實踐,TRUE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE
-,,,,,,,FALSE

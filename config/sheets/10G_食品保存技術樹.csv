@@ -7,23 +7,3 @@ TECH_FERMENTATION,發酵,Fermentation,3,加工,TECH_BASIC_COOKING,160,"RES_GRAIN
 TECH_BULK_RATIONS,軍糧製作,Bulk Rations,3,保存,"TECH_SALTING,TECH_DRYING",200,"RES_GRAIN:15,RES_SALT:5",供應大型商隊或軍隊,研究時間-20%,SK_COOKING,REC_RATION,,ration_storage_efficiency+,BUILD_KITCHEN,改善旅行/軍隊糧食保存與運輸,TRUE
 TECH_GRANARY_MANAGEMENT,糧倉管理,Granary Management,4,儲存,"TECH_MILLING,TECH_BULK_RATIONS",280,"RES_WOOD:15,RES_STONE:10",管理大型糧食庫存,研究時間-15%,"SK_COOKING,SK_TRADE",,,bulk_food_loss_rate-,"BUILD_MARKET,BUILD_FARM",改善大型庫存腐敗與輪替,TRUE
 TECH_ADVANCED_PRESERVATION,進階保存,Advanced Preservation,5,保存,"TECH_GRANARY_MANAGEMENT,TECH_FERMENTATION",450,"RES_SALT:15,RES_PARCHMENT:5",長期比較不同保存法,研究時間-15%,"SK_COOKING,SK_RESEARCH",,,food_preservation_cap+,"BUILD_KITCHEN,BUILD_SCHOOL",仍不讓食物永久不腐敗,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE

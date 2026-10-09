@@ -9,23 +9,3 @@ FROZEN_GROUND,冰封地面,Frozen Ground,Spell,3,控制,ICE_SHARD,,KNOW_FROZEN_G
 ICE_ARMOR,冰甲,Ice Armor,Spell,3,防禦,ICE_WALL,,KNOW_ICE_ARMOR,3,40,中,中,temporary_armor,提高防護與耐熱,不取代Item Armor ownership,角色防禦,TRUE
 DEEP_FREEZE,深度凍結,Deep Freeze,Spell,4,冰凍,"FROZEN_GROUND,ICE_ARMOR",,KNOW_DEEP_FREEZE,4,75,長,長,freeze_target,高強度冰凍/行動抑制,不能無條件即死高級目標,高階控制,TRUE
 FROST_DOMAIN,寒霜領域,Frost Domain,Spell,5,範圍,"DEEP_FREEZE,FLOW_CONTROL",,KNOW_FROST_DOMAIN,5,160,長,長,large_cold_field,大型局部寒冷區,不永久改Climate,水冰系頂階,TRUE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,,FALSE

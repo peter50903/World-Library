@@ -7,23 +7,3 @@ RDM_DIVORCE_ALLOWED,允許離婚,Divorce Permitted,離婚,religious_divorce_atti
 RDM_FAMILY_DUTY,家庭義務,Family Duty,家庭,family_goal_weight,1.25,無直接法律效果,忽視配偶／子女義務降低信仰值,偏好家庭扶助制度,,強化家庭照護與育兒責任,TRUE
 RDM_CELIBATE_IDEAL,節慾婚育,Celibate Ideal,家庭,fertility_desire,0.75,無直接法律效果,禁慾/少生育可獲宗教認同,低婚育偏好,FERTILITY_NORM,不禁止生育，只改社會與AI傾向,TRUE
 RDM_FERTILITY_DUTY,繁衍義務,Procreation Duty,家庭,fertility_desire,1.25,無直接法律效果,生育與育兒提高宗教認同,偏好鼓勵家庭生育,FERTILITY_NORM,不保證受孕，也不突破種族生理限制,TRUE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE
-,,,,,,,,,,,FALSE

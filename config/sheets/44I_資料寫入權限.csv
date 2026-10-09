@@ -12,23 +12,3 @@ Derived Cache,Query/Index Layer,由待更新重建／增量索引更新,是,把�
 Godot UI,無Authoritative ownership,送指令／查詢,只讀檢視模型,直接持有並修改核心實體參照,TRUE
 Test Harness,無Production ownership,只走公開執行期介面；僅測試覆寫明確標記,是,測試為通過而偷偷改世界狀態,TRUE
 Migration Tool,離線Schema Migration,版本化資料轉換,備份副本,執行期中途偷偷遷移後正式狀態,TRUE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE
-,,,,,FALSE

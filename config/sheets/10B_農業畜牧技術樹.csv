@@ -8,23 +8,3 @@ TECH_DRAFT_ANIMALS,役畜利用,Draft Animals,3,畜牧,TECH_PASTURE_MANAGEMENT,1
 TECH_SOIL_MANAGEMENT,土壤管理,Soil Management,3,作物,"TECH_IRRIGATION,TECH_CROP_ROTATION",220,RES_GRAIN:10,觀察多種農地肥力變化,研究時間-15%,SK_FARMING,,,farm_recovery_rate+,BUILD_FARM,提升農地長期恢復與穩定性,TRUE
 TECH_SELECTIVE_BREEDING,選擇育種,Selective Breeding,4,畜牧,"TECH_PASTURE_MANAGEMENT,TECH_DRAFT_ANIMALS",300,RES_GRAIN:20,維持多代牲畜繁殖記錄,研究時間-20%,SK_ANIMAL_HUSBANDRY,,,breed_formation_enabled,BUILD_FARM,允許長期人工選擇形成品種,TRUE
 TECH_ADVANCED_AGRONOMY,進階農學,Advanced Agronomy,5,作物,"TECH_SOIL_MANAGEMENT,TECH_SELECTIVE_BREEDING",500,"RES_GRAIN:30,RES_PARCHMENT:10",管理大型多作物農區,研究時間-15%,"SK_FARMING,SK_RESEARCH",,BUILD_SCHOOL,regional_agriculture_efficiency+,"BUILD_FARM,BUILD_SCHOOL",高階農業知識，不是魔法增產,TRUE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
-,,,,,,,,,,,,,,,,FALSE
