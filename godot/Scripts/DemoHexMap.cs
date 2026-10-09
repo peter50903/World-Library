@@ -4,13 +4,17 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// V0-03A: Renders already-generated Core TEMP hex data. This view NEVER
-/// generates terrain or draws from RNG. Gold circles remain TEMP decorative
-/// landmarks pending real settlements in V0-03B.
+/// V0-03B: Renders the Core TEMP hex map and TEMP settlements injected by
+/// ObserverRoot from the observer world's single RngRegistry. This view NEVER
+/// generates terrain or sites and never draws from RNG.
 /// </summary>
 public partial class DemoHexMap : Control
 {
-    public DemoHexWorld World { get; set; } = DemoHexWorld.Generate(42);
+    /// <summary>Injected by ObserverRoot; nothing is drawn until it is set.</summary>
+    public DemoHexWorld? World { get; set; }
+
+    /// <summary>Injected by ObserverRoot; settlement markers come only from Core.</summary>
+    public DemoWorldSites? Sites { get; set; }
 
     public event Action<DemoHexCell>? CellSelected;
 
@@ -20,7 +24,7 @@ public partial class DemoHexMap : Control
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         SizeFlagsVertical = SizeFlags.ExpandFill;
         MouseFilter = MouseFilterEnum.Stop;
-        TooltipText = "TEMP：地形由模擬核心的地理亂數流生成；金色標記仍只是示範，沒有正式道路或聚落。";
+        TooltipText = "TEMP：地形與金色示範聚落都由模擬核心依世界種子生成；不是正式世界設定。";
     }
 
     public override void _Ready()
@@ -31,6 +35,9 @@ public partial class DemoHexMap : Control
 
     public override void _Draw()
     {
+        if (World is null)
+            return;
+
         var (start, radius) = Layout();
 
         foreach (var cell in World.Cells)
@@ -52,7 +59,7 @@ public partial class DemoHexMap : Control
             outline[6] = vertices[0];
             DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
 
-            if (IsDemoLandmark(cell.Column, cell.Row))
+            if (Sites?.SettlementAt(cell.Column, cell.Row) is not null)
             {
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
@@ -68,13 +75,17 @@ public partial class DemoHexMap : Control
                 Pressed: true
             } click)
             return;
+        if (World is null)
+            return;
 
         var (start, radius) = Layout();
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            // Hit-test the full hex (the -1.4 inset is only a visual gap) so clicks on
+            // the seam between two cells still select a cell.
             if (!Geometry2D.IsPointInPolygon(
-                    click.Position, HexCoordinates.Polygon(center, radius - 1.4f)))
+                    click.Position, HexCoordinates.Polygon(center, radius)))
                 continue;
 
             CellSelected?.Invoke(cell);
@@ -105,7 +116,4 @@ public partial class DemoHexMap : Control
             (Size.Y - heightUnits * radius) / 2f + radius);
         return (start, radius);
     }
-
-    private static bool IsDemoLandmark(int column, int row)
-        => (column, row) is (2, 2) or (7, 2) or (8, 5);
 }

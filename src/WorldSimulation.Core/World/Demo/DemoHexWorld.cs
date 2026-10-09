@@ -46,9 +46,21 @@ public sealed class DemoHexWorld
 
     public IReadOnlyList<DemoHexCell> Cells => _cells;
 
-    public static DemoHexWorld Generate(ulong seed)
+    /// <summary>Convenience overload: a fresh registry for <paramref name="seed"/>.</summary>
+    public static DemoHexWorld Generate(ulong seed) => Generate(RngRegistry.Create(seed));
+
+    /// <summary>
+    /// V0-03B: draws the terrain from the caller's single world RngRegistry
+    /// (GEOGRAPHY stream only). The GEOGRAPHY stream must be untouched so the
+    /// same WorldSeed always produces the same map.
+    /// </summary>
+    public static DemoHexWorld Generate(RngRegistry rng)
     {
-        var rng = RngRegistry.Create(seed);
+        ArgumentNullException.ThrowIfNull(rng);
+        if (rng.GetDrawCounter(RngStreams.Geography) != 0)
+            throw new InvalidOperationException("Demo map generation requires an unused GEOGRAPHY stream.");
+
+        var seed = rng.WorldSeed;
         var cells = new DemoHexCell[Columns * Rows];
         var index = 0;
 
