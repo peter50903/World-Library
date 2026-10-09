@@ -3,3 +3,8 @@ obj/
 *.user
 .vs/
 TestResults/
+
+# Godot editor-generated cache, binaries, and C# temporary data
+godot/.godot/
+godot/.mono/
+godot/.godot-sharp/

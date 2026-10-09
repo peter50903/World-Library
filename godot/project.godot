@@ -1,0 +1,24 @@
+; Godot 4 .NET (C#) project.
+; Visual-only V0-02 observer fixture. Canonical settings still come from the
+; official Excel in the connected Google Drive folder; none are loaded here.
+
+config_version=5
+
+[application]
+config/name="世界模擬遊戲｜觀察者示範"
+run/main_scene="res://Scenes/Observer.tscn"
+config/description="非正式世界示範：六角格、世界時間、食物與事件歷史"
+config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
+
+[display]
+window/size/viewport_width=1440
+window/size/viewport_height=900
+window/stretch/mode="canvas_items"
+
+[dotnet]
+project/assembly_name="WorldSimulation.Godot"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
