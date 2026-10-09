@@ -90,7 +90,7 @@ while (true)
         try
         {
             var candidate = DemoObserverWorld.LoadTempFile(DemoObserverWorld.DefaultTempSavePath);
-            world = candidate; // Replace only after the entire replay checkpoint is verified.
+            world = candidate; // Replace only after the whole TEMP save is verified (V0-07B direct restore).
             Console.WriteLine($"已讀取 TEMP 世界：{DemoObserverWorld.DefaultTempSavePath}");
             PrintStatus();
         }

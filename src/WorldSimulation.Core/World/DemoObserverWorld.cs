@@ -234,7 +234,15 @@ public sealed partial class DemoObserverWorld
     /// live world is replaced only by the final field assignments, which cannot fail.
     /// Any exception before that leaves Entity, RNG, Scheduler, History and Ledger unchanged.
     /// </summary>
-    public DemoDayEvent AdvanceOneDay()
+    public DemoDayEvent AdvanceOneDay() => AdvanceOneDayCore(settleWeekly: true);
+
+    /// <summary>
+    /// V0-07B: <paramref name="settleWeekly"/>＝false re-derives only the seed-determined part of a day
+    /// (clock, scheduler, RNG, daily history) for direct snapshot restore; the weekly state is then
+    /// installed from the verified save. Weekly settlement draws no RNG, so both paths reach the
+    /// same clock, scheduler and RNG state.
+    /// </summary>
+    private DemoDayEvent AdvanceOneDayCore(bool settleWeekly)
     {
         // ① Scheduler and clock: private copies.
         var clock = _clock.Clone();
@@ -287,7 +295,7 @@ public sealed partial class DemoObserverWorld
         var nextMigrations = _migrations;
         var nextMigrationBatchId = _nextMigrationBatchId;
         var nextSites = _sites;
-        if (weekly.Count == 1)
+        if (weekly.Count == 1 && settleWeekly)
         {
             var outcome = DemoWeeklySettlement.Settle(
                 checked(_weeks.Count + 1), dueTime, Map, _sites,
