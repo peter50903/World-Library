@@ -1,0 +1,230 @@
+using WorldSimulation.Core.World.Demo;
+using WorldSimulation.ObserverCli;
+using Xunit;
+
+namespace WorldSimulation.Core.Tests;
+
+/// <summary>
+/// V0-08A（#74）：表 45G M1 驗收報告。三個 TEMP 固定種子 × 三個既有 TEMP 情境各跑 100 年，
+/// 每一項都要有結果、順序跟 45G CSV 一致、可重現；Hard 項目不能失敗，而且竄改證據時要被抓到。
+/// </summary>
+public sealed class M1AcceptanceReportTests
+{
+    private static readonly string[] HardIds = { "M1_RES", "M1_POP", "M1_NO_MAGIC_FOOD", "M1_MIG", "M1_SETTLE" };
+
+    private static readonly Lazy<IReadOnlyList<M1CheckDefinition>> Checks = new(() =>
+    {
+        var path = M1CheckCatalog.FindDefaultPath();
+        Assert.NotNull(path);
+        return M1CheckCatalog.Load(path!);
+    });
+
+    private static readonly Lazy<IReadOnlyList<M1RunReport>> Matrix = new(() =>
+        M1Preset.Default
+            .SelectMany(p => M1AcceptanceCli.DefaultSeeds.Select(seed => M1Evaluator.Evaluate(M1RunCollector.Collect(seed, p, 100), Checks.Value)))
+            .ToList());
+
+    private static readonly Lazy<M1RunData> LocalFamine42 = new(() => M1RunCollector.Collect(42, M1Preset.LocalFamine, 100));
+
+    private static M1CheckResult Result(M1RunReport report, string id) => report.Results.Single(r => r.Check.Id == id);
+
+    [Fact]
+    public void CatalogComesFromThe45GCsvInSourceOrderAndOnlyEnabledRows()
+    {
+        var path = M1CheckCatalog.FindDefaultPath()!;
+        var csvIds = File.ReadAllLines(path).Skip(1)
+            .Where(l => l.Trim().Length > 0)
+            .Select(l => l.Split(','))
+            .Where(f => f[^1].Trim().Equals("TRUE", StringComparison.OrdinalIgnoreCase))
+            .Select(f => f[0])
+            .ToList();
+
+        Assert.Equal(csvIds, Checks.Value.Select(c => c.Id).ToList());
+        Assert.Equal(10, Checks.Value.Count);
+        Assert.Equal(HardIds.OrderBy(x => x), Checks.Value.Where(c => c.Category == M1Category.Hard).Select(c => c.Id).OrderBy(x => x));
+        Assert.Equal("資源守恆", Checks.Value[0].Name);
+    }
+
+    [Fact]
+    public void ThreeSeedsTimesThreePresetsReportEveryCheckInOrderWithNoHardFailure()
+    {
+        var expectedOrder = Checks.Value.Select(c => c.Id).ToList();
+        Assert.Equal(9, Matrix.Value.Count);
+        foreach (var report in Matrix.Value)
+        {
+            Assert.Equal(expectedOrder, report.Results.Select(r => r.Check.Id).ToList());
+            Assert.All(report.Results, r => Assert.False(string.IsNullOrWhiteSpace(r.Diagnosis)));
+            var failures = report.Results.Where(r => r.Verdict == M1Verdict.Fail).Select(r => $"{r.Check.Id}: {r.Diagnosis}");
+            Assert.Empty(failures);
+            Assert.Equal(DemoCenturyRun.TempWeeksPerYear * 100, report.Run.Weeks.Count);
+        }
+
+        // 每個 Hard 項目在矩陣中至少有一次實際量測到而通過（不是只因沒發生而沒失敗）。
+        foreach (var id in HardIds)
+            Assert.Equal(M1Verdict.Pass, M1Evaluator.Aggregate(Matrix.Value.Select(r => Result(r, id).Verdict)));
+    }
+
+    [Fact]
+    public void WarningsOnlyShowDataAndMissingFeaturesAreNotReportedAsPass()
+    {
+        foreach (var report in Matrix.Value)
+        {
+            // 正式門檻未定案：只列數據，不可能「通過」。
+            Assert.Equal(M1Verdict.Warn, Result(report, "M1_STABILITY").Verdict);
+            Assert.Equal(M1Verdict.Warn, Result(report, "M1_VARIETY").Verdict);
+            // 聚落內分組取用尚未實作。
+            Assert.Equal(M1Verdict.Unimplemented, Result(report, "M1_ACCESS").Verdict);
+        }
+
+        // 一般情境沒有開拓：M1_SETTLE 不能報「建立成功」或通過。
+        foreach (var report in Matrix.Value.Where(r => r.Run.Preset == M1Preset.Normal))
+        {
+            var settle = Result(report, "M1_SETTLE");
+            Assert.Equal(M1Verdict.Warn, settle.Verdict);
+            Assert.Contains("沒有開拓", settle.Diagnosis);
+        }
+    }
+
+    [Fact]
+    public void SameSeedReproducesTheSameReport()
+    {
+        var a = M1Evaluator.Evaluate(M1RunCollector.Collect(7, M1Preset.Frontier, 100), Checks.Value);
+        var b = Matrix.Value.Single(r => r.Run.Seed == 7 && r.Run.Preset == M1Preset.Frontier);
+        Assert.Equal(Render(a), Render(b));
+    }
+
+    [Fact]
+    public void TamperedFoodLedgerFailsM1ResAndCliExitCodeIsOne()
+    {
+        var run = LocalFamine42.Value;
+        var weeks = run.Weeks.ToList();
+        var target = weeks[10];
+        var ledgers = target.Settlements.ToList();
+        ledgers[0] = ledgers[0] with { FoodClosing = ledgers[0].FoodClosing + 1 };
+        weeks[10] = target with { Settlements = ledgers };
+
+        var report = M1Evaluator.Evaluate(run with { Weeks = weeks }, Checks.Value);
+        var res = Result(report, "M1_RES");
+        Assert.Equal(M1Verdict.Fail, res.Verdict);
+        Assert.Contains("第 1 年第 11 週", res.Diagnosis);
+        Assert.True(report.HasHardFailure);
+    }
+
+    [Fact]
+    public void TeleportingMigrantBatchFailsM1Mig()
+    {
+        var run = LocalFamine42.Value;
+        var weeks = run.Weeks.ToList();
+        var index = weeks.FindIndex(w => w.Migrations.Any(m => !m.Departed && m.CellBefore != m.CellAfter));
+        Assert.True(index >= 0, "局部饑荒情境應該有移動中的遷徙隊伍");
+        var migrations = weeks[index].Migrations.ToList();
+        var i = migrations.FindIndex(m => !m.Departed && m.CellBefore != m.CellAfter);
+        var m0 = migrations[i];
+        migrations[i] = m0 with { CellAfter = new DemoCellRef(m0.CellBefore.Column + 5, m0.CellBefore.Row + 5) };
+        weeks[index] = weeks[index] with { Migrations = migrations };
+
+        var report = M1Evaluator.Evaluate(run with { Weeks = weeks }, Checks.Value);
+        Assert.Equal(M1Verdict.Fail, Result(report, "M1_MIG").Verdict);
+        Assert.Contains("瞬移", Result(report, "M1_MIG").Diagnosis);
+    }
+
+    [Fact]
+    public void SettlementAppearingWithoutFoundingEventFailsM1Settle()
+    {
+        var run = M1RunCollector.Collect(42, M1Preset.Normal, 1);
+        var weeks = run.Weeks.ToList();
+        var ledgers = weeks[3].Settlements.ToList();
+        ledgers.Add(ledgers[0] with { SettlementId = 99, SettlementName = "幽靈聚落" });
+        weeks[3] = weeks[3] with { Settlements = ledgers };
+
+        var report = M1Evaluator.Evaluate(run with { Weeks = weeks }, Checks.Value);
+        Assert.Equal(M1Verdict.Fail, Result(report, "M1_SETTLE").Verdict);
+        Assert.Contains("憑空出現", Result(report, "M1_SETTLE").Diagnosis);
+    }
+
+    [Fact]
+    public void WithoutMigrationM1MigIsWarningNotPass()
+    {
+        // 局部饑荒但關閉遷徙（測試用 TEMP 設定）：有缺糧、沒有任何遷徙隊伍。
+        var noMigration = new M1Preset("test-no-migration", "測試：關閉遷徙",
+            DemoWeeklyTempConfig.LocalFamineSample with { MigrationEnabled = false });
+        var run = M1RunCollector.Collect(42, noMigration, 2);
+        Assert.All(run.Weeks, w => Assert.Empty(w.Migrations));
+        var report = M1Evaluator.Evaluate(run, Checks.Value);
+        Assert.Equal(M1Verdict.Warn, Result(report, "M1_MIG").Verdict);
+        Assert.Contains("沒有遷徙", Result(report, "M1_MIG").Diagnosis);
+    }
+
+    [Fact]
+    public void NonHardViolationIsOnlyAWarning()
+    {
+        Assert.Equal(M1Verdict.Fail, M1Evaluator.ToVerdict(M1Raw.Violation, M1Category.Hard));
+        Assert.Equal(M1Verdict.Warn, M1Evaluator.ToVerdict(M1Raw.Violation, M1Category.Warning));
+        Assert.Equal(M1Verdict.Warn, M1Evaluator.ToVerdict(M1Raw.Violation, M1Category.BehaviorCheck));
+        Assert.Equal(M1Verdict.Fail, M1Evaluator.Aggregate(new[] { M1Verdict.Pass, M1Verdict.Fail }));
+        Assert.Equal(M1Verdict.Pass, M1Evaluator.Aggregate(new[] { M1Verdict.Warn, M1Verdict.Pass }));
+        Assert.Equal(M1Verdict.Warn, M1Evaluator.Aggregate(new[] { M1Verdict.Warn, M1Verdict.Unimplemented }));
+    }
+
+    [Theory]
+    [InlineData("CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled\nM1_RES,資源守恆,x,Hard,y,TRUE\nM1_RES,重複,x,Hard,y,TRUE\n", "重複")]
+    [InlineData("CheckID,中文名稱,Hard/Warning,Enabled\nM1_RES,資源守恆,Hard,TRUE\n", "缺少欄位")]
+    [InlineData("CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled\nM1_RES,資源守恆,x,Hard,y,FALSE\n", "沒有任何 Enabled=TRUE")]
+    [InlineData("CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled\nM1_RES,資源守恆,x,Fatal,y,TRUE\n", "分類")]
+    [InlineData("CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled\n,資源守恆,x,Hard,y,TRUE\n", "缺少 CheckID")]
+    public void BrokenCatalogIsRejectedInChinese(string csv, string expected)
+    {
+        var ex = Assert.Throws<M1CatalogException>(() => M1CheckCatalog.Parse(csv, "測試"));
+        Assert.Contains(expected, ex.Message);
+    }
+
+    [Fact]
+    public void DisabledAndUnknownChecksAreHandledFromTheCsv()
+    {
+        var checks = M1CheckCatalog.Parse(
+            "CheckID,中文名稱,100年M1通過條件,Hard/Warning,主要診斷,Enabled\n"
+            + "M1_RES,資源守恆,x,Hard,y,FALSE\n"
+            + "M1_NEW,\"新項目，含逗號\",x,Warning,y,TRUE\n", "測試");
+        var only = Assert.Single(checks);
+        Assert.Equal("新項目，含逗號", only.Name);
+        var report = M1Evaluator.Evaluate(M1RunCollector.Collect(42, M1Preset.Normal, 1), checks);
+        Assert.Equal(M1Verdict.Unimplemented, Assert.Single(report.Results).Verdict);
+    }
+
+    [Theory]
+    [InlineData(new[] { "--years", "0" }, "--years 必須是")]
+    [InlineData(new[] { "--years", "-1" }, "--years 必須是")]
+    [InlineData(new[] { "--years", "1001" }, "--years 必須是")]
+    [InlineData(new[] { "--years" }, "缺少值")]
+    [InlineData(new[] { "--preset", "paradise" }, "--preset 必須是")]
+    [InlineData(new[] { "--seed", "abc" }, "--seed 必須是")]
+    [InlineData(new[] { "--color", "red" }, "不認得的參數")]
+    [InlineData(new[] { "--checks", "/nonexistent/45G.csv" }, "找不到 M1 驗收清單")]
+    public void BadArgumentsExitWithTwoAndChineseMessage(string[] args, string expected)
+    {
+        var output = new StringWriter();
+        Assert.Equal(2, M1AcceptanceCli.Run(args, output));
+        Assert.Contains(expected, output.ToString());
+        Assert.Contains("錯誤：", output.ToString());
+    }
+
+    [Fact]
+    public void CliPrintsEveryCheckIdForOneYearRun()
+    {
+        var output = new StringWriter();
+        var code = M1AcceptanceCli.Run(new[] { "--years", "1", "--seed", "42", "--preset", "frontier" }, output);
+        var text = output.ToString();
+        Assert.Equal(0, code);
+        foreach (var check in Checks.Value)
+            Assert.Contains($"  {check.Id}｜{check.Name}｜{check.CategoryText}｜", text);
+        Assert.Contains("種子 42｜情境：開拓（frontier，TEMP）｜1 年", text);
+        Assert.Contains("Hard 項目：", text);
+    }
+
+    private static string Render(M1RunReport report)
+    {
+        var writer = new StringWriter();
+        M1AcceptanceCli.WriteRun(report, writer);
+        return writer.ToString();
+    }
+}

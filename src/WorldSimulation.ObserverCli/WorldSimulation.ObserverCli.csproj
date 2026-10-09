@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="WorldSimulation.Core.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\WorldSimulation.Core\WorldSimulation.Core.csproj" />
   </ItemGroup>
 </Project>

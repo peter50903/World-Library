@@ -2,8 +2,13 @@ using System.Globalization;
 using System.Text;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
+using WorldSimulation.ObserverCli;
 
 Console.OutputEncoding = Encoding.UTF8;
+
+// V0-08A：表 45G M1 驗收報告（多種子 × TEMP 情境，逐項通過／警告／失敗／尚未實作）。
+if (args.Length > 0 && args[0] == "--m1-check")
+    return M1AcceptanceCli.Run(args.Skip(1).ToArray(), Console.Out);
 
 if (args.Length == 0 || args[0] != "--demo")
 {
@@ -11,6 +16,7 @@ if (args.Length == 0 || args[0] != "--demo")
     Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42] [--years 100] [--frontier]");
     Console.WriteLine("  --years N：不開互動介面，直接跑 N 年（1～1000）並輸出年度摘要（V0-05 無畫面長測）。");
     Console.WriteLine("  --frontier：改用 TEMP 開拓情境（開局聚落全部缺糧，遷徙者可建立新聚落；V0-06B 測試用）。");
+    Console.WriteLine("M1 驗收報告：dotnet run --project src/WorldSimulation.ObserverCli -- --m1-check [--years 100] [--seed N] [--preset normal|local-famine|frontier|famine]");
     return 2;
 }
 
