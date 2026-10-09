@@ -72,6 +72,50 @@ public sealed class DemoReplaySaveTests
     }
 
     [Fact]
+    public void SelfConsistentSaveWithUnknownTempNumbers_IsRejected()
+    {
+        // A file whose replay matches itself is still rejected when its scenario or weekly
+        // config is not one of the known TEMP presets (no invented world numbers on load).
+        var inventedWeekly = DemoWeeklyTempConfig.Sample with { YieldPerWorkerPerWeek = 50 };
+        var forgedWeekly = new DemoObserverWorld(DemoScenario.Sample(42), inventedWeekly);
+        var inventedScenario = DemoScenario.Sample(42) with { Population = 6 };
+        var forgedScenario = new DemoObserverWorld(inventedScenario, DemoWeeklyTempConfig.Sample);
+        for (var i = 0; i < 9; i++)
+        {
+            forgedWeekly.AdvanceOneDay();
+            forgedScenario.AdvanceOneDay();
+        }
+
+        var weeklyError = Assert.Throws<InvalidDataException>(
+            () => DemoObserverWorld.ImportTempSave(forgedWeekly.ExportTempSave()));
+        Assert.Contains("生存情境", weeklyError.Message, StringComparison.Ordinal);
+        var scenarioError = Assert.Throws<InvalidDataException>(
+            () => DemoObserverWorld.ImportTempSave(forgedScenario.ExportTempSave()));
+        Assert.Contains("世界情境", scenarioError.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Sample")]
+    [InlineData("Famine")]
+    [InlineData("LocalFamine")]
+    [InlineData("Frontier")]
+    public void EveryKnownTempPreset_StillRoundTrips(string preset)
+    {
+        var config = preset switch
+        {
+            "Famine" => DemoWeeklyTempConfig.FamineSample,
+            "LocalFamine" => DemoWeeklyTempConfig.LocalFamineSample,
+            "Frontier" => DemoWeeklyTempConfig.FrontierSample,
+            _ => DemoWeeklyTempConfig.Sample
+        };
+        var world = new DemoObserverWorld(DemoScenario.Sample(7), config);
+        for (var i = 0; i < 15; i++)
+            world.AdvanceOneDay();
+        var json = world.ExportTempSave();
+        Assert.Equal(json, DemoObserverWorld.ImportTempSave(json).ExportTempSave());
+    }
+
+    [Fact]
     public void FileSaveAndLoad_DoesNotCorruptPreviousSaveOnFailedRead()
     {
         var directory = Path.Combine(Path.GetTempPath(), "worldsim-save-tests-" + Guid.NewGuid().ToString("N"));
