@@ -113,12 +113,14 @@ public sealed class M1AcceptanceReportTests
     [Fact]
     public void TeleportingMigrantBatchFailsM1Mig()
     {
-        var run = LocalFamine42.Value;
-        var weeks = run.Weeks.ToList();
-        var index = weeks.FindIndex(w => w.Migrations.Any(m => !m.Departed && m.CellBefore != m.CellAfter));
-        Assert.True(index >= 0, "局部饑荒情境應該有移動中的遷徙隊伍");
+        // 取矩陣中第一組真的有隊伍移動的長跑（不是每個種子都會遷徙）。
+        static bool Moving(DemoMigrationWeekLedger m) => !m.Departed && m.CellBefore != m.CellAfter;
+        var run = Matrix.Value.Select(r => r.Run).FirstOrDefault(r => r.Weeks.Any(w => w.Migrations.Any(Moving)));
+        Assert.True(run is not null, "預設矩陣應該至少有一組出現移動中的遷徙隊伍");
+        var weeks = run!.Weeks.ToList();
+        var index = weeks.FindIndex(w => w.Migrations.Any(Moving));
         var migrations = weeks[index].Migrations.ToList();
-        var i = migrations.FindIndex(m => !m.Departed && m.CellBefore != m.CellAfter);
+        var i = migrations.FindIndex(Moving);
         var m0 = migrations[i];
         migrations[i] = m0 with { CellAfter = new DemoCellRef(m0.CellBefore.Column + 5, m0.CellBefore.Row + 5) };
         weeks[index] = weeks[index] with { Migrations = migrations };
