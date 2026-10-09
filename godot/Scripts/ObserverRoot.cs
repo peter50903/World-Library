@@ -657,7 +657,7 @@ public partial class ObserverRoot : Control
             $"每日示範食物庫存：{snapshot.FoodStock}\n" +
             $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
-            $"亂數種子：{WorldSeed}";
+            $"亂數種子：{_world.TempWorldSeed}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
