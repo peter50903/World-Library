@@ -17,7 +17,7 @@ dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Rel
 
 **資料可信度界限：** 本畫面、地形、六角座標、示範聚落位置與人口/食物數字均為 `TEMP` 的視覺/數值Fixture，**沒有**載入正式Drive Excel、未產生正式HexCell、RouteSegment、Population或世界生成；六角格相鄰不代表已存在可通行路線。真 `WorldClock`／`Scheduler`／`RngResolutionDraft`／Demo 食物結算與歷史是同一Core執行邏輯；正式AtomicCommit/Save/History Kernel仍待後續階段。Godot C#僅依賴Core；Core不依賴Godot。
 
-**驗收限制：** GitHub Actions會實際用 `Godot.NET.Sdk/4.7.2` 還原並編譯Godot C#專案，並執行既有Core xUnit與CLI互動測試；CI若沒有Godot引擎執行檔，**建置成功不等於已完成引擎畫面執行/人工視覺驗收**。此時仍需用Godot .NET編輯器自行啟動場景檢視顏色、字形、按鈕與大小。
+**驗收現況：** GitHub Actions除了以 `Godot.NET.Sdk/4.7.2` 編譯C#、執行核心245項測試和文字介面操作，**還會下載並以官方SHA-256校驗 Godot 4.7.2 .NET 引擎，在無畫面模式載入真正場景並觸發「下一天」「快轉30天」按鈕**，查核推進至第31天、產生31筆事件歷史；因而不只是編譯測試。但CI無畫面執行**不代表顏色、中文字型、版面縮放已由真人目視驗收**，仍建議用Godot .NET編輯器開啟場景實際查看。12×8六角格現採 **TEMP 奇數列偏移顯示**，形成近矩形錯列視覺；世界正式座標制度仍未定案。
 
 ## 立即試玩：第一個可執行切片（文字介面觀察者 v0）
 

@@ -10,6 +10,17 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public static class HexCoordinates
 {
+    /// <summary>
+    /// TEMP presentation grid mapping: odd-r offset columns to axial q/r.
+    /// The official map coordinate/orientation system is NOT yet specified.
+    /// Offset rows form a near-rectangular 12x8 viewport (half-hex stagger),
+    /// while axial coordinates stay available for later Core-backed hex data.
+    /// </summary>
+    public static Vector2I OddRowOffsetToAxial(int column, int row)
+    {
+        return new Vector2I(column - (row - (row & 1)) / 2, row);
+    }
+
     public static Vector2 Center(int q, int r, float radius)
     {
         return new Vector2(

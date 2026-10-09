@@ -33,7 +33,9 @@ public partial class DemoHexMap : Control
     {
         const float padding = 28f;
         var sqrtThree = Mathf.Sqrt(3f);
-        var horizontalUnits = sqrtThree * (Columns - 1 + (Rows - 1) / 2f) + sqrtThree;
+        // Odd-r offset grid: rows only shift by half a hex, rather than
+        // marching diagonally into an axial parallelogram. TEMP display only.
+        var horizontalUnits = sqrtThree * (Columns + 0.5f);
         var verticalUnits = 1.5f * (Rows - 1) + 2f;
         var radius = Mathf.Max(4f, Mathf.Min(
             (Size.X - 2f * padding) / horizontalUnits,
@@ -49,7 +51,8 @@ public partial class DemoHexMap : Control
         {
             for (var col = 0; col < Columns; col++)
             {
-                var center = start + HexCoordinates.Center(col, row, radius);
+                var axial = HexCoordinates.OddRowOffsetToAxial(col, row);
+                var center = start + HexCoordinates.Center(axial.X, axial.Y, radius);
                 var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
 
                 // The palette and classification are only scene decoration.

@@ -115,7 +115,7 @@ public partial class ObserverRoot : Control
         var historyColumn = new VBoxContainer();
         historyPanel.AddChild(historyColumn);
 
-        var historyTitle = new Label { Text = "結算歷史｜僅顯示最近 12 筆真實 DemoDayEvent" };
+        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆示範日結算事件" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
         historyColumn.AddChild(historyTitle);
 
