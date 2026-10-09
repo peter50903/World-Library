@@ -149,6 +149,13 @@ jobs:
             exit 1
           fi
           grep -q 'WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day=0' /tmp/godot-map-input.log
+          # V0-07: actual Godot buttons save, load and deterministic resume via TEMP JSON.
+          WORLD_SIM_SAVE_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-save.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-save.log; then
+            echo "Godot reported a runtime error in TEMP save/load."
+            exit 1
+          fi
+          grep -q 'WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10' /tmp/godot-save.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."

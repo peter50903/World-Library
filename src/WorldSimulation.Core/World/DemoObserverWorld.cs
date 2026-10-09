@@ -64,7 +64,7 @@ internal enum DemoCommitStage
 /// It does NOT implement official population rules, EntityStore, canonical History,
 /// durability or Save/Load.
 /// </summary>
-public sealed class DemoObserverWorld
+public sealed partial class DemoObserverWorld
 {
     private static readonly TimeSpan OneDay = TimeSpan.FromDays(1);
     private static readonly TimeSpan OneWeek = TimeSpan.FromDays(7);

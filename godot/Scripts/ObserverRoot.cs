@@ -30,7 +30,7 @@ public partial class ObserverRoot : Control
     private const int SettleSmokeDays = 30 * 7;
     private static readonly ulong WorldSeed = SettleSmoke ? PickSettleSmokeSeed()
         : MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
-    private readonly DemoObserverWorld _world = new(
+    private DemoObserverWorld _world = new(
         DemoScenario.Sample(WorldSeed),
         SettleSmoke ? DemoWeeklyTempConfig.FrontierSample
             : MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
@@ -124,9 +124,17 @@ public partial class ObserverRoot : Control
         };
         middle.AddChild(sidebar);
 
-        var side = new VBoxContainer();
+        // V0-07: the added save/load buttons must remain reachable on smaller windows.
+        // Scroll only the information sidebar; map wheel input stays within the map.
+        var sidebarScroll = new ScrollContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        sidebar.AddChild(sidebarScroll);
+        var side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         side.AddThemeConstantOverride("separation", 18);
-        sidebar.AddChild(side);
+        sidebarScroll.AddChild(side);
 
         var worldHeading = new Label { Text = "示範世界狀態" };
         worldHeading.AddThemeFontSizeOverride("font_size", 20);
@@ -182,6 +190,13 @@ public partial class ObserverRoot : Control
         skipButton.Pressed += () => Advance(30);
         side.AddChild(skipButton);
 
+        var saveButton = new Button { Text = "存檔（TEMP）" };
+        saveButton.Pressed += SaveWorld;
+        side.AddChild(saveButton);
+        var loadButton = new Button { Text = "讀檔（TEMP）" };
+        loadButton.Pressed += LoadWorld;
+        side.AddChild(loadButton);
+
         _notice = new Label
         {
             Text = "世界只會在按下按鈕時推進。",
@@ -212,6 +227,26 @@ public partial class ObserverRoot : Control
         historyColumn.AddChild(_history);
 
         Refresh();
+        if (OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE"))
+        {
+            for (var i = 0; i < 9; i++)
+                nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+            var checkpoint = _world.ExportTempSave();
+            saveButton.EmitSignal(BaseButton.SignalName.Pressed);
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+            if (_world.Snapshot().DaysElapsed != 10)
+                throw new InvalidOperationException("TEMP save smoke failed to advance.");
+            loadButton.EmitSignal(BaseButton.SignalName.Pressed);
+            if (_world.ExportTempSave() != checkpoint || _world.Snapshot().DaysElapsed != 9
+                || !_status.Text.Contains("世界日期：第 9 日", StringComparison.Ordinal))
+                throw new InvalidOperationException("TEMP Godot load did not restore all world state and UI.");
+            var baseline = DemoObserverWorld.ImportTempSave(checkpoint);
+            baseline.AdvanceOneDay();
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+            if (_world.ExportTempSave() != baseline.ExportTempSave())
+                throw new InvalidOperationException("TEMP Godot resumed world diverged after load.");
+            GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
+        }
         if (MapInputSmoke)
             VerifyMapInputSmoke();
 
@@ -480,6 +515,38 @@ public partial class ObserverRoot : Control
         GD.Print($"WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day={dayBefore}");
     }
 
+    private void SaveWorld()
+    {
+        try
+        {
+            _world.SaveTempFile(DemoObserverWorld.DefaultTempSavePath);
+            _notice.Text = $"TEMP 存檔成功：{DemoObserverWorld.DefaultTempSavePath}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or ArgumentException or InvalidOperationException)
+        {
+            _notice.Text = $"TEMP 存檔失敗，世界未改變：{ex.Message}";
+        }
+    }
+
+    private void LoadWorld()
+    {
+        try
+        {
+            var restored = DemoObserverWorld.LoadTempFile(DemoObserverWorld.DefaultTempSavePath);
+            _world = restored; // New fully validated world; never mutate the old one on failure.
+            _hexMap.World = restored.Map;
+            _cellInfo.Text = "TEMP 世界讀取完成；請點選地圖格或聚落查看資料。";
+            Refresh();
+            _notice.Text = $"TEMP 讀檔成功：{DemoObserverWorld.DefaultTempSavePath}";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+            or ArgumentException or InvalidOperationException)
+        {
+            _notice.Text = $"TEMP 讀檔失敗，世界未改變：{ex.Message}";
+        }
+    }
+
     private void OnCellSelected(DemoHexCell cell)
     {
         _cellInfo.Text =
@@ -598,7 +665,7 @@ public partial class ObserverRoot : Control
             $"每日示範食物庫存：{snapshot.FoodStock}\n" +
             $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
-            $"亂數種子：{WorldSeed}";
+            $"亂數種子：{_world.TempWorldSeed}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
