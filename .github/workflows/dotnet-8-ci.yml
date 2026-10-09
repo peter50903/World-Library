@@ -105,6 +105,7 @@ jobs:
           fi
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
+          grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
           # V0-03B: Godot must render the injected Core map, never generate its own.

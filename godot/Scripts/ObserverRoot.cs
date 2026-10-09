@@ -19,6 +19,7 @@ public partial class ObserverRoot : Control
     private Label _status = null!;
     private Label _notice = null!;
     private RichTextLabel _history = null!;
+    private RichTextLabel _ledger = null!;
 
     public override void _Ready()
     {
@@ -84,6 +85,20 @@ public partial class ObserverRoot : Control
 
         _status = new Label();
         side.AddChild(_status);
+
+        // V0-04A: weekly settlement ledger computed by Core; Godot only displays it.
+        var ledgerHeading = new Label { Text = "本週帳目（TEMP，每 7 日結算）" };
+        ledgerHeading.AddThemeFontSizeOverride("font_size", 18);
+        side.AddChild(ledgerHeading);
+
+        _ledger = new RichTextLabel
+        {
+            BbcodeEnabled = false,
+            ScrollActive = true,
+            CustomMinimumSize = new Vector2(0, 200),
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        side.AddChild(_ledger);
 
         _cellInfo = new Label
         {
@@ -161,6 +176,18 @@ public partial class ObserverRoot : Control
 
             GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 History=31");
 
+            // V0-04A: after 31 days the panel shows Core's 4th weekly ledger, all balanced.
+            var latest = _world.LatestWeek;
+            if (latest is null || latest.Week != 4 || _world.WeekReports().Count != 4
+                || !_ledger.Text.Contains("第 4 週帳目", StringComparison.Ordinal)
+                || !_ledger.Text.Contains(latest.Settlements[0].SettlementName, StringComparison.Ordinal)
+                || !latest.Settlements.All(l => l.IsBalanced)
+                || _ledger.Text.Contains("不平衡", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot weekly ledger panel did not show Core's balanced ledger.");
+            }
+            GD.Print($"WORLD_SIM_WEEKLY_LEDGER_OK: Weeks={_world.WeekReports().Count} Settlements={latest.Settlements.Count}");
+
             // Godot runs the same input handler used by real mouse clicks;
             // selected terrain must be from Core's immutable demo cell.
             var cell = _world.Map.GetCell(2, 2);
@@ -233,6 +260,25 @@ public partial class ObserverRoot : Control
         _ => "未定義（TEMP）"
     };
 
+    private static string LedgerText(DemoWeekReport? week)
+    {
+        if (week is null)
+            return "尚未到第一次週結算（第 7 日）。請按「下一天」推進。";
+
+        var lines = new List<string> { $"第 {week.Week} 週帳目（第 {(int)week.WorldTime.TotalDays} 日結算）" };
+        foreach (var l in week.Settlements)
+        {
+            lines.Add("");
+            lines.Add($"{l.SettlementName}");
+            lines.Add($"  資源點存量：期初 {l.ReserveOpening} ＋再生 {l.Regenerated} －採收 {l.Harvested} ＝期末 {l.ReserveClosing}");
+            lines.Add($"  糧食：期初 {l.FoodOpening} ＋生產 {l.FoodProduced} －消耗 {l.FoodConsumed} ＝期末 {l.FoodClosing}（缺糧 {l.FoodShortage}）");
+            lines.Add($"  人口：期初 {l.PopulationOpening} ＋出生 {l.Births} －死亡 {l.Deaths} ＝期末 {l.PopulationClosing}");
+            lines.Add(l.IsBalanced ? "  帳目平衡：是" : "  【錯誤】帳目不平衡！");
+        }
+
+        return string.Join("\n", lines);
+    }
+
     private void Advance(int days)
     {
         try
@@ -260,6 +306,8 @@ public partial class ObserverRoot : Control
             $"累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
             $"亂數種子：{DemoSeed}";
+
+        _ledger.Text = LedgerText(_world.LatestWeek);
 
         var recent = _world.History().TakeLast(12);
         var lines = recent.Select(e =>

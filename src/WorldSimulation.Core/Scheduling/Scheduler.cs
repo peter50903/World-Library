@@ -81,6 +81,31 @@ public sealed class Scheduler
         return batch;
     }
 
+    /// <summary>
+    /// V0-04A atomic commit support: an independent copy bound to <paramref name="clock"/>
+    /// (normally a <see cref="WorldClock.Clone"/>), with the same pending entries and the
+    /// same next handle sequence. Mutating the copy never touches this scheduler.
+    /// </summary>
+    internal Scheduler CloneOnto(WorldClock clock)
+    {
+        var copy = new Scheduler(clock);
+        copy._nextSeq = _nextSeq;
+        foreach (var work in _pending.Values)
+        {
+            copy._pending.Add(work.Handle.Value, work);
+            copy._queue.Enqueue(work, (work.DueTime, work.Handle.Value));
+        }
+
+        return copy;
+    }
+
+    /// <summary>Pending entries in due order (DueTime, then handle). Read-only view for state checks.</summary>
+    internal IReadOnlyList<ScheduledWork> PendingInOrder()
+        => _pending.Values.OrderBy(w => w.DueTime).ThenBy(w => w.Handle.Value).ToArray();
+
+    /// <summary>The handle value the next <see cref="Schedule"/> call would use.</summary>
+    internal long NextSequence => _nextSeq;
+
     private void DiscardCancelledHead()
     {
         while (_queue.TryPeek(out var head, out _) && !_pending.ContainsKey(head.Handle.Value))
