@@ -67,6 +67,7 @@ public partial class ObserverRoot : Control
 
     private Label _status = null!;
     private Label _notice = null!;
+    private Label[] _slotLabels = null!;
     private RichTextLabel _history = null!;
     private RichTextLabel _ledger = null!;
 
@@ -190,12 +191,33 @@ public partial class ObserverRoot : Control
         skipButton.Pressed += () => Advance(30);
         side.AddChild(skipButton);
 
-        var saveButton = new Button { Text = "存檔（TEMP）" };
-        saveButton.Pressed += SaveWorld;
-        side.AddChild(saveButton);
-        var loadButton = new Button { Text = "讀檔（TEMP）" };
-        loadButton.Pressed += LoadWorld;
-        side.AddChild(loadButton);
+        // V0-07C: three TEMP save slots; each row shows only the slot's header (day, seed, scenario).
+        var slotHeading = new Label { Text = $"TEMP 存檔槽（{DemoSaveSlots.TempSlotCount} 槽，非正式存檔）" };
+        slotHeading.AddThemeFontSizeOverride("font_size", 18);
+        side.AddChild(slotHeading);
+        var saveButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
+        var loadButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
+        _slotLabels = new Label[DemoSaveSlots.TempSlotCount + 1];
+        for (var slot = 1; slot <= DemoSaveSlots.TempSlotCount; slot++)
+        {
+            var row = new HBoxContainer();
+            side.AddChild(row);
+            var label = new Label
+            {
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart
+            };
+            row.AddChild(label);
+            _slotLabels[slot] = label;
+            var number = slot;
+            saveButtons[slot] = new Button { Text = "存" };
+            saveButtons[slot].Pressed += () => SaveWorld(number);
+            row.AddChild(saveButtons[slot]);
+            loadButtons[slot] = new Button { Text = "讀" };
+            loadButtons[slot].Pressed += () => LoadWorld(number);
+            row.AddChild(loadButtons[slot]);
+        }
+        RefreshSlots();
 
         _notice = new Label
         {
@@ -228,25 +250,7 @@ public partial class ObserverRoot : Control
 
         Refresh();
         if (OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE"))
-        {
-            for (var i = 0; i < 9; i++)
-                nextButton.EmitSignal(BaseButton.SignalName.Pressed);
-            var checkpoint = _world.ExportTempSave();
-            saveButton.EmitSignal(BaseButton.SignalName.Pressed);
-            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
-            if (_world.Snapshot().DaysElapsed != 10)
-                throw new InvalidOperationException("TEMP save smoke failed to advance.");
-            loadButton.EmitSignal(BaseButton.SignalName.Pressed);
-            if (_world.ExportTempSave() != checkpoint || _world.Snapshot().DaysElapsed != 9
-                || !_status.Text.Contains("世界日期：第 9 日", StringComparison.Ordinal))
-                throw new InvalidOperationException("TEMP Godot load did not restore all world state and UI.");
-            var baseline = DemoObserverWorld.ImportTempSave(checkpoint);
-            baseline.AdvanceOneDay();
-            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
-            if (_world.ExportTempSave() != baseline.ExportTempSave())
-                throw new InvalidOperationException("TEMP Godot resumed world diverged after load.");
-            GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
-        }
+            VerifySaveSlotSmoke(nextButton, saveButtons, loadButtons);
         if (MapInputSmoke)
             VerifyMapInputSmoke();
 
@@ -515,36 +519,82 @@ public partial class ObserverRoot : Control
         GD.Print($"WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day={dayBefore}");
     }
 
-    private void SaveWorld()
+    private void SaveWorld(int slot)
     {
         try
         {
-            _world.SaveTempFile(DemoObserverWorld.DefaultTempSavePath);
-            _notice.Text = $"TEMP 存檔成功：{DemoObserverWorld.DefaultTempSavePath}";
+            DemoSaveSlots.Save(_world, slot);
+            _notice.Text = $"TEMP 存檔槽 {slot} 存檔成功：{DemoSaveSlots.PathFor(slot)}";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
-            _notice.Text = $"TEMP 存檔失敗，世界未改變：{ex.Message}";
+            _notice.Text = $"TEMP 存檔槽 {slot} 存檔失敗，世界未改變：{ex.Message}";
         }
+        RefreshSlots();
     }
 
-    private void LoadWorld()
+    private void LoadWorld(int slot)
     {
         try
         {
-            var restored = DemoObserverWorld.LoadTempFile(DemoObserverWorld.DefaultTempSavePath);
+            var restored = DemoSaveSlots.Load(slot);
             _world = restored; // New fully validated world; never mutate the old one on failure.
             _hexMap.World = restored.Map;
             _cellInfo.Text = "TEMP 世界讀取完成；請點選地圖格或聚落查看資料。";
             Refresh();
-            _notice.Text = $"TEMP 讀檔成功：{DemoObserverWorld.DefaultTempSavePath}";
+            _notice.Text = $"TEMP 存檔槽 {slot} 讀檔成功：第 {restored.Snapshot().DaysElapsed} 日";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
-            _notice.Text = $"TEMP 讀檔失敗，世界未改變：{ex.Message}";
+            _notice.Text = $"TEMP 存檔槽 {slot} 讀檔失敗，世界未改變：{ex.Message}";
         }
+        RefreshSlots();
+    }
+
+    private void RefreshSlots()
+    {
+        foreach (var info in DemoSaveSlots.ListAll())
+            _slotLabels[info.Slot].Text = info.Describe();
+    }
+
+    /// <summary>
+    /// V0-07C CI smoke (real Godot buttons): save slot 2 on day 9, advance, load slot 2 back to day 9,
+    /// resume identically; a corrupt slot 3 is rejected with a visible reason and the world unchanged.
+    /// </summary>
+    private void VerifySaveSlotSmoke(Button nextButton, Button[] saveButtons, Button[] loadButtons)
+    {
+        for (var i = 0; i < 9; i++)
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+        var checkpoint = _world.ExportTempSave();
+        saveButtons[2].EmitSignal(BaseButton.SignalName.Pressed);
+        if (!_slotLabels[2].Text.StartsWith("槽 2：第 9 日", StringComparison.Ordinal))
+            throw new InvalidOperationException("TEMP slot 2 label does not show the saved day.");
+        nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.Snapshot().DaysElapsed != 10)
+            throw new InvalidOperationException("TEMP save smoke failed to advance.");
+        loadButtons[2].EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.ExportTempSave() != checkpoint || _world.Snapshot().DaysElapsed != 9
+            || !_status.Text.Contains("世界日期：第 9 日", StringComparison.Ordinal))
+            throw new InvalidOperationException("TEMP Godot load did not restore all world state and UI.");
+        var baseline = DemoObserverWorld.ImportTempSave(checkpoint);
+        baseline.AdvanceOneDay();
+        nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.ExportTempSave() != baseline.ExportTempSave())
+            throw new InvalidOperationException("TEMP Godot resumed world diverged after load.");
+        GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
+
+        System.IO.Directory.CreateDirectory(DemoSaveSlots.DefaultDirectory);
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":2,\"State\":");
+        RefreshSlots();
+        var before = _world.ExportTempSave();
+        loadButtons[3].EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.ExportTempSave() != before
+            || !_notice.Text.StartsWith("TEMP 存檔槽 3 讀檔失敗", StringComparison.Ordinal)
+            || !_slotLabels[3].Text.StartsWith("槽 3：無法辨識", StringComparison.Ordinal))
+            throw new InvalidOperationException("TEMP corrupt slot 3 was not rejected visibly.");
+        GD.Print("WORLD_SIM_SLOTS_OK: Slot=2 SavedDay=9 RestoredDay=9 CorruptSlot=3 Rejected=1");
     }
 
     private void OnCellSelected(DemoHexCell cell)
