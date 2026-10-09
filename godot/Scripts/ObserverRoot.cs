@@ -181,8 +181,8 @@ public partial class ObserverRoot : Control
     private void OnCellSelected(DemoHexCell cell)
     {
         _cellInfo.Text =
-            $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})\\n" +
-            $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\\n" +
+            $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})\n" +
+            $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\n" +
             $"核心地形：{TerrainName(cell.Terrain)}";
     }
 
