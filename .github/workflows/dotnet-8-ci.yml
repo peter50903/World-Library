@@ -50,6 +50,16 @@ jobs:
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
             grep -q '歷史（共' /tmp/observer-demo-smoke.log
             grep -q '第 1 日' /tmp/observer-demo-smoke.log
+            # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
+            export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
+            printf '9\nsave 2\nn\nload 2\nslots\nload 3\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 2 版' /tmp/observer-slots.log
+            grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
+            grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
+            grep -q '槽 3：（空）' /tmp/observer-slots.log
+            grep -q '讀檔失敗，現在的世界沒有改變：存檔槽 3 是空的。' /tmp/observer-slots.log
+            grep -q '存檔槽必須是 1～3' /tmp/observer-slots.log
+            unset WORLD_SIM_TEMP_SAVE_DIR
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
             grep -q '第 100 年（至第 36400 日）' /tmp/observer-century.log
@@ -150,12 +160,14 @@ jobs:
           fi
           grep -q 'WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day=0' /tmp/godot-map-input.log
           # V0-07: actual Godot buttons save, load and deterministic resume via TEMP JSON.
-          WORLD_SIM_SAVE_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-save.log
+          # V0-07C: three TEMP slots — save slot 2, load it back, corrupt slot 3 rejected visibly.
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_SAVE_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-save.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-save.log; then
             echo "Godot reported a runtime error in TEMP save/load."
             exit 1
           fi
           grep -q 'WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10' /tmp/godot-save.log
+          grep -q 'WORLD_SIM_SLOTS_OK: Slot=2 SavedDay=9 RestoredDay=9 CorruptSlot=3 Rejected=1' /tmp/godot-save.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."

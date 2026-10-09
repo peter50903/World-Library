@@ -1,0 +1,191 @@
+using System.Text;
+using System.Text.Json.Nodes;
+using Xunit;
+using WorldSimulation.Core.World;
+using WorldSimulation.Core.World.Demo;
+
+namespace WorldSimulation.Core.Tests;
+
+/// <summary>V0-07C：TEMP 多存檔槽（3 槽）、檔頭資訊與版本策略。</summary>
+public sealed class DemoSaveSlotTests : IDisposable
+{
+    private readonly string _directory = Path.Combine(Path.GetTempPath(), "wsim-slots-" + Guid.NewGuid().ToString("N"));
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_directory))
+            Directory.Delete(_directory, recursive: true);
+    }
+
+    private static DemoObserverWorld World(ulong seed, DemoWeeklyTempConfig config, int days)
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(seed), config);
+        for (var i = 0; i < days; i++)
+            world.AdvanceOneDay();
+        return world;
+    }
+
+    [Fact]
+    public void EmptySlots_AreListedAsEmpty()
+    {
+        var slots = DemoSaveSlots.ListAll(_directory);
+        Assert.Equal(DemoSaveSlots.TempSlotCount, slots.Count);
+        Assert.Equal(new[] { 1, 2, 3 }, slots.Select(s => s.Slot));
+        Assert.All(slots, s => Assert.False(s.Exists));
+        Assert.Equal("槽 2：（空）", slots[1].Describe());
+    }
+
+    [Fact]
+    public void ThreeSlots_KeepIndependentWorlds_AndShowHeaderInfo()
+    {
+        var a = World(42, DemoWeeklyTempConfig.Sample, 9);
+        var b = World(7, DemoWeeklyTempConfig.FrontierSample, 21);
+        var c = World(3, DemoWeeklyTempConfig.LocalFamineSample, 30);
+        DemoSaveSlots.Save(a, 1, _directory);
+        DemoSaveSlots.Save(b, 2, _directory);
+        DemoSaveSlots.Save(c, 3, _directory);
+
+        var slots = DemoSaveSlots.ListAll(_directory);
+        Assert.Equal((42UL, 9, "一般示範", 2), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
+        Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
+        Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 2 版", slots[1].Describe());
+
+        Assert.Equal(a.ExportTempSave(), DemoSaveSlots.Load(1, _directory).ExportTempSave());
+        Assert.Equal(b.ExportTempSave(), DemoSaveSlots.Load(2, _directory).ExportTempSave());
+        Assert.Equal(c.ExportTempSave(), DemoSaveSlots.Load(3, _directory).ExportTempSave());
+    }
+
+    [Fact]
+    public void SavingOverASlot_ReplacesOnlyThatSlot()
+    {
+        DemoSaveSlots.Save(World(42, DemoWeeklyTempConfig.Sample, 5), 1, _directory);
+        DemoSaveSlots.Save(World(42, DemoWeeklyTempConfig.Sample, 6), 2, _directory);
+        var later = World(42, DemoWeeklyTempConfig.Sample, 15);
+        DemoSaveSlots.Save(later, 1, _directory);
+
+        Assert.Equal(15, DemoSaveSlots.ReadInfo(1, _directory).DaysElapsed);
+        Assert.Equal(6, DemoSaveSlots.ReadInfo(2, _directory).DaysElapsed);
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    [InlineData(-1)]
+    public void OutOfRangeSlot_IsRejected(int slot)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => DemoSaveSlots.PathFor(slot, _directory));
+        Assert.Throws<ArgumentOutOfRangeException>(() => DemoSaveSlots.Load(slot, _directory));
+    }
+
+    [Fact]
+    public void LoadingEmptySlot_Throws()
+        => Assert.Throws<FileNotFoundException>(() => DemoSaveSlots.Load(3, _directory));
+
+    [Fact]
+    public void SlotInfo_ReadsOnlyHeader_EvenWhenStateIsCorrupt()
+    {
+        // 檔頭完整、世界狀態被截斷：槽位資訊仍可顯示（只讀檔頭），但真正讀檔整份驗證後拒絕。
+        var json = World(42, DemoWeeklyTempConfig.Sample, 12).ExportTempSave();
+        var cut = json[..(json.IndexOf("\"State\"", StringComparison.Ordinal) + 20)];
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(DemoSaveSlots.PathFor(2, _directory), cut, new UTF8Encoding(false));
+
+        var info = DemoSaveSlots.ReadInfo(2, _directory);
+        Assert.Null(info.Error);
+        Assert.Equal(12, info.DaysElapsed);
+        Assert.Throws<InvalidDataException>(() => DemoSaveSlots.Load(2, _directory));
+    }
+
+    [Theory]
+    [InlineData("not json at all")]
+    [InlineData("[1,2,3]")]
+    [InlineData("{\"Version\":3,\"Scenario\":{},\"State\":{}}")]
+    [InlineData("{\"Version\":\"2\"}")]
+    [InlineData("{\"Scenario\":{}}")]
+    [InlineData("")]
+    public void BrokenHeader_IsReportedAsError_NotThrown(string content)
+    {
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(DemoSaveSlots.PathFor(1, _directory), content, new UTF8Encoding(false));
+
+        var info = DemoSaveSlots.ReadInfo(1, _directory);
+        Assert.True(info.Exists);
+        Assert.NotNull(info.Error);
+        Assert.StartsWith("槽 1：無法辨識（", info.Describe(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void UnknownScenarioInHeader_IsReportedAsError()
+    {
+        var doc = JsonNode.Parse(World(42, DemoWeeklyTempConfig.Sample, 3).ExportTempSave())!;
+        doc["WeeklyConfig"]!["FoodPerPersonPerWeek"] = 1;
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(DemoSaveSlots.PathFor(1, _directory), doc.ToJsonString(), new UTF8Encoding(false));
+
+        Assert.Equal("不是已知的示範情境", DemoSaveSlots.ReadInfo(1, _directory).Error);
+    }
+
+    // ── 版本策略：第 1 版（重播）、第 2 版（直接恢復）可讀，其他版本拒絕 ──
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    [InlineData(99)]
+    [InlineData(-2)]
+    public void UnknownVersion_IsRejected(int version)
+    {
+        var doc = JsonNode.Parse(World(42, DemoWeeklyTempConfig.Sample, 8).ExportTempSave())!;
+        doc["Version"] = version;
+        var ex = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
+        Assert.Contains("版本不受支援", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("\"2\"")]
+    [InlineData("2.5")]
+    [InlineData("null")]
+    [InlineData("99999999999")]
+    public void NonIntegerVersion_IsRejected(string versionJson)
+    {
+        var doc = JsonNode.Parse(World(42, DemoWeeklyTempConfig.Sample, 8).ExportTempSave())!;
+        doc["Version"] = JsonNode.Parse(versionJson);
+        Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
+    }
+
+    [Fact]
+    public void MissingVersion_IsRejected()
+    {
+        var doc = JsonNode.Parse(World(42, DemoWeeklyTempConfig.Sample, 8).ExportTempSave())!.AsObject();
+        doc.Remove("Version");
+        Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
+    }
+
+    [Fact]
+    public void Version1And2_InSlots_BothLoad()
+    {
+        var world = World(42, DemoWeeklyTempConfig.FrontierSample, 40);
+        var v2 = world.ExportTempSave();
+        var v1 = JsonNode.Parse(v2)!;
+        v1["Version"] = 1;
+        Directory.CreateDirectory(_directory);
+        File.WriteAllText(DemoSaveSlots.PathFor(1, _directory), v1.ToJsonString(), new UTF8Encoding(false));
+        DemoSaveSlots.Save(world, 2, _directory);
+
+        Assert.Equal(1, DemoSaveSlots.ReadInfo(1, _directory).Version);
+        Assert.Equal(2, DemoSaveSlots.ReadInfo(2, _directory).Version);
+        Assert.Equal(v2, DemoSaveSlots.Load(1, _directory).ExportTempSave());
+        Assert.Equal(v2, DemoSaveSlots.Load(2, _directory).ExportTempSave());
+    }
+
+    [Fact]
+    public void ScenarioNames_CoverAllFourPresets()
+    {
+        Assert.Equal("一般示範", DemoObserverWorld.TempScenarioName(DemoWeeklyTempConfig.Sample));
+        Assert.Equal("全面饑荒", DemoObserverWorld.TempScenarioName(DemoWeeklyTempConfig.FamineSample));
+        Assert.Equal("局部饑荒", DemoObserverWorld.TempScenarioName(DemoWeeklyTempConfig.LocalFamineSample));
+        Assert.Equal("開拓", DemoObserverWorld.TempScenarioName(DemoWeeklyTempConfig.FrontierSample));
+        Assert.Null(DemoObserverWorld.TempScenarioName(DemoWeeklyTempConfig.Sample with { FoodPerPersonPerWeek = 1 }));
+    }
+}

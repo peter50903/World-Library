@@ -43,6 +43,8 @@ for (var i = 1; i < args.Length; i += 2)
     }
 }
 
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+
 if (years is int runYears)
     return RunHeadless(seed, runYears, frontier);
 
@@ -51,7 +53,7 @@ var world = new DemoObserverWorld(DemoScenario.Sample(seed),
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
 Console.WriteLine("注意：人口、初始食物與每日收支為非正式的示範數值；尚未載入試算表的正式世界設定。");
 Console.WriteLine($"亂數種子：{seed}。世界在你閱讀時不會自行推進。");
-Console.WriteLine("指令：n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save 存檔｜load 讀檔｜q 離開");
+Console.WriteLine(HelpText);
 PrintStatus();
 
 while (true)
@@ -71,12 +73,18 @@ while (true)
         PrintStatus();
         continue;
     }
-    if (command is "save")
+    // V0-07C：TEMP 3 個存檔槽。save／load 不加槽號＝槽 1。
+    if (command is "slots")
+    {
+        PrintSlots();
+        continue;
+    }
+    if (TryParseSlotCommand(command, "save", out var saveSlot))
     {
         try
         {
-            world.SaveTempFile(DemoObserverWorld.DefaultTempSavePath);
-            Console.WriteLine($"已儲存 TEMP 世界：{DemoObserverWorld.DefaultTempSavePath}");
+            DemoSaveSlots.Save(world, saveSlot);
+            Console.WriteLine($"已儲存到 TEMP 存檔槽 {saveSlot}：{DemoSaveSlots.ReadInfo(saveSlot).Describe()}");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
@@ -85,13 +93,13 @@ while (true)
         }
         continue;
     }
-    if (command is "load")
+    if (TryParseSlotCommand(command, "load", out var loadSlot))
     {
         try
         {
-            var candidate = DemoObserverWorld.LoadTempFile(DemoObserverWorld.DefaultTempSavePath);
-            world = candidate; // Replace only after the whole TEMP save is verified (V0-07B direct restore).
-            Console.WriteLine($"已讀取 TEMP 世界：{DemoObserverWorld.DefaultTempSavePath}");
+            var candidate = DemoSaveSlots.Load(loadSlot);
+            world = candidate; // Replace only after the whole TEMP save is verified.
+            Console.WriteLine($"已讀取 TEMP 存檔槽 {loadSlot}。");
             PrintStatus();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
@@ -99,6 +107,11 @@ while (true)
         {
             Console.WriteLine($"讀檔失敗，現在的世界沒有改變：{ex.Message}");
         }
+        continue;
+    }
+    if (command.StartsWith("save", StringComparison.Ordinal) || command.StartsWith("load", StringComparison.Ordinal))
+    {
+        Console.WriteLine($"存檔槽必須是 1～{DemoSaveSlots.TempSlotCount}，例如 save 2、load 2。");
         continue;
     }
     if (command is "h" or "history")
@@ -112,7 +125,7 @@ while (true)
     }
     if (command is "?" or "help")
     {
-        Console.WriteLine("n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save 存檔｜load 讀檔｜q 離開");
+        Console.WriteLine(HelpText);
         continue;
     }
 
@@ -139,6 +152,24 @@ while (true)
         Console.WriteLine($"示範世界停止推進：{ex.Message}");
         return 1;
     }
+}
+
+void PrintSlots()
+{
+    Console.WriteLine($"TEMP 存檔槽（{DemoSaveSlots.DefaultDirectory}）：");
+    foreach (var info in DemoSaveSlots.ListAll())
+        Console.WriteLine($"  {info.Describe()}");
+}
+
+static bool TryParseSlotCommand(string command, string verb, out int slot)
+{
+    slot = 1;
+    if (command == verb)
+        return true;
+    var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    return parts.Length == 2 && parts[0] == verb
+        && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out slot)
+        && slot is >= 1 and <= DemoSaveSlots.TempSlotCount;
 }
 
 void PrintStatus()

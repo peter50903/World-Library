@@ -23,6 +23,24 @@ public sealed partial class DemoObserverWorld
     private const int TempSaveVersion = 2; // V0-07B direct snapshot; version 1 = replay checkpoint.
     private const int TempMaxSaveDays = 36400; // TEMP: max 100 years, avoids unbounded replay on load.
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
+    internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
+
+    /// <summary>V0-07C：可讀的存檔版本只有第 1 版（重播）與第 2 版（直接恢復）；其他一律拒絕。</summary>
+    internal static bool IsSupportedTempSaveVersion(int version)
+        => version == TempSaveVersion || version == TempReplaySaveVersion;
+
+    /// <summary>V0-07C：已知 TEMP 生存情境的中文名稱；不是已知情境回傳 null。</summary>
+    public static string? TempScenarioName(DemoWeeklyTempConfig weekly)
+    {
+        if (weekly == DemoWeeklyTempConfig.Sample) return "一般示範";
+        if (weekly == DemoWeeklyTempConfig.FamineSample) return "全面饑荒";
+        if (weekly == DemoWeeklyTempConfig.LocalFamineSample) return "局部饑荒";
+        if (weekly == DemoWeeklyTempConfig.FrontierSample) return "開拓";
+        return null;
+    }
+
+    /// <summary>目前世界的 TEMP 情境名稱（給存檔槽與畫面顯示）。</summary>
+    public string TempScenarioDisplayName => TempScenarioName(_weekly) ?? "自訂 TEMP 情境";
 
     /// <summary>TEMP presets a save may name; anything else is rejected before replay.</summary>
     private static readonly DemoWeeklyTempConfig[] KnownTempWeeklyConfigs =
@@ -89,8 +107,9 @@ public sealed partial class DemoObserverWorld
             if (root.ValueKind != JsonValueKind.Object
                 || !root.TryGetProperty("Version", out var versionElement))
                 throw new InvalidDataException("TEMP 存檔版本不受支援。");
-            var version = versionElement.GetInt32();
-            if (version != TempSaveVersion && version != TempReplaySaveVersion)
+            if (versionElement.ValueKind != JsonValueKind.Number
+                || !versionElement.TryGetInt32(out var version)
+                || !IsSupportedTempSaveVersion(version))
                 throw new InvalidDataException("TEMP 存檔版本不受支援。");
 
             var scenario = root.GetProperty("Scenario").Deserialize<DemoScenario>()
