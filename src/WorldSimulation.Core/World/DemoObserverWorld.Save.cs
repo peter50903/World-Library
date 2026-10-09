@@ -17,6 +17,11 @@ public sealed partial class DemoObserverWorld
     private const int TempMaxSaveDays = 36400; // TEMP: max 100 years, avoids unbounded replay on load.
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
 
+    /// <summary>Shared TEMP save path for the Godot and text observers, not an official save slot.</summary>
+    public static string DefaultTempSavePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "WorldSimulation", "TEMP_observer_world.json");
+
     /// <summary>Deterministic, complete TEMP JSON checkpoint (not a formal save protocol).</summary>
     public string ExportTempSave()
     {
