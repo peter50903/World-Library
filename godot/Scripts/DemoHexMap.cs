@@ -16,6 +16,12 @@ public partial class DemoHexMap : Control
     /// <summary>Injected by ObserverRoot; settlement markers come only from Core.</summary>
     public DemoWorldSites? Sites { get; set; }
 
+    /// <summary>
+    /// V0-06A: migrant batches currently travelling, set by ObserverRoot from Core after every
+    /// advance. Drawn as red markers with the head count; this view never moves them itself.
+    /// </summary>
+    public IReadOnlyList<DemoMigrationBatch> Migrants { get; set; } = Array.Empty<DemoMigrationBatch>();
+
     public event Action<DemoHexCell>? CellSelected;
 
     public DemoHexMap()
@@ -64,6 +70,20 @@ public partial class DemoHexMap : Control
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
             }
+        }
+
+        // V0-06A: travelling migrants, offset to the lower right so a batch still standing on its
+        // source settlement does not hide the golden settlement marker.
+        var font = ThemeDB.FallbackFont;
+        foreach (var batch in Migrants)
+        {
+            var cell = World.GetCell(batch.Cell.Column, batch.Cell.Row);
+            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius)
+                + new Vector2(radius * 0.38f, radius * 0.30f);
+            DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
+            DrawCircle(center, radius * 0.16f, new Color(0.86f, 0.27f, 0.25f));
+            DrawString(font, center + new Vector2(-radius * 0.12f, radius * 0.10f), batch.People.ToString(),
+                HorizontalAlignment.Left, -1, Mathf.Max(8, (int)(radius * 0.32f)), Colors.White);
         }
     }
 

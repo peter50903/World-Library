@@ -15,9 +15,13 @@ public partial class ObserverRoot : Control
     // V0-04B: CI can opt into the TEMP famine scenario to see hunger / starvation events
     // in the real Godot UI. Normal players never set this flag.
     private static readonly bool FamineSmoke = OS.HasEnvironment("WORLD_SIM_FAMINE_SMOKE");
+    // V0-06A: CI can opt into the TEMP local-famine scenario (only settlement #1 has no food)
+    // to see starving people leave for a fed settlement cell by cell. Normal players never set it.
+    private static readonly bool MigrationSmoke = OS.HasEnvironment("WORLD_SIM_MIGRATION_SMOKE");
     private readonly DemoObserverWorld _world = new(
         DemoScenario.Sample(DemoSeed),
-        FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
+        MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
+            : FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
     private DemoHexMap _hexMap = null!;
     private Label _cellInfo = null!;
 
@@ -114,7 +118,7 @@ public partial class ObserverRoot : Control
 
         side.AddChild(new Label
         {
-            Text = "● 綠色：草原   ● 深綠：森林\n● 藍色：水域   ● 金色：示範聚落",
+            Text = "● 綠色：草原   ● 深綠：森林\n● 藍色：水域   ● 金色：示範聚落\n● 紅色：遷徙隊伍（數字＝人數，每週沿相鄰格走 1 格）",
         });
 
         var nextButton = new Button
@@ -149,7 +153,7 @@ public partial class ObserverRoot : Control
         var historyColumn = new VBoxContainer();
         historyPanel.AddChild(historyColumn);
 
-        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除）" };
+        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除／外移／抵達）" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
         historyColumn.AddChild(historyTitle);
 
@@ -163,6 +167,41 @@ public partial class ObserverRoot : Control
         historyColumn.AddChild(_history);
 
         Refresh();
+
+        // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
+        // migrant batch on the road, then check the map markers, the caused history and the panel.
+        if (MigrationSmoke)
+        {
+            for (var i = 0; i < 70 && _world.MigrationsInTransit().Count == 0; i++)
+                nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+
+            var travelling = _world.MigrationsInTransit();
+            var departure = _world.SettlementEvents().LastOrDefault(e => e.Kind == DemoSettlementEventKind.Emigration);
+            if (travelling.Count == 0 || departure is null
+                || _hexMap.Migrants.Count != travelling.Count
+                || !_history.Text.Contains(departure.Describe(), StringComparison.Ordinal)
+                || !_history.Text.Contains("因缺糧外移", StringComparison.Ordinal)
+                || !_ledger.Text.Contains("遷出", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot did not show Core's migrant batch and emigration event.");
+            }
+
+            var batch = travelling[0];
+            _hexMap._GuiInput(new InputEventMouseButton
+            {
+                ButtonIndex = MouseButton.Left,
+                Pressed = true,
+                Position = _hexMap.CellCenter(_world.Map.GetCell(batch.Cell.Column, batch.Cell.Row))
+            });
+            if (!_cellInfo.Text.Contains($"遷徙隊伍 #{batch.Id}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"{batch.People} 人", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Godot cell panel did not show Core's migrant batch.");
+            }
+
+            GD.Print($"WORLD_SIM_MIGRATION_OK: Day={_world.Snapshot().DaysElapsed} Batches={travelling.Count} " +
+                $"People={_world.PopulationInTransit} From={batch.FromSettlementId} To={batch.ToSettlementId}");
+        }
 
         // CI-only, opt-in engine smoke: exercise the actual Godot Button.Pressed
         // signals and confirm both the Core state and visible history updated.
@@ -271,6 +310,14 @@ public partial class ObserverRoot : Control
             $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\n" +
             $"核心地形：{TerrainName(cell.Terrain)}";
 
+        // V0-06A: migrant batches standing on this cell (from Core; never moved by Godot).
+        foreach (var batch in _world.MigrationsInTransit()
+                     .Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
+        {
+            _cellInfo.Text += $"\n遷徙隊伍 #{batch.Id}：{batch.People} 人，{batch.FromName}→{batch.ToName}，" +
+                $"還有 {batch.StepsLeft} 格，攜帶糧食 {batch.Food}，飢餓債 {batch.HungerDebt}";
+        }
+
         var settlement = _world.Sites.SettlementAt(cell.Column, cell.Row);
         if (settlement is null)
             return;
@@ -315,11 +362,21 @@ public partial class ObserverRoot : Control
             lines.Add("");
             lines.Add($"{l.SettlementName}");
             lines.Add($"  資源點存量：期初 {l.ReserveOpening} ＋再生 {l.Regenerated} －採收 {l.Harvested} ＝期末 {l.ReserveClosing}");
-            lines.Add($"  糧食：期初 {l.FoodOpening} ＋生產 {l.FoodProduced} －消耗 {l.FoodConsumed} ＝期末 {l.FoodClosing}（缺糧 {l.FoodShortage}）");
+            lines.Add($"  糧食：期初 {l.FoodOpening} ＋生產 {l.FoodProduced} ＋隊伍帶入 {l.FoodCarriedIn} －消耗 {l.FoodConsumed} －隊伍帶出 {l.FoodCarriedOut} ＝期末 {l.FoodClosing}（缺糧 {l.FoodShortage}）");
             lines.Add($"  糧食來源：農牧 {l.FoodFromFarming} ＋採集 {l.FoodFromGathering}");
-            lines.Add($"  人口：期初 {l.PopulationOpening} ＋出生 {l.Births} －死亡 {l.Deaths} ＝期末 {l.PopulationClosing}");
+            lines.Add($"  人口：期初 {l.PopulationOpening} ＋出生 {l.Births} －死亡 {l.Deaths} ＋遷入 {l.Immigrants} －遷出 {l.Emigrants} ＝期末 {l.PopulationClosing}");
             lines.Add($"  飢餓債：期初 {l.HungerDebtOpening} ＋缺糧 {l.FoodShortage} －恢復 {l.HungerDebtRecovered} －隨死者移除 {l.HungerDebtRemovedByDeath} ＝期末 {l.HungerDebtClosing}");
             lines.Add(l.IsBalanced ? "  帳目平衡：是" : "  【錯誤】帳目不平衡！");
+        }
+
+        // V0-06A: every migrant batch's ledger for this week (departure, on the road, arrival).
+        foreach (var m in week.Migrations)
+        {
+            lines.Add("");
+            var state = m.Departed ? "出發" : m.Arrived ? "抵達" : m.PopulationClosing == 0 ? "全數死於途中" : "途中";
+            lines.Add($"遷徙隊伍 #{m.BatchId}（{state}）：格 {m.CellBefore}→{m.CellAfter}");
+            lines.Add($"  人口：期初 {m.PopulationOpening} －途中死亡 {m.Deaths} ＝期末 {m.PopulationClosing}；攜帶糧食 {m.FoodOpening}→{m.FoodClosing}");
+            lines.Add(m.IsBalanced ? "  帳目平衡：是（不瞬移）" : "  【錯誤】隊伍帳目不平衡或瞬移！");
         }
 
         return string.Join("\n", lines);
@@ -348,12 +405,15 @@ public partial class ObserverRoot : Control
         _status.Text =
             $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
             $"人口：{snapshot.Population}\n" +
+            $"遷徙途中人口：{_world.PopulationInTransit}\n" +
             $"食物庫存：{snapshot.FoodStock}\n" +
             $"累積食物不足：{snapshot.TotalShortage}\n" +
             $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
             $"亂數種子：{DemoSeed}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
+        _hexMap.Migrants = _world.MigrationsInTransit();
+        _hexMap.QueueRedraw();
 
         // V0-04B: merge daily events with weekly settlement events by world time
         // (same day: the daily event first, then the weekly settlement's events).

@@ -58,7 +58,8 @@ internal enum DemoCommitStage
 /// plus (V0-04A) a TEMP weekly L2 settlement for every demo settlement:
 /// resource regeneration → labour and production → consumption, with a resource
 /// ledger and a population ledger checked before anything is published, and (V0-04B)
-/// hunger debt → starvation death with append-only, caused settlement events.
+/// hunger debt → starvation death with append-only, caused settlement events, and (V0-06A)
+/// starving settlements sending migrant batches cell by cell to a known fed settlement.
 /// It does NOT implement official population rules, EntityStore, canonical History,
 /// durability or Save/Load.
 /// </summary>
@@ -82,6 +83,8 @@ public sealed class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _settlementFood;
     private ImmutableSortedDictionary<int, long> _population;
     private ImmutableSortedDictionary<int, long> _hungerDebt;
+    private ImmutableList<DemoMigrationBatch> _migrations = ImmutableList<DemoMigrationBatch>.Empty;
+    private int _nextMigrationBatchId = 1;
     private long _food;
     private long _totalShortage;
 
@@ -115,11 +118,14 @@ public sealed class DemoObserverWorld
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.
-        _reserves = Sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => weekly.InitialReservePerPoint);
+        // V0-06A TEST scenario: the TEMP local-famine settlement starts with nothing.
+        _reserves = Sites.ResourcePoints.ToImmutableSortedDictionary(
+            p => p.Id, p => weekly.IsFamineSettlement(p.SettlementId) ? 0L : weekly.InitialReservePerPoint);
         _population = Sites.Settlements.ToImmutableSortedDictionary(
             s => s.Id, s => Sites.PopGroupsOf(s.Id).Sum(p => (long)p.Size));
         _settlementFood = _population.ToImmutableSortedDictionary(
-            kv => kv.Key, kv => checked(kv.Value * weekly.InitialFoodPerPerson));
+            kv => kv.Key,
+            kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
 
         _scheduler = new Scheduler(_clock);
@@ -169,7 +175,20 @@ public sealed class DemoObserverWorld
     /// <summary>V0-04B: a settlement is starving while it carries hunger debt and still has people.</summary>
     public bool IsStarving(int settlementId) => _hungerDebt[settlementId] > 0 && _population[settlementId] > 0;
 
-    /// <summary>All committed V0-04B settlement events (hunger, starvation death, recovery), oldest first.</summary>
+    /// <summary>V0-06A: migrant batches currently travelling between settlements (detached copy).</summary>
+    public IReadOnlyList<DemoMigrationBatch> MigrationsInTransit()
+        => Array.AsReadOnly(_migrations.ToArray());
+
+    /// <summary>V0-06A: people currently travelling (counted once: not in any settlement).</summary>
+    public long PopulationInTransit => _migrations.Sum(b => b.People);
+
+    /// <summary>V0-06A: food carried by travelling migrant batches.</summary>
+    public long FoodInTransit => _migrations.Sum(b => b.Food);
+
+    /// <summary>
+    /// All committed settlement events (V0-04B hunger, starvation death, recovery; V0-06A emigration,
+    /// arrival, death on the road), oldest first.
+    /// </summary>
     public IReadOnlyList<DemoSettlementEvent> SettlementEvents()
         => Array.AsReadOnly(_weeks.SelectMany(w => w.Events).ToArray());
 
@@ -230,16 +249,21 @@ public sealed class DemoObserverWorld
         var nextSettlementFood = _settlementFood;
         var nextPopulation = _population;
         var nextHungerDebt = _hungerDebt;
+        var nextMigrations = _migrations;
+        var nextMigrationBatchId = _nextMigrationBatchId;
         if (weekly.Count == 1)
         {
             var outcome = DemoWeeklySettlement.Settle(
-                checked(_weeks.Count + 1), dueTime, Sites,
-                _reserves, _settlementFood, _population, _hungerDebt, _weekly);
+                checked(_weeks.Count + 1), dueTime, Map, Sites,
+                _reserves, _settlementFood, _population, _hungerDebt,
+                _migrations, _nextMigrationBatchId, LatestWeek, _weekly);
             nextWeeks = _weeks.Add(outcome.Report);
             nextReserves = outcome.Reserves;
             nextSettlementFood = outcome.SettlementFood;
             nextPopulation = outcome.Population;
             nextHungerDebt = outcome.HungerDebt;
+            nextMigrations = outcome.Migrations;
+            nextMigrationBatchId = outcome.NextMigrationBatchId;
         }
 
         Checkpoint(DemoCommitStage.AfterLedgerStaged);
@@ -257,6 +281,8 @@ public sealed class DemoObserverWorld
         _settlementFood = nextSettlementFood;
         _population = nextPopulation;
         _hungerDebt = nextHungerDebt;
+        _migrations = nextMigrations;
+        _nextMigrationBatchId = nextMigrationBatchId;
         return evt;
     }
 
@@ -281,12 +307,15 @@ public sealed class DemoObserverWorld
         foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
         foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
+        sb.Append(inv, $"nextBatch={_nextMigrationBatchId};");
+        foreach (var batch in _migrations) sb.Append(inv, $"{batch.Fingerprint()};");
         foreach (var evt in _history) sb.Append(inv, $"{evt};");
         foreach (var week in _weeks)
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks};");
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
+            foreach (var m in week.Migrations) sb.Append(inv, $"{m};");
         }
 
         return sb.ToString();
