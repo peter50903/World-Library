@@ -13,6 +13,9 @@ namespace WorldSimulation.Core.World;
 /// </summary>
 public sealed partial class DemoObserverWorld
 {
+    /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
+    public ulong TempWorldSeed => _scenario.Seed;
+
     private const int TempSaveVersion = 1;
     private const int TempMaxSaveDays = 36400; // TEMP: max 100 years, avoids unbounded replay on load.
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
