@@ -86,7 +86,7 @@ while (true)
             DemoSaveSlots.Save(world, saveSlot);
             Console.WriteLine($"已儲存到 TEMP 存檔槽 {saveSlot}：{DemoSaveSlots.ReadInfo(saveSlot).Describe()}");
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
             Console.WriteLine($"存檔失敗，世界未改變：{ex.Message}");
@@ -102,7 +102,7 @@ while (true)
             Console.WriteLine($"已讀取 TEMP 存檔槽 {loadSlot}。");
             PrintStatus();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
             Console.WriteLine($"讀檔失敗，現在的世界沒有改變：{ex.Message}");

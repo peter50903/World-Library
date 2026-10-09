@@ -526,7 +526,7 @@ public partial class ObserverRoot : Control
             DemoSaveSlots.Save(_world, slot);
             _notice.Text = $"TEMP 存檔槽 {slot} 存檔成功：{DemoSaveSlots.PathFor(slot)}";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
             _notice.Text = $"TEMP 存檔槽 {slot} 存檔失敗，世界未改變：{ex.Message}";
@@ -545,7 +545,7 @@ public partial class ObserverRoot : Control
             Refresh();
             _notice.Text = $"TEMP 存檔槽 {slot} 讀檔成功：第 {restored.Snapshot().DaysElapsed} 日";
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
         {
             _notice.Text = $"TEMP 存檔槽 {slot} 讀檔失敗，世界未改變：{ex.Message}";

@@ -52,13 +52,18 @@ jobs:
             grep -q '第 1 日' /tmp/observer-demo-smoke.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '9\nsave 2\nn\nload 2\nslots\nload 3\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
+            printf '{"Version":2,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
             grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 2 版' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
-            grep -q '槽 3：（空）' /tmp/observer-slots.log
-            grep -q '讀檔失敗，現在的世界沒有改變：存檔槽 3 是空的。' /tmp/observer-slots.log
+            grep -q '槽 1：（空）' /tmp/observer-slots.log
+            grep -q '槽 3：無法辨識（檔頭缺少世界資訊）' /tmp/observer-slots.log
+            grep -q '讀檔失敗，現在的世界沒有改變：TEMP 存檔損毀' /tmp/observer-slots.log
+            grep -q '讀檔失敗，現在的世界沒有改變：存檔槽 1 是空的。' /tmp/observer-slots.log
             grep -q '存檔槽必須是 1～3' /tmp/observer-slots.log
+            # The failed loads above must not change the world: the last status line is still day 9.
+            test "$(grep -o '世界狀態｜種子 42｜第 [0-9]* 日' /tmp/observer-slots.log | tail -1)" = '世界狀態｜種子 42｜第 9 日'
             unset WORLD_SIM_TEMP_SAVE_DIR
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
