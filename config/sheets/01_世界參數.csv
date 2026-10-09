@@ -19,7 +19,7 @@ WORLD_MAP_GRID_SHAPE,地圖/空間,世界大地圖格形,HEX,enum,網格,有限�
 LOCAL_SPACE_GRID_SHAPE,地圖/空間,精細局部場景格形,SQUARE_ON_DEMAND,enum,網格,一般地點保持地點節點／建築抽象；需要房間／子地點／局部空間精確互動時展開正方格，不要求把每個世界六角格切成固定數目的方格。,TRUE
 WORLD_SIZE_PLAYER_CONFIGURABLE,地圖/世界生成,玩家可自訂世界大小,1,bool,,新世界生成前由玩家設定世界規模；控制實際生成範圍，不等於改變單格實際km尺度；世界內人口、資源及國家依地理容量與模擬規則生成。,TRUE
 WORLD_MAP_PRESENTATION_MODE,地圖/顯示,世界地圖呈現方式,FLAT_2D,enum,,世界與地點地圖採有限邊界的平面2D視角，沒有球面投影或環繞；依玩家選擇的世界尺寸，畫面可縮放或按需顯示。,TRUE
-WORLD_POLITY_CAPACITY_DESIGN_TARGET,地圖/效能目標,可容納國家數的理想規模,DOZENS_TO_100PLUS,enum,國家,取代舊地球面積5.1億km²驗收目標：理想容納數十至上百個國家與長期歷史，但未完成效能驗證；停用不得視為已保證容量或硬上限。,TRUE
+WORLD_POLITY_CAPACITY_DESIGN_TARGET,地圖/效能目標,可容納國家數的理想規模,DOZENS_TO_100PLUS,enum,國家,取代舊地球面積5.1億km²驗收目標：理想容納數十至上百個國家與長期歷史，但未完成效能驗證；啟用只代表設計目標，不表示效能驗證已通過，也不得視為已保證容量或硬上限。〔Notion 02 第 C、Q 節〕,TRUE
 WORLD_MAP_BOUNDARY_TOPOLOGY,地圖/空間,有限邊界無環繞,FINITE_PLANAR_NO_WRAP,enum,拓撲,平面六角地圖有固定邊界；東西與南北均不連接；超出地圖邊界無合法相鄰格、路線或地點。地圖內仍可存在海洋與內陸水域。,TRUE
 WORLD_RENDER_DIMENSION,地圖/視覺,全遊戲採用平面2D,FLAT_2D_ONLY,enum,繪製,世界地圖、世界格子點選後的背景與人物局部畫面均以2D製作；不把2.5D當預設共同候選；具體美術風格另定。,TRUE
 WORLD_TILE_CONTEXT_ON_SELECT,地圖/互動,點擊世界板塊開啟情境畫面,1,bool,,選取合法可查看的地圖格／地點顯示對應2D背景、事件與可選行動；遵守角色知識與觀察者全知規則，不得由UI臨時創造世界真相或繞過世界時間。,TRUE

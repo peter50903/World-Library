@@ -26,3 +26,7 @@ jobs:
         run: pip install openpyxl==3.1.5
       - name: 檢查 config/sheets/ 是否與 Excel 同步
         run: python3 tools/config_export.py --check
+      - name: 跨表引用檢查（自我測試）
+        run: python3 tools/config_refcheck.py --selftest
+      - name: 跨表引用檢查（00E 路由不得指向已刪除分頁或欄位）
+        run: python3 tools/config_refcheck.py

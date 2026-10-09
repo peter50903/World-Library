@@ -65,17 +65,17 @@ P_DRAGON_OFFSPRING_LEAVE_AT_ADULT,龍族,幼龍成年後強制離開母地區,1,
 P_GOD_DETAILED_PERCEPTION_FAITH,宗教,神明高解析感知信仰值門檻,75,50,100,信仰,int,【TEMP】Notion 02 未定具體門檻；暫以信仰值 75 以上的信徒提供高解析感知，待平衡。,FALSE,TRUE
 P_DUNGEON_OVERFLOW_THRESHOLD_RATIO,地下城,地下城綁定怪物溢出臨界倍率,1.25,1,5,x_capacity,number,【TEMP】Notion 02 未定；地下城綁定怪物超過容量 1.25 倍才溢出到外界，待平衡。,FALSE,TRUE
 ,,,,,,,,,FALSE,FALSE
-P_CHARACTER_GOLD_WEIGHT_PER_UNIT,經濟,角色個人金幣每單位負重,0,0,0,權重／金幣,number,,FALSE,TRUE
-P_CHARACTER_GOLD_VOLUME_PER_UNIT,經濟,角色個人金幣每單位體積,0,0,0,體積／金幣,number,,FALSE,TRUE
-P_SELF_REFLECTION_REEVAL_COOLDOWN_DAYS,心理,主動自我反思有效重評估間隔（每角色一年一次）,365,365,365,world_day,int,,FALSE,TRUE
-P_SELF_REFLECTION_BASE_DURATION_MIN,心理,自我反思基礎行動時長,30,10,120,分鐘,int,,FALSE,TRUE
-P_CHARACTER_LIFE_TARGET_REAL_MIN,玩家,人物降臨完整人生主要現實時間目標,60,60,60,real_minute,int,以角色完整人生為單位；不再與固定世界年數綁定。一般角色主要目標約60分鐘。,FALSE,TRUE
-P_CHARACTER_LIFE_MAX_REAL_MIN,玩家,人物降臨完整人生現實時間硬上限,90,90,90,real_minute,int,超長壽角色亦不得因世界年數線性增加遊玩時間；例如約1000年壽命仍須在約90分鐘內完成整段人生。,FALSE,TRUE
-P_PLAYER_LIFE_GOAL_MAX_ACTIVE,玩家,人物降臨玩家人生目標同時上限,1,1,1,目標,int,,FALSE,TRUE
-P_PLAYER_LIFE_GOAL_REVIEW_TARGET_CHECKPOINTS,玩家,完整人生固定人生目標檢視目標上限,100,100,100,檢查點,int,"用於壽命縮放公式的基準值；檢視間隔年數=最大值(1,向上取整(種族典型壽命年數/100))，使固定檢視停點大致不超過100次。",FALSE,TRUE
-P_PLAYER_LIFE_GOAL_RECOMMENDATION_MIN,玩家,玩家人生目標情境推薦最少數,3,3,3,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選下限。,FALSE,TRUE
-P_PLAYER_LIFE_GOAL_RECOMMENDATION_MAX,玩家,玩家人生目標情境推薦最多數,5,5,5,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選上限；不展開完整可行清單。,FALSE,TRUE
-P_PLAYER_LIFE_GOAL_REVIEW_MIN_INTERVAL_YEARS,玩家,玩家人生目標固定檢視最短間隔,1,1,1,world_year,int,短壽命與一般壽命角色仍至少每1世界年檢視一次；避免週期短於1年。,FALSE,TRUE
+P_CHARACTER_GOLD_WEIGHT_PER_UNIT,經濟,角色個人金幣每單位負重,0,0,0,權重／金幣,number,個人金幣全額隨身、不計重量，故為 0。〔Notion 02 第 G 節〕,FALSE,TRUE
+P_CHARACTER_GOLD_VOLUME_PER_UNIT,經濟,角色個人金幣每單位體積,0,0,0,體積／金幣,number,【TEMP】Notion 02 第 G 節只定「不計重量」，未定體積；暫比照不計體積為 0，待使用者確認。,FALSE,TRUE
+P_SELF_REFLECTION_REEVAL_COOLDOWN_DAYS,心理,主動自我反思有效重評估間隔（每角色一年一次）,365,365,365,world_day,int,每世界年最多一次有效重評估。〔Notion 02 第 N 節；舊「每 24 世界小時」已作廢，見第 P 節〕,FALSE,TRUE
+P_SELF_REFLECTION_BASE_DURATION_MIN,心理,自我反思基礎行動時長,30,10,120,分鐘,int,自我反思行動耗時 30 分鐘。〔Notion 02 第 N 節〕最小／最大值 10～120 只是可調範圍，不是定案。,FALSE,TRUE
+P_CHARACTER_LIFE_TARGET_REAL_MIN,玩家,人物降臨完整人生主要現實時間目標,60,60,60,real_minute,int,以角色完整人生為單位；不再與固定世界年數綁定。一般角色主要目標約60分鐘。〔Notion 02 第 N 節〕,FALSE,TRUE
+P_CHARACTER_LIFE_MAX_REAL_MIN,玩家,人物降臨完整人生現實時間硬上限,90,90,90,real_minute,int,超長壽角色亦不得因世界年數線性增加遊玩時間；例如約1000年壽命仍須在約90分鐘內完成整段人生。〔Notion 02 第 N 節〕,FALSE,TRUE
+P_PLAYER_LIFE_GOAL_MAX_ACTIVE,玩家,人物降臨玩家人生目標同時上限,1,1,1,目標,int,同一角色同時只有 1 個玩家人生目標。〔Notion 02 第 N 節；舊「最多 3 個」已作廢〕,FALSE,TRUE
+P_PLAYER_LIFE_GOAL_REVIEW_TARGET_CHECKPOINTS,玩家,完整人生固定人生目標檢視目標上限,100,100,100,檢查點,int,"用於壽命縮放公式的基準值；檢視間隔年數=最大值(1,向上取整(種族典型壽命年數/100))，使固定檢視停點大致不超過100次。〔Notion 02 第 N 節〕",FALSE,TRUE
+P_PLAYER_LIFE_GOAL_RECOMMENDATION_MIN,玩家,玩家人生目標情境推薦最少數,3,3,3,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選下限。〔Notion 02 第 N 節〕,FALSE,TRUE
+P_PLAYER_LIFE_GOAL_RECOMMENDATION_MAX,玩家,玩家人生目標情境推薦最多數,5,5,5,goal_option,int,需要玩家選擇新玩家人生目標時的少量情境候選上限；不展開完整可行清單。〔Notion 02 第 N 節〕,FALSE,TRUE
+P_PLAYER_LIFE_GOAL_REVIEW_MIN_INTERVAL_YEARS,玩家,玩家人生目標固定檢視最短間隔,1,1,1,world_year,int,短壽命與一般壽命角色仍至少每1世界年檢視一次；避免週期短於1年。〔Notion 02 第 N 節〕,FALSE,TRUE
 P_MONSTER_REPRODUCTION_MULTIPLIER,觀察者調整,怪物繁殖倍率,1,0.25,4,x,number,觀察者可調倍率；調整方式見 41B TUNE_MONSTER_REPRO。只修改之後的怪物繁殖／補充檢查；不直接增加或刪除現有怪物,FALSE,TRUE
 P_KING_VARIANT_WEIGHT_MULTIPLIER,觀察者調整,王種出現倍率,1,0,10,x,number,觀察者可調倍率；調整方式見 41B TUNE_KING_VARIANT。乘在合法王種變異體生成權重上；0可停用未來生成，但不刪除現存王種變異體,FALSE,TRUE
 P_DISASTER_FREQUENCY_MULTIPLIER,觀察者調整,自然災害頻率倍率,1,0.25,4,x,number,觀察者可調倍率；調整方式見 41B TUNE_DISASTER_FREQ。影響後續自然災害生成權重，不改寫已發生災害,FALSE,TRUE
