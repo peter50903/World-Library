@@ -118,12 +118,12 @@ public sealed class DemoCenturyRunTests
             InhabitedSettlements: 2, DailyDemoHarvest: 0);
         Assert.Empty(ok.Problems());
 
-        Assert.Contains(ok with { PopulationClosing = 9 }.Problems(), p => p.Contains("人口帳"));
-        Assert.Contains(ok with { FoodClosing = 16 }.Problems(), p => p.Contains("糧食帳"));
-        Assert.Contains(ok with { ReserveClosing = 111 }.Problems(), p => p.Contains("資源存量帳"));
-        Assert.Contains(ok with { FoodProduced = 31, FoodClosing = 16 }.Problems(), p => p.Contains("魔法糧食"));
-        Assert.Contains(ok with { StarvationDeathsInEvents = 1 }.Problems(), p => p.Contains("帶原因"));
-        Assert.Contains(ok with { Weeks = 51 }.Problems(), p => p.Contains("週結算次數"));
+        Assert.Contains((ok with { PopulationClosing = 9 }).Problems(), p => p.Contains("人口帳"));
+        Assert.Contains((ok with { FoodClosing = 16 }).Problems(), p => p.Contains("糧食帳"));
+        Assert.Contains((ok with { ReserveClosing = 111 }).Problems(), p => p.Contains("資源存量帳"));
+        Assert.Contains((ok with { FoodProduced = 31, FoodClosing = 16 }).Problems(), p => p.Contains("魔法糧食"));
+        Assert.Contains((ok with { StarvationDeathsInEvents = 1 }).Problems(), p => p.Contains("帶原因"));
+        Assert.Contains((ok with { Weeks = 51 }).Problems(), p => p.Contains("週結算次數"));
     }
 
     [Theory]
