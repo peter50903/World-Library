@@ -65,13 +65,25 @@ jobs:
           dotnet build godot/WorldSimulation.Godot.csproj --no-restore --configuration Release
           echo "Godot C# build succeeded. Interactive scene still needs Godot .NET editor to view."
 
+      - name: Restore verified Godot 4.7.2 .NET engine archive from cache
+        uses: actions/cache@v4
+        with:
+          path: /tmp/godot-dotnet.zip
+          # Pinned to the official release asset content digest, NOT mutable URLs.
+          key: godot-mono-linux-x86_64-4.7.2-sha256-129f82db7bafd54ae14bb5bb284041c73860e8c7a009a3a026ca5e946cbff247
+
       - name: Headless Godot 4.7.2 .NET project import and scene launch (V0-02)
         shell: bash
         run: |
           set -euo pipefail
           # Download the official matching .NET-enabled engine release, not plain Godot.
           url="https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_mono_linux_x86_64.zip"
-          curl -fL --retry 3 --connect-timeout 20 --max-time 180 "$url" -o /tmp/godot-dotnet.zip
+          # Download only if the digest-namespaced archive is not cached.
+          if [[ ! -f /tmp/godot-dotnet.zip ]]; then
+            curl -fL --retry 3 --connect-timeout 20 --max-time 180 "$url" -o /tmp/godot-dotnet.zip
+          else
+            echo "Godot archive cache hit; checksum will still be verified."
+          fi
           # Pinned to godotengine/godot 4.7.2-stable official Release asset 519690444 digest.
           # Verify BEFORE unzip or executing downloaded bytes. Never rely on the URL alone.
           echo "129f82db7bafd54ae14bb5bb284041c73860e8c7a009a3a026ca5e946cbff247  /tmp/godot-dotnet.zip" | sha256sum -c -
