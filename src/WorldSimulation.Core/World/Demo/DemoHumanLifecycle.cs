@@ -13,7 +13,7 @@ internal static class DemoHumanLifecycle
     public static DemoTempDemographyRules Rules => DemoTempDemographyRules.HumanFixture;
 
     public static (DemoWeeklyOutcome Outcome, DemoTempDemography Population) Apply(
-        DemoWeeklyOutcome weekly, DemoTempDemography opening)
+        DemoWeeklyOutcome weekly, DemoTempDemography opening, long firstNewEventId = 1)
     {
         ArgumentNullException.ThrowIfNull(weekly);
         ArgumentNullException.ThrowIfNull(opening);
@@ -76,7 +76,7 @@ internal static class DemoHumanLifecycle
         }
 
         var events = report.Events.ToList();
-        long eventId = events.Count == 0 ? 1 : checked(events[events.Count - 1].EventId + 1);
+        long eventId = events.Count == 0 ? firstNewEventId : checked(events[events.Count - 1].EventId + 1);
         foreach (var e in result.Events.Where(e => e.Kind is
             DemoTempDemographicKind.Birth or DemoTempDemographicKind.NaturalDeath))
         {
@@ -112,6 +112,7 @@ internal static class DemoHumanLifecycle
         DemoTempDemography opening, IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites)
     {
         var current = opening;
+        long nextEventId = 1;
         foreach (var stored in reports)
         {
             var stripped = stored with
@@ -134,11 +135,12 @@ internal static class DemoHumanLifecycle
                 stripped.Settlements.ToImmutableSortedDictionary(l => l.SettlementId, l => l.PopulationClosing),
                 stripped.Settlements.ToImmutableSortedDictionary(l => l.SettlementId, l => l.HungerDebtClosing),
                 ImmutableList<DemoMigrationBatch>.Empty, 1, sites);
-            var trial = Apply(temp, current);
+            var trial = Apply(temp, current, nextEventId);
             if (!trial.Outcome.Report.Settlements.SequenceEqual(stored.Settlements)
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))
                 throw new InvalidDataException("TEMP birth/death events do not match reconstructed pregnancies and age.");
             current = trial.Population;
+            if (stored.Events.Count > 0) nextEventId = checked(stored.Events[^1].EventId + 1);
         }
         return current;
     }
