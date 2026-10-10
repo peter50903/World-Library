@@ -9,5 +9,7 @@
   "Allocation": "ONE_SOURCE_TOTAL",
   "ForestReach": "SELF_AND_SIX_ADJACENT_LAND",
   "MainRiverReach": "SIX_ADJACENT_LAND_ONLY",
-  "Notes": "Only an explicit river-main-channel tile is eligible. These are shared per-source weekly budgets, not per neighbouring hex grants. Actual harvest remains limited by workforce, demand and later real reserve/reproduction accounting. TEMP; not canonical production balance."
+  "Notes": "TEMP natural food per source hex per week: forest20, grassland8, explicitly marked main river5, ordinary water3; settlements and future built-up occupied tile sources must be excluded. One budget per source shared with neighbouring land; no farming on undeveloped grassland.",
+  "GrasslandForageWeeklySupply": 8,
+  "OpenWaterWeeklySupply": 3
 }
