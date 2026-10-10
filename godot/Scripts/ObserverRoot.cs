@@ -31,6 +31,8 @@ public partial class ObserverRoot : Control
     private const int MigrationSmokeDays = 70;
     // #81: CI-only smoke for the player-visible TEMP scenario picker. Normal players never set it.
     private static readonly bool ScenarioSmoke = OS.HasEnvironment("WORLD_SIM_SCENARIO_SMOKE");
+    // #87: CI-only smoke for play / pause. Normal players never set it.
+    private static readonly bool PlaybackSmoke = OS.HasEnvironment("WORLD_SIM_PLAYBACK_SMOKE");
 
     /// <summary>
     /// #81：玩家可在畫面上選的四種既有 TEMP 生存情境（順序＝下拉選單順序）。
@@ -127,6 +129,10 @@ public partial class ObserverRoot : Control
     private Button _confirmScenarioButton = null!;
     private Button _cancelScenarioButton = null!;
     private TempScenario? _pendingScenario;
+    // #87: play / pause. The clock only decides HOW MANY days to advance; Core advances them one by one.
+    private readonly PlaybackClock _playback = new();
+    private Button _playButton = null!;
+    private OptionButton _speedPicker = null!;
 
     public override void _Ready()
     {
@@ -284,6 +290,23 @@ public partial class ObserverRoot : Control
         skipButton.Pressed += () => Advance(30);
         side.AddChild(skipButton);
 
+        // #87: play / pause and a TEMP observer speed (days of world time per real second).
+        var playRow = new HBoxContainer();
+        side.AddChild(playRow);
+        _playButton = new Button
+        {
+            Text = "▶ 播放",
+            CustomMinimumSize = new Vector2(0, 52),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _playButton.Pressed += TogglePlayback;
+        playRow.AddChild(_playButton);
+        _speedPicker = new OptionButton();
+        foreach (var speed in PlaybackClock.TempDaysPerSecondOptions)
+            _speedPicker.AddItem($"每秒 {speed} 天（TEMP）");
+        _speedPicker.ItemSelected += OnSpeedPicked;
+        playRow.AddChild(_speedPicker);
+
         // V0-07C: three TEMP save slots; each row shows only the slot's header (day, seed, scenario).
         var slotHeading = new Label { Text = $"TEMP 存檔槽（{DemoSaveSlots.TempSlotCount} 槽，非正式存檔）" };
         slotHeading.AddThemeFontSizeOverride("font_size", 18);
@@ -314,7 +337,7 @@ public partial class ObserverRoot : Control
 
         _notice = new Label
         {
-            Text = "世界只會在按下按鈕時推進。",
+            Text = "世界只會在按下按鈕或按「▶ 播放」時推進；存檔、讀檔、切換情境會自動暫停。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         side.AddChild(_notice);
@@ -348,6 +371,8 @@ public partial class ObserverRoot : Control
             VerifyMapInputSmoke();
         if (ScenarioSmoke)
             VerifyScenarioSwitchSmoke(nextButton, skipButton, saveButtons, loadButtons);
+        if (PlaybackSmoke)
+            VerifyPlaybackSmoke(nextButton, saveButtons, loadButtons);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -616,6 +641,7 @@ public partial class ObserverRoot : Control
 
     private void SaveWorld(int slot)
     {
+        PausePlayback();
         try
         {
             DemoSaveSlots.Save(_world, slot);
@@ -631,6 +657,7 @@ public partial class ObserverRoot : Control
 
     private void LoadWorld(int slot)
     {
+        PausePlayback();
         try
         {
             var restored = DemoSaveSlots.Load(slot);
@@ -663,6 +690,7 @@ public partial class ObserverRoot : Control
 
     private void RequestNewScenario()
     {
+        PausePlayback();
         var target = (TempScenario)_scenarioPicker.Selected;
         var day = _world.Snapshot().DaysElapsed;
         if (day == 0)
@@ -714,6 +742,7 @@ public partial class ObserverRoot : Control
     /// <summary>Replaces the displayed world and redraws everything from it (no residue of the old one).</summary>
     private void InstallWorld(DemoObserverWorld world, string cellInfoText)
     {
+        PausePlayback();
         _world = world;
         _pendingScenario = null;
         _confirmRow.Visible = false;
@@ -1000,13 +1029,122 @@ public partial class ObserverRoot : Control
             for (var i = 0; i < days; i++)
                 last = _world.AdvanceOneDay();
 
-            _notice.Text = $"已推進 {days} 天；第 {last!.Day} 天：收穫 {last.Harvested}，消耗 {last.Consumed}，缺糧 {last.Shortage}。";
+            _notice.Text = (_playback.Playing ? $"{_playback.StatusText}；" : "")
+                + $"已推進 {days} 天；第 {last!.Day} 天：收穫 {last.Harvested}，消耗 {last.Consumed}，缺糧 {last.Shortage}。";
             Refresh();
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
         {
-            _notice.Text = $"推進失敗（無狀態偽造）：{ex.Message}";
+            PausePlayback();
+            _notice.Text = $"推進失敗（無狀態偽造），已暫停：{ex.Message}";
         }
+    }
+
+    // ---------- #87: play / pause ----------
+
+    /// <summary>Each frame asks the clock how many whole days have elapsed and lets Core advance them one by one.</summary>
+    public override void _Process(double delta)
+    {
+        var days = _playback.Tick(delta);
+        if (days > 0)
+            Advance(days);
+    }
+
+    private void TogglePlayback()
+    {
+        if (_playback.Playing)
+        {
+            PausePlayback();
+            _notice.Text = $"已暫停（第 {_world.Snapshot().DaysElapsed} 日）。";
+            return;
+        }
+
+        _playback.Play();
+        _playButton.Text = "⏸ 暫停";
+        _notice.Text = $"{_playback.StatusText}：世界每天仍由核心逐日結算，與按「下一天」相同。";
+        Refresh();
+    }
+
+    private void PausePlayback()
+    {
+        if (!_playback.Playing)
+            return;
+        _playback.Pause();
+        _playButton.Text = "▶ 播放";
+        Refresh();
+    }
+
+    private void OnSpeedPicked(long index)
+    {
+        _playback.SetSpeed(PlaybackClock.TempDaysPerSecondOptions[(int)index]);
+        if (_playback.Playing)
+            Refresh();
+    }
+
+    private void VerifyPlaybackSmoke(Button nextButton, Button[] saveButtons, Button[] loadButtons)
+    {
+        void Fail(string why) => throw new InvalidOperationException("Playback smoke: " + why);
+        void Press(Button button) => button.EmitSignal(BaseButton.SignalName.Pressed);
+        int Day() => _world.Snapshot().DaysElapsed;
+        void Frames(int count, double delta)
+        {
+            for (var i = 0; i < count; i++)
+                _Process(delta);
+        }
+
+        if (Day() != 0 || _playback.Playing)
+            Fail("the world must start paused on day 0.");
+
+        // 1. Paused: frames never advance the world.
+        Frames(10, 0.5);
+        if (Day() != 0)
+            Fail("frames advanced a paused world.");
+
+        // 2. Play at 5 days/s: 8 frames of 0.25 s = 10 days; identical to pressing "next day" 10 times in Core.
+        _speedPicker.Select(1);
+        _speedPicker.EmitSignal(OptionButton.SignalName.ItemSelected, 1L);
+        Press(_playButton);
+        if (!_playback.Playing || _playButton.Text != "⏸ 暫停" || !_status.Text.Contains("播放中（每秒 5 天，TEMP）", StringComparison.Ordinal))
+            Fail("the play button did not start playback.");
+        Frames(8, 0.25);
+        var played = Day();
+        var reference = CreateTempWorld(TempScenario.Normal);
+        for (var i = 0; i < played; i++)
+            reference.AdvanceOneDay();
+        if (played != 10 || _world.ExportTempSave() != reference.ExportTempSave())
+            Fail($"playback did not match Core day by day (day {played}).");
+
+        // 3. Pause: more frames never advance.
+        Press(_playButton);
+        Frames(20, 0.5);
+        if (_playback.Playing || Day() != played || !_status.Text.Contains("已暫停", StringComparison.Ordinal))
+            Fail("pause did not stop the world.");
+
+        // 4. Saving while playing pauses first; loading stays paused.
+        Press(_playButton);
+        Press(saveButtons[1]);
+        var saved = Day();
+        Frames(20, 0.5);
+        if (_playback.Playing || Day() != saved)
+            Fail("saving did not pause playback.");
+        Press(nextButton);
+        Press(_playButton);
+        Press(loadButtons[1]);
+        Frames(20, 0.5);
+        if (_playback.Playing || Day() != saved)
+            Fail("loading did not pause playback.");
+
+        // 5. A long frame hitch is capped per frame (TEMP), never a giant unseen jump.
+        _speedPicker.Select(2);
+        _speedPicker.EmitSignal(OptionButton.SignalName.ItemSelected, 2L);
+        Press(_playButton);
+        _Process(60);
+        var capped = Day() - saved;
+        Press(_playButton);
+        if (capped != PlaybackClock.TempMaxDaysPerFrame || _playback.Playing)
+            Fail($"a long frame advanced {capped} days.");
+
+        GD.Print($"WORLD_SIM_PLAYBACK_OK: Played={played} Paused={played} SaveAutoPaused=1 LoadAutoPaused=1 Capped={capped}");
     }
 
     private void Refresh()
@@ -1017,6 +1155,7 @@ public partial class ObserverRoot : Control
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
             $"實際種子：{_world.TempWorldSeed}\n" +
             $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
+            $"時間推進：{_playback.StatusText}\n" +
             // #61: one population ledger (settlements + migrants, each person counted once) ...
             $"聚落人口合計：{_world.SettledPopulation}\n" +
             $"遷徙途中人口：{_world.PopulationInTransit}\n" +

@@ -20,4 +20,9 @@
     <ProjectReference Include="..\..\src\WorldSimulation.ObserverCli\WorldSimulation.ObserverCli.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- #87：Godot 播放計時器是純 C#（不引用 Godot），直接連結原始檔做單元測試。 -->
+    <Compile Include="..\..\godot\Scripts\PlaybackClock.cs" Link="Godot\PlaybackClock.cs" />
+  </ItemGroup>
+
 </Project>

@@ -206,6 +206,14 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_SCENARIO_OK: Normal=42 LocalFamine=[0-9]+ MigrationDay=[1-9][0-9]* Frontier=[0-9]+ FoundedDay=[1-9][0-9]* Famine=42 ConfirmRequired=1 SlotsUnchanged=1' /tmp/godot-scenario.log
+          # #87: play / pause — real buttons and frames; paused never advances, playback equals Core day by day,
+          # save / load auto-pause, and a long frame hitch is capped (TEMP).
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_PLAYBACK_SMOKE=1 timeout 60 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-playback.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-playback.log; then
+            echo "Godot reported a runtime error in the play / pause smoke."
+            exit 1
+          fi
+          grep -q 'WORLD_SIM_PLAYBACK_OK: Played=10 Paused=10 SaveAutoPaused=1 LoadAutoPaused=1 Capped=30' /tmp/godot-playback.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."

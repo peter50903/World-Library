@@ -176,6 +176,7 @@
 | M1 驗收預設種子 42、7、1，預設 100 年 | `M1Acceptance.cs:965-968` |
 | 饑荒、局部饑荒、開拓情境（`FamineSample`／`LocalFamineSample`／`FrontierSample`） | `DemoWeeklySettlement.cs:42-71`；M1 情境 `M1Acceptance.cs:227` |
 | Godot 預設種子 42、局部饑荒／開拓情境與 CI 冒煙測試挑種子（42，再 1～30）、冒煙天數（#81 起玩家也可在畫面選這些 TEMP 情境） | `godot/Scripts/ObserverRoot.cs:14-113` |
+| #87 觀察者播放速度：每秒 1／5／30 世界日、每幀最多推進 30 日（純畫面顯示，不是世界規則） | `godot/Scripts/PlaybackClock.cs:12-19` |
 | 存檔只接受已知示範情境 | `DemoObserverWorld.Save.cs:45-46` |
 | `tests/` 內的期望數字 | 全部由上表 fixture 與 D3～D7 的 TEMP 值推導，D3～D7 定案時一併更新 |
 
@@ -198,6 +199,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 15 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 10 | D8、c1 |
-| `godot/Scripts/ObserverRoot.cs` | 67 | D7、D8、D10、第 3 節 |
+| `godot/Scripts/ObserverRoot.cs` | 71 | D7、D8、D10、第 3 節；#87 播放速度 |
 | `godot/Scripts/DemoHexMap.cs` | 6 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
+| `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
