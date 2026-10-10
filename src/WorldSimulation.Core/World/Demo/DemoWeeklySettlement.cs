@@ -28,7 +28,8 @@ public sealed record DemoWeeklyTempConfig(
     int FoundingSearchMaxSteps = 3,
     bool TempFamineAllOriginal = false,
     bool SharedCatchmentEnabled = false,
-    bool CrowdedForaging = false)
+    bool CrowdedForaging = false,
+    bool HumanLifecycleEnabled = false)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -51,6 +52,15 @@ public sealed record DemoWeeklyTempConfig(
         FarmlandRegenPerWeek = 0,
         WoodlandRegenPerWeek = 0,
         FisheryRegenPerWeek = 0
+    };
+
+    /// <summary>TEMP playable human births, pregnancy and age-related deaths.
+    /// Migrant identity transfer still needs an audited cohort carrier, so this
+    /// mode disables migration rather than inventing or duplicating persons.</summary>
+    public static DemoWeeklyTempConfig LivingForagingSample { get; } = ForagingSample with
+    {
+        HumanLifecycleEnabled = true,
+        MigrationEnabled = false
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
@@ -172,7 +182,11 @@ public enum DemoSettlementEventKind
     /// V0-06B 建立新聚落：開拓隊走到空格，以倖存者建立新聚落（45F SETTLE_NEW；M1_SETTLE 人口全部來自隊伍）。
     /// SettlementId＝新聚落；Count＝人數。
     /// </summary>
-    SettlementFounded = 6
+    SettlementFounded = 6,
+    /// <summary>Verified human pregnancy completed after 39 TEMP weeks.</summary>
+    Birth = 7,
+    /// <summary>Verified age/typical lifespan-based natural death, not hunger death.</summary>
+    NaturalDeath = 8
 }
 
 /// <summary>
@@ -207,6 +221,8 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.Arrival => $"第 {day} 天  |  {SettlementName} {Count} 名遷徙者抵達（{Cause}）",
             DemoSettlementEventKind.MigrantStarvationDeath => $"第 {day} 天  |  自{SettlementName}出發的遷徙隊伍 {Count} 人途中餓死（原因：{Cause}）",
             DemoSettlementEventKind.SettlementFounded => $"第 {day} 天  |  建立新聚落「{SettlementName}」：{Count} 名遷徙者定居（{Cause}）",
+            DemoSettlementEventKind.Birth => $"第 {day} 天  |  {SettlementName} 出生 {Count} 人（{Cause}）",
+            DemoSettlementEventKind.NaturalDeath => $"第 {day} 天  |  {SettlementName} 自然死亡 {Count} 人（{Cause}）",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -249,7 +265,9 @@ public sealed record DemoSettlementWeekLedger(
     long FoodCarriedIn = 0,
     long FoodCarriedOut = 0,
     long HungerDebtCarriedIn = 0,
-    long HungerDebtCarriedOut = 0)
+    long HungerDebtCarriedOut = 0,
+    long NaturalDeaths = 0,
+    long HungerDebtRemovedByNaturalDeath = 0)
 {
     public bool ReserveBalanced => ReserveOpening + Regenerated - Harvested == ReserveClosing;
 
@@ -263,9 +281,9 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>飢餓債帳：期初＋缺糧－恢復－隨死者移除＝期末；有死亡必有移除的飢餓債（死亡有原因）。</summary>
     public bool HungerDebtBalanced
-        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath
+        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath - HungerDebtRemovedByNaturalDeath
             + HungerDebtCarriedIn - HungerDebtCarriedOut == HungerDebtClosing
-        && (Deaths == 0 || HungerDebtRemovedByDeath > 0)
+        && (Deaths == NaturalDeaths || HungerDebtRemovedByDeath > 0)
         && (PopulationClosing > 0 || HungerDebtClosing == 0);
 
     /// <summary>
@@ -282,7 +300,8 @@ public sealed record DemoSettlementWeekLedger(
     public bool NonNegative
         => ReserveOpening >= 0 && Regenerated >= 0 && Harvested >= 0 && ReserveClosing >= 0
         && FoodOpening >= 0 && FoodProduced >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
-        && PopulationOpening >= 0 && Births >= 0 && Deaths >= 0 && PopulationClosing >= 0
+        && PopulationOpening >= 0 && Births >= 0 && Deaths >= 0 && NaturalDeaths >= 0
+        && NaturalDeaths <= Deaths && HungerDebtRemovedByNaturalDeath >= 0 && PopulationClosing >= 0
         && FoodFromFarming >= 0 && FoodFromGathering >= 0 && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0
         && HungerDebtRemovedByDeath >= 0 && HungerDebtClosing >= 0
         && Immigrants >= 0 && Emigrants >= 0 && FoodCarriedIn >= 0 && FoodCarriedOut >= 0
@@ -797,9 +816,15 @@ internal static class DemoWeeklySettlement
 
             // SURV_DEATH：死亡必須有原因。帳上的死亡數必須等於帶原因的餓死事件人數。
             var deathEvents = report.Events
-                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.StarvationDeath)
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind is
+                    DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.NaturalDeath)
                 .Sum(e => e.Count);
-            if (deathEvents != ledger.Deaths
+            var naturalEvents = report.Events
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
+            var birthEvents = report.Events
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
+            if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths
+                || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId
                     && e.Kind == DemoSettlementEventKind.StarvationDeath && string.IsNullOrWhiteSpace(e.Cause)))
                 throw new InvalidOperationException(
