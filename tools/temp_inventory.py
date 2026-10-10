@@ -6,8 +6,8 @@ docs/TEMP_待裁決清單.md 的附錄 A 是否逐檔列出正確的標記行數
 
 用法：
   python3 tools/temp_inventory.py             # 列出檔案與標記數
-  python3 tools/temp_inventory.py --check     # 清單漏列任何檔案時結束碼 1（CI 使用）
-  python3 tools/temp_inventory.py --selftest  # 用內建反例確認檢查本身會抓到漏列
+  python3 tools/temp_inventory.py --check     # 路徑或標記數不符時結束碼 1（CI 使用）
+  python3 tools/temp_inventory.py --selftest  # 8 項反例與正例驗證
 """
 import pathlib, sys
 
@@ -94,6 +94,7 @@ def selftest():
     for name, passed in cases.items():
         print(f"{'通過' if passed else '失敗'}：{name}")
     return 0 if all(cases.values()) else 1
+
 
 def main(argv):
     if "--selftest" in argv:
