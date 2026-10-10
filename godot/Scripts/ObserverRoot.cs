@@ -38,7 +38,7 @@ public partial class ObserverRoot : Control
     /// #81：玩家可在畫面上選的四種既有 TEMP 生存情境（順序＝下拉選單順序）。
     /// 只對應 Core 既有的 <see cref="DemoWeeklyTempConfig"/> 示範設定，不是正式規則。
     /// </summary>
-    private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3, Foraging = 4, CrowdedForaging = 5 }
+    private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3, Foraging = 4, CrowdedForaging = 5, LivingForaging = 6 }
 
     // Keep legacy CI fixture expectations untouched, but make the new human-only
     // forest/river food world the default for real F5 players.
@@ -56,7 +56,7 @@ public partial class ObserverRoot : Control
     private static readonly TempScenario InitialScenario = SettleSmoke ? TempScenario.Frontier
         : MigrationSmoke ? TempScenario.LocalFamine
         : FamineSmoke ? TempScenario.Famine
-        : LegacyFixtureSmoke ? TempScenario.Normal : TempScenario.Foraging;
+        : LegacyFixtureSmoke ? TempScenario.Normal : TempScenario.LivingForaging;
     // TEMP: local famine / frontier reuse the existing demo seed search (42, then 1..30) so that the
     // migration / founding is reproducibly visible; the actual seed is always shown on screen.
     private static readonly Lazy<ulong> MigrationDemoSeed = new(PickMigrationSmokeSeed);
@@ -78,6 +78,7 @@ public partial class ObserverRoot : Control
         TempScenario.Frontier => DemoWeeklyTempConfig.FrontierSample,
         TempScenario.Foraging => DemoWeeklyTempConfig.ForagingSample,
         TempScenario.CrowdedForaging => DemoWeeklyTempConfig.CrowdedForagingSample,
+        TempScenario.LivingForaging => DemoWeeklyTempConfig.LivingForagingSample,
         _ => DemoWeeklyTempConfig.Sample
     };
 
@@ -92,6 +93,7 @@ public partial class ObserverRoot : Control
         TempScenario.Frontier => "開拓｜觀察新聚落（TEMP）",
         TempScenario.Foraging => "森林／河流採集生存（預設，TEMP）",
         TempScenario.CrowdedForaging => "森林周邊人口過密｜觀察缺糧（TEMP）",
+        TempScenario.LivingForaging => "人類繁衍＋自然死亡（預設，TEMP）",
         _ => "舊版一般（TEMP，舊農田測試）"
     };
 
@@ -104,6 +106,7 @@ public partial class ObserverRoot : Control
         "開拓" => TempScenario.Frontier,
         "森林河流生存" => TempScenario.Foraging,
         "森林周邊人口過密" => TempScenario.CrowdedForaging,
+        "人類繁衍與自然死亡" => TempScenario.LivingForaging,
         _ => null
     };
 
