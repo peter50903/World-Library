@@ -19,6 +19,9 @@ public partial class DemoHexMap : Control
     /// <summary>Visible TEMP river bank markers, computed by Core only for the foraging scenario.</summary>
     public IReadOnlyList<DemoCellRef> MainRiverTiles { get; set; } = Array.Empty<DemoCellRef>();
 
+    /// <summary>Selected forest or main-river source supply range, computed exclusively by Core.</summary>
+    public IReadOnlyList<DemoCellRef> FoodReachCells { get; set; } = Array.Empty<DemoCellRef>();
+
     /// <summary>
     /// V0-06A: migrant batches currently travelling, set by ObserverRoot from Core after every
     /// advance. Drawn as red markers with the head count; this view never moves them itself.
@@ -93,6 +96,18 @@ public partial class DemoHexMap : Control
                 if (settlement.IsFounded)
                     DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
             }
+        }
+
+        // #113: show all and only the Core-reachable cells for a selected food source.
+        foreach (var tile in FoodReachCells)
+        {
+            var cell = World.GetCell(tile.Column, tile.Row);
+            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
+            var ring = new Vector2[7];
+            for (var i = 0; i < 6; i++) ring[i] = vertices[i];
+            ring[6] = vertices[0];
+            DrawPolyline(ring, new Color(0.97f, 0.82f, 0.25f, 0.85f), 2.5f);
         }
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
