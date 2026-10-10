@@ -303,6 +303,34 @@ public sealed class DemoCausalIndexTests
     }
 
     [Fact]
+    public void DeletedEmigrationEventIsCaughtByTheDepartureLedger()
+    {
+        // 偽造：刪掉一筆外移事件（週帳仍記隊伍出發）→ 出發帳找不到對應事件。
+        var weeks = FrontierWeeks.Value;
+        var leave = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Emigration);
+        var forged = weeks.Select(w => w.Week != leave.Week
+                ? w
+                : w with { Events = w.Events.Where(e => e != leave).ToArray() })
+            .ToList();
+        var problems = DemoCausalIndex.Build(forged).Problems;
+        Assert.Contains(problems, p => p.Contains($"隊伍 #{leave.MigrationBatchId} 週帳記為出發，但有 0 筆外移事件"));
+    }
+
+    [Fact]
+    public void DuplicatedEmigrationEventIsCaughtByTheDepartureLedger()
+    {
+        // 偽造：同一支隊伍的外移事件重複一次 → 出發帳對到 2 筆。
+        var weeks = FrontierWeeks.Value;
+        var leave = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Emigration);
+        var forged = weeks.Select(w => w.Week != leave.Week
+                ? w
+                : w with { Events = w.Events.SelectMany(e => e == leave ? new[] { e, e } : new[] { e }).ToArray() })
+            .ToList();
+        var problems = DemoCausalIndex.Build(forged).Problems;
+        Assert.Contains(problems, p => p.Contains($"隊伍 #{leave.MigrationBatchId} 週帳記為出發，但有 2 筆外移事件"));
+    }
+
+    [Fact]
     public void ReusedEventIdIsRejected()
     {
         var weeks = FrontierWeeks.Value;
