@@ -385,6 +385,8 @@ public partial class ObserverRoot : Control
             VerifyPlaybackSmoke(nextButton, saveButtons, loadButtons);
         if (AlertSmoke)
             VerifyAlertSmoke();
+        if (HistoryFilterSmoke)
+            VerifyHistoryFilterSmoke(nextButton, saveButtons, loadButtons);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.

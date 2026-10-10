@@ -31,6 +31,7 @@ public partial class ObserverRoot
         var listColumn = new VBoxContainer { CustomMinimumSize = new Vector2(330, 0) };
         parent.AddChild(listColumn);
         listColumn.AddChild(new Label { Text = "聚落事件（點選看原因鏈）" });
+        BuildHistoryFilter(listColumn); // #96：篩選列在清單上方。
         _eventList = new ItemList
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
@@ -68,25 +69,28 @@ public partial class ObserverRoot
         detailColumn.AddChild(_effectBox);
     }
 
-    /// <summary>週報有變（或換了世界）才重建因果索引；清單保留目前選取。</summary>
+    /// <summary>週報有變（或換了世界）才重建因果索引；清單保留目前選取。#96：清單只顯示符合篩選的事件。</summary>
     private void RefreshEventList()
     {
         var weeks = _world.WeekReports();
         if (!ReferenceEquals(_causalWorld, _world) || _causalWeeks != weeks.Count)
         {
             if (!ReferenceEquals(_causalWorld, _world))
+            {
                 _selectedEventId = 0;
+                ResetHistoryFilter(); // #96：換世界（切換情境、讀檔）時篩選回到 TEMP 預設。
+                _filterSettlementCount = -1;
+            }
             _causal = DemoCausalIndex.Build(weeks);
             _causalWorld = _world;
             _causalWeeks = weeks.Count;
         }
 
+        SyncFilterSettlements();
         var events = _causal!.Events;
-        // 最近 60 筆＋最近 5 筆建立新聚落（與文字歷史同原則），新的在上。
-        var shown = events.TakeLast(EventListSize)
-            .Union(events.Where(e => e.Kind == DemoSettlementEventKind.SettlementFounded).TakeLast(5))
-            .OrderByDescending(e => e.EventId)
-            .ToList();
+        var filter = CurrentHistoryFilter();
+        var matched = filter.Apply(events);
+        var shown = ShownEvents(matched);
         _eventList.Clear();
         foreach (var e in shown)
         {
@@ -96,9 +100,25 @@ public partial class ObserverRoot
                 _eventList.Select(index);
         }
 
+        _filterCount.Text = filter.IsAll
+            ? $"共 {events.Count} 筆（顯示最新 {shown.Count} 筆）"
+            : matched.Count == 0
+                ? "沒有符合篩選條件的事件。"
+                : $"符合 {matched.Count} 筆（顯示最新 {shown.Count} 筆）";
+
         if (_selectedEventId == 0 || _causal.Find(_selectedEventId) is null)
             ShowNoEvent(events.Count == 0 ? "目前沒有聚落事件（第一次週結算在第 7 日）。" : "請在左側清單點選一筆聚落事件。");
     }
+
+    /// <summary>
+    /// 清單顯示：符合條件的最新 60 筆＋最新 5 筆建立新聚落（與文字歷史同原則），新的在上。
+    /// 輸入已是「新的在上」的篩選結果。
+    /// </summary>
+    private static List<DemoSettlementEvent> ShownEvents(IReadOnlyList<DemoSettlementEvent> matchedNewestFirst)
+        => matchedNewestFirst.Take(EventListSize)
+            .Union(matchedNewestFirst.Where(e => e.Kind == DemoSettlementEventKind.SettlementFounded).Take(5))
+            .OrderByDescending(e => e.EventId)
+            .ToList();
 
     private void ShowNoEvent(string text)
     {
