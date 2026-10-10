@@ -224,6 +224,11 @@
 - 原 sidebar 改為主地圖以外的可開閉、可拖動、可縮放 Godot 浮動視窗；主畫面保留開啟按鈕，面板小尺寸時捲動，視窗寬時自適應文字比例。
 - 只變更 Godot 呈現及自動操作測試，不改 Core 世界與設定、也不把縮放或關窗當推進時間。
 
+## #105｜真實週結算的人類生育與自然死亡（TEMP 測試世界）
+- 新增獨立可選『人類繁衍與自然死亡』示範場景，初始人類18～22歲；男女成人且吃飽才可受孕，39週孕期，新生人口個體ID和父母ID可追蹤，嬰兒開始算耗糧人口，但18歲前不算成年採集勞工。
+- 出生及年齡自然死亡由 Core 真週結算附到人口帳（Births／Deaths／NaturalDeaths），另保留真正飢餓死亡，有合法事件ID、因果與存讀回放的身分驗證。年齡／孕期／死亡風險均僅TEMP，不改正式種族數值表；自然死需要較長時間才容易出現。
+- 遷徙人員的懷孕／年齡身分隨隊伍攜帶尚未安全完成；**這個新人口場景暫停遷徙**，不能宣稱人口所有動態及M1正式人口驗收已全面完成；舊遷徙/開拓場景保留供CI。舊TEMP世界仍讀舊模式，新的生育模式有獨立存檔場景識別。
+
 ## 附錄 A｜`TEMP` 標記檔案清單（盤點基準 `0f0e76f`）
 
 每個檔案的標記已歸入上面的項目；其餘標記是說明文字、錯誤訊息或畫面標籤（說明該資料是 TEMP），不另含數值。
@@ -233,26 +238,28 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 15 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 4 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
+| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 34 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 36 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 12 | D3（期初存量）、D10、第 3 節 #103 承載估計 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 13 | D3（期初存量）、D10、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 6 | D8；#88 舊版無事件編號存檔拒絕讀取 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 7 | D8；#88 舊版無事件編號存檔拒絕讀取 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 12 | D8、c1、第 3 節 #103 承載估計 |
-| `godot/Scripts/ObserverRoot.cs` | 75 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
+| `godot/Scripts/ObserverRoot.cs` | 76 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
 | `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
+| `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/ObserverRoot.ControlWindow.cs` | 2 | #119 自適應獨立控制視窗，非模擬設定 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
