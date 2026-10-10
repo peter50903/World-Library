@@ -271,12 +271,16 @@ public sealed class M1AcceptanceReportTests
                 Assert.Contains("前後兩週產量受勞力限制", famine.Diagnosis);
             }
 
-            // 出生、具體化、43F 因果索引尚未實作：通過時也必須標明 TEMP 覆蓋限制。
+            // 出生、具體化尚未實作；43F 只做了 M1 示範切片（#88）：通過時也必須標明 TEMP 覆蓋限制。
             Assert.Contains("【覆蓋限制 TEMP】", Result(report, "M1_POP").Diagnosis);
             Assert.Contains("具體化", Result(report, "M1_POP").Diagnosis);
             var history = Result(report, "M1_HISTORY");
             if (history.Verdict == M1Verdict.Pass)
-                Assert.Contains("【覆蓋限制 TEMP】正式 43F 因果索引尚未實作", history.Diagnosis);
+            {
+                Assert.Contains("【覆蓋限制 TEMP】", history.Diagnosis);
+                Assert.Contains("完整 43F 歷史核心尚未實作", history.Diagnosis);
+                Assert.Contains("事件 #", history.Diagnosis);
+            }
         }
     }
 

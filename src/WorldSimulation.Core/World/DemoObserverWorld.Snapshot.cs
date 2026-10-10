@@ -67,6 +67,12 @@ public sealed partial class DemoObserverWorld
             nextBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, nextBatchId);
         }
 
+        // #88：事件編號連續不重用、直接原因合法且與週帳相符（43F CAUSE_PARENT）。
+        // 沒有事件編號的舊 TEMP 存檔在此被明確拒絕，不默默接受。
+        var causal = DemoCausalIndex.Build(reports);
+        if (causal.Problems.Count > 0)
+            Reject($"事件因果證據不合法（{causal.Problems[0]}；共 {causal.Problems.Count} 項，舊版沒有事件編號的 TEMP 存檔無法讀取）");
+
         // 最後一週期末＝目前存量；隊伍狀態＝最後一週隊伍帳。
         if (!SameBalances(ReadBalances(state, "Reserves"), reserves)
             || !SameBalances(ReadBalances(state, "SettlementFood"), food)

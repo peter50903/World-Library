@@ -927,43 +927,55 @@ public static class M1Evaluator
             + "只列數據，不以種子不同代替環境差異（TEMP，見 #75）");
     }
 
-    // ── M1_HISTORY（Behavior Check）：地方史看得出原因→效果 ──────────────────────
+    // ── M1_HISTORY（Behavior Check）：地方史看得出原因→效果（#88：43F 因果索引） ─────────
     private static M1Finding History(M1RunData run)
     {
         var events = run.Weeks.SelectMany(w => w.Events).ToList();
         var uncaused = events.FirstOrDefault(e => e.Kind != DemoSettlementEventKind.HungerRecovered && string.IsNullOrWhiteSpace(e.Cause));
         if (uncaused is not null)
             return new M1Finding(M1Raw.Violation, $"{At(run, uncaused.Week)} {uncaused.SettlementName} 的 {uncaused.Kind} 事件沒有原因");
+
+        // 真實因果證據：每筆事件都有連續不重用的事件編號與直接原因（CAUSE_PARENT），
+        // 原因必須更早、種類與聚落／隊伍相符，而且與週帳（缺糧、隊伍出發帳）一致。
+        var index = DemoCausalIndex.Build(run.Weeks);
+        if (index.Problems.Count > 0)
+            return new M1Finding(M1Raw.Violation,
+                $"因果證據不合法 {index.Problems.Count} 項；第一項：{index.Problems[0]}");
         if (events.Count == 0)
             return new M1Finding(M1Raw.NotObserved, $"本情境 {run.Years} 年內沒有任何聚落事件，地方史沒有可讀的危機");
 
-        const string index = "。【覆蓋限制 TEMP】正式 43F 因果索引尚未實作，此處只以事件原因文字與隊伍編號串接，不代表 43F 已驗證";
-        foreach (var leave in events.Where(e => e.Kind == DemoSettlementEventKind.Emigration))
+        const string limit = "。【覆蓋限制 TEMP】已用 43F 直接原因編號串接並以週帳核對；M1 示範每筆事件至多一個直接原因，完整 43F 歷史核心尚未實作";
+        var linked = events.Count(e => e.CauseEventId != 0);
+
+        // 優先找完整遷徙鏈：飢餓 → 外移 → 抵達／建立新聚落。
+        foreach (var end in events.Where(e => e.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded))
         {
-            var hunger = events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.Hunger
-                && e.SettlementId == leave.SettlementId && e.Week == leave.Week);
-            var end = events.FirstOrDefault(e => e.MigrationBatchId == leave.MigrationBatchId
-                && (e.Kind == DemoSettlementEventKind.Arrival || e.Kind == DemoSettlementEventKind.SettlementFounded));
-            if (hunger is null || end is null)
+            var chain = index.ChainTo(end);
+            if (chain.Count != 3 || chain[0].Kind != DemoSettlementEventKind.Hunger)
                 continue;
+            var (hunger, leave) = (chain[0], chain[1]);
             var what = end.Kind == DemoSettlementEventKind.SettlementFounded ? "建立" : "抵達";
             return new M1Finding(M1Raw.Ok,
-                $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）饑荒：缺糧 {hunger.Count} → 外移 {leave.Count} 人（隊伍 #{leave.MigrationBatchId}）"
-                + $" → {At(run, end.Week)} {end.Count} 人{what} {end.SettlementName}（#{end.SettlementId}）{index}");
+                $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）饑荒事件 #{hunger.EventId}：缺糧 {hunger.Count}"
+                + $" → 外移事件 #{leave.EventId}：{leave.Count} 人（隊伍 #{leave.MigrationBatchId}）"
+                + $" → {At(run, end.Week)} 事件 #{end.EventId}：{end.Count} 人{what} {end.SettlementName}（#{end.SettlementId}）；"
+                + $"饑荒 #{hunger.EventId} 的直接後果 {index.ChildrenOf(hunger).Count} 筆（EFFECT_CHILD 反向索引）；"
+                + $"全部 {events.Count} 筆事件中 {linked} 筆有直接原因、皆合法{limit}");
         }
 
         foreach (var death in events.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath))
         {
-            var hunger = events.LastOrDefault(e => e.Kind == DemoSettlementEventKind.Hunger
-                && e.SettlementId == death.SettlementId && e.Week <= death.Week);
-            if (hunger is null)
+            var chain = index.ChainTo(death);
+            if (chain.Count < 2 || chain[0].Kind != DemoSettlementEventKind.Hunger)
                 continue;
+            var hunger = chain[0];
             return new M1Finding(M1Raw.Ok,
-                $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）缺糧 {hunger.Count} → "
-                + $"{At(run, death.Week)} {death.Count} 人餓死（原因：{death.Cause}）；本情境沒有完整的遷徙鏈{index}");
+                $"{At(run, hunger.Week)} {hunger.SettlementName}（#{hunger.SettlementId}）饑荒事件 #{hunger.EventId}：缺糧 {hunger.Count} → "
+                + $"{At(run, death.Week)} 事件 #{death.EventId}：{death.Count} 人餓死（原因：{death.Cause}）；本情境沒有完整的遷徙鏈；"
+                + $"全部 {events.Count} 筆事件中 {linked} 筆有直接原因、皆合法{limit}");
         }
 
-        return new M1Finding(M1Raw.NotObserved, $"有 {events.Count} 筆事件，但沒有可串成「原因→效果」的饑荒鏈");
+        return new M1Finding(M1Raw.NotObserved, $"有 {events.Count} 筆事件、因果證據皆合法，但沒有可串成「原因→效果」的饑荒鏈");
     }
 }
 

@@ -118,7 +118,8 @@ public sealed class DemoDirectSnapshotTests
         "daily-harvest", "scheduler-sequence", "rng-counter", "drop-last-week", "week-number",
         "ledger-population", "ledger-and-stock-population", "reserve-stock", "food-stock",
         "next-batch-id", "batch-people", "batch-step", "batch-path", "event-settlement",
-        "founded-week", "founded-id", "extra-settlement", "resource-point", "week-time"
+        "founded-week", "founded-id", "extra-settlement", "resource-point", "week-time",
+        "event-id", "event-cause-missing", "event-cause-future", "legacy-without-event-ids"
     };
 
     [Theory]
@@ -190,6 +191,26 @@ public sealed class DemoDirectSnapshotTests
                 var withEvents = weeks.Last(w => w!["Events"]!.AsArray().Count > 0)!;
                 withEvents["Events"]![0]!["SettlementId"] = 99;
                 break;
+            // #88：事件編號與直接原因（43F CAUSE_PARENT）也是存檔證據的一部分。
+            case "event-id":
+                var numbered = weeks.Last(w => w!["Events"]!.AsArray().Count > 0)!;
+                numbered["Events"]![0]!["EventId"] = numbered["Events"]![0]!["EventId"]!.GetValue<long>() + 1;
+                break;
+            case "event-cause-missing":
+                AllEvents(weeks).First(x => x["Kind"]!.GetValue<int>() == (int)DemoSettlementEventKind.Emigration)["CauseEventId"] = 0;
+                break;
+            case "event-cause-future":
+                var effect = AllEvents(weeks).First(x => x["CauseEventId"]!.GetValue<long>() > 0);
+                effect["CauseEventId"] = effect["EventId"]!.GetValue<long>() + 1;
+                break;
+            case "legacy-without-event-ids":
+                foreach (var legacy in AllEvents(weeks))
+                {
+                    legacy.AsObject().Remove("EventId");
+                    legacy.AsObject().Remove("CauseEventId");
+                }
+
+                break;
             case "founded-week":
                 founded["FoundedWeek"] = weeks.Count + 5;
                 break;
@@ -221,6 +242,9 @@ public sealed class DemoDirectSnapshotTests
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(original[..(original.Length * 2 / 3)]));
         Assert.Equal(original, live.ExportTempSave());
     }
+
+    private static List<JsonNode> AllEvents(JsonArray weeks)
+        => weeks.SelectMany(w => w!["Events"]!.AsArray()).Select(e => e!).ToList();
 
     private static DemoWeeklyTempConfig Preset(string name) => name switch
     {
