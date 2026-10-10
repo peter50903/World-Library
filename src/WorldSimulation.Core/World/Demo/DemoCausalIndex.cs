@@ -387,6 +387,8 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.Arrival => "抵達",
         DemoSettlementEventKind.MigrantStarvationDeath => "途中餓死",
         DemoSettlementEventKind.SettlementFounded => "建立新聚落",
+        DemoSettlementEventKind.Birth => "出生",
+        DemoSettlementEventKind.NaturalDeath => "自然死亡",
         _ => "未知"
     };
 }
