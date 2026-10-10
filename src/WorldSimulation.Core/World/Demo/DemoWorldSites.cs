@@ -164,7 +164,7 @@ public sealed class DemoWorldSites
         if (cell.Terrain == DemoTerrain.Water)
             throw new InvalidOperationException("TEMP: settlements cannot be founded on water cells.");
 
-        var point = new DemoResourcePoint(NextResourcePointId, settlement.Id, KindFor(cell.Terrain),
+        var point = new DemoResourcePoint(NextResourcePointId, settlement.Id, KindFor(cell.Terrain, ForagingOnly),
             settlement.Column, settlement.Row);
         return new DemoWorldSites(
             Array.AsReadOnly(Settlements.Append(settlement).ToArray()),
