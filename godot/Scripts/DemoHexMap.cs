@@ -16,6 +16,9 @@ public partial class DemoHexMap : Control
     /// <summary>Injected by ObserverRoot; settlement markers come only from Core.</summary>
     public DemoWorldSites? Sites { get; set; }
 
+    /// <summary>Visible TEMP river bank markers, computed by Core only for the foraging scenario.</summary>
+    public IReadOnlyList<DemoCellRef> MainRiverTiles { get; set; } = Array.Empty<DemoCellRef>();
+
     /// <summary>
     /// V0-06A: migrant batches currently travelling, set by ObserverRoot from Core after every
     /// advance. Drawn as red markers with the head count; this view never moves them itself.
@@ -71,6 +74,10 @@ public partial class DemoHexMap : Control
                 _ => throw new InvalidOperationException("Unknown TEMP terrain value.")
             };
 
+            // Explicit TEMP river cells are teal, other Water cells remain blue (not automatically fish sources).
+            if (cell.Terrain == DemoTerrain.Water
+                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)))
+                terrainColor = new Color(0.10f, 0.67f, 0.70f);
             DrawColoredPolygon(vertices, terrainColor);
             var outline = new Vector2[7];
             for (var i = 0; i < 6; i++)
