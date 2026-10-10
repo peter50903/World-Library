@@ -170,8 +170,9 @@ public sealed class DemoTempDemography
                     || p.FatherId!.Value <= 0
                     || p.FatherId.Value >= snapshot.NextId)))
                 throw new InvalidOperationException("Invalid TEMP demographic member or pregnancy.");
-            if (!builder.TryAdd(p.Id, p))
+            if (builder.ContainsKey(p.Id))
                 throw new InvalidOperationException("Duplicate TEMP population identity.");
+            builder.Add(p.Id, p);
         }
         return new DemoTempDemography(snapshot.Seed, snapshot.LastWeek, snapshot.NextId,
             builder.ToImmutable());
