@@ -188,13 +188,26 @@ void PrintStatus()
 static int RunHeadless(ulong seed, int years, bool frontier)
 {
     Console.WriteLine("=== 世界觀察者 v0｜無畫面長測（V0-05）===");
-    Console.WriteLine("注意：所有人口、糧食、資源與飢餓數值都是 TEMP 示範值；「一年＝52 週＝364 日」也是 TEMP 示範曆法。");
+    // #82：一年日數讀正式設定 01 表 WORLD_DAYS_PER_YEAR（與 --m1-check 同一個年界），找不到或格式錯誤即停止。
+    WorldCalendar calendar;
+    try
+    {
+        calendar = WorldCalendarConfig.LoadDefault();
+    }
+    catch (WorldCalendarException ex)
+    {
+        Console.WriteLine($"無法讀取正式曆法：{ex.Message}");
+        return 2;
+    }
+
+    Console.WriteLine(calendar.Describe());
+    Console.WriteLine("注意：所有人口、糧食、資源與飢餓數值都是 TEMP 示範值；週結算每 7 日一次是既有示範機制。");
     Console.WriteLine($"亂數種子：{seed}｜年數：{years}" + (frontier ? "｜TEMP 開拓情境（V0-06B）" : ""));
     var watch = System.Diagnostics.Stopwatch.StartNew();
     DemoCenturyReport report;
     try
     {
-        report = DemoCenturyRun.Run(seed, years,
+        report = DemoCenturyRun.Run(seed, years, calendar.DaysPerYear,
             frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample,
             onYear: y => Console.WriteLine(y.Describe()));
     }

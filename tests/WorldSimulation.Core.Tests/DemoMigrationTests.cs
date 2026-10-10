@@ -376,7 +376,7 @@ public sealed class DemoMigrationTests
         var anyMigration = false;
         foreach (var seed in new[] { 42UL, 7UL, 20261009UL, migratingSeed }.Distinct())
         {
-            var report = DemoCenturyRun.Run(seed, 100, DemoWeeklyTempConfig.LocalFamineSample);
+            var report = DemoCenturyRun.Run(seed, 100, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.LocalFamineSample);
             Assert.Empty(report.ConservationErrors);
             Assert.All(report.Years, y =>
             {

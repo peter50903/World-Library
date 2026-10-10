@@ -36,8 +36,15 @@ public sealed record DemoYearSummary(
     int EmigrationEvents = 0,
     int ArrivalEvents = 0,
     int SettlementsFounded = 0,
-    int SettlementsClosing = 0)
+    int SettlementsClosing = 0,
+    int FirstDay = 1)
 {
+    /// <summary>
+    /// #82：本年（第 <see cref="FirstDay"/>～<see cref="LastDay"/> 日）應有的週結算次數＝其間 7 的倍數日數。
+    /// 週結算每 7 個世界日一次、不因年界重置，所以 365 日年會有 52 或 53 次。
+    /// </summary>
+    public int ExpectedWeeks => DemoCenturyRun.WeeklySettlementsThrough(LastDay) - DemoCenturyRun.WeeklySettlementsThrough(FirstDay - 1);
+
     /// <summary>本年所有帶原因的聚落事件數（飢餓＋餓死＋飢餓解除＋外移＋抵達＋建立新聚落）。</summary>
     public int SettlementEvents
         => HungerEvents + StarvationEvents + RecoveryEvents + EmigrationEvents + ArrivalEvents + SettlementsFounded;
@@ -48,8 +55,10 @@ public sealed record DemoYearSummary(
     public IReadOnlyList<string> Problems()
     {
         var problems = new List<string>();
-        if (Weeks != DemoCenturyRun.TempWeeksPerYear)
-            problems.Add($"第 {Year} 年週結算次數 {Weeks}，應為 {DemoCenturyRun.TempWeeksPerYear}");
+        if (FirstDay < 1 || LastDay < FirstDay)
+            problems.Add($"第 {Year} 年日期範圍錯誤：第 {FirstDay}～{LastDay} 日");
+        else if (Weeks != ExpectedWeeks)
+            problems.Add($"第 {Year} 年週結算次數 {Weeks}，第 {FirstDay}～{LastDay} 日應為 {ExpectedWeeks}");
         if (PopulationOpening + Births - Deaths != PopulationClosing)
             problems.Add($"第 {Year} 年人口帳不平衡：{PopulationOpening}＋{Births}－{Deaths}≠{PopulationClosing}");
         if (FoodOpening + FoodProduced - FoodConsumed != FoodClosing)
@@ -72,7 +81,7 @@ public sealed record DemoYearSummary(
 
     /// <summary>玩家可讀的一行年度摘要（繁體中文）。</summary>
     public string Describe()
-        => $"第 {Year} 年（至第 {LastDay} 日）｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}）"
+        => $"第 {Year} 年（至第 {LastDay} 日）｜週結算 {Weeks} 次｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}）"
          + $"｜有人聚落 {InhabitedSettlements}、新建聚落 {SettlementsFounded}"
          + $"｜遷出 {Emigrants}、遷入 {Immigrants}、年底途中 {PopulationInTransit}"
          + $"｜糧食 {FoodClosing}（生產 {FoodProduced}、消耗 {FoodConsumed}、缺糧 {FoodShortage}）"
@@ -92,28 +101,35 @@ public sealed record DemoCenturyReport(
 /// V0-05｜無畫面長跑（TEMP 示範）。用同一個 <see cref="DemoObserverWorld"/> 逐日原子推進，
 /// 沿用 V0-04A／V0-04B 的每週結算與帳目檢查（週帳不平衡會在發布前直接丟出例外），
 /// 另外在每年結束時以世界狀態的期初／期末值對帳一次。
-/// 「一年＝52 週＝364 日」是 TEMP 暫定的示範曆法（正式曆法未定案），讓每年剛好包含整數個週結算。
+/// #82：一年的日數由呼叫端傳入（文字觀察者從正式設定 config/sheets/01_世界參數.csv 的
+/// WORLD_DAYS_PER_YEAR 讀取，目前 365），Core 不自己寫死年長、也不讀檔。
+/// 週結算仍每 7 個世界日一次、跨年不重置；每次週結算歸屬於「結算日所在的年份」
+/// （例如 365 日年：第 364 日屬第 1 年、第 371 日屬第 2 年），所以每年有 52 或 53 次。
+/// 年度期初／期末讀年界當日的世界狀態；週結算以外的日子不改聚落、資源點或隊伍狀態，所以能與週報流量對帳。
 /// 執行成本是線性的：每週只讀最新一筆週報，不重新掃描整段歷史。
 /// </summary>
 public static class DemoCenturyRun
 {
-    /// <summary>TEMP：每年的週結算次數（正式曆法未定案）。</summary>
-    public const int TempWeeksPerYear = 52;
-
-    /// <summary>TEMP：每年的世界日數。</summary>
-    public const int TempDaysPerYear = TempWeeksPerYear * 7;
+    /// <summary>示範週結算間隔（世界日；與 DemoObserverWorld 的每週排程一致）。</summary>
+    public const int DaysPerWeeklySettlement = 7;
 
     /// <summary>長跑年數上限（避免誤輸入造成過長執行）。</summary>
     public const int MaxYears = 1000;
 
+    /// <summary>第 1～<paramref name="day"/> 日之間發生的週結算次數（第 7、14、21……日各一次）。</summary>
+    public static int WeeklySettlementsThrough(int day) => day <= 0 ? 0 : day / DaysPerWeeklySettlement;
+
     public static DemoCenturyReport Run(
         ulong seed,
         int years,
+        int daysPerYear,
         DemoWeeklyTempConfig? config = null,
         Action<DemoYearSummary>? onYear = null)
     {
         if (years is < 1 or > MaxYears)
             throw new ArgumentOutOfRangeException(nameof(years), $"Years must be between 1 and {MaxYears}.");
+        if (daysPerYear < 1 || (long)daysPerYear * years > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(daysPerYear), "Days per year must be positive and fit the run length.");
 
         var world = new DemoObserverWorld(DemoScenario.Sample(seed), config ?? DemoWeeklyTempConfig.Sample);
         // V0-06A：世界總數＝各聚落＋途中隊伍（只計一次）。
@@ -137,9 +153,10 @@ public static class DemoCenturyRun
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0, dailyHarvest = 0;
+            var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = 0;
 
-            for (var d = 0; d < TempDaysPerYear; d++)
+            for (var d = 0; d < daysPerYear; d++)
             {
                 var day = world.AdvanceOneDay();
                 lastDay = day.Day;
@@ -203,6 +220,10 @@ public static class DemoCenturyRun
                 }
             }
 
+            // #82：年界不跳日、不重複：第 N 年剛好是第 (N-1)×年長＋1 ～ N×年長 日。
+            if (lastDay != firstDay + daysPerYear - 1)
+                errors.Add($"第 {year} 年年界錯誤：應至第 {firstDay + daysPerYear - 1} 日，實際至第 {lastDay} 日");
+
             var summary = new DemoYearSummary(
                 year, lastDay, weeks,
                 popOpening, births, deaths, TotalPopulation(),
@@ -212,7 +233,8 @@ public static class DemoCenturyRun
                 world.Sites.Settlements.Count(s => world.SettlementPopulation(s.Id) > 0),
                 dailyHarvest,
                 emigrants, immigrants, world.PopulationInTransit,
-                emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count);
+                emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count,
+                firstDay);
             errors.AddRange(summary.Problems());
             summaries.Add(summary);
             onYear?.Invoke(summary);
