@@ -61,7 +61,9 @@ public partial class ObserverRoot
     /// </summary>
     private bool FitAndPlaceControlsWindow()
     {
-        var screen = DisplayServer.ScreenGetUsableRect();
+        var main = GetWindow();
+        // Use the monitor containing the map, not an unrelated primary screen.
+        var screen = DisplayServer.ScreenGetUsableRect(main.CurrentScreen);
         if (screen.Size.X <= 0 || screen.Size.Y <= 0)
             return false;
 
@@ -72,7 +74,6 @@ public partial class ObserverRoot
         var width = Math.Min(_controlsWindow.Size.X, maxWidth);
         var height = Math.Min(_controlsWindow.Size.Y, maxHeight);
 
-        var main = GetWindow();
         var mainLeft = main.Position.X;
         var mainRight = main.Position.X + main.Size.X;
         var leftSpace = mainLeft - screen.Position.X - margin;
