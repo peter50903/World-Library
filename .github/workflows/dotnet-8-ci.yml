@@ -76,6 +76,15 @@ jobs:
             grep -q '長測完成：種子 42，100 年（第 36500 日）' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
             grep -q '守恆錯誤 0，' /tmp/observer-century.log
+            # #103: year-end per-settlement carrying evidence (TEMP estimate) for years 1/10/100, seeds 42/7/1.
+            grep -q '第 100 年底各聚落承載（TEMP 估計' /tmp/observer-century.log
+            grep -q '長期可養活' /tmp/observer-century.log
+            for s in 7 1; do
+              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed "$s" --years 100 | tee "/tmp/observer-century-$s.log"
+              grep -q "長測完成：種子 $s，100 年" "/tmp/observer-century-$s.log"
+              grep -q '守恆錯誤 0，' "/tmp/observer-century-$s.log"
+              grep -q '第 10 年底各聚落承載（TEMP 估計' "/tmp/observer-century-$s.log"
+            done
             # V0-06B: the TEMP frontier scenario (migrants may found settlements) must also run 100 years cleanly.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log

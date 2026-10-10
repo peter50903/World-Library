@@ -175,6 +175,12 @@ public sealed partial class DemoObserverWorld
     /// </summary>
     public long SettlementPopulation(int settlementId) => _population[settlementId];
 
+    /// <summary>
+    /// #103：各聚落「長期資源再生 vs 目前需求」的 TEMP 描述性估計（依聚落編號排序）。純讀取，不改世界、不產生糧食。
+    /// </summary>
+    public IReadOnlyList<DemoSettlementCapacity> SettlementCapacities()
+        => DemoCarryingCapacity.Of(_sites, _weekly, SettlementPopulation, ResourceReserve, SettlementFood, SettlementHungerDebt);
+
     /// <summary>V0-04B: current TEMP hunger debt (unmet food demand not yet recovered).</summary>
     public long SettlementHungerDebt(int settlementId) => _hungerDebt[settlementId];
 

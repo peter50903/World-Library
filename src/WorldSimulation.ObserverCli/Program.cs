@@ -209,7 +209,16 @@ static int RunHeadless(ulong seed, int years, bool frontier)
     {
         report = DemoCenturyRun.Run(seed, years, calendar.DaysPerYear,
             frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample,
-            onYear: y => Console.WriteLine(y.Describe()));
+            onYear: y => Console.WriteLine(y.Describe()),
+            onYearSettlements: (y, capacities) =>
+            {
+                // #103：第 1、10、100 年與最後一年列出各聚落的長期再生 vs 需求（TEMP 描述性估計）。
+                if (y.Year is not (1 or 10 or 100) && y.Year != years)
+                    return;
+                Console.WriteLine($"  第 {y.Year} 年底各聚落承載（TEMP 估計：存量與糧庫耗盡後每週再生 vs 需求；不含遷徙與出生）：");
+                foreach (var c in capacities)
+                    Console.WriteLine($"    {c.Describe()}");
+            });
     }
     catch (Exception ex) when (ex is OverflowException or InvalidOperationException)
     {
