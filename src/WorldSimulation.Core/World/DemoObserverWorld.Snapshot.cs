@@ -96,9 +96,35 @@ public sealed partial class DemoObserverWorld
         candidate._migrations = batches.ToImmutableList();
         candidate._nextMigrationBatchId = nextBatchId;
         candidate._sites = sites;
+        if (weekly.HumanLifecycleEnabled)
+        {
+            var initial = DemoTempDemography.Open(scenario.Seed,
+                initialSites.Settlements.ToDictionary(site => site.Id,
+                    site => checked((int)initialSites.PopGroupsOf(site.Id).Sum(g => (long)g.Size))),
+                DemoHumanLifecycle.Rules);
+            var replayed = DemoHumanLifecycle.Replay(initial, reports, sites);
+            var supplied = state.GetProperty("Demography").Deserialize<DemoTempDemographicSnapshot>()
+                ?? throw new InvalidDataException("Missing human pregnancy/age snapshot.");
+            var candidateSnapshot = replayed.Snapshot();
+            if (supplied.Seed != candidateSnapshot.Seed || supplied.LastWeek != candidateSnapshot.LastWeek
+                || supplied.NextId != candidateSnapshot.NextId
+                || !supplied.People.SequenceEqual(candidateSnapshot.People)
+                || sites.Settlements.Any(place =>
+                    replayed.People.Count(p => p.SettlementId == place.Id) != population[place.Id]))
+                Reject("出生／自然死亡人口身份、孕期或週帳遭篡改");
+            candidate._demography = replayed;
+        }
 
         // 安裝後重新匯出必須與檔案完全相同（含重算的時鐘、排程、亂數、日歷史與世界指紋）。
-        if (!JsonNode.DeepEquals(JsonNode.Parse(json), JsonNode.Parse(candidate.ExportTempSave())))
+        var suppliedDoc = JsonNode.Parse(json);
+        var generatedDoc = JsonNode.Parse(candidate.ExportTempSave());
+        // Older TEMP v2 files legitimately predate the optional demographic property.
+        // Normalize ONLY that absent-null field for non-demographic presets.
+        if (!weekly.HumanLifecycleEnabled && suppliedDoc?["State"]?["Demography"] is null
+            && suppliedDoc?["State"] is JsonObject oldState && !oldState.ContainsKey("Demography")
+            && generatedDoc?["State"] is JsonObject generatedState)
+            generatedState.Remove("Demography");
+        if (!JsonNode.DeepEquals(suppliedDoc, generatedDoc))
             Reject("存檔內容與種子重算或驗證後的狀態不一致");
         return candidate;
     }

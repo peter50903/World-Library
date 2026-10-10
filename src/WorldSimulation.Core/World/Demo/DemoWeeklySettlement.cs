@@ -28,7 +28,8 @@ public sealed record DemoWeeklyTempConfig(
     int FoundingSearchMaxSteps = 3,
     bool TempFamineAllOriginal = false,
     bool SharedCatchmentEnabled = false,
-    bool CrowdedForaging = false)
+    bool CrowdedForaging = false,
+    bool HumanLifecycleEnabled = false)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -51,6 +52,18 @@ public sealed record DemoWeeklyTempConfig(
         FarmlandRegenPerWeek = 0,
         WoodlandRegenPerWeek = 0,
         FisheryRegenPerWeek = 0
+    };
+
+    /// <summary>TEMP playable human births, pregnancy and age-related deaths.
+    /// Migrant identity transfer still needs an audited cohort carrier, so this
+    /// mode disables migration rather than inventing or duplicating persons.</summary>
+    public static DemoWeeklyTempConfig LivingForagingSample { get; } = ForagingSample with
+    {
+        HumanLifecycleEnabled = true,
+        MigrationEnabled = false,
+        // TEMP adult gather capacity: enough to support non-working dependents,
+        // still limited by genuine natural-source budget (never mint food).
+        YieldPerWorkerPerWeek = 8
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
@@ -99,7 +112,8 @@ public sealed record DemoWeeklyTempConfig(
             || YieldPerWorkerPerWeek < 0 || FoodPerPersonPerWeek < 0 || InitialFoodPerPerson < 0
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
-            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1)
+            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1
+            || HumanLifecycleEnabled && (!SharedCatchmentEnabled || MigrationEnabled))
             throw new ArgumentOutOfRangeException(nameof(DemoWeeklyTempConfig), "Invalid TEMP weekly settlement config.");
     }
 
@@ -172,7 +186,11 @@ public enum DemoSettlementEventKind
     /// V0-06B 建立新聚落：開拓隊走到空格，以倖存者建立新聚落（45F SETTLE_NEW；M1_SETTLE 人口全部來自隊伍）。
     /// SettlementId＝新聚落；Count＝人數。
     /// </summary>
-    SettlementFounded = 6
+    SettlementFounded = 6,
+    /// <summary>Verified human pregnancy completed after 39 TEMP weeks.</summary>
+    Birth = 7,
+    /// <summary>Verified age/typical lifespan-based natural death, not hunger death.</summary>
+    NaturalDeath = 8
 }
 
 /// <summary>
@@ -207,6 +225,8 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.Arrival => $"第 {day} 天  |  {SettlementName} {Count} 名遷徙者抵達（{Cause}）",
             DemoSettlementEventKind.MigrantStarvationDeath => $"第 {day} 天  |  自{SettlementName}出發的遷徙隊伍 {Count} 人途中餓死（原因：{Cause}）",
             DemoSettlementEventKind.SettlementFounded => $"第 {day} 天  |  建立新聚落「{SettlementName}」：{Count} 名遷徙者定居（{Cause}）",
+            DemoSettlementEventKind.Birth => $"第 {day} 天  |  {SettlementName} 出生 {Count} 人（{Cause}）",
+            DemoSettlementEventKind.NaturalDeath => $"第 {day} 天  |  {SettlementName} 自然死亡 {Count} 人（{Cause}）",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -249,7 +269,10 @@ public sealed record DemoSettlementWeekLedger(
     long FoodCarriedIn = 0,
     long FoodCarriedOut = 0,
     long HungerDebtCarriedIn = 0,
-    long HungerDebtCarriedOut = 0)
+    long HungerDebtCarriedOut = 0,
+    long NaturalDeaths = 0,
+    long HungerDebtRemovedByNaturalDeath = 0,
+    long AdultWorkersOpening = -1)
 {
     public bool ReserveBalanced => ReserveOpening + Regenerated - Harvested == ReserveClosing;
 
@@ -263,9 +286,9 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>飢餓債帳：期初＋缺糧－恢復－隨死者移除＝期末；有死亡必有移除的飢餓債（死亡有原因）。</summary>
     public bool HungerDebtBalanced
-        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath
+        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath - HungerDebtRemovedByNaturalDeath
             + HungerDebtCarriedIn - HungerDebtCarriedOut == HungerDebtClosing
-        && (Deaths == 0 || HungerDebtRemovedByDeath > 0)
+        && (Deaths == NaturalDeaths || HungerDebtRemovedByDeath > 0)
         && (PopulationClosing > 0 || HungerDebtClosing == 0);
 
     /// <summary>
@@ -282,11 +305,13 @@ public sealed record DemoSettlementWeekLedger(
     public bool NonNegative
         => ReserveOpening >= 0 && Regenerated >= 0 && Harvested >= 0 && ReserveClosing >= 0
         && FoodOpening >= 0 && FoodProduced >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
-        && PopulationOpening >= 0 && Births >= 0 && Deaths >= 0 && PopulationClosing >= 0
+        && PopulationOpening >= 0 && Births >= 0 && Deaths >= 0 && NaturalDeaths >= 0
+        && NaturalDeaths <= Deaths && HungerDebtRemovedByNaturalDeath >= 0 && PopulationClosing >= 0
         && FoodFromFarming >= 0 && FoodFromGathering >= 0 && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0
         && HungerDebtRemovedByDeath >= 0 && HungerDebtClosing >= 0
         && Immigrants >= 0 && Emigrants >= 0 && FoodCarriedIn >= 0 && FoodCarriedOut >= 0
-        && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0;
+        && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0
+        && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening);
 
     public bool IsBalanced
         => ReserveBalanced && FoodBalanced && NoMagicFood && TotalResourceBalanced && PopulationBalanced
@@ -374,7 +399,8 @@ internal static class DemoWeeklySettlement
         ImmutableList<DemoMigrationBatch> migrations,
         int nextMigrationBatchId,
         IReadOnlyList<DemoWeekReport> publishedWeeks,
-        DemoWeeklyTempConfig config)
+        DemoWeeklyTempConfig config,
+        IReadOnlyDictionary<int, long>? adultWorkers = null)
     {
         ArgumentNullException.ThrowIfNull(migrations);
         ArgumentNullException.ThrowIfNull(publishedWeeks);
@@ -386,7 +412,7 @@ internal static class DemoWeeklySettlement
         // Allocate each forest/river source ONCE before per-settlement weekly accounting.
         var sharedHarvest = config.SharedCatchmentEnabled
             ? DemoForagingWorld.Allocate(map ?? throw new InvalidOperationException("Shared foraging needs map."),
-                sites, population, config)
+                sites, population, config, adultWorkers)
             : null;
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
@@ -709,7 +735,8 @@ internal static class DemoWeeklySettlement
                 HungerDebtRemovedByDeath: removedByDeath, HungerDebtClosing: debtFinal,
                 Immigrants: arrived.People, Emigrants: emigrants,
                 FoodCarriedIn: arrived.Food, FoodCarriedOut: foodOut,
-                HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut));
+                HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
+                AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
@@ -797,9 +824,15 @@ internal static class DemoWeeklySettlement
 
             // SURV_DEATH：死亡必須有原因。帳上的死亡數必須等於帶原因的餓死事件人數。
             var deathEvents = report.Events
-                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.StarvationDeath)
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind is
+                    DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.NaturalDeath)
                 .Sum(e => e.Count);
-            if (deathEvents != ledger.Deaths
+            var naturalEvents = report.Events
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
+            var birthEvents = report.Events
+                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
+            if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths
+                || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId
                     && e.Kind == DemoSettlementEventKind.StarvationDeath && string.IsNullOrWhiteSpace(e.Cause)))
                 throw new InvalidOperationException(

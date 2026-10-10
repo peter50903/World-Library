@@ -124,11 +124,13 @@ public sealed class DemoCausalIndex
             foreach (var ledger in report.Settlements)
             {
                 var debtAfterDeaths = ledger.HungerDebtOpening + ledger.FoodShortage
-                    - ledger.HungerDebtRecovered - ledger.HungerDebtRemovedByDeath;
+                    - ledger.HungerDebtRecovered - ledger.HungerDebtRemovedByDeath - ledger.HungerDebtRemovedByNaturalDeath;
                 var recovered = ledger.HungerDebtOpening > 0 && ledger.FoodShortage == 0
-                    && debtAfterDeaths == 0 && ledger.PopulationOpening - ledger.Deaths > 0;
+                    && debtAfterDeaths == 0 && ledger.PopulationOpening - (ledger.Deaths - ledger.NaturalDeaths) > 0;
                 CheckCount(report, ledger, DemoSettlementEventKind.Hunger, ledger.FoodShortage > 0 ? 1 : 0);
-                CheckCount(report, ledger, DemoSettlementEventKind.StarvationDeath, ledger.Deaths > 0 ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.StarvationDeath, ledger.Deaths > ledger.NaturalDeaths ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.Birth, checked((int)ledger.Births));
+                CheckCount(report, ledger, DemoSettlementEventKind.NaturalDeath, checked((int)ledger.NaturalDeaths));
                 CheckCount(report, ledger, DemoSettlementEventKind.HungerRecovered, recovered ? 1 : 0);
             }
         }
@@ -156,6 +158,16 @@ public sealed class DemoCausalIndex
 
         switch (e.Kind)
         {
+            case DemoSettlementEventKind.Birth:
+            case DemoSettlementEventKind.NaturalDeath:
+            {
+                var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
+                var budget = e.Kind == DemoSettlementEventKind.Birth ? ledger?.Births : ledger?.NaturalDeaths;
+                if (parent is not null || e.Count != 1 || budget is null || budget == 0
+                    || string.IsNullOrWhiteSpace(e.Cause))
+                    return "自然出生／死亡需要本週人口帳、個體來源與自足的合法根因";
+                return null;
+            }
             case DemoSettlementEventKind.Hunger:
             {
                 if (parent is not null)
@@ -375,6 +387,8 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.Arrival => "抵達",
         DemoSettlementEventKind.MigrantStarvationDeath => "途中餓死",
         DemoSettlementEventKind.SettlementFounded => "建立新聚落",
+        DemoSettlementEventKind.Birth => "出生",
+        DemoSettlementEventKind.NaturalDeath => "自然死亡",
         _ => "未知"
     };
 }

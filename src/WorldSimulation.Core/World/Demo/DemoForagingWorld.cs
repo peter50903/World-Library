@@ -46,14 +46,15 @@ public static class DemoForagingWorld
     public static DemoCatchmentFoodResult Allocate(
         DemoHexWorld map, DemoWorldSites sites,
         IReadOnlyDictionary<int, long> openingPopulation,
-        DemoWeeklyTempConfig weekly)
+        DemoWeeklyTempConfig weekly,
+        IReadOnlyDictionary<int, long>? adultWorkers = null)
     {
         if (!weekly.SharedCatchmentEnabled)
             throw new InvalidOperationException("Not a shared catchment world.");
         var claims = sites.Settlements.OrderBy(s => s.Id).Select(s =>
             new DemoCatchmentFoodClaim(s.Id, s.Column, s.Row,
                 checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
-                checked(openingPopulation[s.Id] * weekly.YieldPerWorkerPerWeek)));
+                checked((adultWorkers?.GetValueOrDefault(s.Id) ?? openingPopulation[s.Id]) * weekly.YieldPerWorkerPerWeek)));
         return DemoHexFoodCatchment.Allocate(map, Sources(map, sites), claims);
     }
 }

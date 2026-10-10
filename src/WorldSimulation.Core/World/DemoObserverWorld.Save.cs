@@ -32,6 +32,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>V0-07C：已知 TEMP 生存情境的中文名稱；不是已知情境回傳 null。</summary>
     public static string? TempScenarioName(DemoWeeklyTempConfig weekly)
     {
+        if (weekly == DemoWeeklyTempConfig.LivingForagingSample) return "人類繁衍與自然死亡";
         if (weekly == DemoWeeklyTempConfig.ForagingSample) return "森林河流生存";
         if (weekly == DemoWeeklyTempConfig.CrowdedForagingSample) return "森林周邊人口過密";
         if (weekly == DemoWeeklyTempConfig.Sample) return "一般示範";
@@ -49,6 +50,7 @@ public sealed partial class DemoObserverWorld
     {
         DemoWeeklyTempConfig.Sample,
         DemoWeeklyTempConfig.ForagingSample,
+        DemoWeeklyTempConfig.LivingForagingSample,
         DemoWeeklyTempConfig.CrowdedForagingSample,
         DemoWeeklyTempConfig.FamineSample,
         DemoWeeklyTempConfig.LocalFamineSample,
@@ -82,7 +84,8 @@ public sealed partial class DemoObserverWorld
             Settlements = _sites.Settlements,
             ResourcePoints = _sites.ResourcePoints,
             PopulationGroups = _sites.PopGroups,
-            WorldFingerprint = StateFingerprint()
+            WorldFingerprint = StateFingerprint(),
+            Demography = _demography?.Snapshot()
         };
         return JsonSerializer.Serialize(new
         {
