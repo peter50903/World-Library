@@ -116,7 +116,15 @@ public sealed partial class DemoObserverWorld
         }
 
         // 安裝後重新匯出必須與檔案完全相同（含重算的時鐘、排程、亂數、日歷史與世界指紋）。
-        if (!JsonNode.DeepEquals(JsonNode.Parse(json), JsonNode.Parse(candidate.ExportTempSave())))
+        var suppliedDoc = JsonNode.Parse(json);
+        var generatedDoc = JsonNode.Parse(candidate.ExportTempSave());
+        // Older TEMP v2 files legitimately predate the optional demographic property.
+        // Normalize ONLY that absent-null field for non-demographic presets.
+        if (!weekly.HumanLifecycleEnabled && suppliedDoc?["State"]?["Demography"] is null
+            && suppliedDoc?["State"] is JsonObject oldState && !oldState.ContainsKey("Demography")
+            && generatedDoc?["State"] is JsonObject generatedState)
+            generatedState.Remove("Demography");
+        if (!JsonNode.DeepEquals(suppliedDoc, generatedDoc))
             Reject("存檔內容與種子重算或驗證後的狀態不一致");
         return candidate;
     }
