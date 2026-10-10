@@ -394,6 +394,8 @@ public partial class ObserverRoot : Control
             VerifyHistoryFilterSmoke(nextButton, saveButtons, loadButtons);
         if (FoodSmoke)
             VerifyFoodSmoke(nextButton, loadButtons);
+        if (ForagingSmoke)
+            VerifyForagingSmoke(nextButton);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
