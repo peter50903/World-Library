@@ -171,7 +171,7 @@ public sealed partial class DemoObserverWorld
     public bool UsesSharedForaging => _weekly.SharedCatchmentEnabled;
 
     public IReadOnlyList<DemoCatchmentFoodSource> SharedFoodSources()
-        => UsesSharedForaging ? DemoForagingWorld.Sources(Map) : Array.Empty<DemoCatchmentFoodSource>();
+        => UsesSharedForaging ? DemoForagingWorld.Sources(Map, _sites) : Array.Empty<DemoCatchmentFoodSource>();
 
     public bool IsMainRiverCell(int column, int row)
         => UsesSharedForaging && DemoForagingWorld.MainRiverTiles(Map).Contains(new DemoCellRef(column, row));
