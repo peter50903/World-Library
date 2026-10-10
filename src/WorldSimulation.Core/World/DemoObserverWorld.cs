@@ -116,7 +116,7 @@ public sealed partial class DemoObserverWorld
         // using the RESOURCE stream of this same registry.
         _rng = RngRegistry.Create(scenario.Seed);
         Map = DemoHexWorld.Generate(_rng);
-        _sites = DemoWorldSites.Generate(Map, _rng);
+        _sites = DemoWorldSites.Generate(Map, _rng, DemoSitesTempConfig.Sample, weekly.SharedCatchmentEnabled);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.
@@ -162,6 +162,22 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>The most recent weekly settlement, or null before the first one (day 7).</summary>
     public DemoWeekReport? LatestWeek => _weeks.IsEmpty ? null : _weeks[_weeks.Count - 1];
+
+    /// <summary>Whether this playable TEMP world uses 20/5 shared forest and river food sources.</summary>
+    public bool UsesSharedForaging => _weekly.SharedCatchmentEnabled;
+
+    public IReadOnlyList<DemoCatchmentFoodSource> SharedFoodSources()
+        => UsesSharedForaging ? DemoForagingWorld.Sources(Map) : Array.Empty<DemoCatchmentFoodSource>();
+
+    public bool IsMainRiverCell(int column, int row)
+        => UsesSharedForaging && DemoForagingWorld.MainRiverTiles(Map).Contains(new DemoCellRef(column, row));
+
+    public DemoCatchmentFoodResult? LatestSharedHarvest()
+    {
+        if (!UsesSharedForaging || LatestWeek is not { } week) return null;
+        var opening = week.Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
+        return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly);
+    }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>
     public long SettlementFood(int settlementId) => _settlementFood[settlementId];
