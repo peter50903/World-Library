@@ -198,6 +198,110 @@ public sealed class DemoCausalIndexTests
         Assert.Contains(problems, p => p.Contains("週帳沒有對應的缺糧"));
     }
 
+    // ── GPT 審 #91 補的反例：最近債來源要精確；抵達／建立／途中餓死要有當週隊伍帳 ──
+
+    /// <summary>局部饑荒：找第一個有隊伍抵達既有聚落的種子。</summary>
+    private static readonly Lazy<IReadOnlyList<DemoWeekReport>> ArrivalWeeks = new(() =>
+    {
+        foreach (var seed in new ulong[] { 42 }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
+        {
+            var weeks = Run(seed, DemoWeeklyTempConfig.LocalFamineSample, Years * TestCalendar.DaysPerYear);
+            if (weeks.SelectMany(w => w.Events).Any(e => e.Kind == DemoSettlementEventKind.Arrival))
+                return weeks;
+        }
+
+        throw new InvalidOperationException("找不到有隊伍抵達的局部饑荒種子。");
+    });
+
+    [Fact]
+    public void DeathPointingToAnOlderHungerInsteadOfTheLatestDebtSourceIsRejected()
+    {
+        // 指錯舊事件：同聚落、更早的飢餓事件，但不是最近一筆飢餓債來源 → 必須被抓到。
+        foreach (var (preset, seed) in new[] { ("Famine", 42UL), ("Famine", 7UL), ("Famine", 1UL), ("LocalFamine", 42UL), ("LocalFamine", 7UL) })
+        {
+            var weeks = Run(seed, Preset(preset), Years * TestCalendar.DaysPerYear);
+            var events = Events(weeks);
+            foreach (var e in events.Where(x => x.Kind is DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.HungerRecovered))
+            {
+                var older = events.FirstOrDefault(h => h.Kind == DemoSettlementEventKind.Hunger
+                    && h.SettlementId == e.SettlementId && h.EventId < e.CauseEventId);
+                if (older is null)
+                    continue;
+                var problems = DemoCausalIndex.Build(Replace(weeks, e, x => x with { CauseEventId = older.EventId })).Problems;
+                Assert.Contains(problems, p => p.Contains("不是此聚落最近一筆帶來飢餓債的事件"));
+                return;
+            }
+        }
+
+        throw new InvalidOperationException("找不到可指向更舊飢餓事件的餓死／飢餓解除事件。");
+    }
+
+    [Fact]
+    public void ArrivalWithAForgedHeadcountIsRejected()
+    {
+        var weeks = ArrivalWeeks.Value;
+        var arrival = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Arrival);
+        var problems = DemoCausalIndex.Build(Replace(weeks, arrival, e => e with { Count = e.Count + 1 })).Problems;
+        Assert.Contains(problems, p => p.Contains("抵達此聚落的紀錄"));
+    }
+
+    [Fact]
+    public void ArrivalToAnotherSettlementIsRejected()
+    {
+        var weeks = ArrivalWeeks.Value;
+        var arrival = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Arrival);
+        var problems = DemoCausalIndex.Build(Replace(weeks, arrival, e => e with { SettlementId = e.SettlementId + 1000 })).Problems;
+        Assert.Contains(problems, p => p.Contains("抵達此聚落的紀錄"));
+    }
+
+    [Fact]
+    public void ArrivalWhoseLedgerSaysTheBatchIsStillOnTheRoadIsRejected()
+    {
+        // 偽造：事件說抵達，但當週隊伍帳沒有抵達（仍在路上）→ 父事件正確也不能過關。
+        var weeks = ArrivalWeeks.Value;
+        var arrival = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Arrival);
+        var forged = weeks.Select(w => w.Week != arrival.Week
+                ? w
+                : w with
+                {
+                    Migrations = w.Migrations
+                        .Select(m => m.BatchId == arrival.MigrationBatchId && !m.Departed ? m with { Arrived = false } : m)
+                        .ToArray()
+                })
+            .ToList();
+        var problems = DemoCausalIndex.Build(forged).Problems;
+        Assert.Contains(problems, p => p.Contains("抵達此聚落的紀錄"));
+    }
+
+    [Fact]
+    public void FoundingRelabelledAsArrivalIsRejectedAndTheFoundingLedgerLacksItsEvent()
+    {
+        var weeks = FrontierWeeks.Value;
+        var founded = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.SettlementFounded);
+        var problems = DemoCausalIndex.Build(Replace(weeks, founded, e => e with { Kind = DemoSettlementEventKind.Arrival })).Problems;
+        Assert.Contains(problems, p => p.Contains("抵達此聚落的紀錄"));
+        Assert.Contains(problems, p => p.Contains("應恰好 1 筆"));
+    }
+
+    [Fact]
+    public void RoadDeathWithoutRoadDeathsInTheLedgerIsRejected()
+    {
+        // 偽造途中餓死：把一筆抵達改成途中餓死（聚落改成出發聚落、死亡數不等於週帳）→ 週帳不符。
+        var weeks = ArrivalWeeks.Value;
+        var index = DemoCausalIndex.Build(weeks);
+        var arrival = Events(weeks).First(e => e.Kind == DemoSettlementEventKind.Arrival);
+        var from = index.ParentOf(arrival)!.SettlementId;
+        var ledger = weeks.Single(w => w.Week == arrival.Week).Migrations
+            .Single(m => m.BatchId == arrival.MigrationBatchId && !m.Departed);
+        var problems = DemoCausalIndex.Build(Replace(weeks, arrival, e => e with
+        {
+            Kind = DemoSettlementEventKind.MigrantStarvationDeath,
+            SettlementId = from,
+            Count = ledger.Deaths + 1
+        })).Problems;
+        Assert.Contains(problems, p => p.Contains("途中死亡"));
+    }
+
     [Fact]
     public void ReusedEventIdIsRejected()
     {

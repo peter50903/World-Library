@@ -7,7 +7,8 @@ namespace WorldSimulation.Core.World.Demo;
 ///
 /// 本類別同時是因果證據的檢查器：<see cref="Problems"/> 列出所有不合法之處，
 /// 例如編號不連續、原因指向未來或不存在的事件、原因種類或聚落／隊伍不符、
-/// 以及與週帳不符的事件（沒有缺糧的飢餓、沒有出發帳的外移）。M1_HISTORY 與 TEMP 讀檔都用它。
+/// 以及與週帳不符的事件（沒有缺糧的飢餓、沒有出發帳的外移、沒有隊伍帳的抵達／建立／途中餓死、
+/// 有隊伍帳卻漏記的事件），餓死與飢餓解除必須精確指向「最近一筆」飢餓債來源。M1_HISTORY 與 TEMP 讀檔都用它。
 ///
 /// 限制（TEMP）：M1 示範每筆事件至多一個直接原因；正式 43F 允許 1～N 個直接原因，
 /// 完整歷史核心（阿卡西紀錄）尚未實作。
@@ -86,11 +87,12 @@ public sealed class DemoCausalIndex
             }
         }
 
-        foreach (var report in reports)
+        for (var reportIndex = 0; reportIndex < reports.Count; reportIndex++)
         {
+            var report = reports[reportIndex];
             foreach (var e in report.Events)
             {
-                var problem = index.CheckOne(report, e, reports);
+                var problem = index.CheckOne(reportIndex, e, reports);
                 if (problem is not null)
                     index._problems.Add($"第 {report.Week} 週 {e.SettlementName} 的 {KindText(e.Kind)} 事件 #{e.EventId}：{problem}");
                 else if (index.ParentOf(e) is { } parent)
@@ -102,11 +104,13 @@ public sealed class DemoCausalIndex
             }
         }
 
+        index.CheckTravelLedgersHaveEvents(reports);
         return index;
     }
 
-    private string? CheckOne(DemoWeekReport report, DemoSettlementEvent e, IReadOnlyList<DemoWeekReport> reports)
+    private string? CheckOne(int reportIndex, DemoSettlementEvent e, IReadOnlyList<DemoWeekReport> reports)
     {
+        var report = reports[reportIndex];
         if (e.CauseEventId < 0)
             return "直接原因編號不可為負";
         if (e.CauseEventId != 0 && e.CauseEventId >= e.EventId)
@@ -149,7 +153,8 @@ public sealed class DemoCausalIndex
                     return $"直接原因必須是隊伍 #{e.MigrationBatchId} 在更早週次的外移事件";
                 if (e.Kind == DemoSettlementEventKind.MigrantStarvationDeath && parent.SettlementId != e.SettlementId)
                     return "途中餓死事件的聚落必須是隊伍的出發聚落";
-                return null;
+                // GPT 審 #91：事件本身也要有當週隊伍帳為證據，偽造的抵達／建立／途中餓死不能只靠父事件過關。
+                return TravelLedgerProblem(report, e);
             }
 
             case DemoSettlementEventKind.StarvationDeath:
@@ -158,16 +163,92 @@ public sealed class DemoCausalIndex
                 if (parent is null || parent.SettlementId != e.SettlementId)
                     return "直接原因必須是同一聚落帶來飢餓債的事件（飢餓，或帶著飢餓債抵達／建立）";
                 if (parent.Kind == DemoSettlementEventKind.Hunger)
-                    return parent.Week <= e.Week ? null : "原因週次晚於此事件";
-                if (parent.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded
-                    && parent.Week < e.Week && CarriedDebt(reports, parent))
-                    return null;
-                return "直接原因必須是同一聚落帶來飢餓債的事件（飢餓，或更早週次帶著飢餓債抵達／建立）";
+                {
+                    if (parent.Week > e.Week)
+                        return "原因週次晚於此事件";
+                }
+                else if (!(parent.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded
+                    && parent.Week < e.Week && CarriedDebt(reports, parent)))
+                {
+                    return "直接原因必須是同一聚落帶來飢餓債的事件（飢餓，或更早週次帶著飢餓債抵達／建立）";
+                }
+
+                // GPT 審 #91：必須精確指向「最近一筆」飢餓債來源，指到更早的舊事件也不合法。
+                var latest = ExpectedDebtSourceId(reports, reportIndex, e);
+                if (latest == 0)
+                    return "此聚落在此事件之前沒有任何帶來飢餓債的事件";
+                return e.CauseEventId == latest
+                    ? null
+                    : $"直接原因 #{e.CauseEventId} 不是此聚落最近一筆帶來飢餓債的事件（應為 #{latest}）";
             }
 
             default:
                 return "未知的事件種類";
         }
+    }
+
+    /// <summary>抵達／建立／途中餓死事件必須與當週隊伍帳一致（隊伍、聚落、人數）。</summary>
+    private static string? TravelLedgerProblem(DemoWeekReport report, DemoSettlementEvent e)
+    {
+        var ledger = report.Migrations.FirstOrDefault(m => m.BatchId == e.MigrationBatchId && !m.Departed);
+        if (ledger is null)
+            return $"週帳沒有隊伍 #{e.MigrationBatchId} 本週的途中紀錄";
+        return e.Kind switch
+        {
+            DemoSettlementEventKind.Arrival when !ledger.Arrived || ledger.Founding
+                || ledger.ToSettlementId != e.SettlementId || ledger.PopulationClosing != e.Count
+                => $"週帳沒有隊伍 #{e.MigrationBatchId} 抵達此聚落的紀錄（事件人數 {e.Count}，週帳抵達 {(ledger.Arrived ? ledger.PopulationClosing : 0)}）",
+            DemoSettlementEventKind.SettlementFounded when !ledger.Arrived || !ledger.Founding
+                || ledger.ToSettlementId != e.SettlementId || ledger.PopulationClosing != e.Count
+                => $"週帳沒有開拓隊 #{e.MigrationBatchId} 建立此聚落的紀錄（事件人數 {e.Count}，週帳抵達 {(ledger.Arrived ? ledger.PopulationClosing : 0)}）",
+            DemoSettlementEventKind.MigrantStarvationDeath when ledger.FromSettlementId != e.SettlementId
+                || ledger.Deaths <= 0 || ledger.Deaths != e.Count
+                => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 途中死亡（事件死亡 {e.Count}，週帳死亡 {ledger.Deaths}）",
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// 反向核對：每筆抵達、建立或有死亡的途中隊伍帳，都要有恰好一筆對應事件（不能漏記）。
+    /// </summary>
+    private void CheckTravelLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports)
+    {
+        foreach (var report in reports)
+        {
+            foreach (var ledger in report.Migrations.Where(m => !m.Departed))
+            {
+                if (ledger.Arrived)
+                {
+                    var kind = ledger.Founding ? DemoSettlementEventKind.SettlementFounded : DemoSettlementEventKind.Arrival;
+                    var n = report.Events.Count(e => e.Kind == kind && e.MigrationBatchId == ledger.BatchId);
+                    if (n != 1)
+                        _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳記為{KindText(kind)}，但有 {n} 筆{KindText(kind)}事件（應恰好 1 筆）");
+                }
+
+                if (ledger.Deaths > 0)
+                {
+                    var n = report.Events.Count(e => e.Kind == DemoSettlementEventKind.MigrantStarvationDeath
+                        && e.MigrationBatchId == ledger.BatchId);
+                    if (n != 1)
+                        _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳途中死亡 {ledger.Deaths}，但有 {n} 筆途中餓死事件（應恰好 1 筆）");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 餓死／飢餓解除應指向的直接原因：同聚落同週的飢餓事件；沒有則為更早週次中最近一筆
+    /// 帶來飢餓債的事件（與結算時 <see cref="LatestDebtSourceId"/> 同一規則，只看此週之前）。
+    /// </summary>
+    private static long ExpectedDebtSourceId(IReadOnlyList<DemoWeekReport> reports, int reportIndex, DemoSettlementEvent e)
+    {
+        var report = reports[reportIndex];
+        var sameWeekHunger = report.Events.FirstOrDefault(h => h.Kind == DemoSettlementEventKind.Hunger
+            && h.SettlementId == e.SettlementId && h.EventId < e.EventId);
+        if (sameWeekHunger is not null)
+            return sameWeekHunger.EventId;
+        // 週報依週次排列，此週之前＝索引 reportIndex 之前的全部週報。
+        return LatestDebtSourceIdBefore(reports, reportIndex, e.SettlementId);
     }
 
     private static bool CarriedDebt(IReadOnlyList<DemoWeekReport> reports, DemoSettlementEvent arrival)
@@ -218,8 +299,12 @@ public sealed class DemoCausalIndex
     /// 找不到（只在人工測試輸入期初就有飢餓債時）回傳 0，交給 <see cref="Problems"/> 指出。
     /// </summary>
     internal static long LatestDebtSourceId(IReadOnlyList<DemoWeekReport> published, int settlementId)
+        => LatestDebtSourceIdBefore(published, published.Count, settlementId);
+
+    /// <summary>同 <see cref="LatestDebtSourceId"/>，但只看索引 <paramref name="count"/> 之前的週報。</summary>
+    private static long LatestDebtSourceIdBefore(IReadOnlyList<DemoWeekReport> published, int count, int settlementId)
     {
-        for (var i = published.Count - 1; i >= 0; i--)
+        for (var i = count - 1; i >= 0; i--)
         {
             var report = published[i];
             for (var j = report.Events.Count - 1; j >= 0; j--)
