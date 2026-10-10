@@ -173,6 +173,79 @@ public sealed class M1AcceptanceReportTests
         Assert.DoesNotContain("產量受勞力限制）", famine.Diagnosis);
     }
 
+    /// <summary>
+    /// 在 LocalFamine42 上挑第一個「缺糧後餓死／外移」且有下一週帳的效果，只留下這一組前後兩週可量測：
+    /// 其他週的資源點剩餘一律改 0（不可能被當成受勞力限制），下一週人口少 1、採收＝新上限、資源點有剩。
+    /// <paramref name="beforeHarvest"/> 給前週（效果當週）採收；null 表示前週採收＝舊上限。
+    /// </summary>
+    private static M1RunData SingleMeasurableDrop(Func<long, long>? beforeHarvest)
+    {
+        var run = LocalFamine42.Value;
+        var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
+        Assert.True(yieldPerWorker > 0, "示範設定的 TEMP 每人每週產量應大於 0");
+        var events = run.Weeks.SelectMany(w => w.Events).ToList();
+        var ledgerOf = run.Weeks.SelectMany(w => w.Settlements.Select(l => (w.Week, l))).ToDictionary(x => (x.Week, x.l.SettlementId), x => x.l);
+        var effect = events.FirstOrDefault(e =>
+            (e.Kind == DemoSettlementEventKind.StarvationDeath || e.Kind == DemoSettlementEventKind.Emigration)
+            && events.Any(h => h.Kind == DemoSettlementEventKind.Hunger && h.SettlementId == e.SettlementId && h.Week <= e.Week)
+            && ledgerOf.TryGetValue((e.Week, e.SettlementId), out var d) && d.PopulationOpening >= 2
+            && ledgerOf.ContainsKey((e.Week + 1, e.SettlementId)));
+        Assert.True(effect is not null, "局部饑荒種子 42 應該有缺糧後的餓死或外移，且下一週仍有帳");
+
+        var hit = effect!;
+        var key = hit.SettlementId;
+        var weeks = run.Weeks.Select(w => w with
+        {
+            Settlements = w.Settlements.Select(l =>
+            {
+                var during = l.SettlementId == key && w.Week == hit.Week;
+                var next = l.SettlementId == key && w.Week == hit.Week + 1;
+                if (!during && !next)
+                    return l with { ReserveClosing = 0 };
+                var populationBefore = ledgerOf[(hit.Week, key)].PopulationOpening;
+                if (during)
+                {
+                    var cap = populationBefore * yieldPerWorker;
+                    return l with { FoodProduced = beforeHarvest?.Invoke(cap) ?? cap, ReserveClosing = 1 };
+                }
+
+                var after = populationBefore - 1;
+                return l with { PopulationOpening = after, FoodProduced = after * yieldPerWorker, ReserveClosing = 1 };
+            }).ToList()
+        }).ToList();
+        return run with { Weeks = weeks };
+    }
+
+    [Fact]
+    public void FamineHarvestRisingFromZeroToNewCapIsNotAMeasuredDrop()
+    {
+        // 反例（GPT 審查 #87）：前週採收 0、下週採收＝新上限 N。只看下週會誤判「減產」通過；
+        // 前週沒有受舊上限限制、採收也沒有下降，必須是警告而且不能出現受勞力限制的傳導。
+        var famine = Result(M1Evaluator.Evaluate(SingleMeasurableDrop(_ => 0), Checks.Value), "M1_FAMINE");
+        Assert.Equal(M1Verdict.Warn, famine.Verdict);
+        Assert.Contains("量測不到生產力", famine.Diagnosis);
+        Assert.DoesNotContain("產量受勞力限制）", famine.Diagnosis);
+    }
+
+    [Fact]
+    public void FamineHarvestBelowOldCapBeforeTheDropIsNotAMeasuredDrop()
+    {
+        // 反例：前週採收低於舊上限（受存量等其他因素限制），即使下週＝新上限也不算勞動力傳導。
+        var famine = Result(M1Evaluator.Evaluate(SingleMeasurableDrop(cap => cap - 1), Checks.Value), "M1_FAMINE");
+        Assert.Equal(M1Verdict.Warn, famine.Verdict);
+        Assert.DoesNotContain("產量受勞力限制）", famine.Diagnosis);
+    }
+
+    [Fact]
+    public void FamineLaborBoundHarvestDropIsMeasured()
+    {
+        // 正例：前週採收＝舊上限且資源點有剩，下週人口少 1、採收＝新上限且資源點有剩 → 量測到真的減產。
+        var famine = Result(M1Evaluator.Evaluate(SingleMeasurableDrop(null), Checks.Value), "M1_FAMINE");
+        Assert.Contains("＝前週舊上限", famine.Diagnosis);
+        Assert.Contains("前後兩週產量受勞力限制）", famine.Diagnosis);
+        Assert.DoesNotContain("量測不到生產力", famine.Diagnosis);
+    }
+
     [Fact]
     public void HarvestAboveLaborCapacityIsReportedByM1Famine()
     {
@@ -194,7 +267,8 @@ public sealed class M1AcceptanceReportTests
             if (famine.Verdict == M1Verdict.Pass)
             {
                 Assert.Contains("實際採收", famine.Diagnosis);
-                Assert.Contains("產量受勞力限制", famine.Diagnosis);
+                Assert.Contains("＝前週舊上限", famine.Diagnosis);
+                Assert.Contains("前後兩週產量受勞力限制", famine.Diagnosis);
             }
 
             // 出生、具體化、43F 因果索引尚未實作：通過時也必須標明 TEMP 覆蓋限制。

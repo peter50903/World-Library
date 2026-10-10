@@ -668,8 +668,9 @@ public static class M1Evaluator
         if (problems.Count > 0)
             return new M1Finding(M1Raw.Violation, $"{problems.Count} 處違反；第一處：{problems[0]}");
 
-        // 需求→死亡／遷徙→勞動力→生產力：找缺糧後同一聚落的餓死或外移，且下一週實際採收
-        // 「等於降低後的勞動力上限、資源點仍有剩」（產量受勞力限制而下降），才算量測到生產力傳導。
+        // 需求→死亡／遷徙→勞動力→生產力：找缺糧後同一聚落的餓死或外移，而且
+        // 效果當週實際採收＝舊勞動力上限、資源點有剩（前週確實受勞力限制、不是 0 或受存量限制），
+        // 下一週實際採收＝降低後的新上限、資源點仍有剩，且採收確實下降，才算量測到生產力傳導。
         string? chain = null;
         string? unmeasured = null;
         var hungersOf = events.Where(e => e.Kind == DemoSettlementEventKind.Hunger)
@@ -695,17 +696,21 @@ public static class M1Evaluator
 
             var capBefore = during.PopulationOpening * yieldPerWorker;
             var capAfter = next.PopulationOpening * yieldPerWorker;
-            var laborBound = capAfter < capBefore && next.FoodProduced == capAfter && next.ReserveClosing > 0;
+            var beforeBound = during.FoodProduced == capBefore && during.ReserveClosing > 0;
+            var afterBound = next.FoodProduced == capAfter && next.ReserveClosing > 0;
+            var laborBound = capAfter < capBefore && beforeBound && afterBound && next.FoodProduced < during.FoodProduced;
             if (!laborBound)
             {
-                unmeasured ??= $"{head}，但下週勞動力上限 {capBefore}→{capAfter}、實際採收 {during.FoodProduced}→{next.FoodProduced}"
-                    + $"（資源點剩 {next.ReserveClosing}）：產量受資源點存量限制或勞動力未下降，量測不到生產力因人口減少而下降";
+                unmeasured ??= $"{head}，但勞動力上限 {capBefore}→{capAfter}、實際採收 {during.FoodProduced}→{next.FoodProduced}"
+                    + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}）：前後兩週不是都受勞力限制（產量受資源點存量限制、"
+                    + "前週採收未達舊上限或勞動力未下降），量測不到生產力因人口減少而下降";
                 continue;
             }
 
             chain = $"{head} → 下週勞動力 {during.PopulationOpening}→{next.PopulationOpening} 人，"
                 + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {yieldPerWorker}），"
-                + $"實際採收 {during.FoodProduced}→{next.FoodProduced}＝新上限（資源點仍剩 {next.ReserveClosing}，產量受勞力限制）";
+                + $"實際採收 {during.FoodProduced}＝前週舊上限 → {next.FoodProduced}＝新上限"
+                + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}，前後兩週產量受勞力限制）";
             break;
         }
 
