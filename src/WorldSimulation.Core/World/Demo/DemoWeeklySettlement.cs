@@ -27,7 +27,8 @@ public sealed record DemoWeeklyTempConfig(
     bool FoundingEnabled = false,
     int FoundingSearchMaxSteps = 3,
     bool TempFamineAllOriginal = false,
-    bool SharedCatchmentEnabled = false)
+    bool SharedCatchmentEnabled = false,
+    bool CrowdedForaging = false)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -50,6 +51,14 @@ public sealed record DemoWeeklyTempConfig(
         FarmlandRegenPerWeek = 0,
         WoodlandRegenPerWeek = 0,
         FisheryRegenPerWeek = 0
+    };
+
+    /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
+    /// (40–48 people) start with no stored food. Demonstrates scarcity without disabling wild sources.</summary>
+    public static DemoWeeklyTempConfig CrowdedForagingSample { get; } = ForagingSample with
+    {
+        CrowdedForaging = true,
+        InitialFoodPerPerson = 0
     };
 
     /// <summary>
