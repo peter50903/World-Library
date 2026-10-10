@@ -14,7 +14,7 @@ jobs:
   dotnet:
     name: .NET 8 SDK and build verification
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -74,6 +74,22 @@ jobs:
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
+            # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
+            # A Hard failure exits 1 and fails this step (set -e + pipefail).
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 | tee /tmp/observer-m1.log
+            # Every Enabled=TRUE CheckID from the CSV must be reported, in CSV order, in the summary.
+            expected_ids="$(tail -n +2 'config/sheets/45G_M1驗收.csv' | tr -d '\r' | awk -F, '$NF=="TRUE"{print $1}')"
+            test -n "$expected_ids"
+            for id in $expected_ids; do grep -q "  $id｜" /tmp/observer-m1.log; done
+            summary_ids="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log | grep -o '^  M1_[A-Z_]*' | tr -d ' ')"
+            test "$summary_ids" = "$expected_ids"
+            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 9
+            grep -q '沒有 Hard 項目失敗' /tmp/observer-m1.log
+            # Bad arguments must fail loudly in Chinese, not be swallowed.
+            if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 0 > /tmp/observer-m1-bad.log; then
+              echo "--m1-check --years 0 should fail."; exit 1
+            fi
+            grep -q '錯誤：--years 必須是' /tmp/observer-m1-bad.log
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi

@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorldSimulation.Core\WorldSimulation.Core.csproj" />
+    <!-- V0-08A：M1 驗收報告器在文字觀察者專案內，測試直接呼叫它。 -->
+    <ProjectReference Include="..\..\src\WorldSimulation.ObserverCli\WorldSimulation.ObserverCli.csproj" />
   </ItemGroup>
 
 </Project>
