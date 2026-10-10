@@ -24,6 +24,9 @@ public partial class DemoHexMap : Control
 
     public event Action<DemoHexCell>? CellSelected;
 
+    /// <summary>#89：事件詳情選到的聚落格（偏移座標），畫亮色外框；null＝不標示。只影響顯示。</summary>
+    public (int Column, int Row)? Highlight { get; set; }
+
     // TEMP display-only controls. Never change simulation state or formal settings.
     private const float TempZoomStep = 1.2f;
     private const float TempMinZoom = 0.6f;
@@ -83,6 +86,20 @@ public partial class DemoHexMap : Control
                 if (settlement.IsFounded)
                     DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
             }
+        }
+
+        // #89: outline the settlement of the selected event on top of the terrain and markers.
+        if (Highlight is { } focus && focus.Column >= 0 && focus.Column < DemoHexWorld.Columns
+            && focus.Row >= 0 && focus.Row < DemoHexWorld.Rows)
+        {
+            var cell = World.GetCell(focus.Column, focus.Row);
+            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
+            var ring = new Vector2[7];
+            for (var i = 0; i < 6; i++)
+                ring[i] = vertices[i];
+            ring[6] = vertices[0];
+            DrawPolyline(ring, new Color(1f, 0.95f, 0.35f), 3.5f);
         }
 
         // V0-06A: travelling migrants, offset to the lower right so a batch still standing on its
@@ -162,6 +179,16 @@ public partial class DemoHexMap : Control
             AcceptEvent();
             return;
         }
+    }
+
+    /// <summary>
+    /// #89：把指定格移到地圖中央並標示外框（只改顯示用的平移，不改縮放、不改世界狀態）。
+    /// </summary>
+    public void FocusCell(DemoHexCell cell)
+    {
+        _pan += Size * 0.5f - CellCenter(cell);
+        Highlight = (cell.Column, cell.Row);
+        QueueRedraw();
     }
 
     /// <summary>Used by the in-engine smoke test to inject a TEMP cell click.</summary>
