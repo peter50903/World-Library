@@ -520,6 +520,7 @@ public static class M1Evaluator
         var problems = new List<string>();
         long births = 0, settledDeaths = 0, roadDeaths = 0, emigrants = 0, immigrants = 0;
         var previous = run.Initial;
+        DemoWeekReport? previousReport = null;
         foreach (var report in run.Weeks)
         {
             long wBirths = 0, wDeaths = 0;
@@ -527,6 +528,38 @@ public static class M1Evaluator
             {
                 if (!l.PopulationBalanced)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 人口帳：{l.PopulationOpening}＋出生 {l.Births}－死亡 {l.Deaths}＋遷入 {l.Immigrants}－遷出 {l.Emigrants}≠{l.PopulationClosing}");
+
+                // #98：逐聚落銜接（世界總量平衡也可能藏著「甲少一人、乙多一人」）：期初＝上週期末；新聚落期初 0。
+                if (previousReport is not null)
+                {
+                    var before = previousReport.Settlements.FirstOrDefault(p => p.SettlementId == l.SettlementId);
+                    var expectedOpening = before?.PopulationClosing ?? 0;
+                    if (l.PopulationOpening != expectedOpening)
+                        problems.Add($"{At(run, report.Week)} {Name(l)} 期初人口 {l.PopulationOpening}≠上週期末 {expectedOpening}（人口不能在週與週之間憑空增減或搬移）");
+                }
+
+                // #98：出生必須有帶原因的出生事件；示範沒有出生機制，所以任何出生都是沒有來源的人口。
+                if (l.Births != 0)
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 帳上出生 {l.Births} 人，但沒有任何帶原因的出生事件（出生機制尚未實作）");
+
+                // #98：遷出／遷入兩邊都要有事件與隊伍帳，人數一致（漏記或改人數都抓得到）。
+                var leaveEvents = report.Events
+                    .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.Emigration)
+                    .Sum(e => e.Count);
+                var departedPeople = report.Migrations
+                    .Where(m => m.Departed && m.FromSettlementId == l.SettlementId)
+                    .Sum(m => m.PopulationOpening);
+                if (leaveEvents != l.Emigrants || departedPeople != l.Emigrants)
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 遷出 {l.Emigrants} 人，外移事件 {leaveEvents} 人、隊伍出發帳 {departedPeople} 人");
+                var arriveEvents = report.Events
+                    .Where(e => e.SettlementId == l.SettlementId
+                        && e.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded)
+                    .Sum(e => e.Count);
+                var arrivedPeople = report.Migrations
+                    .Where(m => m.Arrived && m.ToSettlementId == l.SettlementId)
+                    .Sum(m => m.PopulationClosing);
+                if (arriveEvents != l.Immigrants || arrivedPeople != l.Immigrants)
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 遷入 {l.Immigrants} 人，抵達／建立事件 {arriveEvents} 人、隊伍抵達帳 {arrivedPeople} 人");
                 var causedDeaths = report.Events
                     .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.StarvationDeath)
                     .ToList();
@@ -543,6 +576,14 @@ public static class M1Evaluator
             {
                 if (!m.PopulationBalanced)
                     problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 人口帳：{m.PopulationOpening}－死亡 {m.Deaths}≠{m.PopulationClosing}");
+
+                // #98：途中隊伍逐週銜接：本週期初＝上週期末（上週仍在路上）。
+                if (!m.Departed)
+                {
+                    var before = previousReport?.Migrations.FirstOrDefault(p => p.BatchId == m.BatchId);
+                    if (before is null || before.Arrived || before.PopulationClosing != m.PopulationOpening)
+                        problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 期初 {m.PopulationOpening} 人，上週期末 {(before is null ? "無紀錄" : before.Arrived ? "已抵達" : before.PopulationClosing.ToString(CultureInfo.InvariantCulture) + " 人")}");
+                }
                 var causedDeaths = report.Events
                     .Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath)
                     .ToList();
@@ -563,15 +604,18 @@ public static class M1Evaluator
                     problems.Add($"{At(run, report.Week)} 世界人口（含途中）：{previous.Population}＋出生 {wBirths}－死亡 {wDeaths}≠世界狀態 {after.Population}");
                 previous = after;
             }
+
+            previousReport = report;
         }
 
         var final = Final(run);
         return Judge(problems,
             $"世界人口（各聚落＋途中隊伍，只計一次）期初 {run.Initial.Population}＋出生 {births}"
             + $"－死亡 {settledDeaths + roadDeaths}（聚落餓死 {settledDeaths}、途中餓死 {roadDeaths}，全部有帶原因事件）"
-            + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）"
-            + "。【覆蓋限制 TEMP】出生：示範規則固定為 0，本報告沒有量測到任何出生；"
-            + "具體化：個體具體化尚未實作，沒有量測；這兩項只確認沒有憑空增減，不代表已驗證");
+            + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）；"
+            + "逐聚落、逐隊伍期初＝上週期末，遷出／遷入人數與外移／抵達事件及隊伍帳一致"
+            + "。【覆蓋限制 TEMP】出生：示範規則固定為 0，帳上出生不為 0 即判失敗，但出生事件本身尚未實作；"
+            + "具體化：個體具體化尚未實作（未實作，不是通過），沒有量測；這兩項只確認沒有憑空增減，不代表已驗證");
     }
 
     // ── M1_NO_MAGIC_FOOD：食物增量只能來自合法採集／農牧／配方／神蹟定義 ──────────
