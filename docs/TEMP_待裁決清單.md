@@ -189,7 +189,7 @@
 | Godot 預設種子 42、局部饑荒／開拓情境與 CI 冒煙測試挑種子（42，再 1～30）、冒煙天數（#81 起玩家也可在畫面選這些 TEMP 情境） | `godot/Scripts/ObserverRoot.cs:14-113` |
 | #87 觀察者播放速度：每秒 1／5／30 世界日、每幀最多推進 30 日（純畫面顯示，不是世界規則） | `godot/Scripts/PlaybackClock.cs:12-19` |
 | #96 歷史事件篩選預設：全部日期（迄日 0＝不限）、全部聚落、全部類別、無關鍵字；清單顯示符合者最新 60 筆＋最新 5 筆建立新聚落（純畫面，不是世界規則） | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs`、`godot/Scripts/ObserverRoot.HistoryFilter.cs` |
-| #103 聚落承載估計：長期可養活人數＝每週再生÷每人每週消耗（每人產量低於消耗時為 0）；只讀 D3／D4 TEMP 值推導，不含存量、糧庫、遷徙、出生與腐敗，是描述性估計、不是正式承載力規則 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs`、`DemoCenturyRun.cs`、`Program.cs`、`M1Acceptance.cs`（M1_STABILITY） |
+| #103 聚落承載估計：長期可養活人數＝每週再生÷每人每週消耗（每人產量低於消耗時為 0）；只讀 D3／D4 TEMP 值推導，不含存量、糧庫、遷徙、出生與腐敗，是描述性估計、不是正式承載力規則 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs`、`DemoCenturyRun.cs`、`Program.cs`、`M1Acceptance.cs`（M1_STABILITY）；#104 畫面 `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` |
 | 存檔只接受已知示範情境 | `DemoObserverWorld.Save.cs:45-46` |
 | `tests/` 內的期望數字 | 全部由上表 fixture 與 D3～D7 的 TEMP 值推導，D3～D7 定案時一併更新 |
 
@@ -221,3 +221,4 @@
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
+| `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 3 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |
