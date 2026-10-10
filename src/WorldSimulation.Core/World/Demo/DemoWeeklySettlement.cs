@@ -60,7 +60,10 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig LivingForagingSample { get; } = ForagingSample with
     {
         HumanLifecycleEnabled = true,
-        MigrationEnabled = false
+        MigrationEnabled = false,
+        // TEMP adult gather capacity: enough to support non-working dependents,
+        // still limited by genuine natural-source budget (never mint food).
+        YieldPerWorkerPerWeek = 8
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
