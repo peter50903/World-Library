@@ -38,7 +38,7 @@ public partial class ObserverRoot : Control
     /// #81：玩家可在畫面上選的四種既有 TEMP 生存情境（順序＝下拉選單順序）。
     /// 只對應 Core 既有的 <see cref="DemoWeeklyTempConfig"/> 示範設定，不是正式規則。
     /// </summary>
-    private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3, Foraging = 4 }
+    private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3, Foraging = 4, CrowdedForaging = 5 }
 
     private static readonly TempScenario InitialScenario = SettleSmoke ? TempScenario.Frontier
         : MigrationSmoke ? TempScenario.LocalFamine
@@ -63,6 +63,7 @@ public partial class ObserverRoot : Control
         TempScenario.LocalFamine => DemoWeeklyTempConfig.LocalFamineSample,
         TempScenario.Frontier => DemoWeeklyTempConfig.FrontierSample,
         TempScenario.Foraging => DemoWeeklyTempConfig.ForagingSample,
+        TempScenario.CrowdedForaging => DemoWeeklyTempConfig.CrowdedForagingSample,
         _ => DemoWeeklyTempConfig.Sample
     };
 
@@ -76,6 +77,7 @@ public partial class ObserverRoot : Control
         TempScenario.LocalFamine => "局部饑荒｜觀察遷徙（TEMP）",
         TempScenario.Frontier => "開拓｜觀察新聚落（TEMP）",
         TempScenario.Foraging => "森林／河流採集生存（新，TEMP）",
+        TempScenario.CrowdedForaging => "森林周邊人口過密｜觀察缺糧（TEMP）",
         _ => "一般（TEMP，預設）"
     };
 
@@ -87,6 +89,7 @@ public partial class ObserverRoot : Control
         "局部饑荒" => TempScenario.LocalFamine,
         "開拓" => TempScenario.Frontier,
         "森林河流生存" => TempScenario.Foraging,
+        "森林周邊人口過密" => TempScenario.CrowdedForaging,
         _ => null
     };
 
