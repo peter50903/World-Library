@@ -211,11 +211,11 @@ public partial class ObserverRoot
         if (_eventList.ItemCount != 0 || !_filterCount.Text.Contains("沒有符合", StringComparison.Ordinal))
             Fail("empty result is not shown as empty");
 
-        // ⑦ 存檔 → 設篩選 → 讀檔：讀入的世界相同、篩選回到預設。
-        saveButtons[0].EmitSignal(BaseButton.SignalName.Pressed);
+        // ⑦ 存到槽 1 → 設篩選 → 讀槽 1（存檔槽從 1 起算）：讀入的世界相同、篩選回到預設。
+        saveButtons[1].EmitSignal(BaseButton.SignalName.Pressed);
         _filterKind.Select(emigrationIndex);
         _filterKind.EmitSignal(OptionButton.SignalName.ItemSelected, emigrationIndex);
-        loadButtons[0].EmitSignal(BaseButton.SignalName.Pressed);
+        loadButtons[1].EmitSignal(BaseButton.SignalName.Pressed);
         if (_world.ExportTempSave() != coreBefore)
             Fail("loaded world differs from the saved one");
         Check("after load", DemoEventFilter.All);
