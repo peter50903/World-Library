@@ -306,6 +306,8 @@ public partial class ObserverRoot : Control
             _speedPicker.AddItem($"每秒 {speed} 天（TEMP）");
         _speedPicker.ItemSelected += OnSpeedPicked;
         playRow.AddChild(_speedPicker);
+        // #95: major-event alert + auto-pause during playback (TEMP major kinds).
+        BuildMajorEventAlert(side);
 
         // V0-07C: three TEMP save slots; each row shows only the slot's header (day, seed, scenario).
         var slotHeading = new Label { Text = $"TEMP 存檔槽（{DemoSaveSlots.TempSlotCount} 槽，非正式存檔）" };
@@ -362,7 +364,13 @@ public partial class ObserverRoot : Control
             SizeFlagsVertical = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 145)
         };
-        historyColumn.AddChild(_history);
+        // #89: text history on the left, clickable settlement events and their detail on the right.
+        var historyRow = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        historyRow.AddThemeConstantOverride("separation", 12);
+        historyColumn.AddChild(historyRow);
+        _history.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        historyRow.AddChild(_history);
+        BuildEventDetailPanel(historyRow);
 
         Refresh();
         if (OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE"))
@@ -371,8 +379,14 @@ public partial class ObserverRoot : Control
             VerifyMapInputSmoke();
         if (ScenarioSmoke)
             VerifyScenarioSwitchSmoke(nextButton, skipButton, saveButtons, loadButtons);
+        if (EventDetailSmoke)
+            VerifyEventDetailSmoke(nextButton);
         if (PlaybackSmoke)
             VerifyPlaybackSmoke(nextButton, saveButtons, loadButtons);
+        if (AlertSmoke)
+            VerifyAlertSmoke();
+        if (HistoryFilterSmoke)
+            VerifyHistoryFilterSmoke(nextButton, saveButtons, loadButtons);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -744,6 +758,7 @@ public partial class ObserverRoot : Control
     {
         PausePlayback();
         _world = world;
+        ResetMajorEventAlert(); // #95: no stale alert from the previous world.
         _pendingScenario = null;
         _confirmRow.Visible = false;
         _hexMap.World = world.Map;
@@ -1028,6 +1043,7 @@ public partial class ObserverRoot : Control
             DemoDayEvent? last = null;
             for (var i = 0; i < days; i++)
                 last = _world.AdvanceOneDay();
+            SyncAlertWatermark(); // #95: events seen by stepping manually are never alerted later.
 
             _notice.Text = (_playback.Playing ? $"{_playback.StatusText}；" : "")
                 + $"已推進 {days} 天；第 {last!.Day} 天：收穫 {last.Harvested}，消耗 {last.Consumed}，缺糧 {last.Shortage}。";
@@ -1047,7 +1063,7 @@ public partial class ObserverRoot : Control
     {
         var days = _playback.Tick(delta);
         if (days > 0)
-            Advance(days);
+            AdvancePlayback(days); // #95: stops on the day a major event appears.
     }
 
     private void TogglePlayback()
@@ -1094,6 +1110,8 @@ public partial class ObserverRoot : Control
 
         if (Day() != 0 || _playback.Playing)
             Fail("the world must start paused on day 0.");
+        // #95: this smoke checks raw playback timing; major-event auto-pause has its own smoke.
+        _autoPauseOnMajor.ButtonPressed = false;
 
         // 1. Paused: frames never advance the world.
         Frames(10, 0.5);
@@ -1191,5 +1209,6 @@ public partial class ObserverRoot : Control
         _history.Text = string.Join("\n", lines);
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
+        RefreshEventList();
     }
 }
