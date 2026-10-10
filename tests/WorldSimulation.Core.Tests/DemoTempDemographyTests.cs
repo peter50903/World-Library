@@ -129,12 +129,13 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void MigrationKeepsPregnancyAndStarvationCannotCreateOrCopyPeople()
     {
-        var pop = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 8 }, Rules);
+        var noMiscarriage = Rules with { MiscarriageMonthly = 0 }; // Isolate transfer + provenance from a separate miscarriage chance.
+        var pop = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 8 }, noMiscarriage);
         DemoTempPerson? expecting = null;
         int conceivedWeek = 0;
         for (var week = 1; week <= 130; week++)
         {
-            pop = pop.AdvanceWeek(week, _ => true, Rules).Population;
+            pop = pop.AdvanceWeek(week, _ => true, noMiscarriage).Population;
             expecting = pop.People.FirstOrDefault(p => p.PregnancyDueWeek.HasValue);
             if (expecting is null) continue;
             conceivedWeek = week;
@@ -160,7 +161,7 @@ public sealed class DemoTempDemographyTests
         var expectedDue = expecting.PregnancyDueWeek!.Value;
         for (var week = conceivedWeek + 1; week <= expectedDue; week++)
         {
-            var result = pop.AdvanceWeek(week, _ => true, Rules);
+            var result = pop.AdvanceWeek(week, _ => true, noMiscarriage);
             births.AddRange(result.Events.Where(e => e.Kind == DemoTempDemographicKind.Birth
                 && e.MotherId == expecting.Id));
             pop = result.Population;
