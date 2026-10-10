@@ -59,6 +59,16 @@ public partial class ObserverRoot
             || _hexMap.MainRiverTiles.Count == 0)
             Fail("load did not restore the selected river mode or reset old selection");
 
-        GD.Print($"WORLD_SIM_FORAGING_OK: Weeks=5 Harvest={actual} Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1");
+        InstallWorld(CreateTempWorld(TempScenario.CrowdedForaging), "觀察過密人口與缺糧");
+        if (_scenarioPicker.Selected != (int)TempScenario.CrowdedForaging)
+            Fail("crowded food scenario picker did not select the new option");
+        for (var i = 0; i < 7; i++)
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.LatestWeek?.Settlements.Sum(l => l.FoodShortage) <= 0
+            || _world.LatestWeek!.Settlements.Sum(l => l.Deaths) <= 0)
+            Fail("crowded settlements did not face actual shortage/death");
+        if (_world.LatestSharedHarvest()?.TotalHarvested <= 0)
+            Fail("crowded mode falsified starvation by switching off all actual food sources");
+        GD.Print($"WORLD_SIM_FORAGING_OK: Weeks=5 Harvest={actual} Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1 CrowdedStarved=1");
     }
 }
