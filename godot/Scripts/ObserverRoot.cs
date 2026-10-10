@@ -419,6 +419,8 @@ public partial class ObserverRoot : Control
             VerifyFoodSmoke(nextButton, loadButtons);
         if (OS.HasEnvironment("WORLD_SIM_WINDOW_SMOKE"))
             VerifyControlsWindowSmoke();
+        if (OS.HasEnvironment("WORLD_SIM_HUMAN_SMOKE"))
+            VerifyHumanLifecycleSmoke();
         if (ForagingSmoke)
             VerifyForagingSmoke(nextButton);
 
