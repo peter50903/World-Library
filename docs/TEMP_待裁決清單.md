@@ -125,7 +125,7 @@
 | 參數 | 目前 TEMP 值 | 程式位置 |
 |---|---|---|
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
-| 可讀世界日數上限 | 36400 日（原為 100 個 364 日示範年；#82 改用正式 365 日年後約 99.7 年，第 100 年末第 36500 日的世界存不進 TEMP 存檔，未擴張，待裁決） | `DemoObserverWorld.Save.cs:24` |
+| 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
 | 存檔格式 | JSON 第 2 版（直接快照），第 1 版重播仍可讀 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
@@ -176,6 +176,7 @@
 | M1 驗收預設種子 42、7、1，預設 100 年 | `M1Acceptance.cs:965-968` |
 | 饑荒、局部饑荒、開拓情境（`FamineSample`／`LocalFamineSample`／`FrontierSample`） | `DemoWeeklySettlement.cs:42-71`；M1 情境 `M1Acceptance.cs:227` |
 | Godot 預設種子 42、局部饑荒／開拓情境與 CI 冒煙測試挑種子（42，再 1～30）、冒煙天數（#81 起玩家也可在畫面選這些 TEMP 情境） | `godot/Scripts/ObserverRoot.cs:14-113` |
+| #87 觀察者播放速度：每秒 1／5／30 世界日、每幀最多推進 30 日（純畫面顯示，不是世界規則） | `godot/Scripts/PlaybackClock.cs:12-19` |
 | 存檔只接受已知示範情境 | `DemoObserverWorld.Save.cs:45-46` |
 | `tests/` 內的期望數字 | 全部由上表 fixture 與 D3～D7 的 TEMP 值推導，D3～D7 定案時一併更新 |
 
@@ -199,6 +200,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 15 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 10 | D8、c1 |
-| `godot/Scripts/ObserverRoot.cs` | 67 | D7、D8、D10、第 3 節 |
+| `godot/Scripts/ObserverRoot.cs` | 71 | D7、D8、D10、第 3 節；#87 播放速度 |
 | `godot/Scripts/DemoHexMap.cs` | 6 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
+| `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |

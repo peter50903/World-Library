@@ -215,6 +215,15 @@ public sealed class DemoCausalIndex
     {
         foreach (var report in reports)
         {
+            // 出發帳 → 外移事件：每支本週出發的隊伍恰好一筆同隊伍、同來源聚落的外移事件（不能漏記或重複）。
+            foreach (var ledger in report.Migrations.Where(m => m.Departed))
+            {
+                var n = report.Events.Count(e => e.Kind == DemoSettlementEventKind.Emigration
+                    && e.MigrationBatchId == ledger.BatchId && e.SettlementId == ledger.FromSettlementId);
+                if (n != 1)
+                    _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳記為出發，但有 {n} 筆外移事件（應恰好 1 筆）");
+            }
+
             foreach (var ledger in report.Migrations.Where(m => !m.Departed))
             {
                 if (ledger.Arrived)
