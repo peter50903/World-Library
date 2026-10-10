@@ -73,6 +73,7 @@ public sealed partial class DemoObserverWorld
 
     private readonly DemoScenario _scenario;
     private readonly DemoWeeklyTempConfig _weekly;
+    private DemoTempDemography? _demography;
 
     // Every field below is replaced only in the publish step of AdvanceOneDay.
     private WorldClock _clock = new();
@@ -133,6 +134,8 @@ public sealed partial class DemoObserverWorld
             kv => kv.Key,
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
+        if (weekly.HumanLifecycleEnabled)
+            _demography = DemoTempDemography.Open(scenario.Seed, _population, DemoHumanLifecycle.Rules);
 
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
@@ -243,6 +246,9 @@ public sealed partial class DemoObserverWorld
     /// <summary>#61: world population = settled + in transit (each person counted once).</summary>
     public long WorldPopulation => checked(SettledPopulation + PopulationInTransit);
 
+    /// <summary>The actual born/aged human cohort in this TEMP world; null in legacy scenarios.</summary>
+    public DemoTempDemographicSnapshot? HumanPopulationSnapshot => _demography?.Snapshot();
+
     /// <summary>V0-06A: food carried by travelling migrant batches.</summary>
     public long FoodInTransit => _migrations.Sum(b => b.Food);
 
@@ -321,12 +327,22 @@ public sealed partial class DemoObserverWorld
         var nextMigrations = _migrations;
         var nextMigrationBatchId = _nextMigrationBatchId;
         var nextSites = _sites;
+        var nextDemography = _demography;
         if (weekly.Count == 1 && settleWeekly)
         {
             var outcome = DemoWeeklySettlement.Settle(
                 checked(_weeks.Count + 1), dueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
-                _migrations, _nextMigrationBatchId, _weeks, _weekly);
+                _migrations, _nextMigrationBatchId, _weeks, _weekly,
+                _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
+                    s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)));
+            if (_demography is not null)
+            {
+                var trial = DemoHumanLifecycle.Apply(outcome, _demography,
+                    DemoCausalIndex.NextEventId(_weeks));
+                outcome = trial.Outcome;
+                nextDemography = trial.Population;
+            }
             nextWeeks = _weeks.Add(outcome.Report);
             nextReserves = outcome.Reserves;
             nextSettlementFood = outcome.SettlementFood;
@@ -355,6 +371,7 @@ public sealed partial class DemoObserverWorld
         _migrations = nextMigrations;
         _nextMigrationBatchId = nextMigrationBatchId;
         _sites = nextSites;
+        _demography = nextDemography;
         return evt;
     }
 
@@ -379,6 +396,12 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
         foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
+        if (_demography is not null)
+        {
+            sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");
+            foreach (var p in _demography.People)
+                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId};");
+        }
         sb.Append(inv, $"nextBatch={_nextMigrationBatchId};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
         foreach (var point in _sites.ResourcePoints) sb.Append(inv, $"{point};");
