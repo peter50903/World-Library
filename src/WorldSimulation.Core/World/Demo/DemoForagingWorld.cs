@@ -34,8 +34,9 @@ public static class DemoForagingWorld
             .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray());
     }
 
-    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map)
-        => Settings.BuildPotentialSources(map, MainRiverTiles(map));
+    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites = null)
+        => Settings.BuildPotentialSources(map, MainRiverTiles(map),
+            sites?.Settlements.Select(s => new DemoCellRef(s.Column, s.Row)).ToArray());
 
     /// <summary>
     /// Food harvest is a one-week, one-source budget. No local farm and no source-specific
@@ -53,6 +54,6 @@ public static class DemoForagingWorld
             new DemoCatchmentFoodClaim(s.Id, s.Column, s.Row,
                 checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
                 checked(openingPopulation[s.Id] * weekly.YieldPerWorkerPerWeek)));
-        return DemoHexFoodCatchment.Allocate(map, Sources(map), claims);
+        return DemoHexFoodCatchment.Allocate(map, Sources(map, sites), claims);
     }
 }
