@@ -209,6 +209,13 @@
 - **2026-10-11 玩家同意的 TEMP 數值**：`config/demo/terrain-food-temp.json` 是程式可讀的暫定設定，森林每來源格每週 **20** 糧食單位、明確標記的主河道水域來源每週 **5** 單位、原始未開墾農田每週 **0**。每片來源格**整個共享供應只有一份**，不因六鄰取得多份；人族適用。Core `DemoCatchmentTempSettings.FromJson/BuildPotentialSources` 驗證設定格式並僅對真森林與明確河道產生來源，仍是可得預算、受成年勞工/真存量/需求約束，現有真週帳與存檔尚未接入。這些屬測試值而非正式 Excel 數值；依 Notion03 §2.5 **不寫回正式 XLSX/CSV**。**仍待裁決**：真正來源存量、開發農田的級距/技術、共用分配優先政策（現純模型以來源 ID→聚落 ID 的 TEMP 先後順序）；單元測試的森林12或9、河流3只是守恆反例數字，與已同意的示範20/5不同。
 - 森林在地與接壤格可能存在非陸地格；供應範圍幾何涵蓋六鄰接，但只有合法居住的陸地聚落能採集；主河道不是 RouteSegment 過河通行權。現在 DemoTerrain.Water 僅在明確建立 MainRiver 食物來源 ID 時才視為「主河道漁食源」，一般水域不自動生產。
 - 農田並非草原預設值；在 #113 修週結算之前，現主世界仍有 `DemoWorldSites.KindFor(Grassland)=Farmland` 的舊 TEMP 行為，必須下一批移除。農田開發程度/科技上限另見 #115。
+## #113｜玩家可操作的森林／河流採集情境（初版，尚非正式世界農業）
+- 2026-10-11 使用者同意前期全人族 TEMP、森林每來源格共用20/週、明確主河道共用5/週；新增 Godot 選單「森林／河流採集生存（新，TEMP）」及真 Core 週結算，另四個舊測試情境維持不變。
+- 森林自身與六鄰陸地聚落共享同一來源，主河道僅接鄰陸地；一個來源每週只計一次。草原未開墾產糧0，河流／水格禁止定居；地圖青色僅為 TEMP 並且帶有河岸的部分水格（座標規則，**不是正式連通水文或 RouteSegment**）。
+- 此階段糧食是每週採集的再生上限和實際需求／勞力取用，未採取的自然供應不會被聚落儲藏；已採收的實物進真聚落糧庫，未偷補糧、沒有農田產量，物資帳仍須檢查。每聚落保留0儲備的舊資源點作為週帳歸屬槽，並不代表該聚落獨占森林。
+- **人口過密對照情境（TEMP）**：選單新加「森林周邊人口過密｜觀察缺糧」，只改初始人口群體範圍到 40～48 人/聚落，沒有開局糧庫；與正常採集情境使用**完全同一森林20／河流5供應量及真實採集週帳**，因此缺糧／餓死並非刪除森林糧食。這是刻意壓力測試人口配置，不代表正式史前聚落大小；出生仍未與正式週帳接線。
+- **仍待下一階段**：持久性共享森林來源庫存／真源級資源帳及公平分配、正式河網、農田開墾與知識上限、合法出生／自然死亡群體真正接入週帳（#105）、新增人口不全算成年採收勞力。此切片不代表整個 RPG/人口系統完成。
+
 ## 附錄 A｜`TEMP` 標記檔案清單（盤點基準 `0f0e76f`）
 
 每個檔案的標記已歸入上面的項目；其餘標記是說明文字、錯誤訊息或畫面標籤（說明該資料是 TEMP），不另含數值。
@@ -217,12 +224,13 @@
 |---|---|---|
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 15 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
+| `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 4 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 33 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 34 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節 |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 15 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 11 | D3（期初存量）、D10、第 3 節 #103 承載估計 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 12 | D3（期初存量）、D10、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 6 | D8；#88 舊版無事件編號存檔拒絕讀取 |
@@ -230,12 +238,13 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 12 | D8、c1、第 3 節 #103 承載估計 |
-| `godot/Scripts/ObserverRoot.cs` | 72 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
+| `godot/Scripts/ObserverRoot.cs` | 75 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
-| `godot/Scripts/DemoHexMap.cs` | 6 | D9 |
+| `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
+| `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
-| `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 3 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |
+| `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |

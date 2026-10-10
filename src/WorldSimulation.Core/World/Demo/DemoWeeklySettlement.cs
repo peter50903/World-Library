@@ -26,7 +26,9 @@ public sealed record DemoWeeklyTempConfig(
     int NewsDelayWeeksPerCell = 1,
     bool FoundingEnabled = false,
     int FoundingSearchMaxSteps = 3,
-    bool TempFamineAllOriginal = false)
+    bool TempFamineAllOriginal = false,
+    bool SharedCatchmentEnabled = false,
+    bool CrowdedForaging = false)
 {
     /// <summary>TEMP 範例值（未定案）。</summary>
     public static DemoWeeklyTempConfig Sample { get; } = new(
@@ -38,6 +40,26 @@ public sealed record DemoWeeklyTempConfig(
         YieldPerWorkerPerWeek: 5,
         FoodPerPersonPerWeek: 4,
         InitialFoodPerPerson: 7);
+
+    /// <summary>2026-10-11 playable human-only TEMP foraging, forest 20 / explicit river 5 per source,
+    /// shared once across neighbouring settlements; no automatically developed farmland.</summary>
+    public static DemoWeeklyTempConfig ForagingSample { get; } = Sample with
+    {
+        SharedCatchmentEnabled = true,
+        InitialReservePerPoint = 0,
+        ReserveCapPerPoint = 0,
+        FarmlandRegenPerWeek = 0,
+        WoodlandRegenPerWeek = 0,
+        FisheryRegenPerWeek = 0
+    };
+
+    /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
+    /// (40–48 people) start with no stored food. Demonstrates scarcity without disabling wild sources.</summary>
+    public static DemoWeeklyTempConfig CrowdedForagingSample { get; } = ForagingSample with
+    {
+        CrowdedForaging = true,
+        InitialFoodPerPerson = 0
+    };
 
     /// <summary>
     /// TEST／CI 用 TEMP 饑荒情境：資源點沒有存量也不再生、聚落沒有初始糧食，
@@ -97,6 +119,7 @@ public sealed record DemoWeeklyTempConfig(
         DemoResourceKind.Farmland => FarmlandRegenPerWeek,
         DemoResourceKind.Woodland => WoodlandRegenPerWeek,
         DemoResourceKind.Fishery => FisheryRegenPerWeek,
+        DemoResourceKind.Uncultivated => 0,
         _ => throw new InvalidOperationException("Unknown TEMP resource kind.")
     };
 
@@ -109,6 +132,7 @@ public sealed record DemoWeeklyTempConfig(
         DemoResourceKind.Farmland => DemoFoodSource.Farming,
         DemoResourceKind.Woodland => DemoFoodSource.Gathering,
         DemoResourceKind.Fishery => DemoFoodSource.Gathering,
+        DemoResourceKind.Uncultivated => throw new InvalidOperationException("Uncultivated land produces no farm food."),
         _ => throw new InvalidOperationException("TEMP resource kind has no legal food source.")
     };
 }
@@ -359,6 +383,13 @@ internal static class DemoWeeklySettlement
         if (nextMigrationBatchId < 1 || migrations.Any(b => b.Id >= nextMigrationBatchId))
             throw new InvalidOperationException("Migration batch IDs must stay below the next ID (IDs are never reused).");
 
+        // Allocate each forest/river source ONCE before per-settlement weekly accounting.
+        var sharedHarvest = config.SharedCatchmentEnabled
+            ? DemoForagingWorld.Allocate(map ?? throw new InvalidOperationException("Shared foraging needs map."),
+                sites, population, config)
+            : null;
+        var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
+            .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
         var nextFood = settlementFood.ToBuilder();
         var nextPopulation = population.ToBuilder();
@@ -475,6 +506,24 @@ internal static class DemoWeeklySettlement
             long reserveOpening = 0, regenerated = 0, harvested = 0, reserveClosing = 0;
             long fromFarming = 0, fromGathering = 0;
 
+            if (config.SharedCatchmentEnabled)
+            {
+                // Nature supplies one weekly pool per real forest/river source; allocation is
+                // decided BEFORE this loop. A local resource point is a zero-stock accounting
+                // slot, not a second source of food. Week ledger remains balanced.
+                var share = harvestedBySettlement?.GetValueOrDefault(settlement.Id) ?? 0L;
+                foreach (var point in weekSites.ResourcePointsOf(settlement.Id))
+                {
+                    if (reserves[point.Id] != 0)
+                        throw new InvalidOperationException("Foraging settlement reserve must stay zero.");
+                    nextReserves[point.Id] = 0;
+                }
+                regenerated = share;
+                harvested = share;
+                fromGathering = share;
+            }
+            else
+            {
             // ① 資源再生，② 勞動與生產：勞力依資源點編號順序採收，不能超過再生後的存量。
             // 勞動力＝目前人口，所以死亡會降低下週產量（45D SURV_CASCADE）。
             var laborLeft = checked(people * config.YieldPerWorkerPerWeek);
@@ -498,6 +547,8 @@ internal static class DemoWeeklySettlement
                     fromFarming = checked(fromFarming + take);
                 else
                     fromGathering = checked(fromGathering + take);
+            }
+
             }
 
             // ⑥ 消耗：糧食只來自庫存與本週採收；取得量低於需求的部分形成飢餓債。

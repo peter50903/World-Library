@@ -32,6 +32,8 @@ public sealed partial class DemoObserverWorld
     /// <summary>V0-07C：已知 TEMP 生存情境的中文名稱；不是已知情境回傳 null。</summary>
     public static string? TempScenarioName(DemoWeeklyTempConfig weekly)
     {
+        if (weekly == DemoWeeklyTempConfig.ForagingSample) return "森林河流生存";
+        if (weekly == DemoWeeklyTempConfig.CrowdedForagingSample) return "森林周邊人口過密";
         if (weekly == DemoWeeklyTempConfig.Sample) return "一般示範";
         if (weekly == DemoWeeklyTempConfig.FamineSample) return "全面饑荒";
         if (weekly == DemoWeeklyTempConfig.LocalFamineSample) return "局部饑荒";
@@ -46,6 +48,8 @@ public sealed partial class DemoObserverWorld
     private static readonly DemoWeeklyTempConfig[] KnownTempWeeklyConfigs =
     {
         DemoWeeklyTempConfig.Sample,
+        DemoWeeklyTempConfig.ForagingSample,
+        DemoWeeklyTempConfig.CrowdedForagingSample,
         DemoWeeklyTempConfig.FamineSample,
         DemoWeeklyTempConfig.LocalFamineSample,
         DemoWeeklyTempConfig.FrontierSample

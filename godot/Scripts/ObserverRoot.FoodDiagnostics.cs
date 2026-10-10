@@ -39,6 +39,8 @@ public partial class ObserverRoot
     /// <summary>純函式：由 Core 世界產生顯示文字（同一世界永遠得到同一段文字）。</summary>
     private static string FoodDiagnosticsText(DemoObserverWorld world, int settlementId)
     {
+        if (world.UsesSharedForaging)
+            return SharedForagingDiagnosticsText(world, settlementId);
         var capacities = world.SettlementCapacities();
         var lines = new List<string> { "—— 糧食供需診斷（TEMP，只讀 Core 週帳）——" };
         var over = capacities.Where(c => c.Population > 0 && !c.LongTermSustainable).ToList();
@@ -80,6 +82,66 @@ public partial class ObserverRoot
             + $" → 長期可養活 {limit}；"
             + (cap.Population == 0 ? "無人" : cap.LongTermSustainable ? "可長期維持" : $"長期每週缺 {cap.LongTermGap}"));
         return string.Join("\n", lines);
+    }
+
+    /// <summary>Only factual Core source-to-settlement harvest and accounts are shown.</summary>
+    private static string SharedForagingDiagnosticsText(DemoObserverWorld world, int settlementId)
+    {
+        var settings = DemoForagingWorld.Settings;
+        var allSources = world.SharedFoodSources();
+        var people = world.Sites.Settlements.ToArray();
+        var week = world.LatestWeek;
+        var allocation = world.LatestSharedHarvest();
+        var output = new List<string>
+        {
+            "—— 森林／河流採集生存（人族 TEMP，可直接試玩）——",
+            $"一片森林：每週共享 {settings.ForestWeeklySupply}；一塊主河道：{settings.MainRiverWeeklySupply}；無開墾農田：0",
+            $"全圖森林來源 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.Forest)}；"
+              + $"標示的主河道 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.MainRiver)}（普通水格沒有免費漁獲）",
+            "一份森林食物由自身及六鄰居民競爭；不足時會缺糧、挨餓，甚至死亡。",
+            "分配順序 TEMP：來源編號→聚落編號；有人的格才能實際採收。"
+        };
+        if (week is not null)
+        {
+            output.Add($"第 {week.Week} 週：森林／河流實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
+            output.Add($"世界聚落人口 {world.SettledPopulation}，本週共缺糧 {week.Settlements.Sum(l => l.FoodShortage)}，"
+                + $"餓死 {week.Settlements.Sum(l => l.Deaths)}");
+        }
+
+        var place = people.FirstOrDefault(x => x.Id == settlementId);
+        if (place is null)
+        {
+            output.Add("請點金色聚落，查看周圍哪片森林／河流供食及實際缺糧原因。");
+            return string.Join("\n", output);
+        }
+        var position = world.Map.GetCell(place.Column, place.Row);
+        var adjacentSources = allSources.Where(x =>
+            DemoHexFoodCatchment.IsInReach(
+                world.Map.GetCell(x.Column, x.Row), position,
+                x.Kind == DemoCatchmentSourceKind.Forest)).OrderBy(x => x.Id).ToArray();
+        output.Add($"聚落：{place.Name}；人口 {world.SettlementPopulation(place.Id)}；"
+            + $"糧庫 {world.SettlementFood(place.Id)}");
+        output.Add($"可採集來源 {adjacentSources.Length} 格："
+            + (adjacentSources.Length == 0 ? "沒有（未開墾土地不產糧）"
+              : string.Join("、", adjacentSources.Select(x =>
+                  $"{(x.Kind == DemoCatchmentSourceKind.Forest ? "森林" : "主河道")}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
+        var ledger = week?.Settlements.FirstOrDefault(l => l.SettlementId == place.Id);
+        if (ledger is null)
+            output.Add("尚無週報：快轉至第7日，才能看到真實採收與人口缺糧。");
+        else
+        {
+            output.Add($"本週：需求 {ledger.PopulationOpening * DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek}，"
+                + $"實採 {ledger.Harvested}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
+                + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，餓死 {ledger.Deaths}");
+            var origins = allocation?.Harvests.Where(h => h.SettlementId == place.Id)
+                .Select(h =>
+                {
+                    var source = allSources.Single(p => p.Id == h.SourceId);
+                    return $"({source.Column},{source.Row})→{h.FoodHarvested}";
+                }).ToArray() ?? Array.Empty<string>();
+            output.Add("本週來源→採收：" + (origins.Length == 0 ? "無" : string.Join("、", origins)));
+        }
+        return string.Join("\n", output);
     }
 
     /// <summary>

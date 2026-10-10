@@ -12,7 +12,9 @@ public enum DemoResourceKind
     Woodland = 1,
 
     /// <summary>漁場（TEMP）：位於水域格。</summary>
-    Fishery = 2
+    Fishery = 2,
+    /// <summary>TEMP undeveloped grassland: no free farm yield.</summary>
+    Uncultivated = 3
 }
 
 /// <summary>
@@ -71,11 +73,12 @@ public sealed class DemoWorldSites
     private DemoWorldSites(
         IReadOnlyList<DemoSettlement> settlements,
         IReadOnlyList<DemoResourcePoint> resourcePoints,
-        IReadOnlyList<DemoPopGroup> popGroups)
+        IReadOnlyList<DemoPopGroup> popGroups, bool foragingOnly = false)
     {
         Settlements = settlements;
         ResourcePoints = resourcePoints;
         PopGroups = popGroups;
+        ForagingOnly = foragingOnly;
     }
 
     public IReadOnlyList<DemoSettlement> Settlements { get; }
@@ -83,11 +86,13 @@ public sealed class DemoWorldSites
     public IReadOnlyList<DemoResourcePoint> ResourcePoints { get; }
 
     public IReadOnlyList<DemoPopGroup> PopGroups { get; }
+    public bool ForagingOnly { get; }
 
     public static DemoWorldSites Generate(DemoHexWorld map, RngRegistry rng)
         => Generate(map, rng, DemoSitesTempConfig.Sample);
 
-    public static DemoWorldSites Generate(DemoHexWorld map, RngRegistry rng, DemoSitesTempConfig config)
+    public static DemoWorldSites Generate(DemoHexWorld map, RngRegistry rng, DemoSitesTempConfig config,
+        bool foragingOnly = false)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(rng);
@@ -106,9 +111,10 @@ public sealed class DemoWorldSites
         var span = (ulong)(config.MaxSettlements - config.MinSettlements + 1);
         var count = config.MinSettlements + (int)(rng.NextUInt64(RngStreams.EcologyInit) % span);
 
-        // Prefer land cells (row-major order); fall back to any free cell only if land is short.
+        // The player cannot live on river/water tiles; no unsafe fallback.
         var land = map.Cells.Where(c => c.Terrain != DemoTerrain.Water).ToList();
-        var water = map.Cells.Where(c => c.Terrain == DemoTerrain.Water).ToList();
+        if (land.Count < count)
+            throw new InvalidOperationException("Insufficient habitable land.");
 
         var settlements = new List<DemoSettlement>(count);
         var resources = new List<DemoResourcePoint>(count);
@@ -116,14 +122,14 @@ public sealed class DemoWorldSites
 
         for (var i = 0; i < count; i++)
         {
-            var pool = land.Count > 0 ? land : water;
+            var pool = land;
             var pick = (int)(rng.NextUInt64(RngStreams.EcologyInit) % (ulong)pool.Count);
             var cell = pool[pick];
             pool.RemoveAt(pick);
 
             var id = i + 1;
             settlements.Add(new DemoSettlement(id, config.SettlementNames[i], cell.Column, cell.Row));
-            resources.Add(new DemoResourcePoint(id, id, KindFor(cell.Terrain), cell.Column, cell.Row));
+            resources.Add(new DemoResourcePoint(id, id, KindFor(cell.Terrain, foragingOnly), cell.Column, cell.Row));
 
             var popSpan = (ulong)(config.MaxPopGroupSize - config.MinPopGroupSize + 1);
             var size = config.MinPopGroupSize + (int)(rng.NextUInt64(RngStreams.Pop) % popSpan);
@@ -133,7 +139,7 @@ public sealed class DemoWorldSites
         return new DemoWorldSites(
             Array.AsReadOnly(settlements.ToArray()),
             Array.AsReadOnly(resources.ToArray()),
-            Array.AsReadOnly(pops.ToArray()));
+            Array.AsReadOnly(pops.ToArray()), foragingOnly);
     }
 
     /// <summary>V0-06B：下一個新聚落編號（只會遞增，永不重用）。</summary>
@@ -158,12 +164,12 @@ public sealed class DemoWorldSites
         if (cell.Terrain == DemoTerrain.Water)
             throw new InvalidOperationException("TEMP: settlements cannot be founded on water cells.");
 
-        var point = new DemoResourcePoint(NextResourcePointId, settlement.Id, KindFor(cell.Terrain),
+        var point = new DemoResourcePoint(NextResourcePointId, settlement.Id, KindFor(cell.Terrain, ForagingOnly),
             settlement.Column, settlement.Row);
         return new DemoWorldSites(
             Array.AsReadOnly(Settlements.Append(settlement).ToArray()),
             Array.AsReadOnly(ResourcePoints.Append(point).ToArray()),
-            PopGroups);
+            PopGroups, ForagingOnly);
     }
 
     /// <summary>Settlement at the offset cell, or null. Pure query.</summary>
@@ -176,9 +182,9 @@ public sealed class DemoWorldSites
     public IReadOnlyList<DemoPopGroup> PopGroupsOf(int settlementId)
         => Array.AsReadOnly(PopGroups.Where(p => p.SettlementId == settlementId).ToArray());
 
-    private static DemoResourceKind KindFor(DemoTerrain terrain) => terrain switch
+    private static DemoResourceKind KindFor(DemoTerrain terrain, bool foragingOnly = false) => terrain switch
     {
-        DemoTerrain.Grassland => DemoResourceKind.Farmland,
+        DemoTerrain.Grassland => foragingOnly ? DemoResourceKind.Uncultivated : DemoResourceKind.Farmland,
         DemoTerrain.Forest => DemoResourceKind.Woodland,
         DemoTerrain.Water => DemoResourceKind.Fishery,
         _ => throw new InvalidOperationException("Unknown TEMP terrain value.")
