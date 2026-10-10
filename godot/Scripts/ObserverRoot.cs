@@ -980,7 +980,7 @@ public partial class ObserverRoot : Control
             {
                 _hexMap.FoodReachCells = DemoHexFoodCatchment.EligibleCells(_world.Map, source)
                     .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray();
-                _cellInfo.Text += $"\\n共享來源：每週供糧上限 {source.FoodAvailable}（全圈共用一次）；黃框為可採集範圍";
+                _cellInfo.Text += $"\n共享來源：每週供糧上限 {source.FoodAvailable}（全圈共用一次）；黃框為可採集範圍";
             }
         }
         _hexMap.QueueRedraw();
