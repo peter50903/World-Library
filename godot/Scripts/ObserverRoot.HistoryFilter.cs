@@ -21,6 +21,7 @@ public partial class ObserverRoot
     private Button _filterClear = null!;
     private Label _filterCount = null!;
     private int _filterSettlementCount = -1;
+    private const int FilterMaxDay = 99999; // 日期框上限（畫面輸入範圍，不是世界規則）。
 
     private static readonly DemoSettlementEventKind[] FilterKinds = Enum.GetValues<DemoSettlementEventKind>();
 
@@ -53,11 +54,11 @@ public partial class ObserverRoot
         var row2 = new HBoxContainer();
         listColumn.AddChild(row2);
         row2.AddChild(new Label { Text = "第" });
-        _filterFromDay = new SpinBox { MinValue = 0, MaxValue = DemoObserverWorld.TempMaxSaveDays, Step = 1, TooltipText = "起日（含）" };
+        _filterFromDay = new SpinBox { MinValue = 0, MaxValue = FilterMaxDay, Step = 1, TooltipText = "起日（含）" };
         _filterFromDay.ValueChanged += _ => RefreshEventList();
         row2.AddChild(_filterFromDay);
         row2.AddChild(new Label { Text = "～" });
-        _filterToDay = new SpinBox { MinValue = 0, MaxValue = DemoObserverWorld.TempMaxSaveDays, Step = 1, TooltipText = "迄日（含）；0＝不限" };
+        _filterToDay = new SpinBox { MinValue = 0, MaxValue = FilterMaxDay, Step = 1, TooltipText = "迄日（含）；0＝不限" };
         _filterToDay.ValueChanged += _ => RefreshEventList();
         row2.AddChild(_filterToDay);
         row2.AddChild(new Label { Text = "日" });

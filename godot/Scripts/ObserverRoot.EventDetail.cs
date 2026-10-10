@@ -78,7 +78,7 @@ public partial class ObserverRoot
             if (!ReferenceEquals(_causalWorld, _world))
             {
                 _selectedEventId = 0;
-                ResetHistoryFilter(); // #96：換世界（切換情境、讀檔）時篩選回到 TEMP 預設。
+                ResetHistoryFilter(); // #96：換世界（切換情境、讀檔）時篩選回到預設。
                 _filterSettlementCount = -1;
             }
             _causal = DemoCausalIndex.Build(weeks);
