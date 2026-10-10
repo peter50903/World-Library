@@ -135,7 +135,8 @@ public sealed partial class DemoObserverWorld
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
-            _demography = DemoTempDemography.Open(scenario.Seed, _population, DemoHumanLifecycle.Rules);
+            _demography = DemoTempDemography.Open(scenario.Seed,
+                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules);
 
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
