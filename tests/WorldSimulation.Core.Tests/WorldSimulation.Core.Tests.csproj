@@ -25,4 +25,9 @@
     <Compile Include="..\..\godot\Scripts\PlaybackClock.cs" Link="Godot\PlaybackClock.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- TEMP values for source-level forest/river allocation tests only. -->
+    <None Include="../../config/demo/terrain-food-temp.json" Link="terrain-food-temp.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
