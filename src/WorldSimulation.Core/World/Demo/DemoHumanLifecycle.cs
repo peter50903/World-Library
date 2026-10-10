@@ -115,6 +115,9 @@ internal static class DemoHumanLifecycle
         long nextEventId = 1;
         foreach (var stored in reports)
         {
+            if (stored.Settlements.Any(l => l.AdultWorkersOpening !=
+                current.AdultsIn(l.SettlementId, Rules)))
+                throw new InvalidDataException("TEMP adult workers differ from actual human ages.");
             var stripped = stored with
             {
                 Events = stored.Events.Where(e => e.Kind is not
