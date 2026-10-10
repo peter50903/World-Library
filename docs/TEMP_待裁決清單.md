@@ -188,14 +188,15 @@
 
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 32 | D3、D4、D5、D6、第 3 節 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 33 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 15 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 10 | D3（期初存量）、D10 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 2 | c1 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 4 | D8 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 6 | D8；#88 舊版無事件編號存檔拒絕讀取 |
+| `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 15 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 10 | D8、c1 |

@@ -154,6 +154,10 @@ public enum DemoSettlementEventKind
 /// <summary>
 /// V0-04B 帶原因的聚落事件（只追加、不改寫）。Count 為缺糧量、死亡人數或 0。
 /// Cause 是玩家可讀的繁體中文原因，Describe() 給歷史列表顯示。
+/// #88：EventId＝世界內唯一、從 1 起連續遞增、不重用的事件編號；
+/// CauseEventId＝43F CAUSE_PARENT 直接原因事件編號（0＝根因，例如本週缺糧本身）。
+/// M1 示範每筆事件至多一個直接原因（正式 43F 允許 1～N 個，TEMP 簡化）；
+/// 直接後果（43F EFFECT_CHILD）由 <see cref="DemoCausalIndex"/> 反向索引，不另存。
 /// </summary>
 public sealed record DemoSettlementEvent(
     int Week,
@@ -163,7 +167,9 @@ public sealed record DemoSettlementEvent(
     DemoSettlementEventKind Kind,
     long Count,
     string Cause,
-    int MigrationBatchId = 0)
+    int MigrationBatchId = 0,
+    long EventId = 0,
+    long CauseEventId = 0)
 {
     public string Describe()
     {
@@ -359,6 +365,16 @@ internal static class DemoWeeklySettlement
         var nextDebt = hungerDebt.ToBuilder();
         var ledgers = new List<DemoSettlementWeekLedger>(sites.Settlements.Count);
         var events = new List<DemoSettlementEvent>();
+
+        // #88：事件編號接續已發布的最後一筆（只遞增、不重用）；每筆同時記下 43F 直接原因編號。
+        var nextEventId = DemoCausalIndex.NextEventId(publishedWeeks);
+        DemoSettlementEvent Stamp(DemoSettlementEvent e, long causeEventId)
+        {
+            var stamped = e with { EventId = nextEventId, CauseEventId = causeEventId };
+            nextEventId = checked(nextEventId + 1);
+            return stamped;
+        }
+
         var migrationLedgers = new List<DemoMigrationWeekLedger>();
         var nextMigrations = ImmutableList.CreateBuilder<DemoMigrationBatch>();
         var arrivals = new Dictionary<int, (long People, long Food, long Debt)>();
@@ -367,6 +383,8 @@ internal static class DemoWeeklySettlement
         // 途中隊伍（V0-06A）：只靠攜帶的糧食，飢餓與死亡規則與聚落相同；活著的人沿路線前進一格。
         foreach (var batch in migrations.OrderBy(b => b.Id))
         {
+            // #88：隊伍的途中餓死、抵達、建立新聚落，直接原因都是它出發那週的外移事件。
+            var emigrationEventId = DemoCausalIndex.EmigrationEventId(publishedWeeks, batch);
             var people = batch.People;
             var demand = checked(people * config.FoodPerPersonPerWeek);
             var consumed = Math.Min(batch.Food, demand);
@@ -393,14 +411,14 @@ internal static class DemoWeeklySettlement
 
             if (deaths > 0)
             {
-                events.Add(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
                     DemoSettlementEventKind.MigrantStarvationDeath, deaths,
                     survivors == 0 && batch.Founding
                         ? $"開拓隊前往{batch.ToName}途中攜帶的糧食耗盡，全數死亡，開拓失敗、沒有建立聚落"
                         : survivors == 0
                         ? $"前往{batch.ToName}途中攜帶的糧食耗盡，隊伍全數死亡"
                         : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）",
-                    batch.Id));
+                    batch.Id), emigrationEventId));
             }
 
             var toSettlementId = batch.ToSettlementId;
@@ -422,21 +440,21 @@ internal static class DemoWeeklySettlement
                 hungerDebt = hungerDebt.Add(founded.Id, 0);
                 toSettlementId = founded.Id;
                 arrivals[founded.Id] = (survivors, foodClosing, debt);
-                events.Add(new DemoSettlementEvent(week, worldTime, founded.Id, founded.Name,
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, founded.Id, founded.Name,
                     DemoSettlementEventKind.SettlementFounded, survivors,
                     $"來自{batch.FromName}的開拓隊，第 {batch.DepartedWeek} 週出發，沿相鄰格走了 {batch.Path.Length - 1} 格到 {cell}；"
                     + $"人口、糧食 {foodClosing}、飢餓債 {debt} 全部由隊伍帶來，新資源點存量從 0 開始（TEMP）",
-                    batch.Id));
+                    batch.Id), emigrationEventId));
             }
             else if (arrived)
             {
                 arrivals.TryGetValue(batch.ToSettlementId, out var inbound);
                 arrivals[batch.ToSettlementId] = (checked(inbound.People + survivors),
                     checked(inbound.Food + foodClosing), checked(inbound.Debt + debt));
-                events.Add(new DemoSettlementEvent(week, worldTime, batch.ToSettlementId, batch.ToName,
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.ToSettlementId, batch.ToName,
                     DemoSettlementEventKind.Arrival, survivors,
                     $"來自{batch.FromName}，第 {batch.DepartedWeek} 週出發，沿相鄰格走了 {batch.Path.Length - 1} 格",
-                    batch.Id));
+                    batch.Id), emigrationEventId));
             }
             else if (survivors > 0)
             {
@@ -509,25 +527,37 @@ internal static class DemoWeeklySettlement
                 removedByDeath = debt; // 聚落無人倖存：剩餘飢餓債沒有承擔者。
             debt -= removedByDeath;
 
+            // #88 因果：飢餓是根因（週帳缺糧為證據）；餓死與飢餓解除的直接原因是本聚落最近一筆
+            // 帶來飢餓債的事件（本週飢餓，否則往回找飢餓或帶著飢餓債抵達／建立）；外移的直接原因是本週飢餓。
+            long hungerEventId = 0;
             if (shortage > 0)
             {
-                events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                var hunger = Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.Hunger, shortage,
-                    $"需求 {demand}，可取得 {available}，飢餓債 {debtOpening}→{checked(debtOpening + shortage)}"));
+                    $"需求 {demand}，可取得 {available}，飢餓債 {debtOpening}→{checked(debtOpening + shortage)}"), 0);
+                hungerEventId = hunger.EventId;
+                events.Add(hunger);
             }
+
+            var debtSourceEventId = hungerEventId != 0
+                ? hungerEventId
+                : deaths > 0 || debtOpening > 0
+                ? DemoCausalIndex.LatestDebtSourceId(publishedWeeks, settlement.Id)
+                : 0;
 
             if (deaths > 0)
             {
-                events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.StarvationDeath, deaths,
-                    $"飢餓：飢餓債累積達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}），連續缺糧"));
+                    $"飢餓：飢餓債累積達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}），連續缺糧"),
+                    debtSourceEventId));
             }
 
             if (debtOpening > 0 && debt == 0 && survivors > 0 && shortage == 0)
             {
-                events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.HungerRecovered, 0,
-                    "來源：本週庫存與採收足以滿足全部需求"));
+                    "來源：本週庫存與採收足以滿足全部需求"), debtSourceEventId));
             }
 
             // ⑧ 遷徙（V0-06A）：本週缺糧、倖存人數達 TEMP 門檻、且已知一個有糧且可走到的聚落時，
@@ -564,12 +594,12 @@ internal static class DemoWeeklySettlement
                     nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
-                    events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                    events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
                         $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，"
                         + $"前往 {destination} 開拓新聚落（TEMP 選址：{config.FoundingSearchMaxSteps} 格內有水源的空地），"
                         + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
-                        batch.Id));
+                        batch.Id), hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, 0,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
@@ -593,12 +623,12 @@ internal static class DemoWeeklySettlement
                     nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
-                    events.Add(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                    events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
                         $"本週缺糧 {shortage}；依第 {chosen.NewsWeek} 週傳來的消息前往有糧的{chosen.Settlement.Name}"
                         + $"（消息沿路傳 {chosen.Route.Length - 1} 格，TEMP 每格 {config.NewsDelayWeeksPerCell} 週），"
                         + $"路線 {chosen.Route.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
-                        batch.Id));
+                        batch.Id), hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, chosen.Settlement.Id,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
