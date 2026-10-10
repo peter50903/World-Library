@@ -1,0 +1,13 @@
+{
+  "SchemaVersion": 1,
+  "Status": "TEMP",
+  "ApplicableRace": "RACE_HUMAN",
+  "FoodUnit": "food_unit_per_source_hex_per_week",
+  "ForestWeeklySupply": 20,
+  "MainRiverWeeklySupply": 5,
+  "UncultivatedFarmlandWeeklySupply": 0,
+  "Allocation": "ONE_SOURCE_TOTAL",
+  "ForestReach": "SELF_AND_SIX_ADJACENT_LAND",
+  "MainRiverReach": "SIX_ADJACENT_LAND_ONLY",
+  "Notes": "Only an explicit river-main-channel tile is eligible. These are shared per-source weekly budgets, not per neighbouring hex grants. Actual harvest remains limited by workforce, demand and later real reserve/reproduction accounting. TEMP; not canonical production balance."
+}

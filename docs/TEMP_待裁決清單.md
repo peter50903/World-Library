@@ -202,6 +202,13 @@
 - 原有正式來源：`02_種族` 人族成年 18、典型壽命 75、月生育基準 0.08；`29_數值參數` 流產月率 0.005 仍標未平衡。本第一切片只有 HumanFixture 作人工驗證參考，日後須由正式設定權威取得且不能直接套所有種族，尤其龍族 `SPECIAL_EVENT`。
 - **TEMP 待裁決**：開局全部成年人、男女交錯、初始年齡 18–22；單一孕期 39 週；育齡上限 45；自然死亡年風險曲線（典型壽命前 15 年開始 0.008 年風險，達典型壽命 0.02，往後每歲增加 0.04，年風險上限 0.95）；一年 365 日、每週 7 日、每年 12 個月做機率換算。典型壽命**不是必死年齡**。暫時缺 HP，吃飽判準由未來真實 Core 週帳提供。
 - 此切片的 `Transfer` 是身份搬移小模型，未接既有在途遷徙隊伍；`RemoveStarvation` 只是外部真死亡人員清單的移除接口，尚未連動世界飢餓債與遷徙人口帳。快照只是可序列化形狀，不是已發布 v2 存檔協定。#105 下一切片必須接入兩者、修正『所有人都能勞動』的 #103 承載假設、逐筆驗證因果、遷徙與存檔原子回滾。
+## #112｜森林／河流共享供糧範圍（正式地形關係，數值待裁決）
+
+- 使用者 2026-10-11 定案：前期所有人口僅測試人類；森林一格供應自身及六個鄰接六角格，主河道水域格禁止聚落居住、只供應相鄰陸地少量漁獲。食物來源**每格一份共享存量與採收**，不能因七格同享而乘以七；第二圈無權獲得此來源食物。
+- **#112 Core 獨立原型** `DemoHexFoodCatchment` 以目前 axial 六角座標算來源可達、共享一次性食物配給、成人勞力採收能力與需求限額；目前尚未接入真 DemoWeeklySettlement、Godot、Save、出生/死亡／既有遷徙，不可宣稱玩家遊戲供食已改好。
+- **2026-10-11 玩家同意的 TEMP 數值**：`config/demo/terrain-food-temp.json` 是程式可讀的暫定設定，森林每來源格每週 **20** 糧食單位、明確標記的主河道水域來源每週 **5** 單位、原始未開墾農田每週 **0**。每片來源格**整個共享供應只有一份**，不因六鄰取得多份；人族適用。Core `DemoCatchmentTempSettings.FromJson/BuildPotentialSources` 驗證設定格式並僅對真森林與明確河道產生來源，仍是可得預算、受成年勞工/真存量/需求約束，現有真週帳與存檔尚未接入。這些屬測試值而非正式 Excel 數值；依 Notion03 §2.5 **不寫回正式 XLSX/CSV**。**仍待裁決**：真正來源存量、開發農田的級距/技術、共用分配優先政策（現純模型以來源 ID→聚落 ID 的 TEMP 先後順序）；單元測試的森林12或9、河流3只是守恆反例數字，與已同意的示範20/5不同。
+- 森林在地與接壤格可能存在非陸地格；供應範圍幾何涵蓋六鄰接，但只有合法居住的陸地聚落能採集；主河道不是 RouteSegment 過河通行權。現在 DemoTerrain.Water 僅在明確建立 MainRiver 食物來源 ID 時才視為「主河道漁食源」，一般水域不自動生產。
+- 農田並非草原預設值；在 #113 修週結算之前，現主世界仍有 `DemoWorldSites.KindFor(Grassland)=Farmland` 的舊 TEMP 行為，必須下一批移除。農田開發程度/科技上限另見 #115。
 ## 附錄 A｜`TEMP` 標記檔案清單（盤點基準 `0f0e76f`）
 
 每個檔案的標記已歸入上面的項目；其餘標記是說明文字、錯誤訊息或畫面標籤（說明該資料是 TEMP），不另含數值。
@@ -209,6 +216,8 @@
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 15 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
+| `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 33 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 15 | D7 |
