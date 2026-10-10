@@ -59,6 +59,28 @@ public sealed class DemoForagingPlayableTests
     }
 
     [Fact]
+    public void CrowdedHumanCampsHaveRealShortagesAndStarvationWithSharedWildFoodStillEnabled()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.CrowdedForagingSample);
+        Assert.True(world.UsesSharedForaging);
+        Assert.Equal("森林周邊人口過密", world.TempScenarioDisplayName);
+        Assert.All(world.Sites.Settlements, s => Assert.InRange(world.SettlementPopulation(s.Id), 40, 48));
+        Assert.All(world.Sites.Settlements, s => Assert.Equal(0, world.SettlementFood(s.Id)));
+        for (var i = 0; i < 7; i++) world.AdvanceOneDay();
+        Assert.NotNull(world.LatestWeek);
+        Assert.True(world.LatestWeek!.Settlements.Sum(l => l.FoodShortage) > 0);
+        Assert.True(world.LatestWeek!.Settlements.Sum(l => l.Deaths) > 0);
+        Assert.All(world.LatestWeek!.Settlements, l =>
+        {
+            Assert.True(l.IsBalanced);
+            Assert.Equal(0, l.FoodFromFarming);
+        });
+        Assert.True(world.LatestSharedHarvest()!.TotalHarvested > 0);
+        var save = world.ExportTempSave();
+        Assert.Equal(save, DemoObserverWorld.ImportTempSave(save).ExportTempSave());
+    }
+
+    [Fact]
     public void StoredWorldRestoresTheSameForagingWeeklyHistoryAndThenContinuesIdentically()
     {
         var first = new DemoObserverWorld(DemoScenario.Sample(7), DemoWeeklyTempConfig.ForagingSample);
