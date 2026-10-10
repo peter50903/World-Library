@@ -116,7 +116,11 @@ public sealed partial class DemoObserverWorld
         // using the RESOURCE stream of this same registry.
         _rng = RngRegistry.Create(scenario.Seed);
         Map = DemoHexWorld.Generate(_rng);
-        _sites = DemoWorldSites.Generate(Map, _rng, DemoSitesTempConfig.Sample, weekly.SharedCatchmentEnabled);
+        _sites = DemoWorldSites.Generate(Map, _rng,
+            weekly.CrowdedForaging
+                ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
+                : DemoSitesTempConfig.Sample,
+            weekly.SharedCatchmentEnabled);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.
