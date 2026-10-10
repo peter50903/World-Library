@@ -775,6 +775,7 @@ public partial class ObserverRoot : Control
         _hexMap.MainRiverTiles = world.UsesSharedForaging
             ? DemoForagingWorld.MainRiverTiles(world.Map) : Array.Empty<DemoCellRef>();
         _hexMap.Migrants = world.MigrationsInTransit();
+        _hexMap.FoodReachCells = Array.Empty<DemoCellRef>();
         _cellInfo.Text = cellInfoText;
         _foodSettlementId = 0; // #104：換世界不殘留前一個世界的聚落選取。
         SyncScenarioPicker();
@@ -967,7 +968,22 @@ public partial class ObserverRoot : Control
         _cellInfo.Text =
             $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})\n" +
             $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\n" +
-            $"核心地形：{TerrainName(cell.Terrain)}";
+            $"核心地形：{TerrainName(cell.Terrain)}"
+            + (_world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland ? "（未開墾，農田糧食 0）" : "")
+            + (_world.IsMainRiverCell(cell.Column, cell.Row) ? "（主河道，禁止定居，鄰格漁撈）" : "");
+        _hexMap.FoodReachCells = Array.Empty<DemoCellRef>();
+        if (_world.UsesSharedForaging)
+        {
+            var source = _world.SharedFoodSources().FirstOrDefault(s =>
+                s.Column == cell.Column && s.Row == cell.Row);
+            if (source is not null)
+            {
+                _hexMap.FoodReachCells = DemoHexFoodCatchment.EligibleCells(_world.Map, source)
+                    .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray();
+                _cellInfo.Text += $"\\n共享來源：每週供糧上限 {source.FoodAvailable}（全圈共用一次）；黃框為可採集範圍";
+            }
+        }
+        _hexMap.QueueRedraw();
 
         // V0-06A: migrant batches standing on this cell (from Core; never moved by Godot).
         foreach (var batch in _world.MigrationsInTransit()
@@ -1007,6 +1023,7 @@ public partial class ObserverRoot : Control
         DemoResourceKind.Farmland => "農地（TEMP）",
         DemoResourceKind.Woodland => "林地（TEMP）",
         DemoResourceKind.Fishery => "漁場（TEMP）",
+        DemoResourceKind.Uncultivated => "未開墾草原（農業產量 0，TEMP）",
         _ => "未定義（TEMP）"
     };
 
