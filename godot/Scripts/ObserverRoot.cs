@@ -263,6 +263,7 @@ public partial class ObserverRoot : Control
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         };
         side.AddChild(_cellInfo);
+        BuildFoodDiagnostics(side); // #104：糧食供需診斷（只讀 Core）。
 
         side.AddChild(new Label
         {
@@ -387,6 +388,8 @@ public partial class ObserverRoot : Control
             VerifyAlertSmoke();
         if (HistoryFilterSmoke)
             VerifyHistoryFilterSmoke(nextButton, saveButtons, loadButtons);
+        if (FoodSmoke)
+            VerifyFoodSmoke(nextButton, loadButtons);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -765,6 +768,7 @@ public partial class ObserverRoot : Control
         _hexMap.Sites = world.Sites;
         _hexMap.Migrants = world.MigrationsInTransit();
         _cellInfo.Text = cellInfoText;
+        _foodSettlementId = 0; // #104：換世界不殘留前一個世界的聚落選取。
         SyncScenarioPicker();
         Refresh();
         RefreshSlots();
@@ -966,6 +970,7 @@ public partial class ObserverRoot : Control
         }
 
         var settlement = _world.Sites.SettlementAt(cell.Column, cell.Row);
+        SelectFoodSettlement(settlement?.Id ?? 0); // #104
         if (settlement is null)
             return;
 
@@ -1210,5 +1215,6 @@ public partial class ObserverRoot : Control
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
         RefreshEventList();
+        RefreshFoodDiagnostics(); // #104
     }
 }
