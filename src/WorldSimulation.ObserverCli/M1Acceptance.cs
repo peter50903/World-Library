@@ -264,7 +264,8 @@ public sealed record M1RunData(
     IReadOnlyDictionary<int, M1WorldTotals> TotalsAfterWeek,
     IReadOnlyDictionary<int, DemoCellRef> SettlementCells,
     IReadOnlyList<M1SettlementInfo> Settlements,
-    string? AbortReason = null);
+    string? AbortReason = null,
+    IReadOnlyList<DemoSettlementCapacity>? FinalCapacities = null);
 
 /// <summary>跑一個種子 × 情境 × 年數，收集證據。不改 Core 任何規則。</summary>
 public static class M1RunCollector
@@ -312,7 +313,8 @@ public static class M1RunCollector
                 string.Join("／", sites.ResourcePointsOf(s.Id).Select(p => KindName(p.Kind)).Distinct()),
                 s.IsFounded, world.SettlementPopulation(s.Id)))
             .ToList();
-        return new M1RunData(seed, preset, years, daysPerYear, initial, initialIds, world.WeekReports(), totals, cells, infos, abort);
+        return new M1RunData(seed, preset, years, daysPerYear, initial, initialIds, world.WeekReports(), totals, cells, infos, abort,
+            world.SettlementCapacities());
     }
 
     private static M1WorldTotals Totals(DemoObserverWorld world)
@@ -957,7 +959,36 @@ public static class M1Evaluator
         var note = final.Population == 0 ? "；本種子在期內全滅" : string.Empty;
         return new M1Finding(M1Raw.DataOnly,
             $"人口 期初 {run.Initial.Population} → 期末 {final.Population}（{run.Years} 年內最低 {populations.Min()}、最高 {populations.Max()}）；"
-            + $"期末有人聚落 {inhabited}／{settlements}{note}；「穩定」的正式門檻未定案，只列數據不判定（TEMP，見 #75）");
+            + $"期末有人聚落 {inhabited}／{settlements}{note}；{CapacityEvidence(run)}"
+            + "「穩定」的正式門檻未定案，只列數據不判定（TEMP，見 #75）");
+    }
+
+    /// <summary>
+    /// #103：長期存在 vs 逐漸滅絕的可重現證據（只列數據）。每個聚落：每週再生、長期可養活人數、期初→期末人口、
+    /// 期內缺糧週數與餓死人數；TEST 饑荒聚落（不再生）另外標出，不與一般聚落混為一談。
+    /// </summary>
+    private static string CapacityEvidence(M1RunData run)
+    {
+        var capacities = run.FinalCapacities;
+        if (capacities is null || capacities.Count == 0)
+            return string.Empty;
+        var initialPopulation = run.Weeks.Count == 0
+            ? new Dictionary<int, long>()
+            : run.Weeks[0].Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
+        var parts = new List<string>();
+        foreach (var c in capacities)
+        {
+            var ledgers = run.Weeks.SelectMany(w => w.Settlements).Where(l => l.SettlementId == c.SettlementId).ToList();
+            var shortWeeks = ledgers.Count(l => l.FoodShortage > 0);
+            var deaths = ledgers.Sum(l => l.Deaths);
+            var opening = initialPopulation.TryGetValue(c.SettlementId, out var p0) ? p0 : 0;
+            var limit = c.SustainablePopulation == long.MaxValue ? "不限" : c.SustainablePopulation.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var fate = c.Population == 0 ? "期末無人" : c.LongTermSustainable ? "期末可長期維持" : $"期末仍每週缺 {c.LongTermGap}";
+            parts.Add($"{c.SettlementName}（{c.ResourceKinds}{(c.TempFamineSettlement ? "，TEST 饑荒：不再生" : string.Empty)}，"
+                + $"再生 {c.RegenPerWeek}／週→長期可養活 {limit} 人）人口 {opening}→{c.Population}、缺糧 {shortWeeks} 週、餓死 {deaths}，{fate}");
+        }
+
+        return $"各聚落承載（TEMP 估計：存量與糧庫耗盡後每週再生 vs 需求）：{string.Join("；", parts)}；";
     }
 
     // ── M1_VARIETY（Warning）：只列各聚落差異，氣候與產業尚未實作 ──────────────────

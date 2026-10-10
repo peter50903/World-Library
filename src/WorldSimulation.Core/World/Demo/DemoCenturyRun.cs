@@ -107,6 +107,8 @@ public sealed record DemoCenturyReport(
 /// （例如 365 日年：第 364 日屬第 1 年、第 371 日屬第 2 年），所以每年有 52 或 53 次。
 /// 年度期初／期末讀年界當日的世界狀態；週結算以外的日子不改聚落、資源點或隊伍狀態，所以能與週報流量對帳。
 /// 執行成本是線性的：每週只讀最新一筆週報，不重新掃描整段歷史。
+/// #103：可另外在每年年底取得各聚落的 TEMP 承載估計（<see cref="DemoSettlementCapacity"/>），
+/// 用來說明哪些聚落長期可活、哪些長期缺糧；只讀世界狀態，不改年度摘要與守恆檢查。
 /// </summary>
 public static class DemoCenturyRun
 {
@@ -124,7 +126,8 @@ public static class DemoCenturyRun
         int years,
         int daysPerYear,
         DemoWeeklyTempConfig? config = null,
-        Action<DemoYearSummary>? onYear = null)
+        Action<DemoYearSummary>? onYear = null,
+        Action<DemoYearSummary, IReadOnlyList<DemoSettlementCapacity>>? onYearSettlements = null)
     {
         if (years is < 1 or > MaxYears)
             throw new ArgumentOutOfRangeException(nameof(years), $"Years must be between 1 and {MaxYears}.");
@@ -238,6 +241,8 @@ public static class DemoCenturyRun
             errors.AddRange(summary.Problems());
             summaries.Add(summary);
             onYear?.Invoke(summary);
+            // #103：年底各聚落的 TEMP 承載估計（純讀取；只在呼叫端要求時計算，不影響世界與摘要）。
+            onYearSettlements?.Invoke(summary, world.SettlementCapacities());
         }
 
         return new DemoCenturyReport(seed, summaries.AsReadOnly(), errors.AsReadOnly());
