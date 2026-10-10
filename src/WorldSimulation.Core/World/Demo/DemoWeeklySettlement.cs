@@ -109,7 +109,8 @@ public sealed record DemoWeeklyTempConfig(
             || YieldPerWorkerPerWeek < 0 || FoodPerPersonPerWeek < 0 || InitialFoodPerPerson < 0
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
-            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1)
+            || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1
+            || HumanLifecycleEnabled && (!SharedCatchmentEnabled || MigrationEnabled))
             throw new ArgumentOutOfRangeException(nameof(DemoWeeklyTempConfig), "Invalid TEMP weekly settlement config.");
     }
 
@@ -267,7 +268,8 @@ public sealed record DemoSettlementWeekLedger(
     long HungerDebtCarriedIn = 0,
     long HungerDebtCarriedOut = 0,
     long NaturalDeaths = 0,
-    long HungerDebtRemovedByNaturalDeath = 0)
+    long HungerDebtRemovedByNaturalDeath = 0,
+    long AdultWorkersOpening = -1)
 {
     public bool ReserveBalanced => ReserveOpening + Regenerated - Harvested == ReserveClosing;
 
@@ -305,7 +307,8 @@ public sealed record DemoSettlementWeekLedger(
         && FoodFromFarming >= 0 && FoodFromGathering >= 0 && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0
         && HungerDebtRemovedByDeath >= 0 && HungerDebtClosing >= 0
         && Immigrants >= 0 && Emigrants >= 0 && FoodCarriedIn >= 0 && FoodCarriedOut >= 0
-        && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0;
+        && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0
+        && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening);
 
     public bool IsBalanced
         => ReserveBalanced && FoodBalanced && NoMagicFood && TotalResourceBalanced && PopulationBalanced
@@ -729,7 +732,8 @@ internal static class DemoWeeklySettlement
                 HungerDebtRemovedByDeath: removedByDeath, HungerDebtClosing: debtFinal,
                 Immigrants: arrived.People, Emigrants: emigrants,
                 FoodCarriedIn: arrived.Food, FoodCarriedOut: foodOut,
-                HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut));
+                HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
+                AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
