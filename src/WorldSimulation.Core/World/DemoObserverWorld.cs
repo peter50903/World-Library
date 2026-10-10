@@ -341,10 +341,10 @@ public sealed partial class DemoObserverWorld
                     s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)));
             if (_demography is not null)
             {
-                var trial = DemoHumanLifecycle.Apply(outcome, _demography,
+                var demographicTrial = DemoHumanLifecycle.Apply(outcome, _demography,
                     DemoCausalIndex.NextEventId(_weeks));
-                outcome = trial.Outcome;
-                nextDemography = trial.Population;
+                outcome = demographicTrial.Outcome;
+                nextDemography = demographicTrial.Population;
             }
             nextWeeks = _weeks.Add(outcome.Report);
             nextReserves = outcome.Reserves;
