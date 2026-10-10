@@ -150,4 +150,49 @@ public sealed class DemoHexFoodCatchmentTests
         Assert.Equal(14, source.FoodAvailable);
         Assert.Equal(0, a.UnharvestedSourceFood[5]);
     }
+
+    [Fact]
+    public void ApprovedTempForest20AndRiver5AreReadFromMachineReadableDemoSettings()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "terrain-food-temp.json");
+        var settings = DemoCatchmentTempSettings.FromJson(File.ReadAllText(path));
+        Assert.Equal("RACE_HUMAN", settings.ApplicableRace);
+        Assert.Equal(20, settings.ForestWeeklySupply);
+        Assert.Equal(5, settings.MainRiverWeeklySupply);
+        Assert.Equal(0, settings.UncultivatedFarmlandWeeklySupply);
+
+        var river = River();
+        var sources = settings.BuildPotentialSources(Map,
+            new[] { new DemoCellRef(river.Column, river.Row) });
+        Assert.Equal(Map.Cells.Count(c => c.Terrain == DemoTerrain.Forest) + 1, sources.Count);
+        Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.Forest),
+            s => Assert.Equal(20, s.FoodAvailable));
+        Assert.Single(sources.Where(s => s.Kind == DemoCatchmentSourceKind.MainRiver
+            && s.FoodAvailable == 5));
+        Assert.DoesNotContain(sources, s => Map.GetCell(s.Column, s.Row).Terrain == DemoTerrain.Grassland);
+        var otherWaterTiles = Map.Cells.Where(c => c.Terrain == DemoTerrain.Water
+            && !(c.Column == river.Column && c.Row == river.Row));
+        Assert.All(otherWaterTiles, c => Assert.DoesNotContain(sources,
+            s => s.Column == c.Column && s.Row == c.Row));
+    }
+
+    [Fact]
+    public void DemoSettingsRejectsNonHumanAndFreeFarmingAndNonRiverSource()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "terrain-food-temp.json");
+        var valid = DemoCatchmentTempSettings.FromJson(File.ReadAllText(path));
+        Assert.Throws<InvalidOperationException>(() =>
+            (valid with { ApplicableRace = "RACE_ELF" }).Validate());
+        Assert.Throws<InvalidOperationException>(() =>
+            (valid with { UncultivatedFarmlandWeeklySupply = 1 }).Validate());
+        var forest = Forest();
+        Assert.Throws<InvalidOperationException>(() =>
+            valid.BuildPotentialSources(Map, new[] { new DemoCellRef(forest.Column, forest.Row) }));
+        var river = River();
+        Assert.Throws<InvalidOperationException>(() =>
+            valid.BuildPotentialSources(Map, new[] {
+                new DemoCellRef(river.Column, river.Row),
+                new DemoCellRef(river.Column, river.Row)
+            }));
+    }
 }
