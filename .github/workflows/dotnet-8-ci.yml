@@ -248,6 +248,15 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_HISTORY_FILTER_OK: Kind=[1-9][0-9]* Settlement=[1-9][0-9]* Search=#[1-9][0-9]* Day=[1-9][0-9]* Empty=1 Deterministic=1 LoadReset=1 SwitchReset=1 CoreUnchanged=1' /tmp/godot-history-filter.log
+          # #104: food supply / demand diagnostics — real map click + Next button on normal and local famine worlds,
+          # days 0/7/35; every number equals Core's weekly ledger; viewing never changes the world; corrupt load
+          # rejected with world and panel unchanged; a world switch leaves no previous settlement data.
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_FOOD_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-food.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-food.log; then
+            echo "Godot reported a runtime error in the food diagnostics smoke."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_FOOD_OK: Weeks=4 FamineShortage=[1-9][0-9]* CoreUnchanged=1 CorruptRejected=1 SwitchReset=1' /tmp/godot-food.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."
