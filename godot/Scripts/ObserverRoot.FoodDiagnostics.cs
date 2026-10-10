@@ -126,7 +126,7 @@ public partial class ObserverRoot
         output.Add($"可採集來源 {adjacentSources.Length} 格："
             + (adjacentSources.Length == 0 ? "沒有鄰近自然來源（即使草原有野採，也須有人採集）"
               : string.Join("、", adjacentSources.Select(x =>
-                  $"{(x.Kind == DemoCatchmentSourceKind.Forest ? "森林" : "主河道")}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
+                  $"{(x.Kind switch { DemoCatchmentSourceKind.Forest => "森林", DemoCatchmentSourceKind.MainRiver => "主河道", DemoCatchmentSourceKind.GrasslandForage => "草原野採", _ => "一般水域" })}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
         var ledger = week?.Settlements.FirstOrDefault(l => l.SettlementId == place.Id);
         if (ledger is null)
             output.Add("尚無週報：快轉至第7日，才能看到真實採收與人口缺糧。");
