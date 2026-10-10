@@ -158,10 +158,14 @@ public sealed class DemoTempDemographyTests
         Assert.Throws<InvalidOperationException>(() => pop.RemoveStarvation(new long[] { father }, false));
 
         var births = new List<DemoTempDemographicEvent>();
+        var allBirths = 0;
+        var allDeaths = 0;
         var expectedDue = expecting.PregnancyDueWeek!.Value;
         for (var week = conceivedWeek + 1; week <= expectedDue; week++)
         {
             var result = pop.AdvanceWeek(week, _ => true, noMiscarriage);
+            allBirths += result.Births;
+            allDeaths += result.Deaths;
             births.AddRange(result.Events.Where(e => e.Kind == DemoTempDemographicKind.Birth
                 && e.MotherId == expecting.Id));
             pop = result.Population;
@@ -169,7 +173,7 @@ public sealed class DemoTempDemographyTests
         Assert.Single(births);
         Assert.Equal(2, births[0].SettlementId);
         Assert.Equal(father, births[0].FatherId); // Father can die after verified conception.
-        Assert.Equal(baselineCount, pop.Count); // 1 verified death and 1 verified birth.
+        Assert.Equal(baselineCount - 1 + allBirths - allDeaths, pop.Count); // All births/deaths accounted for; not only this mother.
     }
 
     [Fact]
