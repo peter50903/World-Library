@@ -94,7 +94,7 @@ public partial class ObserverRoot
         var allocation = world.LatestSharedHarvest();
         var output = new List<string>
         {
-            "—— 自然地塊採集生存（人族 TEMP，可直接試玩）——",
+            "—— 森林／河流採集生存（已擴充所有自然地形，人族 TEMP）——",
             $"森林{settings.ForestWeeklySupply}／草原野採{settings.GrasslandForageWeeklySupply}／主河道{settings.MainRiverWeeklySupply}／一般水域{settings.OpenWaterWeeklySupply}（每來源格每週共享）；未開墾農田0",
             $"全圖森林來源 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.Forest)}；"
               + $"草原 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.GrasslandForage)}；"
