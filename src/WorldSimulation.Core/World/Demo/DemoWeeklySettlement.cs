@@ -110,6 +110,7 @@ public sealed record DemoWeeklyTempConfig(
         DemoResourceKind.Farmland => FarmlandRegenPerWeek,
         DemoResourceKind.Woodland => WoodlandRegenPerWeek,
         DemoResourceKind.Fishery => FisheryRegenPerWeek,
+        DemoResourceKind.Uncultivated => 0,
         _ => throw new InvalidOperationException("Unknown TEMP resource kind.")
     };
 
@@ -122,6 +123,7 @@ public sealed record DemoWeeklyTempConfig(
         DemoResourceKind.Farmland => DemoFoodSource.Farming,
         DemoResourceKind.Woodland => DemoFoodSource.Gathering,
         DemoResourceKind.Fishery => DemoFoodSource.Gathering,
+        DemoResourceKind.Uncultivated => throw new InvalidOperationException("Uncultivated land produces no farm food."),
         _ => throw new InvalidOperationException("TEMP resource kind has no legal food source.")
     };
 }
