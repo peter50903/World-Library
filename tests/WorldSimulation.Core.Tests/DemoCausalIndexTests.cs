@@ -148,12 +148,22 @@ public sealed class DemoCausalIndexTests
     [Fact]
     public void EmigrationCausedByAnotherWeeksHungerIsRejected()
     {
-        var weeks = FrontierWeeks.Value;
-        var events = Events(weeks);
-        var leave = events.First(e => e.Kind == DemoSettlementEventKind.Emigration
-            && events.Any(h => h.Kind == DemoSettlementEventKind.Hunger && h.EventId < e.EventId && h.Week != e.Week));
-        var otherHunger = events.First(h => h.Kind == DemoSettlementEventKind.Hunger && h.EventId < leave.EventId && h.Week != leave.Week);
-        var problems = DemoCausalIndex.Build(Replace(weeks, leave, e => e with { CauseEventId = otherHunger.EventId })).Problems;
+        // 局部饑荒：消息要幾週才傳到，所以外移前同一聚落已經餓了好幾週（開拓情境可能第一週就出發）。
+        var (weeks, leave, otherHunger) = new ulong[] { 42 }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i))
+            .Select(seed => Run(seed, DemoWeeklyTempConfig.LocalFamineSample, Years * TestCalendar.DaysPerYear))
+            .Select(w =>
+            {
+                var events = Events(w);
+                bool EarlierHunger(DemoSettlementEvent hunger, DemoSettlementEvent emigration)
+                    => hunger.Kind == DemoSettlementEventKind.Hunger && hunger.SettlementId == emigration.SettlementId
+                        && hunger.EventId < emigration.EventId && hunger.Week < emigration.Week;
+                var found = events.FirstOrDefault(x => x.Kind == DemoSettlementEventKind.Emigration
+                    && events.Any(y => EarlierHunger(y, x)));
+                var earlier = found is null ? null : events.First(y => EarlierHunger(y, found));
+                return (Weeks: w, Leave: found, Hunger: earlier);
+            })
+            .First(x => x.Leave is not null);
+        var problems = DemoCausalIndex.Build(Replace(weeks, leave!, e => e with { CauseEventId = otherHunger!.EventId })).Problems;
         Assert.Contains(problems, p => p.Contains("同一聚落同一週的飢餓事件"));
     }
 
