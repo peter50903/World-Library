@@ -8,7 +8,8 @@ namespace WorldSimulation.Core.World.Demo;
 /// 本類別同時是因果證據的檢查器：<see cref="Problems"/> 列出所有不合法之處，
 /// 例如編號不連續、原因指向未來或不存在的事件、原因種類或聚落／隊伍不符、
 /// 以及與週帳不符的事件（沒有缺糧的飢餓、沒有出發帳的外移、沒有隊伍帳的抵達／建立／途中餓死、
-/// 有隊伍帳卻漏記的事件），餓死與飢餓解除必須精確指向「最近一筆」飢餓債來源。M1_HISTORY 與 TEMP 讀檔都用它。
+/// 有隊伍帳卻漏記的事件；#97 起聚落帳的缺糧、死亡、飢餓解除也必須恰好各有一筆事件，不能漏記或拆分），
+/// 餓死與飢餓解除必須精確指向「最近一筆」飢餓債來源。M1_HISTORY 與 TEMP 讀檔都用它。
 ///
 /// 限制（TEMP）：M1 示範每筆事件至多一個直接原因；正式 43F 允許 1～N 個直接原因，
 /// 完整歷史核心（阿卡西紀錄）尚未實作。
@@ -105,7 +106,39 @@ public sealed class DemoCausalIndex
         }
 
         index.CheckTravelLedgersHaveEvents(reports);
+        index.CheckSettlementLedgersHaveEvents(reports);
         return index;
+    }
+
+    /// <summary>
+    /// #97 反向核對（聚落帳 → 事件）：每個聚落每週的飢餓、餓死、飢餓解除事件筆數必須恰好由週帳決定，
+    /// 不能漏記、拆成多筆或多出一筆。規則與結算時產生事件的條件相同：
+    /// 缺糧＞0 → 恰好 1 筆飢餓；死亡＞0 → 恰好 1 筆餓死；期初有飢餓債、本週沒有缺糧、
+    /// 恢復與死亡移除後飢餓債歸 0 且有人倖存 → 恰好 1 筆飢餓解除；其他情形 0 筆。
+    /// 這可抓到「刪掉一筆沒有後果的飢餓或飢餓解除事件、再把後面的編號全部往前補」這類整段改寫。
+    /// </summary>
+    private void CheckSettlementLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports)
+    {
+        foreach (var report in reports)
+        {
+            foreach (var ledger in report.Settlements)
+            {
+                var debtAfterDeaths = ledger.HungerDebtOpening + ledger.FoodShortage
+                    - ledger.HungerDebtRecovered - ledger.HungerDebtRemovedByDeath;
+                var recovered = ledger.HungerDebtOpening > 0 && ledger.FoodShortage == 0
+                    && debtAfterDeaths == 0 && ledger.PopulationOpening - ledger.Deaths > 0;
+                CheckCount(report, ledger, DemoSettlementEventKind.Hunger, ledger.FoodShortage > 0 ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.StarvationDeath, ledger.Deaths > 0 ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.HungerRecovered, recovered ? 1 : 0);
+            }
+        }
+    }
+
+    private void CheckCount(DemoWeekReport report, DemoSettlementWeekLedger ledger, DemoSettlementEventKind kind, int expected)
+    {
+        var n = report.Events.Count(e => e.Kind == kind && e.SettlementId == ledger.SettlementId);
+        if (n != expected)
+            _problems.Add($"第 {report.Week} 週 {ledger.SettlementName} 的週帳應有 {expected} 筆{KindText(kind)}事件，實際 {n} 筆（漏記、重複或拆分）");
     }
 
     private string? CheckOne(int reportIndex, DemoSettlementEvent e, IReadOnlyList<DemoWeekReport> reports)
