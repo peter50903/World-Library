@@ -2,6 +2,10 @@
 
 正在開發的「世界自主演化 → 神祇降臨 → 人物降臨」遊戲。正式遊戲預計使用 Godot（2D）＋ C#；世界模擬由純 .NET 8 程式庫 `WorldSimulation.Core`（模擬核心）負責，包括確定性亂數、排程等，不依賴 Godot。
 
+## V0-08B｜TEMP 數值待使用者裁決清單（第一批，待 GPT 審查）
+
+打開 [`docs/TEMP_待裁決清單.md`](docs/TEMP_待裁決清單.md)：程式裡所有標 `TEMP` 的數值依「近期必決／可延後」整理成 D1～D10，每項列程式位置、目前值、設定檔現況、選項與推薦；另列與正式設定檔衝突的項目（例如示範曆法 364 日 vs 正式 365 日）。只整理、不改任何值。`python3 tools/temp_inventory.py --check` 確認清單沒有漏列含 `TEMP` 的程式檔（CI 也會跑）。
+
 ## V0-08A｜表 45G M1 驗收報告（TEMP，待 GPT 審查）
 
 ```bash
@@ -134,6 +138,7 @@ GitHub 的自動測試（GitHub Actions）還會用輸入腳本實際啟動文�
 1. [02｜遊戲規則總綱（AI 精簡版）](https://app.notion.com/p/3f36939dab09811a8e1bf888e2f9030a)：全部規則的精簡版。
 2. [03｜給 GPT 的下一步製作指示](https://app.notion.com/p/3f36939dab0981ba9906efe357a45813)：任務順序與製作原則。
 3. [01｜目前實作狀態](https://app.notion.com/p/3f36939dab09816c8366efc669451796)：一段最新進度。
+4. [TEMP 待裁決清單](docs/TEMP_待裁決清單.md)：所有暫定數值與待使用者決定的選項。
 - [Notion 入口頁](https://app.notion.com/p/3ee6939dab0981f2b812e6636e103213)、[設定檔（config/）](https://github.com/peter50903/World-Library/tree/main/config)（只讀任務需要的單一分頁範圍）。
 
 ## 資料權威與開發規範
