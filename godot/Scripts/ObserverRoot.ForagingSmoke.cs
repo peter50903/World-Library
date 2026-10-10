@@ -26,6 +26,17 @@ public partial class ObserverRoot
         if (_world.Sites.ResourcePoints.Any(p => p.Kind == DemoResourceKind.Farmland))
             Fail("undeveloped grassland was automatically turned into farmland");
 
+        // Click a real Core forest cell; its gold catchment outlines must be the six-neighbour geometry.
+        var forest = _world.SharedFoodSources().First(s => s.Kind == DemoCatchmentSourceKind.Forest);
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true,
+            Position = _hexMap.CellCenter(_world.Map.GetCell(forest.Column, forest.Row))
+        });
+        var eligible = DemoHexFoodCatchment.EligibleCells(_world.Map, forest);
+        if (_hexMap.FoodReachCells.Count != eligible.Count)
+            Fail("clicking a forest did not highlight its real Core catchment");
+
         var settlement = _world.Sites.Settlements[0];
         _hexMap._GuiInput(new InputEventMouseButton
         {
