@@ -216,6 +216,10 @@
 - **人口過密對照情境（TEMP）**：選單新加「森林周邊人口過密｜觀察缺糧」，只改初始人口群體範圍到 40～48 人/聚落，沒有開局糧庫；與正常採集情境使用**完全同一森林20／河流5供應量及真實採集週帳**，因此缺糧／餓死並非刪除森林糧食。這是刻意壓力測試人口配置，不代表正式史前聚落大小；出生仍未與正式週帳接線。
 - **仍待下一階段**：持久性共享森林來源庫存／真源級資源帳及公平分配、正式河網、農田開墾與知識上限、合法出生／自然死亡群體真正接入週帳（#105）、新增人口不全算成年採收勞力。此切片不代表整個 RPG/人口系統完成。
 
+## #119｜右側世界控制面板拆出為獨立 Godot Window
+- 原 sidebar 改為主地圖以外的可開閉、可拖動、可縮放 Godot 浮動視窗；主畫面保留開啟按鈕，面板小尺寸時捲動，視窗寬時自適應文字比例。
+- 只變更 Godot 呈現及自動操作測試，不改 Core 世界與設定、也不把縮放或關窗當推進時間。
+
 ## 附錄 A｜`TEMP` 標記檔案清單（盤點基準 `0f0e76f`）
 
 每個檔案的標記已歸入上面的項目；其餘標記是說明文字、錯誤訊息或畫面標籤（說明該資料是 TEMP），不另含數值。
@@ -245,6 +249,7 @@
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
+| `godot/Scripts/ObserverRoot.ControlWindow.cs` | 2 | #119 自適應獨立控制視窗，非模擬設定 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |

@@ -180,6 +180,7 @@ public partial class ObserverRoot : Control
         };
         disclaimer.AddThemeColorOverride("font_color", new Color(1f, 0.80f, 0.48f));
         heading.AddChild(disclaimer);
+        CreateControlsWindow(heading);
 
         var middle = new HBoxContainer
         {
@@ -202,12 +203,14 @@ public partial class ObserverRoot : Control
         _hexMap.CellSelected += OnCellSelected;
         mapPanel.AddChild(_hexMap);
 
+        // #119 separate resizable Godot Window, not an inline map-stealing sidebar.
         var sidebar = new PanelContainer
         {
-            CustomMinimumSize = new Vector2(350, 0),
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill
         };
-        middle.AddChild(sidebar);
+        _controlsWindow.AddChild(sidebar);
+        sidebar.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
 
         // V0-07: the added save/load buttons must remain reachable on smaller windows.
         // Scroll only the information sidebar; map wheel input stays within the map.
@@ -411,6 +414,8 @@ public partial class ObserverRoot : Control
             VerifyHistoryFilterSmoke(nextButton, saveButtons, loadButtons);
         if (FoodSmoke)
             VerifyFoodSmoke(nextButton, loadButtons);
+        if (OS.HasEnvironment("WORLD_SIM_WINDOW_SMOKE"))
+            VerifyControlsWindowSmoke();
         if (ForagingSmoke)
             VerifyForagingSmoke(nextButton);
 
