@@ -237,7 +237,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 12 | D8、c1、第 3 節 #103 承載估計 |
-| `godot/Scripts/ObserverRoot.cs` | 73 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
+| `godot/Scripts/ObserverRoot.cs` | 74 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
 | `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
