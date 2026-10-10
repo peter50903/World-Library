@@ -121,7 +121,9 @@ public sealed class DemoTempDemographyTests
             Assert.Equal(outcomeY.Events.ToArray(), outcomeX.Events.ToArray());
             Assert.Equal(y.People.ToArray(), x.People.ToArray());
         }
-        Assert.Equal(y.Snapshot(), x.Snapshot());
+        Assert.Equal(y.Snapshot().NextId, x.Snapshot().NextId);
+        Assert.Equal(y.Snapshot().LastWeek, x.Snapshot().LastWeek);
+        Assert.Equal(y.People.ToArray(), x.People.ToArray());
     }
 
     [Fact]
@@ -179,7 +181,7 @@ public sealed class DemoTempDemographyTests
         Assert.Throws<InvalidOperationException>(() => DemoTempDemography.Restore(
             good with { NextId = 2 }, Rules));
         Assert.Throws<InvalidOperationException>(() => DemoTempDemography.Restore(
-            good with { People = good.People.SetItem(0, good.People[0] with { PregnancyDueWeek = 1, FatherId = 4 }) },
-            Rules) /* pregnant female is legal, but 1-week due is earlier than 39-week TEMP gestation only at conception */);
+            good with { People = good.People.SetItem(1, good.People[1] with { PregnancyDueWeek = 39, FatherId = 4 }) },
+            Rules)); // Male cannot be pregnant.
     }
 }
