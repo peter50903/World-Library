@@ -28,13 +28,63 @@ public partial class ObserverRoot : Control
     // #64: true Godot mouse-input smoke, only enabled in CI.
     private static readonly bool MapInputSmoke = OS.HasEnvironment("WORLD_SIM_MAP_INPUT_SMOKE");
     private const int SettleSmokeDays = 30 * 7;
-    private static readonly ulong WorldSeed = SettleSmoke ? PickSettleSmokeSeed()
-        : MigrationSmoke ? PickMigrationSmokeSeed() : DemoSeed;
-    private DemoObserverWorld _world = new(
-        DemoScenario.Sample(WorldSeed),
-        SettleSmoke ? DemoWeeklyTempConfig.FrontierSample
-            : MigrationSmoke ? DemoWeeklyTempConfig.LocalFamineSample
-            : FamineSmoke ? DemoWeeklyTempConfig.FamineSample : DemoWeeklyTempConfig.Sample);
+    private const int MigrationSmokeDays = 70;
+    // #81: CI-only smoke for the player-visible TEMP scenario picker. Normal players never set it.
+    private static readonly bool ScenarioSmoke = OS.HasEnvironment("WORLD_SIM_SCENARIO_SMOKE");
+
+    /// <summary>
+    /// #81：玩家可在畫面上選的四種既有 TEMP 生存情境（順序＝下拉選單順序）。
+    /// 只對應 Core 既有的 <see cref="DemoWeeklyTempConfig"/> 示範設定，不是正式規則。
+    /// </summary>
+    private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3 }
+
+    private static readonly TempScenario InitialScenario = SettleSmoke ? TempScenario.Frontier
+        : MigrationSmoke ? TempScenario.LocalFamine
+        : FamineSmoke ? TempScenario.Famine : TempScenario.Normal;
+    // TEMP: local famine / frontier reuse the existing demo seed search (42, then 1..30) so that the
+    // migration / founding is reproducibly visible; the actual seed is always shown on screen.
+    private static readonly Lazy<ulong> MigrationDemoSeed = new(PickMigrationSmokeSeed);
+    private static readonly Lazy<ulong> SettleDemoSeed = new(PickSettleSmokeSeed);
+    private static readonly ulong WorldSeed = SeedFor(InitialScenario);
+    private DemoObserverWorld _world = CreateTempWorld(InitialScenario);
+
+    private static ulong SeedFor(TempScenario scenario) => scenario switch
+    {
+        TempScenario.LocalFamine => MigrationDemoSeed.Value,
+        TempScenario.Frontier => SettleDemoSeed.Value,
+        _ => DemoSeed
+    };
+
+    private static DemoWeeklyTempConfig ConfigFor(TempScenario scenario) => scenario switch
+    {
+        TempScenario.Famine => DemoWeeklyTempConfig.FamineSample,
+        TempScenario.LocalFamine => DemoWeeklyTempConfig.LocalFamineSample,
+        TempScenario.Frontier => DemoWeeklyTempConfig.FrontierSample,
+        _ => DemoWeeklyTempConfig.Sample
+    };
+
+    /// <summary>每次都建立全新的 Core 示範世界；Godot 不自行計算人口、食物或路線。</summary>
+    private static DemoObserverWorld CreateTempWorld(TempScenario scenario)
+        => new(DemoScenario.Sample(SeedFor(scenario)), ConfigFor(scenario));
+
+    private static string PickerLabel(TempScenario scenario) => scenario switch
+    {
+        TempScenario.Famine => "全面饑荒（TEMP）",
+        TempScenario.LocalFamine => "局部饑荒｜觀察遷徙（TEMP）",
+        TempScenario.Frontier => "開拓｜觀察新聚落（TEMP）",
+        _ => "一般（TEMP，預設）"
+    };
+
+    /// <summary>由 Core 的情境名稱反查下拉選單位置（讀檔後同步顯示）；未知情境回傳 null。</summary>
+    private static TempScenario? ScenarioOf(DemoObserverWorld world) => world.TempScenarioDisplayName switch
+    {
+        "一般示範" => TempScenario.Normal,
+        "全面饑荒" => TempScenario.Famine,
+        "局部饑荒" => TempScenario.LocalFamine,
+        "開拓" => TempScenario.Frontier,
+        _ => null
+    };
+
     private static ulong PickSettleSmokeSeed()
     {
         foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
@@ -53,7 +103,7 @@ public partial class ObserverRoot : Control
         foreach (var seed in new[] { DemoSeed }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
         {
             var probe = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LocalFamineSample);
-            for (var day = 0; day < 70 && probe.MigrationsInTransit().Count == 0; day++)
+            for (var day = 0; day < MigrationSmokeDays && probe.MigrationsInTransit().Count == 0; day++)
                 probe.AdvanceOneDay();
             if (probe.MigrationsInTransit().Count > 0)
                 return seed;
@@ -70,6 +120,13 @@ public partial class ObserverRoot : Control
     private Label[] _slotLabels = null!;
     private RichTextLabel _history = null!;
     private RichTextLabel _ledger = null!;
+    // #81: TEMP scenario picker + explicit confirmation before discarding an advanced world.
+    private OptionButton _scenarioPicker = null!;
+    private Button _startScenarioButton = null!;
+    private HBoxContainer _confirmRow = null!;
+    private Button _confirmScenarioButton = null!;
+    private Button _cancelScenarioButton = null!;
+    private TempScenario? _pendingScenario;
 
     public override void _Ready()
     {
@@ -143,6 +200,42 @@ public partial class ObserverRoot : Control
 
         _status = new Label();
         side.AddChild(_status);
+
+        // #81: choose one of the existing TEMP survival scenarios and start a NEW demo world.
+        var scenarioHeading = new Label { Text = "TEMP 示範情境（切換＝建立新的示範世界）" };
+        scenarioHeading.AddThemeFontSizeOverride("font_size", 18);
+        side.AddChild(scenarioHeading);
+        _scenarioPicker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var scenario in Enum.GetValues<TempScenario>())
+            _scenarioPicker.AddItem(PickerLabel(scenario), (int)scenario);
+        _scenarioPicker.ItemSelected += OnScenarioPicked;
+        side.AddChild(_scenarioPicker);
+        _startScenarioButton = new Button
+        {
+            Text = "開始新的 TEMP 示範",
+            CustomMinimumSize = new Vector2(0, 40)
+        };
+        _startScenarioButton.Pressed += RequestNewScenario;
+        side.AddChild(_startScenarioButton);
+        _confirmRow = new HBoxContainer { Visible = false };
+        side.AddChild(_confirmRow);
+        _confirmScenarioButton = new Button
+        {
+            Text = "確認切換（捨棄目前進度）",
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _confirmScenarioButton.AddThemeColorOverride("font_color", new Color(1f, 0.55f, 0.45f));
+        _confirmScenarioButton.Pressed += ConfirmNewScenario;
+        _confirmRow.AddChild(_confirmScenarioButton);
+        _cancelScenarioButton = new Button { Text = "取消" };
+        _cancelScenarioButton.Pressed += CancelNewScenario;
+        _confirmRow.AddChild(_cancelScenarioButton);
+        side.AddChild(new Label
+        {
+            Text = "局部饑荒／開拓沿用既有示範種子搜尋（42，再 1～30），選第一個會在示範期間發生遷徙／建立新聚落的種子；實際種子顯示在上方。存檔槽不會因切換被刪除或覆寫。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart
+        });
+        SyncScenarioPicker();
 
         // V0-04A: weekly settlement ledger computed by Core; Godot only displays it.
         var ledgerHeading = new Label { Text = "本週帳目（TEMP，每 7 日結算）" };
@@ -253,6 +346,8 @@ public partial class ObserverRoot : Control
             VerifySaveSlotSmoke(nextButton, saveButtons, loadButtons);
         if (MapInputSmoke)
             VerifyMapInputSmoke();
+        if (ScenarioSmoke)
+            VerifyScenarioSwitchSmoke(nextButton, skipButton, saveButtons, loadButtons);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -539,10 +634,9 @@ public partial class ObserverRoot : Control
         try
         {
             var restored = DemoSaveSlots.Load(slot);
-            _world = restored; // New fully validated world; never mutate the old one on failure.
-            _hexMap.World = restored.Map;
-            _cellInfo.Text = "TEMP 世界讀取完成；請點選地圖格或聚落查看資料。";
-            Refresh();
+            // New fully validated world; never mutate the old one on failure. The save keeps its OWN
+            // scenario (#81): the picker follows the loaded world, never the other way round.
+            InstallWorld(restored, "TEMP 世界讀取完成；請點選地圖格或聚落查看資料。");
             _notice.Text = $"TEMP 存檔槽 {slot} 讀檔成功：第 {restored.Snapshot().DaysElapsed} 日";
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
@@ -551,6 +645,221 @@ public partial class ObserverRoot : Control
             _notice.Text = $"TEMP 存檔槽 {slot} 讀檔失敗，世界未改變：{ex.Message}";
         }
         RefreshSlots();
+    }
+
+    // ---------- #81: TEMP scenario switching (always a NEW Core demo world) ----------
+
+    private void OnScenarioPicked(long index)
+    {
+        // Picking alone never changes the world; it only cancels a pending, different confirmation.
+        if (_pendingScenario is not null)
+        {
+            _pendingScenario = null;
+            _confirmRow.Visible = false;
+        }
+        _notice.Text = $"已選擇「{PickerLabel((TempScenario)index)}」。按「開始新的 TEMP 示範」才會建立新世界；" +
+            $"目前世界（{_world.TempScenarioDisplayName}，第 {_world.Snapshot().DaysElapsed} 日）未改變。";
+    }
+
+    private void RequestNewScenario()
+    {
+        var target = (TempScenario)_scenarioPicker.Selected;
+        var day = _world.Snapshot().DaysElapsed;
+        if (day == 0)
+        {
+            StartScenario(target); // Nothing has been advanced yet, so nothing can be lost.
+            return;
+        }
+
+        _pendingScenario = target;
+        _confirmRow.Visible = true;
+        _notice.Text = $"⚠ 目前世界（{_world.TempScenarioDisplayName}）已推進到第 {day} 日。" +
+            $"切換到「{PickerLabel(target)}」會建立新的第 0 日 TEMP 示範世界，目前未存檔的進度將從畫面捨棄；" +
+            "三個存檔槽不會被刪除或覆寫。請按「確認切換」或「取消」。";
+    }
+
+    private void ConfirmNewScenario()
+    {
+        if (_pendingScenario is not { } target)
+            return;
+        StartScenario(target);
+    }
+
+    private void CancelNewScenario()
+    {
+        _pendingScenario = null;
+        _confirmRow.Visible = false;
+        SyncScenarioPicker();
+        _notice.Text = $"已取消切換，世界未改變（{_world.TempScenarioDisplayName}，第 {_world.Snapshot().DaysElapsed} 日）。";
+    }
+
+    private void StartScenario(TempScenario target)
+    {
+        DemoObserverWorld fresh;
+        try
+        {
+            fresh = CreateTempWorld(target);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _notice.Text = $"無法建立 TEMP 示範世界，目前世界未改變：{ex.Message}";
+            return;
+        }
+
+        InstallWorld(fresh, "TEMP 新示範世界已建立；請點選地圖格或聚落查看資料。");
+        _notice.Text = $"已建立新的 TEMP 示範世界：{PickerLabel(target)}｜實際種子 {fresh.TempWorldSeed}｜第 0 日。" +
+            (fresh.TempWorldSeed == DemoSeed ? "" : "（此情境用既有示範種子搜尋，非預設種子 42）");
+    }
+
+    /// <summary>Replaces the displayed world and redraws everything from it (no residue of the old one).</summary>
+    private void InstallWorld(DemoObserverWorld world, string cellInfoText)
+    {
+        _world = world;
+        _pendingScenario = null;
+        _confirmRow.Visible = false;
+        _hexMap.World = world.Map;
+        _hexMap.Sites = world.Sites;
+        _hexMap.Migrants = world.MigrationsInTransit();
+        _cellInfo.Text = cellInfoText;
+        SyncScenarioPicker();
+        Refresh();
+        RefreshSlots();
+    }
+
+    private void SyncScenarioPicker()
+    {
+        if (ScenarioOf(_world) is { } scenario)
+            _scenarioPicker.Select((int)scenario);
+    }
+
+    private void PickScenario(TempScenario scenario)
+    {
+        _scenarioPicker.Select((int)scenario);
+        _scenarioPicker.EmitSignal(OptionButton.SignalName.ItemSelected, (long)scenario);
+    }
+
+    /// <summary>
+    /// #81 CI smoke with the real Godot controls: the picker plus "start" never change an advanced world
+    /// without confirmation; each confirmed switch rebuilds a day-0 world identical to a fresh Core world
+    /// (no residue), shows its scenario and actual seed, and then shows migration / founding / famine.
+    /// Save slots are never touched by switching; loading a slot restores the save's own scenario.
+    /// </summary>
+    private void VerifyScenarioSwitchSmoke(Button nextButton, Button skipButton, Button[] saveButtons, Button[] loadButtons)
+    {
+        void Fail(string why) => throw new InvalidOperationException("Scenario smoke: " + why);
+        void Press(Button button) => button.EmitSignal(BaseButton.SignalName.Pressed);
+
+        void CheckFresh(TempScenario scenario)
+        {
+            var expected = CreateTempWorld(scenario);
+            if (_world.ExportTempSave() != expected.ExportTempSave() || _world.Snapshot().DaysElapsed != 0)
+                Fail($"{scenario} was not rebuilt as a fresh day-0 Core world.");
+            if (!_status.Text.Contains($"目前情境：【TEMP 示範】{expected.TempScenarioDisplayName}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"實際種子：{expected.TempWorldSeed}", StringComparison.Ordinal)
+                || !_status.Text.Contains("世界日期：第 0 日", StringComparison.Ordinal)
+                || _scenarioPicker.Selected != (int)scenario || _confirmRow.Visible)
+                Fail($"{scenario} labels / picker not refreshed.");
+            if (_history.Text != "目前沒有已結算事件。請按「下一天」開始。"
+                || !_ledger.Text.StartsWith("尚未到第一次週結算", StringComparison.Ordinal)
+                || _hexMap.Migrants.Count != 0
+                || !ReferenceEquals(_hexMap.Sites, _world.Sites) || !ReferenceEquals(_hexMap.World, _world.Map)
+                || !_cellInfo.Text.StartsWith("TEMP 新示範世界", StringComparison.Ordinal))
+                Fail($"{scenario} shows residue of the previous world.");
+        }
+
+        void CheckSameAsCore(TempScenario scenario)
+        {
+            var replay = CreateTempWorld(scenario);
+            for (var i = 0; i < _world.Snapshot().DaysElapsed; i++)
+                replay.AdvanceOneDay();
+            if (_world.ExportTempSave() != replay.ExportTempSave())
+                Fail($"{scenario} UI world diverged from a direct Core run.");
+        }
+
+        void SwitchTo(TempScenario scenario)
+        {
+            PickScenario(scenario);
+            Press(_startScenarioButton);
+            if (_confirmRow.Visible)
+                Press(_confirmScenarioButton);
+            CheckFresh(scenario);
+        }
+
+        // 1. Default stays the normal TEMP scenario with seed 42.
+        if (_world.TempScenarioDisplayName != "一般示範" || _world.TempWorldSeed != DemoSeed)
+            Fail("default scenario is not the normal TEMP demo with seed 42.");
+
+        // 2. Advance 7 days, save slot 1, then try to switch: no change until confirmed; cancel keeps it.
+        for (var i = 0; i < 7; i++)
+            Press(nextButton);
+        var day7 = _world.ExportTempSave();
+        Press(saveButtons[1]);
+        var slot1 = System.IO.File.ReadAllBytes(DemoSaveSlots.PathFor(1));
+        PickScenario(TempScenario.LocalFamine);
+        if (_world.ExportTempSave() != day7)
+            Fail("picking a scenario changed the world.");
+        Press(_startScenarioButton);
+        if (_world.ExportTempSave() != day7 || !_confirmRow.Visible
+            || !_notice.Text.Contains("已推進到第 7 日", StringComparison.Ordinal))
+            Fail("an advanced world was replaced without confirmation.");
+        Press(_cancelScenarioButton);
+        if (_world.ExportTempSave() != day7 || _confirmRow.Visible || _scenarioPicker.Selected != (int)TempScenario.Normal)
+            Fail("cancel changed the world or left the confirmation open.");
+        Press(_confirmScenarioButton); // Stale confirm after cancel must do nothing.
+        if (_world.ExportTempSave() != day7)
+            Fail("a stale confirmation replaced the world.");
+
+        // 3. Local famine: confirmed switch → fresh day 0, then a migrant batch on the map.
+        SwitchTo(TempScenario.LocalFamine);
+        for (var i = 0; i < MigrationSmokeDays && _world.MigrationsInTransit().Count == 0; i++)
+            Press(nextButton);
+        if (_world.MigrationsInTransit().Count == 0 || _hexMap.Migrants.Count != _world.MigrationsInTransit().Count
+            || !_history.Text.Contains("因缺糧外移", StringComparison.Ordinal))
+            Fail("local famine did not show Core's migrant batch.");
+        CheckSameAsCore(TempScenario.LocalFamine);
+        var migrationDay = _world.Snapshot().DaysElapsed;
+
+        // 4. Frontier: a founded settlement appears on the map.
+        SwitchTo(TempScenario.Frontier);
+        for (var i = 0; i < SettleSmokeDays && !_world.Sites.Settlements.Any(s => s.IsFounded); i++)
+            Press(nextButton);
+        var founded = _world.Sites.Settlements.FirstOrDefault(s => s.IsFounded);
+        if (founded is null || _hexMap.Sites?.SettlementAt(founded.Column, founded.Row) is null
+            || !_history.Text.Contains("建立新聚落", StringComparison.Ordinal))
+            Fail("frontier did not show Core's founded settlement.");
+        CheckSameAsCore(TempScenario.Frontier);
+        var foundedDay = _world.Snapshot().DaysElapsed;
+
+        // 5. Famine: caused hunger events after 30 days.
+        SwitchTo(TempScenario.Famine);
+        Press(skipButton);
+        if (!_world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.Hunger)
+            || !_history.Text.Contains("飢餓：缺糧", StringComparison.Ordinal))
+            Fail("famine did not show Core's hunger events.");
+        CheckSameAsCore(TempScenario.Famine);
+
+        // 6. Loading slot 1 restores ITS scenario (normal, day 7), not the current famine one;
+        //    an empty slot is still rejected without changing the world.
+        Press(loadButtons[1]);
+        if (_world.ExportTempSave() != day7 || _world.TempScenarioDisplayName != "一般示範"
+            || _scenarioPicker.Selected != (int)TempScenario.Normal
+            || !_status.Text.Contains("目前情境：【TEMP 示範】一般示範", StringComparison.Ordinal))
+            Fail("loading slot 1 did not restore its own normal scenario.");
+        var beforeEmpty = _world.ExportTempSave();
+        Press(loadButtons[2]);
+        if (_world.ExportTempSave() != beforeEmpty
+            || !_notice.Text.StartsWith("TEMP 存檔槽 2 讀檔失敗", StringComparison.Ordinal))
+            Fail("an empty slot was not rejected.");
+
+        // 7. Back to normal: identical to a brand-new default world; slot 1 bytes never changed.
+        SwitchTo(TempScenario.Normal);
+        if (!System.IO.File.ReadAllBytes(DemoSaveSlots.PathFor(1)).AsSpan().SequenceEqual(slot1)
+            || System.IO.File.Exists(DemoSaveSlots.PathFor(2)) || System.IO.File.Exists(DemoSaveSlots.PathFor(3)))
+            Fail("switching scenarios touched a save slot.");
+
+        GD.Print($"WORLD_SIM_SCENARIO_OK: Normal={DemoSeed} LocalFamine={SeedFor(TempScenario.LocalFamine)} " +
+            $"MigrationDay={migrationDay} Frontier={SeedFor(TempScenario.Frontier)} FoundedDay={foundedDay} " +
+            $"Famine={DemoSeed} ConfirmRequired=1 SlotsUnchanged=1");
     }
 
     private void RefreshSlots()
@@ -704,6 +1013,9 @@ public partial class ObserverRoot : Control
     {
         var snapshot = _world.Snapshot();
         _status.Text =
+            // #81: scenario and actual seed always visible; always marked TEMP, never "official".
+            $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
+            $"實際種子：{_world.TempWorldSeed}\n" +
             $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
             // #61: one population ledger (settlements + migrants, each person counted once) ...
             $"聚落人口合計：{_world.SettledPopulation}\n" +
@@ -714,8 +1026,7 @@ public partial class ObserverRoot : Control
             $"每日示範人口：{snapshot.Population}\n" +
             $"每日示範食物庫存：{snapshot.FoodStock}\n" +
             $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
-            $"資源亂數抽樣：{snapshot.ResourceRngDraws}\n" +
-            $"亂數種子：{_world.TempWorldSeed}";
+            $"資源亂數抽樣：{snapshot.ResourceRngDraws}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();

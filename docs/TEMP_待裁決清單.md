@@ -149,7 +149,7 @@
 |---|---|---|
 | 人口、初始糧食、每日最多採收、每人每日消耗 | 5、8、0～8、1 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs:24-25`（`DemoScenario.Sample`） |
 
-- 現況：這是 V0-01 的舊帳，畫面與文字介面已標「舊版獨立 TEMP 帳，與上方聚落人口無關」（`godot/Scripts/ObserverRoot.cs:713`），但 `DemoScenario.Sample` 本身沒有逐值標 `TEMP`。
+- 現況：這是 V0-01 的舊帳，畫面與文字介面已標「舊版獨立 TEMP 帳，與上方聚落人口無關」（`godot/Scripts/ObserverRoot.cs:1025`），但 `DemoScenario.Sample` 本身沒有逐值標 `TEMP`。
 - 選項：**A** 另開任務移除舊帳（週結算已取代它）；**B** 保留並在 `DemoScenario` 補標 TEMP。
 - 推薦：**A**，可減少畫面上兩套人口數字造成的混淆；移除會改變存檔內容，需另開議題並經審查。
 
@@ -175,7 +175,7 @@
 |---|---|
 | M1 驗收預設種子 42、7、1，預設 100 年 | `M1Acceptance.cs:965-968` |
 | 饑荒、局部饑荒、開拓情境（`FamineSample`／`LocalFamineSample`／`FrontierSample`） | `DemoWeeklySettlement.cs:42-71`；M1 情境 `M1Acceptance.cs:227` |
-| Godot 預設種子 42、CI 冒煙測試挑種子（42，再 1～30）、冒煙天數 | `godot/Scripts/ObserverRoot.cs:14-62` |
+| Godot 預設種子 42、局部饑荒／開拓情境與 CI 冒煙測試挑種子（42，再 1～30）、冒煙天數（#81 起玩家也可在畫面選這些 TEMP 情境） | `godot/Scripts/ObserverRoot.cs:14-113` |
 | 存檔只接受已知示範情境 | `DemoObserverWorld.Save.cs:45-46` |
 | `tests/` 內的期望數字 | 全部由上表 fixture 與 D3～D7 的 TEMP 值推導，D3～D7 定案時一併更新 |
 
@@ -198,6 +198,6 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 15 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 10 | D8、c1 |
-| `godot/Scripts/ObserverRoot.cs` | 42 | D7、D8、D10、第 3 節 |
+| `godot/Scripts/ObserverRoot.cs` | 67 | D7、D8、D10、第 3 節 |
 | `godot/Scripts/DemoHexMap.cs` | 6 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
