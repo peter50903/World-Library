@@ -20,12 +20,24 @@ public sealed class DemoForagingPlayableTests
         var sources = world.SharedFoodSources();
         Assert.NotEmpty(sources);
         Assert.Contains(sources, s => s.Kind == DemoCatchmentSourceKind.Forest);
-        Assert.All(sources, s =>
+        Assert.All(sources, source =>
         {
-            Assert.Equal(s.Kind == DemoCatchmentSourceKind.Forest ? 20 : 5, s.FoodAvailable);
-            Assert.Equal(s.Kind == DemoCatchmentSourceKind.MainRiver,
-                world.IsMainRiverCell(s.Column, s.Row));
+            var expected = source.Kind switch
+            {
+                DemoCatchmentSourceKind.Forest => 20,
+                DemoCatchmentSourceKind.MainRiver => 5,
+                DemoCatchmentSourceKind.GrasslandForage => 8,
+                DemoCatchmentSourceKind.OpenWater => 3,
+                _ => throw new InvalidOperationException("Unexpected source")
+            };
+            Assert.Equal(expected, source.FoodAvailable);
+            Assert.Equal(source.Kind == DemoCatchmentSourceKind.MainRiver,
+                world.IsMainRiverCell(source.Column, source.Row));
         });
+        Assert.Contains(sources, source => source.Kind == DemoCatchmentSourceKind.GrasslandForage);
+        Assert.Contains(sources, source => source.Kind == DemoCatchmentSourceKind.OpenWater);
+        Assert.DoesNotContain(sources, source => world.Sites.Settlements.Any(place =>
+            place.Column == source.Column && place.Row == source.Row));
     }
 
     [Fact]
