@@ -339,7 +339,13 @@ public partial class ObserverRoot : Control
             SizeFlagsVertical = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 145)
         };
-        historyColumn.AddChild(_history);
+        // #89: text history on the left, clickable settlement events and their detail on the right.
+        var historyRow = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
+        historyRow.AddThemeConstantOverride("separation", 12);
+        historyColumn.AddChild(historyRow);
+        _history.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        historyRow.AddChild(_history);
+        BuildEventDetailPanel(historyRow);
 
         Refresh();
         if (OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE"))
@@ -348,6 +354,8 @@ public partial class ObserverRoot : Control
             VerifyMapInputSmoke();
         if (ScenarioSmoke)
             VerifyScenarioSwitchSmoke(nextButton, skipButton, saveButtons, loadButtons);
+        if (EventDetailSmoke)
+            VerifyEventDetailSmoke(nextButton);
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -1052,5 +1060,6 @@ public partial class ObserverRoot : Control
         _history.Text = string.Join("\n", lines);
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
+        RefreshEventList();
     }
 }
