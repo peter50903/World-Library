@@ -40,9 +40,23 @@ public partial class ObserverRoot : Control
     /// </summary>
     private enum TempScenario { Normal = 0, Famine = 1, LocalFamine = 2, Frontier = 3, Foraging = 4, CrowdedForaging = 5 }
 
+    // Keep legacy CI fixture expectations untouched, but make the new human-only
+    // forest/river food world the default for real F5 players.
+    private static readonly bool LegacyFixtureSmoke =
+        OS.HasEnvironment("WORLD_SIM_UI_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_MAP_INPUT_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_SCENARIO_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_PLAYBACK_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_EVENT_DETAIL_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_ALERT_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_HISTORY_FILTER_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_FOOD_SMOKE");
+
     private static readonly TempScenario InitialScenario = SettleSmoke ? TempScenario.Frontier
         : MigrationSmoke ? TempScenario.LocalFamine
-        : FamineSmoke ? TempScenario.Famine : TempScenario.Normal;
+        : FamineSmoke ? TempScenario.Famine
+        : LegacyFixtureSmoke ? TempScenario.Normal : TempScenario.Foraging;
     // TEMP: local famine / frontier reuse the existing demo seed search (42, then 1..30) so that the
     // migration / founding is reproducibly visible; the actual seed is always shown on screen.
     private static readonly Lazy<ulong> MigrationDemoSeed = new(PickMigrationSmokeSeed);
@@ -76,9 +90,9 @@ public partial class ObserverRoot : Control
         TempScenario.Famine => "全面饑荒（TEMP）",
         TempScenario.LocalFamine => "局部饑荒｜觀察遷徙（TEMP）",
         TempScenario.Frontier => "開拓｜觀察新聚落（TEMP）",
-        TempScenario.Foraging => "森林／河流採集生存（新，TEMP）",
+        TempScenario.Foraging => "森林／河流採集生存（預設，TEMP）",
         TempScenario.CrowdedForaging => "森林周邊人口過密｜觀察缺糧（TEMP）",
-        _ => "一般（TEMP，預設）"
+        _ => "舊版一般（TEMP，舊農田測試）"
     };
 
     /// <summary>由 Core 的情境名稱反查下拉選單位置（讀檔後同步顯示）；未知情境回傳 null。</summary>
