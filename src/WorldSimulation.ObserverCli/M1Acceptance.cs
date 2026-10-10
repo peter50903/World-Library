@@ -162,7 +162,7 @@ public static class M1CheckCatalog
         return result.AsReadOnly();
     }
 
-    private static List<List<string>> ParseCsv(string text, string source)
+    internal static List<List<string>> ParseCsv(string text, string source)
     {
         var rows = new List<List<string>>();
         var row = new List<string>();
@@ -257,6 +257,7 @@ public sealed record M1RunData(
     ulong Seed,
     M1Preset Preset,
     int Years,
+    int DaysPerYear,
     M1WorldTotals Initial,
     IReadOnlyList<int> InitialSettlementIds,
     IReadOnlyList<DemoWeekReport> Weeks,
@@ -268,11 +269,14 @@ public sealed record M1RunData(
 /// <summary>跑一個種子 × 情境 × 年數，收集證據。不改 Core 任何規則。</summary>
 public static class M1RunCollector
 {
-    public static M1RunData Collect(ulong seed, M1Preset preset, int years)
+    /// <param name="daysPerYear">#82：一年日數，來自正式設定 01 表 WORLD_DAYS_PER_YEAR（與 --demo --years 同一個年界）。</param>
+    public static M1RunData Collect(ulong seed, M1Preset preset, int years, int daysPerYear)
     {
         ArgumentNullException.ThrowIfNull(preset);
         if (years is < 1 or > DemoCenturyRun.MaxYears)
             throw new ArgumentOutOfRangeException(nameof(years), $"年數必須是 1～{DemoCenturyRun.MaxYears}。");
+        if (daysPerYear < 1 || (long)daysPerYear * years > int.MaxValue)
+            throw new ArgumentOutOfRangeException(nameof(daysPerYear), "一年日數必須是正整數。");
 
         var world = new DemoObserverWorld(DemoScenario.Sample(seed), preset.Config);
         var initialIds = world.Sites.Settlements.Select(s => s.Id).ToList();
@@ -280,7 +284,7 @@ public static class M1RunCollector
         var totals = new Dictionary<int, M1WorldTotals>();
         string? abort = null;
         var seen = 0;
-        var days = years * DemoCenturyRun.TempDaysPerYear;
+        var days = years * daysPerYear;
         for (var d = 0; d < days; d++)
         {
             try
@@ -308,7 +312,7 @@ public static class M1RunCollector
                 string.Join("／", sites.ResourcePointsOf(s.Id).Select(p => KindName(p.Kind)).Distinct()),
                 s.IsFounded, world.SettlementPopulation(s.Id)))
             .ToList();
-        return new M1RunData(seed, preset, years, initial, initialIds, world.WeekReports(), totals, cells, infos, abort);
+        return new M1RunData(seed, preset, years, daysPerYear, initial, initialIds, world.WeekReports(), totals, cells, infos, abort);
     }
 
     private static M1WorldTotals Totals(DemoObserverWorld world)
@@ -415,10 +419,14 @@ public static class M1Evaluator
         _ => M1Verdict.Warn
     };
 
+    /// <summary>#82：第 N 次週結算在第 7N 日；歸屬結算日所在年份，年內週次＝該年的第幾次週結算。</summary>
     private static string At(M1RunData run, int week)
     {
-        const int perYear = DemoCenturyRun.TempWeeksPerYear;
-        return $"種子 {run.Seed} 第 {(week - 1) / perYear + 1} 年第 {(week - 1) % perYear + 1} 週（第 {week * 7L} 日）";
+        var day = (long)week * DemoCenturyRun.DaysPerWeeklySettlement;
+        var year = (day - 1) / run.DaysPerYear + 1;
+        var yearStart = (year - 1) * run.DaysPerYear;
+        var weekInYear = week - yearStart / DemoCenturyRun.DaysPerWeeklySettlement;
+        return $"種子 {run.Seed} 第 {year} 年第 {weekInYear} 週（第 {day} 日）";
     }
 
     private static string Name(DemoSettlementWeekLedger ledger) => $"{ledger.SettlementName}（#{ledger.SettlementId}）";
@@ -435,7 +443,7 @@ public static class M1Evaluator
     private static M1Finding Resources(M1RunData run)
     {
         var problems = new List<string>();
-        var expectedWeeks = run.Years * DemoCenturyRun.TempWeeksPerYear;
+        var expectedWeeks = DemoCenturyRun.WeeklySettlementsThrough(run.Years * run.DaysPerYear);
         if (run.Weeks.Count != expectedWeeks)
             problems.Add($"週結算次數 {run.Weeks.Count}，{run.Years} 年應為 {expectedWeeks}");
 
@@ -969,7 +977,7 @@ public static class M1AcceptanceCli
 
     public static string Usage
         => $"用法：--m1-check [--years <1～{DemoCenturyRun.MaxYears}，預設 {DefaultYears}>] [--seed <非負整數>] "
-         + $"[--preset {string.Join("|", M1Preset.All.Select(p => p.Key))}] [--checks <45G CSV 路徑>]";
+         + $"[--preset {string.Join("|", M1Preset.All.Select(p => p.Key))}] [--checks <45G CSV 路徑>] [--world-params <01 CSV 路徑>]";
 
     /// <summary>執行並回傳結束碼：0＝Hard 全部沒有失敗；1＝有 Hard 失敗；2＝參數或清單錯誤。</summary>
     public static int Run(IReadOnlyList<string> args, TextWriter output)
@@ -980,11 +988,12 @@ public static class M1AcceptanceCli
         ulong? seed = null;
         M1Preset? preset = null;
         string? checksPath = null;
+        string? worldParamsPath = null;
         for (var i = 0; i < args.Count; i += 2)
         {
             var flag = args[i];
             var value = i + 1 < args.Count ? args[i + 1] : null;
-            if (flag is not ("--years" or "--seed" or "--preset" or "--checks"))
+            if (flag is not ("--years" or "--seed" or "--preset" or "--checks" or "--world-params"))
                 return Error(output, $"不認得的參數「{flag}」。");
             if (value is null)
                 return Error(output, $"參數 {flag} 缺少值。");
@@ -1006,6 +1015,9 @@ public static class M1AcceptanceCli
                     if (preset is null)
                         return Error(output, $"--preset 必須是 {string.Join("、", M1Preset.All.Select(p => p.Key))} 之一，收到「{value}」。");
                     break;
+                case "--world-params":
+                    worldParamsPath = value;
+                    break;
                 default:
                     checksPath = value;
                     break;
@@ -1026,10 +1038,22 @@ public static class M1AcceptanceCli
             return Error(output, ex.Message);
         }
 
+        // #82：年界來自正式設定 01 表（與 --demo --years 相同），找不到或格式錯誤即停止。
+        WorldCalendar calendar;
+        try
+        {
+            calendar = worldParamsPath is null ? WorldCalendarConfig.LoadDefault() : WorldCalendarConfig.Load(worldParamsPath);
+        }
+        catch (WorldCalendarException ex)
+        {
+            return Error(output, ex.Message);
+        }
+
         var seeds = seed is ulong s ? new[] { s } : DefaultSeeds.ToArray();
         var presets = preset is not null ? new[] { preset } : M1Preset.Default.ToArray();
         output.WriteLine("=== 世界觀察者 v0｜表 45G M1 驗收報告（V0-08A）===");
         output.WriteLine($"檢查清單：{M1CheckCatalog.RelativePath}（Enabled=TRUE 共 {checks.Count} 項，依清單順序）");
+        output.WriteLine(calendar.Describe());
         output.WriteLine("注意：種子、情境、人口與糧食數值都是 TEMP 測試 fixture；本報告只量測，不改任何模擬規則或數值。");
 
         var reports = new List<M1RunReport>();
@@ -1037,7 +1061,7 @@ public static class M1AcceptanceCli
         {
             foreach (var runSeed in seeds)
             {
-                var report = M1Evaluator.Evaluate(M1RunCollector.Collect(runSeed, p, years), checks);
+                var report = M1Evaluator.Evaluate(M1RunCollector.Collect(runSeed, p, years, calendar.DaysPerYear), checks);
                 reports.Add(report);
                 WriteRun(report, output);
             }

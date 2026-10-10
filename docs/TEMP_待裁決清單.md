@@ -125,7 +125,7 @@
 | 參數 | 目前 TEMP 值 | 程式位置 |
 |---|---|---|
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
-| 可讀世界日數上限 | 36400 日（100 個 TEMP 年） | `DemoObserverWorld.Save.cs:24` |
+| 可讀世界日數上限 | 36400 日（原為 100 個 364 日示範年；#82 改用正式 365 日年後約 99.7 年，第 100 年末第 36500 日的世界存不進 TEMP 存檔，未擴張，待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
 | 存檔格式 | JSON 第 2 版（直接快照），第 1 版重播仍可讀 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
@@ -159,7 +159,7 @@
 
 | 編號 | 類別 | 內容 | 建議處理 |
 |---|---|---|---|
-| c1 | 配置／程式不一致 | 程式示範曆法「一年＝52 週＝364 日」（`DemoCenturyRun.cs:100-104`、文字介面說明 `Program.cs:191`），而 `01_世界參數.csv` 第 2 列 `WORLD_DAYS_PER_YEAR`＝365、Enabled＝TRUE（正式），另有 12 個月、二月 28 天、不設閏年（第 3、5 列）。 | 數值已定案，不需裁決；需要的是「年度摘要如何切 365 日、每年週結算次數不固定」的接入任務。目前所有年度數字都是 364 日年，不可當正式年報。 |
+| c1 | 配置／程式不一致 | 程式示範曆法「一年＝52 週＝364 日」（`DemoCenturyRun.cs:100-104`、文字介面說明 `Program.cs:191`），而 `01_世界參數.csv` 第 2 列 `WORLD_DAYS_PER_YEAR`＝365、Enabled＝TRUE（正式），另有 12 個月、二月 28 天、不設閏年（第 3、5 列）。 | 數值已定案，不需裁決。**#82 已接入（待審）**：`--demo --years` 與 `--m1-check` 從 01 表讀 `WORLD_DAYS_PER_YEAR`（365）傳入 Core，週結算每 7 日、跨年不重置，年報依結算日所在年份歸屬（每年 52 或 53 次）。月份／二月天數尚未用到。 |
 | c2 | 配置／程式不一致 | 飢餓債：29 第 38–39 列是個人層、以日計的債務階段；示範是聚落合計、以糧食量計（D4）。 | 列入 D4 選項說明；接入前不得把 12／2 寫成 29 的值。 |
 | a1 | 正式值尚未接入 | 29 `P_FOOD_LOSS_WEEK`（0.01324）、`P_FOOD_LOSS_YEAR`（0.5）：示範結算沒有腐敗。兩列「是否已平衡」＝FALSE。 | 見 D3 選項 C。 |
 | a2 | 正式值尚未接入 | 29 `P_RENEWABLE_RESOURCE_REGEN_MULTIPLIER`（預設 1，0.25～4）：觀察者倍率，示範再生沒有乘上。 | 預設 1 時結果不變；觀察者調整功能實作時接入。 |
@@ -193,7 +193,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 10 | D3（期初存量）、D10 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
-| `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 5 | c1 |
+| `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 2 | c1 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 4 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 15 | D1、D2、D3、D5、第 3 節 |

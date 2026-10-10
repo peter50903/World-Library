@@ -365,7 +365,7 @@ public sealed class DemoSettlementFoundingTests
         var anyFounded = false;
         foreach (var seed in new[] { 42UL, 7UL, 20261009UL, foundingSeed }.Distinct())
         {
-            var report = DemoCenturyRun.Run(seed, 100, DemoWeeklyTempConfig.FrontierSample);
+            var report = DemoCenturyRun.Run(seed, 100, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.FrontierSample);
             Assert.Empty(report.ConservationErrors);
             Assert.All(report.Years, y =>
             {
@@ -377,7 +377,7 @@ public sealed class DemoSettlementFoundingTests
             });
             anyFounded |= report.Years.Any(y => y.SettlementsFounded > 0);
 
-            var again = DemoCenturyRun.Run(seed, 100, DemoWeeklyTempConfig.FrontierSample);
+            var again = DemoCenturyRun.Run(seed, 100, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.FrontierSample);
             Assert.Equal(report.Years.Select(y => y.Describe()), again.Years.Select(y => y.Describe()));
         }
 

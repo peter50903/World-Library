@@ -21,10 +21,10 @@ public sealed class M1AcceptanceReportTests
 
     private static readonly Lazy<IReadOnlyList<M1RunReport>> Matrix = new(() =>
         M1Preset.Default
-            .SelectMany(p => M1AcceptanceCli.DefaultSeeds.Select(seed => M1Evaluator.Evaluate(M1RunCollector.Collect(seed, p, 100), Checks.Value)))
+            .SelectMany(p => M1AcceptanceCli.DefaultSeeds.Select(seed => M1Evaluator.Evaluate(M1RunCollector.Collect(seed, p, 100, TestCalendar.DaysPerYear), Checks.Value)))
             .ToList());
 
-    private static readonly Lazy<M1RunData> LocalFamine42 = new(() => M1RunCollector.Collect(42, M1Preset.LocalFamine, 100));
+    private static readonly Lazy<M1RunData> LocalFamine42 = new(() => M1RunCollector.Collect(42, M1Preset.LocalFamine, 100, TestCalendar.DaysPerYear));
 
     private static M1CheckResult Result(M1RunReport report, string id) => report.Results.Single(r => r.Check.Id == id);
 
@@ -56,7 +56,7 @@ public sealed class M1AcceptanceReportTests
             Assert.All(report.Results, r => Assert.False(string.IsNullOrWhiteSpace(r.Diagnosis)));
             var failures = report.Results.Where(r => r.Verdict == M1Verdict.Fail).Select(r => $"{r.Check.Id}: {r.Diagnosis}");
             Assert.Empty(failures);
-            Assert.Equal(DemoCenturyRun.TempWeeksPerYear * 100, report.Run.Weeks.Count);
+            Assert.Equal(DemoCenturyRun.WeeklySettlementsThrough(100 * TestCalendar.DaysPerYear), report.Run.Weeks.Count);
         }
 
         // 每個 Hard 項目在矩陣中至少有一次實際量測到而通過（不是只因沒發生而沒失敗）。
@@ -88,7 +88,7 @@ public sealed class M1AcceptanceReportTests
     [Fact]
     public void SameSeedReproducesTheSameReport()
     {
-        var a = M1Evaluator.Evaluate(M1RunCollector.Collect(7, M1Preset.Frontier, 100), Checks.Value);
+        var a = M1Evaluator.Evaluate(M1RunCollector.Collect(7, M1Preset.Frontier, 100, TestCalendar.DaysPerYear), Checks.Value);
         var b = Matrix.Value.Single(r => r.Run.Seed == 7 && r.Run.Preset == M1Preset.Frontier);
         Assert.Equal(Render(a), Render(b));
     }
@@ -133,7 +133,7 @@ public sealed class M1AcceptanceReportTests
     [Fact]
     public void SettlementAppearingWithoutFoundingEventFailsM1Settle()
     {
-        var run = M1RunCollector.Collect(42, M1Preset.Normal, 1);
+        var run = M1RunCollector.Collect(42, M1Preset.Normal, 1, TestCalendar.DaysPerYear);
         var weeks = run.Weeks.ToList();
         var ledgers = weeks[3].Settlements.ToList();
         ledgers.Add(ledgers[0] with { SettlementId = 99, SettlementName = "幽靈聚落" });
@@ -150,7 +150,7 @@ public sealed class M1AcceptanceReportTests
         // 局部饑荒但關閉遷徙（測試用 TEMP 設定）：有缺糧、沒有任何遷徙隊伍。
         var noMigration = new M1Preset("test-no-migration", "測試：關閉遷徙",
             DemoWeeklyTempConfig.LocalFamineSample with { MigrationEnabled = false });
-        var run = M1RunCollector.Collect(42, noMigration, 2);
+        var run = M1RunCollector.Collect(42, noMigration, 2, TestCalendar.DaysPerYear);
         Assert.All(run.Weeks, w => Assert.Empty(w.Migrations));
         var report = M1Evaluator.Evaluate(run, Checks.Value);
         Assert.Equal(M1Verdict.Warn, Result(report, "M1_MIG").Verdict);
@@ -312,7 +312,7 @@ public sealed class M1AcceptanceReportTests
             + "M1_NEW,\"新項目，含逗號\",x,Warning,y,TRUE\n", "測試");
         var only = Assert.Single(checks);
         Assert.Equal("新項目，含逗號", only.Name);
-        var report = M1Evaluator.Evaluate(M1RunCollector.Collect(42, M1Preset.Normal, 1), checks);
+        var report = M1Evaluator.Evaluate(M1RunCollector.Collect(42, M1Preset.Normal, 1, TestCalendar.DaysPerYear), checks);
         Assert.Equal(M1Verdict.Unimplemented, Assert.Single(report.Results).Verdict);
     }
 
@@ -325,6 +325,8 @@ public sealed class M1AcceptanceReportTests
     [InlineData(new[] { "--seed", "abc" }, "--seed 必須是")]
     [InlineData(new[] { "--color", "red" }, "不認得的參數")]
     [InlineData(new[] { "--checks", "/nonexistent/45G.csv" }, "找不到 M1 驗收清單")]
+    [InlineData(new[] { "--world-params", "/nonexistent/01.csv" }, "找不到世界參數表")]
+    [InlineData(new[] { "--world-params" }, "缺少值")]
     public void BadArgumentsExitWithTwoAndChineseMessage(string[] args, string expected)
     {
         var output = new StringWriter();
@@ -343,6 +345,8 @@ public sealed class M1AcceptanceReportTests
         foreach (var check in Checks.Value)
             Assert.Contains($"  {check.Id}｜{check.Name}｜{check.CategoryText}｜", text);
         Assert.Contains("種子 42｜情境：開拓（frontier，TEMP）｜1 年", text);
+        // #82：報告標頭寫出年界來源（正式設定 01 表），與 --demo --years 相同。
+        Assert.Contains($"WORLD_DAYS_PER_YEAR＝{TestCalendar.DaysPerYear}", text);
         Assert.Contains("Hard 項目：", text);
     }
 

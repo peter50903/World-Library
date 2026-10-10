@@ -67,7 +67,13 @@ jobs:
             unset WORLD_SIM_TEMP_SAVE_DIR
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
-            grep -q '第 100 年（至第 36400 日）' /tmp/observer-century.log
+            # #82: the year length comes from config/sheets/01_世界參數.csv WORLD_DAYS_PER_YEAR (365).
+            grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-century.log
+            grep -q '第 1 年（至第 365 日）｜週結算 52 次' /tmp/observer-century.log
+            grep -q '第 2 年（至第 730 日）｜週結算 52 次' /tmp/observer-century.log
+            grep -q '第 7 年（至第 2555 日）｜週結算 53 次' /tmp/observer-century.log
+            grep -q '第 100 年（至第 36500 日）' /tmp/observer-century.log
+            grep -q '長測完成：種子 42，100 年（第 36500 日）' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
             grep -q '守恆錯誤 0，' /tmp/observer-century.log
             # V0-06B: the TEMP frontier scenario (migrants may found settlements) must also run 100 years cleanly.
@@ -85,6 +91,8 @@ jobs:
             test "$summary_ids" = "$expected_ids"
             test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 9
             grep -q '沒有 Hard 項目失敗' /tmp/observer-m1.log
+            # #82: --m1-check uses the same official year boundary as --demo --years.
+            grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-m1.log
             # Bad arguments must fail loudly in Chinese, not be swallowed.
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 0 > /tmp/observer-m1-bad.log; then
               echo "--m1-check --years 0 should fail."; exit 1
