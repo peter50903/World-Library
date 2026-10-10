@@ -40,10 +40,75 @@ public partial class ObserverRoot
     private void ShowControlsWindow()
     {
         if (!_controlsWindow.Visible)
-            _controlsWindow.PopupCentered();
-        else
-            _controlsWindow.GrabFocus();
+        {
+            // The original PopupCentered() could cover the map even on a roomy
+            // desktop. Prefer the space OUTSIDE the main map window instead.
+            if (FitAndPlaceControlsWindow())
+                _controlsWindow.Show();
+            else
+                _controlsWindow.PopupCentered(); // Headless/no usable screen geometry.
+        }
+        _controlsWindow.GrabFocus();
         _openControlsButton.Text = "世界控制台已開啟（點此切回視窗）";
+    }
+
+    /// <summary>
+    /// Keep the separate, resizable control window entirely on the usable desktop.
+    /// When possible dock it beside (rather than over) the main map window.
+    /// On smaller desktops place it within the screen; the existing ScrollContainer
+    /// preserves full access without shrinking the font below 100%.
+    /// This changes Godot presentation only and never modifies Core world state.
+    /// </summary>
+    private bool FitAndPlaceControlsWindow()
+    {
+        var screen = DisplayServer.ScreenGetUsableRect();
+        if (screen.Size.X <= 0 || screen.Size.Y <= 0)
+            return false;
+
+        const int margin = 12;
+        var maxWidth = Math.Max(1, screen.Size.X - 2 * margin);
+        var maxHeight = Math.Max(1, screen.Size.Y - 2 * margin);
+        _controlsWindow.MinSize = new Vector2I(Math.Min(440, maxWidth), Math.Min(400, maxHeight));
+        var width = Math.Min(_controlsWindow.Size.X, maxWidth);
+        var height = Math.Min(_controlsWindow.Size.Y, maxHeight);
+
+        var main = GetWindow();
+        var mainLeft = main.Position.X;
+        var mainRight = main.Position.X + main.Size.X;
+        var leftSpace = mainLeft - screen.Position.X - margin;
+        var rightSpace = screen.Position.X + screen.Size.X - mainRight - margin;
+        int x;
+
+        // A window can only stay outside the map if its actual minimum readable
+        // width fits there. If both sides fit, prefer the roomier side.
+        if (Math.Max(leftSpace, rightSpace) >= _controlsWindow.MinSize.X)
+        {
+            if (rightSpace >= leftSpace)
+            {
+                width = Math.Min(width, rightSpace);
+                x = mainRight + margin;
+            }
+            else
+            {
+                width = Math.Min(width, leftSpace);
+                x = mainLeft - margin - width;
+            }
+        }
+        else
+        {
+            // On a single small screen some overlap is unavoidable; always keep
+            // the close/reopen controls and scrollable content within the desktop.
+            x = screen.Position.X + screen.Size.X - margin - width;
+        }
+
+        var maxX = screen.Position.X + screen.Size.X - width;
+        var maxY = screen.Position.Y + screen.Size.Y - height;
+        _controlsWindow.Size = new Vector2I(width, height);
+        _controlsWindow.Position = new Vector2I(
+            Math.Clamp(x, screen.Position.X, maxX),
+            Math.Clamp(main.Position.Y, screen.Position.Y, maxY));
+        ResizeControlsWindow();
+        return true;
     }
 
     private void HideControlsWindow()
