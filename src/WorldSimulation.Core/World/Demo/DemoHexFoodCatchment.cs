@@ -9,7 +9,9 @@ namespace WorldSimulation.Core.World.Demo;
 public enum DemoCatchmentSourceKind
 {
     Forest = 1,
-    MainRiver = 2
+    MainRiver = 2,
+    GrasslandForage = 3,
+    OpenWater = 4
 }
 
 /// <param name="FoodAvailable">The source's one shared, already-evidenced weekly harvest budget,
@@ -73,10 +75,9 @@ public static class DemoHexFoodCatchment
         ValidateSource(map, source);
         var origin = map.GetCell(source.Column, source.Row);
         return Array.AsReadOnly(map.Cells.Where(c =>
-            (source.Kind == DemoCatchmentSourceKind.Forest
-                ? c.Terrain != DemoTerrain.Water
-                : c.Terrain != DemoTerrain.Water)
-            && IsInReach(origin, c, source.Kind == DemoCatchmentSourceKind.Forest))
+            c.Terrain != DemoTerrain.Water
+            && IsInReach(origin, c,
+                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage))
             .OrderBy(c => c.Row).ThenBy(c => c.Column).ToArray());
     }
 
@@ -131,7 +132,8 @@ public static class DemoHexFoodCatchment
             {
                 if (remaining == 0) break;
                 var cell = map.GetCell(claim.Column, claim.Row);
-                if (!IsInReach(origin, cell, source.Kind == DemoCatchmentSourceKind.Forest))
+                if (!IsInReach(origin, cell,
+                    source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage))
                     continue;
                 var take = Math.Min(remaining, Math.Min(needs[claim.SettlementId], labour[claim.SettlementId]));
                 if (take == 0) continue;
@@ -162,7 +164,10 @@ public static class DemoHexFoodCatchment
         }
         if (source.Kind == DemoCatchmentSourceKind.Forest && tile.Terrain != DemoTerrain.Forest)
             throw new InvalidOperationException("A forest food source must actually be on forest terrain.");
-        if (source.Kind == DemoCatchmentSourceKind.MainRiver && tile.Terrain != DemoTerrain.Water)
-            throw new InvalidOperationException("A main-channel river source requires a water cell.");
+        if (source.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater
+            && tile.Terrain != DemoTerrain.Water)
+            throw new InvalidOperationException("Water food requires a water cell.");
+        if (source.Kind == DemoCatchmentSourceKind.GrasslandForage && tile.Terrain != DemoTerrain.Grassland)
+            throw new InvalidOperationException("Grassland foraging must be on undeveloped grassland.");
     }
 }
