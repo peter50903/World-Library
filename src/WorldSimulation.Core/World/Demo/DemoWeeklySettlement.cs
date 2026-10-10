@@ -393,7 +393,8 @@ internal static class DemoWeeklySettlement
         ImmutableList<DemoMigrationBatch> migrations,
         int nextMigrationBatchId,
         IReadOnlyList<DemoWeekReport> publishedWeeks,
-        DemoWeeklyTempConfig config)
+        DemoWeeklyTempConfig config,
+        IReadOnlyDictionary<int, long>? adultWorkers = null)
     {
         ArgumentNullException.ThrowIfNull(migrations);
         ArgumentNullException.ThrowIfNull(publishedWeeks);
@@ -405,7 +406,7 @@ internal static class DemoWeeklySettlement
         // Allocate each forest/river source ONCE before per-settlement weekly accounting.
         var sharedHarvest = config.SharedCatchmentEnabled
             ? DemoForagingWorld.Allocate(map ?? throw new InvalidOperationException("Shared foraging needs map."),
-                sites, population, config)
+                sites, population, config, adultWorkers)
             : null;
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
