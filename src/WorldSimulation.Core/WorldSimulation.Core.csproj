@@ -10,4 +10,8 @@
     <InternalsVisibleTo Include="WorldSimulation.Core.Tests" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../../config/demo/terrain-food-temp.json" LogicalName="WorldSimulation.TerrainFoodTemp" />
+  </ItemGroup>
+
 </Project>
