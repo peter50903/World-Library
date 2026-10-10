@@ -106,6 +106,10 @@ public partial class ObserverRoot
         if (week is not null)
         {
             output.Add($"第 {week.Week} 週：森林／河流實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
+            if (world.HumanPopulationSnapshot is not null)
+                output.Add($"人類本週出生 {week.Settlements.Sum(l => l.Births)}、自然死亡 {week.Settlements.Sum(l => l.NaturalDeaths)}、"
+                    + $"餓死 {week.Settlements.Sum(l => l.Deaths - l.NaturalDeaths)}；"
+                    + $"目前個體人口 {world.HumanPopulationSnapshot.People.Length}（未成年不採集）");
             output.Add($"世界聚落人口 {world.SettledPopulation}，本週共缺糧 {week.Settlements.Sum(l => l.FoodShortage)}，"
                 + $"餓死 {week.Settlements.Sum(l => l.Deaths)}");
         }
