@@ -21,7 +21,7 @@ public sealed partial class DemoObserverWorld
     public ulong TempWorldSeed => _scenario.Seed;
 
     private const int TempSaveVersion = 2; // V0-07B direct snapshot; version 1 = replay checkpoint.
-    private const int TempMaxSaveDays = 36400; // TEMP: max 100 years, avoids unbounded replay on load.
+    internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
 

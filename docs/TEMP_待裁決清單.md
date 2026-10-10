@@ -125,7 +125,7 @@
 | 參數 | 目前 TEMP 值 | 程式位置 |
 |---|---|---|
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
-| 可讀世界日數上限 | 36400 日（原為 100 個 364 日示範年；#82 改用正式 365 日年後約 99.7 年，第 100 年末第 36500 日的世界存不進 TEMP 存檔，未擴張，待裁決） | `DemoObserverWorld.Save.cs:24` |
+| 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
 | 存檔格式 | JSON 第 2 版（直接快照），第 1 版重播仍可讀 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
