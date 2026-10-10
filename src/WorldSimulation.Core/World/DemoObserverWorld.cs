@@ -184,7 +184,9 @@ public sealed partial class DemoObserverWorld
     {
         if (!UsesSharedForaging || LatestWeek is not { } week) return null;
         var opening = week.Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
-        return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly);
+        return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly,
+            week.Settlements.ToDictionary(l => l.SettlementId,
+                l => l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening));
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>
