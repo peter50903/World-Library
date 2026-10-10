@@ -164,16 +164,59 @@ public sealed class DemoHexFoodCatchmentTests
         var river = River();
         var sources = settings.BuildPotentialSources(Map,
             new[] { new DemoCellRef(river.Column, river.Row) });
-        Assert.Equal(Map.Cells.Count(c => c.Terrain == DemoTerrain.Forest) + 1, sources.Count);
+        Assert.Equal(Map.Cells.Count, sources.Count);
         Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.Forest),
             s => Assert.Equal(20, s.FoodAvailable));
         Assert.Single(sources.Where(s => s.Kind == DemoCatchmentSourceKind.MainRiver
             && s.FoodAvailable == 5));
-        Assert.DoesNotContain(sources, s => Map.GetCell(s.Column, s.Row).Terrain == DemoTerrain.Grassland);
+        Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.GrasslandForage),
+            s => Assert.Equal(8, s.FoodAvailable));
+        Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.OpenWater),
+            s => Assert.Equal(3, s.FoodAvailable));
         var otherWaterTiles = Map.Cells.Where(c => c.Terrain == DemoTerrain.Water
             && !(c.Column == river.Column && c.Row == river.Row));
-        Assert.All(otherWaterTiles, c => Assert.DoesNotContain(sources,
-            s => s.Column == c.Column && s.Row == c.Row));
+        Assert.All(otherWaterTiles, c => Assert.Contains(sources,
+            s => s.Column == c.Column && s.Row == c.Row && s.Kind == DemoCatchmentSourceKind.OpenWater));
+    }
+
+    [Fact]
+    public void OccupiedNaturalHexHasNoProductionButCanReceiveNeighbouringFood()
+    {
+        var settings = DemoCatchmentTempSettings.FromJson(File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "terrain-food-temp.json")));
+        var forest = Forest();
+        var occupied = new DemoCellRef(forest.Column, forest.Row);
+        var food = settings.BuildPotentialSources(Map, Array.Empty<DemoCellRef>(), new[] { occupied });
+        Assert.DoesNotContain(food, s => s.Column == forest.Column && s.Row == forest.Row);
+        Assert.Equal(Map.Cells.Count - 1, food.Count);
+        var neighbouring = food.Where(s => DemoHexFoodCatchment.IsInReach(
+            Map.GetCell(s.Column, s.Row), forest, s.Kind is DemoCatchmentSourceKind.Forest
+            or DemoCatchmentSourceKind.GrasslandForage)).ToArray();
+        var result = DemoHexFoodCatchment.Allocate(Map, neighbouring,
+            new[] { new DemoCatchmentFoodClaim(1, forest.Column, forest.Row, 100, 100) });
+        Assert.True(result.TotalHarvested > 0); // A village can forage next door, never on occupied land.
+        Assert.Equal(result.Harvests.Sum(h => h.FoodHarvested), result.TotalHarvested);
+    }
+
+    [Fact]
+    public void DifferentNaturalTerrainsUseDifferentBudgetsAndNoNaturalTileIsMissed()
+    {
+        var settings = DemoCatchmentTempSettings.FromJson(File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "terrain-food-temp.json")));
+        var natural = settings.BuildPotentialSources(Map, Array.Empty<DemoCellRef>());
+        Assert.Equal(Map.Cells.Count, natural.Count);
+        Assert.All(natural, source =>
+        {
+            var terrain = Map.GetCell(source.Column, source.Row).Terrain;
+            var expected = terrain switch
+            {
+                DemoTerrain.Forest => 20,
+                DemoTerrain.Grassland => 8,
+                _ => 3
+            };
+            Assert.Equal(expected, source.FoodAvailable);
+            Assert.True(source.FoodAvailable > 0);
+        });
     }
 
     [Fact]

@@ -18,7 +18,9 @@ public sealed record DemoCatchmentTempSettings(
     string Allocation,
     string ForestReach,
     string MainRiverReach,
-    string Notes)
+    string Notes,
+    long GrasslandForageWeeklySupply = 0,
+    long OpenWaterWeeklySupply = 0)
 {
     public static DemoCatchmentTempSettings FromJson(string json)
     {
@@ -38,6 +40,7 @@ public sealed record DemoCatchmentTempSettings(
             || FoodUnit != "food_unit_per_source_hex_per_week"
             || ForestWeeklySupply < 0 || MainRiverWeeklySupply < 0
             || UncultivatedFarmlandWeeklySupply != 0
+            || GrasslandForageWeeklySupply <= 0 || OpenWaterWeeklySupply <= 0
             || Allocation != "ONE_SOURCE_TOTAL"
             || ForestReach != "SELF_AND_SIX_ADJACENT_LAND"
             || MainRiverReach != "SIX_ADJACENT_LAND_ONLY")
@@ -52,7 +55,8 @@ public sealed record DemoCatchmentTempSettings(
     /// No grassland becomes Farmland automatically.
     /// </summary>
     public IReadOnlyList<DemoCatchmentFoodSource> BuildPotentialSources(
-        DemoHexWorld map, IReadOnlyCollection<DemoCellRef> explicitMainRiverCells)
+        DemoHexWorld map, IReadOnlyCollection<DemoCellRef> explicitMainRiverCells,
+        IReadOnlyCollection<DemoCellRef>? artificialOccupation = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(explicitMainRiverCells);
@@ -73,16 +77,26 @@ public sealed record DemoCatchmentTempSettings(
                 throw new InvalidOperationException("Main-river source must be explicit water terrain.");
         }
 
+        // Settlements (and future roads/cities with explicit footprint) replace the natural
+        // source at the occupied hex. Nearby free sources can still feed the settlement.
+        var occupied = artificialOccupation?.ToHashSet() ?? new HashSet<DemoCellRef>();
         var all = new List<DemoCatchmentFoodSource>();
         foreach (var tile in map.Cells)
         {
+            if (occupied.Contains(new DemoCellRef(tile.Column, tile.Row))) continue;
             var id = checked(tile.Row * DemoHexWorld.Columns + tile.Column + 1);
             if (tile.Terrain == DemoTerrain.Forest)
                 all.Add(new DemoCatchmentFoodSource(
                     id, tile.Column, tile.Row, DemoCatchmentSourceKind.Forest, ForestWeeklySupply));
+            else if (tile.Terrain == DemoTerrain.Grassland)
+                all.Add(new DemoCatchmentFoodSource(
+                    id, tile.Column, tile.Row, DemoCatchmentSourceKind.GrasslandForage, GrasslandForageWeeklySupply));
             else if (rivers.Contains(new DemoCellRef(tile.Column, tile.Row)))
                 all.Add(new DemoCatchmentFoodSource(
                     id, tile.Column, tile.Row, DemoCatchmentSourceKind.MainRiver, MainRiverWeeklySupply));
+            else if (tile.Terrain == DemoTerrain.Water)
+                all.Add(new DemoCatchmentFoodSource(
+                    id, tile.Column, tile.Row, DemoCatchmentSourceKind.OpenWater, OpenWaterWeeklySupply));
         }
         return all.AsReadOnly();
     }
