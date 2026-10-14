@@ -1,9 +1,9 @@
 CheckID,中文名稱,300/1000年M5通過條件,Hard/Warning,主要診斷,Enabled
 M5_DISEASE,疾病病例對帳,感染／康復／死亡與人口一致，跨區傳播有載體／路線／來源,Hard,疾病帳,TRUE
 M5_DISASTER,災害損失有原因,建築／資源／人口損害皆能追到合法災害／後續,Hard,因果圖,TRUE
-M5_MONSTER,怪物人口不憑空,野外怪物出生／死亡／遷徙／溢出全部對帳；地下城生成源待49H決策後補,Pending Hard,怪物帳,TRUE
-M5_KING,王種稀有且可為0,只從合格群組生成，擊殺不替代,Hard behavior,39G 檢查,TRUE
+M5_MONSTER,怪物人口不憑空,野外與地下城怪物出生／死亡／遷徙／溢出全部對帳；地下城核心生成依 49H DEC_DUN_SOURCE＝C 計入族群帳，並帶核心來源與重置 ID,Hard,怪物帳,TRUE
+M5_KING,王種稀有且可為0,只從合格群組生成，擊殺不替代,Hard,39G 檢查,TRUE
 M5_DUN,地下城生命週期一致,目標對象／重置／耗盡／替代實體ID與歷史一致,Hard,地下城生命週期,TRUE
-M5_OVER,溢出真實影響世界,外溢怪物/魔境能影響道路、人口、經濟、控制且不因核心消失自動刪除,Behavior,領域指標,TRUE
-M5_THREAT,威脅可追來源,任何大型威脅都有來源實體／狀態與升格原因,Hard behavior,威脅來歷,TRUE
-M5_HISTORY,危機史可讀,觀察者能追疫情／災害／魔境／王種的原因、反應與長期後果,Behavior,歷史瀏覽器,TRUE
+M5_OVER,溢出真實影響世界,外溢怪物/魔境能影響道路、人口、經濟、控制且不因核心消失自動刪除,Behavior Check,領域指標,TRUE
+M5_THREAT,威脅可追來源,任何大型威脅都有來源實體／狀態與升格原因,Hard,威脅來歷,TRUE
+M5_HISTORY,危機史可讀,觀察者能追疫情／災害／魔境／王種的原因、反應與長期後果,Behavior Check,歷史瀏覽器,TRUE

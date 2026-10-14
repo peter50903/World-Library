@@ -7,13 +7,13 @@ SURV_HUNGER_HP,飢餓HP損失,生存,Severe=-1%MaxHP/day；Starvation=-4%MaxHP/d
 SURV_THIRST_HP,脫水HP損失,生存,Severe=-3%MaxHP/day；Critical=-15%MaxHP/day,比例／日,每日,缺水死亡明顯快於缺糧,TRUE
 SURV_SPOIL_WEEK,一般食物週腐敗基準,食物,0.01324,比例／週,L2每週,約等價全年50%基準損耗；個別食物定義覆寫,TRUE
 REP_CHECK,受孕檢查,繁殖,只對Eligible Couple + 有實際繁殖行為/Goal者檢查,布林值,每月,避免每名角色每日檢查,TRUE
-REP_FORMULA,受孕機率,繁殖,P=RaceBase*AgeFactor*HealthFactor*NutritionFactor*HousingFactor*Compatibility,0~1/月,每月,意願／關係先決定是否進入資格檢查，不再額外乘一次,TRUE
-REP_HEALTH,受孕健康倍率,繁殖,HP>=75%=1；50~75%=0.75；<50%=0.25,x,每月,沿用HP<50%低受孕規則,TRUE
-REP_NUTRITION,受孕營養倍率,繁殖,Fed=1；Hungry=0.7；Severe=0.2；Starvation=0,x,每月,,TRUE
-REP_HOUSING,受孕住房倍率,繁殖,Stable=1；Overcrowded=0.8；Homeless=0.5,x,每月,不禁止無家者生育，只降低,TRUE
-REP_MISCARRIAGE,流產基準,繁殖,0.5%/month；HP<50% +3%；Severe Hunger +5%；Disease/Injury按Definition追加,機率／月,每月/危機事件,只對懷孕檢查,TRUE
-REP_CHILD_RACE,跨種族子代種族,繁殖,父母各50%基準權重，再乘各自Race Fertility/Compatibility後正規化,權重,出生時一次,不生成混合,TRUE
-LIFE_DEATH_BANDS,自然死亡年齡風險,生命週期,Age/ExpectedLife:<0.6=0.05%;0.6~0.8=0.2%;0.8~1.0=1%;1.0~1.2=5%;1.2~1.5=15%;>=1.5=35%,年度機率,每年,無固定死亡日；疾病／戰爭等另算,TRUE
+REP_FORMULA,受孕機率,繁殖,P=RaceBase*AgeFactor*HealthFactor*NutritionFactor*HousingFactor*Compatibility,0~1/月,每月,【TEMP】數值未定案（Notion 02 §E／§Q）；意願／關係先決定是否進入資格檢查，不再額外乘一次,TRUE
+REP_HEALTH,受孕健康倍率,繁殖,HP>=75%=1；50~75%=0.75；<50%=0.25,x,每月,【TEMP】數值未定案（Notion 02 §E／§Q）；沿用HP<50%低受孕規則,TRUE
+REP_NUTRITION,受孕營養倍率,繁殖,Fed=1；Hungry=0.7；Severe=0.2；Starvation=0,x,每月,【TEMP】數值未定案（Notion 02 §E／§Q）,TRUE
+REP_HOUSING,受孕住房倍率,繁殖,Stable=1；Overcrowded=0.8；Homeless=0.5,x,每月,【TEMP】數值未定案（Notion 02 §E／§Q）；不禁止無家者生育，只降低,TRUE
+REP_MISCARRIAGE,流產基準,繁殖,0.5%/month；HP<50% +3%；Severe Hunger +5%；Disease/Injury按Definition追加,機率／月,每月/危機事件,【TEMP】數值未定案（Notion 02 §E／§Q）；只對懷孕檢查,TRUE
+REP_CHILD_RACE,跨種族子代種族,繁殖,父母各50%基準權重，再乘各自Race Fertility/Compatibility後正規化,權重,出生時一次,【TEMP】基準權重未定案（Notion 02 §Q）；不生成混合為定案（Notion 02 §E）,TRUE
+LIFE_DEATH_BANDS,自然死亡年齡風險,生命週期,Age/ExpectedLife:<0.6=0.05%;0.6~0.8=0.2%;0.8~1.0=1%;1.0~1.2=5%;1.2~1.5=15%;>=1.5=35%,年度機率,每年,【TEMP】數值未定案；依 Notion 02 §E 為自然死亡權威（2026-10-14 使用者裁決）。無固定死亡日；疾病／戰爭等另算,TRUE
 DRAGON_MATE_VISIT,龍族求偶/交配訪問,龍族繁殖,第二隻成年龍可進入已有定居龍的Region，狀態=Temporary Mate Visitor；最多約5年,~5 年／事件,事件排程,訪客不建立第二龍域；期限到或交配結束後必須離開,TRUE
 DRAGON_MOTHER_CARE,母龍單獨撫養,龍族繁殖,成功交配後非母方離開；母龍承擔Pregnancy/Birth/Care,照顧者規則,出生／童年,仍保留生父母關係，但父方不具預設照顧者責任,TRUE
 DRAGON_JUVENILE_EXCEPTION,幼龍區域例外,龍族生命週期,未成年Dragon可與母龍同Region且不計ResidentAdultCap,直到成年,童年,這不是第二隻成年定居龍,TRUE
