@@ -143,7 +143,7 @@
 - 選項：**A** 保留；**B** 等世界尺寸可選後，改為依地圖大小自動計算範圍。
 - 推薦：**A**（只影響畫面）。
 
-#### D10｜V0-01 每日示範帳（待核實：沒有逐值標 TEMP）
+#### D10｜V0-01 每日示範帳——已退役（2026-10-14 使用者裁決；C05 移除程式）
 
 | 參數 | 目前值 | 程式位置 |
 |---|---|---|
@@ -245,15 +245,15 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 14 | D3（期初存量）、D10、第 3 節 #103 承載估計 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 15 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 8 | D8；#88 舊版無事件編號存檔拒絕讀取 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
-| `src/WorldSimulation.ObserverCli/Program.cs` | 12 | D8、c1、第 3 節 #103 承載估計 |
-| `godot/Scripts/ObserverRoot.cs` | 75 | D7、D8、D10、第 3 節；#87 播放速度；#95 重大事件種類 |
+| `src/WorldSimulation.ObserverCli/Program.cs` | 13 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
+| `godot/Scripts/ObserverRoot.cs` | 71 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
 | `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |

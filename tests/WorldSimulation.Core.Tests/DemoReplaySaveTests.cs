@@ -55,7 +55,7 @@ public sealed class DemoReplaySaveTests
         {
             doc => doc["Version"] = 99,
             doc => doc["Scenario"]!["Seed"] = 99UL,
-            doc => doc["State"]!["DailyFood"] = -5,
+            doc => doc["State"]!["WeekReports"]![0]!["RngCounters"]![1]!["Before"] = 5UL,
             doc => doc["State"]!["Random"]!["Streams"]![0]!["DrawCounter"] = ulong.MaxValue,
             doc => doc["State"]!["EntityIds"]!["NextValue"] = 1UL,
             doc => doc["State"]!["Settlements"]![0]!["Id"] = 88

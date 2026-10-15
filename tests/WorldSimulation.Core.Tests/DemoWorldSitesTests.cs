@@ -81,8 +81,9 @@ public sealed class DemoWorldSitesTests
     }
 
     [Fact]
-    public void SiteGenerationUsesOnlyEcologyInitAndPopStreams()
+    public void SiteGenerationUsesOnlyEcologyInitStream()
     {
+        // C05（41A SEED_ECOLOGY_INIT／SEED_POP）：初始人口抽 ECOLOGY_INIT，不抽歷史流 POP。
         var rng = RngRegistry.Create(5);
         var map = DemoHexWorld.Generate(rng);
         var before = rng.Capture();
@@ -90,22 +91,53 @@ public sealed class DemoWorldSitesTests
 
         var n = (ulong)sites.Settlements.Count;
         Assert.Equal(96UL, rng.GetDrawCounter(RngStreams.Geography));
-        Assert.Equal(1UL + n, rng.GetDrawCounter(RngStreams.EcologyInit));
-        Assert.Equal(n, rng.GetDrawCounter(RngStreams.Pop));
+        Assert.Equal(1UL + 2UL * n, rng.GetDrawCounter(RngStreams.EcologyInit));
+        Assert.Equal(0UL, rng.GetDrawCounter(RngStreams.Pop));
         Assert.Equal(0UL, rng.GetDrawCounter(RngStreams.Resource));
 
         var beforeById = before.Streams.ToDictionary(s => s.StreamId);
-        foreach (var id in RngStreams.All.Except(new[] { RngStreams.EcologyInit, RngStreams.Pop }))
+        foreach (var id in RngStreams.All.Except(new[] { RngStreams.EcologyInit }))
             Assert.Equal(beforeById[id].DrawCounter, rng.GetDrawCounter(id));
     }
 
+    [Theory]
+    [MemberData(nameof(Seeds1To30))]
+    public void SettlementCountAndPositionsAreUnchangedByTheC05PopulationStreamFix(ulong seed)
+    {
+        // bc573c5 之前：ECOLOGY_INIT 依序抽「數量」與 N 個「位置」，人數另抽 POP（不同流，不影響 ECOLOGY_INIT 序列）。
+        // 因此舊版位置＝ECOLOGY_INIT 前 1＋N 次抽樣；此處獨立重算該序列，證明 C05 只改人數不改數量與位置。
+        var config = DemoSitesTempConfig.Sample;
+        var rng = RngRegistry.Create(seed);
+        var map = DemoHexWorld.Generate(rng);
+        var sites = DemoWorldSites.Generate(map, rng, config);
+
+        var legacy = RngRegistry.Create(seed);
+        var legacyMap = DemoHexWorld.Generate(legacy);
+        var span = (ulong)(config.MaxSettlements - config.MinSettlements + 1);
+        var count = config.MinSettlements + (int)(legacy.NextUInt64(RngStreams.EcologyInit) % span);
+        var land = legacyMap.Cells.Where(c => c.Terrain != DemoTerrain.Water).ToList();
+        var expected = new List<(int, int)>();
+        for (var i = 0; i < count; i++)
+        {
+            var pick = (int)(legacy.NextUInt64(RngStreams.EcologyInit) % (ulong)land.Count);
+            expected.Add((land[pick].Column, land[pick].Row));
+            land.RemoveAt(pick);
+        }
+
+        Assert.Equal(expected, sites.Settlements.Select(s => (s.Column, s.Row)).ToList());
+    }
+
+    public static IEnumerable<object[]> Seeds1To30()
+        => Enumerable.Range(1, 30).Select(i => new object[] { (ulong)i });
+
     [Fact]
-    public void FreshObserverWorldStillReportsZeroResourceDraws()
+    public void FreshObserverWorldNeverDrawsResourceAtRunTime()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
-        Assert.Equal(0UL, world.Snapshot().ResourceRngDraws);
-        world.AdvanceOneDay();
-        Assert.Equal(1UL, world.Snapshot().ResourceRngDraws);
+        ulong Resource() => world.RngState().Single(s => s.StreamId == RngStreams.Resource).DrawCounter;
+        Assert.Equal(0UL, Resource());
+        for (var i = 0; i < 14; i++) world.AdvanceOneDay();
+        Assert.Equal(0UL, Resource());
     }
 
     [Theory]

@@ -3,19 +3,21 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07B TEMP direct snapshot restore（C04 起為存檔格式第 3 版，仍是 TEMP，不是正式存檔規格）。
+/// V0-07B TEMP direct snapshot restore（C05 起為存檔格式第 4 版，仍是 TEMP，不是正式存檔規格）。
 /// 讀檔不再從第 0 天重播整個世界：
-/// ① 由種子決定、成本很低的部分（時鐘、排程、十條亂數流、每日糧食帳與日歷史）用
+/// ① 由種子決定、成本很低的部分（時鐘、排程、十條亂數流）用
 ///    <see cref="AdvanceOneDayCore"/>(settleWeekly: false) 重算，與存檔逐項比對（無法偽造）；
 /// ② 週結算的狀態（週報、資源點存量、聚落糧食／人口／飢餓債、途中隊伍、下一個隊伍編號、新聚落）
 ///    直接從存檔安裝，但安裝前先做結構驗證：每週帳平衡與死亡／遷徙兩端對帳
 ///    （<see cref="DemoWeeklySettlement.Verify"/>）、期初＝上週期末的銜接、新聚落期初為 0、
 ///    C04：全部實體 ID 由世界唯一分配器發號——每週配號區間銜接、本週新 ID 恰好填滿區間、現存 ID 互不重複且小於下一號；
+///    C05：每週十條亂數流計數器依序齊全、提交前＝上週提交後、最後一週提交後＝檔內亂數狀態；
 ///    引用都存在、事件與帳的週次和世界時間一致、
 ///    途中隊伍與最後一週隊伍帳一致且路線逐格相鄰。
 /// #97：事件與週帳雙向核對（<see cref="DemoCausalIndex"/>），刪除、複製、竄改出發／抵達／死亡／歷史原因／人數，
@@ -36,6 +38,7 @@ public sealed partial class DemoObserverWorld
         var initialSites = candidate._sites;
         var initialDemography = candidate._demography;
         var openingEntityNext = DemoEntityIds.NextValue(candidate._entityIds);
+        var openingRng = candidate._rng.Capture();
         var reserves = new Dictionary<int, long>(candidate._reserves);
         var food = new Dictionary<int, long>(candidate._settlementFood);
         var population = new Dictionary<int, long>(candidate._population);
@@ -59,6 +62,7 @@ public sealed partial class DemoObserverWorld
         var transit = new SortedDictionary<int, DemoMigrationWeekLedger>();
         var departedWeek = new Dictionary<int, int>();
         var entityNext = openingEntityNext;
+        var rngCounters = openingRng.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
         var lastBatchId = 0;
         for (var week = 1; week <= weekCount; week++)
         {
@@ -71,7 +75,13 @@ public sealed partial class DemoObserverWorld
             CheckEvents(report, sites);
             lastBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, lastBatchId);
             entityNext = CheckEntityIdRange(report, sites, entityNext);
+            CheckRngCounters(report, rngCounters);
         }
+
+        // C05：最後一週提交後的計數器＝檔內（並經種子重算的）亂數狀態。
+        var finalRng = candidate._rng.Capture();
+        if (finalRng.Streams.Any(x => rngCounters[x.StreamId] != x.DrawCounter))
+            Reject("最後一週亂數流計數器與世界亂數狀態不一致");
 
         // #88：事件編號連續不重用、直接原因合法且與週帳相符（43F CAUSE_PARENT）。
         // 沒有事件編號的舊 TEMP 存檔在此被明確拒絕，不默默接受。
@@ -155,7 +165,8 @@ public sealed partial class DemoObserverWorld
                 Array.AsReadOnly(migrations.ToArray()))
             {
                 EntityIdNextOpening = item.GetProperty("EntityIdNextOpening").GetInt64(),
-                EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64()
+                EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64(),
+                RngCounters = Array.AsReadOnly(ReadArray<DemoRngCounter>(item, "RngCounters").ToArray())
             });
         }
 
@@ -198,6 +209,24 @@ public sealed partial class DemoObserverWorld
             || checked(newIds.Count + births) != closing - opening)
             Reject($"第 {report.Week} 週新實體 ID 沒有恰好填滿配號區間");
         return closing;
+    }
+
+    /// <summary>
+    /// C05（44J FAIL_REPLAY）：每份週報恰十筆計數器、順序同 <see cref="RngStreams.All"/>、提交後 ≥ 提交前、
+    /// 提交前＝上一週提交後（第 1 週＝開局：地圖與聚落生成後）。
+    /// </summary>
+    private static void CheckRngCounters(DemoWeekReport report, Dictionary<string, ulong> counters)
+    {
+        var supplied = report.RngCounters;
+        if (supplied.Count != RngStreams.All.Count
+            || !supplied.Select(c => c.StreamId).SequenceEqual(RngStreams.All))
+            Reject($"第 {report.Week} 週亂數流計數器缺漏或順序錯誤");
+        foreach (var c in supplied)
+        {
+            if (c.Before != counters[c.StreamId] || c.After < c.Before)
+                Reject($"第 {report.Week} 週亂數流 {c.StreamId} 計數器與上週不銜接");
+            counters[c.StreamId] = c.After;
+        }
     }
 
     /// <summary>開局聚落必須等於種子產生的結果；之後的新聚落依序重新套用建立規則（ID、空格、非水域）。</summary>

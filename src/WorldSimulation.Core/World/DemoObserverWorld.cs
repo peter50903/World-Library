@@ -10,39 +10,20 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// Explicitly NON-CANONICAL demonstration fixture. Numbers here are NOT gameplay
-/// parameters and must never be persisted to 01_世界參數. The real world bootstrap
-/// and economy will later be driven by validated configuration.
+/// Explicitly NON-CANONICAL demonstration fixture: only the TEMP world seed.
+/// C05（P1.0.04-a，使用者 2026-10-14 裁決）：舊 V0-01「單一虛擬村莊每日糧食」整條退役，
+/// 不再有每日人數、初始糧與每日收穫上限；世界只剩多聚落每週結算。
 /// </summary>
-public sealed record DemoScenario(
-    ulong Seed,
-    int Population,
-    long InitialFood,
-    int MaxDailyHarvest,
-    int FoodPerPersonPerDay)
+public sealed record DemoScenario(ulong Seed)
 {
-    public static DemoScenario Sample(ulong seed)
-        => new(seed, Population: 5, InitialFood: 8,
-            MaxDailyHarvest: 8, FoodPerPersonPerDay: 1);
+    public static DemoScenario Sample(ulong seed) => new(seed);
 }
 
-/// <summary>An append-only demonstration event, not the final History Kernel or Akashic format.</summary>
-public sealed record DemoDayEvent(
-    int Day,
-    TimeSpan WorldTime,
-    long FoodBefore,
-    long Harvested,
-    long Consumed,
-    long FoodAfter,
-    long Shortage);
+/// <summary>C05：推進一日的結果；有週結算時附上該週週報（摘要見 <see cref="DemoWeekReport.Summary"/>）。</summary>
+public sealed record DemoDayAdvance(int Day, TimeSpan WorldTime, DemoWeekReport? SettledWeek);
 
-public sealed record DemoWorldSnapshot(
-    TimeSpan WorldTime,
-    int Population,
-    long FoodStock,
-    long TotalShortage,
-    int DaysElapsed,
-    ulong ResourceRngDraws);
+/// <summary>C05：世界時鐘狀態；<see cref="DaysElapsed"/> 由世界時間換算（不再是每日帳筆數）。</summary>
+public sealed record DemoWorldSnapshot(TimeSpan WorldTime, int DaysElapsed);
 
 /// <summary>V0-04A：一次原子提交內可注入故障的檢查點（只供自動測試使用）。</summary>
 internal enum DemoCommitStage
@@ -54,9 +35,9 @@ internal enum DemoCommitStage
 }
 
 /// <summary>
-/// Runnable, headless Observer vertical slice. A one-settlement survival accounting
-/// demonstration driven by the existing WorldClock, Scheduler and deterministic RNG,
-/// plus (V0-04A) a TEMP weekly L2 settlement for every demo settlement:
+/// Runnable, headless Observer vertical slice driven by the existing WorldClock, Scheduler and
+/// deterministic RNG (C05: the daily tick only advances the clock; no daily food line),
+/// with (V0-04A) a TEMP weekly L2 settlement for every demo settlement:
 /// resource regeneration → labour and production → consumption, with a resource
 /// ledger and a population ledger checked before anything is published, and (V0-04B)
 /// hunger debt → starvation death with append-only, caused settlement events, and (V0-06A)
@@ -69,7 +50,7 @@ public sealed partial class DemoObserverWorld
 {
     private static readonly TimeSpan OneDay = TimeSpan.FromDays(1);
     private static readonly TimeSpan OneWeek = TimeSpan.FromDays(7);
-    private const string DailyWorkKey = "DEMO_DAILY_FOOD_ACCOUNTING";
+    private const string DailyWorkKey = "DEMO_DAY_TICK"; // C05：只推進時鐘，不做帳。
     private const string WeeklyWorkKey = "DEMO_WEEKLY_SETTLEMENT";
 
     private readonly DemoScenario _scenario;
@@ -80,7 +61,6 @@ public sealed partial class DemoObserverWorld
     private WorldClock _clock = new();
     private Scheduler _scheduler;
     private RngRegistry _rng;
-    private ImmutableList<DemoDayEvent> _history = ImmutableList<DemoDayEvent>.Empty;
     private ImmutableList<DemoWeekReport> _weeks = ImmutableList<DemoWeekReport>.Empty;
     private ImmutableSortedDictionary<int, long> _reserves;
     private ImmutableSortedDictionary<int, long> _settlementFood;
@@ -91,8 +71,6 @@ public sealed partial class DemoObserverWorld
     // 遷徙隊伍、TEMP 人類個體）共用一個 ID 空間；週內在私有副本上配號，只在發布時寫回。
     private EntityIdAllocatorSnapshot _entityIds = DemoEntityIds.Fresh;
     private DemoWorldSites _sites;
-    private long _food;
-    private long _totalShortage;
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -100,25 +78,26 @@ public sealed partial class DemoObserverWorld
     }
 
     public DemoObserverWorld(DemoScenario scenario, DemoWeeklyTempConfig weekly)
+        : this(scenario, weekly, historySeed: null)
+    {
+    }
+
+    /// <summary>
+    /// C05 TEST ONLY：<paramref name="historySeed"/> 傳給 <see cref="RngRegistry.Create"/>，證明只換歷史種子時
+    /// 地圖、聚落與初始人口不變。玩家輸入歷史種子的入口留給 C06（世界配方）。
+    /// </summary>
+    internal DemoObserverWorld(DemoScenario scenario, DemoWeeklyTempConfig weekly, ulong? historySeed)
     {
         ArgumentNullException.ThrowIfNull(scenario);
         ArgumentNullException.ThrowIfNull(weekly);
-        if (scenario.Population <= 0)
-            throw new ArgumentOutOfRangeException(nameof(scenario), "Demo population must be positive.");
-        if (scenario.InitialFood < 0 || scenario.MaxDailyHarvest < 0 || scenario.FoodPerPersonPerDay < 0)
-            throw new ArgumentOutOfRangeException(nameof(scenario), "Demo inputs cannot be negative.");
         weekly.Validate();
-
-        // Check that even the first-day demand fits in the signed accounting model.
-        _ = checked((long)scenario.Population * scenario.FoodPerPersonPerDay);
 
         _scenario = scenario;
         _weekly = weekly;
-        _food = scenario.InitialFood;
-        // V0-03B: ONE world RngRegistry. The TEMP map (GEOGRAPHY) and TEMP sites
-        // (ECOLOGY_INIT, POP) are generated once here and cached; daily harvest keeps
-        // using the RESOURCE stream of this same registry.
-        _rng = RngRegistry.Create(scenario.Seed);
+        // V0-03B: ONE world RngRegistry. The TEMP map (GEOGRAPHY) and TEMP sites (ECOLOGY_INIT only, C05)
+        // are generated once here and cached. C05: nothing draws RNG at run time (RESOURCE is never
+        // drawn after the opening; POP is reserved for birth/death, 41A SEED_POP).
+        _rng = RngRegistry.Create(scenario.Seed, historySeed);
         Map = DemoHexWorld.Generate(_rng);
         var openingIds = new EntityIdAllocator();
         _sites = DemoWorldSites.Generate(Map, _rng,
@@ -164,13 +143,12 @@ public sealed partial class DemoObserverWorld
     /// <summary>TEST ONLY: invoked at each commit checkpoint so tests can inject a mid-commit failure.</summary>
     internal Action<DemoCommitStage>? FaultInjector { get; set; }
 
-    public DemoWorldSnapshot Snapshot()
-        => new(_clock.Now, _scenario.Population, _food, _totalShortage,
-            _history.Count, _rng.GetDrawCounter(RngStreams.Resource));
+    public DemoWorldSnapshot Snapshot() => new(_clock.Now, DaysOf(_clock.Now));
 
-    /// <summary>Detached read-only copy; querying history never changes the world.</summary>
-    public IReadOnlyList<DemoDayEvent> History()
-        => Array.AsReadOnly(_history.ToArray());
+    /// <summary>C05：十條亂數流的已提交狀態（唯讀副本，依 <see cref="RngStreams.All"/> 順序；給 Godot／CLI 比對）。</summary>
+    public IReadOnlyList<RngStreamState> RngState() => _rng.Capture().Streams.ToArray();
+
+    private static int DaysOf(TimeSpan worldTime) => checked((int)(worldTime.Ticks / OneDay.Ticks));
 
     /// <summary>All committed weekly settlement reports, oldest first (detached copy).</summary>
     public IReadOnlyList<DemoWeekReport> WeekReports()
@@ -272,20 +250,20 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>
     /// Advances to the next scheduled day as ONE atomic commit (03 §4):
-    /// stage → validate → publish. Everything (clock, scheduler, RNG, daily event,
-    /// weekly ledger and settlement stocks) is first computed on private copies; the
+    /// stage → validate → publish. Everything (clock, scheduler, RNG, weekly ledger,
+    /// RNG counters and settlement stocks) is first computed on private copies; the
     /// live world is replaced only by the final field assignments, which cannot fail.
     /// Any exception before that leaves Entity, RNG, Scheduler, History and Ledger unchanged.
     /// </summary>
-    public DemoDayEvent AdvanceOneDay() => AdvanceOneDayCore(settleWeekly: true);
+    public DemoDayAdvance AdvanceOneDay() => AdvanceOneDayCore(settleWeekly: true);
 
     /// <summary>
     /// V0-07B: <paramref name="settleWeekly"/>＝false re-derives only the seed-determined part of a day
-    /// (clock, scheduler, RNG, daily history) for direct snapshot restore; the weekly state is then
-    /// installed from the verified save. Weekly settlement draws no RNG, so both paths reach the
+    /// (clock, scheduler, RNG) for direct snapshot restore; the weekly state is then
+    /// installed from the verified save. Nothing draws RNG (C05), so both paths reach the
     /// same clock, scheduler and RNG state.
     /// </summary>
-    private DemoDayEvent AdvanceOneDayCore(bool settleWeekly)
+    private DemoDayAdvance AdvanceOneDayCore(bool settleWeekly)
     {
         // ① Scheduler and clock: private copies.
         var clock = _clock.Clone();
@@ -307,27 +285,14 @@ public sealed partial class DemoObserverWorld
             scheduler.Schedule(dueTime + OneWeek, WeeklyWorkKey);
         Checkpoint(DemoCommitStage.AfterScheduleStaged);
 
-        // ② V0-01 daily accounting on a private RNG draft (unchanged behaviour).
+        // ② RNG on a private draft (C05: zero draws today; the draft, preflight and the AfterRngStaged
+        //    checkpoint stay as the hook for later rules, 44G SCHED_RNG_SCOPE).
         var trial = RngResolutionDraft.Begin(_rng);
-        var proposedFood = (long)(trial.NextUInt64(RngStreams.Resource)
-            % ((ulong)_scenario.MaxDailyHarvest + 1UL));
-        var available = checked(_food + proposedFood);
-        var demand = checked((long)_scenario.Population * _scenario.FoodPerPersonPerDay);
-        var consumed = Math.Min(available, demand);
-        var shortage = demand - consumed;
-        var newFood = available - consumed;
-        var accumulatedShortage = checked(_totalShortage + shortage);
-        var nextHistoryCount = checked(_history.Count + 1);
         var proposedRng = trial.CaptureProposed();
-
         if (!RngCandidatePreflight.IsCompatible(_rng.Capture(), trial.BaseSnapshot, proposedRng))
             throw new InvalidOperationException("Demo RNG candidate failed preflight.");
         var nextRng = RngRegistry.Restore(proposedRng);
         Checkpoint(DemoCommitStage.AfterRngStaged);
-
-        var evt = new DemoDayEvent(
-            nextHistoryCount, dueTime, _food, proposedFood, consumed, newFood, shortage);
-        var nextHistory = _history.Add(evt);
 
         // ③ V0-04A weekly settlement + ledger check (throws before publish if unbalanced).
         var nextWeeks = _weeks;
@@ -354,7 +319,11 @@ public sealed partial class DemoObserverWorld
                 outcome = demographicTrial.Outcome;
                 nextDemography = demographicTrial.Population;
             }
-            nextWeeks = _weeks.Add(outcome.Report);
+            // C05：十條流「提交前→提交後」計數器與週報同一交易寫入（失敗不消耗）。
+            var before = _rng.Capture().Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
+            var after = proposedRng.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
+            var counters = RngStreams.All.Select(id => new DemoRngCounter(id, before[id], after[id])).ToArray();
+            nextWeeks = _weeks.Add(outcome.Report with { RngCounters = Array.AsReadOnly(counters) });
             nextReserves = outcome.Reserves;
             nextSettlementFood = outcome.SettlementFood;
             nextPopulation = outcome.Population;
@@ -371,9 +340,6 @@ public sealed partial class DemoObserverWorld
         _clock = clock;
         _scheduler = scheduler;
         _rng = nextRng;
-        _food = newFood;
-        _totalShortage = accumulatedShortage;
-        _history = nextHistory;
         _weeks = nextWeeks;
         _reserves = nextReserves;
         _settlementFood = nextSettlementFood;
@@ -383,7 +349,8 @@ public sealed partial class DemoObserverWorld
         _entityIds = nextEntityIds;
         _sites = nextSites;
         _demography = nextDemography;
-        return evt;
+        return new DemoDayAdvance(DaysOf(dueTime), dueTime,
+            weekly.Count == 1 && settleWeekly ? nextWeeks[nextWeeks.Count - 1] : null);
     }
 
     /// <summary>
@@ -402,7 +369,6 @@ public sealed partial class DemoObserverWorld
         sb.Append(inv, $"rng={rng.WorldSeed}/{rng.HistorySeed};");
         foreach (var stream in rng.Streams)
             sb.Append(inv, $"{stream.StreamId}={stream.State}#{stream.DrawCounter};");
-        sb.Append(inv, $"food={_food};shortage={_totalShortage};");
         foreach (var kv in _reserves) sb.Append(inv, $"reserve{kv.Key}={kv.Value};");
         foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
@@ -417,10 +383,10 @@ public sealed partial class DemoObserverWorld
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
         foreach (var point in _sites.ResourcePoints) sb.Append(inv, $"{point};");
         foreach (var batch in _migrations) sb.Append(inv, $"{batch.Fingerprint()};");
-        foreach (var evt in _history) sb.Append(inv, $"{evt};");
         foreach (var week in _weeks)
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
+            foreach (var c in week.RngCounters) sb.Append(inv, $"rngc{c.StreamId}={c.Before}-{c.After};");
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
             foreach (var m in week.Migrations) sb.Append(inv, $"{m};");

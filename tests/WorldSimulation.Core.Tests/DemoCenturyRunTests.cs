@@ -125,7 +125,7 @@ public sealed class DemoCenturyRunTests
             FoodOpening: 5, FoodProduced: 30, FoodConsumed: 20, FoodShortage: 3, FoodClosing: 15,
             ReserveOpening: 100, Regenerated: 40, Harvested: 30, ReserveClosing: 110,
             HungerEvents: 1, StarvationEvents: 1, StarvationDeathsInEvents: 2, RecoveryEvents: 0,
-            InhabitedSettlements: 2, DailyDemoHarvest: 0);
+            InhabitedSettlements: 2);
         Assert.Empty(ok.Problems());
 
         Assert.Contains((ok with { PopulationClosing = 9 }).Problems(), p => p.Contains("人口帳"));
@@ -167,7 +167,7 @@ public sealed class DemoCenturyRunTests
             FoodOpening: 0, FoodProduced: 0, FoodConsumed: 0, FoodShortage: 0, FoodClosing: 0,
             ReserveOpening: 0, Regenerated: 0, Harvested: 0, ReserveClosing: 0,
             HungerEvents: 0, StarvationEvents: 3, StarvationDeathsInEvents: 3, RecoveryEvents: 0,
-            InhabitedSettlements: 1, DailyDemoHarvest: 0,
+            InhabitedSettlements: 1,
             NaturalDeaths: 2, BirthEvents: 1, NaturalDeathEvents: 2);
         Assert.Empty(ok.Problems());
         Assert.Equal(3, ok.StarvationDeaths);

@@ -88,7 +88,7 @@ public sealed class DemoSaveAcceptanceTests
                 found.Add(point);
                 foreach (var version in new[] { 3 })
                 {
-                    var file = json; // C04：只讀目前第 3 版；第 1、2 版另由 OlderSaveVersions_AreRejectedAsTooOld 驗證拒讀。
+                    var file = json; // C05：只讀目前第 4 版；第 1～3 版另由 OlderSaveVersions_AreRejectedAsTooOld 驗證拒讀。
 
                     var loaded = DemoObserverWorld.ImportTempSave(file);
                     Assert.Equal(json, loaded.ExportTempSave()); // 讀入後的狀態＝存檔當時

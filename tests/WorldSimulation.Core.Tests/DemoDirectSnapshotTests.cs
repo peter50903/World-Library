@@ -5,7 +5,7 @@ using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.Tests;
 
-/// <summary>V0-07B：TEMP 存檔直接恢復（C04 起第 3 版）（不從第 0 天重播週結算），並在安裝前驗證。</summary>
+/// <summary>V0-07B：TEMP 存檔直接恢復（C05 起第 4 版）（不從第 0 天重播週結算），並在安裝前驗證。</summary>
 public sealed class DemoDirectSnapshotTests
 {
     /// <summary>推進到「有隊伍在途中、且已建立新聚落」的那一天（開拓情境），回傳世界與天數。</summary>
@@ -89,9 +89,10 @@ public sealed class DemoDirectSnapshotTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
     public void OlderSaveVersions_AreRejectedAsTooOld(int version)
     {
-        // C04：第 1、2 版存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
+        // C04／C05：比目前第 4 版舊的存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
         var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.FrontierSample);
         for (var i = 0; i < 30; i++)
             world.AdvanceOneDay();
@@ -118,7 +119,7 @@ public sealed class DemoDirectSnapshotTests
 
     public static TheoryData<string> Tamperings => new()
     {
-        "daily-harvest", "scheduler-sequence", "rng-counter", "drop-last-week", "week-number",
+        "week-rng-before", "week-rng-missing", "week-rng-order", "week-rng-after", "scheduler-sequence", "rng-counter", "drop-last-week", "week-number",
         "ledger-population", "ledger-and-stock-population", "reserve-stock", "food-stock",
         "next-batch-id", "batch-people", "batch-step", "batch-path", "event-settlement",
         "founded-week", "founded-id", "extra-settlement", "resource-point", "week-time",
@@ -142,8 +143,23 @@ public sealed class DemoDirectSnapshotTests
 
         switch (tampering)
         {
-            case "daily-harvest":
-                state["DailyHistory"]![0]!["Harvested"] = state["DailyHistory"]![0]!["Harvested"]!.GetValue<long>() + 1;
+            // C05：每週十條亂數流計數器（提交前＝上週提交後、順序與數量固定、最後提交後＝Random）。
+            case "week-rng-before":
+                lastWeek["RngCounters"]![0]!["Before"] = lastWeek["RngCounters"]![0]!["Before"]!.GetValue<ulong>() + 1;
+                break;
+            case "week-rng-missing":
+                lastWeek["RngCounters"]!.AsArray().RemoveAt(9);
+                break;
+            case "week-rng-order":
+            {
+                var counters = lastWeek["RngCounters"]!.AsArray();
+                var first = counters[0]!.DeepClone();
+                counters[0] = counters[1]!.DeepClone();
+                counters[1] = first;
+                break;
+            }
+            case "week-rng-after":
+                lastWeek["RngCounters"]![4]!["After"] = lastWeek["RngCounters"]![4]!["After"]!.GetValue<ulong>() + 1;
                 break;
             case "scheduler-sequence":
                 state["SchedulerNextSequence"] = state["SchedulerNextSequence"]!.GetValue<long>() + 1;

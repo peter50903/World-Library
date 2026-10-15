@@ -6,9 +6,10 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07 TEMP save (not a production format). Version 3 (C04, written now) is restored directly:
-/// see DemoObserverWorld.Snapshot.cs. It adds the world entity-ID allocator (44H SAVE_ID).
-/// Versions 1 and 2 are rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
+/// V0-07 TEMP save (not a production format). Version 4 (C05, written now) is restored directly:
+/// see DemoObserverWorld.Snapshot.cs. Version 3 (C04) added the world entity-ID allocator (44H SAVE_ID);
+/// version 4 (C05) retires the V0-01 daily food fields and adds per-week RNG stream counters.
+/// Every older version is rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
 /// no converter, the file is never modified or deleted, and the running world is untouched.
 /// The stored scenario and weekly config must also be one of the known TEMP presets
 /// (<see cref="KnownTempWeeklyConfigs"/>); otherwise a hand-edited file with self-consistent
@@ -19,7 +20,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
     public ulong TempWorldSeed => _scenario.Seed;
 
-    internal const int TempSaveVersion = 3; // C04：加入實體 ID 分配器；第 1、2 版一律「版本太舊」。
+    internal const int TempSaveVersion = 4; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
@@ -76,9 +77,6 @@ public sealed partial class DemoObserverWorld
             SchedulerNextSequence = _scheduler.NextSequence,
             ScheduledWork = _scheduler.PendingInOrder().ToArray(),
             Random = _rng.Capture(),
-            DailyFood = _food,
-            DailyShortage = _totalShortage,
-            DailyHistory = _history.ToArray(),
             WeekReports = _weeks.ToArray(),
             Reserves = _reserves,
             SettlementFood = _settlementFood,
@@ -97,7 +95,7 @@ public sealed partial class DemoObserverWorld
             Version = TempSaveVersion,
             Scenario = _scenario,
             WeeklyConfig = _weekly,
-            DaysElapsed = _history.Count,
+            DaysElapsed = DaysOf(_clock.Now),
             State = state
         });
     }
@@ -140,7 +138,7 @@ public sealed partial class DemoObserverWorld
             if (days < 0 || days > TempMaxSaveDays)
                 throw new InvalidDataException("TEMP 存檔世界日期超出可重播範圍。");
 
-            // Version 3 restores directly (seed-determined parts re-derived, weekly state verified).
+            // Current version restores directly (seed-determined parts re-derived, weekly state verified).
             return ImportDirectSnapshot(json, root, scenario, weekly, days);
         }
         catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException

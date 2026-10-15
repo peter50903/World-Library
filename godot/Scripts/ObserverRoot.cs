@@ -6,7 +6,7 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// Real Godot observer GUI backed by the V0-01 in-memory DemoObserverWorld.
+/// Real Godot observer GUI backed by the in-memory DemoObserverWorld (C05: weekly settlement only).
 /// Draws only DEMO hex map markers; never pretends that those hexes, regions,
 /// settlements or populations were loaded from official world parameters.
 /// </summary>
@@ -451,12 +451,12 @@ public partial class ObserverRoot : Control
                 throw new InvalidOperationException("Godot did not show Core's migrant batch and emigration event.");
             }
 
-            // #61: the status panel shows ONE population ledger (settled + in transit = world) and labels
-            // the V0-01 daily demo population as a separate TEMP account.
+            // #61: the status panel shows ONE population ledger (settled + in transit = world);
+            // C05: the old V0-01 daily demo account is retired and must not appear.
             if (!_status.Text.Contains($"聚落人口合計：{_world.SettledPopulation}", StringComparison.Ordinal)
                 || !_status.Text.Contains($"遷徙途中人口：{_world.PopulationInTransit}", StringComparison.Ordinal)
                 || !_status.Text.Contains($"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}", StringComparison.Ordinal)
-                || !_status.Text.Contains("V0-01 每日示範帳（舊版獨立 TEMP 帳", StringComparison.Ordinal)
+                || _status.Text.Contains("V0-01", StringComparison.Ordinal)
                 || _world.WorldPopulation != _world.SettledPopulation + _world.PopulationInTransit)
             {
                 throw new InvalidOperationException("Godot status panel mixed the population ledgers.");
@@ -532,13 +532,15 @@ public partial class ObserverRoot : Control
             skipButton.EmitSignal(BaseButton.SignalName.Pressed);
 
             var state = _world.Snapshot();
-            if (state.DaysElapsed != 31 || _world.History().Count != 31 ||
-                !_history.Text.Contains("第 31 天", StringComparison.Ordinal))
+            // C05：舊每日糧食線已退役；歷史欄改列週結算摘要。
+            if (state.DaysElapsed != 31 || _world.WeekReports().Count != 4 ||
+                !_history.Text.Contains("第 4 週結算", StringComparison.Ordinal) ||
+                _status.Text.Contains("V0-01", StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Godot button signal did not update world and history.");
             }
 
-            GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 History=31");
+            GD.Print("WORLD_SIM_UI_SMOKE_OK: Day=31 Weeks=4");
 
             // V0-04A: after 31 days the panel shows Core's 4th weekly ledger, all balanced.
             var latest = _world.LatestWeek;
@@ -638,9 +640,8 @@ public partial class ObserverRoot : Control
         var cell = _world.Map.GetCell(2, 2);
         var neighbor = _world.Map.GetCell(3, 2);
         var dayBefore = _world.Snapshot().DaysElapsed;
-        var rngBefore = _world.Snapshot().ResourceRngDraws;
+        var rngBefore = _world.RngState(); // C05：十條流全部比對（UI 不碰世界亂數，44E MOD_RNG）。
         var peopleBefore = _world.WorldPopulation;
-        var foodBefore = _world.Snapshot().FoodStock;
         var sitesBefore = _world.Sites;
         var anchor = _hexMap.CellCenter(cell);
         var baselineSpan = anchor.DistanceTo(_hexMap.CellCenter(neighbor));
@@ -705,8 +706,7 @@ public partial class ObserverRoot : Control
             throw new InvalidOperationException("Map selected an invisible hex gap.");
 
         if (_world.Snapshot().DaysElapsed != dayBefore
-            || _world.Snapshot().ResourceRngDraws != rngBefore
-            || _world.Snapshot().FoodStock != foodBefore
+            || !_world.RngState().SequenceEqual(rngBefore)
             || _world.WorldPopulation != peopleBefore
             || !ReferenceEquals(_world.Sites, sitesBefore))
             throw new InvalidOperationException("Map viewport inputs changed the simulated world.");
@@ -1119,17 +1119,21 @@ public partial class ObserverRoot : Control
         return string.Join("\n", lines);
     }
 
+    /// <summary>C05：通知列用的最近一次週結算摘要（同一句由 Core 產生）。</summary>
+    private string WeeklySummaryText()
+        => _world.LatestWeek is { } week ? week.Summary() : "第 7 天才有第一次週結算。";
+
     private void Advance(int days)
     {
         try
         {
-            DemoDayEvent? last = null;
+            DemoDayAdvance? last = null;
             for (var i = 0; i < days; i++)
                 last = _world.AdvanceOneDay();
             SyncAlertWatermark(); // #95: events seen by stepping manually are never alerted later.
 
             _notice.Text = (_playback.Playing ? $"{_playback.StatusText}；" : "")
-                + $"已推進 {days} 天；第 {last!.Day} 天：收穫 {last.Harvested}，消耗 {last.Consumed}，缺糧 {last.Shortage}。";
+                + $"已推進 {days} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
             Refresh();
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
@@ -1260,24 +1264,17 @@ public partial class ObserverRoot : Control
             // #61: one population ledger (settlements + migrants, each person counted once) ...
             $"聚落人口合計：{_world.SettledPopulation}\n" +
             $"遷徙途中人口：{_world.PopulationInTransit}\n" +
-            $"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}\n" +
-            // ... kept apart from the older V0-01 daily demo ledger, which is a separate TEMP account.
-            "—— V0-01 每日示範帳（舊版獨立 TEMP 帳，與上方聚落人口無關）——\n" +
-            $"每日示範人口：{snapshot.Population}\n" +
-            $"每日示範食物庫存：{snapshot.FoodStock}\n" +
-            $"每日示範累積食物不足：{snapshot.TotalShortage}\n" +
-            $"資源亂數抽樣：{snapshot.ResourceRngDraws}";
+            $"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}";
 
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
         _hexMap.QueueRedraw();
 
-        // V0-04B: merge daily events with weekly settlement events by world time
-        // (same day: the daily event first, then the weekly settlement's events).
-        // Shows the 12 latest daily events plus the 10 latest settlement events.
-        var daily = _world.History().TakeLast(12).Select(e => (Time: e.WorldTime, Order: 0,
-            Text: $"第 {e.Day} 天  |  收穫 {e.Harvested}  消耗 {e.Consumed}  缺糧 {e.Shortage}  食物結餘 {e.FoodAfter}"));
+        // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），
+        // 與聚落事件依世界時間合併（同一天：週摘要在前，再列該週事件）。
+        var daily = _world.WeekReports().TakeLast(12).Select(w => (Time: w.WorldTime, Order: 0,
+            Text: w.Summary()));
         // V0-06B: the 5 latest "settlement founded" events always stay listed, even when a busy famine
         // week pushes them out of the 10 latest settlement events.
         var allSettlementEvents = _world.SettlementEvents()
