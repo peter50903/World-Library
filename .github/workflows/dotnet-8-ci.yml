@@ -44,7 +44,10 @@ jobs:
           if [[ -f WorldSimulation.sln ]]; then
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
-            dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal"
+            set +e
+            dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=detailed" > /tmp/t.log 2>&1
+            grep -E "DIAG|Failed |Error Message|Assert\.|Expected|Actual|Exception|at WorldSimulation|Passed!|Failed!|Total tests" /tmp/t.log | head -150 | sed 's/^ */::warning::/'
+            exit 1
             # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
             printf 'n\ns\nh\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
