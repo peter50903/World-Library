@@ -46,7 +46,10 @@ jobs:
             dotnet build WorldSimulation.sln --no-restore --configuration Release
             set +e
             dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=detailed" > /tmp/t.log 2>&1
-            grep -E "DIAG|Failed |Error Message|Assert\.|Expected|Actual|Exception|at WorldSimulation|Passed!|Failed!|Total tests" /tmp/t.log | head -150 | sed 's/^ */::warning::/'
+            echo "::warning::$(grep -E "DIAG" /tmp/t.log | head -40 | cut -c1-600 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            echo "::warning::$(grep -E "^ *Failed WorldSimulation" /tmp/t.log | head -40 | cut -c1-300 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            echo "::warning::$(grep -E -A10 "^ *Failed WorldSimulation" /tmp/t.log | grep -v "at System\|at Xunit" | head -150 | cut -c1-300 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+            echo "::warning::$(grep -E "Total tests|Passed!|Failed!" /tmp/t.log | head -5 | awk '{printf "%s%%0A", $0}')"
             exit 1
             # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
             printf 'n\ns\nh\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
