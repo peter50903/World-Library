@@ -5,7 +5,7 @@ using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.Tests;
 
-/// <summary>V0-07B：TEMP 存檔第 2 版直接恢復（不從第 0 天重播週結算），並在安裝前驗證。</summary>
+/// <summary>V0-07B：TEMP 存檔直接恢復（C04 起第 3 版）（不從第 0 天重播週結算），並在安裝前驗證。</summary>
 public sealed class DemoDirectSnapshotTests
 {
     /// <summary>推進到「有隊伍在途中、且已建立新聚落」的那一天（開拓情境），回傳世界與天數。</summary>
