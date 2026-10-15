@@ -51,7 +51,7 @@ for (var i = 1; i < args.Length; i += 2)
     }
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜cell C R 查格子｜h 歷史｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜cell C R 查格子｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 if (years is int runYears)
     return RunHeadless(seed, runYears, frontier);
@@ -59,7 +59,7 @@ if (years is int runYears)
 var world = new DemoObserverWorld(DemoScenario.Sample(seed),
     frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample);
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
-Console.WriteLine("注意：人口、初始食物與每日收支為非正式的示範數值；尚未載入試算表的正式世界設定。");
+Console.WriteLine("注意：聚落人口、糧食與每週結算皆為非正式的 TEMP 示範數值；尚未載入試算表的正式世界設定（舊每日糧食示範帳已退役）。");
 Console.WriteLine($"亂數種子：{seed}。世界在你閱讀時不會自行推進。");
 Console.WriteLine(HelpText);
 PrintStatus();
@@ -127,11 +127,25 @@ while (true)
     }
     if (command is "h" or "history")
     {
-        var history = world.History();
-        Console.WriteLine($"歷史（共 {history.Count} 筆，顯示最近10筆）：");
-        foreach (var e in history.Skip(Math.Max(0, history.Count - 10)))
-            Console.WriteLine($"  第 {e.Day} 日：收穫{e.Harvested}／消耗{e.Consumed}／不足{e.Shortage}／結餘{e.FoodAfter}");
-        if (history.Count == 0) Console.WriteLine("  尚未發生任何已結算事件。");
+        // C05：歷史改列週結算摘要（同一句由 Core DemoWeekReport.Summary() 產生）。
+        var weeks = world.WeekReports();
+        Console.WriteLine($"歷史（共 {weeks.Count} 週週結算，顯示最近10週）：");
+        foreach (var w in weeks.Skip(Math.Max(0, weeks.Count - 10)))
+            Console.WriteLine($"  {w.Summary()}");
+        if (weeks.Count == 0) Console.WriteLine("  尚未發生任何週結算（第 7 日才有第一次週結算）。");
+        continue;
+    }
+    if (command is "rng")
+    {
+        // C05（44J FAIL_REPLAY）：最近一次週提交的十條亂數流計數器，供重播分歧定位。
+        if (world.LatestWeek is not { } latest)
+        {
+            Console.WriteLine("尚未有週結算（第 7 日才有第一次週結算）。");
+            continue;
+        }
+        Console.WriteLine($"第 {latest.Week} 週亂數流計數器（提交前→提交後）：");
+        foreach (var c in latest.RngCounters)
+            Console.WriteLine($"  {c.StreamId} 提交前 {c.Before}→提交後 {c.After}");
         continue;
     }
     if (command is "?" or "help")
@@ -151,11 +165,12 @@ while (true)
 
     try
     {
-        DemoDayEvent? last = null;
+        DemoDayAdvance? last = null;
         for (var i = 0; i < steps; i++)
             last = world.AdvanceOneDay();
 
-        Console.WriteLine($"已處理事件：{steps} 日；最後一日為第 {last!.Day} 日，收穫{last.Harvested}、消耗{last.Consumed}、不足{last.Shortage}。");
+        var weekly = world.LatestWeek is { } lastWeek ? lastWeek.Summary() : "第 7 日才有第一次週結算";
+        Console.WriteLine($"已處理事件：已推進 {steps} 日（第 {last!.Day} 日）；{weekly}");
         PrintStatus();
     }
     catch (Exception ex) when (ex is OverflowException or InvalidOperationException)
@@ -186,7 +201,7 @@ static bool TryParseSlotCommand(string command, string verb, out int slot)
 void PrintStatus()
 {
     var s = world.Snapshot();
-    Console.WriteLine($"世界狀態｜種子 {world.TempWorldSeed}｜第 {s.DaysElapsed} 日｜人口 {s.Population}｜食物 {s.FoodStock}｜累計食物不足 {s.TotalShortage}｜亂數抽樣次數 {s.ResourceRngDraws}");
+    Console.WriteLine($"世界狀態｜種子 {world.TempWorldSeed}｜第 {s.DaysElapsed} 日｜聚落人口 {world.SettledPopulation}｜途中 {world.PopulationInTransit}｜週結算 {world.WeekReports().Count} 次");
 }
 
 // V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。

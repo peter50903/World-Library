@@ -19,14 +19,16 @@ public sealed class M1PopulationCoverageTests
     /// <summary>局部饑荒：挑第一個（種子 42，再 1～30）在 3 年內有隊伍抵達的種子。</summary>
     private static readonly Lazy<M1RunData> MigrationRun = new(() =>
     {
-        foreach (var seed in new ulong[] { 42 }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
+        // C05：初始人口改抽 ECOLOGY_INIT 後各種子情節改變；需要「有抵達」且「有隊伍仍在路上的一週」的種子。
+        foreach (var seed in new ulong[] { 42 }.Concat(Enumerable.Range(1, 80).Select(i => (ulong)i)))
         {
             var run = M1RunCollector.Collect(seed, M1Preset.LocalFamine, Years, TestCalendar.DaysPerYear);
-            if (run.Weeks.Any(w => w.Events.Any(e => e.Kind == DemoSettlementEventKind.Arrival)))
+            if (run.Weeks.Any(w => w.Events.Any(e => e.Kind == DemoSettlementEventKind.Arrival))
+                && run.Weeks.Any(w => w.Migrations.Any(m => !m.Departed && !m.Arrived)))
                 return run;
         }
 
-        throw new InvalidOperationException("找不到 3 年內有遷徙抵達的局部饑荒種子。");
+        throw new InvalidOperationException("找不到 3 年內有遷徙抵達且有隊伍在途中一週以上的局部饑荒種子。");
     });
 
     private static M1CheckResult Pop(M1RunData run)

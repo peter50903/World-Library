@@ -33,7 +33,6 @@ public sealed record DemoYearSummary(
     long StarvationDeathsInEvents,
     int RecoveryEvents,
     int InhabitedSettlements,
-    long DailyDemoHarvest,
     long Emigrants = 0,
     long Immigrants = 0,
     long PopulationInTransit = 0,
@@ -103,8 +102,7 @@ public sealed record DemoYearSummary(
          + $"｜糧食 {FoodClosing}（生產 {FoodProduced}、消耗 {FoodConsumed}、缺糧 {FoodShortage}）"
          + $"｜資源存量 {ReserveClosing}"
          + $"｜事件 {SettlementEvents}（飢餓 {HungerEvents}、餓死 {StarvationEvents}、飢餓解除 {RecoveryEvents}"
-         + $"、外移 {EmigrationEvents}、抵達 {ArrivalEvents}）"
-         + $"｜示範每日收穫合計 {DailyDemoHarvest}";
+         + $"、外移 {EmigrationEvents}、抵達 {ArrivalEvents}）";
 }
 
 /// <summary>一次長跑的結果：種子、各年摘要與全部守恆錯誤（空＝零錯誤）。</summary>
@@ -171,7 +169,7 @@ public static class DemoCenturyRun
             int emigrationEvents = 0, arrivalEvents = 0, foundedEvents = 0;
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
-            long regenerated = 0, harvested = 0, deathsInEvents = 0, dailyHarvest = 0;
+            long regenerated = 0, harvested = 0, deathsInEvents = 0;
             long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0;
             var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = 0;
@@ -180,7 +178,6 @@ public static class DemoCenturyRun
             {
                 var day = world.AdvanceOneDay();
                 lastDay = day.Day;
-                dailyHarvest = checked(dailyHarvest + day.Harvested);
 
                 var latest = world.LatestWeek;
                 if (latest is null || latest.Week == weeksSeen) continue;
@@ -258,7 +255,6 @@ public static class DemoCenturyRun
                 reserveOpening, regenerated, harvested, TotalReserve(),
                 hungerEvents, starvationEvents, deathsInEvents, recoveryEvents,
                 world.Sites.Settlements.Count(s => world.SettlementPopulation(s.Id) > 0),
-                dailyHarvest,
                 emigrants, immigrants, world.PopulationInTransit,
                 emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count,
                 firstDay,

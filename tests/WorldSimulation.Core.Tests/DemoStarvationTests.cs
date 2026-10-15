@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Rng;
 using System.Collections.Immutable;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
@@ -202,8 +203,8 @@ public sealed class DemoStarvationTests
                 previous = week;
             }
 
-            // 週結算不抽亂數：每日 RESOURCE 一天一次。
-            Assert.Equal((ulong)(52 * 7), world.Snapshot().ResourceRngDraws);
+            // 週結算不抽亂數；C05 起執行期完全不抽 RESOURCE。
+            Assert.Equal(0UL, world.RngState().Single(s => s.StreamId == RngStreams.Resource).DrawCounter);
         }
     }
 

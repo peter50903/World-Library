@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Rng;
 using System.Collections.Immutable;
 using WorldSimulation.Core.Entity;
 
@@ -357,7 +358,26 @@ public sealed record DemoWeekReport(
 
     /// <summary>C04：本週全部配號（新聚落、資源點、隊伍、新生兒）之後的下一號；本週新發 ID 恰為 [Opening, Closing)。</summary>
     public long EntityIdNextClosing { get; init; }
+
+    /// <summary>
+    /// C05（P1.0.04-a；44G SCHED_RNG_SCOPE、44J FAIL_REPLAY）：本次週提交十條亂數流「提交前→提交後」計數器，
+    /// 依 <see cref="RngStreams.All"/> 順序；與週提交同一交易寫入，供重播分歧定位。
+    /// </summary>
+    public IReadOnlyList<DemoRngCounter> RngCounters { get; init; } = Array.Empty<DemoRngCounter>();
+
+    /// <summary>C05：一行繁體中文週結算摘要（Godot 通知／歷史欄與 CLI 共用；只加總本週既有週帳欄位）。</summary>
+    public string Summary()
+    {
+        var day = (long)WorldTime.TotalDays;
+        return $"第 {Week} 週結算（第 {day} 日）｜聚落人口 {Settlements.Sum(l => l.PopulationClosing)}"
+            + $"｜產糧 {Settlements.Sum(l => l.FoodProduced)}｜消耗 {Settlements.Sum(l => l.FoodConsumed)}"
+            + $"｜缺糧 {Settlements.Sum(l => l.FoodShortage)}｜出生 {Settlements.Sum(l => l.Births)}"
+            + $"｜死亡 {Settlements.Sum(l => l.Deaths)}｜遷出 {Settlements.Sum(l => l.Emigrants)}";
+    }
 }
+
+/// <summary>C05：一條亂數流在一次週提交前後的抽樣計數器。</summary>
+public sealed record DemoRngCounter(string StreamId, ulong Before, ulong After);
 
 /// <summary>週結算的候選結果：報告與結算後的新狀態。在發布前不會寫入任何世界狀態。</summary>
 internal sealed record DemoWeeklyOutcome(
@@ -376,7 +396,7 @@ internal sealed record DemoWeeklyOutcome(
 /// ① 資源再生 → ② 勞動與生產 → ⑥ 消耗（形成飢餓債）→ ⑦ 健康後果（餓死）→
 /// ⑧ 遷徙（缺糧聚落外移、併入本週抵達的隊伍）→ ⑨ 人口帳。
 /// 純函式：只讀入目前狀態、回傳候選結果，不改動任何輸入。
-/// 不使用亂數，因此不影響 RESOURCE 流（V0-01 每日收穫）的抽樣次數；餓死人數與遷徙都是確定性的。
+/// 不使用亂數（C05 起執行期零抽樣；每週提交另記十條流計數器）；餓死人數與遷徙都是確定性的。
 /// 不做隱藏救濟（45D SURV_NO_RESCUE）：人口即將滅亡也不生成糧食或人口。
 /// 遷徙只用已經傳到來源聚落的消息（45E MIG_PULL：只用已知資訊，不讀本週的世界真相，
 /// 也不讀還沒傳到的較新週報；見 <see cref="DemoMigrationNews"/>）。

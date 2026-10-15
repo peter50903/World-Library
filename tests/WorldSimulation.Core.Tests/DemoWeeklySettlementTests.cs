@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
@@ -142,11 +143,17 @@ public sealed class DemoWeeklySettlementTests
     }
 
     [Fact]
-    public void WeeklySettlementUsesNoRngSoDailyResourceDrawsStayOnePerDay()
+    public void WeeklySettlementUsesNoRngAndEveryWeekRecordsUnchangedCounters()
     {
+        // C05：舊每日 RESOURCE 抽樣已退役；每週提交記下十條流計數器，提交前＝提交後。
         var world = AdvancedWorld(888, 21);
-        Assert.Equal(21UL, world.Snapshot().ResourceRngDraws);
+        Assert.Equal(0UL, world.RngState().Single(s => s.StreamId == RngStreams.Resource).DrawCounter);
         Assert.Equal(3, world.WeekReports().Count);
+        Assert.All(world.WeekReports(), w =>
+        {
+            Assert.Equal(RngStreams.All, w.RngCounters.Select(c => c.StreamId));
+            Assert.All(w.RngCounters, c => Assert.Equal(c.Before, c.After));
+        });
     }
 
     [Theory]
@@ -159,11 +166,11 @@ public sealed class DemoWeeklySettlementTests
         // DemoCommitStage is internal, so the theory data is passed by name.
         var stage = Enum.Parse<DemoCommitStage>(stageName);
 
-        // Day 7 is the commit that carries both the daily event and the weekly ledger.
+        // Day 7 is the commit that carries the weekly ledger and the RNG counters (C05).
         var world = AdvancedWorld(42, 6);
         var before = world.StateFingerprint();
         var snapshotBefore = world.Snapshot();
-        var historyBefore = world.History().ToArray();
+        var rngBefore = world.RngState().ToArray();
 
         world.FaultInjector = s =>
         {
@@ -174,7 +181,7 @@ public sealed class DemoWeeklySettlementTests
 
         Assert.Equal(before, world.StateFingerprint());
         Assert.Equal(snapshotBefore, world.Snapshot());
-        Assert.Equal(historyBefore, world.History().ToArray());
+        Assert.Equal(rngBefore, world.RngState().ToArray());
         Assert.Empty(world.WeekReports());
         Assert.Null(world.LatestWeek);
 

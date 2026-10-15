@@ -46,15 +46,21 @@ jobs:
             dotnet build WorldSimulation.sln --no-restore --configuration Release
             dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal"
             # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
-            printf 'n\ns\nh\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
+            printf 'n\ns\nh\n7\nh\nrng\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
             grep -q '歷史（共' /tmp/observer-demo-smoke.log
             grep -q '第 1 日' /tmp/observer-demo-smoke.log
+            # C05：舊每日糧食線退役；推進／歷史改週結算摘要，rng 列出十條流計數器（執行期零抽樣）。
+            grep -q '第 1 週結算（第 7 日）｜聚落人口' /tmp/observer-demo-smoke.log
+            grep -q 'POP 提交前 0→提交後 0' /tmp/observer-demo-smoke.log
+            grep -q 'RESOURCE 提交前 0→提交後 0' /tmp/observer-demo-smoke.log
+            ! grep -q '收穫' /tmp/observer-demo-smoke.log
+            ! grep -rnE 'RngStreams\.Resource|DemoDayEvent|MaxDailyHarvest|FoodPerPersonPerDay|DailyFood|DailyHistory' src godot/Scripts
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":3,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":4,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 3 版' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 4 版' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
             grep -q '槽 1：（空）' /tmp/observer-slots.log
@@ -64,10 +70,10 @@ jobs:
             grep -q '存檔槽必須是 1～3' /tmp/observer-slots.log
             # The failed loads above must not change the world: the last status line is still day 9.
             test "$(grep -o '世界狀態｜種子 42｜第 [0-9]* 日' /tmp/observer-slots.log | tail -1)" = '世界狀態｜種子 42｜第 9 日'
-            # C04: an older (v2) save is refused with the single "too old" message, in the slot list and on load.
-            printf '{"Version":2}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
+            # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
+            printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 2 版，目前第 3 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 4 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -176,7 +182,7 @@ jobs:
             exit 1
           fi
           grep -q 'Godot Engine' /tmp/godot-scene.log
-          grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
+          grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 Weeks=4' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
           # C08: status/ledger dates come from Core's calendar (01 sheet WORLD_MONTH_DAYS).
           grep -q 'WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28' /tmp/godot-scene.log

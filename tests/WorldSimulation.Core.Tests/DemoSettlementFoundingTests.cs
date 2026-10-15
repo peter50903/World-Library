@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
@@ -256,8 +257,8 @@ public sealed class DemoSettlementFoundingTests
             Assert.Equal(a.StateFingerprint(), b.StateFingerprint());
             Assert.Equal(a.Sites.Settlements.ToArray(), b.Sites.Settlements.ToArray());
             Assert.Equal(a.Sites.ResourcePoints.ToArray(), b.Sites.ResourcePoints.ToArray());
-            // 開拓不抽亂數：每日 RESOURCE 一天一次。
-            Assert.Equal((ulong)(Weeks * 7), a.Snapshot().ResourceRngDraws);
+            // 開拓不抽亂數；C05 起執行期完全不抽 RESOURCE。
+            Assert.Equal(0UL, a.RngState().Single(s => s.StreamId == RngStreams.Resource).DrawCounter);
         }
     }
 

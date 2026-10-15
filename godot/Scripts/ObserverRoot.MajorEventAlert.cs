@@ -91,7 +91,7 @@ public partial class ObserverRoot
     {
         try
         {
-            DemoDayEvent? last = null;
+            DemoDayAdvance? last = null;
             DemoSettlementEvent? alert = null;
             var advanced = 0;
             for (var i = 0; i < days; i++)
@@ -108,7 +108,7 @@ public partial class ObserverRoot
 
             if (alert is null)
             {
-                _notice.Text = $"{_playback.StatusText}；已推進 {advanced} 天；第 {last!.Day} 天：收穫 {last.Harvested}，消耗 {last.Consumed}，缺糧 {last.Shortage}。";
+                _notice.Text = $"{_playback.StatusText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
                 Refresh();
                 return;
             }

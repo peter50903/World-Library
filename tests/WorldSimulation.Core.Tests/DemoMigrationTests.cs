@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Rng;
 using System.Collections.Immutable;
 using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.World;
@@ -258,8 +259,8 @@ public sealed class DemoMigrationTests
             Assert.Equal(departedIds.OrderBy(id => id), departedIds);
             Assert.All(departedIds, id => Assert.True(id > 0));
 
-            // 遷徙不抽亂數：每日 RESOURCE 一天一次。
-            Assert.Equal((ulong)(30 * 7), a.Snapshot().ResourceRngDraws);
+            // 遷徙不抽亂數；C05 起執行期完全不抽 RESOURCE。
+            Assert.Equal(0UL, a.RngState().Single(s => s.StreamId == RngStreams.Resource).DrawCounter);
         }
     }
 

@@ -65,8 +65,9 @@ public sealed record DemoSitesTempConfig(
 /// <summary>
 /// V0-03B TEMP world skeleton: settlements, one resource point per settlement and one
 /// population group per settlement, generated from the SAME world RngRegistry as the map.
-/// Stream use (isolated from GEOGRAPHY terrain and from the daily RESOURCE harvest draws):
-/// ECOLOGY_INIT → settlement count and placement; POP → population-group sizes.
+/// Stream use (isolated from GEOGRAPHY terrain): ECOLOGY_INIT only (41A SEED_ECOLOGY_INIT, world seed) —
+/// first settlement count and placement (unchanged order), THEN a second pass of population-group sizes.
+/// C05（P1.0.04-a）：初始人口不再抽歷史流 POP（POP 只管出生／死亡／繁殖），只換歷史種子時地圖與初始人口完全相同。
 /// Resource kind follows the settlement cell's terrain and consumes no RNG.
 /// </summary>
 public sealed class DemoWorldSites
@@ -108,6 +109,7 @@ public sealed class DemoWorldSites
             throw new ArgumentOutOfRangeException(nameof(config), "More settlements than map cells.");
         if (rng.GetDrawCounter(RngStreams.EcologyInit) != 0 || rng.GetDrawCounter(RngStreams.Pop) != 0)
             throw new InvalidOperationException("Demo site generation requires unused ECOLOGY_INIT and POP streams.");
+        // C05：開局完全不抽 POP；地圖（GEOGRAPHY）之後只用 ECOLOGY_INIT。
 
         var span = (ulong)(config.MaxSettlements - config.MinSettlements + 1);
         var count = config.MinSettlements + (int)(rng.NextUInt64(RngStreams.EcologyInit) % span);
@@ -121,6 +123,7 @@ public sealed class DemoWorldSites
         var resources = new List<DemoResourcePoint>(count);
         var pops = new List<DemoPopGroup>(count);
 
+        // ① Placement: same ECOLOGY_INIT draw order as before C05, so positions are unchanged for every seed.
         for (var i = 0; i < count; i++)
         {
             var pool = land;
@@ -131,9 +134,14 @@ public sealed class DemoWorldSites
             var id = i + 1;
             settlements.Add(new DemoSettlement(id, config.SettlementNames[i], cell.Column, cell.Row));
             resources.Add(new DemoResourcePoint(id, id, KindFor(cell.Terrain, foragingOnly), cell.Column, cell.Row));
+        }
 
-            var popSpan = (ulong)(config.MaxPopGroupSize - config.MinPopGroupSize + 1);
-            var size = config.MinPopGroupSize + (int)(rng.NextUInt64(RngStreams.Pop) % popSpan);
+        // ② C05：初始人口群體人數，依聚落順序另起一圈，仍抽 ECOLOGY_INIT（41A SEED_ECOLOGY_INIT）。
+        var popSpan = (ulong)(config.MaxPopGroupSize - config.MinPopGroupSize + 1);
+        for (var i = 0; i < count; i++)
+        {
+            var id = i + 1;
+            var size = config.MinPopGroupSize + (int)(rng.NextUInt64(RngStreams.EcologyInit) % popSpan);
             pops.Add(new DemoPopGroup(id, id, size));
         }
 
