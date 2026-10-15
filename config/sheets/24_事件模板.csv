@@ -4,7 +4,7 @@ EV_DEATH,死亡,角色,HP/致命條件/自然死亡,存活角色,死亡條件成
 EV_RESURRECT,復活,角色/宗教,Resurrection效果成功,死亡角色,符合遺骸／特殊神蹟條件,同角色ID重新存活,TRUE,9,不回滾財產／婚姻／官職,TRUE
 EV_STATE_FOUND,建國,政治,Faction建立穩定主權,派系／領袖,領土+政府+宣稱成立,建立新國家,TRUE,10,大型世界歷史,TRUE
 EV_STATE_EXTINCT,國家滅亡,政治,符合State Extinct規則,國家,無領土10年或其他明確條件,國家→滅絕，人民／軍隊／資產不刪,TRUE,10,大型世界歷史,TRUE
-EV_WAR_START,戰爭開始,戰爭,外交/政治決策,國家,合法敵對條件,建立戰爭狀態,TRUE,9,重大戰爭進世界史,TRUE
+EV_WAR_START,戰爭開始,戰爭,外交/政治決策,國家,合法宣戰權（47J）；宣戰理由非前置（47I）,建立戰爭狀態,TRUE,9,重大戰爭進世界史,TRUE
 EV_PEACE,和平條約,外交,Treaty完成,國家,雙方履約,結束戰爭並執行條款,TRUE,9,不修復既有破壞,TRUE
 EV_RELIGION_FOUND,宗教創立,宗教,Founder成功創教,角色,創教條件,建立宗教+神祇／神系+創立者信徒,TRUE,9,教義由特性池產生,TRUE
 EV_SCHISM,宗教分裂,宗教,內部Doctrine/政治條件,宗教／派系,分裂成立,建立新宗教實體,TRUE,8,神祇分配需唯一,TRUE

@@ -3,6 +3,7 @@ WORLD_DAYS_PER_YEAR,時間,一年天數,365,int,日,固定世界曆法基準,TRU
 WORLD_MONTHS_PER_YEAR,時間,一年月份,12,int,月,固定世界曆法基準,TRUE
 WORLD_HOURS_PER_DAY,時間,一天小時,24,int,小時,固定世界曆法基準,TRUE
 WORLD_FEB_DAYS,時間,二月天數,28,int,日,目前不設閏年,TRUE
+WORLD_MONTH_DAYS,時間,各月天數（1～12月）,31|28|31|30|31|30|31|31|30|31|30|31,enum_list,日,公曆平年（2026-10-14 使用者裁決）；依序為1～12月，合計須等於 WORLD_DAYS_PER_YEAR，第2項須等於 WORLD_FEB_DAYS,TRUE
 PLAYER_ACTION_HOURS,時間,一般玩家行動節奏,3,int,小時,顯示／操作節奏，不代表底層最小刻,TRUE
 LANGUAGE_MASTER_LEVEL,語言,完整掌握語言等級,3,int,層級,Lv3 才能讀寫,TRUE
 LANGUAGE_SPEAKER_LEVEL,語言,活躍語言使用者最低等級,2,int,層級,Lv2+ 算使用者,TRUE

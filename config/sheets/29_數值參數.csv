@@ -1,6 +1,6 @@
 ParameterID,系統,參數名稱,預設值,最小值,最大值,單位,資料型別,說明,是否已平衡,Enabled
 P_FOOD_LOSS_YEAR,生存,食物整體年平均損耗率,0.5,0,1,比例,number,世界基準；每種食物定義再有自己的腐敗率,FALSE,TRUE
-P_WATER_DEHYDRATION_RATE,生存,缺水惡化倍率,2,1,5,x,number,相對飢餓惡化速度的暫定倍率,FALSE,TRUE
+P_WATER_DEHYDRATION_RATE,生存,缺水惡化倍率,2,1,5,x,number,【TEMP】相對飢餓惡化速度的暫定倍率,FALSE,TRUE
 P_HP_PREGNANCY_THRESHOLD,生育,正常受孕HP門檻,0.5,0,1,比例,number,HP低於50%降低受孕並提高流產風險,TRUE,TRUE
 P_FAITH_THRESHOLD,宗教,正式信仰值門檻,50,0,100,信仰,int,>=50正式信徒,TRUE,TRUE
 P_STATE_LANDLESS_YEARS,政治,國家無領土滅亡年限,10,1,100,年,int,已定案,TRUE,TRUE
