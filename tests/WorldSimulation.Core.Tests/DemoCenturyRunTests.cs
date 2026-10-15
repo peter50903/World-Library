@@ -185,15 +185,20 @@ public sealed class DemoCenturyRunTests
     }
 
     [Fact]
-    public void LivingHumanRunHasBirthsAndNaturalDeathsWithZeroConservationErrors()
+    public void LivingHumanRunReconcilesBirthsAndDeathsByCauseWithZeroConservationErrors()
     {
-        // C02：人類繁衍情境（初始 18～22 歲、TEMP 自然死亡風險隨年齡上升），45 年內出生與自然死亡都會發生，
-        // 年度對帳把出生、餓死、自然死亡分開對事件，不再把合法出生／自然死亡誤報為錯誤。
+        // C02：人類繁衍情境的年度對帳把出生、餓死、自然死亡分開對事件，不再把合法出生誤報為錯誤。
+        // 實測（CI，2026-10-15）：種子 42 跑 45 年＝出生 15、餓死 27、自然死亡 0，45 年底人口 0；
+        // 種子 7／1／2／3 跑 70 年同樣在 45 年內因餓死滅絕、自然死亡 0（TEMP 自然死亡風險 60 歲起，
+        // 初始 18～22 歲的人口活不到 60 歲）。所以本情境量測不到自然死亡；自然死亡的對帳
+        // 由 YearSummaryReconcilesBirthsStarvationAndNaturalDeathsSeparately（年度）與
+        // M1HumanLifecycleCoverageTests（M1_POP）覆蓋，這裡仍逐年檢查自然死亡＝帶原因事件。
         const int years = 45;
         var report = DemoCenturyRun.Run(42, years, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.LivingForagingSample);
         AssertCenturyIsConserved(report, years);
         Assert.True(report.Years.Sum(y => y.Births) > 0, "人類繁衍情境 45 年內應有出生。");
-        Assert.True(report.Years.Sum(y => y.NaturalDeaths) > 0, "人類繁衍情境 45 年內應有自然死亡。");
+        Assert.All(report.Years, y => Assert.Equal(y.NaturalDeaths, y.NaturalDeathEvents));
+        Assert.Equal(report.Years.Sum(y => y.Births), report.Years.Sum(y => y.BirthEvents));
     }
 
     [Theory]
