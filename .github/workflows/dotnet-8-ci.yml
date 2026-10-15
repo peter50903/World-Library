@@ -306,12 +306,12 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_FORAGING_OK: Weeks=5 Harvest=[0-9]+ Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1' /tmp/godot-foraging.log
-          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_WINDOW_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-controls-window.log
-          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-controls-window.log; then
-            echo "Godot floating controls window smoke failed."
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUD_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-hud.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-hud.log; then
+            echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -q 'WORLD_SIM_WINDOW_OK: Detached=1 Resizable=1 Autoscale=1 Reopen=1' /tmp/godot-controls-window.log
+          grep -q 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2' /tmp/godot-hud.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."
