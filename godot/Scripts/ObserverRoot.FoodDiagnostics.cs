@@ -229,7 +229,7 @@ public partial class ObserverRoot
 
         // 損毀存檔被拒：世界與畫面都不變。
         System.IO.Directory.CreateDirectory(DemoSaveSlots.DefaultDirectory);
-        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":2,\"State\":");
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":3,\"State\":");
         RefreshSlots();
         var worldBefore = _world.ExportTempSave();
         var panelBefore = _foodInfo.Text;

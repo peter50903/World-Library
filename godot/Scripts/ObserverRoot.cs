@@ -986,7 +986,7 @@ public partial class ObserverRoot : Control
         GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
 
         System.IO.Directory.CreateDirectory(DemoSaveSlots.DefaultDirectory);
-        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":2,\"State\":");
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":3,\"State\":");
         RefreshSlots();
         var before = _world.ExportTempSave();
         loadButtons[3].EmitSignal(BaseButton.SignalName.Pressed);
