@@ -8,3 +8,4 @@ TestResults/
 godot/.godot/
 godot/.mono/
 godot/.godot-sharp/
+__pycache__/
