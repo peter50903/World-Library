@@ -53,7 +53,7 @@ public sealed partial class DemoObserverWorld
     private const string DailyWorkKey = "DEMO_DAY_TICK"; // C05：只推進時鐘，不做帳。
     private const string WeeklyWorkKey = "DEMO_WEEKLY_SETTLEMENT";
 
-    private readonly DemoScenario _scenario;
+    private readonly WorldRecipe _recipe;
     private readonly DemoWeeklyTempConfig _weekly;
     private DemoTempDemography? _demography;
 
@@ -77,27 +77,28 @@ public sealed partial class DemoObserverWorld
     {
     }
 
+    /// <summary>以世界種子建立（歷史種子由世界種子衍生）；等同 <see cref="WorldRecipe.ForSeeds"/>(scenario.Seed)。</summary>
     public DemoObserverWorld(DemoScenario scenario, DemoWeeklyTempConfig weekly)
-        : this(scenario, weekly, historySeed: null)
+        : this(WorldRecipe.ForSeeds((scenario ?? throw new ArgumentNullException(nameof(scenario))).Seed), weekly)
     {
     }
 
     /// <summary>
-    /// C05 TEST ONLY：<paramref name="historySeed"/> 傳給 <see cref="RngRegistry.Create"/>，證明只換歷史種子時
-    /// 地圖、聚落與初始人口不變。玩家輸入歷史種子的入口留給 C06（世界配方）。
+    /// 第 02 章 a 節：依世界配方建立。世界種子決定地圖、聚落與初始人口；歷史種子（輸入或衍生）
+    /// 只影響之後的歷史亂數流（41A SEED_WORLD、SEED_HISTORY）。
     /// </summary>
-    internal DemoObserverWorld(DemoScenario scenario, DemoWeeklyTempConfig weekly, ulong? historySeed)
+    public DemoObserverWorld(WorldRecipe recipe, DemoWeeklyTempConfig weekly)
     {
-        ArgumentNullException.ThrowIfNull(scenario);
+        ArgumentNullException.ThrowIfNull(recipe);
         ArgumentNullException.ThrowIfNull(weekly);
         weekly.Validate();
 
-        _scenario = scenario;
+        _recipe = recipe;
         _weekly = weekly;
         // V0-03B: ONE world RngRegistry. The TEMP map (GEOGRAPHY) and TEMP sites (ECOLOGY_INIT only, C05)
         // are generated once here and cached. C05: nothing draws RNG at run time (RESOURCE is never
         // drawn after the opening; POP is reserved for birth/death, 41A SEED_POP).
-        _rng = RngRegistry.Create(scenario.Seed, historySeed);
+        _rng = RngRegistry.Create(recipe.WorldSeed, recipe.HistorySeedInput);
         Map = DemoHexWorld.Generate(_rng);
         var openingIds = new EntityIdAllocator();
         _sites = DemoWorldSites.Generate(Map, _rng,
@@ -118,7 +119,7 @@ public sealed partial class DemoObserverWorld
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
-            _demography = DemoTempDemography.Open(scenario.Seed,
+            _demography = DemoTempDemography.Open(recipe.WorldSeed,
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds);
         _entityIds = openingIds.Capture();
 
@@ -126,6 +127,12 @@ public sealed partial class DemoObserverWorld
         _scheduler.Schedule(OneDay, DailyWorkKey);
         _scheduler.Schedule(OneWeek, WeeklyWorkKey);
     }
+
+    /// <summary>第 02 章 a 節：本世界的配方（種子、規則版本、設定雜湊、程式版本）。</summary>
+    public WorldRecipe Recipe => _recipe;
+
+    /// <summary>本世界使用的 TEMP 生存情境（以新種子重建同情境世界時沿用）。</summary>
+    public DemoWeeklyTempConfig WeeklyConfig => _weekly;
 
     /// <summary>The cached TEMP hex map generated from this world's registry (never regenerated).</summary>
     public DemoHexWorld Map { get; }

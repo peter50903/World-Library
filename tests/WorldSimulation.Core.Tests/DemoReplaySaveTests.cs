@@ -54,7 +54,9 @@ public sealed class DemoReplaySaveTests
         foreach (var mutate in new Action<JsonNode>[]
         {
             doc => doc["Version"] = 99,
-            doc => doc["Scenario"]!["Seed"] = 99UL,
+            doc => doc["Recipe"]!["WorldSeed"] = 99UL,
+            doc => doc["Recipe"]!["HistorySeedInput"] = 5UL,
+            doc => doc["Recipe"]!["RulesVersion"] = "RULES-X",
             doc => doc["State"]!["WeekReports"]![0]!["RngCounters"]![1]!["Before"] = 5UL,
             doc => doc["State"]!["Random"]!["Streams"]![0]!["DrawCounter"] = ulong.MaxValue,
             doc => doc["State"]!["EntityIds"]!["NextValue"] = 1UL,
@@ -90,7 +92,7 @@ public sealed class DemoReplaySaveTests
         for (var i = 0; i < 9; i++)
             plain.AdvanceOneDay();
         var doc = JsonNode.Parse(plain.ExportTempSave())!;
-        doc["Scenario"]!["Population"] = 6;
+        doc["Recipe"]!["Population"] = 6;
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
 

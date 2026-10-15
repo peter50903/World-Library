@@ -1,4 +1,5 @@
 using Godot;
+using System.Globalization;
 using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
@@ -34,6 +35,8 @@ public partial class ObserverRoot : Control
     private static readonly bool ScenarioSmoke = OS.HasEnvironment("WORLD_SIM_SCENARIO_SMOKE");
     // #87: CI-only smoke for play / pause. Normal players never set it.
     private static readonly bool PlaybackSmoke = OS.HasEnvironment("WORLD_SIM_PLAYBACK_SMOKE");
+    // 第 02 章 a 節：CI-only smoke for the world / history seed inputs. Normal players never set it.
+    private static readonly bool RecipeSmoke = OS.HasEnvironment("WORLD_SIM_RECIPE_SMOKE");
 
     /// <summary>
     /// #81：玩家可在畫面上選的四種既有 TEMP 生存情境（順序＝下拉選單順序）。
@@ -48,6 +51,7 @@ public partial class ObserverRoot : Control
         || OS.HasEnvironment("WORLD_SIM_SAVE_SMOKE")
         || OS.HasEnvironment("WORLD_SIM_MAP_INPUT_SMOKE")
         || OS.HasEnvironment("WORLD_SIM_SCENARIO_SMOKE")
+        || OS.HasEnvironment("WORLD_SIM_RECIPE_SMOKE")
         || OS.HasEnvironment("WORLD_SIM_PLAYBACK_SMOKE")
         || OS.HasEnvironment("WORLD_SIM_EVENT_DETAIL_SMOKE")
         || OS.HasEnvironment("WORLD_SIM_ALERT_SMOKE")
@@ -86,6 +90,10 @@ public partial class ObserverRoot : Control
     /// <summary>每次都建立全新的 Core 示範世界；Godot 不自行計算人口、食物或路線。</summary>
     private static DemoObserverWorld CreateTempWorld(TempScenario scenario)
         => new(DemoScenario.Sample(SeedFor(scenario)), ConfigFor(scenario));
+
+    /// <summary>第 02 章 a 節：玩家輸入的世界配方＋目前選的 TEMP 情境。</summary>
+    private static DemoObserverWorld CreateTempWorld(TempScenario scenario, WorldRecipe recipe)
+        => new(recipe, ConfigFor(scenario));
 
     private static string PickerLabel(TempScenario scenario) => scenario switch
     {
@@ -153,6 +161,11 @@ public partial class ObserverRoot : Control
     private Button _confirmScenarioButton = null!;
     private Button _cancelScenarioButton = null!;
     private TempScenario? _pendingScenario;
+    // 第 02 章 a 節：世界種子／歷史種子輸入；確認列待確認的配方（null＝情境切換沿用預設種子）。
+    private LineEdit _worldSeedInput = null!;
+    private LineEdit _historySeedInput = null!;
+    private Button _seedStartButton = null!;
+    private WorldRecipe? _pendingRecipe;
     // #87: play / pause. The clock only decides HOW MANY days to advance; Core advances them one by one.
     private readonly PlaybackClock _playback = new();
     private Button _playButton = null!;
@@ -252,6 +265,18 @@ public partial class ObserverRoot : Control
             _scenarioPicker.AddItem(PickerLabel(scenario), (int)scenario);
         _scenarioPicker.ItemSelected += OnScenarioPicked;
         side.AddChild(_scenarioPicker);
+        // 第 02 章 a 節：世界種子＋歷史種子（留空＝由世界種子衍生），搭配上方情境建立新世界。
+        var seedRow = new HBoxContainer();
+        side.AddChild(seedRow);
+        seedRow.AddChild(new Label { Text = "世界種子" });
+        _worldSeedInput = new LineEdit { Text = _world.TempWorldSeed.ToString(CultureInfo.InvariantCulture), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        seedRow.AddChild(_worldSeedInput);
+        seedRow.AddChild(new Label { Text = "歷史種子" });
+        _historySeedInput = new LineEdit { PlaceholderText = "留空＝由世界種子衍生", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        seedRow.AddChild(_historySeedInput);
+        _seedStartButton = new Button { Text = "以此種子建立世界", CustomMinimumSize = new Vector2(0, 36) };
+        _seedStartButton.Pressed += RequestSeedWorld;
+        side.AddChild(_seedStartButton);
         _startScenarioButton = new Button
         {
             Text = "開始新的 TEMP 示範",
@@ -274,7 +299,7 @@ public partial class ObserverRoot : Control
         _confirmRow.AddChild(_cancelScenarioButton);
         side.AddChild(new Label
         {
-            Text = "局部饑荒／開拓沿用既有示範種子搜尋（42，再 1～30），選第一個會在示範期間發生遷徙／建立新聚落的種子；實際種子顯示在上方。存檔槽不會因切換被刪除或覆寫。",
+            Text = "局部饑荒／開拓沿用既有示範種子搜尋（42，再 1～30），選第一個會在示範期間發生遷徙／建立新聚落的種子；實際種子顯示在上方（「世界種子」）。存檔槽不會因切換被刪除或覆寫。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         });
         SyncScenarioPicker();
@@ -416,6 +441,8 @@ public partial class ObserverRoot : Control
             VerifyMapInputSmoke();
         if (ScenarioSmoke)
             VerifyScenarioSwitchSmoke(nextButton, skipButton, saveButtons, loadButtons);
+        if (RecipeSmoke)
+            VerifyRecipeSmoke(nextButton);
         if (EventDetailSmoke)
             VerifyEventDetailSmoke(nextButton);
         if (PlaybackSmoke)
@@ -763,6 +790,7 @@ public partial class ObserverRoot : Control
         if (_pendingScenario is not null)
         {
             _pendingScenario = null;
+            _pendingRecipe = null;
             _confirmRow.Visible = false;
         }
         _notice.Text = $"已選擇「{PickerLabel((TempScenario)index)}」。按「開始新的 TEMP 示範」才會建立新世界；" +
@@ -791,12 +819,75 @@ public partial class ObserverRoot : Control
     {
         if (_pendingScenario is not { } target)
             return;
-        StartScenario(target);
+        if (_pendingRecipe is { } recipe)
+            StartRecipe(target, recipe);
+        else
+            StartScenario(target);
+    }
+
+    /// <summary>第 02 章 a 節：依輸入的世界／歷史種子與目前情境建立新世界；格式錯誤時世界不變。</summary>
+    private void RequestSeedWorld()
+    {
+        PausePlayback();
+        if (!TryReadRecipe(out var recipe))
+        {
+            _notice.Text = "種子必須是 0～18446744073709551615 的整數，世界未改變。";
+            return;
+        }
+        var target = (TempScenario)_scenarioPicker.Selected;
+        var day = _world.Snapshot().DaysElapsed;
+        if (day == 0)
+        {
+            StartRecipe(target, recipe);
+            return;
+        }
+
+        _pendingScenario = target;
+        _pendingRecipe = recipe;
+        _confirmRow.Visible = true;
+        _notice.Text = $"⚠ 目前世界（{_world.TempScenarioDisplayName}）已推進到第 {day} 日。" +
+            $"以世界種子 {recipe.WorldSeed}、歷史種子 {(recipe.HistorySeedDerived ? "衍生" : recipe.HistorySeed.ToString(CultureInfo.InvariantCulture))} 建立「{PickerLabel(target)}」會捨棄目前未存檔的進度；" +
+            "三個存檔槽不會被刪除或覆寫。請按「確認切換」或「取消」。";
+    }
+
+    private bool TryReadRecipe(out WorldRecipe recipe)
+    {
+        recipe = null!;
+        if (!ulong.TryParse(_worldSeedInput.Text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var worldSeed))
+            return false;
+        ulong? history = null;
+        var historyText = _historySeedInput.Text.Trim();
+        if (historyText.Length > 0)
+        {
+            if (!ulong.TryParse(historyText, NumberStyles.None, CultureInfo.InvariantCulture, out var h))
+                return false;
+            history = h;
+        }
+        recipe = WorldRecipe.ForSeeds(worldSeed, history);
+        return true;
+    }
+
+    private void StartRecipe(TempScenario target, WorldRecipe recipe)
+    {
+        DemoObserverWorld fresh;
+        try
+        {
+            fresh = CreateTempWorld(target, recipe);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _notice.Text = $"無法建立世界，目前世界未改變：{ex.Message}";
+            return;
+        }
+
+        InstallWorld(fresh, "TEMP 新示範世界已建立；請點選地圖格或聚落查看資料。");
+        _notice.Text = $"已建立新世界：{PickerLabel(target)}｜{fresh.Recipe.Describe()}｜第 0 日。";
     }
 
     private void CancelNewScenario()
     {
         _pendingScenario = null;
+        _pendingRecipe = null;
         _confirmRow.Visible = false;
         SyncScenarioPicker();
         _notice.Text = $"已取消切換，世界未改變（{_world.TempScenarioDisplayName}，第 {_world.Snapshot().DaysElapsed} 日）。";
@@ -827,7 +918,10 @@ public partial class ObserverRoot : Control
         _world = world;
         ResetMajorEventAlert(); // #95: no stale alert from the previous world.
         _pendingScenario = null;
+        _pendingRecipe = null;
         _confirmRow.Visible = false;
+        _worldSeedInput.Text = world.Recipe.WorldSeed.ToString(CultureInfo.InvariantCulture);
+        _historySeedInput.Text = world.Recipe.HistorySeedInput?.ToString(CultureInfo.InvariantCulture) ?? "";
         _hexMap.World = world.Map;
         _hexMap.Sites = world.Sites;
         _hexMap.MainRiverTiles = world.UsesSharedForaging
@@ -870,7 +964,7 @@ public partial class ObserverRoot : Control
             if (_world.ExportTempSave() != expected.ExportTempSave() || _world.Snapshot().DaysElapsed != 0)
                 Fail($"{scenario} was not rebuilt as a fresh day-0 Core world.");
             if (!_status.Text.Contains($"目前情境：【TEMP 示範】{expected.TempScenarioDisplayName}", StringComparison.Ordinal)
-                || !_status.Text.Contains($"實際種子：{expected.TempWorldSeed}", StringComparison.Ordinal)
+                || !_status.Text.Contains($"世界種子：{expected.TempWorldSeed}", StringComparison.Ordinal)
                 || !_status.Text.Contains("世界日期：第 0 日", StringComparison.Ordinal)
                 || _scenarioPicker.Selected != (int)scenario || _confirmRow.Visible)
                 Fail($"{scenario} labels / picker not refreshed.");
@@ -1206,7 +1300,7 @@ public partial class ObserverRoot : Control
         _status.Text =
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
-            $"實際種子：{_world.TempWorldSeed}\n" +
+            $"{_world.Recipe.DescribeLines()}\n" +
             $"世界日期：第 {(int)snapshot.WorldTime.TotalDays} 日（{DateText((int)snapshot.WorldTime.TotalDays)}）\n" +
             $"時間推進：{_playback.StatusText}\n" +
             // #61: one population ledger (settlements + migrants, each person counted once) ...
