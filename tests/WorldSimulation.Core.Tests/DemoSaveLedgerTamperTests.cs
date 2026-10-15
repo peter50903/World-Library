@@ -154,6 +154,7 @@ public sealed class DemoSaveLedgerTamperTests
         foreach (var week in Weeks(doc).Select(w => w!))
         {
             sb.Append(inv, $"week{WeekOf(week)}@{week["WorldTime"]!.Deserialize<TimeSpan>().Ticks}:ids{week["EntityIdNextOpening"]!.GetValue<long>()}-{week["EntityIdNextClosing"]!.GetValue<long>()};");
+            foreach (var c in week["RngCounters"]!.Deserialize<List<DemoRngCounter>>()!) sb.Append(inv, $"rngc{c.StreamId}={c.Before}-{c.After};");
             foreach (var ledger in week["Settlements"]!.Deserialize<List<DemoSettlementWeekLedger>>()!) sb.Append(inv, $"{ledger};");
             foreach (var e in week["Events"]!.Deserialize<List<DemoSettlementEvent>>()!) sb.Append(inv, $"{e};");
             foreach (var m in week["Migrations"]!.Deserialize<List<DemoMigrationWeekLedger>>()!) sb.Append(inv, $"{m};");
