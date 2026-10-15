@@ -52,9 +52,9 @@ jobs:
             grep -q '第 1 日' /tmp/observer-demo-smoke.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":2,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":3,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 2 版' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 3 版' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
             grep -q '槽 1：（空）' /tmp/observer-slots.log
@@ -64,7 +64,18 @@ jobs:
             grep -q '存檔槽必須是 1～3' /tmp/observer-slots.log
             # The failed loads above must not change the world: the last status line is still day 9.
             test "$(grep -o '世界狀態｜種子 42｜第 [0-9]* 日' /tmp/observer-slots.log | tail -1)" = '世界狀態｜種子 42｜第 9 日'
+            # C04: an older (v2) save is refused with the single "too old" message, in the slot list and on load.
+            printf '{"Version":2}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
+            printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 2 版，目前第 3 版））' /tmp/observer-old-save.log
+            grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
+            # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 > /tmp/observer-one-year.log
+            cat /tmp/observer-one-year.log
+            # Line 1 is the run title; the calendar description is the first line after it.
+            sed -n 2p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-one-year.log
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
             # #82: the year length comes from config/sheets/01_世界參數.csv WORLD_DAYS_PER_YEAR (365).
@@ -73,6 +84,10 @@ jobs:
             grep -q '第 2 年（至第 730 日）｜週結算 52 次' /tmp/observer-century.log
             grep -q '第 7 年（至第 2555 日）｜週結算 53 次' /tmp/observer-century.log
             grep -q '第 100 年（至第 36500 日）' /tmp/observer-century.log
+            # C08: each yearly line ends with the year-end date from Core's calendar.
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-century.log
+            grep -q '｜年末 第 100 年 12 月 31 日' /tmp/observer-century.log
+            grep -q 'WORLD_MONTH_DAYS' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年（第 36500 日）' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
             grep -q '守恆錯誤 0，' /tmp/observer-century.log
@@ -163,6 +178,8 @@ jobs:
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
+          # C08: status/ledger dates come from Core's calendar (01 sheet WORLD_MONTH_DAYS).
+          grep -q 'WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
           # V0-04B: TEMP famine scenario — hunger and caused starvation events must appear
@@ -188,7 +205,7 @@ jobs:
             echo "Godot reported a runtime error in the settlement-founding scenario."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_SETTLE_OK: Seed=[0-9]+ Day=[0-9]+ Id=[3-9][0-9]* From=[1-4] Founders=[1-9][0-9]* Week=[1-9][0-9]*' /tmp/godot-settle.log
+          grep -Eq 'WORLD_SIM_SETTLE_OK: Seed=[0-9]+ Day=[0-9]+ Id=[1-9][0-9]* From=[1-4] Founders=[1-9][0-9]* Week=[1-9][0-9]*' /tmp/godot-settle.log
           # #64: real Godot _GuiInput wheel zoom, middle drag, hit-test after transform,
           # visible hex gap not selected, and unchanged Core world/RNG state.
           WORLD_SIM_MAP_INPUT_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-map-input.log
@@ -275,7 +292,7 @@ jobs:
             echo "Godot human demography smoke failed."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUMAN_OK: Births=[1-9][0-9]* ChildWorkers=0 Save=1' /tmp/godot-human.log
+          grep -Eq 'WORLD_SIM_HUMAN_OK: Births=[1-9][0-9]* ChildWorkers=0 Children=[1-9][0-9]* Save=1' /tmp/godot-human.log
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."

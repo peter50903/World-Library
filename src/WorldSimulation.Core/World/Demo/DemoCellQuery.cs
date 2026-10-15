@@ -91,7 +91,7 @@ public static class DemoCellQuery
         var settlement = world.Sites.SettlementAt(cell.Column, cell.Row);
         if (settlement is not null)
         {
-            lines.Add($"聚落：{settlement.Name}（TEMP 示範編號 {settlement.Id}）");
+            lines.Add($"聚落：{settlement.Name}（實體 ID {settlement.Id}）");
             if (settlement.IsFounded)
             {
                 // V0-06B：遷徙者建立的聚落（人口只來自開拓隊）。

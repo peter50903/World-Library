@@ -1,4 +1,5 @@
 using Godot;
+using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 
@@ -157,8 +158,16 @@ public partial class ObserverRoot : Control
     private Button _playButton = null!;
     private OptionButton _speedPicker = null!;
 
+    // C08：世界曆法（01 表）由 Core 換算；Godot 只在邊界讀檔一次。讀不到時保留錯誤，不給預設值。
+    private WorldCalendarRules? _calendar;
+    private string? _calendarError;
+
+    private string DateText(int day)
+        => _calendar is not null ? _calendar.Format(day) : $"曆法讀取失敗：{_calendarError}";
+
     public override void _Ready()
     {
+        _calendar = WorldCalendarFile.TryLoad(out _calendarError);
         var layout = new VBoxContainer();
         AddChild(layout);
         layout.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
@@ -496,7 +505,14 @@ public partial class ObserverRoot : Control
                 Position = _hexMap.CellCenter(_world.Map.GetCell(founded.Column, founded.Row))
             });
             var source = _world.Sites.Settlements.Single(s => s.Id == founded.FoundedFromSettlementId);
+            // C04：新聚落 ID 由世界唯一分配器發號，必須大於開局全部 ID（開局 ID 為 1～開局下一號−1）。
+            var openingMaxId = _world.Sites.Settlements.Where(s => !s.IsFounded).Select(s => (long)s.Id)
+                .Concat(_world.Sites.ResourcePoints.Where(p => _world.Sites.Settlements.Single(s => s.Id == p.SettlementId).IsFounded == false).Select(p => (long)p.Id))
+                .Concat(_world.Sites.PopGroups.Select(g => (long)g.Id)).Max();
+            if (founded.Id <= openingMaxId || (ulong)founded.Id >= _world.EntityIdNextValue)
+                throw new InvalidOperationException("Founded settlement entity ID is not newer than every opening ID.");
             if (!_cellInfo.Text.Contains($"聚落：{founded.Name}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"實體 ID {founded.Id}", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"來源聚落：{source.Name}", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"目前人口：{_world.SettlementPopulation(founded.Id)}", StringComparison.Ordinal))
             {
@@ -535,6 +551,15 @@ public partial class ObserverRoot : Control
                 throw new InvalidOperationException("Godot weekly ledger panel did not show Core's balanced ledger.");
             }
             GD.Print($"WORLD_SIM_WEEKLY_LEDGER_OK: Weeks={_world.WeekReports().Count} Settlements={latest.Settlements.Count}");
+
+            // C08：狀態欄與週帳標頭的年月日來自 Core 曆法（01 表 WORLD_MONTH_DAYS），第 31 日＝第 1 年 1 月 31 日。
+            if (_calendar is null
+                || !_status.Text.Contains("世界日期：第 31 日（第 1 年 1 月 31 日）", StringComparison.Ordinal)
+                || !_ledger.Text.Contains("第 4 週帳目（第 1 年 1 月 28 日結算，世界第 28 日）", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException($"Godot calendar display is wrong: {_calendarError}");
+            }
+            GD.Print("WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28");
 
             // Godot runs the same input handler used by real mouse clicks;
             // selected terrain must be from Core's immutable demo cell.
@@ -985,7 +1010,7 @@ public partial class ObserverRoot : Control
         GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
 
         System.IO.Directory.CreateDirectory(DemoSaveSlots.DefaultDirectory);
-        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":2,\"State\":");
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":3,\"State\":");
         RefreshSlots();
         var before = _world.ExportTempSave();
         loadButtons[3].EmitSignal(BaseButton.SignalName.Pressed);
@@ -1010,12 +1035,13 @@ public partial class ObserverRoot : Control
 
     private static string TerrainName(DemoTerrain terrain) => DemoCellQuery.TerrainName(terrain);
 
-    private static string LedgerText(DemoWeekReport? week)
+    private string LedgerText(DemoWeekReport? week)
     {
         if (week is null)
             return "尚未到第一次週結算（第 7 日）。請按「下一天」推進。";
 
-        var lines = new List<string> { $"第 {week.Week} 週帳目（第 {(int)week.WorldTime.TotalDays} 日結算）" };
+        var settledDay = (int)week.WorldTime.TotalDays;
+        var lines = new List<string> { $"第 {week.Week} 週帳目（{DateText(settledDay)}結算，世界第 {settledDay} 日）" };
         foreach (var l in week.Settlements)
         {
             lines.Add("");
@@ -1177,7 +1203,7 @@ public partial class ObserverRoot : Control
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
             $"實際種子：{_world.TempWorldSeed}\n" +
-            $"世界日期：第 {snapshot.DaysElapsed} 日\n" +
+            $"世界日期：第 {(int)snapshot.WorldTime.TotalDays} 日（{DateText((int)snapshot.WorldTime.TotalDays)}）\n" +
             $"時間推進：{_playback.StatusText}\n" +
             // #61: one population ledger (settlements + migrants, each person counted once) ...
             $"聚落人口合計：{_world.SettledPopulation}\n" +

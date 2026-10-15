@@ -143,6 +143,8 @@ public static class DemoSaveSlots
             return Bad("檔頭損毀");
         }
 
+        if (version is not null && DemoObserverWorld.IsOutdatedTempSaveVersion(version.Value))
+            return Bad(DemoObserverWorld.OutdatedTempSaveMessage(version.Value));
         if (version is null || !DemoObserverWorld.IsSupportedTempSaveVersion(version.Value))
             return Bad("存檔版本不受支援");
         if (scenario is null || weekly is null || days is null || days < 0)

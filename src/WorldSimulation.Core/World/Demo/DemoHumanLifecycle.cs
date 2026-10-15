@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -43,11 +44,13 @@ internal static class DemoHumanLifecycle
 
         // Pregnancy begins only with food that the Core's TRUE weekly account
         // actually covered. Birth and natural death occur at this week's end.
+        // C04：新生兒接在本週結算的配號之後，向同一個私有分配器取號。
+        var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var result = afterStarvation.AdvanceWeek(report.Week, id =>
         {
             var ledger = report.Settlements.Single(s => s.SettlementId == id);
             return ledger.FoodShortage == 0 && ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0;
-        }, Rules);
+        }, Rules, entityAllocator);
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
         var ledgers = new List<DemoSettlementWeekLedger>(report.Settlements.Count);
@@ -98,11 +101,17 @@ internal static class DemoHumanLifecycle
                 kind, 1, cause, EventId: eventId++));
         }
 
-        var revised = report with { Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly() };
+        var entityIds = entityAllocator.Capture();
+        var revised = report with
+        {
+            Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(),
+            EntityIdNextClosing = DemoEntityIds.NextValue(entityIds)
+        };
         DemoWeeklySettlement.Verify(revised);
         return (weekly with
         {
-            Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable()
+            Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),
+            EntityIds = entityIds
         }, result.Population);
     }
 
@@ -118,8 +127,11 @@ internal static class DemoHumanLifecycle
             if (stored.Settlements.Any(l => l.AdultWorkersOpening !=
                 current.AdultsIn(l.SettlementId, Rules)))
                 throw new InvalidDataException("TEMP adult workers differ from actual human ages.");
+            // C04：新生兒的號碼位於本週配號區間的尾端；剝掉出生後，分配器回到出生前的位置重新發號。
+            var births = stored.Settlements.Sum(l => l.Births);
             var stripped = stored with
             {
+                EntityIdNextClosing = checked(stored.EntityIdNextClosing - births),
                 Events = stored.Events.Where(e => e.Kind is not
                     (DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)).ToArray(),
                 Settlements = stored.Settlements.Select(l => l with
@@ -137,7 +149,9 @@ internal static class DemoHumanLifecycle
                 ImmutableSortedDictionary<int, long>.Empty,
                 stripped.Settlements.ToImmutableSortedDictionary(l => l.SettlementId, l => l.PopulationClosing),
                 stripped.Settlements.ToImmutableSortedDictionary(l => l.SettlementId, l => l.HungerDebtClosing),
-                ImmutableList<DemoMigrationBatch>.Empty, 1, sites);
+                ImmutableList<DemoMigrationBatch>.Empty,
+                new EntityIdAllocatorSnapshot(EntityIdAllocatorSnapshot.CurrentVersion,
+                    checked((ulong)stripped.EntityIdNextClosing), false), sites);
             var trial = Apply(temp, current, nextEventId);
             if (!trial.Outcome.Report.Settlements.SequenceEqual(stored.Settlements)
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))

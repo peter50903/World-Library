@@ -164,7 +164,7 @@ public partial class ObserverRoot
         var lines = new List<string>
         {
             $"事件 #{e.EventId}｜第 {e.Week} 週（世界第 {(int)e.WorldTime.TotalDays} 日）",
-            $"聚落：{e.SettlementName}（示範編號 {e.SettlementId}）｜種類：{DemoCausalIndex.KindText(e.Kind)}｜數量：{e.Count}",
+            $"聚落：{e.SettlementName}（實體 ID {e.SettlementId}）｜種類：{DemoCausalIndex.KindText(e.Kind)}｜數量：{e.Count}",
             e.MigrationBatchId > 0 ? $"遷徙隊伍：#{e.MigrationBatchId}" : "",
             $"原因說明：{e.Cause}",
             parent is null

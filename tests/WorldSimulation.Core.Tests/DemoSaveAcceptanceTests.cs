@@ -86,15 +86,9 @@ public sealed class DemoSaveAcceptanceTests
             foreach (var (point, day, json) in checkpoints)
             {
                 found.Add(point);
-                foreach (var version in new[] { 2, 1 })
+                foreach (var version in new[] { 3 })
                 {
-                    var file = json;
-                    if (version == 1)
-                    {
-                        var v1 = JsonNode.Parse(json)!;
-                        v1["Version"] = 1;
-                        file = v1.ToJsonString();
-                    }
+                    var file = json; // C04：只讀目前第 3 版；第 1、2 版另由 OlderSaveVersions_AreRejectedAsTooOld 驗證拒讀。
 
                     var loaded = DemoObserverWorld.ImportTempSave(file);
                     Assert.Equal(json, loaded.ExportTempSave()); // 讀入後的狀態＝存檔當時

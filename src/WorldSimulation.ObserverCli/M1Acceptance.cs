@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using WorldSimulation.Core.Config;
+using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 
@@ -164,63 +166,15 @@ public static class M1CheckCatalog
 
     internal static List<List<string>> ParseCsv(string text, string source)
     {
-        var rows = new List<List<string>>();
-        var row = new List<string>();
-        var field = new StringBuilder();
-        var inQuotes = false;
-        for (var i = 0; i < text.Length; i++)
+        // C08：CSV 切分只留 Core 一份（ParameterSheet.ParseCsv）；錯誤訊息原文不變。
+        try
         {
-            var c = text[i];
-            if (inQuotes)
-            {
-                if (c == '"')
-                {
-                    if (i + 1 < text.Length && text[i + 1] == '"')
-                    {
-                        field.Append('"');
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                    }
-                }
-                else
-                {
-                    field.Append(c);
-                }
-            }
-            else if (c == '"')
-            {
-                inQuotes = true;
-            }
-            else if (c == ',')
-            {
-                row.Add(field.ToString());
-                field.Clear();
-            }
-            else if (c == '\n')
-            {
-                row.Add(field.ToString());
-                field.Clear();
-                rows.Add(row);
-                row = new List<string>();
-            }
-            else if (c != '\r' && c != '﻿')
-            {
-                field.Append(c);
-            }
+            return ParameterSheet.ParseCsv(text);
         }
-
-        if (inQuotes)
+        catch (FormatException)
+        {
             throw new M1CatalogException($"M1 驗收清單有未關閉的引號：{source}");
-        if (field.Length > 0 || row.Count > 0)
-        {
-            row.Add(field.ToString());
-            rows.Add(row);
         }
-
-        return rows;
     }
 }
 
@@ -424,10 +378,9 @@ public static class M1Evaluator
     /// <summary>#82：第 N 次週結算在第 7N 日；歸屬結算日所在年份，年內週次＝該年的第幾次週結算。</summary>
     private static string At(M1RunData run, int week)
     {
+        // C08：年份與年內週次改由 Core 曆法換算（同一份算法），輸出逐字不變。
         var day = (long)week * DemoCenturyRun.DaysPerWeeklySettlement;
-        var year = (day - 1) / run.DaysPerYear + 1;
-        var yearStart = (year - 1) * run.DaysPerYear;
-        var weekInYear = week - yearStart / DemoCenturyRun.DaysPerWeeklySettlement;
+        var (year, weekInYear) = WorldCalendarRules.WeeklySettlementInYear(week, run.DaysPerYear);
         return $"種子 {run.Seed} 第 {year} 年第 {weekInYear} 週（第 {day} 日）";
     }
 
@@ -520,7 +473,7 @@ public static class M1Evaluator
     private static M1Finding PopulationLedger(M1RunData run)
     {
         var problems = new List<string>();
-        long births = 0, settledDeaths = 0, roadDeaths = 0, emigrants = 0, immigrants = 0;
+        long births = 0, settledStarvation = 0, naturalDeaths = 0, roadDeaths = 0, emigrants = 0, immigrants = 0;
         var previous = run.Initial;
         DemoWeekReport? previousReport = null;
         foreach (var report in run.Weeks)
@@ -540,9 +493,14 @@ public static class M1Evaluator
                         problems.Add($"{At(run, report.Week)} {Name(l)} 期初人口 {l.PopulationOpening}≠上週期末 {expectedOpening}（人口不能在週與週之間憑空增減或搬移）");
                 }
 
-                // #98：出生必須有帶原因的出生事件；示範沒有出生機制，所以任何出生都是沒有來源的人口。
-                if (l.Births != 0)
-                    problems.Add($"{At(run, report.Week)} {Name(l)} 帳上出生 {l.Births} 人，但沒有任何帶原因的出生事件（出生機制尚未實作）");
+                // #98／C02：出生必須逐筆有帶原因的出生事件（人類繁衍情境才會發生）；人數要與本週該聚落 Birth 事件合計一致。
+                var birthEvents = report.Events
+                    .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.Birth)
+                    .ToList();
+                var birthEventCount = birthEvents.Sum(e => e.Count);
+                if (birthEventCount != l.Births || birthEvents.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 帳上出生 {l.Births} 人，帶原因的出生事件 {birthEventCount} 人"
+                        + (birthEventCount == 0 ? "（沒有任何帶原因的出生事件）" : ""));
 
                 // #98：遷出／遷入兩邊都要有事件與隊伍帳，人數一致（漏記或改人數都抓得到）。
                 var leaveEvents = report.Events
@@ -562,14 +520,21 @@ public static class M1Evaluator
                     .Sum(m => m.PopulationClosing);
                 if (arriveEvents != l.Immigrants || arrivedPeople != l.Immigrants)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 遷入 {l.Immigrants} 人，抵達／建立事件 {arriveEvents} 人、隊伍抵達帳 {arrivedPeople} 人");
+                // C02：死亡按原因分類對帳——餓死對 StarvationDeath 事件、自然死亡對 NaturalDeath 事件。
                 var causedDeaths = report.Events
                     .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.StarvationDeath)
                     .ToList();
-                if (causedDeaths.Sum(e => e.Count) != l.Deaths || causedDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
-                    problems.Add($"{At(run, report.Week)} {Name(l)} 死亡 {l.Deaths} 人，帶原因的餓死事件 {causedDeaths.Sum(e => e.Count)} 人");
+                if (causedDeaths.Sum(e => e.Count) != l.StarvationDeaths || causedDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 餓死 {l.StarvationDeaths} 人，帶原因的餓死事件 {causedDeaths.Sum(e => e.Count)} 人");
+                var naturalEvents = report.Events
+                    .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.NaturalDeath)
+                    .ToList();
+                if (naturalEvents.Sum(e => e.Count) != l.NaturalDeaths || naturalEvents.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 自然死亡 {l.NaturalDeaths} 人，帶原因的自然死亡事件 {naturalEvents.Sum(e => e.Count)} 人");
                 wBirths += l.Births;
                 wDeaths += l.Deaths;
-                settledDeaths += l.Deaths;
+                settledStarvation += l.StarvationDeaths;
+                naturalDeaths += l.NaturalDeaths;
                 emigrants += l.Emigrants;
                 immigrants += l.Immigrants;
             }
@@ -613,10 +578,11 @@ public static class M1Evaluator
         var final = Final(run);
         return Judge(problems,
             $"世界人口（各聚落＋途中隊伍，只計一次）期初 {run.Initial.Population}＋出生 {births}"
-            + $"－死亡 {settledDeaths + roadDeaths}（聚落餓死 {settledDeaths}、途中餓死 {roadDeaths}，全部有帶原因事件）"
+            + $"－死亡 {settledStarvation + naturalDeaths + roadDeaths}（聚落餓死 {settledStarvation}、自然死亡 {naturalDeaths}、途中餓死 {roadDeaths}，全部有帶原因事件）"
             + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）；"
             + "逐聚落、逐隊伍期初＝上週期末，遷出／遷入人數與外移／抵達事件及隊伍帳一致"
-            + "。【覆蓋限制 TEMP】出生：示範規則固定為 0，帳上出生不為 0 即判失敗，但出生事件本身尚未實作；"
+            + "；出生與自然死亡逐聚落對帶原因的出生／自然死亡事件"
+            + "。【覆蓋限制 TEMP】出生只在人類繁衍情境發生，預設矩陣不含該情境；"
             + "具體化：個體具體化尚未實作（未實作，不是通過），沒有量測；這兩項只確認沒有憑空增減，不代表已驗證");
     }
 
