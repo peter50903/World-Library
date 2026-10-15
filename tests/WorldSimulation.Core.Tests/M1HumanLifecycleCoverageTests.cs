@@ -41,7 +41,9 @@ public sealed class M1HumanLifecycleCoverageTests
         return run with { Weeks = weeks };
     }
 
-    /// <summary>把某週一筆餓死事件（與週帳）改記為自然死亡：死亡總數與人口帳不變，只改原因分類。</summary>
+    /// <summary>把某週一筆餓死事件（與週帳）改記為自然死亡：死亡總數與人口帳不變，只改原因分類。
+    /// 目前 TEMP 人類情境真實輸出沒有自然死亡事件；依問答板 #25 使用者裁決 A（2026-10-15），
+    /// 從真實自然死亡事件刪除的反例延到 P1.1.04（餓死改隨機抽取）後補驗，本卡先用此改記反例。</summary>
     private static M1RunData WithOneStarvationRecordedAsNaturalDeath(M1RunData run)
     {
         var weeks = run.Weeks.ToList();

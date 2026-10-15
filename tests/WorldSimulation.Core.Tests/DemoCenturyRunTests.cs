@@ -193,6 +193,8 @@ public sealed class DemoCenturyRunTests
         // 初始 18～22 歲的人口活不到 60 歲）。所以本情境量測不到自然死亡；自然死亡的對帳
         // 由 YearSummaryReconcilesBirthsStarvationAndNaturalDeathsSeparately（年度）與
         // M1HumanLifecycleCoverageTests（M1_POP）覆蓋，這裡仍逐年檢查自然死亡＝帶原因事件。
+        // 依問答板 #25 使用者裁決 A（2026-10-15）：「累計自然死亡 >0」延到 P1.1.04（餓死改隨機抽取）
+        // 或正式人口設定接入後補驗；屆時在此加回 NaturalDeaths > 0 斷言。
         const int years = 45;
         var report = DemoCenturyRun.Run(42, years, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.LivingForagingSample);
         AssertCenturyIsConserved(report, years);
