@@ -73,6 +73,10 @@ jobs:
             grep -q '第 2 年（至第 730 日）｜週結算 52 次' /tmp/observer-century.log
             grep -q '第 7 年（至第 2555 日）｜週結算 53 次' /tmp/observer-century.log
             grep -q '第 100 年（至第 36500 日）' /tmp/observer-century.log
+            # C08: each yearly line ends with the year-end date from Core's calendar.
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-century.log
+            grep -q '｜年末 第 100 年 12 月 31 日' /tmp/observer-century.log
+            grep -q 'WORLD_MONTH_DAYS' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年（第 36500 日）' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
             grep -q '守恆錯誤 0，' /tmp/observer-century.log
@@ -163,6 +167,8 @@ jobs:
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
+          # C08: status/ledger dates come from Core's calendar (01 sheet WORLD_MONTH_DAYS).
+          grep -q 'WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
           # V0-04B: TEMP famine scenario — hunger and caused starvation events must appear

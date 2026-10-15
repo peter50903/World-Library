@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using WorldSimulation.ObserverCli;
@@ -11,6 +12,9 @@ internal static class TestCalendar
     private static readonly Lazy<WorldCalendar> Calendar = new(WorldCalendarConfig.LoadDefault);
 
     public static int DaysPerYear => Calendar.Value.DaysPerYear;
+
+    /// <summary>C08：Core 曆法換算（同一份 01 表）。</summary>
+    public static WorldCalendarRules Rules => Calendar.Value.Rules;
 }
 
 /// <summary>

@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using WorldSimulation.Core.Config;
+using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using WorldSimulation.ObserverCli;
@@ -209,7 +211,7 @@ static int RunHeadless(ulong seed, int years, bool frontier)
     {
         report = DemoCenturyRun.Run(seed, years, calendar.DaysPerYear,
             frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample,
-            onYear: y => Console.WriteLine(y.Describe()),
+            onYear: y => Console.WriteLine($"{y.Describe()}｜年末 {calendar.Rules.Format(y.LastDay)}"), // C08：年末日期由 Core 曆法換算
             onYearSettlements: (y, capacities) =>
             {
                 // #103：第 1、10、100 年與最後一年列出各聚落的長期再生 vs 需求（TEMP 描述性估計）。

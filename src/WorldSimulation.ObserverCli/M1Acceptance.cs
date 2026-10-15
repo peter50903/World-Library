@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using WorldSimulation.Core.Config;
+using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 
@@ -164,63 +166,15 @@ public static class M1CheckCatalog
 
     internal static List<List<string>> ParseCsv(string text, string source)
     {
-        var rows = new List<List<string>>();
-        var row = new List<string>();
-        var field = new StringBuilder();
-        var inQuotes = false;
-        for (var i = 0; i < text.Length; i++)
+        // C08：CSV 切分只留 Core 一份（ParameterSheet.ParseCsv）；錯誤訊息原文不變。
+        try
         {
-            var c = text[i];
-            if (inQuotes)
-            {
-                if (c == '"')
-                {
-                    if (i + 1 < text.Length && text[i + 1] == '"')
-                    {
-                        field.Append('"');
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                    }
-                }
-                else
-                {
-                    field.Append(c);
-                }
-            }
-            else if (c == '"')
-            {
-                inQuotes = true;
-            }
-            else if (c == ',')
-            {
-                row.Add(field.ToString());
-                field.Clear();
-            }
-            else if (c == '\n')
-            {
-                row.Add(field.ToString());
-                field.Clear();
-                rows.Add(row);
-                row = new List<string>();
-            }
-            else if (c != '\r' && c != '﻿')
-            {
-                field.Append(c);
-            }
+            return ParameterSheet.ParseCsv(text);
         }
-
-        if (inQuotes)
+        catch (FormatException)
+        {
             throw new M1CatalogException($"M1 驗收清單有未關閉的引號：{source}");
-        if (field.Length > 0 || row.Count > 0)
-        {
-            row.Add(field.ToString());
-            rows.Add(row);
         }
-
-        return rows;
     }
 }
 
@@ -424,10 +378,9 @@ public static class M1Evaluator
     /// <summary>#82：第 N 次週結算在第 7N 日；歸屬結算日所在年份，年內週次＝該年的第幾次週結算。</summary>
     private static string At(M1RunData run, int week)
     {
+        // C08：年份與年內週次改由 Core 曆法換算（同一份算法），輸出逐字不變。
         var day = (long)week * DemoCenturyRun.DaysPerWeeklySettlement;
-        var year = (day - 1) / run.DaysPerYear + 1;
-        var yearStart = (year - 1) * run.DaysPerYear;
-        var weekInYear = week - yearStart / DemoCenturyRun.DaysPerWeeklySettlement;
+        var (year, weekInYear) = WorldCalendarRules.WeeklySettlementInYear(week, run.DaysPerYear);
         return $"種子 {run.Seed} 第 {year} 年第 {weekInYear} 週（第 {day} 日）";
     }
 
