@@ -141,7 +141,9 @@ public sealed class DemoSettlementFoundingTests
             // 開局聚落不變；新聚落編號只會遞增、永不重用；一格最多一個聚落；新聚落不在水上。
             var ids = world.Sites.Settlements.Select(s => s.Id).ToArray();
             Assert.Equal(originalIds, ids.Take(originalIds.Length));
-            Assert.Equal(Enumerable.Range(1, ids.Length), ids);
+            // C04：新聚落 ID 由世界唯一分配器發號（與資源點、群體、隊伍共用），只遞增、互不重複。
+            Assert.Equal(ids.OrderBy(id => id), ids);
+            Assert.Equal(ids.Length, ids.Distinct().Count());
             Assert.Equal(ids.Length, world.Sites.Settlements.Select(s => (s.Column, s.Row)).Distinct().Count());
             Assert.Equal(world.Sites.ResourcePoints.Count, world.Sites.ResourcePoints.Select(p => p.Id).Distinct().Count());
             foreach (var s in world.Sites.Settlements.Where(s => s.IsFounded))

@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
+using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.Scheduling;
 using WorldSimulation.Core.Time;
@@ -86,7 +87,9 @@ public sealed partial class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _population;
     private ImmutableSortedDictionary<int, long> _hungerDebt;
     private ImmutableList<DemoMigrationBatch> _migrations = ImmutableList<DemoMigrationBatch>.Empty;
-    private int _nextMigrationBatchId = 1;
+    // C04（P1.0.03-a；44H SAVE_ID）：世界唯一實體 ID 分配器的已提交快照。所有實體（聚落、資源點、人口群體、
+    // 遷徙隊伍、TEMP 人類個體）共用一個 ID 空間；週內在私有副本上配號，只在發布時寫回。
+    private EntityIdAllocatorSnapshot _entityIds = DemoEntityIds.Fresh;
     private DemoWorldSites _sites;
     private long _food;
     private long _totalShortage;
@@ -117,11 +120,12 @@ public sealed partial class DemoObserverWorld
         // using the RESOURCE stream of this same registry.
         _rng = RngRegistry.Create(scenario.Seed);
         Map = DemoHexWorld.Generate(_rng);
+        var openingIds = new EntityIdAllocator();
         _sites = DemoWorldSites.Generate(Map, _rng,
             weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
                 : DemoSitesTempConfig.Sample,
-            weekly.SharedCatchmentEnabled);
+            weekly.SharedCatchmentEnabled).WithOpeningEntityIds(openingIds);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.
@@ -136,7 +140,8 @@ public sealed partial class DemoObserverWorld
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
             _demography = DemoTempDemography.Open(scenario.Seed,
-                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules);
+                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds);
+        _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);
         _scheduler.Schedule(OneDay, DailyWorkKey);
@@ -152,6 +157,9 @@ public sealed partial class DemoObserverWorld
     /// IDs never reused). Each call returns the committed, immutable copy.
     /// </summary>
     public DemoWorldSites Sites => _sites;
+
+    /// <summary>C04：世界唯一實體 ID 分配器的下一號（已提交狀態）；任何現存或曾存在的實體 ID 都小於它。</summary>
+    public ulong EntityIdNextValue => _entityIds.NextValue;
 
     /// <summary>TEST ONLY: invoked at each commit checkpoint so tests can inject a mid-commit failure.</summary>
     internal Action<DemoCommitStage>? FaultInjector { get; set; }
@@ -240,7 +248,7 @@ public sealed partial class DemoObserverWorld
         return DemoWeeklySettlement.Settle(
             week, TimeSpan.FromDays(7L * week), Map, _sites,
             _reserves, _settlementFood, _population, _hungerDebt,
-            _migrations, _nextMigrationBatchId, publishedWeeks, _weekly);
+            _migrations, _entityIds, publishedWeeks, _weekly);
     }
 
     /// <summary>#61: people living in settlements (sum of every settlement's current population).</summary>
@@ -328,7 +336,7 @@ public sealed partial class DemoObserverWorld
         var nextPopulation = _population;
         var nextHungerDebt = _hungerDebt;
         var nextMigrations = _migrations;
-        var nextMigrationBatchId = _nextMigrationBatchId;
+        var nextEntityIds = _entityIds;
         var nextSites = _sites;
         var nextDemography = _demography;
         if (weekly.Count == 1 && settleWeekly)
@@ -336,7 +344,7 @@ public sealed partial class DemoObserverWorld
             var outcome = DemoWeeklySettlement.Settle(
                 checked(_weeks.Count + 1), dueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
-                _migrations, _nextMigrationBatchId, _weeks, _weekly,
+                _migrations, _entityIds, _weeks, _weekly,
                 _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
                     s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)));
             if (_demography is not null)
@@ -352,7 +360,7 @@ public sealed partial class DemoObserverWorld
             nextPopulation = outcome.Population;
             nextHungerDebt = outcome.HungerDebt;
             nextMigrations = outcome.Migrations;
-            nextMigrationBatchId = outcome.NextMigrationBatchId;
+            nextEntityIds = outcome.EntityIds;
             nextSites = outcome.Sites;
         }
 
@@ -372,7 +380,7 @@ public sealed partial class DemoObserverWorld
         _population = nextPopulation;
         _hungerDebt = nextHungerDebt;
         _migrations = nextMigrations;
-        _nextMigrationBatchId = nextMigrationBatchId;
+        _entityIds = nextEntityIds;
         _sites = nextSites;
         _demography = nextDemography;
         return evt;
@@ -405,14 +413,14 @@ public sealed partial class DemoObserverWorld
             foreach (var p in _demography.People)
                 sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId};");
         }
-        sb.Append(inv, $"nextBatch={_nextMigrationBatchId};");
+        sb.Append(inv, $"nextEntity={_entityIds.NextValue}/{_entityIds.Exhausted};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
         foreach (var point in _sites.ResourcePoints) sb.Append(inv, $"{point};");
         foreach (var batch in _migrations) sb.Append(inv, $"{batch.Fingerprint()};");
         foreach (var evt in _history) sb.Append(inv, $"{evt};");
         foreach (var week in _weeks)
         {
-            sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks};");
+            sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
             foreach (var m in week.Migrations) sb.Append(inv, $"{m};");

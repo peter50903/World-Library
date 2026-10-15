@@ -496,7 +496,14 @@ public partial class ObserverRoot : Control
                 Position = _hexMap.CellCenter(_world.Map.GetCell(founded.Column, founded.Row))
             });
             var source = _world.Sites.Settlements.Single(s => s.Id == founded.FoundedFromSettlementId);
+            // C04：新聚落 ID 由世界唯一分配器發號，必須大於開局全部 ID（開局 ID 為 1～開局下一號−1）。
+            var openingMaxId = _world.Sites.Settlements.Where(s => !s.IsFounded).Select(s => (long)s.Id)
+                .Concat(_world.Sites.ResourcePoints.Where(p => _world.Sites.Settlements.Single(s => s.Id == p.SettlementId).IsFounded == false).Select(p => (long)p.Id))
+                .Concat(_world.Sites.PopGroups.Select(g => (long)g.Id)).Max();
+            if (founded.Id <= openingMaxId || (ulong)founded.Id >= _world.EntityIdNextValue)
+                throw new InvalidOperationException("Founded settlement entity ID is not newer than every opening ID.");
             if (!_cellInfo.Text.Contains($"聚落：{founded.Name}", StringComparison.Ordinal)
+                || !_cellInfo.Text.Contains($"實體 ID {founded.Id}", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"來源聚落：{source.Name}", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"目前人口：{_world.SettlementPopulation(founded.Id)}", StringComparison.Ordinal))
             {
@@ -979,7 +986,7 @@ public partial class ObserverRoot : Control
         GD.Print("WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10");
 
         System.IO.Directory.CreateDirectory(DemoSaveSlots.DefaultDirectory);
-        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":2,\"State\":");
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(3), "{\"Version\":3,\"State\":");
         RefreshSlots();
         var before = _world.ExportTempSave();
         loadButtons[3].EmitSignal(BaseButton.SignalName.Pressed);
@@ -1025,7 +1032,7 @@ public partial class ObserverRoot : Control
         if (settlement is null)
             return;
 
-        var lines = new List<string> { "", $"聚落：{settlement.Name}（TEMP 示範編號 {settlement.Id}）" };
+        var lines = new List<string> { "", $"聚落：{settlement.Name}（實體 ID {settlement.Id}）" };
         if (settlement.IsFounded)
         {
             // V0-06B: a settlement founded by migrants (population came only from its founding batch).

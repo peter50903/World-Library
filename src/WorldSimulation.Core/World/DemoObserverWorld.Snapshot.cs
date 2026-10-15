@@ -2,19 +2,21 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07B TEMP direct snapshot restore（存檔格式第 2 版，仍是 TEMP，不是正式存檔規格）。
+/// V0-07B TEMP direct snapshot restore（C04 起為存檔格式第 3 版，仍是 TEMP，不是正式存檔規格）。
 /// 讀檔不再從第 0 天重播整個世界：
 /// ① 由種子決定、成本很低的部分（時鐘、排程、十條亂數流、每日糧食帳與日歷史）用
 ///    <see cref="AdvanceOneDayCore"/>(settleWeekly: false) 重算，與存檔逐項比對（無法偽造）；
 /// ② 週結算的狀態（週報、資源點存量、聚落糧食／人口／飢餓債、途中隊伍、下一個隊伍編號、新聚落）
 ///    直接從存檔安裝，但安裝前先做結構驗證：每週帳平衡與死亡／遷徙兩端對帳
 ///    （<see cref="DemoWeeklySettlement.Verify"/>）、期初＝上週期末的銜接、新聚落期初為 0、
-///    聚落／資源點／隊伍編號只遞增不重用、引用都存在、事件與帳的週次和世界時間一致、
+///    C04：全部實體 ID 由世界唯一分配器發號——每週配號區間銜接、本週新 ID 恰好填滿區間、現存 ID 互不重複且小於下一號；
+///    引用都存在、事件與帳的週次和世界時間一致、
 ///    途中隊伍與最後一週隊伍帳一致且路線逐格相鄰。
 /// #97：事件與週帳雙向核對（<see cref="DemoCausalIndex"/>），刪除、複製、竄改出發／抵達／死亡／歷史原因／人數，
 ///    即使把後面的事件編號與世界指紋一起補正，也會被拒絕（DemoSaveLedgerTamperTests）。
@@ -23,8 +25,6 @@ namespace WorldSimulation.Core.World;
 /// </summary>
 public sealed partial class DemoObserverWorld
 {
-    private const int TempReplaySaveVersion = 1;
-
     private static DemoObserverWorld ImportDirectSnapshot(
         string json, JsonElement root, DemoScenario scenario, DemoWeeklyTempConfig weekly, int days)
     {
@@ -34,6 +34,8 @@ public sealed partial class DemoObserverWorld
         var candidate = new DemoObserverWorld(scenario, weekly);
         var map = candidate.Map;
         var initialSites = candidate._sites;
+        var initialDemography = candidate._demography;
+        var openingEntityNext = DemoEntityIds.NextValue(candidate._entityIds);
         var reserves = new Dictionary<int, long>(candidate._reserves);
         var food = new Dictionary<int, long>(candidate._settlementFood);
         var population = new Dictionary<int, long>(candidate._population);
@@ -56,7 +58,8 @@ public sealed partial class DemoObserverWorld
 
         var transit = new SortedDictionary<int, DemoMigrationWeekLedger>();
         var departedWeek = new Dictionary<int, int>();
-        var nextBatchId = 1;
+        var entityNext = openingEntityNext;
+        var lastBatchId = 0;
         for (var week = 1; week <= weekCount; week++)
         {
             var report = reports[week - 1];
@@ -66,7 +69,8 @@ public sealed partial class DemoObserverWorld
 
             CheckSettlementLedgers(report, sites, reserves, food, population, debt);
             CheckEvents(report, sites);
-            nextBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, nextBatchId);
+            lastBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, lastBatchId);
+            entityNext = CheckEntityIdRange(report, sites, entityNext);
         }
 
         // #88：事件編號連續不重用、直接原因合法且與週帳相符（43F CAUSE_PARENT）。
@@ -81,8 +85,11 @@ public sealed partial class DemoObserverWorld
             || !SameBalances(ReadBalances(state, "Population"), population)
             || !SameBalances(ReadBalances(state, "HungerDebt"), debt))
             Reject("目前存量與最後一週週帳期末不一致");
-        if (state.GetProperty("NextMigrationBatchId").GetInt32() != nextBatchId)
-            Reject("下一個遷徙隊伍編號與已出發的隊伍不一致（編號不得重用）");
+        var entityIds = state.GetProperty("EntityIds").Deserialize<EntityIdAllocatorSnapshot>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少實體 ID 分配器狀態。");
+        if (entityIds.Version != EntityIdAllocatorSnapshot.CurrentVersion || entityIds.Exhausted
+            || entityIds.NextValue != checked((ulong)entityNext))
+            Reject("實體 ID 分配器的下一號與最後一週配號紀錄不一致（ID 不得重用）");
 
         var batches = ReadArray<DemoMigrationBatch>(state, "MigrationBatches");
         CheckBatchesInTransit(batches, transit, departedWeek, sites, map, weekCount);
@@ -94,14 +101,11 @@ public sealed partial class DemoObserverWorld
         candidate._population = population.ToImmutableSortedDictionary();
         candidate._hungerDebt = debt.ToImmutableSortedDictionary();
         candidate._migrations = batches.ToImmutableList();
-        candidate._nextMigrationBatchId = nextBatchId;
+        candidate._entityIds = entityIds;
         candidate._sites = sites;
         if (weekly.HumanLifecycleEnabled)
         {
-            var initial = DemoTempDemography.Open(scenario.Seed,
-                initialSites.Settlements.ToDictionary(site => site.Id,
-                    site => checked((int)initialSites.PopGroupsOf(site.Id).Sum(g => (long)g.Size))),
-                DemoHumanLifecycle.Rules);
+            var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
             var replayed = DemoHumanLifecycle.Replay(initial, reports, sites);
             var supplied = state.GetProperty("Demography").Deserialize<DemoTempDemographicSnapshot>()
                 ?? throw new InvalidDataException("Missing human pregnancy/age snapshot.");
@@ -114,6 +118,12 @@ public sealed partial class DemoObserverWorld
                 Reject("出生／自然死亡人口身份、孕期或週帳遭篡改");
             candidate._demography = replayed;
         }
+
+        // C04（40C INV_ENTITY_ID）：現存全部實體 ID 互不重複，且都小於分配器下一號。
+        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id))
+            .Concat(candidate._demography?.People.Select(p => p.Id) ?? Enumerable.Empty<long>()).ToList();
+        if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
+            Reject("實體 ID 重複或不小於分配器下一號");
 
         // 安裝後重新匯出必須與檔案完全相同（含重算的時鐘、排程、亂數、日歷史與世界指紋）。
         var suppliedDoc = JsonNode.Parse(json);
@@ -142,7 +152,11 @@ public sealed partial class DemoObserverWorld
                 item.GetProperty("WorldTime").Deserialize<TimeSpan>(),
                 Array.AsReadOnly(ledgers.ToArray()),
                 Array.AsReadOnly(events.ToArray()),
-                Array.AsReadOnly(migrations.ToArray())));
+                Array.AsReadOnly(migrations.ToArray()))
+            {
+                EntityIdNextOpening = item.GetProperty("EntityIdNextOpening").GetInt64(),
+                EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64()
+            });
         }
 
         return reports;
@@ -165,7 +179,28 @@ public sealed partial class DemoObserverWorld
         => supplied.Count == expected.Count
         && expected.All(kv => supplied.TryGetValue(kv.Key, out var v) && v == kv.Value);
 
-    /// <summary>開局聚落必須等於種子產生的結果；之後的新聚落依序重新套用建立規則（編號、空格、非水域）。</summary>
+    /// <summary>
+    /// C04：本週配號區間 [Opening, Closing) 必須接續上週、且恰好被本週新實體填滿：
+    /// 每個新聚落 2 號（聚落＋資源點）、每支出發隊伍 1 號、每個新生兒 1 號；聚落與隊伍的號碼都落在區間內。
+    /// 新生兒的號碼另由 <see cref="DemoHumanLifecycle.Replay"/> 從區間尾端重算比對。
+    /// </summary>
+    private static long CheckEntityIdRange(DemoWeekReport report, DemoWorldSites sites, long expectedOpening)
+    {
+        var opening = report.EntityIdNextOpening;
+        var closing = report.EntityIdNextClosing;
+        if (opening != expectedOpening || closing < opening)
+            Reject($"第 {report.Week} 週實體 ID 配號區間與上週不銜接");
+        var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
+        var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
+            .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
+        var births = report.Settlements.Sum(l => l.Births);
+        if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
+            || checked(newIds.Count + births) != closing - opening)
+            Reject($"第 {report.Week} 週新實體 ID 沒有恰好填滿配號區間");
+        return closing;
+    }
+
+    /// <summary>開局聚落必須等於種子產生的結果；之後的新聚落依序重新套用建立規則（ID、空格、非水域）。</summary>
     private static DemoWorldSites RebuildSites(
         DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount)
     {
@@ -179,11 +214,12 @@ public sealed partial class DemoObserverWorld
         {
             var from = sites.Settlements.FirstOrDefault(s => s.Id == founded.FoundedFromSettlementId);
             if (!founded.IsFounded || founded.FoundedWeek < lastWeek || founded.FoundedWeek > weekCount
-                || founded.Name != $"新聚落{founded.Id}號" || founded.FoundedByBatchId < 1
+                || founded.Name != $"新聚落{checked(sites.FoundedSettlementCount + 1)}號" || founded.FoundedByBatchId < 1
                 || from is null || from.FoundedWeek >= founded.FoundedWeek
                 || !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(founded.Column, founded.Row)))
                 Reject($"新聚落 #{founded.Id} 的建立紀錄不合法");
-            sites = sites.WithFoundedSettlement(founded, map); // 檢查下一個編號、空格、非水域。
+            // 資源點緊接聚落之後配號（DemoWeeklySettlement）；檢查 ID 大於既有全部、空格、非水域。
+            sites = sites.WithFoundedSettlement(founded, checked(founded.Id + 1), map);
             lastWeek = founded.FoundedWeek;
         }
 
@@ -256,10 +292,10 @@ public sealed partial class DemoObserverWorld
         }
     }
 
-    /// <summary>隊伍帳銜接：出發編號依序遞增；途中隊伍每週都要有帳且期初＝上週期末、位置接續。</summary>
+    /// <summary>隊伍帳銜接：出發隊伍 ID 嚴格遞增（區間另由 CheckEntityIdRange 檢查）；途中隊伍每週都要有帳且期初＝上週期末、位置接續。</summary>
     private static int CheckMigrationLedgers(
         DemoWeekReport report, DemoWorldSites sites, SortedDictionary<int, DemoMigrationWeekLedger> transit,
-        Dictionary<int, int> departedWeek, int nextBatchId)
+        Dictionary<int, int> departedWeek, int lastBatchId)
     {
         var travelling = report.Migrations.Where(m => !m.Departed).Select(m => m.BatchId).ToHashSet();
         if (!travelling.SetEquals(transit.Keys))
@@ -273,10 +309,10 @@ public sealed partial class DemoObserverWorld
             if (m.Departed)
             {
                 var from = sites.Settlements.Single(s => s.Id == m.FromSettlementId);
-                if (m.BatchId != nextBatchId || m.CellBefore != new DemoCellRef(from.Column, from.Row)
+                if (m.BatchId <= lastBatchId || m.CellBefore != new DemoCellRef(from.Column, from.Row)
                     || m.PopulationOpening <= 0)
                     Reject($"第 {report.Week} 週出發的隊伍 #{m.BatchId} 編號或出發地不合法");
-                nextBatchId = checked(nextBatchId + 1);
+                lastBatchId = m.BatchId;
                 departedWeek[m.BatchId] = report.Week;
             }
             else
@@ -295,7 +331,7 @@ public sealed partial class DemoObserverWorld
                 transit[m.BatchId] = m;
         }
 
-        return nextBatchId;
+        return lastBatchId;
     }
 
     private static void CheckBatchesInTransit(

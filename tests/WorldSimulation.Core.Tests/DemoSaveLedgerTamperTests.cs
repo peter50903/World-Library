@@ -153,7 +153,7 @@ public sealed class DemoSaveLedgerTamperTests
         var sb = new StringBuilder(fingerprint[..start]);
         foreach (var week in Weeks(doc).Select(w => w!))
         {
-            sb.Append(inv, $"week{WeekOf(week)}@{week["WorldTime"]!.Deserialize<TimeSpan>().Ticks};");
+            sb.Append(inv, $"week{WeekOf(week)}@{week["WorldTime"]!.Deserialize<TimeSpan>().Ticks}:ids{week["EntityIdNextOpening"]!.GetValue<long>()}-{week["EntityIdNextClosing"]!.GetValue<long>()};");
             foreach (var ledger in week["Settlements"]!.Deserialize<List<DemoSettlementWeekLedger>>()!) sb.Append(inv, $"{ledger};");
             foreach (var e in week["Events"]!.Deserialize<List<DemoSettlementEvent>>()!) sb.Append(inv, $"{e};");
             foreach (var m in week["Migrations"]!.Deserialize<List<DemoMigrationWeekLedger>>()!) sb.Append(inv, $"{m};");
