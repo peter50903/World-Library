@@ -209,6 +209,12 @@ public sealed partial class DemoObserverWorld
     public long LatestWeekShortage(int settlementId)
         => LatestWeek?.Settlements.FirstOrDefault(l => l.SettlementId == settlementId)?.FoodShortage ?? 0;
 
+    /// <summary>
+    /// C07（P1.0.01-b）：觀察者點格查詢。唯讀投影，每次重算；不改世界、不消耗亂數。
+    /// 越界拋 <see cref="ArgumentOutOfRangeException"/>（地圖 12×8）。Godot 與 CLI `cell` 共用。
+    /// </summary>
+    public DemoCellView QueryCell(int column, int row) => DemoCellQuery.Build(this, column, row);
+
     /// <summary>V0-06A: migrant batches currently travelling between settlements (detached copy).</summary>
     public IReadOnlyList<DemoMigrationBatch> MigrationsInTransit()
         => Array.AsReadOnly(_migrations.ToArray());

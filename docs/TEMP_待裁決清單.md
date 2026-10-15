@@ -251,9 +251,10 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 8 | D8；#88 舊版無事件編號存檔拒絕讀取 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 15 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 13 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
-| `godot/Scripts/ObserverRoot.cs` | 71 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役） |
+| `godot/Scripts/ObserverRoot.cs` | 60 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
 | `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |

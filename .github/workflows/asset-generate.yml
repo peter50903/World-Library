@@ -1,0 +1,74 @@
+name: 素材自動生成
+
+# 讀 assets/manifest.csv，為「生成方式＝自動、狀態＝待製作」的圖片呼叫 OpenAI 圖片 API，
+# 產生後提交回 godot/assets/ 並把狀態改為「已交付」。
+# 需要在 GitHub 倉庫設定 Secrets → OPENAI_API_KEY；未設定時整個工作直接略過，不會失敗。
+# 可選 Variables：OPENAI_IMAGE_MODEL（預設 gpt-image-1）。
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: '只產生這些 ID（逗號分隔，留空＝全部待製作）'
+        required: false
+        default: ''
+      limit:
+        description: '一次最多幾張'
+        required: false
+        default: '10'
+  push:
+    branches: [main]
+    paths:
+      - 'assets/manifest.csv'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: asset-generate
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: 產生待製作素材
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - name: 檢查是否已設定金鑰
+        id: key
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "未設定 OPENAI_API_KEY，略過。"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.key.outputs.ok == 'true'
+      - uses: actions/setup-python@v5
+        if: steps.key.outputs.ok == 'true'
+        with:
+          python-version: '3.12'
+      - name: 安裝 Pillow
+        if: steps.key.outputs.ok == 'true'
+        run: pip install pillow==11.0.0
+      - name: 產生素材
+        if: steps.key.outputs.ok == 'true'
+        env:
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
+          ASSET_IDS: ${{ github.event.inputs.ids }}
+          ASSET_LIMIT: ${{ github.event.inputs.limit || '10' }}
+        run: python3 tools/asset_generate.py
+      - name: 提交產出
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          git config user.name "asset-bot"
+          git config user.email "asset-bot@users.noreply.github.com"
+          git add godot/assets assets/manifest.csv
+          if git diff --cached --quiet; then
+            echo "沒有新素材。"
+            exit 0
+          fi
+          git commit -m "[素材] 自動生成待製作素材"
+          git push

@@ -584,12 +584,18 @@ public partial class ObserverRoot : Control
             var settlement = _world.Sites.Settlements[0];
             var pop = _world.Sites.PopGroupsOf(settlement.Id)[0];
             var resource = _world.Sites.ResourcePointsOf(settlement.Id)[0];
+            var saveBeforeClick = _world.ExportTempSave(); // C07：點格查詢不得改世界。
             _hexMap._GuiInput(new InputEventMouseButton
             {
                 ButtonIndex = MouseButton.Left,
                 Pressed = true,
                 Position = _hexMap.CellCenter(_world.Map.GetCell(settlement.Column, settlement.Row))
             });
+            if (_cellInfo.Text != string.Join("\n", _world.QueryCell(settlement.Column, settlement.Row).Lines)
+                || _world.ExportTempSave() != saveBeforeClick)
+            {
+                throw new InvalidOperationException("C07: Godot cell panel is not Core QueryCell text, or the click changed the world.");
+            }
             if (!_cellInfo.Text.Contains(settlement.Name, StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"人口群體 #{pop.Id}：初始 {pop.Size} 人", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains($"目前人口：{_world.SettlementPopulation(settlement.Id)}", StringComparison.Ordinal)
@@ -1015,77 +1021,19 @@ public partial class ObserverRoot : Control
         GD.Print("WORLD_SIM_SLOTS_OK: Slot=2 SavedDay=9 RestoredDay=9 CorruptSlot=3 Rejected=1");
     }
 
+    // C07：資訊框文字全部來自 Core 唯讀點格查詢；Godot 只放字串、更新黃框與糧食面板選取。
     private void OnCellSelected(DemoHexCell cell)
     {
-        _cellInfo.Text =
-            $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})\n" +
-            $"軸向座標 ({cell.AxialQ}, {cell.AxialR})\n" +
-            $"核心地形：{TerrainName(cell.Terrain)}"
-            + (_world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland ? "（未開墾，農田糧食 0）" : "")
-            + (_world.IsMainRiverCell(cell.Column, cell.Row) ? "（主河道，禁止定居，鄰格漁撈）" : "");
-        _hexMap.FoodReachCells = Array.Empty<DemoCellRef>();
-        if (_world.UsesSharedForaging)
-        {
-            var source = _world.SharedFoodSources().FirstOrDefault(s =>
-                s.Column == cell.Column && s.Row == cell.Row);
-            if (source is not null)
-            {
-                _hexMap.FoodReachCells = DemoHexFoodCatchment.EligibleCells(_world.Map, source)
-                    .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray();
-                _cellInfo.Text += $"\n共享來源：每週供糧上限 {source.FoodAvailable}（全圈共用一次）；黃框為可採集範圍";
-            }
-        }
+        var view = _world.QueryCell(cell.Column, cell.Row);
+        _cellInfo.Text = view.Text;
+        _hexMap.FoodReachCells = view.FoodReachCells;
+        SelectFoodSettlement(view.SettlementId ?? 0); // #104
         _hexMap.QueueRedraw();
-
-        // V0-06A: migrant batches standing on this cell (from Core; never moved by Godot).
-        foreach (var batch in _world.MigrationsInTransit()
-                     .Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
-        {
-            _cellInfo.Text += $"\n遷徙隊伍 #{batch.Id}：{batch.People} 人，{batch.FromName}→{batch.ToName}，" +
-                $"還有 {batch.StepsLeft} 格，攜帶糧食 {batch.Food}，飢餓債 {batch.HungerDebt}";
-        }
-
-        var settlement = _world.Sites.SettlementAt(cell.Column, cell.Row);
-        SelectFoodSettlement(settlement?.Id ?? 0); // #104
-        if (settlement is null)
-            return;
-
-        var lines = new List<string> { "", $"聚落：{settlement.Name}（實體 ID {settlement.Id}）" };
-        if (settlement.IsFounded)
-        {
-            // V0-06B: a settlement founded by migrants (population came only from its founding batch).
-            var source = _world.Sites.Settlements.FirstOrDefault(s => s.Id == settlement.FoundedFromSettlementId);
-            lines.Add($"第 {settlement.FoundedWeek} 週由遷徙隊伍 #{settlement.FoundedByBatchId} 建立；" +
-                $"來源聚落：{source?.Name ?? "未知"}（人口全部來自開拓隊，不憑空）");
-        }
-        foreach (var resource in _world.Sites.ResourcePointsOf(settlement.Id))
-            lines.Add($"資源點 #{resource.Id}：{ResourceName(resource.Kind)}");
-        foreach (var pop in _world.Sites.PopGroupsOf(settlement.Id))
-            lines.Add($"人口群體 #{pop.Id}：初始 {pop.Size} 人（TEMP）");
-        lines.Add($"目前人口：{_world.SettlementPopulation(settlement.Id)}");
-        lines.Add($"糧食庫存：{_world.SettlementFood(settlement.Id)}");
-        lines.Add(_world.IsStarving(settlement.Id)
-            ? $"飢餓狀態：飢餓中（飢餓債 {_world.SettlementHungerDebt(settlement.Id)}，最近一週缺糧 {_world.LatestWeekShortage(settlement.Id)}）"
-            : _world.SettlementPopulation(settlement.Id) == 0 ? "飢餓狀態：聚落已無人口" : "飢餓狀態：正常");
-        _cellInfo.Text += string.Join("\n", lines);
     }
 
-    private static string ResourceName(DemoResourceKind kind) => kind switch
-    {
-        DemoResourceKind.Farmland => "農地（TEMP）",
-        DemoResourceKind.Woodland => "林地（TEMP）",
-        DemoResourceKind.Fishery => "漁場（TEMP）",
-        DemoResourceKind.Uncultivated => "未開墾草原（農業產量 0，TEMP）",
-        _ => "未定義（TEMP）"
-    };
+    private static string ResourceName(DemoResourceKind kind) => DemoCellQuery.ResourceName(kind);
 
-    private static string TerrainName(DemoTerrain terrain) => terrain switch
-    {
-        DemoTerrain.Grassland => "草原（TEMP）",
-        DemoTerrain.Forest => "森林（TEMP）",
-        DemoTerrain.Water => "水域（TEMP）",
-        _ => "未定義（TEMP）"
-    };
+    private static string TerrainName(DemoTerrain terrain) => DemoCellQuery.TerrainName(terrain);
 
     private string LedgerText(DemoWeekReport? week)
     {
