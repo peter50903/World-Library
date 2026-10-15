@@ -45,12 +45,12 @@ internal static class DemoHumanLifecycle
         // Pregnancy begins only with food that the Core's TRUE weekly account
         // actually covered. Birth and natural death occur at this week's end.
         // C04：新生兒接在本週結算的配號之後，向同一個私有分配器取號。
-        var ids = EntityIdAllocator.Restore(weekly.EntityIds);
+        var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var result = afterStarvation.AdvanceWeek(report.Week, id =>
         {
             var ledger = report.Settlements.Single(s => s.SettlementId == id);
             return ledger.FoodShortage == 0 && ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0;
-        }, Rules, ids);
+        }, Rules, entityAllocator);
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
         var ledgers = new List<DemoSettlementWeekLedger>(report.Settlements.Count);
@@ -101,7 +101,7 @@ internal static class DemoHumanLifecycle
                 kind, 1, cause, EventId: eventId++));
         }
 
-        var entityIds = ids.Capture();
+        var entityIds = entityAllocator.Capture();
         var revised = report with
         {
             Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(),
