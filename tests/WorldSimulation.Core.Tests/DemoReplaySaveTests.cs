@@ -78,20 +78,20 @@ public sealed class DemoReplaySaveTests
         // config is not one of the known TEMP presets (no invented world numbers on load).
         var inventedWeekly = DemoWeeklyTempConfig.Sample with { YieldPerWorkerPerWeek = 50 };
         var forgedWeekly = new DemoObserverWorld(DemoScenario.Sample(42), inventedWeekly);
-        var inventedScenario = DemoScenario.Sample(42) with { Population = 6 };
-        var forgedScenario = new DemoObserverWorld(inventedScenario, DemoWeeklyTempConfig.Sample);
         for (var i = 0; i < 9; i++)
-        {
             forgedWeekly.AdvanceOneDay();
-            forgedScenario.AdvanceOneDay();
-        }
 
         var weeklyError = Assert.Throws<InvalidDataException>(
             () => DemoObserverWorld.ImportTempSave(forgedWeekly.ExportTempSave()));
         Assert.Contains("生存情境", weeklyError.Message, StringComparison.Ordinal);
-        var scenarioError = Assert.Throws<InvalidDataException>(
-            () => DemoObserverWorld.ImportTempSave(forgedScenario.ExportTempSave()));
-        Assert.Contains("世界情境", scenarioError.Message, StringComparison.Ordinal);
+
+        // C05：DemoScenario 只剩種子；舊每日帳欄位（例如 Population）出現在檔案裡就與重新匯出不同 → 拒絕。
+        var plain = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.Sample);
+        for (var i = 0; i < 9; i++)
+            plain.AdvanceOneDay();
+        var doc = JsonNode.Parse(plain.ExportTempSave())!;
+        doc["Scenario"]!["Population"] = 6;
+        Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
 
     [Theory]
