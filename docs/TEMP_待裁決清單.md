@@ -254,7 +254,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 15 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 13 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
-| `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
+| `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
 | `godot/Scripts/ObserverRoot.RecipeSmoke.cs` | 1 | 第 02 章 a 節世界配方冒煙（斷言設定雜湊顯示【TEMP】） |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 7 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`、設定雜湊佔位 `TEMP-CONFIG-HASH-PENDING`（第 02 章 b 節換成正式雜湊） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
@@ -264,7 +264,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
-| `godot/Scripts/ObserverRoot.ControlWindow.cs` | 2 | #119 自適應獨立控制視窗，非模擬設定 |
+| `godot/Scripts/HudLayout.cs` | 12 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例） |
+| `godot/Scripts/ObserverRoot.Hud.cs` | 4 | 第 05 章面板配色、速度檔位說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |

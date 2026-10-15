@@ -1,0 +1,301 @@
+using Godot;
+using System.Globalization;
+using WorldSimulation.Core.World;
+
+namespace WorldSimulation.GodotClient;
+
+/// <summary>
+/// 第 05 章 a 節：觀察者介面骨架——全螢幕地圖＋疊加面板（頂部資訊列、左側詳情、右側世界控制台、
+/// 右下時間控制、底部事件列）。版面由純 C# <see cref="HudLayout"/> 計算；所有文字與數字都來自 Core，
+/// Godot 不計算世界、不改世界。面板外觀暫用深色木框配色（TEMP，正式素材交付後替換）。
+/// </summary>
+public partial class ObserverRoot
+{
+    private Control _hud = null!;
+    private PanelContainer _consolePanel = null!;
+    private PanelContainer _feedPanel = null!;
+    private PanelContainer _topBar = null!;
+    private Label _topWorld = null!;
+    private Label _topStats = null!;
+    private Label _topDate = null!;
+    private Button _consoleToggle = null!;
+    private PanelContainer _detailPanel = null!;
+    private Label _detailText = null!;
+    private PanelContainer _timePanel = null!;
+    private Button _timePlay = null!;
+    private Button _timeStep = null!;
+    private Button[] _timeSpeeds = null!;
+    private bool _detailOpen;
+    private bool _consoleOpen = true;
+
+    // TEMP 顯示配色：參考視覺稿 observer_hud 的深色木框與金屬邊（不是正式美術）。
+    private static readonly Color TempPanelBg = new(0.10f, 0.085f, 0.065f, 0.93f);
+    private static readonly Color TempPanelBorder = new(0.56f, 0.43f, 0.24f);
+    private static readonly Color TempGold = new(0.93f, 0.80f, 0.50f);
+
+    private static StyleBoxFlat TempPanelStyle() => new()
+    {
+        BgColor = TempPanelBg,
+        BorderColor = TempPanelBorder,
+        BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2,
+        CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4,
+        ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
+    };
+
+    private static void Skin(PanelContainer panel) => panel.AddThemeStyleboxOverride("panel", TempPanelStyle());
+
+    private void BuildTopBar()
+    {
+        _topBar = new PanelContainer();
+        Skin(_topBar);
+        _hud.AddChild(_topBar);
+        var row = new HBoxContainer();
+        row.AddThemeConstantOverride("separation", 16);
+        _topBar.AddChild(row);
+
+        _topWorld = new Label { VerticalAlignment = VerticalAlignment.Center };
+        _topWorld.AddThemeColorOverride("font_color", TempGold);
+        row.AddChild(_topWorld);
+        _topStats = new Label
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            ClipText = true
+        };
+        row.AddChild(_topStats);
+        _topDate = new Label { VerticalAlignment = VerticalAlignment.Center };
+        _topDate.AddThemeColorOverride("font_color", TempGold);
+        row.AddChild(_topDate);
+        _consoleToggle = new Button { Text = "世界控制台 ▸", TooltipText = "收合或展開右側世界控制台" };
+        _consoleToggle.Pressed += ToggleConsole;
+        row.AddChild(_consoleToggle);
+    }
+
+    private void BuildDetailPanel()
+    {
+        _detailPanel = new PanelContainer { Visible = false };
+        Skin(_detailPanel);
+        _hud.AddChild(_detailPanel);
+        var column = new VBoxContainer();
+        _detailPanel.AddChild(column);
+        var header = new HBoxContainer();
+        column.AddChild(header);
+        var title = new Label { Text = "詳情", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        title.AddThemeColorOverride("font_color", TempGold);
+        title.AddThemeFontSizeOverride("font_size", 18);
+        header.AddChild(title);
+        var close = new Button { Text = "✕", TooltipText = "關閉（Esc）" };
+        close.Pressed += HideDetail;
+        header.AddChild(close);
+        var scroll = new ScrollContainer
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
+        };
+        column.AddChild(scroll);
+        _detailText = new Label
+        {
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        scroll.AddChild(_detailText);
+    }
+
+    private void BuildTimeControls()
+    {
+        _timePanel = new PanelContainer();
+        Skin(_timePanel);
+        _hud.AddChild(_timePanel);
+        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+        row.AddThemeConstantOverride("separation", 6);
+        _timePanel.AddChild(row);
+
+        _timePlay = new Button { Text = "▶", TooltipText = "播放／暫停（空白鍵）", CustomMinimumSize = new Vector2(44, 0) };
+        _timePlay.Pressed += TogglePlayback;
+        row.AddChild(_timePlay);
+        _timeStep = new Button { Text = "+1 日", TooltipText = "推進一天" };
+        _timeStep.Pressed += () => Advance(1);
+        row.AddChild(_timeStep);
+
+        var options = PlaybackClock.TempDaysPerSecondOptions;
+        _timeSpeeds = new Button[options.Count];
+        for (var i = 0; i < options.Count; i++)
+        {
+            var index = i;
+            _timeSpeeds[i] = new Button
+            {
+                Text = $"{i + 1}檔",
+                ToggleMode = true,
+                TooltipText = $"每秒 {options[i]} 天（TEMP；數字鍵 {i + 1}）"
+            };
+            _timeSpeeds[i].Pressed += () => SelectSpeed(index);
+            row.AddChild(_timeSpeeds[i]);
+        }
+    }
+
+    /// <summary>右下速度鈕與控制台下拉選單同步（兩者呼叫同一個 <see cref="OnSpeedPicked"/>）。</summary>
+    private void SelectSpeed(int index)
+    {
+        _speedPicker.Select(index);
+        _speedPicker.EmitSignal(OptionButton.SignalName.ItemSelected, (long)index);
+        RefreshHud();
+    }
+
+    private void ToggleConsole()
+    {
+        _consoleOpen = !_consoleOpen;
+        ApplyHudLayout();
+    }
+
+    private void ShowDetail(string text)
+    {
+        _detailText.Text = text;
+        _detailOpen = true;
+        ApplyHudLayout();
+    }
+
+    private void HideDetail()
+    {
+        _detailOpen = false;
+        ApplyHudLayout();
+    }
+
+    /// <summary>依目前視窗大小重排所有疊加面板；只改畫面，不碰世界。</summary>
+    private void ApplyHudLayout()
+    {
+        var size = _hud.Size;
+        var frame = HudLayout.Compute((int)size.X, (int)size.Y, _detailOpen, _consoleOpen);
+        Place(_topBar, frame.TopBar, true);
+        Place(_detailPanel, frame.Detail, _detailOpen);
+        Place(_consolePanel, frame.Console, _consoleOpen);
+        Place(_timePanel, frame.Time, true);
+        Place(_feedPanel, frame.Feed, true);
+        _consoleToggle.Text = _consoleOpen ? "世界控制台 ▸" : "◂ 世界控制台";
+    }
+
+    private static void Place(Control control, HudRect rect, bool visible)
+    {
+        control.Visible = visible && rect.Width > 0 && rect.Height > 0;
+        control.Position = new Vector2(rect.X, rect.Y);
+        control.Size = new Vector2(Math.Max(rect.Width, 1), Math.Max(rect.Height, 1));
+    }
+
+    /// <summary>頂部資訊列與時間控制的文字（每次 <see cref="Refresh"/> 呼叫；資料全部讀 Core）。</summary>
+    private void RefreshHud()
+    {
+        if (_topBar is null)
+            return; // 版面尚未建好（_Ready 前）。
+        var days = _world.Snapshot().DaysElapsed;
+        var week = _world.LatestWeek;
+        var births = week?.Settlements.Sum(l => l.Births) ?? 0;
+        var deaths = week?.Settlements.Sum(l => l.Deaths) ?? 0;
+        _topWorld.Text = $"【TEMP 示範】{_world.TempScenarioDisplayName}";
+        _topStats.Text = string.Create(CultureInfo.InvariantCulture,
+            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count}｜遷徙途中 {_world.PopulationInTransit}｜本週出生 {births}｜本週死亡 {deaths}");
+        _topDate.Text = $"{DateText(days)}（第 {days} 日）";
+        if (_timePlay is null)
+            return;
+        _timePlay.Text = _playback.Playing ? "⏸" : "▶";
+        for (var i = 0; i < _timeSpeeds.Length; i++)
+            _timeSpeeds[i].ButtonPressed = PlaybackClock.TempDaysPerSecondOptions[i] == _playback.DaysPerSecond;
+    }
+
+    /// <summary>空白鍵播放／暫停、數字鍵切換速度、Esc 關閉詳情（輸入框取得焦點時不會收到）。</summary>
+    public override void _UnhandledInput(InputEvent @event)
+    {
+        if (@event is not InputEventKey { Pressed: true, Echo: false } key)
+            return;
+        if (key.Keycode == Key.Space)
+        {
+            TogglePlayback();
+            RefreshHud();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode == Key.Escape && _detailOpen)
+        {
+            HideDetail();
+            GetViewport().SetInputAsHandled();
+        }
+        else if (key.Keycode >= Key.Key1 && key.Keycode < Key.Key1 + _timeSpeeds.Length)
+        {
+            SelectSpeed((int)(key.Keycode - Key.Key1));
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    /// <summary>
+    /// 第 05 章 CI 冒煙：兩種視窗尺寸下各面板可見且在視窗內；點聚落→左側詳情＝Core 點格查詢文字；
+    /// 空白鍵切換播放、數字鍵切換速度、Esc 關閉詳情；收合控制台；以上操作都不改世界。
+    /// </summary>
+    private void VerifyHudSmoke(Button nextButton)
+    {
+        void Fail(string why) => throw new InvalidOperationException("HUD smoke: " + why);
+        void PressKey(Godot.Key code)
+        {
+            var ev = new InputEventKey { Keycode = code, Pressed = true };
+            _UnhandledInput(ev);
+        }
+
+        var resized = 0;
+        foreach (var (w, h) in new[] { (1280, 720), (1920, 1080) })
+        {
+            _hud.Size = new Vector2(w, h);
+            ApplyHudLayout();
+            foreach (var (name, control) in new (string, Control)[]
+                     { ("TopBar", _topBar), ("Console", _consolePanel), ("Time", _timePanel), ("Feed", _feedPanel) })
+            {
+                var r = new Rect2(control.Position, control.Size);
+                if (!control.Visible || r.Position.X < 0 || r.Position.Y < 0 || r.End.X > w || r.End.Y > h)
+                    Fail($"{name} not visible inside {w}x{h}: {r}");
+            }
+            resized++;
+        }
+
+        for (var i = 0; i < 7; i++)
+            nextButton.EmitSignal(BaseButton.SignalName.Pressed);
+        var before = _world.ExportTempSave();
+        if (!_topDate.Text.Contains("第 7 日", StringComparison.Ordinal)
+            || !_topStats.Text.Contains($"人口 {_world.WorldPopulation}", StringComparison.Ordinal))
+            Fail($"top bar does not show Core's day/population: {_topDate.Text} / {_topStats.Text}");
+
+        // 點聚落 → 左側詳情面板＝Core 點格查詢文字。
+        var settlement = _world.Sites.Settlements[0];
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left,
+            Pressed = true,
+            Position = _hexMap.CellCenter(_world.Map.GetCell(settlement.Column, settlement.Row))
+        });
+        if (!_detailPanel.Visible || _detailText.Text != _world.QueryCell(settlement.Column, settlement.Row).Text)
+            Fail("detail panel did not open with Core's cell query text.");
+        PressKey(Godot.Key.Escape);
+        if (_detailPanel.Visible)
+            Fail("Esc did not close the detail panel.");
+
+        // 鍵盤：空白鍵播放→暫停；數字鍵 2 選第二檔。
+        PressKey(Godot.Key.Space);
+        if (!_playback.Playing || _timePlay.Text != "⏸")
+            Fail("Space did not start playback.");
+        PressKey(Godot.Key.Space);
+        if (_playback.Playing)
+            Fail("Space did not pause playback.");
+        PressKey(Godot.Key.Key2);
+        if (_playback.DaysPerSecond != PlaybackClock.TempDaysPerSecondOptions[1] || !_timeSpeeds[1].ButtonPressed
+            || _speedPicker.Selected != 1)
+            Fail("key 2 did not select the second speed.");
+
+        // 收合／展開控制台。
+        _consoleToggle.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_consolePanel.Visible)
+            Fail("console did not collapse.");
+        _consoleToggle.EmitSignal(BaseButton.SignalName.Pressed);
+        if (!_consolePanel.Visible)
+            Fail("console did not expand.");
+
+        if (_world.ExportTempSave() != before)
+            Fail("HUD operations changed the world.");
+
+        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized}");
+    }
+}
