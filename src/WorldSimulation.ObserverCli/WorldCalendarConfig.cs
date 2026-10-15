@@ -1,27 +1,23 @@
-using System.Globalization;
 using System.Text;
 using WorldSimulation.Core.Config;
+using WorldSimulation.Core.Time;
 
 namespace WorldSimulation.ObserverCli;
 
 // #82：正式曆法接入（最小單頁讀取）。只在文字觀察者邊界讀 config/sheets/01_世界參數.csv，
-// 用 Core 的 ConfigRegistry 驗證整張 01 表後取出 WORLD_DAYS_PER_YEAR，再以參數傳入 Core；
+// 用 Core 的 ParameterSheet／ConfigRegistry 驗證整張 01 表，再由 Core 的 WorldCalendarRules 取出曆法（C08）；
 // Core 不讀檔、不依賴程式倉庫路徑，也不另存第二份年長常數。找不到、未啟用或格式錯誤一律明確失敗。
 
-/// <summary>曆法設定讀取失敗（訊息為繁體中文，可直接給使用者看）。</summary>
-public sealed class WorldCalendarException : Exception
+/// <summary>從正式設定讀到的曆法：一年日數、Core 換算規則與來源檔案。</summary>
+public sealed record WorldCalendar(WorldCalendarRules Rules, string Source)
 {
-    public WorldCalendarException(string message) : base(message)
-    {
-    }
-}
+    /// <summary>一年日數（＝<see cref="WorldCalendarRules.DaysPerYear"/>，保留給既有呼叫端）。</summary>
+    public int DaysPerYear => Rules.DaysPerYear;
 
-/// <summary>從正式設定讀到的曆法：一年日數與來源檔案。</summary>
-public sealed record WorldCalendar(int DaysPerYear, string Source)
-{
     /// <summary>給報表標頭用的一行說明。</summary>
     public string Describe()
         => $"曆法：{WorldCalendarConfig.RelativePath} 的 {WorldCalendarConfig.DaysPerYearId}＝{DaysPerYear}"
+         + $"、{Rules.DescribeMonths()}"
          + $"（一年 {DaysPerYear} 日；週結算每 7 日一次、跨年不重置，歸屬結算日所在年份）";
 }
 
@@ -29,7 +25,7 @@ public sealed record WorldCalendar(int DaysPerYear, string Source)
 public static class WorldCalendarConfig
 {
     public const string RelativePath = "config/sheets/01_世界參數.csv";
-    public const string DaysPerYearId = "WORLD_DAYS_PER_YEAR";
+    public const string DaysPerYearId = WorldCalendarRules.DaysPerYearId;
 
     /// <summary>從目前目錄與程式所在目錄往上找程式倉庫的 01 CSV；找不到回傳 null。</summary>
     public static string? FindDefaultPath()
@@ -74,53 +70,17 @@ public static class WorldCalendarConfig
         return Parse(text, path);
     }
 
-    /// <summary>解析 01 表內容，整張表通過 ConfigRegistry 驗證後回傳一年日數。</summary>
+    /// <summary>解析 01 表內容，整張表通過 ConfigRegistry 驗證後交給 Core 的 <see cref="WorldCalendarRules"/>。</summary>
     public static WorldCalendar Parse(string text, string source)
     {
-        List<List<string>> rows;
+        IReadOnlyList<ParameterRow> parameters;
         try
         {
-            rows = M1CheckCatalog.ParseCsv(text, source);
+            parameters = ParameterSheet.Parse(text, source);
         }
-        catch (M1CatalogException)
+        catch (ParameterSheetException ex)
         {
-            throw new WorldCalendarException($"世界參數表有未關閉的引號：{source}");
-        }
-
-        if (rows.Count == 0)
-            throw new WorldCalendarException($"世界參數表是空的：{source}");
-
-        var header = rows[0].Select(h => h.Trim()).ToList();
-        int Column(string name)
-        {
-            var index = header.IndexOf(name);
-            if (index < 0)
-                throw new WorldCalendarException($"世界參數表缺少欄位「{name}」：{source}");
-            return index;
-        }
-
-        var idColumn = Column("ParameterID");
-        var valueColumn = Column("值");
-        var typeColumn = Column("資料型別");
-        var enabledColumn = Column("Enabled");
-
-        var parameters = new List<ParameterRow>();
-        for (var r = 1; r < rows.Count; r++)
-        {
-            var row = rows[r];
-            if (row.All(string.IsNullOrWhiteSpace))
-                continue;
-            string? Cell(int c) => c < row.Count ? row[c] : null;
-            var line = r + 1;
-            var enabledText = (Cell(enabledColumn) ?? string.Empty).Trim();
-            bool enabled;
-            if (enabledText.Equals("TRUE", StringComparison.OrdinalIgnoreCase))
-                enabled = true;
-            else if (enabledText.Equals("FALSE", StringComparison.OrdinalIgnoreCase))
-                enabled = false;
-            else
-                throw new WorldCalendarException($"世界參數表第 {line} 列的 Enabled 必須是 TRUE 或 FALSE，收到「{enabledText}」：{source}");
-            parameters.Add(new ParameterRow(line, Cell(idColumn), Cell(valueColumn), Cell(typeColumn)?.Trim(), enabled));
+            throw new WorldCalendarException(ex.Message);
         }
 
         var result = ConfigRegistry.ValidateAndCreate(parameters);
@@ -131,23 +91,6 @@ public static class WorldCalendarConfig
                 $"世界參數表驗證失敗（{result.Errors.Count} 處）；第一處：第 {first.RowNumber} 列 {first.ParameterId ?? "（無 ID）"}：{first.Reason}：{source}");
         }
 
-        var registry = result.Registry!;
-        if (!registry.Contains(DaysPerYearId))
-            throw new WorldCalendarException($"世界參數表沒有已啟用的 {DaysPerYearId}：{source}");
-
-        int days;
-        try
-        {
-            days = registry.GetInt(DaysPerYearId);
-        }
-        catch (InvalidOperationException)
-        {
-            throw new WorldCalendarException($"{DaysPerYearId} 的資料型別必須是 int：{source}");
-        }
-
-        if (days < 1)
-            throw new WorldCalendarException(
-                $"{DaysPerYearId} 必須是正整數，收到 {days.ToString(CultureInfo.InvariantCulture)}：{source}");
-        return new WorldCalendar(days, source);
+        return new WorldCalendar(WorldCalendarRules.FromRegistry(result.Registry!, source), source);
     }
 }

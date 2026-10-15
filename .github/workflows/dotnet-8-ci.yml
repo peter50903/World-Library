@@ -70,6 +70,12 @@ jobs:
             grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 2 版，目前第 3 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
+            # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 > /tmp/observer-one-year.log
+            cat /tmp/observer-one-year.log
+            # Line 1 is the run title; the calendar description is the first line after it.
+            sed -n 2p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-one-year.log
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
             # #82: the year length comes from config/sheets/01_世界參數.csv WORLD_DAYS_PER_YEAR (365).
@@ -78,6 +84,10 @@ jobs:
             grep -q '第 2 年（至第 730 日）｜週結算 52 次' /tmp/observer-century.log
             grep -q '第 7 年（至第 2555 日）｜週結算 53 次' /tmp/observer-century.log
             grep -q '第 100 年（至第 36500 日）' /tmp/observer-century.log
+            # C08: each yearly line ends with the year-end date from Core's calendar.
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-century.log
+            grep -q '｜年末 第 100 年 12 月 31 日' /tmp/observer-century.log
+            grep -q 'WORLD_MONTH_DAYS' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年（第 36500 日）' /tmp/observer-century.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-century.log
             grep -q '守恆錯誤 0，' /tmp/observer-century.log
@@ -168,6 +178,8 @@ jobs:
           grep -q 'Godot Engine' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_UI_SMOKE_OK: Day=31 History=31' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
+          # C08: status/ledger dates come from Core's calendar (01 sheet WORLD_MONTH_DAYS).
+          grep -q 'WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28' /tmp/godot-scene.log
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
           # V0-04B: TEMP famine scenario — hunger and caused starvation events must appear
