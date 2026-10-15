@@ -6,6 +6,10 @@ namespace WorldSimulation.Core.World.Demo;
 /// 所以兩者能互相對帳：任何不一致都列在 <see cref="Problems"/>。
 /// V0-06A 起人口與糧食的期初／期末都含「途中」遷徙隊伍（只計一次），死亡、消耗與缺糧也含途中隊伍；
 /// 遷出／遷入是聚落之間的轉移，不改變世界總數。
+/// C02：死亡按原因分類（Notion 02 §E）——<see cref="NaturalDeaths"/> 是年齡／自然死亡人數，
+/// 其餘死亡（Deaths－NaturalDeaths）是餓死（含途中）；出生與自然死亡各自對帶原因事件的人數
+/// （<see cref="BirthEvents"/>、<see cref="NaturalDeathEvents"/>，為事件 Count 合計）。
+/// 三個新欄位是選用參數（預設 0），不破壞既有呼叫。
 /// </summary>
 public sealed record DemoYearSummary(
     int Year,
@@ -37,8 +41,14 @@ public sealed record DemoYearSummary(
     int ArrivalEvents = 0,
     int SettlementsFounded = 0,
     int SettlementsClosing = 0,
-    int FirstDay = 1)
+    int FirstDay = 1,
+    long NaturalDeaths = 0,
+    long BirthEvents = 0,
+    long NaturalDeathEvents = 0)
 {
+    /// <summary>本年餓死人數（聚落＋途中）＝全部死亡－自然死亡。</summary>
+    public long StarvationDeaths => Deaths - NaturalDeaths;
+
     /// <summary>
     /// #82：本年（第 <see cref="FirstDay"/>～<see cref="LastDay"/> 日）應有的週結算次數＝其間 7 的倍數日數。
     /// 週結算每 7 個世界日一次、不因年界重置，所以 365 日年會有 52 或 53 次。
@@ -67,8 +77,14 @@ public sealed record DemoYearSummary(
             problems.Add($"第 {Year} 年資源存量帳不平衡：{ReserveOpening}＋{Regenerated}－{Harvested}≠{ReserveClosing}");
         if (FoodProduced != Harvested)
             problems.Add($"第 {Year} 年出現魔法糧食：生產 {FoodProduced}≠採收 {Harvested}");
-        if (Deaths != StarvationDeathsInEvents)
-            problems.Add($"第 {Year} 年死亡 {Deaths} 人，但帶原因的餓死事件只有 {StarvationDeathsInEvents} 人");
+        if (StarvationDeaths != StarvationDeathsInEvents)
+            problems.Add($"第 {Year} 年餓死 {StarvationDeaths} 人（死亡 {Deaths}－自然死亡 {NaturalDeaths}），但帶原因的餓死事件有 {StarvationDeathsInEvents} 人");
+        if (NaturalDeaths != NaturalDeathEvents)
+            problems.Add($"第 {Year} 年自然死亡 {NaturalDeaths} 人，但帶原因的自然死亡事件有 {NaturalDeathEvents} 人");
+        if (Births != BirthEvents)
+            problems.Add($"第 {Year} 年出生 {Births} 人，但帶原因的出生事件有 {BirthEvents} 人（出生無事件來源）");
+        if (NaturalDeaths < 0 || NaturalDeaths > Deaths || Births < 0)
+            problems.Add($"第 {Year} 年出生／自然死亡人數不合理：出生 {Births}、死亡 {Deaths}、自然死亡 {NaturalDeaths}");
         if (PopulationInTransit > PopulationClosing)
             problems.Add($"第 {Year} 年途中人口 {PopulationInTransit} 超過世界人口 {PopulationClosing}");
         if (InhabitedSettlements > SettlementsClosing && SettlementsClosing > 0)
@@ -81,7 +97,7 @@ public sealed record DemoYearSummary(
 
     /// <summary>玩家可讀的一行年度摘要（繁體中文）。</summary>
     public string Describe()
-        => $"第 {Year} 年（至第 {LastDay} 日）｜週結算 {Weeks} 次｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}）"
+        => $"第 {Year} 年（至第 {LastDay} 日）｜週結算 {Weeks} 次｜人口 {PopulationClosing}（出生 {Births}、死亡 {Deaths}（餓死 {StarvationDeaths}、自然死亡 {NaturalDeaths}））"
          + $"｜有人聚落 {InhabitedSettlements}、新建聚落 {SettlementsFounded}"
          + $"｜遷出 {Emigrants}、遷入 {Immigrants}、年底途中 {PopulationInTransit}"
          + $"｜糧食 {FoodClosing}（生產 {FoodProduced}、消耗 {FoodConsumed}、缺糧 {FoodShortage}）"
@@ -156,6 +172,7 @@ public static class DemoCenturyRun
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0, dailyHarvest = 0;
+            long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0;
             var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = 0;
 
@@ -176,6 +193,7 @@ public static class DemoCenturyRun
                 {
                     births = checked(births + l.Births);
                     deaths = checked(deaths + l.Deaths);
+                    naturalDeaths = checked(naturalDeaths + l.NaturalDeaths);
                     produced = checked(produced + l.FoodProduced);
                     consumed = checked(consumed + l.FoodConsumed);
                     shortage = checked(shortage + l.FoodShortage);
@@ -219,6 +237,12 @@ public static class DemoCenturyRun
                         case DemoSettlementEventKind.SettlementFounded:
                             foundedEvents++;
                             break;
+                        case DemoSettlementEventKind.Birth:
+                            birthsInEvents = checked(birthsInEvents + e.Count);
+                            break;
+                        case DemoSettlementEventKind.NaturalDeath:
+                            naturalDeathsInEvents = checked(naturalDeathsInEvents + e.Count);
+                            break;
                     }
                 }
             }
@@ -237,7 +261,8 @@ public static class DemoCenturyRun
                 dailyHarvest,
                 emigrants, immigrants, world.PopulationInTransit,
                 emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count,
-                firstDay);
+                firstDay,
+                naturalDeaths, birthsInEvents, naturalDeathsInEvents);
             errors.AddRange(summary.Problems());
             summaries.Add(summary);
             onYear?.Invoke(summary);

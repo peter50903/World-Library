@@ -11,23 +11,52 @@ public partial class ObserverRoot
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42),
             DemoWeeklyTempConfig.LivingForagingSample);
-        for (var day = 0; day < 3 * 365; day++) world.AdvanceOneDay();
+        // C02：ChildWorkers 是量測值——每次新週報出現時，用推進前的人口快照（LastWeek＝上一週）
+        // 逐聚落數實際成年人，週帳申報的成年勞力超過實際成年人的部分就是「兒童被當勞力」。
+        long childWorkers = 0;
+        for (var day = 0; day < 3 * 365; day++)
+        {
+            var before = world.HumanPopulationSnapshot;
+            var weeksBefore = world.WeekReports().Count;
+            world.AdvanceOneDay();
+            var reports = world.WeekReports();
+            if (reports.Count == weeksBefore || before is null)
+                continue;
+            foreach (var ledger in reports[reports.Count - 1].Settlements)
+            {
+                var adults = before.People.Count(p => p.SettlementId == ledger.SettlementId
+                    && p.IsAdultAt(before.LastWeek * 7, DemoTempDemographyRules.HumanFixture));
+                childWorkers += Math.Max(0L, ledger.AdultWorkersOpening - adults);
+            }
+        }
+        if (childWorkers > 0)
+            throw new InvalidOperationException($"Human smoke: {childWorkers} child(ren) counted as adult workers.");
         var births = world.WeekReports().Sum(w => w.Settlements.Sum(l => l.Births));
         if (births <= 0 || world.HumanPopulationSnapshot is null)
             throw new InvalidOperationException("Human birth mode did not produce a real newborn.");
         var people = world.HumanPopulationSnapshot.People;
-        if (!people.Any(p => !p.IsAdultAt(3 * 365, DemoTempDemographyRules.HumanFixture)))
+        var children = people.Count(p => !p.IsAdultAt(3 * 365, DemoTempDemographyRules.HumanFixture));
+        if (children <= 0)
             throw new InvalidOperationException("No dependent children were born.");
         if (world.WeekReports().Any(w => w.Settlements.Any(l => !l.IsBalanced)))
             throw new InvalidOperationException("Real weekly population ledger failed.");
         InstallWorld(world, "人類繁衍真週帳測試");
         var location = world.Sites.Settlements.First().Id;
-        if (!FoodDiagnosticsText(_world, location).Contains("人類本週出生", StringComparison.Ordinal))
+        var panel = FoodDiagnosticsText(_world, location);
+        if (!panel.Contains("人類本週出生", StringComparison.Ordinal))
             throw new InvalidOperationException("Godot did not display the Core-based birth ledger.");
+        var latest = _world.LatestWeek!;
+        var own = latest.Settlements.Single(l => l.SettlementId == location);
+        if (!panel.Contains($"飢餓債 {own.HungerDebtClosing}，出生 {own.Births}、自然死亡 {own.NaturalDeaths}、餓死 {own.StarvationDeaths}", StringComparison.Ordinal))
+            throw new InvalidOperationException("Godot settlement panel does not show this settlement's own births, natural deaths and starvation deaths.");
+        var worldStarvation = latest.Settlements.Sum(l => l.StarvationDeaths);
+        if (!panel.Contains($"自然死亡 {latest.Settlements.Sum(l => l.NaturalDeaths)}、餓死 {worldStarvation}；", StringComparison.Ordinal)
+            || !panel.Contains($"聚落餓死 {worldStarvation}", StringComparison.Ordinal))
+            throw new InvalidOperationException("Godot world starvation total differs from the human starvation row.");
         var save = _world.ExportTempSave();
         var restored = DemoObserverWorld.ImportTempSave(save);
         if (restored.ExportTempSave() != save)
             throw new InvalidOperationException("Godot human scenario did not round-trip through TEMP save.");
-        GD.Print($"WORLD_SIM_HUMAN_OK: Births={births} ChildWorkers=0 Save=1");
+        GD.Print($"WORLD_SIM_HUMAN_OK: Births={births} ChildWorkers={childWorkers} Children={children} Save=1");
     }
 }
