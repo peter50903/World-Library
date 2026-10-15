@@ -49,7 +49,7 @@ for (var i = 1; i < args.Length; i += 2)
     }
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜h 歷史｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜cell C R 查格子｜h 歷史｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 if (years is int runYears)
     return RunHeadless(seed, runYears, frontier);
@@ -79,6 +79,9 @@ while (true)
         PrintStatus();
         continue;
     }
+    // C07：點格查詢，輸出與 Godot 資訊框逐字相同；不改世界。
+    if (CellCommand.TryRun(world, command, Console.Out))
+        continue;
     // V0-07C：TEMP 3 個存檔槽。save／load 不加槽號＝槽 1。
     if (command is "slots")
     {
