@@ -236,7 +236,7 @@ public sealed record DemoSettlementEvent(
 /// 一個示範聚落一週的帳目（全部是純量，可直接比較相等）。
 /// 資源點存量帳：期初＋再生－採收＝期末。
 /// 糧食帳：期初＋生產－消耗＝期末；生產必須等於採收（無魔法糧食）。
-/// 人口帳：期初＋出生－死亡＋遷入－遷出＝期末（出生仍固定為 0；死亡只來自餓死；遷入遷出 V0-06A）。
+/// 人口帳：期初＋出生－死亡＋遷入－遷出＝期末（出生與自然死亡只在人類繁衍情境；死亡＝餓死＋自然死亡，見 <see cref="StarvationDeaths"/>；遷入遷出 V0-06A）。
 /// 飢餓債帳（V0-04B）：期初＋本週缺糧－恢復－隨死者移除＋隨遷入帶來－隨遷出帶走＝期末。
 /// 遷徙隊伍攜帶的糧食（V0-06A）也記在糧食帳：期初＋生產＋帶入－消耗－帶出＝期末。
 /// 糧食來源：農牧＋採集＝生產（無魔法糧食）。
@@ -274,6 +274,12 @@ public sealed record DemoSettlementWeekLedger(
     long HungerDebtRemovedByNaturalDeath = 0,
     long AdultWorkersOpening = -1)
 {
+    /// <summary>
+    /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
+    /// 下游（Godot 診斷、M1 驗收、百年長測）一律用此屬性，不各自相減。
+    /// </summary>
+    public long StarvationDeaths => Deaths - NaturalDeaths;
+
     public bool ReserveBalanced => ReserveOpening + Regenerated - Harvested == ReserveClosing;
 
     public bool FoodBalanced

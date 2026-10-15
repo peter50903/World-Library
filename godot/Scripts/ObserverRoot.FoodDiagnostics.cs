@@ -74,7 +74,8 @@ public partial class ObserverRoot
             lines.Add($"  資源點：期初 {l.ReserveOpening} ＋實際再生 {l.Regenerated} ＝可採 {l.ReserveOpening + l.Regenerated}");
             lines.Add($"  採收上限（勞力 {l.PopulationOpening} 人×每人 {cap.YieldPerWorkerPerWeek}）{harvestCap}；實際採收 {l.Harvested}");
             lines.Add($"  需求（{l.PopulationOpening} 人×每人 {cap.FoodPerPersonPerWeek}）{demand}；實際消耗 {l.FoodConsumed}；缺糧 {l.FoodShortage}");
-            lines.Add($"  糧庫：期初 {l.FoodOpening} → 期末 {l.FoodClosing}；飢餓債期末 {l.HungerDebtClosing}；餓死 {l.Deaths}");
+            lines.Add($"  糧庫：期初 {l.FoodOpening} → 期末 {l.FoodClosing}；飢餓債期末 {l.HungerDebtClosing}；"
+                + $"出生 {l.Births}、自然死亡 {l.NaturalDeaths}、餓死 {l.StarvationDeaths}");
         }
 
         var limit = cap.SustainablePopulation == long.MaxValue ? "不限" : $"{cap.SustainablePopulation} 人";
@@ -105,13 +106,13 @@ public partial class ObserverRoot
         };
         if (week is not null)
         {
-            output.Add($"第 {week.Week} 週：森林／河流實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
+            output.Add($"第 {week.Week} 週：自然來源（森林／草原／主河道／一般水域）實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
             if (world.HumanPopulationSnapshot is not null)
                 output.Add($"人類本週出生 {week.Settlements.Sum(l => l.Births)}、自然死亡 {week.Settlements.Sum(l => l.NaturalDeaths)}、"
-                    + $"餓死 {week.Settlements.Sum(l => l.Deaths - l.NaturalDeaths)}；"
+                    + $"餓死 {week.Settlements.Sum(l => l.StarvationDeaths)}；"
                     + $"目前個體人口 {world.HumanPopulationSnapshot.People.Length}（未成年不採集）");
             output.Add($"世界聚落人口 {world.SettledPopulation}，本週共缺糧 {week.Settlements.Sum(l => l.FoodShortage)}，"
-                + $"餓死 {week.Settlements.Sum(l => l.Deaths)}");
+                + $"聚落餓死 {week.Settlements.Sum(l => l.StarvationDeaths)}");
         }
 
         var place = people.FirstOrDefault(x => x.Id == settlementId);
@@ -138,7 +139,8 @@ public partial class ObserverRoot
         {
             output.Add($"本週：需求 {ledger.PopulationOpening * DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek}，"
                 + $"實採 {ledger.Harvested}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
-                + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，餓死 {ledger.Deaths}");
+                + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，"
+                + $"出生 {ledger.Births}、自然死亡 {ledger.NaturalDeaths}、餓死 {ledger.StarvationDeaths}");
             var origins = allocation?.Harvests.Where(h => h.SettlementId == place.Id)
                 .Select(h =>
                 {

@@ -26,9 +26,11 @@ public sealed class DemoCenturyRunTests
             Assert.Equal(y.Year * TestCalendar.DaysPerYear, y.LastDay);
             Assert.Equal((y.Year - 1) * TestCalendar.DaysPerYear + 1, y.FirstDay);
 
-            // M1_POP：期初＋出生－死亡＝期末；死亡全部由帶原因的餓死事件對帳。
+            // M1_POP：期初＋出生－死亡＝期末；死亡按原因分類，各自由帶原因事件對帳（C02）。
             Assert.Equal(y.PopulationClosing, y.PopulationOpening + y.Births - y.Deaths);
-            Assert.Equal(y.Deaths, y.StarvationDeathsInEvents);
+            Assert.Equal(y.Deaths - y.NaturalDeaths, y.StarvationDeathsInEvents);
+            Assert.Equal(y.NaturalDeaths, y.NaturalDeathEvents);
+            Assert.Equal(y.Births, y.BirthEvents);
 
             // M1_RES：資源存量與糧食各自守恆。
             Assert.Equal(y.ReserveClosing, y.ReserveOpening + y.Regenerated - y.Harvested);
@@ -139,6 +141,59 @@ public sealed class DemoCenturyRunTests
         Assert.Empty(year7.Problems());
         Assert.Contains((year7 with { Weeks = 52 }).Problems(), p => p.Contains("週結算次數"));
         Assert.Contains((ok with { FirstDay = 400 }).Problems(), p => p.Contains("日期範圍"));
+    }
+
+    [Fact]
+    public void WeekLedgerStarvationDeathsExcludesNaturalDeaths()
+    {
+        // C02：週帳的餓死數＝全部死亡－自然死亡；下游一律讀這個屬性。
+        var ledger = new DemoSettlementWeekLedger(
+            Week: 1, SettlementId: 1, SettlementName: "測試聚落",
+            ReserveOpening: 0, Regenerated: 0, Harvested: 0, ReserveClosing: 0,
+            FoodOpening: 0, FoodProduced: 0, FoodConsumed: 0, FoodClosing: 0, FoodShortage: 0,
+            PopulationOpening: 10, Births: 0, Deaths: 5, PopulationClosing: 5,
+            NaturalDeaths: 2);
+        Assert.Equal(3, ledger.StarvationDeaths);
+        Assert.Equal(5, (ledger with { NaturalDeaths = 0 }).StarvationDeaths);
+    }
+
+    [Fact]
+    public void YearSummaryReconcilesBirthsStarvationAndNaturalDeathsSeparately()
+    {
+        // C02：死亡 5＝餓死 3（事件 3）＋自然死亡 2（事件 2）；出生 1 有 1 筆出生事件 → 無錯誤。
+        var ok = new DemoYearSummary(
+            Year: 1, LastDay: 364, Weeks: 52,
+            PopulationOpening: 10, Births: 1, Deaths: 5, PopulationClosing: 6,
+            FoodOpening: 0, FoodProduced: 0, FoodConsumed: 0, FoodShortage: 0, FoodClosing: 0,
+            ReserveOpening: 0, Regenerated: 0, Harvested: 0, ReserveClosing: 0,
+            HungerEvents: 0, StarvationEvents: 3, StarvationDeathsInEvents: 3, RecoveryEvents: 0,
+            InhabitedSettlements: 1, DailyDemoHarvest: 0,
+            NaturalDeaths: 2, BirthEvents: 1, NaturalDeathEvents: 2);
+        Assert.Empty(ok.Problems());
+        Assert.Equal(3, ok.StarvationDeaths);
+        Assert.Contains("死亡 5（餓死 3、自然死亡 2）", ok.Describe());
+
+        // 自然死亡沒記在帳上：全部死亡被當餓死，與餓死事件 3 人對不上。
+        var noNatural = (ok with { NaturalDeaths = 0 }).Problems();
+        Assert.Contains(noNatural, p => p.Contains("帶原因的餓死事件"));
+        Assert.Contains(noNatural, p => p.Contains("帶原因的自然死亡事件"));
+
+        // 出生沒有出生事件：出生無來源。
+        Assert.Contains((ok with { BirthEvents = 0 }).Problems(), p => p.Contains("帶原因的出生事件"));
+        // 自然死亡事件少一筆。
+        Assert.Contains((ok with { NaturalDeathEvents = 1 }).Problems(), p => p.Contains("帶原因的自然死亡事件"));
+    }
+
+    [Fact]
+    public void LivingHumanRunHasBirthsAndNaturalDeathsWithZeroConservationErrors()
+    {
+        // C02：人類繁衍情境（初始 18～22 歲、TEMP 自然死亡風險隨年齡上升），45 年內出生與自然死亡都會發生，
+        // 年度對帳把出生、餓死、自然死亡分開對事件，不再把合法出生／自然死亡誤報為錯誤。
+        const int years = 45;
+        var report = DemoCenturyRun.Run(42, years, TestCalendar.DaysPerYear, DemoWeeklyTempConfig.LivingForagingSample);
+        AssertCenturyIsConserved(report, years);
+        Assert.True(report.Years.Sum(y => y.Births) > 0, "人類繁衍情境 45 年內應有出生。");
+        Assert.True(report.Years.Sum(y => y.NaturalDeaths) > 0, "人類繁衍情境 45 年內應有自然死亡。");
     }
 
     [Theory]
