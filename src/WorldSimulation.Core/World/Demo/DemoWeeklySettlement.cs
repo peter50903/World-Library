@@ -391,7 +391,7 @@ internal static class DemoWeeklySettlement
         ImmutableSortedDictionary<int, long> hungerDebt,
         DemoWeeklyTempConfig config)
         => Settle(week, worldTime, map: null, sites, reserves, settlementFood, population, hungerDebt,
-            ImmutableList<DemoMigrationBatch>.Empty, DemoEntityIds.Fresh,
+            ImmutableList<DemoMigrationBatch>.Empty, DemoEntityIds.After(sites),
             publishedWeeks: Array.Empty<DemoWeekReport>(), config);
 
     public static DemoWeeklyOutcome Settle(

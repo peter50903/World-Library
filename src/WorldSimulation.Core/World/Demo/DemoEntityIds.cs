@@ -19,6 +19,11 @@ internal static class DemoEntityIds
 
     public static long ToLong(EntityId id) => checked((long)id.Value);
 
+    /// <summary>只供無地圖的相容結算：下一號接在這份示範地點既有全部 ID 之後。</summary>
+    public static EntityIdAllocatorSnapshot After(DemoWorldSites sites)
+        => new(EntityIdAllocatorSnapshot.CurrentVersion,
+            checked((ulong)sites.EntityIds().DefaultIfEmpty(0).Max() + 1UL), false);
+
     /// <summary>快照的下一號（long，供週報與存檔比對）。</summary>
     public static long NextValue(EntityIdAllocatorSnapshot snapshot) => checked((long)snapshot.NextValue);
 }

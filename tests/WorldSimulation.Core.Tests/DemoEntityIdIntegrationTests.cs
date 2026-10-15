@@ -77,21 +77,38 @@ public sealed class DemoEntityIdIntegrationTests
         Assert.Equal(Enumerable.Range(1, (int)world.EntityIdNextValue - 1).Select(i => (long)i), ids);
     }
 
+    /// <summary>開拓情境中，存檔點之後還會再配號的種子與存檔日（找不到就失敗，不默默略過）。</summary>
+    private static (ulong Seed, int SaveDay) FrontierSaveBeforeLaterAllocation()
+    {
+        foreach (var seed in Enumerable.Range(1, 30).Select(i => (ulong)i).Prepend(42UL))
+        {
+            var world = Run(seed, DemoWeeklyTempConfig.FrontierSample, 10 * 365);
+            var allocating = world.WeekReports().Where(w => w.EntityIdNextClosing > w.EntityIdNextOpening)
+                .Select(w => w.Week).ToList();
+            var departures = world.WeekReports().SelectMany(w => w.Migrations).Count(m => m.Departed);
+            if (allocating.Count >= 2 && departures >= 2)
+                return (seed, allocating[0] * 7);
+        }
+        throw new InvalidOperationException("開拓情境找不到存檔後仍會配號的種子。");
+    }
+
     [Fact]
     public void SaveLoadContinue_NeverReusesAnId()
     {
-        var saving = Run(42, DemoWeeklyTempConfig.FrontierSample, 5 * 365);
+        var (seed, saveDay) = FrontierSaveBeforeLaterAllocation();
+        var saving = Run(seed, DemoWeeklyTempConfig.FrontierSample, saveDay);
         var before = VisibleIds(saving).ToHashSet();
         var savedNext = saving.EntityIdNextValue;
 
         var loaded = DemoObserverWorld.ImportTempSave(saving.ExportTempSave());
         Assert.Equal(savedNext, loaded.EntityIdNextValue);
-        for (var i = 0; i < 5 * 365; i++)
+        while (loaded.Snapshot().DaysElapsed < 10 * 365)
             loaded.AdvanceOneDay();
 
         var fresh = VisibleIds(loaded).Where(id => !before.Contains(id)).ToList();
         Assert.All(fresh, id => Assert.True((ulong)id >= savedNext, $"ID {id} 小於存檔時的下一號 {savedNext}"));
-        Assert.True(loaded.EntityIdNextValue > savedNext, "續跑五年應至少發出新 ID（開拓情境）。");
+        Assert.True(loaded.EntityIdNextValue > savedNext, "存檔後續跑應再發出新 ID。");
+        Assert.Equal(Run(seed, DemoWeeklyTempConfig.FrontierSample, 10 * 365).ExportTempSave(), loaded.ExportTempSave());
     }
 
     [Fact]
@@ -136,7 +153,8 @@ public sealed class DemoEntityIdIntegrationTests
     [InlineData("duplicate-batch-id")]
     public void TamperedEntityIds_AreRejected_AndCallerWorldIsUnchanged(string tamper)
     {
-        var world = Run(42, DemoWeeklyTempConfig.FrontierSample, 3 * 365);
+        var (seed, _) = FrontierSaveBeforeLaterAllocation();
+        var world = Run(seed, DemoWeeklyTempConfig.FrontierSample, 10 * 365);
         var doc = JsonNode.Parse(world.ExportTempSave())!;
         var state = doc["State"]!;
         var weeks = state["WeekReports"]!.AsArray();
@@ -156,7 +174,7 @@ public sealed class DemoEntityIdIntegrationTests
             case "duplicate-batch-id":
                 var departures = weeks.SelectMany(w => w!["Migrations"]!.AsArray())
                     .Where(m => m!["Departed"]!.GetValue<bool>()).ToList();
-                Assert.True(departures.Count >= 2, "開拓情境三年內應有兩支以上隊伍出發。");
+                Assert.True(departures.Count >= 2, "開拓情境十年內應有兩支以上隊伍出發。");
                 departures[1]!["BatchId"] = departures[0]!["BatchId"]!.GetValue<int>();
                 break;
         }
