@@ -162,6 +162,11 @@ public sealed class WorldCalendarRulesTests
         new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,31|28|31|30|31|30|31|31|30|31|61|0,enum_list,日,說明,TRUE\n", "WORLD_MONTH_DAYS" },
         new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,31|28|31|30|31|30|31|31|30|31|三十|31,enum_list,日,說明,TRUE\n", "WORLD_MONTH_DAYS" },
         new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,31|28|31|30|31|30|31|31|30|31|30|31,enum_list,日,說明,FALSE\n", "WORLD_MONTH_DAYS" },
+        // GPT 審查 40a7618（§2-1）：合計 365、12 項、二月 28 都對，但月份不是公曆平年，也必須拒絕。
+        new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,30|28|32|30|31|30|31|31|30|31|30|31,enum_list,日,說明,TRUE\n", "第 1 項（1 月）為 30 日" },
+        new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,31|28|31|30|31|30|30|31|31|31|30|31,enum_list,日,說明,TRUE\n", "第 7 項（7 月）為 30 日" },
+        new object[] { Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,31|28|31|31|30|30|31|31|30|31|30|31,enum_list,日,說明,TRUE\n", "第 4 項（4 月）為 31 日" },
+        new object[] { Days + "WORLD_MONTHS_PER_YEAR,時間,一年月份,13,int,月,說明,TRUE\n" + Feb + "WORLD_MONTH_DAYS,時間,各月天數,28|28|28|28|28|28|28|28|28|28|28|28|29,enum_list,日,說明,TRUE\n", "不是公曆平年的 12 個月" },
         new object[] { Days + Feb + MonthDays, "WORLD_MONTHS_PER_YEAR" },
         new object[] { Days + Months + MonthDays, "WORLD_FEB_DAYS" },
     };
@@ -174,6 +179,15 @@ public sealed class WorldCalendarRulesTests
         Assert.Contains(id, core.Message);
         var cli = Assert.Throws<WorldCalendarException>(() => WorldCalendarConfig.Parse(Header + rows, "測試.csv"));
         Assert.Contains(id, cli.Message);
+    }
+
+    [Fact]
+    public void SameTotalButNonGregorianMonthsNamesTheParameter()
+    {
+        var rows = Days + Months + Feb + "WORLD_MONTH_DAYS,時間,各月天數,30|28|32|30|31|30|31|31|30|31|30|31,enum_list,日,說明,TRUE\n";
+        var ex = Assert.Throws<WorldCalendarException>(() => FromText(rows));
+        Assert.Contains("WORLD_MONTH_DAYS", ex.Message);
+        Assert.Contains("公曆平年應為 31 日", ex.Message);
     }
 
     [Fact]

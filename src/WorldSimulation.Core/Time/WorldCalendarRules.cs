@@ -45,7 +45,8 @@ public sealed class WorldCalendarRules
 
     /// <summary>
     /// 從已驗證的 01 表 registry 取出曆法並交叉檢查。先做 WORLD_DAYS_PER_YEAR 全部檢查（訊息與 #82 相同），
-    /// 再查 WORLD_MONTHS_PER_YEAR、WORLD_FEB_DAYS、WORLD_MONTH_DAYS：項數＝月數、每項正整數、合計＝年日數、第 2 項＝二月天數。
+    /// 再查 WORLD_MONTHS_PER_YEAR、WORLD_FEB_DAYS、WORLD_MONTH_DAYS：項數＝月數、每項正整數、合計＝年日數、第 2 項＝二月天數，
+    /// 最後逐月核對為公曆平年（12 個月；31/28/31/30/31/30/31/31/30/31/30/31）。
     /// </summary>
     /// <exception cref="WorldCalendarException">任一參數缺少、未啟用、型別錯誤或彼此不一致。</exception>
     public static WorldCalendarRules FromRegistry(ConfigRegistry registry, string source)
@@ -91,7 +92,29 @@ public sealed class WorldCalendarRules
             throw new WorldCalendarException(
                 $"{MonthDaysId} 第 2 項為 {monthDays[1]}，與 {FebDaysId}＝{feb} 不符：{source}");
 
+        RequireGregorianCommonYear(monthDays, source);
         return new WorldCalendarRules(days, monthDays);
+    }
+
+    /// <summary>
+    /// C08 §2-1（GPT 審查 40a7618 不通過項）：定案曆法是公曆平年，合計 365、二月 28 仍不夠，
+    /// 例如 30|28|32|… 也合計 365。這裡只做「拒絕」：以公曆規則（無閏年的二月 28 日；
+    /// 1～7 月單數月、8～12 月雙數月為大月 31 日，其餘 30 日）逐月核對 01 表的值。
+    /// 換算仍只用 01 表讀到的值；本檢查不提供任何預設值或替代值（Notion 02 §O 單一權威）。
+    /// </summary>
+    private static void RequireGregorianCommonYear(int[] monthDays, string source)
+    {
+        if (monthDays.Length != 12)
+            throw new WorldCalendarException(
+                $"{MonthDaysId} 有 {monthDays.Length} 項，不是公曆平年的 12 個月（{MonthsPerYearId} 須為 12）：{source}");
+
+        for (var m = 1; m <= 12; m++)
+        {
+            var expected = m == 2 ? 28 : (m <= 7 ? m % 2 == 1 : m % 2 == 0) ? 31 : 30;
+            if (monthDays[m - 1] != expected)
+                throw new WorldCalendarException(
+                    $"{MonthDaysId} 第 {m} 項（{m} 月）為 {monthDays[m - 1]} 日，公曆平年應為 {expected} 日：{source}");
+        }
     }
 
     /// <summary>第 <paramref name="elapsedDays"/> 日（≥1）的年月日；第 365 日屬第 1 年，第 366 日為第 2 年 1 月 1 日。</summary>

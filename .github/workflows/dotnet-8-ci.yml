@@ -65,6 +65,11 @@ jobs:
             # The failed loads above must not change the world: the last status line is still day 9.
             test "$(grep -o '世界狀態｜種子 42｜第 [0-9]* 日' /tmp/observer-slots.log | tail -1)" = '世界狀態｜種子 42｜第 9 日'
             unset WORLD_SIM_TEMP_SAVE_DIR
+            # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 > /tmp/observer-one-year.log
+            cat /tmp/observer-one-year.log
+            head -n 1 /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
+            grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-one-year.log
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
             # #82: the year length comes from config/sheets/01_世界參數.csv WORLD_DAYS_PER_YEAR (365).
