@@ -46,7 +46,7 @@ public sealed class DemoSaveSlotTests : IDisposable
         DemoSaveSlots.Save(c, 3, _directory);
 
         var slots = DemoSaveSlots.ListAll(_directory);
-        Assert.Equal((42UL, 9, "一般示範", 2), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((42UL, 9, "一般示範", 3), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
         Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
         Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
         Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 2 版", slots[1].Describe());
@@ -101,7 +101,7 @@ public sealed class DemoSaveSlotTests : IDisposable
     [Theory]
     [InlineData("not json at all")]
     [InlineData("[1,2,3]")]
-    [InlineData("{\"Version\":3,\"Scenario\":{},\"State\":{}}")]
+    [InlineData("{\"Version\":4,\"Scenario\":{},\"State\":{}}")]
     [InlineData("{\"Version\":\"2\"}")]
     [InlineData("{\"Scenario\":{}}")]
     [InlineData("")]
@@ -127,11 +127,11 @@ public sealed class DemoSaveSlotTests : IDisposable
         Assert.Equal("不是已知的示範情境", DemoSaveSlots.ReadInfo(1, _directory).Error);
     }
 
-    // ── 版本策略：第 1 版（重播）、第 2 版（直接恢復）可讀，其他版本拒絕 ──
+    // ── 版本策略（C04）：只有第 3 版可讀；第 1、2 版「版本太舊，請建立新世界」；其他版本不受支援 ──
 
     [Theory]
     [InlineData(0)]
-    [InlineData(3)]
+    [InlineData(4)]
     [InlineData(99)]
     [InlineData(-2)]
     public void UnknownVersion_IsRejected(int version)
@@ -162,21 +162,25 @@ public sealed class DemoSaveSlotTests : IDisposable
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
 
-    [Fact]
-    public void Version1And2_InSlots_BothLoad()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void OlderVersions_InSlots_ShowTooOldAndStayUntouched(int version)
     {
         var world = World(42, DemoWeeklyTempConfig.FrontierSample, 40);
-        var v2 = world.ExportTempSave();
-        var v1 = JsonNode.Parse(v2)!;
-        v1["Version"] = 1;
+        var old = JsonNode.Parse(world.ExportTempSave())!;
+        old["Version"] = version;
         Directory.CreateDirectory(_directory);
-        File.WriteAllText(DemoSaveSlots.PathFor(1, _directory), v1.ToJsonString(), new UTF8Encoding(false));
-        DemoSaveSlots.Save(world, 2, _directory);
+        var path = DemoSaveSlots.PathFor(1, _directory);
+        File.WriteAllText(path, old.ToJsonString(), new UTF8Encoding(false));
+        var bytes = File.ReadAllBytes(path);
+        var before = world.ExportTempSave();
 
-        Assert.Equal(1, DemoSaveSlots.ReadInfo(1, _directory).Version);
-        Assert.Equal(2, DemoSaveSlots.ReadInfo(2, _directory).Version);
-        Assert.Equal(v2, DemoSaveSlots.Load(1, _directory).ExportTempSave());
-        Assert.Equal(v2, DemoSaveSlots.Load(2, _directory).ExportTempSave());
+        Assert.Contains("版本太舊，請建立新世界", DemoSaveSlots.ReadInfo(1, _directory).Error);
+        var ex = Assert.Throws<InvalidDataException>(() => DemoSaveSlots.Load(1, _directory));
+        Assert.Contains("版本太舊，請建立新世界", ex.Message);
+        Assert.Equal(bytes, File.ReadAllBytes(path)); // 原檔不改不刪
+        Assert.Equal(before, world.ExportTempSave()); // 目前世界不動
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -344,6 +345,12 @@ public sealed record DemoWeekReport(
         : this(week, worldTime, settlements, events, Array.Empty<DemoMigrationWeekLedger>())
     {
     }
+
+    /// <summary>C04：本週結算開始時世界實體 ID 分配器的下一號（0＝未記錄，舊格式）。</summary>
+    public long EntityIdNextOpening { get; init; }
+
+    /// <summary>C04：本週全部配號（新聚落、資源點、隊伍、新生兒）之後的下一號；本週新發 ID 恰為 [Opening, Closing)。</summary>
+    public long EntityIdNextClosing { get; init; }
 }
 
 /// <summary>週結算的候選結果：報告與結算後的新狀態。在發布前不會寫入任何世界狀態。</summary>
@@ -354,7 +361,7 @@ internal sealed record DemoWeeklyOutcome(
     ImmutableSortedDictionary<int, long> Population,
     ImmutableSortedDictionary<int, long> HungerDebt,
     ImmutableList<DemoMigrationBatch> Migrations,
-    int NextMigrationBatchId,
+    EntityIdAllocatorSnapshot EntityIds,
     DemoWorldSites Sites);
 
 /// <summary>
@@ -384,7 +391,7 @@ internal static class DemoWeeklySettlement
         ImmutableSortedDictionary<int, long> hungerDebt,
         DemoWeeklyTempConfig config)
         => Settle(week, worldTime, map: null, sites, reserves, settlementFood, population, hungerDebt,
-            ImmutableList<DemoMigrationBatch>.Empty, nextMigrationBatchId: 1,
+            ImmutableList<DemoMigrationBatch>.Empty, DemoEntityIds.Fresh,
             publishedWeeks: Array.Empty<DemoWeekReport>(), config);
 
     public static DemoWeeklyOutcome Settle(
@@ -397,7 +404,7 @@ internal static class DemoWeeklySettlement
         ImmutableSortedDictionary<int, long> population,
         ImmutableSortedDictionary<int, long> hungerDebt,
         ImmutableList<DemoMigrationBatch> migrations,
-        int nextMigrationBatchId,
+        EntityIdAllocatorSnapshot entityIds,
         IReadOnlyList<DemoWeekReport> publishedWeeks,
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null)
@@ -406,8 +413,12 @@ internal static class DemoWeeklySettlement
         ArgumentNullException.ThrowIfNull(publishedWeeks);
         if (publishedWeeks.Count > 0 && publishedWeeks[publishedWeeks.Count - 1].Week >= week)
             throw new InvalidOperationException("Only weeks published before this settlement can be known (MIG_PULL).");
-        if (nextMigrationBatchId < 1 || migrations.Any(b => b.Id >= nextMigrationBatchId))
-            throw new InvalidOperationException("Migration batch IDs must stay below the next ID (IDs are never reused).");
+        ArgumentNullException.ThrowIfNull(entityIds);
+        // C04：本週所有新實體（新聚落、資源點、隊伍）都由這個私有分配器發號；只有發布時才寫回世界。
+        var ids = EntityIdAllocator.Restore(entityIds);
+        var entityIdOpening = DemoEntityIds.NextValue(entityIds);
+        if (migrations.Any(b => b.Id >= entityIdOpening) || sites.EntityIds().Any(id => id >= entityIdOpening))
+            throw new InvalidOperationException("Entity IDs must stay below the allocator's next ID (IDs are never reused).");
 
         // Allocate each forest/river source ONCE before per-settlement weekly accounting.
         var sharedHarvest = config.SharedCatchmentEnabled
@@ -486,10 +497,11 @@ internal static class DemoWeeklySettlement
                 if (map is null)
                     throw new InvalidOperationException("A founding batch needs the TEMP map.");
                 var cell = batch.Destination;
-                var founded = new DemoSettlement(weekSites.NextSettlementId, $"新聚落{weekSites.NextSettlementId}號",
+                var foundedId = DemoEntityIds.NextInt(ids);
+                var founded = new DemoSettlement(foundedId, $"新聚落{checked(weekSites.FoundedSettlementCount + 1)}號",
                     cell.Column, cell.Row, FoundedWeek: week, FoundedFromSettlementId: batch.FromSettlementId,
                     FoundedByBatchId: batch.Id);
-                weekSites = weekSites.WithFoundedSettlement(founded, map);
+                weekSites = weekSites.WithFoundedSettlement(founded, DemoEntityIds.NextInt(ids), map);
                 var point = weekSites.ResourcePointsOf(founded.Id).Single();
                 reserves = reserves.Add(point.Id, 0);
                 settlementFood = settlementFood.Add(founded.Id, 0);
@@ -664,11 +676,10 @@ internal static class DemoWeeklySettlement
                     debtOut = checked(debt * emigrants) / survivors;
                     var destination = site[site.Length - 1];
                     var batch = new DemoMigrationBatch(
-                        nextMigrationBatchId, settlement.Id, settlement.Name,
+                        DemoEntityIds.NextInt(ids), settlement.Id, settlement.Name,
                         0, $"新聚落預定地{destination}", site,
                         StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
                         NewsWeek: 0, Founding: true);
-                    nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
                     events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
@@ -693,11 +704,10 @@ internal static class DemoWeeklySettlement
                     foodOut = checked(foodClosing * emigrants) / survivors;
                     debtOut = checked(debt * emigrants) / survivors;
                     var batch = new DemoMigrationBatch(
-                        nextMigrationBatchId, settlement.Id, settlement.Name,
+                        DemoEntityIds.NextInt(ids), settlement.Id, settlement.Name,
                         chosen.Settlement.Id, chosen.Settlement.Name, chosen.Route,
                         StepIndex: 0, People: emigrants, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
                         NewsWeek: chosen.NewsWeek);
-                    nextMigrationBatchId = checked(nextMigrationBatchId + 1);
                     nextMigrations.Add(batch);
 
                     events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
@@ -744,10 +754,14 @@ internal static class DemoWeeklySettlement
 
         var report = new DemoWeekReport(week, worldTime, Array.AsReadOnly(ledgers.ToArray()),
             Array.AsReadOnly(events.ToArray()),
-            Array.AsReadOnly(migrationLedgers.OrderBy(m => m.BatchId).ToArray()));
+            Array.AsReadOnly(migrationLedgers.OrderBy(m => m.BatchId).ToArray()))
+        {
+            EntityIdNextOpening = entityIdOpening,
+            EntityIdNextClosing = DemoEntityIds.NextValue(ids.Capture())
+        };
         Verify(report);
         return new DemoWeeklyOutcome(report, nextReserves.ToImmutable(), nextFood.ToImmutable(),
-            nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), nextMigrationBatchId,
+            nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), ids.Capture(),
             weekSites);
     }
 

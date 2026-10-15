@@ -26,11 +26,11 @@ public sealed class DemoDirectSnapshotTests
     }
 
     [Fact]
-    public void NewSaves_AreVersion2()
+    public void NewSaves_AreVersion3()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
         world.AdvanceOneDay();
-        Assert.Equal(2, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
+        Assert.Equal(3, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
     }
 
     [Theory]
@@ -86,17 +86,20 @@ public sealed class DemoDirectSnapshotTests
         Assert.Equal(direct.ExportTempSave(), loaded.ExportTempSave());
     }
 
-    [Fact]
-    public void Version1ReplayCheckpoint_IsStillReadable()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void OlderSaveVersions_AreRejectedAsTooOld(int version)
     {
+        // C04：第 1、2 版存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
         var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.FrontierSample);
         for (var i = 0; i < 30; i++)
             world.AdvanceOneDay();
-        var v2 = world.ExportTempSave();
-        var v1 = JsonNode.Parse(v2)!;
-        v1["Version"] = 1;
+        var old = JsonNode.Parse(world.ExportTempSave())!;
+        old["Version"] = version;
 
-        Assert.Equal(v2, DemoObserverWorld.ImportTempSave(v1.ToJsonString()).ExportTempSave());
+        var ex = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(old.ToJsonString()));
+        Assert.Contains("版本太舊，請建立新世界", ex.Message);
     }
 
     [Fact]
@@ -176,7 +179,7 @@ public sealed class DemoDirectSnapshotTests
                 state["SettlementFood"]![foodKey] = -1;
                 break;
             case "next-batch-id":
-                state["NextMigrationBatchId"] = state["NextMigrationBatchId"]!.GetValue<int>() + 1;
+                state["EntityIds"]!["NextValue"] = state["EntityIds"]!["NextValue"]!.GetValue<ulong>() + 1;
                 break;
             case "batch-people":
                 batch["People"] = batch["People"]!.GetValue<long>() + 1;

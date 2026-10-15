@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
@@ -417,7 +418,7 @@ public sealed class DemoMigrationTests
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Settle(
             2, TimeSpan.FromDays(14), world.Map, sites,
             sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => 0L), zero, zero, zero,
-            ImmutableList.Create(batch), nextMigrationBatchId: 5,
+            ImmutableList.Create(batch), new EntityIdAllocatorSnapshot(EntityIdAllocatorSnapshot.CurrentVersion, 5, false),
             publishedWeeks: Array.Empty<DemoWeekReport>(), DemoWeeklyTempConfig.Sample));
     }
 
@@ -546,7 +547,7 @@ public sealed class DemoMigrationTests
         Assert.Throws<InvalidOperationException>(() => DemoWeeklySettlement.Settle(
             2, TimeSpan.FromDays(14), world.Map, sites,
             sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => 0L), zero, zero, zero,
-            ImmutableList<DemoMigrationBatch>.Empty, nextMigrationBatchId: 1,
+            ImmutableList<DemoMigrationBatch>.Empty, new EntityIdAllocatorSnapshot(EntityIdAllocatorSnapshot.CurrentVersion, world.EntityIdNextValue, false),
             publishedWeeks: world.WeekReports(), DemoWeeklyTempConfig.Sample));
     }
 

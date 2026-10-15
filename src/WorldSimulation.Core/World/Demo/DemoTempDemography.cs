@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -119,14 +120,18 @@ public sealed class DemoTempDemography
     }
 
     /// <summary>Opening population (TEMP): all adults, alternating sex; age varies 18–22 years.</summary>
+    /// <remarks>
+    /// C04：傳入 <paramref name="ids"/>（世界唯一實體 ID 分配器）時，每個人的 ID 依聚落、人序向它取號，
+    /// <see cref="NextId"/> 等於分配器取號後的下一號；不傳時沿用獨立序號（只供單元測試）。
+    /// </remarks>
     public static DemoTempDemography Open(ulong seed, IReadOnlyDictionary<int, int> settlements,
-        DemoTempDemographyRules rules)
+        DemoTempDemographyRules rules, EntityIdAllocator? ids = null)
     {
         ArgumentNullException.ThrowIfNull(settlements);
         ArgumentNullException.ThrowIfNull(rules);
         rules.Validate();
         var people = ImmutableSortedDictionary.CreateBuilder<long, DemoTempPerson>();
-        long id = 1;
+        long id = ids is null ? 1 : DemoEntityIds.NextValue(ids.Capture());
         foreach (var (settlement, count) in settlements.OrderBy(kv => kv.Key))
         {
             if (settlement <= 0 || count < 0)
@@ -134,10 +139,11 @@ public sealed class DemoTempDemography
             for (var i = 0; i < count; i++)
             {
                 var age = checked(rules.AdultAgeYears + i % 5);
+                if (ids is not null) id = DemoEntityIds.NextLong(ids);
                 people.Add(id, new DemoTempPerson(id, settlement,
                     i % 2 == 0 ? DemoTempSex.Female : DemoTempSex.Male,
                     checked(-age * 365)));
-                id = checked(id + 1);
+                id = ids is null ? checked(id + 1) : DemoEntityIds.NextValue(ids.Capture());
             }
         }
         return Restore(new DemoTempDemographicSnapshot(seed, 0, id,
@@ -215,8 +221,9 @@ public sealed class DemoTempDemography
     }
 
     /// <summary>Advance exactly one 7-day week. Nutritional status must come from real Core food accounts.</summary>
+    /// <remarks>C04：傳入 <paramref name="ids"/> 時新生兒向世界唯一分配器取號（依母親 ID 順序）；不傳時沿用獨立序號（只供單元測試）。</remarks>
     public DemoTempDemographicOutcome AdvanceWeek(int week,
-        Func<int, bool> settlementFed, DemoTempDemographyRules rules)
+        Func<int, bool> settlementFed, DemoTempDemographyRules rules, EntityIdAllocator? ids = null)
     {
         ArgumentNullException.ThrowIfNull(settlementFed);
         ArgumentNullException.ThrowIfNull(rules);
@@ -226,7 +233,9 @@ public sealed class DemoTempDemography
         var day = checked(week * 7);
         var next = _people.ToBuilder();
         var events = ImmutableArray.CreateBuilder<DemoTempDemographicEvent>();
-        long nextId = NextId;
+        long nextId = ids is null ? NextId : DemoEntityIds.NextValue(ids.Capture());
+        if (ids is not null && nextId < NextId)
+            throw new InvalidOperationException("The world entity allocator is behind the TEMP person IDs.");
         // Death first: a dead mother cannot give birth later in the same settlement week.
         foreach (var p in _people.Values)
         {
@@ -244,12 +253,13 @@ public sealed class DemoTempDemography
             {
                 if (due == week)
                 {
+                    if (ids is not null) nextId = DemoEntityIds.NextLong(ids);
                     var newborn = new DemoTempPerson(nextId, mother.SettlementId,
                         Roll(Seed, nextId, week, 2, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day);
                     next.Add(nextId, newborn);
                     events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Birth,
                         nextId, mother.SettlementId, mother.Id, mother.FatherId));
-                    nextId = checked(nextId + 1);
+                    nextId = ids is null ? checked(nextId + 1) : DemoEntityIds.NextValue(ids.Capture());
                     next[mother.Id] = mother with { PregnancyDueWeek = null, FatherId = null };
                 }
                 else if (Roll(Seed, mother.Id, week, 3, rules.WeeklyMiscarriageChance))

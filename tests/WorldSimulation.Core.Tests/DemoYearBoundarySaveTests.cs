@@ -69,7 +69,7 @@ public sealed class DemoYearBoundarySaveTests
         foreach (var saveDay in YearBoundaryDays)
         {
             var end = EndAfterNextYearBoundary(saveDay, daysPerYear);
-            foreach (var (version, file) in new[] { (2, saves[saveDay]), (1, AsVersion1(saves[saveDay])) })
+            foreach (var (version, file) in new[] { (3, saves[saveDay]) })
             {
                 var loaded = DemoObserverWorld.ImportTempSave(file);
                 Assert.Equal(saveDay, loaded.Snapshot().DaysElapsed);
@@ -124,16 +124,11 @@ public sealed class DemoYearBoundarySaveTests
             Assert.True(expected == loaded.ExportTempSave(), $"第 {saveDay} 日存檔續跑到第 {end} 日後與直接跑不同");
         }
 
-        // 第 1 版（重播）存檔在上限當天也能讀：從第 0 日重播 36500 日並逐項比對。
-        var replayed = DemoObserverWorld.ImportTempSave(AsVersion1(saves[lastDay]));
-        Assert.Equal(saves[lastDay], replayed.ExportTempSave());
-
-        // 超過上限一天：明確拒絕（中文錯誤），兩種版本都一樣。
-        foreach (var file in new[] { beyond!, AsVersion1(beyond!) })
-        {
-            var error = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(file));
-            Assert.Contains("超出可重播範圍", error.Message);
-        }
+        // 超過上限一天：明確拒絕（中文錯誤）。C04：第 1 版（重播）已一律「版本太舊」。
+        var error = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(beyond!));
+        Assert.Contains("超出可重播範圍", error.Message);
+        var outdated = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(AsVersion1(saves[lastDay])));
+        Assert.Contains("版本太舊，請建立新世界", outdated.Message);
     }
 
     [Fact]

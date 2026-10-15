@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
@@ -18,7 +19,7 @@ public enum DemoResourceKind
 }
 
 /// <summary>
-/// TEMP 示範聚落。Id 是示範用序號，不是正式 EntityID；只會遞增、永不重用。
+/// TEMP 示範聚落。Id 由世界唯一實體 ID 分配器發號（C04／P1.0.03-a；與資源點、人口群體、隊伍、個人共用一個 ID 空間）；只會遞增、永不重用。
 /// V0-06B：<paramref name="FoundedWeek"/>＝0 表示開局就存在；大於 0 表示由遷徙隊伍在該週建立（存在起始週次），
 /// <paramref name="FoundedFromSettlementId"/> 是出發聚落、<paramref name="FoundedByBatchId"/> 是建立它的遷徙隊伍。
 /// </summary>
@@ -35,10 +36,10 @@ public sealed record DemoSettlement(
     public bool IsFounded => FoundedWeek > 0;
 }
 
-/// <summary>TEMP 示範資源點，屬於一個示範聚落，位於該聚落所在格。</summary>
+/// <summary>TEMP 示範資源點，屬於一個示範聚落，位於該聚落所在格。Id 由世界唯一實體 ID 分配器發號。</summary>
 public sealed record DemoResourcePoint(int Id, int SettlementId, DemoResourceKind Kind, int Column, int Row);
 
-/// <summary>TEMP 示範人口群體，屬於一個示範聚落。Size 只是示範人數，不是正式人口規則。</summary>
+/// <summary>TEMP 示範人口群體，屬於一個示範聚落。Id 由世界唯一實體 ID 分配器發號。Size 只是示範人數，不是正式人口規則。</summary>
 public sealed record DemoPopGroup(int Id, int SettlementId, int Size);
 
 /// <summary>
@@ -142,29 +143,61 @@ public sealed class DemoWorldSites
             Array.AsReadOnly(pops.ToArray()), foragingOnly);
     }
 
-    /// <summary>V0-06B：下一個新聚落編號（只會遞增，永不重用）。</summary>
-    public int NextSettlementId => Settlements.Count == 0 ? 1 : checked(Settlements.Max(s => s.Id) + 1);
+    /// <summary>
+    /// C04：開局配號。依固定順序向世界唯一分配器取號：先全部聚落（生成順序，故仍為 1～N）→各聚落資源點→人口群體。
+    /// 獨立於 <see cref="Generate"/>，不改亂數抽樣次數與順序。分配器必須是全新的（下一號為 1）。
+    /// </summary>
+    internal DemoWorldSites WithOpeningEntityIds(EntityIdAllocator ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.NextValue != 1 || Settlements.Any(s => s.IsFounded))
+            throw new InvalidOperationException("Opening entity IDs need a fresh allocator and an unfounded world.");
+        var settlementIds = new Dictionary<int, int>();
+        var settlements = Settlements.Select(s =>
+        {
+            var id = DemoEntityIds.NextInt(ids);
+            settlementIds[s.Id] = id;
+            return s with { Id = id };
+        }).ToArray();
+        var points = ResourcePoints.Select(p => p with
+        {
+            Id = DemoEntityIds.NextInt(ids), SettlementId = settlementIds[p.SettlementId]
+        }).ToArray();
+        var pops = PopGroups.Select(g => g with
+        {
+            Id = DemoEntityIds.NextInt(ids), SettlementId = settlementIds[g.SettlementId]
+        }).ToArray();
+        return new DemoWorldSites(Array.AsReadOnly(settlements), Array.AsReadOnly(points), Array.AsReadOnly(pops),
+            ForagingOnly);
+    }
 
-    /// <summary>V0-06B：下一個新資源點編號（只會遞增，永不重用）。</summary>
-    public int NextResourcePointId => ResourcePoints.Count == 0 ? 1 : checked(ResourcePoints.Max(p => p.Id) + 1);
+    /// <summary>C04：本世界目前所有聚落、資源點、人口群體的實體 ID。</summary>
+    internal IEnumerable<long> EntityIds()
+        => Settlements.Select(s => (long)s.Id).Concat(ResourcePoints.Select(p => (long)p.Id))
+            .Concat(PopGroups.Select(g => (long)g.Id));
+
+    /// <summary>C04：遷徙隊伍建立的新聚落個數（新聚落名稱「新聚落K號」的 K 依此遞增，不再拿 ID 當名字）。</summary>
+    public int FoundedSettlementCount => Settlements.Count(s => s.IsFounded);
 
     /// <summary>
     /// V0-06B：加上一個遷徙隊伍建立的新聚落與它所在格的資源點，回傳新的唯讀副本（不改動自己）。
     /// 新聚落沒有初始人口群體：人口全部來自遷徙隊伍，記在每週人口帳的遷入（M1_SETTLE）。
+    /// C04：兩個 ID 都由世界唯一分配器發號，必須大於既有全部 ID（只遞增、不重用）。
     /// </summary>
-    internal DemoWorldSites WithFoundedSettlement(DemoSettlement settlement, DemoHexWorld map)
+    internal DemoWorldSites WithFoundedSettlement(DemoSettlement settlement, int resourcePointId, DemoHexWorld map)
     {
         ArgumentNullException.ThrowIfNull(settlement);
         ArgumentNullException.ThrowIfNull(map);
-        if (!settlement.IsFounded || settlement.Id != NextSettlementId)
-            throw new InvalidOperationException("A founded settlement needs the next unused ID and a founding week.");
+        var maxExisting = EntityIds().DefaultIfEmpty(0).Max();
+        if (!settlement.IsFounded || settlement.Id <= maxExisting || resourcePointId <= settlement.Id)
+            throw new InvalidOperationException("A founded settlement needs fresh entity IDs and a founding week.");
         if (SettlementAt(settlement.Column, settlement.Row) is not null)
             throw new InvalidOperationException("A settlement already stands on this cell.");
         var cell = map.GetCell(settlement.Column, settlement.Row);
         if (cell.Terrain == DemoTerrain.Water)
             throw new InvalidOperationException("TEMP: settlements cannot be founded on water cells.");
 
-        var point = new DemoResourcePoint(NextResourcePointId, settlement.Id, KindFor(cell.Terrain, ForagingOnly),
+        var point = new DemoResourcePoint(resourcePointId, settlement.Id, KindFor(cell.Terrain, ForagingOnly),
             settlement.Column, settlement.Row);
         return new DemoWorldSites(
             Array.AsReadOnly(Settlements.Append(settlement).ToArray()),
