@@ -15,7 +15,8 @@ if (args.Length > 0 && args[0] == "--m1-check")
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");
-    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42] [--years 100] [--frontier]");
+    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42] [--history-seed N] [--years 100] [--frontier]");
+    Console.WriteLine("  --history-seed N：互動模式自訂歷史種子（不給＝由世界種子衍生）；同世界種子換歷史種子，地圖與初始人口相同。");
     Console.WriteLine("  --years N：不開互動介面，直接跑 N 年（1～1000）並輸出年度摘要（V0-05 無畫面長測）。");
     Console.WriteLine("  --frontier：改用 TEMP 開拓情境（開局聚落全部缺糧，遷徙者可建立新聚落；V0-06B 測試用）。");
     Console.WriteLine("M1 驗收報告：dotnet run --project src/WorldSimulation.ObserverCli -- --m1-check [--years 100] [--seed N] [--preset normal|local-famine|frontier|famine]");
@@ -23,6 +24,7 @@ if (args.Length == 0 || args[0] != "--demo")
 }
 
 ulong seed = 42;
+ulong? historySeed = null;
 int? years = null;
 var frontier = false;
 for (var i = 1; i < args.Length; i += 2)
@@ -38,6 +40,11 @@ for (var i = 1; i < args.Length; i += 2)
     {
         seed = parsedSeed;
     }
+    else if (args[i] == "--history-seed" && value is not null &&
+        ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedHistory))
+    {
+        historySeed = parsedHistory;
+    }
     else if (args[i] == "--years" && value is not null &&
              int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedYears) &&
              parsedYears is >= 1 and <= DemoCenturyRun.MaxYears)
@@ -46,21 +53,28 @@ for (var i = 1; i < args.Length; i += 2)
     }
     else
     {
-        Console.WriteLine($"請以 --demo [--seed <非負整數>] [--years <1～{DemoCenturyRun.MaxYears}>] [--frontier] 指定參數。");
+        Console.WriteLine($"請以 --demo [--seed <非負整數>] [--history-seed <非負整數>] [--years <1～{DemoCenturyRun.MaxYears}>] [--frontier] 指定參數。");
         return 2;
     }
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜cell C R 查格子｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+if (years is not null && historySeed is not null)
+{
+    Console.WriteLine("--history-seed 只用於互動模式；無畫面長測沿用世界種子衍生的歷史種子。");
+    return 2;
+}
+
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 if (years is int runYears)
     return RunHeadless(seed, runYears, frontier);
 
-var world = new DemoObserverWorld(DemoScenario.Sample(seed),
+var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, historySeed),
     frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample);
+WorldRecipe? pendingRecipe = null; // 第 02 章 a 節：已推進世界的 new 需要再輸入 yes 確認。
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
 Console.WriteLine("注意：聚落人口、糧食與每週結算皆為非正式的 TEMP 示範數值；尚未載入試算表的正式世界設定（舊每日糧食示範帳已退役）。");
-Console.WriteLine($"亂數種子：{seed}。世界在你閱讀時不會自行推進。");
+Console.WriteLine($"{world.Recipe.Describe()}。世界在你閱讀時不會自行推進。");
 Console.WriteLine(HelpText);
 PrintStatus();
 
@@ -71,6 +85,39 @@ while (true)
     if (line is null) return 0;
     var command = line.Trim().ToLowerInvariant();
 
+    // 第 02 章 a 節：new W [H]；已推進的世界要再輸入 yes，其他任何指令即取消。
+    if (pendingRecipe is { } pending)
+    {
+        pendingRecipe = null;
+        if (command == "yes")
+        {
+            world = new DemoObserverWorld(pending, world.WeeklyConfig);
+            Console.WriteLine($"已建立新世界（{world.TempScenarioDisplayName}）。");
+            PrintStatus();
+            continue;
+        }
+        Console.WriteLine("已取消建立新世界，目前世界未改變。");
+    }
+    if (command == "new" || command.StartsWith("new ", StringComparison.Ordinal))
+    {
+        if (!TryParseNewCommand(command, out var recipe))
+        {
+            Console.WriteLine("用法：new 世界種子 [歷史種子]，種子必須是 0～18446744073709551615 的整數，世界未改變。");
+            continue;
+        }
+        if (world.Snapshot().DaysElapsed == 0)
+        {
+            world = new DemoObserverWorld(recipe, world.WeeklyConfig);
+            Console.WriteLine($"已建立新世界（{world.TempScenarioDisplayName}）。");
+            PrintStatus();
+        }
+        else
+        {
+            pendingRecipe = recipe;
+            Console.WriteLine($"目前世界已推進到第 {world.Snapshot().DaysElapsed} 日，未存的進度會捨棄。輸入 yes 確認建立新世界，輸入其他指令即取消。");
+        }
+        continue;
+    }
     if (command is "q" or "quit" or "exit")
     {
         Console.WriteLine("離開觀察者；未執行 save 的後續進度不會儲存。");
@@ -187,6 +234,24 @@ void PrintSlots()
         Console.WriteLine($"  {info.Describe()}");
 }
 
+static bool TryParseNewCommand(string command, out WorldRecipe recipe)
+{
+    recipe = null!;
+    var parts = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+    if (parts.Length is < 2 or > 3
+        || !ulong.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var worldSeed))
+        return false;
+    ulong? history = null;
+    if (parts.Length == 3)
+    {
+        if (!ulong.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var h))
+            return false;
+        history = h;
+    }
+    recipe = WorldRecipe.ForSeeds(worldSeed, history);
+    return true;
+}
+
 static bool TryParseSlotCommand(string command, string verb, out int slot)
 {
     slot = 1;
@@ -202,6 +267,7 @@ void PrintStatus()
 {
     var s = world.Snapshot();
     Console.WriteLine($"世界狀態｜種子 {world.TempWorldSeed}｜第 {s.DaysElapsed} 日｜聚落人口 {world.SettledPopulation}｜途中 {world.PopulationInTransit}｜週結算 {world.WeekReports().Count} 次");
+    Console.WriteLine(world.Recipe.Describe());
 }
 
 // V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。

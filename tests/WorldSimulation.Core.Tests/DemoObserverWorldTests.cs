@@ -47,8 +47,8 @@ public sealed class DemoObserverWorldTests
     public void SameHistoryOrWorldSeedGivesTheSameStreamsButOnlyTheHistorySeedChangesHistoryStreams()
     {
         // 正例：同世界種子、兩個不同歷史種子 → 地圖、聚落、資源點、人口群體人數逐項相同（初始人口不再抽 POP）。
-        var a = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.Sample, historySeed: 1);
-        var b = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.Sample, historySeed: 999);
+        var a = new DemoObserverWorld(WorldRecipe.ForSeeds(42, 1), DemoWeeklyTempConfig.Sample);
+        var b = new DemoObserverWorld(WorldRecipe.ForSeeds(42, 999), DemoWeeklyTempConfig.Sample);
 
         Assert.Equal(a.Map.Cells.ToArray(), b.Map.Cells.ToArray());
         Assert.Equal(a.Sites.Settlements.ToArray(), b.Sites.Settlements.ToArray());

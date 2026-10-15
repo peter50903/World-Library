@@ -6,9 +6,10 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07 TEMP save (not a production format). Version 4 (C05, written now) is restored directly:
+/// V0-07 TEMP save (not a production format). Version 5 (第 02 章 a 節, written now) is restored directly:
 /// see DemoObserverWorld.Snapshot.cs. Version 3 (C04) added the world entity-ID allocator (44H SAVE_ID);
-/// version 4 (C05) retires the V0-01 daily food fields and adds per-week RNG stream counters.
+/// version 4 (C05) retires the V0-01 daily food fields and adds per-week RNG stream counters;
+/// version 5 stores the full world recipe (world/history seed, rules version, config hash, code version).
 /// Every older version is rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
 /// no converter, the file is never modified or deleted, and the running world is untouched.
 /// The stored scenario and weekly config must also be one of the known TEMP presets
@@ -18,9 +19,9 @@ namespace WorldSimulation.Core.World;
 public sealed partial class DemoObserverWorld
 {
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
-    public ulong TempWorldSeed => _scenario.Seed;
+    public ulong TempWorldSeed => _recipe.WorldSeed;
 
-    internal const int TempSaveVersion = 4; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器。比目前舊的一律「版本太舊」。
+    internal const int TempSaveVersion = 5; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
@@ -93,7 +94,7 @@ public sealed partial class DemoObserverWorld
         return JsonSerializer.Serialize(new
         {
             Version = TempSaveVersion,
-            Scenario = _scenario,
+            Recipe = _recipe,
             WeeklyConfig = _weekly,
             DaysElapsed = DaysOf(_clock.Now),
             State = state
@@ -125,13 +126,16 @@ public sealed partial class DemoObserverWorld
             if (!IsSupportedTempSaveVersion(version))
                 throw new InvalidDataException("TEMP 存檔版本不受支援。");
 
-            var scenario = root.GetProperty("Scenario").Deserialize<DemoScenario>()
-                ?? throw new InvalidDataException("TEMP 存檔缺少世界種子。");
+            var recipe = root.GetProperty("Recipe").Deserialize<WorldRecipe>()
+                ?? throw new InvalidDataException("TEMP 存檔缺少世界配方。");
+            recipe.Validate();
+            // 規則版本不符：存檔是在不同規則下產生的，拒讀。程式版本與設定雜湊只記錄、不比對（第 04 章 b 節）。
+            if (recipe.RulesVersion != WorldRecipe.TempRulesVersion)
+                throw new InvalidDataException(
+                    $"規則版本不符（存檔 {recipe.RulesVersion}，目前 {WorldRecipe.TempRulesVersion}），已拒絕載入。");
             var weekly = root.GetProperty("WeeklyConfig").Deserialize<DemoWeeklyTempConfig>()
                 ?? throw new InvalidDataException("TEMP 存檔缺少生存情境。");
             // Record value equality: every field must equal a known TEMP preset exactly.
-            if (scenario != DemoScenario.Sample(scenario.Seed))
-                throw new InvalidDataException("TEMP 存檔的世界情境不是已知的示範情境，已拒絕載入。");
             if (!KnownTempWeeklyConfigs.Contains(weekly))
                 throw new InvalidDataException("TEMP 存檔的生存情境不是已知的示範情境，已拒絕載入。");
             var days = root.GetProperty("DaysElapsed").GetInt32();
@@ -139,7 +143,7 @@ public sealed partial class DemoObserverWorld
                 throw new InvalidDataException("TEMP 存檔世界日期超出可重播範圍。");
 
             // Current version restores directly (seed-determined parts re-derived, weekly state verified).
-            return ImportDirectSnapshot(json, root, scenario, weekly, days);
+            return ImportDirectSnapshot(json, root, recipe, weekly, days);
         }
         catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException
             or OverflowException or InvalidOperationException or KeyNotFoundException or NotSupportedException)

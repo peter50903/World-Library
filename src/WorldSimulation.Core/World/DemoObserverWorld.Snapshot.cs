@@ -9,7 +9,7 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07B TEMP direct snapshot restore（C05 起為存檔格式第 4 版，仍是 TEMP，不是正式存檔規格）。
+/// V0-07B TEMP direct snapshot restore（第 02 章 a 節起為存檔格式第 5 版，仍是 TEMP，不是正式存檔規格）。
 /// 讀檔不再從第 0 天重播整個世界：
 /// ① 由種子決定、成本很低的部分（時鐘、排程、十條亂數流）用
 ///    <see cref="AdvanceOneDayCore"/>(settleWeekly: false) 重算，與存檔逐項比對（無法偽造）；
@@ -28,12 +28,13 @@ namespace WorldSimulation.Core.World;
 public sealed partial class DemoObserverWorld
 {
     private static DemoObserverWorld ImportDirectSnapshot(
-        string json, JsonElement root, DemoScenario scenario, DemoWeeklyTempConfig weekly, int days)
+        string json, JsonElement root, WorldRecipe recipe, DemoWeeklyTempConfig weekly, int days)
     {
         var state = root.GetProperty("State");
 
         // ① 種子決定的部分：重算，不讀檔案。
-        var candidate = new DemoObserverWorld(scenario, weekly);
+        // 以檔內配方（含程式版本與設定雜湊原值）重建，重新匯出比對才不會因換一次建置而讀不回。
+        var candidate = new DemoObserverWorld(recipe, weekly);
         var map = candidate.Map;
         var initialSites = candidate._sites;
         var initialDemography = candidate._demography;

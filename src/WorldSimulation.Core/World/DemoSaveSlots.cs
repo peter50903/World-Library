@@ -17,7 +17,8 @@ public sealed record DemoSaveSlotInfo(
     ulong? Seed = null,
     int? DaysElapsed = null,
     string? ScenarioName = null,
-    string? Error = null)
+    string? Error = null,
+    ulong? HistorySeedInput = null)
 {
     /// <summary>給觀察者畫面與文字介面的一行繁體中文說明。</summary>
     public string Describe()
@@ -27,7 +28,7 @@ public sealed record DemoSaveSlotInfo(
         if (Error is not null)
             return $"槽 {Slot}：無法辨識（{Error}）";
         return string.Create(CultureInfo.InvariantCulture,
-            $"槽 {Slot}：第 {DaysElapsed} 日｜種子 {Seed}｜{ScenarioName}｜存檔第 {Version} 版");
+            $"槽 {Slot}：第 {DaysElapsed} 日｜種子 {Seed}{(HistorySeedInput is { } h ? $"｜自訂歷史種子 {h}" : "")}｜{ScenarioName}｜存檔第 {Version} 版");
     }
 }
 
@@ -103,7 +104,7 @@ public static class DemoSaveSlots
     {
         int? version = null;
         int? days = null;
-        DemoScenario? scenario = null;
+        WorldRecipe? recipe = null;
         DemoWeeklyTempConfig? weekly = null;
         try
         {
@@ -125,8 +126,8 @@ public static class DemoSaveSlots
                     case "DaysElapsed":
                         days = reader.GetInt32();
                         break;
-                    case "Scenario":
-                        scenario = JsonSerializer.Deserialize<DemoScenario>(ref reader);
+                    case "Recipe":
+                        recipe = JsonSerializer.Deserialize<WorldRecipe>(ref reader);
                         break;
                     case "WeeklyConfig":
                         weekly = JsonSerializer.Deserialize<DemoWeeklyTempConfig>(ref reader);
@@ -147,12 +148,23 @@ public static class DemoSaveSlots
             return Bad(DemoObserverWorld.OutdatedTempSaveMessage(version.Value));
         if (version is null || !DemoObserverWorld.IsSupportedTempSaveVersion(version.Value))
             return Bad("存檔版本不受支援");
-        if (scenario is null || weekly is null || days is null || days < 0)
+        if (recipe is null || weekly is null || days is null || days < 0)
             return Bad("檔頭缺少世界資訊");
+        try
+        {
+            recipe.Validate();
+        }
+        catch (InvalidDataException)
+        {
+            return Bad("世界配方損毀");
+        }
+        if (recipe.RulesVersion != WorldRecipe.TempRulesVersion)
+            return Bad($"規則版本不符（存檔 {recipe.RulesVersion}）");
         var scenarioName = DemoObserverWorld.TempScenarioName(weekly);
-        if (scenarioName is null || scenario != DemoScenario.Sample(scenario.Seed))
+        if (scenarioName is null)
             return Bad("不是已知的示範情境");
-        return new DemoSaveSlotInfo(slot, path, true, version, scenario.Seed, days, scenarioName);
+        return new DemoSaveSlotInfo(slot, path, true, version, recipe.WorldSeed, days, scenarioName,
+            HistorySeedInput: recipe.HistorySeedInput);
 
         DemoSaveSlotInfo Bad(string reason) => new(slot, path, true, Error: reason);
     }

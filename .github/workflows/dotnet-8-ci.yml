@@ -56,11 +56,23 @@ jobs:
             grep -q 'RESOURCE 提交前 0→提交後 0' /tmp/observer-demo-smoke.log
             ! grep -q '收穫' /tmp/observer-demo-smoke.log
             ! grep -rnE 'RngStreams\.Resource|DemoDayEvent|MaxDailyHarvest|FoodPerPersonPerDay|DailyFood|DailyHistory' src godot/Scripts
+            # 第 02 章 a 節：世界配方——啟動自訂歷史種子、已推進世界的 new 需 yes 確認、其他指令即取消、錯誤種子不改世界。
+            printf 's\n3\nnew 5 6\nyes\ns\nn\nnew 9\nn\nnew abc\ns\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --history-seed 7 | tee /tmp/observer-recipe.log
+            grep -q '世界配方｜世界種子 42｜歷史種子 7（自訂）｜規則版本 【TEMP】TEMP-RULES-0｜設定雜湊 【TEMP】' /tmp/observer-recipe.log
+            grep -q '目前世界已推進到第 3 日' /tmp/observer-recipe.log
+            grep -q '世界配方｜世界種子 5｜歷史種子 6（自訂）' /tmp/observer-recipe.log
+            grep -q '已取消建立新世界，目前世界未改變。' /tmp/observer-recipe.log
+            grep -q '用法：new 世界種子 \[歷史種子\]' /tmp/observer-recipe.log
+            test "$(grep -o '世界狀態｜種子 [0-9]*｜第 [0-9]* 日' /tmp/observer-recipe.log | tail -1)" = '世界狀態｜種子 5｜第 2 日'
+            if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --history-seed 7 --years 1 > /tmp/observer-recipe-headless.log; then
+              echo "--history-seed with --years must be rejected"; exit 1
+            fi
+            grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":4,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":5,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 4 版' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 5 版' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
             grep -q '槽 1：（空）' /tmp/observer-slots.log
@@ -73,7 +85,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 4 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 5 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -238,6 +250,13 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_SCENARIO_OK: Normal=42 LocalFamine=[0-9]+ MigrationDay=[1-9][0-9]* Frontier=[0-9]+ FoundedDay=[1-9][0-9]* Famine=42 ConfirmRequired=1 SlotsUnchanged=1' /tmp/godot-scenario.log
+          # 第 02 章 a 節：世界／歷史種子輸入框——同配方重建、只換歷史種子地圖相同、錯誤輸入與未確認不改世界、存檔槽不動。
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_RECIPE_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-recipe.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-recipe.log; then
+            echo "Godot reported a runtime error in the world recipe smoke."
+            exit 1
+          fi
+          grep -q 'WORLD_SIM_RECIPE_OK: World=123 History=456 SameRecipe=1 HistoryOnlyMapSame=1 BadSeedRejected=1 ConfirmRequired=1 SlotsUnchanged=1' /tmp/godot-recipe.log
           # #89: event detail panel — real ItemList / Button signals walk founding ← emigration ← hunger
           # (43F CAUSE_PARENT) and back via EFFECT_CHILD; the map focus and cell panel follow each event.
           WORLD_SIM_EVENT_DETAIL_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-event-detail.log
