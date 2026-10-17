@@ -244,7 +244,7 @@ jobs:
           # #81: player-visible TEMP scenario picker — real picker/buttons, confirmation before discarding an
           # advanced world, fresh day-0 rebuild without residue, migration / founding / famine visible,
           # loading a slot restores its own scenario, and switching never touches the save slots.
-          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_SCENARIO_SMOKE=1 timeout 120 "$engine" --headless --verbose --path godot --quit-after 6 2>&1 | tee /tmp/godot-scenario.log
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_SCENARIO_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-scenario.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-scenario.log; then
             echo "Godot reported a runtime error in the TEMP scenario switch smoke."
             exit 1

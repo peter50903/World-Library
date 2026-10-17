@@ -14,6 +14,8 @@ public partial class ObserverRoot
 {
     public override void _ExitTree()
     {
+        foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer })
+            player?.Stop();
         ArtAssets.ReleaseCache();
         base._ExitTree();
     }
@@ -167,6 +169,9 @@ public partial class ObserverRoot
     /// 音效與背景音樂播放器。點擊音效接到疊加面板裡所有按鈕；重大事件提示播放警示音。
     /// 背景音樂預設開啟（無畫面的 CI 冒煙不播放），可用頂部「♪」關閉。
     /// </summary>
+    /// <summary>無畫面（冒煙、CI）不播任何音效：播放中的音效在結束時會被回報為未釋放資源。</summary>
+    private bool _audioMuted;
+
     private void BuildAudio()
     {
         _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxClick), VolumeDb = -6f };
@@ -179,7 +184,7 @@ public partial class ObserverRoot
         AddChild(_alertPlayer);
         AddChild(_musicPlayer);
         WireClickSounds(_hud);
-        var headless = DisplayServer.GetName() == "headless";
+        var headless = _audioMuted = DisplayServer.GetName() == "headless";
         _musicToggle.Disabled = music is null;
         _musicToggle.SetPressedNoSignal(music is not null && !headless);
         if (_musicToggle.ButtonPressed)
@@ -198,14 +203,14 @@ public partial class ObserverRoot
 
     private void PlayClick()
     {
-        if (_clickPlayer.Stream is not null)
+        if (!_audioMuted && _clickPlayer.Stream is not null)
             _clickPlayer.Play();
     }
 
     /// <summary>重大事件自動暫停時呼叫（#95）。</summary>
     private void PlayAlert()
     {
-        if (_alertPlayer.Stream is not null)
+        if (!_audioMuted && _alertPlayer.Stream is not null)
             _alertPlayer.Play();
     }
 
