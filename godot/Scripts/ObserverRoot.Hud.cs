@@ -52,14 +52,14 @@ public partial class ObserverRoot
     private static readonly Color TempPanelBorder = new(0.56f, 0.43f, 0.24f);
     private static readonly Color TempGold = new(0.93f, 0.80f, 0.50f);
 
-    private static StyleBoxFlat TempPanelStyle() => new()
+    private static StyleBoxFlat TempPanelStyle() => ArtAssets.Track(new StyleBoxFlat
     {
         BgColor = TempPanelBg,
         BorderColor = TempPanelBorder,
         BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2,
         CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4,
         ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
-    };
+    });
 
     /// <summary>面板外框：有 UI_PANEL_FRAME 就用九宮格羊皮紙框，否則用純色樣式。</summary>
     private static void Skin(PanelContainer panel)
@@ -70,7 +70,7 @@ public partial class ObserverRoot
     {
         if (ArtAssets.Texture(ArtAssets.UiPanelFrame) is null)
             return;
-        var theme = new Theme();
+        var theme = ArtAssets.Track(new Theme());
         theme.SetColor("font_color", "Label", TempInk);
         theme.SetColor("default_color", "RichTextLabel", TempInk);
         theme.SetColor("font_color", "CheckBox", TempInk);

@@ -57,8 +57,26 @@ public static class ArtAssets
         return resource as T;
     }
 
-    /// <summary>離開場景時放掉靜態快取，避免 Godot 結束時回報「resources still in use at exit」。</summary>
-    public static void ReleaseCache() => Cache.Clear();
+    private static readonly List<Resource> Created = new();
+
+    /// <summary>登記由程式新建的資源（樣式、主題），離開場景時一併釋放。</summary>
+    public static T Track<T>(T resource) where T : Resource
+    {
+        Created.Add(resource);
+        return resource;
+    }
+
+    /// <summary>
+    /// 離開場景時釋放 C# 端持有的資源參照。Godot .NET 的包裝物件在被 Dispose 前會一直佔一個參照，
+    /// 只清字典不夠，結束時會回報「resources still in use at exit」。節點自己的參照不受影響。
+    /// </summary>
+    public static void ReleaseCache()
+    {
+        foreach (var resource in Cache.Values.Where(r => r is not null).Concat(Created))
+            resource!.Dispose();
+        Cache.Clear();
+        Created.Clear();
+    }
 
     public static Texture2D? Texture(string path) => Load<Texture2D>(path);
 
@@ -73,14 +91,14 @@ public static class ArtAssets
     {
         if (Texture(UiPanelFrame) is not { } frame)
             return null;
-        return new StyleBoxTexture
+        return Track(new StyleBoxTexture
         {
             Texture = frame,
             TextureMarginLeft = 18, TextureMarginRight = 18, TextureMarginTop = 18, TextureMarginBottom = 18, // TEMP：依素材邊框寬度
             ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 14, ContentMarginBottom = 14,
             AxisStretchHorizontal = StyleBoxTexture.AxisStretchMode.TileFit,
             AxisStretchVertical = StyleBoxTexture.AxisStretchMode.TileFit
-        };
+        });
     }
 
     /// <summary>頂部資訊列木條（UI_TOPBAR_BG）；左右端蓋不拉伸。</summary>
@@ -88,11 +106,11 @@ public static class ArtAssets
     {
         if (Texture(UiTopBar) is not { } bar)
             return null;
-        return new StyleBoxTexture
+        return Track(new StyleBoxTexture
         {
             Texture = bar,
             TextureMarginLeft = 18, TextureMarginRight = 18, TextureMarginTop = 6, TextureMarginBottom = 6, // TEMP
             ContentMarginLeft = 26, ContentMarginRight = 26, ContentMarginTop = 4, ContentMarginBottom = 4
-        };
+        });
     }
 }
