@@ -7,7 +7,8 @@ namespace WorldSimulation.GodotClient;
 /// <summary>
 /// 第 05 章 a 節：觀察者介面骨架——全螢幕地圖＋疊加面板（頂部資訊列、左側詳情、右側世界控制台、
 /// 右下時間控制、底部事件列）。版面由純 C# <see cref="HudLayout"/> 計算；所有文字與數字都來自 Core，
-/// Godot 不計算世界、不改世界。面板外觀暫用深色木框配色（TEMP，正式素材交付後替換）。
+/// Godot 不計算世界、不改世界。b 節起套用 GPT 交付的介面素材（面板外框、頂部木條、時間按鈕圖示、
+/// 統計圖示、點擊與重大事件音效、背景音樂）；任何素材缺少時退回純色樣式（<see cref="ArtAssets"/>）。
 /// </summary>
 public partial class ObserverRoot
 {
@@ -27,6 +28,18 @@ public partial class ObserverRoot
     private Button[] _timeSpeeds = null!;
     private bool _detailOpen;
     private bool _consoleOpen = true;
+    private Label _topFood = null!;
+    private Label _topBirths = null!;
+    private Label _topDeaths = null!;
+    private Button _musicToggle = null!;
+    private AudioStreamPlayer _clickPlayer = null!;
+    private AudioStreamPlayer _alertPlayer = null!;
+    private AudioStreamPlayer _musicPlayer = null!;
+
+    // 羊皮紙面板上的文字用深褐色墨水；頂部木條上用淺色（TEMP 顯示配色）。
+    private static readonly Color TempInk = new(0.22f, 0.15f, 0.08f);
+    private static readonly Color TempParchmentText = new(0.95f, 0.89f, 0.74f);
+    private const float TempMusicVolumeDb = -16f; // TEMP：背景音樂音量
 
     // TEMP 顯示配色：參考視覺稿 observer_hud 的深色木框與金屬邊（不是正式美術）。
     private static readonly Color TempPanelBg = new(0.10f, 0.085f, 0.065f, 0.93f);
@@ -42,34 +55,160 @@ public partial class ObserverRoot
         ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
     };
 
-    private static void Skin(PanelContainer panel) => panel.AddThemeStyleboxOverride("panel", TempPanelStyle());
+    /// <summary>面板外框：有 UI_PANEL_FRAME 就用九宮格羊皮紙框，否則用純色樣式。</summary>
+    private static void Skin(PanelContainer panel)
+        => panel.AddThemeStyleboxOverride("panel", (StyleBox?)ArtAssets.PanelStyle() ?? TempPanelStyle());
+
+    /// <summary>羊皮紙面板內的預設文字顏色（只在面板素材存在時套用）。</summary>
+    private void ApplyHudTheme()
+    {
+        if (ArtAssets.Texture(ArtAssets.UiPanelFrame) is null)
+            return;
+        var theme = new Theme();
+        theme.SetColor("font_color", "Label", TempInk);
+        theme.SetColor("default_color", "RichTextLabel", TempInk);
+        theme.SetColor("font_color", "CheckBox", TempInk);
+        theme.SetColor("font_hover_color", "CheckBox", TempInk);
+        theme.SetColor("font_pressed_color", "CheckBox", TempInk);
+        _hud.Theme = theme;
+    }
+
+    private static Label LightLabel(string text = "")
+    {
+        var label = new Label { Text = text, VerticalAlignment = VerticalAlignment.Center };
+        label.AddThemeColorOverride("font_color", TempParchmentText);
+        return label;
+    }
+
+    private static TextureRect? SmallIcon(string path)
+        => ArtAssets.Texture(path) is { } texture
+            ? new TextureRect
+            {
+                Texture = texture,
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                CustomMinimumSize = new Vector2(26, 26),
+                MouseFilter = Control.MouseFilterEnum.Ignore
+            }
+            : null;
+
+    /// <summary>按鈕圖示：有素材就用圖示（文字移到提示），沒有就保留文字。</summary>
+    private static void SetButtonIcon(Button button, string path, string fallbackText)
+    {
+        if (ArtAssets.Texture(path) is { } texture)
+        {
+            button.Icon = texture;
+            button.ExpandIcon = true;
+            button.IconAlignment = HorizontalAlignment.Center;
+            button.Text = "";
+        }
+        else
+        {
+            button.Icon = null;
+            button.Text = fallbackText;
+        }
+    }
 
     private void BuildTopBar()
     {
+        ApplyHudTheme();
         _topBar = new PanelContainer();
-        Skin(_topBar);
+        _topBar.AddThemeStyleboxOverride("panel", (StyleBox?)ArtAssets.TopBarStyle() ?? TempPanelStyle());
         _hud.AddChild(_topBar);
         var row = new HBoxContainer();
-        row.AddThemeConstantOverride("separation", 16);
+        row.AddThemeConstantOverride("separation", 12);
         _topBar.AddChild(row);
 
         _topWorld = new Label { VerticalAlignment = VerticalAlignment.Center };
         _topWorld.AddThemeColorOverride("font_color", TempGold);
         row.AddChild(_topWorld);
-        _topStats = new Label
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            ClipText = true
-        };
+        _topStats = LightLabel();
+        _topStats.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _topStats.HorizontalAlignment = HorizontalAlignment.Center;
+        _topStats.ClipText = true;
         row.AddChild(_topStats);
+
+        // 糧食／本週出生／本週死亡：圖示＋數字（素材缺少時只有文字）。
+        _topFood = AddStat(row, ArtAssets.IconFood, "全世界聚落糧食庫存");
+        _topBirths = AddStat(row, ArtAssets.IconBirth, "本週出生");
+        _topDeaths = AddStat(row, ArtAssets.IconDeath, "本週死亡（餓死＋自然死亡＋途中死亡）");
+
         _topDate = new Label { VerticalAlignment = VerticalAlignment.Center };
         _topDate.AddThemeColorOverride("font_color", TempGold);
         row.AddChild(_topDate);
+        _musicToggle = new Button { Text = "♪", TooltipText = "背景音樂 開／關" , ToggleMode = true };
+        _musicToggle.Toggled += OnMusicToggled;
+        row.AddChild(_musicToggle);
         _consoleToggle = new Button { Text = "世界控制台 ▸", TooltipText = "收合或展開右側世界控制台" };
         _consoleToggle.Pressed += ToggleConsole;
         row.AddChild(_consoleToggle);
+    }
+
+    private static Label AddStat(HBoxContainer row, string iconPath, string tooltip)
+    {
+        var group = new HBoxContainer { TooltipText = tooltip };
+        group.AddThemeConstantOverride("separation", 4);
+        if (SmallIcon(iconPath) is { } icon)
+            group.AddChild(icon);
+        var value = LightLabel();
+        value.TooltipText = tooltip;
+        group.AddChild(value);
+        row.AddChild(group);
+        return value;
+    }
+
+    /// <summary>
+    /// 音效與背景音樂播放器。點擊音效接到疊加面板裡所有按鈕；重大事件提示播放警示音。
+    /// 背景音樂預設開啟（無畫面的 CI 冒煙不播放），可用頂部「♪」關閉。
+    /// </summary>
+    private void BuildAudio()
+    {
+        _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxClick), VolumeDb = -6f };
+        _alertPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxEventAlert), VolumeDb = -4f };
+        var music = ArtAssets.Audio(ArtAssets.MusicObserverLoop);
+        if (music is AudioStreamOggVorbis ogg)
+            ogg.Loop = true;
+        _musicPlayer = new AudioStreamPlayer { Stream = music, VolumeDb = TempMusicVolumeDb };
+        AddChild(_clickPlayer);
+        AddChild(_alertPlayer);
+        AddChild(_musicPlayer);
+        WireClickSounds(_hud);
+        var headless = DisplayServer.GetName() == "headless";
+        _musicToggle.Disabled = music is null;
+        _musicToggle.SetPressedNoSignal(music is not null && !headless);
+        if (_musicToggle.ButtonPressed)
+            _musicPlayer.Play();
+    }
+
+    private void WireClickSounds(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (child is BaseButton button && !ReferenceEquals(button, _musicToggle))
+                button.Pressed += PlayClick;
+            WireClickSounds(child);
+        }
+    }
+
+    private void PlayClick()
+    {
+        if (_clickPlayer.Stream is not null)
+            _clickPlayer.Play();
+    }
+
+    /// <summary>重大事件自動暫停時呼叫（#95）。</summary>
+    private void PlayAlert()
+    {
+        if (_alertPlayer.Stream is not null)
+            _alertPlayer.Play();
+    }
+
+    private void OnMusicToggled(bool on)
+    {
+        if (on && _musicPlayer.Stream is not null)
+            _musicPlayer.Play();
+        else
+            _musicPlayer.Stop();
     }
 
     private void BuildDetailPanel()
@@ -82,7 +221,6 @@ public partial class ObserverRoot
         var header = new HBoxContainer();
         column.AddChild(header);
         var title = new Label { Text = "詳情", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        title.AddThemeColorOverride("font_color", TempGold);
         title.AddThemeFontSizeOverride("font_size", 18);
         header.AddChild(title);
         var close = new Button { Text = "✕", TooltipText = "關閉（Esc）" };
@@ -111,10 +249,12 @@ public partial class ObserverRoot
         row.AddThemeConstantOverride("separation", 6);
         _timePanel.AddChild(row);
 
-        _timePlay = new Button { Text = "▶", TooltipText = "播放／暫停（空白鍵）", CustomMinimumSize = new Vector2(44, 0) };
+        _timePlay = new Button { TooltipText = "播放／暫停（空白鍵）", CustomMinimumSize = new Vector2(44, 40) };
+        SetButtonIcon(_timePlay, ArtAssets.UiPlay, "▶");
         _timePlay.Pressed += TogglePlayback;
         row.AddChild(_timePlay);
-        _timeStep = new Button { Text = "+1 日", TooltipText = "推進一天" };
+        _timeStep = new Button { TooltipText = "推進一天", CustomMinimumSize = new Vector2(44, 40) };
+        SetButtonIcon(_timeStep, ArtAssets.UiStep, "+1 日");
         _timeStep.Pressed += () => Advance(1);
         row.AddChild(_timeStep);
 
@@ -125,10 +265,20 @@ public partial class ObserverRoot
             var index = i;
             _timeSpeeds[i] = new Button
             {
-                Text = $"{i + 1}檔",
+                Text = $"{i + 1}",
                 ToggleMode = true,
-                TooltipText = $"每秒 {options[i]} 天（TEMP；數字鍵 {i + 1}）"
+                CustomMinimumSize = new Vector2(52, 40),
+                TooltipText = $"速度 {i + 1} 檔：每秒 {options[i]} 天（TEMP；數字鍵 {i + 1}）"
             };
+            if (ArtAssets.Texture(ArtAssets.UiFast) is { } fast)
+            {
+                _timeSpeeds[i].Icon = fast;
+                _timeSpeeds[i].ExpandIcon = true;
+            }
+            else
+            {
+                _timeSpeeds[i].Text = $"{i + 1}檔";
+            }
             _timeSpeeds[i].Pressed += () => SelectSpeed(index);
             row.AddChild(_timeSpeeds[i]);
         }
@@ -191,15 +341,22 @@ public partial class ObserverRoot
         var births = week?.Settlements.Sum(l => l.Births) ?? 0;
         var deaths = week?.Settlements.Sum(l => l.Deaths) ?? 0;
         _topWorld.Text = $"【TEMP 示範】{_world.TempScenarioDisplayName}";
+        var food = _world.Sites.Settlements.Sum(s => _world.SettlementFood(s.Id));
         _topStats.Text = string.Create(CultureInfo.InvariantCulture,
-            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count}｜遷徙途中 {_world.PopulationInTransit}｜本週出生 {births}｜本週死亡 {deaths}");
+            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count}｜遷徙途中 {_world.PopulationInTransit}");
+        _topFood.Text = string.Create(CultureInfo.InvariantCulture, $"糧食 {food}");
+        _topBirths.Text = string.Create(CultureInfo.InvariantCulture, $"出生 {births}");
+        _topDeaths.Text = string.Create(CultureInfo.InvariantCulture, $"死亡 {deaths}");
         _topDate.Text = $"{DateText(days)}（第 {days} 日）";
         if (_timePlay is null)
             return;
-        _timePlay.Text = _playback.Playing ? "⏸" : "▶";
+        SetButtonIcon(_timePlay, _playback.Playing ? ArtAssets.UiPause : ArtAssets.UiPlay, _playback.Playing ? "⏸" : "▶");
         for (var i = 0; i < _timeSpeeds.Length; i++)
             _timeSpeeds[i].ButtonPressed = PlaybackClock.TempDaysPerSecondOptions[i] == _playback.DaysPerSecond;
     }
+
+    private bool PlayButtonShowsPause()
+        => _timePlay.Icon is { } icon ? ReferenceEquals(icon, ArtAssets.Texture(ArtAssets.UiPause)) : _timePlay.Text == "⏸";
 
     /// <summary>空白鍵播放／暫停、數字鍵切換速度、Esc 關閉詳情（輸入框取得焦點時不會收到）。</summary>
     public override void _UnhandledInput(InputEvent @event)
@@ -275,7 +432,7 @@ public partial class ObserverRoot
 
         // 鍵盤：空白鍵播放→暫停；數字鍵 2 選第二檔。
         PressKey(Godot.Key.Space);
-        if (!_playback.Playing || _timePlay.Text != "⏸")
+        if (!_playback.Playing || !PlayButtonShowsPause())
             Fail("Space did not start playback.");
         PressKey(Godot.Key.Space);
         if (_playback.Playing)
@@ -296,6 +453,21 @@ public partial class ObserverRoot
         if (_world.ExportTempSave() != before)
             Fail("HUD operations changed the world.");
 
-        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized}");
+        // b 節：本版用到的全部素材都必須讀得到（CI 已匯入專案），而且真的掛上畫面。
+        var art = ArtAssets.LoadedUsedCount();
+        if (art != ArtAssets.Used.Length)
+            Fail($"only {art}/{ArtAssets.Used.Length} art assets loaded: "
+                + string.Join(", ", ArtAssets.Used.Where(p => (p.EndsWith(".ogg", StringComparison.Ordinal)
+                    ? ArtAssets.Audio(p) : (Resource?)ArtAssets.Texture(p)) is null)));
+        if (_timeStep.Icon is null || _timeSpeeds[0].Icon is null
+            || _consolePanel.GetThemeStylebox("panel") is not StyleBoxTexture
+            || _topBar.GetThemeStylebox("panel") is not StyleBoxTexture
+            || _clickPlayer.Stream is null || _alertPlayer.Stream is null || _musicPlayer.Stream is null
+            || !_hexMap.UsesTerrainArt)
+            Fail("art assets were loaded but not applied to the HUD/map.");
+        if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
+            Fail("food stat missing from the top bar.");
+
+        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art}");
     }
 }
