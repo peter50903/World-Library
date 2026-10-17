@@ -96,8 +96,9 @@ jobs:
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 > /tmp/observer-one-year.log
             cat /tmp/observer-one-year.log
-            # Line 1 is the run title; the calendar description is the first line after it.
-            sed -n 2p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
+            # Line 1 is the run title, line 2 the official-config line (第 02 章 b 節), line 3 the calendar.
+            sed -n 2p /tmp/observer-one-year.log | grep -q '^正式設定：01 已載入'
+            sed -n 3p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
             grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-one-year.log
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
