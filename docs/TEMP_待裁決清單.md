@@ -255,8 +255,9 @@
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 13 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
-| `godot/Scripts/ObserverRoot.RecipeSmoke.cs` | 1 | 第 02 章 a 節世界配方冒煙（斷言設定雜湊顯示【TEMP】） |
-| `src/WorldSimulation.Core/World/WorldRecipe.cs` | 7 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`、設定雜湊佔位 `TEMP-CONFIG-HASH-PENDING`（第 02 章 b 節換成正式雜湊） |
+| `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |
+| `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
+| `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
 | `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |

@@ -45,14 +45,20 @@ public static class WorldCalendarConfig
         return null;
     }
 
-    /// <summary>找預設路徑並讀取；找不到就丟出 <see cref="WorldCalendarException"/>。</summary>
+        /// <summary>
+    /// 第 02 章 b 節：本建置編入的正式設定（<see cref="OfficialConfig"/>）的 01 表建立曆法——與 Godot 同一份、同一個雜湊。
+    /// 正式設定讀取失敗就丟出 <see cref="WorldCalendarException"/>。
+    /// </summary>
     public static WorldCalendar LoadDefault()
     {
-        var path = FindDefaultPath()
-            ?? throw new WorldCalendarException($"找不到 {RelativePath}；請在程式倉庫內執行，或用 --world-params 指定路徑。");
-        return Load(path);
+        var loaded = OfficialConfig.Load();
+        if (loaded.Config is not { } config)
+            throw new WorldCalendarException(loaded.ErrorText);
+        const string source = "本建置編入的 " + RelativePath;
+        return new WorldCalendar(WorldCalendarRules.FromRegistry(config.World, source), source);
     }
 
+    /// <summary>讀外部檔（--world-params，非本建置設定；只供檢查其他版本的 01 表與錯誤測試）。</summary>
     public static WorldCalendar Load(string path)
     {
         if (!File.Exists(path))

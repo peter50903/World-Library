@@ -1,4 +1,5 @@
 using Godot;
+using WorldSimulation.Core.Config;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 
@@ -32,7 +33,7 @@ public partial class ObserverRoot
             || _world.ExportTempSave() != reference.ExportTempSave()
             || !_status.Text.Contains("世界種子：123", StringComparison.Ordinal)
             || !_status.Text.Contains("歷史種子：456（自訂）", StringComparison.Ordinal)
-            || !_status.Text.Contains("設定雜湊：【TEMP】", StringComparison.Ordinal))
+            || !_status.Text.Contains($"設定雜湊：{OfficialConfig.Current.ConfigHash[..16]}", StringComparison.Ordinal))
             Fail("seed 123/456 did not rebuild the same Core world or status.");
         var sameRecipe = 1;
 

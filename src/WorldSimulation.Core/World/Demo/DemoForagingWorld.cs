@@ -10,15 +10,9 @@ public static class DemoForagingWorld
 {
     public static DemoCatchmentTempSettings Settings { get; } = LoadSettings();
 
+    // 第 02 章 b 節：TEMP 示範設定與正式設定一起編入（WorldSimulation.ConfigDemo/），納入 TEMP 設定雜湊。
     private static DemoCatchmentTempSettings LoadSettings()
-    {
-        using var stream = typeof(DemoForagingWorld).Assembly
-            .GetManifestResourceStream("WorldSimulation.TerrainFoodTemp");
-        if (stream is null)
-            throw new InvalidOperationException("Embedded TEMP forest/river settings not found.");
-        using var reader = new StreamReader(stream);
-        return DemoCatchmentTempSettings.FromJson(reader.ReadToEnd());
-    }
+        => DemoCatchmentTempSettings.FromJson(Config.OfficialConfig.ReadDemoText("terrain-food-temp.json"));
 
     /// <summary>
     /// TEMP river-main-channel geometry. Do not mistake this display fixture for

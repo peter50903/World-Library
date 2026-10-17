@@ -93,17 +93,21 @@ public sealed class WorldRecipeTests
     }
 
     [Fact]
-    public void Describe_MarksRulesVersionAndConfigHashAsTemp_AndNeverInventsACodeVersion()
+    public void Describe_MarksRulesVersionAsTemp_ShowsTheRealConfigHash_AndNeverInventsACodeVersion()
     {
         var recipe = WorldRecipe.ForSeeds(5, 6);
         var line = recipe.Describe();
+        var hash = WorldSimulation.Core.Config.OfficialConfig.Current.ConfigHash;
         Assert.StartsWith("世界配方｜世界種子 5｜歷史種子 6（自訂）", line, StringComparison.Ordinal);
         Assert.Contains("規則版本 【TEMP】", line, StringComparison.Ordinal);
-        Assert.Contains("設定雜湊 【TEMP】", line, StringComparison.Ordinal);
-        Assert.True(recipe.ConfigHashIsTemp);
+        Assert.Equal(hash, recipe.ConfigHash);
+        Assert.Contains($"設定雜湊 {hash[..16]}", line, StringComparison.Ordinal);
+        Assert.False(recipe.ConfigHashIsTemp);
         var code = WorldRecipe.CurrentCodeVersion;
         Assert.True(code == WorldRecipe.UnknownCodeVersion || (code.Length >= 7 && code.All(Uri.IsHexDigit)), code);
-        Assert.Contains("設定雜湊：【TEMP】", recipe.DescribeLines(), StringComparison.Ordinal);
+        Assert.Contains($"設定雜湊：{hash[..16]}", recipe.DescribeLines(), StringComparison.Ordinal);
+        // 舊（第 02 章 a 節）存檔裡的佔位字串仍可辨識為未計算，不會被當成正式雜湊。
+        Assert.True((recipe with { ConfigHash = "TEMP-CONFIG-HASH-PENDING" }).ConfigHashIsTemp);
     }
 
     [Fact]

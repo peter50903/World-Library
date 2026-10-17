@@ -1,5 +1,6 @@
 using Godot;
 using System.Globalization;
+using WorldSimulation.Core.Config;
 using WorldSimulation.Core.Time;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
@@ -180,6 +181,23 @@ public partial class ObserverRoot : Control
 
     public override void _Ready()
     {
+        // 第 02 章 b 節：先載入並驗證正式設定（01＋29）；失敗就只顯示錯誤，不建立任何介面、不推進世界。
+        var officialConfig = OfficialConfig.Load();
+        if (!officialConfig.IsValid)
+        {
+            var error = new Label
+            {
+                Text = officialConfig.ErrorText,
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            AddChild(error);
+            error.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+            GD.PrintErr(officialConfig.ErrorText);
+            return;
+        }
+
         _calendar = WorldCalendarFile.TryLoad(out _calendarError);
         // 第 05 章：地圖永遠全螢幕；所有介面都是疊在地圖上的面板（不另開作業系統視窗）。
         var mapPanel = new PanelContainer();
@@ -566,6 +584,16 @@ public partial class ObserverRoot : Control
                 throw new InvalidOperationException($"Godot calendar display is wrong: {_calendarError}");
             }
             GD.Print("WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28");
+
+            // 第 02 章 b 節：狀態欄顯示正式設定載入結果與 64 碼設定雜湊的前 16 碼（CI 與 CLI 的 Hash16 比對）。
+            var config = OfficialConfig.Current;
+            if (!_status.Text.Contains("正式設定：01 已載入", StringComparison.Ordinal)
+                || !_status.Text.Contains(config.ConfigHash[..16], StringComparison.Ordinal)
+                || _world.Recipe.ConfigHash != config.ConfigHash)
+            {
+                throw new InvalidOperationException("Godot status does not show the official config and its hash.");
+            }
+            GD.Print($"WORLD_SIM_CONFIG_OK: Sheets={config.SheetCount} Hash16={config.ConfigHash[..16]}");
 
             // Godot runs the same input handler used by real mouse clicks;
             // selected terrain must be from Core's immutable demo cell.
@@ -1280,6 +1308,7 @@ public partial class ObserverRoot : Control
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
             $"{_world.Recipe.DescribeLines()}\n" +
+            $"{OfficialConfig.Current.Describe()}\n" +
             $"世界日期：第 {(int)snapshot.WorldTime.TotalDays} 日（{DateText((int)snapshot.WorldTime.TotalDays)}）\n" +
             $"時間推進：{_playback.StatusText}\n" +
             // #61: one population ledger (settlements + migrants, each person counted once) ...

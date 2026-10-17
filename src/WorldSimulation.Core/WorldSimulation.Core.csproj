@@ -11,7 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="../../config/demo/terrain-food-temp.json" LogicalName="WorldSimulation.TerrainFoodTemp" />
+    <!-- 第 02 章 b 節：正式設定（config/sheets 全部 CSV）與 TEMP 示範設定（config/demo）編入組件；
+         CLI 與 Godot 由 OfficialConfig 共用同一份，Core 不讀磁碟。 -->
+    <EmbeddedResource Include="../../config/sheets/*.csv" LogicalName="WorldSimulation.ConfigSheets/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../config/demo/*" LogicalName="WorldSimulation.ConfigDemo/%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

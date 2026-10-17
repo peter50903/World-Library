@@ -66,6 +66,16 @@ if (years is not null && historySeed is not null)
 
 const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
+// 第 02 章 b 節：互動與無畫面模式都先載入並驗證正式設定（01＋29），失敗就停止（結束碼 2）。
+var officialConfig = OfficialConfig.Load();
+if (!officialConfig.IsValid)
+{
+    Console.WriteLine(officialConfig.ErrorText);
+    foreach (var error in officialConfig.Errors.Skip(1).Take(20))
+        Console.WriteLine($"  {error.Describe()}");
+    return 2;
+}
+
 if (years is int runYears)
     return RunHeadless(seed, runYears, frontier);
 
@@ -73,7 +83,8 @@ var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, historySeed),
     frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample);
 WorldRecipe? pendingRecipe = null; // 第 02 章 a 節：已推進世界的 new 需要再輸入 yes 確認。
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
-Console.WriteLine("注意：聚落人口、糧食與每週結算皆為非正式的 TEMP 示範數值；尚未載入試算表的正式世界設定（舊每日糧食示範帳已退役）。");
+Console.WriteLine("注意：聚落人口、糧食與每週結算皆為非正式的 TEMP 示範數值（正式數值參數已載入並驗證，尚未接進示範世界）。");
+Console.WriteLine(officialConfig.Config!.Describe());
 Console.WriteLine($"{world.Recipe.Describe()}。世界在你閱讀時不會自行推進。");
 Console.WriteLine(HelpText);
 PrintStatus();
@@ -268,12 +279,14 @@ void PrintStatus()
     var s = world.Snapshot();
     Console.WriteLine($"世界狀態｜種子 {world.TempWorldSeed}｜第 {s.DaysElapsed} 日｜聚落人口 {world.SettledPopulation}｜途中 {world.PopulationInTransit}｜週結算 {world.WeekReports().Count} 次");
     Console.WriteLine(world.Recipe.Describe());
+    Console.WriteLine(OfficialConfig.Current.Describe());
 }
 
 // V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。
 static int RunHeadless(ulong seed, int years, bool frontier)
 {
     Console.WriteLine("=== 世界觀察者 v0｜無畫面長測（V0-05）===");
+    Console.WriteLine(OfficialConfig.Current.Describe());
     // #82：一年日數讀正式設定 01 表 WORLD_DAYS_PER_YEAR（與 --m1-check 同一個年界），找不到或格式錯誤即停止。
     WorldCalendar calendar;
     try
