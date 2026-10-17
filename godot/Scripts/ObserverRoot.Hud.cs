@@ -260,11 +260,11 @@ public partial class ObserverRoot
         row.AddThemeConstantOverride("separation", 6);
         _timePanel.AddChild(row);
 
-        _timePlay = new Button { TooltipText = "播放／暫停（空白鍵）", CustomMinimumSize = new Vector2(44, 40) };
+        _timePlay = new Button { TooltipText = "播放／暫停（空白鍵）", CustomMinimumSize = new Vector2(44, 36) };
         SetButtonIcon(_timePlay, ArtAssets.UiPlay, "▶");
         _timePlay.Pressed += TogglePlayback;
         row.AddChild(_timePlay);
-        _timeStep = new Button { TooltipText = "推進一天", CustomMinimumSize = new Vector2(44, 40) };
+        _timeStep = new Button { TooltipText = "推進一天", CustomMinimumSize = new Vector2(44, 36) };
         SetButtonIcon(_timeStep, ArtAssets.UiStep, "+1 日");
         _timeStep.Pressed += () => Advance(1);
         row.AddChild(_timeStep);
@@ -278,7 +278,7 @@ public partial class ObserverRoot
             {
                 Text = $"{i + 1}",
                 ToggleMode = true,
-                CustomMinimumSize = new Vector2(52, 40),
+                CustomMinimumSize = new Vector2(52, 36),
                 TooltipText = $"速度 {i + 1} 檔：每秒 {options[i]} 天（TEMP；數字鍵 {i + 1}）"
             };
             if (ArtAssets.Texture(ArtAssets.UiFast) is { } fast)
