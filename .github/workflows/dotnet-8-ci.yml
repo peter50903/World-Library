@@ -339,3 +339,15 @@ jobs:
           fi
           grep -q 'RngStreams.Geography' src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs
           echo "Actual Godot .NET scene loaded and ran headlessly."
+
+      - name: Report Godot failure lines as annotations
+        if: failure()
+        run: |
+          # 本工作階段讀不到 CI 原始日誌，失敗時把關鍵行轉成註記（API 可讀）。
+          for f in /tmp/godot-*.log /tmp/observer-*.log; do
+            [ -f "$f" ] || continue
+            lines="$(grep -nE '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception|WORLD_SIM_[A-Z_]+|at |失敗)' "$f" | tail -40 | cut -c1-300)"
+            [ -n "$lines" ] || lines="$(tail -20 "$f" | cut -c1-300)"
+            msg="$(printf '%s' "$lines" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
+            echo "::error title=$(basename "$f")::$msg"
+          done
