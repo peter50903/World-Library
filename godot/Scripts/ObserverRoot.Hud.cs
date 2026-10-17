@@ -12,6 +12,12 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public partial class ObserverRoot
 {
+    public override void _ExitTree()
+    {
+        ArtAssets.ReleaseCache();
+        base._ExitTree();
+    }
+
     private Control _hud = null!;
     private PanelContainer _consolePanel = null!;
     private PanelContainer _feedPanel = null!;

@@ -57,6 +57,9 @@ public static class ArtAssets
         return resource as T;
     }
 
+    /// <summary>離開場景時放掉靜態快取，避免 Godot 結束時回報「resources still in use at exit」。</summary>
+    public static void ReleaseCache() => Cache.Clear();
+
     public static Texture2D? Texture(string path) => Load<Texture2D>(path);
 
     public static AudioStream? Audio(string path) => Load<AudioStream>(path);
