@@ -118,6 +118,7 @@ public partial class ObserverRoot
             _alertButton.TooltipText = alert.Describe();
             _alertButton.Visible = true;
             PausePlayback(); // 會 Refresh。
+            PlayAlert(); // b 節：重大事件警示音。
             _notice.Text = $"第 {last!.Day} 日發生重大事件 #{alert.EventId}（{DemoCausalIndex.KindText(alert.Kind)}），已自動暫停。";
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)

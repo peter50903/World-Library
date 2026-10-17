@@ -266,7 +266,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 12 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例） |
-| `godot/Scripts/ObserverRoot.Hud.cs` | 4 | 第 05 章面板配色、速度檔位說明 |
+| `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
+| `godot/Scripts/ArtAssets.cs` | 2 | 第 05 章 b 節九宮格面板與頂部木條的邊框寬度 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |
