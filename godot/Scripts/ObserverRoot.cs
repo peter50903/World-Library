@@ -294,7 +294,10 @@ public partial class ObserverRoot : Control
 
         side.AddChild(new Label
         {
-            Text = "● 綠色：未開墾草原   ● 深綠：森林\n● 藍色：一般水域   ● 青色：主河道（採集情境）\n● 金色：示範聚落   ● 紅色：遷徙隊伍（每週走 1 格）",
+            Text = ArtAssets.Texture(ArtAssets.TileGrassland) is not null
+                ? "地圖：草原、森林、一般水域、主河道（採集情境）各有地形圖塊；村莊圖示＝聚落，帳篷圖示＝遷徙者建立的新聚落，行旅圖示＝遷徙隊伍（數字＝人數，每週走 1 格）。"
+                : "● 綠色：未開墾草原   ● 深綠：森林\n● 藍色：一般水域   ● 青色：主河道（採集情境）\n● 金色：示範聚落   ● 紅色：遷徙隊伍（每週走 1 格）",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
         });
         side.AddChild(new Label
         {
@@ -408,6 +411,7 @@ public partial class ObserverRoot : Control
 
         BuildDetailPanel();
         BuildTimeControls();
+        BuildAudio();
         _hud.Resized += ApplyHudLayout;
         ApplyHudLayout();
 

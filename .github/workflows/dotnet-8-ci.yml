@@ -311,7 +311,7 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -q 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2' /tmp/godot-hud.log
+          grep -q 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=19' /tmp/godot-hud.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."
@@ -330,3 +330,14 @@ jobs:
           fi
           grep -q 'RngStreams.Geography' src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs
           echo "Actual Godot .NET scene loaded and ran headlessly."
+
+      - name: Report Godot failure lines as annotations
+        if: failure()
+        run: |
+          # 本工作階段讀不到 CI 原始日誌，失敗時把「最後寫入的日誌」關鍵行轉成註記（API 可讀）。
+          f="$(ls -t /tmp/godot-*.log /tmp/observer-*.log 2>/dev/null | head -1)"
+          [ -n "$f" ] || exit 0
+          lines="$(grep -nE '(SCRIPT ERROR|ERROR|Unhandled exception|Exception|WORLD_SIM_|   at |失敗|FAIL|still in use|Leaked|res://)' "$f" | tail -60 | cut -c1-240)"
+          [ -n "$lines" ] || lines="$(tail -30 "$f" | cut -c1-240)"
+          msg="$(printf '%s' "$lines" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
+          echo "::error title=LAST $(basename "$f")::$msg"

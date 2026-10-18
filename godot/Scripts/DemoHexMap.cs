@@ -30,6 +30,11 @@ public partial class DemoHexMap : Control
 
     public event Action<DemoHexCell>? CellSelected;
 
+    /// <summary>b 節：地形是否已用素材圖塊繪製（冒煙測試用）。</summary>
+    public bool UsesTerrainArt => TerrainTexture(DemoTerrain.Grassland, false) is not null;
+
+    private static readonly Color[] White6 = Enumerable.Repeat(Colors.White, 6).ToArray();
+
     /// <summary>#89：事件詳情選到的聚落格（偏移座標），畫亮色外框；null＝不標示。只影響顯示。</summary>
     public (int Column, int Row)? Highlight { get; set; }
 
@@ -69,6 +74,18 @@ public partial class DemoHexMap : Control
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
+            var isRiver = cell.Terrain == DemoTerrain.Water
+                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row));
+            // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
+            if (TerrainTexture(cell.Terrain, isRiver) is { } tile)
+            {
+                var full = HexCoordinates.Polygon(center, radius);
+                DrawPolygon(full, White6, HexUvs(full, center, radius), tile);
+                DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
+                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed)
+                    DrawMarker(placed.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage, center, radius * 1.4f);
+                continue;
+            }
             var terrainColor = cell.Terrain switch
             {
                 DemoTerrain.Water => new Color(0.20f, 0.39f, 0.54f),
@@ -78,8 +95,7 @@ public partial class DemoHexMap : Control
             };
 
             // Explicit TEMP river cells are teal, other Water cells remain blue (not automatically fish sources).
-            if (cell.Terrain == DemoTerrain.Water
-                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)))
+            if (isRiver)
                 terrainColor = new Color(0.10f, 0.67f, 0.70f);
             DrawColoredPolygon(vertices, terrainColor);
             var outline = new Vector2[7];
@@ -132,11 +148,53 @@ public partial class DemoHexMap : Control
             var cell = World.GetCell(batch.Cell.Column, batch.Cell.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius)
                 + new Vector2(radius * 0.38f, radius * 0.30f);
-            DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
-            DrawCircle(center, radius * 0.16f, new Color(0.86f, 0.27f, 0.25f));
-            DrawString(font, center + new Vector2(-radius * 0.12f, radius * 0.10f), batch.People.ToString(),
-                HorizontalAlignment.Left, -1, Mathf.Max(8, (int)(radius * 0.32f)), Colors.White);
+            if (!DrawMarker(ArtAssets.IconMigrants, center, radius * 0.95f))
+            {
+                DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
+                DrawCircle(center, radius * 0.16f, new Color(0.86f, 0.27f, 0.25f));
+            }
+            // 人數標籤：深色底＋白字，圖示或圓點上都看得清楚。
+            var size = Mathf.Max(8, (int)(radius * 0.32f));
+            var labelPos = center + new Vector2(radius * 0.05f, radius * 0.38f);
+            DrawCircle(labelPos + new Vector2(size * 0.3f, -size * 0.35f), size * 0.62f, new Color(0.12f, 0.08f, 0.05f, 0.85f));
+            DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
         }
+    }
+
+    private static Texture2D? TerrainTexture(DemoTerrain terrain, bool river) => terrain switch
+    {
+        DemoTerrain.Grassland => ArtAssets.Texture(ArtAssets.TileGrassland),
+        DemoTerrain.Forest => ArtAssets.Texture(ArtAssets.TileForest),
+        DemoTerrain.Water => ArtAssets.Texture(river ? ArtAssets.TileRiver : ArtAssets.TileWater),
+        _ => null
+    };
+
+    /// <summary>尖頂六角頂點 → 圖塊 UV（圖塊＝六角形外接矩形：寬 √3·r、高 2r）。</summary>
+    private static Vector2[] HexUvs(Vector2[] vertices, Vector2 center, float radius)
+    {
+        var halfWidth = Mathf.Sqrt(3f) * 0.5f * radius;
+        var uvs = new Vector2[vertices.Length];
+        for (var i = 0; i < vertices.Length; i++)
+            uvs[i] = new Vector2((vertices[i].X - center.X + halfWidth) / (2f * halfWidth),
+                (vertices[i].Y - center.Y + radius) / (2f * radius));
+        return uvs;
+    }
+
+    private static Vector2[] Closed(Vector2[] vertices)
+    {
+        var ring = new Vector2[vertices.Length + 1];
+        vertices.CopyTo(ring, 0);
+        ring[^1] = vertices[0];
+        return ring;
+    }
+
+    /// <summary>在中心畫一個正方形圖示；素材不存在回傳 false（呼叫端改畫圓點）。</summary>
+    private bool DrawMarker(string path, Vector2 center, float size)
+    {
+        if (ArtAssets.Texture(path) is not { } icon)
+            return false;
+        DrawTextureRect(icon, new Rect2(center - new Vector2(size, size) * 0.5f, new Vector2(size, size)), false);
+        return true;
     }
 
     public override void _GuiInput(InputEvent @event)
