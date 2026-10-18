@@ -58,7 +58,12 @@ jobs:
             ! grep -rnE 'RngStreams\.Resource|DemoDayEvent|MaxDailyHarvest|FoodPerPersonPerDay|DailyFood|DailyHistory' src godot/Scripts
             # 第 02 章 a 節：世界配方——啟動自訂歷史種子、已推進世界的 new 需 yes 確認、其他指令即取消、錯誤種子不改世界。
             printf 's\n3\nnew 5 6\nyes\ns\nn\nnew 9\nn\nnew abc\ns\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --history-seed 7 | tee /tmp/observer-recipe.log
-            grep -q '世界配方｜世界種子 42｜歷史種子 7（自訂）｜規則版本 【TEMP】TEMP-RULES-0｜設定雜湊 【TEMP】' /tmp/observer-recipe.log
+            grep -q '世界配方｜世界種子 42｜歷史種子 7（自訂）｜規則版本 【TEMP】TEMP-RULES-0｜設定雜湊 [0-9a-f]\{16\}｜' /tmp/observer-recipe.log
+            # 第 02 章 b 節：互動與無畫面模式都先印正式設定載入結果與設定雜湊；開場不再說「尚未載入正式設定」。
+            grep -q '正式設定：01 已載入 [0-9]* 列｜29 已載入 [0-9]* 列（暫定' /tmp/observer-recipe.log
+            ! grep -q '尚未載入試算表的正式世界設定' /tmp/observer-recipe.log
+            grep -o '｜設定雜湊 [0-9a-f]\{16\}｜TEMP 設定雜湊' /tmp/observer-recipe.log | head -1 | grep -o '[0-9a-f]\{16\}' > /tmp/cli-hash16.txt
+            test -s /tmp/cli-hash16.txt
             grep -q '目前世界已推進到第 3 日' /tmp/observer-recipe.log
             grep -q '世界配方｜世界種子 5｜歷史種子 6（自訂）' /tmp/observer-recipe.log
             grep -q '已取消建立新世界，目前世界未改變。' /tmp/observer-recipe.log
@@ -91,8 +96,9 @@ jobs:
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 > /tmp/observer-one-year.log
             cat /tmp/observer-one-year.log
-            # Line 1 is the run title; the calendar description is the first line after it.
-            sed -n 2p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
+            # Line 1 is the run title, line 2 the official-config line (第 02 章 b 節), line 3 the calendar.
+            sed -n 2p /tmp/observer-one-year.log | grep -q '^正式設定：01 已載入'
+            sed -n 3p /tmp/observer-one-year.log | grep -q 'WORLD_DAYS_PER_YEAR＝365'
             grep -q '｜年末 第 1 年 12 月 31 日' /tmp/observer-one-year.log
             # V0-05: actually run the headless 100-year command once and check its output.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 | tee /tmp/observer-century.log
@@ -198,6 +204,10 @@ jobs:
           grep -Eq 'WORLD_SIM_WEEKLY_LEDGER_OK: Weeks=4 Settlements=[2-4]' /tmp/godot-scene.log
           # C08: status/ledger dates come from Core's calendar (01 sheet WORLD_MONTH_DAYS).
           grep -q 'WORLD_SIM_CALENDAR_OK: Day=31 Date=1-1-31 Week4=1-1-28' /tmp/godot-scene.log
+          # 第 02 章 b 節：Godot 與 CLI 用同一份編入的正式設定，設定雜湊前 16 碼必須相同。
+          grep -Eq 'WORLD_SIM_CONFIG_OK: Sheets=[0-9]+ Hash16=[0-9a-f]{16}' /tmp/godot-scene.log
+          godot_hash="$(grep -o 'WORLD_SIM_CONFIG_OK: Sheets=[0-9]* Hash16=[0-9a-f]*' /tmp/godot-scene.log | sed 's/.*Hash16=//')"
+          test "$godot_hash" = "$(cat /tmp/cli-hash16.txt)"
           grep -q 'WORLD_SIM_HEX_CLICK_OK: Col=2 Row=2' /tmp/godot-scene.log
           grep -Eq 'WORLD_SIM_SETTLEMENT_CLICK_OK: Settlements=[2-4] Id=1' /tmp/godot-scene.log
           # V0-04B: TEMP famine scenario — hunger and caused starvation events must appear

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json.Serialization;
+using WorldSimulation.Core.Config;
 using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World;
@@ -9,7 +10,7 @@ namespace WorldSimulation.Core.World;
 /// 第 02 章 a 節（40F VER_WORLD_RECIPE）：世界配方＝規則版本＋設定雜湊＋程式版本＋世界種子＋歷史種子。
 /// 世界種子決定地圖、聚落與初始人口；歷史種子決定之後的歷史（41A SEED_WORLD、SEED_HISTORY）。
 /// <see cref="HistorySeedInput"/> 為 null 時歷史種子由世界種子衍生。
-/// 規則版本與設定雜湊目前是 TEMP 佔位（正式設定雜湊在第 02 章 b 節計算），不得當成已計算的正式值。
+/// 規則版本仍是 TEMP（尚無正式版號制度）；設定雜湊自第 02 章 b 節起是 <see cref="OfficialConfig"/> 算出的正式值。
 /// </summary>
 public sealed record WorldRecipe(
     ulong WorldSeed,
@@ -21,8 +22,8 @@ public sealed record WorldRecipe(
     /// <summary>TEMP：尚無正式規則版號制度。</summary>
     public const string TempRulesVersion = "TEMP-RULES-0";
 
-    /// <summary>TEMP：正式設定雜湊在第 02 章 b 節（正式設定讀取）完成前不計算。</summary>
-    public const string TempConfigHashPlaceholder = "TEMP-CONFIG-HASH-PENDING";
+    /// <summary>正式設定讀取失敗時的設定雜湊（不編造雜湊；這種配方的世界不會給玩家使用）。</summary>
+    public const string InvalidConfigHash = "INVALID-CONFIG";
 
     /// <summary>取不到 Git 提交雜湊時的程式版本（不編造）。</summary>
     public const string UnknownCodeVersion = "未知（本機建置）";
@@ -35,11 +36,16 @@ public sealed record WorldRecipe(
     public bool HistorySeedDerived => HistorySeedInput is null;
 
     [JsonIgnore]
-    public bool ConfigHashIsTemp => ConfigHash == TempConfigHashPlaceholder;
+    public bool ConfigHashIsTemp => !IsFullHash(ConfigHash);
+
+    private static bool IsFullHash(string? text) => text is { Length: 64 } && text.All(Uri.IsHexDigit);
 
     /// <summary>以目前建置的規則版本、設定雜湊與程式版本組成配方。</summary>
     public static WorldRecipe ForSeeds(ulong worldSeed, ulong? historySeed = null)
-        => new(worldSeed, historySeed, TempRulesVersion, TempConfigHashPlaceholder, CurrentCodeVersion);
+        => new(worldSeed, historySeed, TempRulesVersion, CurrentConfigHash, CurrentCodeVersion);
+
+    /// <summary>本建置編入的正式設定雜湊（第 02 章 b 節）；讀取失敗為 <see cref="InvalidConfigHash"/>。</summary>
+    public static string CurrentConfigHash => OfficialConfig.Load().Config?.ConfigHash ?? InvalidConfigHash;
 
     /// <summary>
     /// 本建置的 Git 提交雜湊：取 Core 組件 AssemblyInformationalVersion 中「+」之後的部分
@@ -74,8 +80,8 @@ public sealed record WorldRecipe(
     }
 
     private string ConfigHashText => ConfigHashIsTemp
-        ? "【TEMP】尚未計算（正式設定讀取完成後提供）"
-        : ConfigHash.Length > 16 ? ConfigHash[..16] : ConfigHash;
+        ? $"【未計算】{ConfigHash}"
+        : ConfigHash[..16];
 
     private string RulesVersionText => RulesVersion == TempRulesVersion ? $"【TEMP】{RulesVersion}" : RulesVersion;
 

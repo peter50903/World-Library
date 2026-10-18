@@ -372,8 +372,8 @@ public partial class ObserverRoot
     /// <summary>空白鍵播放／暫停、數字鍵切換速度、Esc 關閉詳情（輸入框取得焦點時不會收到）。</summary>
     public override void _UnhandledInput(InputEvent @event)
     {
-        if (@event is not InputEventKey { Pressed: true, Echo: false } key)
-            return;
+        if (_timeSpeeds is null || @event is not InputEventKey { Pressed: true, Echo: false } key)
+            return; // 正式設定讀取失敗時沒有介面。
         if (key.Keycode == Key.Space)
         {
             TogglePlayback();
