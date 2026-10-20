@@ -30,6 +30,12 @@ public static class ArtAssets
     public const string UiFast = "res://assets/ui/ui_icon_fast.png";
     public const string UiPanelFrame = "res://assets/ui/ui_panel_frame.png";
     public const string UiTopBar = "res://assets/ui/ui_topbar_bg.png";
+    public const string UiToolbar = "res://assets/ui/ui_toolbar_bg.png";
+    public const string UiScenario = "res://assets/ui/ui_icon_scenario.png";
+    public const string UiSave = "res://assets/ui/ui_icon_save.png";
+    public const string UiHelp = "res://assets/ui/ui_icon_help.png";
+    public const string UiMapTerrain = "res://assets/ui/ui_icon_mapmode_terrain.png";
+    public const string UiMapFood = "res://assets/ui/ui_icon_mapmode_food.png";
 
     // 音訊
     public const string SfxClick = "res://assets/audio/sfx_click.ogg";
@@ -42,6 +48,7 @@ public static class ArtAssets
         TileGrassland, TileForest, TileWater, TileRiver,
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
+        UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood,
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
@@ -98,6 +105,19 @@ public static class ArtAssets
             ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 14, ContentMarginBottom = 14,
             AxisStretchHorizontal = StyleBoxTexture.AxisStretchMode.TileFit,
             AxisStretchVertical = StyleBoxTexture.AxisStretchMode.TileFit
+        });
+    }
+
+    /// <summary>底部工具列／地圖模式列木板（UI_TOOLBAR_BG）；左右端蓋不拉伸。</summary>
+    public static StyleBoxTexture? ToolbarStyle()
+    {
+        if (Texture(UiToolbar) is not { } board)
+            return null;
+        return Track(new StyleBoxTexture
+        {
+            Texture = board,
+            TextureMarginLeft = 24, TextureMarginRight = 24, TextureMarginTop = 10, TextureMarginBottom = 10, // TEMP：依素材邊框
+            ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 4, ContentMarginBottom = 4
         });
     }
 

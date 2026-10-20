@@ -30,6 +30,37 @@ public partial class DemoHexMap : Control
 
     public event Action<DemoHexCell>? CellSelected;
 
+    /// <summary>第 05 章 b 節：地圖模式（只影響顯示）。</summary>
+    public enum Mode
+    {
+        Terrain,
+        Food
+    }
+
+    private Mode _mode = Mode.Terrain;
+
+    public Mode MapMode
+    {
+        get => _mode;
+        set
+        {
+            _mode = value;
+            QueueRedraw();
+        }
+    }
+
+    /// <summary>聚落 ID → 糧食狀況（ObserverRoot 每次刷新從 Core 週帳算好注入）。</summary>
+    public IReadOnlyDictionary<int, FoodStatus> FoodStatuses { get; set; } = new Dictionary<int, FoodStatus>();
+
+    // TEMP 顯示配色：糧食狀況（充足綠、緊張黃、飢餓紅、未結算灰）。
+    public static Color FoodStatusColor(FoodStatus status) => status switch
+    {
+        FoodStatus.Ample => new Color(0.30f, 0.75f, 0.30f),
+        FoodStatus.Tight => new Color(0.95f, 0.78f, 0.20f),
+        FoodStatus.Starving => new Color(0.88f, 0.22f, 0.18f),
+        _ => new Color(0.65f, 0.65f, 0.65f)
+    };
+
     /// <summary>b 節：地形是否已用素材圖塊繪製（冒煙測試用）。</summary>
     public bool UsesTerrainArt => TerrainTexture(DemoTerrain.Grassland, false) is not null;
 
@@ -111,6 +142,28 @@ public partial class DemoHexMap : Control
                 // V0-06B: settlements founded by migrants get a white ring so the new dot stands out.
                 if (settlement.IsFounded)
                     DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
+            }
+        }
+
+        // 第 05 章 b 節：糧食狀況模式——地形壓暗，聚落格塗上狀況色並加粗外框。
+        if (_mode == Mode.Food && Sites is not null)
+        {
+            foreach (var cell in World.Cells)
+            {
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                var hex = HexCoordinates.Polygon(center, radius - 1.4f);
+                if (Sites.SettlementAt(cell.Column, cell.Row) is { } site)
+                {
+                    var status = FoodStatuses.TryGetValue(site.Id, out var known) ? known : FoodStatus.Unsettled;
+                    var color = FoodStatusColor(status);
+                    DrawColoredPolygon(hex, new Color(color, 0.55f));
+                    DrawPolyline(Closed(hex), color, 3.5f);
+                    DrawMarker(site.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage, center, radius * 1.4f);
+                }
+                else
+                {
+                    DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                }
             }
         }
 

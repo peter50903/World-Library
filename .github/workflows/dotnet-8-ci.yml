@@ -321,7 +321,7 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -q 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=19' /tmp/godot-hud.log
+          grep -q 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=25 Toolbar=1 MapMode=2 Modal=3' /tmp/godot-hud.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."

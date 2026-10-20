@@ -16,7 +16,7 @@ public sealed class HudLayoutTests
     public void AllPanelsOpen_StayInsideTheWindow_WithoutOverlapping(int width, int height)
     {
         var f = HudLayout.Compute(width, height, detailOpen: true, consoleOpen: true);
-        var panels = new[] { f.TopBar, f.Detail, f.Console, f.Time, f.Feed };
+        var panels = new[] { f.TopBar, f.Detail, f.Console, f.Time, f.Feed, f.Toolbar, f.MapModes };
         foreach (var p in panels)
             Assert.True(p.Inside(width, height), $"{p} 超出 {width}×{height}");
         for (var i = 0; i < panels.Length; i++)
@@ -33,7 +33,8 @@ public sealed class HudLayoutTests
         Assert.Equal(0, f.Detail.Width);
         Assert.Equal(0, f.Console.Width);
         Assert.Equal(width, f.MapVisibleWidth);
-        Assert.True(f.TopBar.Inside(width, height) && f.Time.Inside(width, height) && f.Feed.Inside(width, height));
+        Assert.True(f.TopBar.Inside(width, height) && f.Time.Inside(width, height) && f.Feed.Inside(width, height)
+            && f.Toolbar.Inside(width, height) && f.MapModes.Inside(width, height));
     }
 
     [Fact]
@@ -45,6 +46,18 @@ public sealed class HudLayoutTests
         Assert.Equal(1080 - HudLayout.TempMargin, f.Time.Bottom);
         Assert.Equal(f.Time.Bottom, f.Feed.Bottom);
         Assert.True(f.Detail.X < f.Console.X);
+    }
+
+    [Fact]
+    public void ToolbarIsCentred_AndMapModesSitLeft_InTheRowAboveTheFeed()
+    {
+        var f = HudLayout.Compute(1920, 1080, true, true);
+        Assert.Equal(new HudRect((1920 - HudLayout.TempToolbarWidth) / 2, f.Feed.Y - HudLayout.TempMargin - HudLayout.TempBarHeight,
+            HudLayout.TempToolbarWidth, HudLayout.TempBarHeight), f.Toolbar);
+        Assert.Equal(HudLayout.TempMargin, f.MapModes.X);
+        Assert.Equal(f.Toolbar.Y, f.MapModes.Y);
+        Assert.Equal(f.Toolbar.Bottom + HudLayout.TempMargin, f.Feed.Y);
+        Assert.True(f.Detail.Bottom <= f.Toolbar.Y && f.Console.Bottom <= f.Toolbar.Y);
     }
 
     [Fact]

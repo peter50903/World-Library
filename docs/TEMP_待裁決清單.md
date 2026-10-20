@@ -259,15 +259,17 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
-| `godot/Scripts/DemoHexMap.cs` | 8 | D9 |
+| `godot/Scripts/DemoHexMap.cs` | 9 | D9；第 05 章 b 節糧食狀況地圖配色 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
-| `godot/Scripts/HudLayout.cs` | 12 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例） |
+| `godot/Scripts/HudLayout.cs` | 15 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列） |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
-| `godot/Scripts/ArtAssets.cs` | 2 | 第 05 章 b 節九宮格面板與頂部木條的邊框寬度 |
+| `godot/Scripts/ArtAssets.cs` | 3 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度 |
+| `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
+| `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |
