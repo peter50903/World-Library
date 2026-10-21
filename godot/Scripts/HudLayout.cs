@@ -20,11 +20,14 @@ public readonly record struct HudFrame(
     HudRect Console,
     HudRect Time,
     HudRect Feed,
-    int MapVisibleWidth);
+    int MapVisibleWidth,
+    HudRect Toolbar = default,
+    HudRect MapModes = default);
 
 /// <summary>
 /// 第 05 章：觀察者介面版面（全螢幕地圖＋疊加面板；參考大戰略／世界模擬遊戲的常見配置）。
-/// 頂部資訊列、左側詳情、右側控制台（關注清單）、右下時間控制、底部事件列。
+/// 頂部資訊列、左側詳情、右側控制台（關注清單）、右下時間控制、底部事件列；
+/// b 節加事件列正上方一列：左邊地圖模式按鈕、置中工具列。
 /// 輸入視窗尺寸與左右面板是否展開，輸出各面板矩形；保證全部在視窗內、頂部列與時間控制不被蓋住、
 /// 左右面板展開時地圖可見寬度不少於視窗寬 40%。所有尺寸常數都是 TEMP 顯示參數，不是世界規則。
 /// </summary>
@@ -44,6 +47,9 @@ public static class HudLayout
     public const int TempConsoleMax = 540;    // TEMP
     public const double TempConsoleShare = 0.30;
     public const double TempMapMinShare = 0.40; // 地圖至少保留的可見寬度比例
+    public const int TempBarHeight = 72;      // TEMP：工具列／地圖模式列高（圖示按鈕 64＋木板上下 4）
+    public const int TempToolbarWidth = 260;  // TEMP：三顆 64 圖示按鈕＋間距＋木板左右邊
+    public const int TempMapModeWidth = 180;  // TEMP：兩顆 64 圖示按鈕
 
     public static HudFrame Compute(int width, int height, bool detailOpen, bool consoleOpen)
     {
@@ -67,8 +73,17 @@ public static class HudLayout
         if (feedW < width / 3)
             feed = new HudRect(m, time.Y - m - feedH, Math.Max(1, width - 2 * m), feedH);
 
+        // b 節：事件列上方一列——左邊地圖模式、置中工具列（太窄時工具列緊接地圖模式右邊）。
+        var barH = Math.Max(1, Math.Min(TempBarHeight, (height - topH) / 8));
+        var barY = Math.Max(topH, feed.Y - m - barH);
+        var modesW = Math.Max(1, Math.Min(TempMapModeWidth, (width - 3 * m) / 2));
+        var mapModes = new HudRect(m, barY, modesW, barH);
+        var toolX = Math.Max((width - TempToolbarWidth) / 2, mapModes.Right + m);
+        var toolW = Math.Max(1, Math.Min(TempToolbarWidth, width - m - toolX));
+        var toolbar = new HudRect(Math.Min(toolX, Math.Max(0, width - toolW)), barY, toolW, barH);
+
         var sideTop = topH + m;
-        var sideBottom = Math.Min(feed.Y, time.Y) - m;
+        var sideBottom = Math.Min(barY, time.Y) - m;
         var sideH = Math.Max(1, sideBottom - sideTop);
 
         var detailW = detailOpen ? Math.Clamp((int)Math.Round(width * TempDetailShare), TempDetailMin, TempDetailMax) : 0;
@@ -87,6 +102,6 @@ public static class HudLayout
             : new HudRect(width - m, sideTop, 0, 0);
 
         var mapVisible = width - (detailOpen ? detail.Right : 0) - (consoleOpen ? width - console.X : 0);
-        return new HudFrame(topBar, detail, console, time, feed, mapVisible);
+        return new HudFrame(topBar, detail, console, time, feed, mapVisible, toolbar, mapModes);
     }
 }

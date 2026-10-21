@@ -25,6 +25,7 @@
     <Compile Include="..\..\godot\Scripts\PlaybackClock.cs" Link="Godot\PlaybackClock.cs" />
     <!-- 第 05 章：觀察者介面版面計算也是純 C#。 -->
     <Compile Include="..\..\godot\Scripts\HudLayout.cs" Link="Godot\HudLayout.cs" />
+    <Compile Include="..\..\godot\Scripts\MapFoodStatus.cs" Link="Godot\MapFoodStatus.cs" />
   </ItemGroup>
 
   <ItemGroup>

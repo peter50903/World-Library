@@ -241,17 +241,20 @@ public partial class ObserverRoot : Control
         side.AddChild(_status);
 
         // #81: choose one of the existing TEMP survival scenarios and start a NEW demo world.
+        // 第 05 章 b 節：情境與種子移到底部工具列「情境」視窗（疊加 modal）。
+        var scenarioBox = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        scenarioBox.AddThemeConstantOverride("separation", 10);
         var scenarioHeading = new Label { Text = "TEMP 示範情境（切換＝建立新的示範世界）" };
         scenarioHeading.AddThemeFontSizeOverride("font_size", 18);
-        side.AddChild(scenarioHeading);
+        scenarioBox.AddChild(scenarioHeading);
         _scenarioPicker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         foreach (var scenario in Enum.GetValues<TempScenario>())
             _scenarioPicker.AddItem(PickerLabel(scenario), (int)scenario);
         _scenarioPicker.ItemSelected += OnScenarioPicked;
-        side.AddChild(_scenarioPicker);
+        scenarioBox.AddChild(_scenarioPicker);
         // 第 02 章 a 節：世界種子＋歷史種子（留空＝由世界種子衍生），搭配上方情境建立新世界。
         var seedRow = new HBoxContainer();
-        side.AddChild(seedRow);
+        scenarioBox.AddChild(seedRow);
         seedRow.AddChild(new Label { Text = "世界種子" });
         _worldSeedInput = new LineEdit { Text = _world.TempWorldSeed.ToString(CultureInfo.InvariantCulture), SizeFlagsHorizontal = SizeFlags.ExpandFill };
         seedRow.AddChild(_worldSeedInput);
@@ -260,16 +263,16 @@ public partial class ObserverRoot : Control
         seedRow.AddChild(_historySeedInput);
         _seedStartButton = new Button { Text = "以此種子建立世界", CustomMinimumSize = new Vector2(0, 36) };
         _seedStartButton.Pressed += RequestSeedWorld;
-        side.AddChild(_seedStartButton);
+        scenarioBox.AddChild(_seedStartButton);
         _startScenarioButton = new Button
         {
             Text = "開始新的 TEMP 示範",
             CustomMinimumSize = new Vector2(0, 40)
         };
         _startScenarioButton.Pressed += RequestNewScenario;
-        side.AddChild(_startScenarioButton);
+        scenarioBox.AddChild(_startScenarioButton);
         _confirmRow = new HBoxContainer { Visible = false };
-        side.AddChild(_confirmRow);
+        scenarioBox.AddChild(_confirmRow);
         _confirmScenarioButton = new Button
         {
             Text = "確認切換（捨棄目前進度）",
@@ -281,7 +284,7 @@ public partial class ObserverRoot : Control
         _cancelScenarioButton = new Button { Text = "取消" };
         _cancelScenarioButton.Pressed += CancelNewScenario;
         _confirmRow.AddChild(_cancelScenarioButton);
-        side.AddChild(new Label
+        scenarioBox.AddChild(new Label
         {
             Text = "局部饑荒／開拓沿用既有示範種子搜尋（42，再 1～30），選第一個會在示範期間發生遷徙／建立新聚落的種子；實際種子顯示在上方（「世界種子」）。存檔槽不會因切換被刪除或覆寫。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
@@ -359,16 +362,19 @@ public partial class ObserverRoot : Control
         BuildMajorEventAlert(side);
 
         // V0-07C: three TEMP save slots; each row shows only the slot's header (day, seed, scenario).
+        // 第 05 章 b 節：存檔槽移到底部工具列「存讀檔」視窗。
+        var saveBox = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        saveBox.AddThemeConstantOverride("separation", 10);
         var slotHeading = new Label { Text = $"TEMP 存檔槽（{DemoSaveSlots.TempSlotCount} 槽，非正式存檔）" };
         slotHeading.AddThemeFontSizeOverride("font_size", 18);
-        side.AddChild(slotHeading);
+        saveBox.AddChild(slotHeading);
         var saveButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
         var loadButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
         _slotLabels = new Label[DemoSaveSlots.TempSlotCount + 1];
         for (var slot = 1; slot <= DemoSaveSlots.TempSlotCount; slot++)
         {
             var row = new HBoxContainer();
-            side.AddChild(row);
+            saveBox.AddChild(row);
             var label = new Label
             {
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -429,6 +435,8 @@ public partial class ObserverRoot : Control
 
         BuildDetailPanel();
         BuildTimeControls();
+        BuildMapModeBar();
+        BuildToolbar(scenarioBox, saveBox);
         BuildAudio();
         _hud.Resized += ApplyHudLayout;
         ApplyHudLayout();
@@ -1324,6 +1332,7 @@ public partial class ObserverRoot : Control
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
+        _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。
         _hexMap.QueueRedraw();
 
         // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），

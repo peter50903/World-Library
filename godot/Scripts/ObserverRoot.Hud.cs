@@ -332,6 +332,7 @@ public partial class ObserverRoot
         Place(_consolePanel, frame.Console, _consoleOpen);
         Place(_timePanel, frame.Time, true);
         Place(_feedPanel, frame.Feed, true);
+        PlaceToolbarRow(frame);
         _consoleToggle.Text = _consoleOpen ? "世界控制台 ▸" : "◂ 世界控制台";
     }
 
@@ -374,6 +375,11 @@ public partial class ObserverRoot
     {
         if (_timeSpeeds is null || @event is not InputEventKey { Pressed: true, Echo: false } key)
             return; // 正式設定讀取失敗時沒有介面。
+        if (CloseModalOnEscape(key))
+        {
+            GetViewport().SetInputAsHandled();
+            return;
+        }
         if (key.Keycode == Key.Space)
         {
             TogglePlayback();
@@ -411,7 +417,8 @@ public partial class ObserverRoot
             _hud.Size = new Vector2(w, h);
             ApplyHudLayout();
             foreach (var (name, control) in new (string, Control)[]
-                     { ("TopBar", _topBar), ("Console", _consolePanel), ("Time", _timePanel), ("Feed", _feedPanel) })
+                     { ("TopBar", _topBar), ("Console", _consolePanel), ("Time", _timePanel), ("Feed", _feedPanel),
+                       ("Toolbar", _toolbarPanel), ("MapModes", _mapModePanel) })
             {
                 var r = new Rect2(control.Position, control.Size);
                 if (!control.Visible || r.Position.X < 0 || r.Position.Y < 0 || r.End.X > w || r.End.Y > h)
@@ -461,6 +468,8 @@ public partial class ObserverRoot
         if (!_consolePanel.Visible)
             Fail("console did not expand.");
 
+        var toolbar = VerifyToolbarSmoke(Fail, PressKey);
+
         if (_world.ExportTempSave() != before)
             Fail("HUD operations changed the world.");
 
@@ -479,6 +488,6 @@ public partial class ObserverRoot
         if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
             Fail("food stat missing from the top bar.");
 
-        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art}");
+        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art} {toolbar}");
     }
 }
