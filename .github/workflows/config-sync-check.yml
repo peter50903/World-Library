@@ -3,9 +3,11 @@ name: 設定檔文字副本同步檢查
 # 確認 config/sheets/ 的每分頁 CSV 與正式 Excel 一致，並把逐格差異印在記錄中。
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: config-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
