@@ -117,7 +117,8 @@ public sealed partial class DemoObserverWorld
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
             _demography = DemoTempDemography.Open(
-                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds);
+                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds,
+                new DemoPopulationDraws(_rng)); // 第 07 章 a 節：混齡開局（POP 流第 0 週，不推進計數器）
         _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);
@@ -374,7 +375,7 @@ public sealed partial class DemoObserverWorld
         {
             sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");
             foreach (var p in _demography.People)
-                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId};");
+                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId}:{p.MotherId}:{p.BirthFatherId}:{p.PartnerId};");
         }
         sb.Append(inv, $"nextEntity={_entityIds.NextValue}/{_entityIds.Exhausted};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
