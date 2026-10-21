@@ -23,6 +23,16 @@ public sealed record DemoCatchmentTempSettings(
     long OpenWaterWeeklySupply = 0,
     int SourceStockCapWeeks = 0)
 {
+    /// <summary>第 08-1 章：某類自然來源每週可持續供應（建立來源時用的同一組值）。</summary>
+    public long WeeklySupply(DemoCatchmentSourceKind kind) => kind switch
+    {
+        DemoCatchmentSourceKind.Forest => ForestWeeklySupply,
+        DemoCatchmentSourceKind.GrasslandForage => GrasslandForageWeeklySupply,
+        DemoCatchmentSourceKind.MainRiver => MainRiverWeeklySupply,
+        DemoCatchmentSourceKind.OpenWater => OpenWaterWeeklySupply,
+        _ => 0
+    };
+
     public static DemoCatchmentTempSettings FromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))

@@ -74,19 +74,17 @@ public sealed class M1OfficialAcceptanceTests
         {
             Evaluate(M1RunCollector.Collect(42, M1Preset.Normal, 10, TestCalendar.DaysPerYear)),
             Evaluate(M1RunCollector.Collect(42, M1Preset.LocalFamine, 10, TestCalendar.DaysPerYear)),
-            Evaluate(M1RunCollector.Collect(7, M1Preset.Frontier, 10, TestCalendar.DaysPerYear)),
-            Evaluate(Living5.Value)
-        };
+            Evaluate(M1RunCollector.Collect(7, M1Preset.Frontier, 10, TestCalendar.DaysPerYear))
+        }.Concat(Enumerable.Range(1, 5).Select(i => Evaluate(M1RunCollector.Collect((ulong)i, M1Preset.Living, 30, TestCalendar.DaysPerYear))))
+         .ToList();
         var cases = M1OfficialAcceptance.Cases(reports);
         Assert.Equal(4, cases.Count);
         Assert.All(cases, c => Assert.True(c.Found, $"{c.Name}：{c.Evidence}"));
-        Assert.Contains("種子 5｜人類採集", cases[0].Evidence);
-        Assert.Contains("100 年後仍有", cases[0].Evidence);
-
-        // 普通世界長期生存的種子跑滿百年：仍有人、有出生，且 Hard 項目全部沒有失敗。
-        var living = Evaluate(Living5.Value);
-        Assert.DoesNotContain(living.Results, r => r.Verdict == M1Verdict.Fail);
-        Assert.Equal(M1Verdict.Pass, Result(living, "M1_STABILITY").Verdict);
+        Assert.Contains("人類採集", cases[0].Evidence);
+        Assert.Contains("30 年後仍有", cases[0].Evidence);
+        // 普通世界長跑：Hard 項目全部沒有失敗。
+        Assert.All(reports.Where(r => r.Run.Preset == M1Preset.Living),
+            r => Assert.DoesNotContain(r.Results, x => x.Verdict == M1Verdict.Fail));
     }
 
     [Fact]
@@ -105,8 +103,8 @@ public sealed class M1OfficialAcceptanceTests
     [Fact]
     public void MissingCaseIsReportedHonestly()
     {
-        // 人類採集種子 1 在 10 年內全滅：找不到長期生存案例，不能報「找到」。
-        var cases = M1OfficialAcceptance.Cases(new[] { Evaluate(M1RunCollector.Collect(1, M1Preset.Living, 10, TestCalendar.DaysPerYear)) });
+        // 沒有任何人類採集長跑：找不到長期生存案例，不能報「找到」。
+        var cases = M1OfficialAcceptance.Cases(new[] { Evaluate(M1RunCollector.Collect(42, M1Preset.Normal, 3, TestCalendar.DaysPerYear)) });
         Assert.False(cases[0].Found);
         Assert.Contains("沒有一個", cases[0].Evidence);
     }

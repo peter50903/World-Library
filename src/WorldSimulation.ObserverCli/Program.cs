@@ -12,6 +12,10 @@ Console.OutputEncoding = Encoding.UTF8;
 if (args.Length > 0 && args[0] == "--m1-check")
     return M1AcceptanceCli.Run(args.Skip(1).ToArray(), Console.Out);
 
+// 第 08-1 章：普通世界人口診斷（逐年人口結構、採收／需求／勞力、受孕條件與死因）。
+if (args.Length > 0 && args[0] == "--diagnose-living")
+    return LivingDiagnosis.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
+
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");

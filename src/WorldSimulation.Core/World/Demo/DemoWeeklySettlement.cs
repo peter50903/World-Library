@@ -61,9 +61,13 @@ public sealed record DemoWeeklyTempConfig(
         HumanLifecycleEnabled = true,
         // 第 07 章 b 節：遷徙隊伍攜帶家庭身分，人類繁衍情境不再禁止遷徙；c 節：也可開拓新聚落。
         FoundingEnabled = true,
+        // 第 08-1 章【TEMP】：開拓選址 3→6 格，聚落群附近的空地用完後仍能擴散到地圖其他地方。
+        FoundingSearchMaxSteps = 6,
         // TEMP adult gather capacity: enough to support non-working dependents,
         // still limited by genuine natural-source budget (never mint food).
-        YieldPerWorkerPerWeek = 8
+        // 第 08-1 章：8→16。診斷（--diagnose-living）顯示 2 名成人扣 1 名取水者後勞力上限＝需求，
+        // 孩子一出生就缺糧餓死、人口無法成長；提高後限制人口的是可及自然來源（承載上限），不是勞力。
+        YieldPerWorkerPerWeek = 16
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
@@ -281,7 +285,8 @@ public sealed record DemoSettlementWeekLedger(
     long WaterShortage = 0,
     long WaterCarriers = 0,
     long ChildStarvationDeaths = 0,
-    long ElderStarvationDeaths = 0)
+    long ElderStarvationDeaths = 0,
+    long SourceSlack = 0)
 {
     /// <summary>
     /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
@@ -466,6 +471,29 @@ public sealed record DemoWeekReport(
 /// <summary>C05：一條亂數流在一次週提交前後的抽樣計數器。</summary>
 public sealed record DemoRngCounter(string StreamId, ulong Before, ulong After);
 
+/// <summary>第 08-1 章：婚嫁遷移的 TEMP 參數。</summary>
+public static class DemoMateTempSettings
+{
+    /// <summary>【TEMP】婚嫁遷移最遠路程（格）。</summary>
+    public const int MateRouteMaxSteps = 12;
+}
+
+/// <summary>第 08-1 章：外移的種類（決定名冊依什麼規則挑出發者）。</summary>
+public enum DemoEmigrationMode
+{
+    /// <summary>缺糧外移到有糧聚落（整戶）。</summary>
+    Shortage = 0,
+
+    /// <summary>開拓新聚落（需兩對伴侶，整戶）。</summary>
+    Founding = 1,
+
+    /// <summary>婚嫁遷移（一位找不到伴侶的育齡單身者）。</summary>
+    Mate = 2
+}
+
+/// <summary>第 08-1 章：一個聚落的婚嫁市場（本週開始時名冊）。SeekerSex＝找不到伴侶的單身者性別（null＝沒有）。</summary>
+public sealed record DemoMateMarket(DemoTempSex? SeekerSex, int UnpairedWomen, int UnpairedMen);
+
 /// <summary>週結算的候選結果：報告與結算後的新狀態。在發布前不會寫入任何世界狀態。</summary>
 internal sealed record DemoWeeklyOutcome(
     DemoWeekReport Report,
@@ -526,15 +554,16 @@ internal static class DemoWeeklySettlement
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
         IReadOnlyDictionary<int, long>? sourceStocks = null,
-        Func<int, long, long, long>? emigrantPlanner = null,
-        DemoLandDevelopmentMap? land = null)
+        Func<int, long, long, DemoEmigrationMode, long>? emigrantPlanner = null,
+        DemoLandDevelopmentMap? land = null,
+        IReadOnlyDictionary<int, DemoMateMarket>? mates = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
-        long PlanEmigrants(int settlementId, long deaths, long desired)
+        long PlanEmigrants(int settlementId, long deaths, long desired, DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
         {
             if (emigrantPlanner is null || desired <= 0) return desired;
-            var planned = emigrantPlanner(settlementId, deaths, desired);
+            var planned = emigrantPlanner(settlementId, deaths, desired, mode);
             if (planned < 0 || planned > desired)
                 throw new InvalidOperationException("The family emigrant plan exceeds the allowed emigrants.");
             return planned;
@@ -573,7 +602,9 @@ internal static class DemoWeeklySettlement
                 water[settlement.Id] = (adults, people - adults, carriers,
                     DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
                 foragingWorkers[settlement.Id] = adults - carriers;
-                foodNeeded[settlement.Id] = survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek);
+                // 第 08-1 章：人類採集世界向來源要求「需求＋補存糧」（DemoCrowding.Claim），消耗仍只算需求。
+                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled,
+                    survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek), settlementFood[settlement.Id]);
             }
         }
 
@@ -588,6 +619,11 @@ internal static class DemoWeeklySettlement
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
         }
+        // 第 08-1 章：每個聚落可及範圍內全部自然來源的「每週可持續供應－本週全部採收」（DemoCrowding）。
+        var slackBySettlement = config.SharedCatchmentEnabled && map is not null
+            ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
+            : new Dictionary<int, long>();
+        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers)); // 第 08-1 章開拓選址
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -835,14 +871,19 @@ internal static class DemoWeeklySettlement
             // 一部分人帶著等比例的糧食與飢餓債組成隊伍出發（原子出發；本週停在來源格）。
             // 沒有已知可達的目的地就留下（45E MIG_NO_TARGET）；這不是人口自動平衡器。
             long emigrants = 0, foodOut = 0, debtOut = 0;
-            var wantsToLeave = map is not null && config.MigrationEnabled && shortage > 0
+            // 第 08-1 章：人類採集世界在挨餓之前就分出一戶開拓（擁擠外移，只開拓新聚落、不搬進別的聚落）。
+            var slack = slackBySettlement.GetValueOrDefault(settlement.Id);
+            var crowded = map is not null && config.MigrationEnabled && config.FoundingEnabled
+                && config.SharedCatchmentEnabled && config.HumanLifecycleEnabled
+                && DemoCrowding.Crowded(shortage, demand, survivors, slack);
+            var wantsToLeave = map is not null && config.MigrationEnabled && (shortage > 0 || crowded)
                 && survivors >= config.MinPopulationToEmigrate;
-            var target = wantsToLeave
+            var target = wantsToLeave && !crowded
                 ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config)
                 : null;
             if (wantsToLeave && target is null && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
-                && AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config))
+                && (crowded || AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config)))
             {
                 // V0-06B：已知範圍內每個可達聚落的消息都已傳到、沒有一個有糧（或根本沒有可達聚落）→
                 // 改派開拓隊到附近 TEMP 範圍內有水源的空格（不能是聚落，也不能是別支開拓隊的目的格）。
@@ -850,12 +891,17 @@ internal static class DemoWeeklySettlement
                 // 第 07 章 c 節：選址另須可及至少一個未被佔用的自然來源（非水域、可取水已由 FindFoundingSite 檢查；
                 // 主水道是水域，不能建村）。遺跡格不能直接重建【TEMP】。
                 var occupiedNow = weekSites.OccupiedCells();
+                // 第 08-1 章：人類採集世界的開拓隊只選可持續餘量養得起預計人數的空地，並挑餘量最大者。
+                var partyLimit = crowded ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor;
+                var scoreSites = config.SharedCatchmentEnabled && config.HumanLifecycleEnabled;
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                     config.FoundingSearchMaxSteps,
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
-                        && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c)));
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor) : 0;
+                        && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
+                        && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek)),
+                    scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -870,10 +916,13 @@ internal static class DemoWeeklySettlement
 
                     events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
-                        $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，"
+                        (crowded
+                            ? $"人口接近附近來源上限：本週取用來源只剩 {slack}（＜需求 {demand} 的 TEMP {DemoCrowding.TempCrowdingSlackPercent}%），"
+                              + "在挨餓之前分出一戶，"
+                            : $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，")
                         + $"前往 {destination} 開拓新聚落（TEMP 選址：{config.FoundingSearchMaxSteps} 格內有水源的空地），"
                         + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
-                        batch.Id), hungerEventId));
+                        batch.Id), crowded ? 0 : hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, 0,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
@@ -910,6 +959,55 @@ internal static class DemoWeeklySettlement
                         debtOut, 0, 0, debtOut));
                 }
             }
+            // 第 08-1 章：本週沒有人因缺糧或擁擠實際出發，才考慮婚嫁遷移（擁擠但湊不到兩對伴侶開拓時，仍可婚嫁）。
+            if (emigrants == 0 && map is not null && config.MigrationEnabled && week >= 2 && survivors >= 2
+                     && mates is not null && mates.TryGetValue(settlement.Id, out var market) && market.SeekerSex is { } seekerSex
+                     && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
+            {
+                // 第 08-1 章【TEMP 規則】婚嫁遷移：找不到伴侶的育齡單身者，一個人走到 TEMP 12 格內、
+                // 有未配對成年異性的最近聚落；目的地也有異性尋偶者時只由編號大的聚落一方搬（避免兩邊對調）。
+                (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route)? mateTarget = null;
+                foreach (var candidate in weekSites.Settlements.Where(c => c.Id != settlement.Id && !c.IsRuin).OrderBy(c => c.Id))
+                {
+                    if (!mates.TryGetValue(candidate.Id, out var other)
+                        || (seekerSex == DemoTempSex.Female ? other.UnpairedMen : other.UnpairedWomen) == 0)
+                        continue;
+                    if (other.SeekerSex is { } theirs && theirs != seekerSex && candidate.Id > settlement.Id)
+                        continue; // 對方會搬過來
+                    var route = DemoMigrationRoutes.FindRoute(map,
+                        new DemoCellRef(settlement.Column, settlement.Row), new DemoCellRef(candidate.Column, candidate.Row));
+                    if (route.Length < 2 || route.Length - 1 > DemoMateTempSettings.MateRouteMaxSteps)
+                        continue;
+                    if (mateTarget is null || route.Length < mateTarget.Value.Route.Length)
+                        mateTarget = (candidate, route);
+                }
+
+                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths, 1, DemoEmigrationMode.Mate) == 1)
+                {
+                    emigrants = 1;
+                    // 路糧：帶足全程（每格一週份，TEMP），存糧不夠就帶光。
+                    foodOut = Math.Min(foodClosing, checked(config.FoodPerPersonPerWeek * (mate.Route.Length - 1)));
+                    debtOut = debt / survivors;
+                    var batch = new DemoMigrationBatch(
+                        DemoEntityIds.NextInt(ids), settlement.Id, settlement.Name,
+                        mate.Settlement.Id, mate.Settlement.Name, mate.Route,
+                        StepIndex: 0, People: 1, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
+                        NewsWeek: week - 1);
+                    nextMigrations.Add(batch);
+                    events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                        DemoSettlementEventKind.Emigration, 1,
+                        $"婚嫁遷移：聚落裡沒有可配對的成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}（只剩手足或同性），"
+                        + $"前往有未配對成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}的{mate.Settlement.Name}"
+                        + $"，路線 {mate.Route.Length - 1} 格，攜帶路糧 {foodOut}",
+                        batch.Id), 0));
+                    migrationLedgers.Add(new DemoMigrationWeekLedger(
+                        week, batch.Id, settlement.Id, mate.Settlement.Id,
+                        batch.Cell, batch.Cell, Departed: true, Arrived: false,
+                        1, 0, 1,
+                        foodOut, 0, foodOut, 0,
+                        debtOut, 0, 0, debtOut, MateSeeking: true));
+                }
+            }
 
             arrivals.TryGetValue(settlement.Id, out var arrived);
             var populationClosing = checked(survivors - emigrants + arrived.People);
@@ -933,7 +1031,8 @@ internal static class DemoWeeklySettlement
                 FoodCarriedIn: arrived.Food, FoodCarriedOut: foodOut,
                 HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
                 AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
-                FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers));
+                FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
+                SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id)));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
@@ -1141,7 +1240,8 @@ internal static class DemoWeeklySettlement
             throw new InvalidOperationException($"第 {report.Week} 週遷徙隊伍編號重複。");
 
         // 45G M1_SETTLE：新聚落不憑空。每個「建立新聚落」事件都對應一支本週抵達的開拓隊，
-        // 新聚落的期初人口／糧食／飢餓債／資源點存量全部為 0、沒有出生，人口＝隊伍抵達人數；
+        // 新聚落的期初人口／糧食／飢餓債／資源點存量全部為 0，遷入＝隊伍抵達人數；
+        // 第 08-1 章：建村當週隊伍裡的孕婦可以分娩（出生另由帶原因的出生事件對帳），不再要求出生為 0；
         // 每支抵達的開拓隊都建立了一個聚落（一對一）。糧食與飢餓債由上面的兩端對帳檢查。
         var foundedEvents = report.Events.Where(e => e.Kind == DemoSettlementEventKind.SettlementFounded).ToList();
         var foundingArrivals = migrations.Where(m => m.Founding && m.Arrived).ToList();
@@ -1156,7 +1256,7 @@ internal static class DemoWeeklySettlement
                 || string.IsNullOrWhiteSpace(founded.Cause)
                 || founded.Count != batch.PopulationClosing || founded.Count <= 0
                 || ledger.PopulationOpening != 0 || ledger.FoodOpening != 0 || ledger.HungerDebtOpening != 0
-                || ledger.ReserveOpening != 0 || ledger.Births != 0
+                || ledger.ReserveOpening != 0
                 || ledger.Immigrants != batch.PopulationClosing)
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週新聚落 {founded.SettlementName} 不是完全由開拓隊建立（M1_SETTLE：新聚落不憑空）。");

@@ -82,6 +82,7 @@ public partial class ObserverRoot
             ? Array.Empty<DemoYearSummary>()
             : DemoYearLedger.FromWeeks(_world.WeekReports(), _calendar.DaysPerYear, _world.Snapshot().DaysElapsed);
         _yearChart.Rows = _chartRows;
+        _yearChart.Capacity = _world.MapCapacity.People; // 第 08-1 章：理論上限線（只有自然採集世界有值）
         if (_calendar is null)
             _chartYearInfo.Text = $"曆法讀取失敗，無法分年：{_calendarError}";
         else if (_yearChart.SelectedYear == 0)

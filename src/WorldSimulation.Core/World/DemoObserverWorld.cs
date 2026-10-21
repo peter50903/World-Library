@@ -103,6 +103,10 @@ public sealed partial class DemoObserverWorld
         _sites = DemoWorldSites.Generate(Map, _rng,
             weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
+                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 10～14 人（含三對育齡伴侶，見 DemoTempDemography.OpeningPerson）。
+                // 診斷：6～10 人時小世界常因性別比例的隨機波動斷代；12～18 人時開局就超過附近來源，第 1 年大饑荒。
+                : weekly.HumanLifecycleEnabled
+                ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 10, MaxPopGroupSize = 14 }
                 : DemoSitesTempConfig.Sample,
             weekly.SharedCatchmentEnabled).WithOpeningEntityIds(openingIds);
 
@@ -206,7 +210,9 @@ public sealed partial class DemoObserverWorld
         return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly,
             week.Settlements.ToDictionary(l => l.SettlementId,
                 l => (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers), available,
-            foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId, l => l.FoodConsumed + l.FoodShortage));
+            // 第 08-1 章：人類採集世界的要求量含補存糧（DemoCrowding.Claim，期初存糧＝帳上期初）。
+            foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId,
+                l => DemoCrowding.Claim(_weekly.HumanLifecycleEnabled, l.FoodConsumed + l.FoodShortage, l.FoodOpening)));
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>
@@ -224,6 +230,11 @@ public sealed partial class DemoObserverWorld
     /// <summary>
     /// #103：各聚落「長期資源再生 vs 目前需求」的 TEMP 描述性估計（依聚落編號排序）。純讀取，不改世界、不產生糧食。
     /// </summary>
+    private DemoMapCapacity? _mapCapacity;
+
+    /// <summary>第 08-1 章：地圖理論承載上限（TEMP 估計；只由地圖與設定決定，不是世界狀態）。</summary>
+    public DemoMapCapacity MapCapacity => _mapCapacity ??= DemoMapCapacity.For(Map, _weekly);
+
     public IReadOnlyList<DemoSettlementCapacity> SettlementCapacities()
         => DemoCarryingCapacity.Of(_sites, _weekly, SettlementPopulation, ResourceReserve, SettlementFood, SettlementHungerDebt);
 
@@ -326,7 +337,8 @@ public sealed partial class DemoObserverWorld
                 _sourceStocks,
                 // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
                 _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)),
-                _land);
+                _land,
+                _demography is null ? null : MateMarkets(_demography, _sites, checked(_weeks.Count + 1)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -355,8 +367,22 @@ public sealed partial class DemoObserverWorld
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
-    private static Func<int, long, long, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
-        => (settlementId, deaths, limit) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws);
+    private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
+        => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws, mode);
+
+    /// <summary>第 08-1 章：各聚落婚嫁市場（找不到伴侶的單身者性別、未配對成年男女數；以本週開始時的名冊計）。</summary>
+    private static IReadOnlyDictionary<int, DemoMateMarket> MateMarkets(DemoTempDemography demography, DemoWorldSites sites, int week)
+    {
+        var day = week * 7; // 與出發規劃（PlanEmigrants）同一天，選出的人一致
+        var rules = DemoHumanLifecycle.Rules;
+        return sites.Settlements.ToDictionary(s => s.Id, s =>
+        {
+            var residents = demography.People.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
+            return new DemoMateMarket(DemoFamilyMigration.MateSeeker(residents, day, rules)?.Sex,
+                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules),
+                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules));
+        });
+    }
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and

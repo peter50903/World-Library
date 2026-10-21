@@ -9,6 +9,30 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoFamilyMigration
 {
+    /// <summary>【TEMP】第 08-1 章：開拓隊至少要帶的成年伴侶對數。</summary>
+    public const int TempFoundingCouples = 2;
+
+    /// <summary>
+    /// 第 08-1 章【TEMP 規則】婚嫁遷移：本聚落最年輕的「找不到伴侶的育齡單身者」——
+    /// 育齡、沒有伴侶、沒有帶著未成年子女，而且聚落裡沒有任何未配對、非親子的成年異性（手足可配，見配對規則）。沒有就是 null。
+    /// </summary>
+    public static DemoTempPerson? MateSeeker(IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
+    {
+        ArgumentNullException.ThrowIfNull(residents);
+        ArgumentNullException.ThrowIfNull(rules);
+        var people = residents.Where(p => p.IsSettled).ToList();
+        return people
+            .Where(p => p.PartnerId is null && p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < rules.FertileAgeMaxYears
+                && !people.Any(c => !c.IsAdultAt(day, rules) && (c.MotherId == p.Id || c.BirthFatherId == p.Id))
+                && !people.Any(o => o.Sex != p.Sex && o.PartnerId is null && o.IsAdultAt(day, rules) && !p.IsParentOrChildOf(o)))
+            .OrderByDescending(p => p.BornDay).ThenBy(p => p.Id)
+            .FirstOrDefault();
+    }
+
+    /// <summary>第 08-1 章：本聚落未配對的成年人數（依性別；婚嫁遷移選目的地用）。</summary>
+    public static int Unpaired(IEnumerable<DemoTempPerson> residents, DemoTempSex sex, int day, DemoTempDemographyRules rules)
+        => residents.Count(p => p.IsSettled && p.Sex == sex && p.PartnerId is null && p.IsAdultAt(day, rules));
+
     public static IReadOnlyList<IReadOnlyList<DemoTempPerson>> Families(
         IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
     {
@@ -41,12 +65,35 @@ public static class DemoFamilyMigration
             .ToArray();
     }
 
-    /// <summary>不超過 <paramref name="limit"/> 人、整戶出發的成員 ID（遞增排序）。</summary>
-    public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules)
+    /// <summary>
+    /// 不超過 <paramref name="limit"/> 人、整戶出發的成員 ID（遞增排序）。
+    /// 第 08-1 章【TEMP 規則】：<paramref name="requireCouple"/>（開拓隊）時，最先放入兩戶成年伴侶（兩個不同家庭），
+    /// 放不下兩對就不出發（回傳空）——只有一個家庭的新聚落，下一代都是手足、無法通婚。
+    /// </summary>
+    public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules,
+        bool requireCouple = false)
     {
         var chosen = new List<long>();
         var left = limit;
-        foreach (var family in Families(residents, day, rules))
+        var families = Families(residents, day, rules).ToList();
+        if (requireCouple)
+        {
+            var couples = new List<IReadOnlyList<DemoTempPerson>>();
+            var room = left;
+            foreach (var f in families.Where(f => f.Count(p => p.IsAdultAt(day, rules)) == 2))
+            {
+                if (f.Count > room) continue;
+                couples.Add(f);
+                room -= f.Count;
+                if (couples.Count == TempFoundingCouples) break;
+            }
+            if (couples.Count < TempFoundingCouples)
+                return Array.Empty<long>();
+            foreach (var c in couples)
+                families.Remove(c);
+            families.InsertRange(0, couples);
+        }
+        foreach (var family in families)
         {
             if (family.Count > left) continue;
             chosen.AddRange(family.Select(p => p.Id));

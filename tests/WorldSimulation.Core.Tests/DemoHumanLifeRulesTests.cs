@@ -54,7 +54,7 @@ public sealed class DemoHumanLifeRulesTests
             {
                 var partner = people[p.PartnerId!.Value];
                 Assert.Equal(p.Id, partner.PartnerId);
-                Assert.False(p.IsCloseKinOf(partner), $"種子 {seed}：#{p.Id} 與 #{partner.Id} 是近親");
+                Assert.False(p.IsParentOrChildOf(partner), $"種子 {seed}：#{p.Id} 與 #{partner.Id} 是親子");
             }
             // 每次出生的雙親必須是當時的伴侶，事件原因列出雙親。
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.Birth),
