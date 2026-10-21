@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
 
@@ -12,10 +13,13 @@ public sealed class DemoTempDemographyTests
 {
     private static readonly DemoTempDemographyRules Rules = DemoTempDemographyRules.HumanFixture;
 
+    /// <summary>第 04 章 a 節：生死抽樣改由世界的 POP 流（原本傳給 Open 的種子改當世界種子）。</summary>
+    private static DemoPopulationDraws Draws(ulong worldSeed) => new(RngRegistry.Create(worldSeed));
+
     [Fact]
     public void OpeningPopulationHasRealAdultSexesAndNoImaginaryBirths()
     {
-        var pop = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 8, [2] = 3 }, Rules);
+        var pop = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 8, [2] = 3 }, Rules);
         Assert.Equal(11, pop.Count);
         Assert.Equal(11, pop.AdultsIn(1, Rules) + pop.AdultsIn(2, Rules));
         Assert.Equal(6, pop.People.Count(p => p.Sex == DemoTempSex.Female));
@@ -28,13 +32,13 @@ public sealed class DemoTempDemographyTests
     public void NoAdultManOrNoFoodMeansNoConceptionOrBirth()
     {
         var solitary = DemoTempDemography.Restore(
-            new DemoTempDemographicSnapshot(4, 0, 2,
+            new DemoTempDemographicSnapshot(0, 2,
                 ImmutableArray.Create(new DemoTempPerson(1, 1, DemoTempSex.Female, -19 * 365))), Rules);
-        var hungry = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 6 }, Rules);
+        var hungry = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 6 }, Rules);
         for (int w = 1; w <= 300; w++)
         {
-            var singleOutcome = solitary.AdvanceWeek(w, _ => true, Rules);
-            var hungerOutcome = hungry.AdvanceWeek(w, _ => false, Rules);
+            var singleOutcome = solitary.AdvanceWeek(w, _ => true, Rules, Draws(42));
+            var hungerOutcome = hungry.AdvanceWeek(w, _ => false, Rules, Draws(42));
             Assert.Empty(singleOutcome.Events.Where(e => e.Kind is DemoTempDemographicKind.Birth
                 or DemoTempDemographicKind.Conception));
             Assert.Empty(hungerOutcome.Events.Where(e => e.Kind is DemoTempDemographicKind.Birth
@@ -49,12 +53,12 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void BirthsNeedParentsAndGestationAndBabiesCannotWork()
     {
-        var pop = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 8 }, Rules);
+        var pop = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 8 }, Rules);
         var pregnancies = new Dictionary<long, int>();
         var births = new List<DemoTempDemographicEvent>();
         for (var week = 1; week <= 160; week++)
         {
-            var result = pop.AdvanceWeek(week, _ => true, Rules);
+            var result = pop.AdvanceWeek(week, _ => true, Rules, Draws(42));
             foreach (var e in result.Events)
             {
                 if (e.Kind == DemoTempDemographicKind.Conception)
@@ -87,12 +91,12 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void OldAgeHasRealNaturalDeathsNotAnExactForcedLifespan()
     {
-        var old = DemoTempDemography.Restore(new DemoTempDemographicSnapshot(42, 0, 2,
+        var old = DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 2,
             ImmutableArray.Create(new DemoTempPerson(1, 1, DemoTempSex.Male, -100 * 365))), Rules);
         var deaths = new List<DemoTempDemographicEvent>();
         for (var week = 1; week <= 260; week++)
         {
-            var result = old.AdvanceWeek(week, _ => true, Rules);
+            var result = old.AdvanceWeek(week, _ => true, Rules, Draws(42));
             deaths.AddRange(result.Events.Where(e => e.Kind == DemoTempDemographicKind.NaturalDeath));
             old = result.Population;
         }
@@ -106,17 +110,17 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void SnapshotRestoreAndSeededRunsYieldIdenticalBirthsAndDeaths()
     {
-        var x = DemoTempDemography.Open(17, new Dictionary<int, int> { [1] = 7 }, Rules);
-        var y = DemoTempDemography.Open(17, new Dictionary<int, int> { [1] = 7 }, Rules);
+        var x = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 7 }, Rules);
+        var y = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 7 }, Rules);
         for (var w = 1; w <= 75; w++)
-            x = x.AdvanceWeek(w, _ => true, Rules).Population;
+            x = x.AdvanceWeek(w, _ => true, Rules, Draws(42)).Population;
         x = DemoTempDemography.Restore(x.Snapshot(), Rules);
         for (var w = 1; w <= 200; w++)
         {
-            var outcomeY = y.AdvanceWeek(w, _ => true, Rules);
+            var outcomeY = y.AdvanceWeek(w, _ => true, Rules, Draws(42));
             y = outcomeY.Population;
             if (w <= 75) continue;
-            var outcomeX = x.AdvanceWeek(w, _ => true, Rules);
+            var outcomeX = x.AdvanceWeek(w, _ => true, Rules, Draws(42));
             x = outcomeX.Population;
             Assert.Equal(outcomeY.Events.ToArray(), outcomeX.Events.ToArray());
             Assert.Equal(y.People.ToArray(), x.People.ToArray());
@@ -130,12 +134,12 @@ public sealed class DemoTempDemographyTests
     public void MigrationKeepsPregnancyAndStarvationCannotCreateOrCopyPeople()
     {
         var noMiscarriage = Rules with { MiscarriageMonthly = 0 }; // Isolate transfer + provenance from a separate miscarriage chance.
-        var pop = DemoTempDemography.Open(42, new Dictionary<int, int> { [1] = 8 }, noMiscarriage);
+        var pop = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 8 }, noMiscarriage);
         DemoTempPerson? expecting = null;
         int conceivedWeek = 0;
         for (var week = 1; week <= 130; week++)
         {
-            pop = pop.AdvanceWeek(week, _ => true, noMiscarriage).Population;
+            pop = pop.AdvanceWeek(week, _ => true, noMiscarriage, Draws(42)).Population;
             expecting = pop.People.FirstOrDefault(p => p.PregnancyDueWeek.HasValue);
             if (expecting is null) continue;
             conceivedWeek = week;
@@ -163,7 +167,7 @@ public sealed class DemoTempDemographyTests
         var expectedDue = expecting.PregnancyDueWeek!.Value;
         for (var week = conceivedWeek + 1; week <= expectedDue; week++)
         {
-            var result = pop.AdvanceWeek(week, _ => true, noMiscarriage);
+            var result = pop.AdvanceWeek(week, _ => true, noMiscarriage, Draws(42));
             allBirths += result.Births;
             allDeaths += result.Deaths;
             births.AddRange(result.Events.Where(e => e.Kind == DemoTempDemographicKind.Birth
@@ -179,7 +183,7 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void RejectMalformedOrForgedDemographicIdentitySnapshots()
     {
-        var pop = DemoTempDemography.Open(1, new Dictionary<int, int> { [1] = 4 }, Rules);
+        var pop = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 4 }, Rules);
         var good = pop.Snapshot();
         Assert.Throws<InvalidOperationException>(() => DemoTempDemography.Restore(
             good with { People = good.People.Add(good.People[0]) }, Rules));

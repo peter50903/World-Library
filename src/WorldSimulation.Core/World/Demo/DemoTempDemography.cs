@@ -81,7 +81,6 @@ public sealed record DemoTempDemographicEvent(
 
 /// <summary>Serialized-shaped snapshot for an eventual atomic world save; not yet a save version.</summary>
 public sealed record DemoTempDemographicSnapshot(
-    ulong Seed,
     int LastWeek,
     long NextId,
     ImmutableArray<DemoTempPerson> People);
@@ -104,16 +103,14 @@ public sealed record DemoTempDemographicOutcome(
 public sealed class DemoTempDemography
 {
     private readonly ImmutableSortedDictionary<long, DemoTempPerson> _people;
-    public ulong Seed { get; }
     public int LastWeek { get; }
     public long NextId { get; }
     public int Count => _people.Count;
     public IReadOnlyList<DemoTempPerson> People => _people.Values.ToArray();
 
-    private DemoTempDemography(ulong seed, int week, long nextId,
+    private DemoTempDemography(int week, long nextId,
         ImmutableSortedDictionary<long, DemoTempPerson> people)
     {
-        Seed = seed;
         LastWeek = week;
         NextId = nextId;
         _people = people;
@@ -124,7 +121,7 @@ public sealed class DemoTempDemography
     /// C04：傳入 <paramref name="ids"/>（世界唯一實體 ID 分配器）時，每個人的 ID 依聚落、人序向它取號，
     /// <see cref="NextId"/> 等於分配器取號後的下一號；不傳時沿用獨立序號（只供單元測試）。
     /// </remarks>
-    public static DemoTempDemography Open(ulong seed, IReadOnlyDictionary<int, int> settlements,
+    public static DemoTempDemography Open(IReadOnlyDictionary<int, int> settlements,
         DemoTempDemographyRules rules, EntityIdAllocator? ids = null)
     {
         ArgumentNullException.ThrowIfNull(settlements);
@@ -146,12 +143,12 @@ public sealed class DemoTempDemography
                 id = ids is null ? checked(id + 1) : DemoEntityIds.NextValue(ids.Capture());
             }
         }
-        return Restore(new DemoTempDemographicSnapshot(seed, 0, id,
+        return Restore(new DemoTempDemographicSnapshot(0, id,
             people.Values.ToImmutableArray()), rules);
     }
 
     public DemoTempDemographicSnapshot Snapshot()
-        => new(Seed, LastWeek, NextId, _people.Values.ToImmutableArray());
+        => new(LastWeek, NextId, _people.Values.ToImmutableArray());
 
     /// <summary>Reject duplicated IDs, malformed pregnancies, and impossible future births.</summary>
     public static DemoTempDemography Restore(DemoTempDemographicSnapshot snapshot,
@@ -180,7 +177,7 @@ public sealed class DemoTempDemography
                 throw new InvalidOperationException("Duplicate TEMP population identity.");
             builder.Add(p.Id, p);
         }
-        return new DemoTempDemography(snapshot.Seed, snapshot.LastWeek, snapshot.NextId,
+        return new DemoTempDemography(snapshot.LastWeek, snapshot.NextId,
             builder.ToImmutable());
     }
 
@@ -197,7 +194,7 @@ public sealed class DemoTempDemography
         var next = _people.ToBuilder();
         foreach (var id in ids)
             next[id] = next[id] with { SettlementId = destinationSettlement };
-        return new DemoTempDemography(Seed, LastWeek, NextId, next.ToImmutable());
+        return new DemoTempDemography(LastWeek, NextId, next.ToImmutable());
     }
 
     /// <summary>Externally evidenced starvation losses, selected by person ID; for future week-ledger integration.</summary>
@@ -217,16 +214,21 @@ public sealed class DemoTempDemography
                 id, p.SettlementId));
         }
         return new DemoTempDemographicOutcome(
-            new DemoTempDemography(Seed, LastWeek, NextId, next.ToImmutable()), events.ToImmutable());
+            new DemoTempDemography(LastWeek, NextId, next.ToImmutable()), events.ToImmutable());
     }
 
     /// <summary>Advance exactly one 7-day week. Nutritional status must come from real Core food accounts.</summary>
-    /// <remarks>C04：傳入 <paramref name="ids"/> 時新生兒向世界唯一分配器取號（依母親 ID 順序）；不傳時沿用獨立序號（只供單元測試）。</remarks>
+    /// <remarks>
+    /// C04：傳入 <paramref name="ids"/> 時新生兒向世界唯一分配器取號（依母親 ID 順序）；不傳時沿用獨立序號（只供單元測試）。
+    /// 第 04 章 a 節：自然死亡、新生兒性別、流產、受孕全部由 <paramref name="draws"/>（歷史種子的 POP 流、實體局部亂數）決定；
+    /// 新生兒性別用已發出的新生兒 ID 抽。
+    /// </remarks>
     public DemoTempDemographicOutcome AdvanceWeek(int week,
-        Func<int, bool> settlementFed, DemoTempDemographyRules rules, EntityIdAllocator? ids = null)
+        Func<int, bool> settlementFed, DemoTempDemographyRules rules, DemoPopulationDraws draws, EntityIdAllocator? ids = null)
     {
         ArgumentNullException.ThrowIfNull(settlementFed);
         ArgumentNullException.ThrowIfNull(rules);
+        ArgumentNullException.ThrowIfNull(draws);
         rules.Validate();
         if (week != LastWeek + 1 || week > int.MaxValue / 7)
             throw new InvalidOperationException("TEMP demographic weeks must be consecutive.");
@@ -240,7 +242,7 @@ public sealed class DemoTempDemography
         foreach (var p in _people.Values)
         {
             var chance = rules.WeeklyNaturalDeathChance(p.AgeYearsAt(day));
-            if (!Roll(Seed, p.Id, week, 1, chance)) continue;
+            if (!draws.Hit(p.Id, week, DemoPopulationAction.NaturalDeath, chance)) continue;
             next.Remove(p.Id);
             events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.NaturalDeath,
                 p.Id, p.SettlementId));
@@ -255,14 +257,14 @@ public sealed class DemoTempDemography
                 {
                     if (ids is not null) nextId = DemoEntityIds.NextLong(ids);
                     var newborn = new DemoTempPerson(nextId, mother.SettlementId,
-                        Roll(Seed, nextId, week, 2, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day);
+                        draws.Hit(nextId, week, DemoPopulationAction.NewbornSex, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day);
                     next.Add(nextId, newborn);
                     events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Birth,
                         nextId, mother.SettlementId, mother.Id, mother.FatherId));
                     nextId = ids is null ? checked(nextId + 1) : DemoEntityIds.NextValue(ids.Capture());
                     next[mother.Id] = mother with { PregnancyDueWeek = null, FatherId = null };
                 }
-                else if (Roll(Seed, mother.Id, week, 3, rules.WeeklyMiscarriageChance))
+                else if (draws.Hit(mother.Id, week, DemoPopulationAction.Miscarriage, rules.WeeklyMiscarriageChance))
                 {
                     events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Miscarriage,
                         mother.Id, mother.SettlementId, mother.Id, mother.FatherId));
@@ -278,30 +280,17 @@ public sealed class DemoTempDemography
                 continue;
             var father = next.Values.FirstOrDefault(m => m.SettlementId == mother.SettlementId
                 && m.Sex == DemoTempSex.Male && m.IsAdultAt(day, rules));
-            if (father is null || !Roll(Seed, mother.Id, week, 4, rules.WeeklyConceptionChance))
+            if (father is null || !draws.Hit(mother.Id, week, DemoPopulationAction.Conception, rules.WeeklyConceptionChance))
                 continue;
             next[mother.Id] = mother with { PregnancyDueWeek = checked(week + rules.GestationWeeks), FatherId = father.Id };
             events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Conception,
                 mother.Id, mother.SettlementId, mother.Id, father.Id));
         }
 
-        var after = new DemoTempDemography(Seed, week, nextId, next.ToImmutable());
+        var after = new DemoTempDemography(week, nextId, next.ToImmutable());
         if (after.Count != Count + events.Count(x => x.Kind == DemoTempDemographicKind.Birth)
             - events.Count(x => x.Kind == DemoTempDemographicKind.NaturalDeath))
             throw new InvalidOperationException("TEMP births and natural deaths failed conservation.");
         return new DemoTempDemographicOutcome(after, events.ToImmutable());
-    }
-
-    private static bool Roll(ulong seed, long personId, int week, ulong channel, double chance)
-    {
-        if (chance <= 0) return false;
-        if (chance >= 1) return true;
-        // TEMP per-(seed, person, week, action) deterministic hash: replay and order independent.
-        ulong z = unchecked(seed + (ulong)personId * 0x9E3779B97F4A7C15UL
-            + (ulong)week * 0xBF58476D1CE4E5B9UL + channel * 0x94D049BB133111EBUL);
-        z = unchecked((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL);
-        z = unchecked((z ^ (z >> 27)) * 0x94D049BB133111EBUL);
-        z ^= z >> 31;
-        return (z >> 11) * (1.0 / (1UL << 53)) < chance;
     }
 }

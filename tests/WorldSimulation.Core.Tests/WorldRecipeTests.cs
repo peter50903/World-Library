@@ -171,8 +171,8 @@ public sealed class WorldRecipeTests
             DemoSaveSlots.Save(Run(WorldRecipe.ForSeeds(7, 8), DemoWeeklyTempConfig.Sample, 3), 1, directory);
             DemoSaveSlots.Save(Run(WorldRecipe.ForSeeds(7), DemoWeeklyTempConfig.Sample, 3), 2, directory);
             var slots = DemoSaveSlots.ListAll(directory);
-            Assert.Equal("槽 1：第 3 日｜種子 7｜自訂歷史種子 8｜一般示範｜存檔第 6 版", slots[0].Describe());
-            Assert.Equal("槽 2：第 3 日｜種子 7｜一般示範｜存檔第 6 版", slots[1].Describe());
+            Assert.Equal("槽 1：第 3 日｜種子 7｜自訂歷史種子 8｜一般示範｜存檔第 7 版", slots[0].Describe());
+            Assert.Equal("槽 2：第 3 日｜種子 7｜一般示範｜存檔第 7 版", slots[1].Describe());
         }
         finally
         {

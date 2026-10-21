@@ -114,7 +114,7 @@ public sealed partial class DemoObserverWorld
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
-            _demography = DemoTempDemography.Open(recipe.WorldSeed,
+            _demography = DemoTempDemography.Open(
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds);
         _entityIds = openingIds.Capture();
 
@@ -296,7 +296,9 @@ public sealed partial class DemoObserverWorld
 
             if (_demography is not null)
             {
-                var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, DemoCausalIndex.NextEventId(_weeks));
+                // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
+                var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng),
+                    DemoCausalIndex.NextEventId(_weeks));
                 commit.StagePopulation(lifecycle.Outcome, lifecycle.Population, lifecycle.Participants);
             }
             else

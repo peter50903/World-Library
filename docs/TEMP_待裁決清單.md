@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 6 版（直接快照＋實體 ID 分配器＋世界配方＋正式史庫；第 03 章 b 節），第 1～5 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 7 版（直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋人口改走 POP 流；第 04 章 a 節），第 1～6 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -243,7 +243,8 @@
 
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
-| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 16 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
+| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 15 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
+| `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 4 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證 |

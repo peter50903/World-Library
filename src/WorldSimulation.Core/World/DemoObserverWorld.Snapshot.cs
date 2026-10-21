@@ -119,12 +119,14 @@ public sealed partial class DemoObserverWorld
         if (weekly.HumanLifecycleEnabled)
         {
             var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
-            var (replayed, replayedParticipants) = DemoHumanLifecycle.Replay(initial, reports, sites);
+            var (replayed, replayedParticipants) = DemoHumanLifecycle.Replay(initial, reports, sites,
+                new DemoPopulationDraws(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
+
             participants = replayedParticipants;
             var supplied = state.GetProperty("Demography").Deserialize<DemoTempDemographicSnapshot>()
                 ?? throw new InvalidDataException("Missing human pregnancy/age snapshot.");
             var candidateSnapshot = replayed.Snapshot();
-            if (supplied.Seed != candidateSnapshot.Seed || supplied.LastWeek != candidateSnapshot.LastWeek
+            if (supplied.LastWeek != candidateSnapshot.LastWeek
                 || supplied.NextId != candidateSnapshot.NextId
                 || !supplied.People.SequenceEqual(candidateSnapshot.People)
                 || sites.Settlements.Any(place =>

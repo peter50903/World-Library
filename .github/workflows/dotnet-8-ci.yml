@@ -61,6 +61,8 @@ jobs:
             grep -q 'RESOURCE 提交前 0→提交後 0' /tmp/observer-demo-smoke.log
             ! grep -q '收穫' /tmp/observer-demo-smoke.log
             ! grep -rnE 'RngStreams\.Resource|DemoDayEvent|MaxDailyHarvest|FoodPerPersonPerDay|DailyFood|DailyHistory' src godot/Scripts
+            # 第 04 章 a 節：人口生死只走 POP 流；Core/Rng 以外不得有自製雜湊常數或另建亂數產生器。
+            test -z "$(grep -rnE --include='*.cs' '0x9E3779B97F4A7C15|0xBF58476D1CE4E5B9|new Random|Random\.Shared' src godot/Scripts | grep -v 'src/WorldSimulation.Core/Rng/')"
             # 第 03 章 a 節（使用者裁決）：孤立預檢模組已刪除，程式與測試中這些型別名稱必須 0 筆（手冊與本檔除外）。
             ! git grep -nwE 'EntityRngCandidatePreflight|EntityRngResolutionCandidate|CommandGateway|CommandRequest|NormalizedCommand|EntityCandidatePreflight|EntityCreationDraft' -- ':!.github' ':!docs'
             # 提交暫存物件是唯一發布路徑：週報清單只在 DemoWorldCommit 與建立／讀檔安裝處被指派。
@@ -96,9 +98,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":6,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":7,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 6 版' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 7 版' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
             grep -q '槽 1：（空）' /tmp/observer-slots.log
@@ -111,7 +113,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 6 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 7 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
