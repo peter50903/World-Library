@@ -71,7 +71,7 @@ public static class DemoCarryingCapacity
     /// <summary>資源種類的中文名稱（TEMP）。</summary>
     public static string KindName(DemoResourceKind kind) => kind switch
     {
-        DemoResourceKind.Farmland => "農地",
+        DemoResourceKind.Uncultivated => "未開墾草原",
         DemoResourceKind.Woodland => "林地",
         DemoResourceKind.Fishery => "漁場",
         _ => "未知"

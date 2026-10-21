@@ -19,7 +19,8 @@ namespace WorldSimulation.Core.World;
 /// version 11 (第 06 章 d 節) adds spoilage, water shortage, water carriers and child/elder starvation to the settlement ledger;
 /// version 12 (第 07 章 a 節) adds parents and stable partners to each person and a mixed-age opening cohort;
 /// version 13 (第 07 章 b 節) adds each traveller's batch and travel births/natural deaths to the migration ledger;
-/// version 14 (第 07 章 c 節) adds the ruin week to settlements.
+/// version 14 (第 07 章 c 節) adds the ruin week to settlements;
+/// version 15 (第 08 章 a 節) retires automatic grassland farmland and adds land development state.
 /// Every older version is rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
 /// no converter, the file is never modified or deleted, and the running world is untouched.
 /// The stored scenario and weekly config must also be one of the known TEMP presets
@@ -31,7 +32,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
     public ulong TempWorldSeed => _recipe.WorldSeed;
 
-    internal const int TempSaveVersion = 14; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼；第 04 章 c 節第 9 版週報加共享採集來源帳；第 06 章 c 節第 10 版加來源存量；第 06 章 d 節第 11 版週帳加腐敗、缺水、取水者與老幼餓死；第 07 章 a 節第 12 版名冊加父母與伴侶、混齡開局；第 07 章 b 節第 13 版名冊加所屬隊伍、隊伍帳加途中出生與自然死亡；第 07 章 c 節第 14 版聚落加遺跡週次。比目前舊的一律「版本太舊」。
+    internal const int TempSaveVersion = 15; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼；第 04 章 c 節第 9 版週報加共享採集來源帳；第 06 章 c 節第 10 版加來源存量；第 06 章 d 節第 11 版週帳加腐敗、缺水、取水者與老幼餓死；第 07 章 a 節第 12 版名冊加父母與伴侶、混齡開局；第 07 章 b 節第 13 版名冊加所屬隊伍、隊伍帳加途中出生與自然死亡；第 07 章 c 節第 14 版聚落加遺跡週次；第 08 章 a 節第 15 版舊自動農田退場、加土地開發狀態。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
@@ -94,6 +95,7 @@ public sealed partial class DemoObserverWorld
             Population = _population,
             HungerDebt = _hungerDebt,
             SourceStocks = _sourceStocks, // 第 06 章 c 節
+            Land = _land.Parcels, // 第 08 章 a 節：土地開發狀態
             MigrationBatches = _migrations.ToArray(),
             EntityIds = _entityIds,
             Settlements = _sites.Settlements,

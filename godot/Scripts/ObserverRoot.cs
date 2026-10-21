@@ -957,6 +957,7 @@ public partial class ObserverRoot : Control
         _historySeedInput.Text = world.Recipe.HistorySeedInput?.ToString(CultureInfo.InvariantCulture) ?? "";
         _hexMap.World = world.Map;
         _hexMap.Sites = world.Sites;
+        _hexMap.Land = world.Land; // 第 08 章 a 節
         _hexMap.MainRiverTiles = world.UsesSharedForaging
             ? DemoForagingWorld.MainRiverTiles(world.Map) : Array.Empty<DemoCellRef>();
         _hexMap.Migrants = world.MigrationsInTransit();
@@ -1368,6 +1369,7 @@ public partial class ObserverRoot : Control
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
+        _hexMap.Land = _world.Land;
         _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         _hexMap.QueueRedraw();

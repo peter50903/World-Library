@@ -105,18 +105,21 @@ public sealed class DemoWeeklySettlementTests
         {
             var people = world.Sites.PopGroupsOf(l.SettlementId).Sum(p => (long)p.Size);
             var kind = world.Sites.ResourcePointsOf(l.SettlementId).Single().Kind;
+            // 第 08 章 a 節：未開墾草原沒有存量、不再生、不產糧。
+            var uncultivated = kind == DemoResourceKind.Uncultivated;
             var regenRate = kind switch
             {
-                DemoResourceKind.Farmland => cfg.FarmlandRegenPerWeek,
                 DemoResourceKind.Woodland => cfg.WoodlandRegenPerWeek,
-                _ => cfg.FisheryRegenPerWeek
+                DemoResourceKind.Fishery => cfg.FisheryRegenPerWeek,
+                _ => 0
             };
-            var regen = Math.Min(regenRate, cfg.ReserveCapPerPoint - cfg.InitialReservePerPoint);
-            var harvest = Math.Min(people * cfg.YieldPerWorkerPerWeek, cfg.InitialReservePerPoint + regen);
+            var reserveOpening = uncultivated ? 0 : cfg.InitialReservePerPoint;
+            var regen = Math.Min(regenRate, cfg.ReserveCapPerPoint - reserveOpening);
+            var harvest = Math.Min(people * cfg.YieldPerWorkerPerWeek, reserveOpening + regen);
             var foodOpening = people * cfg.InitialFoodPerPerson;
             var consumed = Math.Min(foodOpening + harvest, people * cfg.FoodPerPersonPerWeek);
 
-            Assert.Equal(cfg.InitialReservePerPoint, l.ReserveOpening);
+            Assert.Equal(reserveOpening, l.ReserveOpening);
             Assert.Equal(regen, l.Regenerated);
             Assert.Equal(harvest, l.Harvested);
             Assert.Equal(foodOpening, l.FoodOpening);

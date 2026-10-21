@@ -180,7 +180,7 @@ public sealed class DemoStarvationTests
                     Assert.Equal(l.Harvested, l.FoodProduced);
                     Assert.Equal(l.FoodProduced, l.FoodFromFarming + l.FoodFromGathering);
                     var kinds = world.Sites.ResourcePointsOf(l.SettlementId).Select(p => p.Kind).ToList();
-                    if (!kinds.Contains(DemoResourceKind.Farmland)) Assert.Equal(0, l.FoodFromFarming);
+                    Assert.Equal(0, l.FoodFromFarming); // 第 08 章 a 節：沒有自動農田，農牧產量一律 0
                     if (!kinds.Any(k => k is DemoResourceKind.Woodland or DemoResourceKind.Fishery))
                         Assert.Equal(0, l.FoodFromGathering);
 

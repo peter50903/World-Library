@@ -14,6 +14,8 @@ public static class ArtAssets
     public const string TileForest = "res://assets/tiles/forest.png";
     public const string TileWater = "res://assets/tiles/water.png";
     public const string TileRiver = "res://assets/tiles/river.png";
+    public const string TileFarmland = "res://assets/tiles/farmland.png"; // 第 08 章 a 節
+    public const string TileFarmlandClearing = "res://assets/tiles/farmland_clearing.png";
 
     // 地圖標記（第 07 章）
     public const string IconVillage = "res://assets/icons/icon_settlement_village.png";
@@ -46,7 +48,7 @@ public static class ArtAssets
     /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
     public static readonly string[] Used =
     {
-        TileGrassland, TileForest, TileWater, TileRiver,
+        TileGrassland, TileForest, TileWater, TileRiver, TileFarmland, TileFarmlandClearing,
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood,

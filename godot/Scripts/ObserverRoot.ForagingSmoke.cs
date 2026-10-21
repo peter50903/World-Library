@@ -23,7 +23,8 @@ public partial class ObserverRoot
             Fail("TEMP main-river tiles are not visible");
         if (_world.Sites.Settlements.Any(s => _world.Map.GetCell(s.Column, s.Row).Terrain == DemoTerrain.Water))
             Fail("a settlement occupies a water/main-river hex");
-        if (_world.Sites.ResourcePoints.Any(p => p.Kind == DemoResourceKind.Farmland))
+        // 第 08 章 a 節：沒有任何格自動成為農田（土地開發狀態全部未開發）。
+        if (_world.Land.Parcels.Count != 0)
             Fail("undeveloped grassland was automatically turned into farmland");
 
         // Click a real Core forest cell; its gold catchment outlines must be the six-neighbour geometry.

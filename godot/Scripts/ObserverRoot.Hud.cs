@@ -483,7 +483,7 @@ public partial class ObserverRoot
             || _outlinerPanel.GetThemeStylebox("panel") is not StyleBoxTexture
             || _topBar.GetThemeStylebox("panel") is not StyleBoxTexture
             || _clickPlayer.Stream is null || _alertPlayer.Stream is null || _musicPlayer.Stream is null
-            || !_hexMap.UsesTerrainArt)
+            || !_hexMap.UsesTerrainArt || !DemoHexMap.HasLandArt)
             Fail("art assets were loaded but not applied to the HUD/map.");
         if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
             Fail("food stat missing from the top bar.");

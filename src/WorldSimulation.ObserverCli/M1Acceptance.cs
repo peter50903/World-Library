@@ -279,7 +279,7 @@ public static class M1RunCollector
 
     private static string KindName(DemoResourceKind kind) => kind switch
     {
-        DemoResourceKind.Farmland => "農地",
+        DemoResourceKind.Uncultivated => "未開墾草原",
         DemoResourceKind.Woodland => "林地",
         DemoResourceKind.Fishery => "漁場",
         _ => kind.ToString()
