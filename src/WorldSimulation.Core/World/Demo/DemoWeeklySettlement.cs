@@ -469,6 +469,13 @@ public sealed record DemoWeekReport(
 /// <summary>C05：一條亂數流在一次週提交前後的抽樣計數器。</summary>
 public sealed record DemoRngCounter(string StreamId, ulong Before, ulong After);
 
+/// <summary>第 08-1 章：婚嫁遷移的 TEMP 參數。</summary>
+public static class DemoMateTempSettings
+{
+    /// <summary>【TEMP】婚嫁遷移最遠路程（格）。</summary>
+    public const int MateRouteMaxSteps = 12;
+}
+
 /// <summary>第 08-1 章：外移的種類（決定名冊依什麼規則挑出發者）。</summary>
 public enum DemoEmigrationMode
 {
@@ -949,20 +956,19 @@ internal static class DemoWeeklySettlement
                      && mates is not null && mates.TryGetValue(settlement.Id, out var market) && market.SeekerSex is { } seekerSex
                      && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
             {
-                // 第 08-1 章【TEMP 規則】婚嫁遷移：找不到伴侶的育齡單身者，一個人走到 TEMP 已知路程內、
-                // 有未配對成年異性的最近聚落；只從人口少的聚落搬往人口多的（同人口時編號大的搬），避免兩邊對調。
+                // 第 08-1 章【TEMP 規則】婚嫁遷移：找不到伴侶的育齡單身者，一個人走到 TEMP 12 格內、
+                // 有未配對成年異性的最近聚落；目的地也有異性尋偶者時只由編號大的聚落一方搬（避免兩邊對調）。
                 (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route)? mateTarget = null;
                 foreach (var candidate in weekSites.Settlements.Where(c => c.Id != settlement.Id && !c.IsRuin).OrderBy(c => c.Id))
                 {
                     if (!mates.TryGetValue(candidate.Id, out var other)
                         || (seekerSex == DemoTempSex.Female ? other.UnpairedMen : other.UnpairedWomen) == 0)
                         continue;
-                    var otherPeople = population.GetValueOrDefault(candidate.Id);
-                    if (otherPeople < people || (otherPeople == people && candidate.Id > settlement.Id))
-                        continue;
+                    if (other.SeekerSex is { } theirs && theirs != seekerSex && candidate.Id > settlement.Id)
+                        continue; // 對方會搬過來
                     var route = DemoMigrationRoutes.FindRoute(map,
                         new DemoCellRef(settlement.Column, settlement.Row), new DemoCellRef(candidate.Column, candidate.Row));
-                    if (route.Length < 2 || route.Length - 1 > config.KnownRouteMaxSteps)
+                    if (route.Length < 2 || route.Length - 1 > DemoMateTempSettings.MateRouteMaxSteps)
                         continue;
                     if (mateTarget is null || route.Length < mateTarget.Value.Route.Length)
                         mateTarget = (candidate, route);
@@ -971,7 +977,8 @@ internal static class DemoWeeklySettlement
                 if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths, 1, DemoEmigrationMode.Mate) == 1)
                 {
                     emigrants = 1;
-                    foodOut = foodClosing / survivors;
+                    // 路糧：帶足全程（每格一週份，TEMP），存糧不夠就帶光。
+                    foodOut = Math.Min(foodClosing, checked(config.FoodPerPersonPerWeek * (mate.Route.Length - 1)));
                     debtOut = debt / survivors;
                     var batch = new DemoMigrationBatch(
                         DemoEntityIds.NextInt(ids), settlement.Id, settlement.Name,
@@ -983,7 +990,7 @@ internal static class DemoWeeklySettlement
                         DemoSettlementEventKind.Emigration, 1,
                         $"婚嫁遷移：聚落裡沒有可配對的成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}（只剩手足或同性），"
                         + $"前往有未配對成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}的{mate.Settlement.Name}"
-                        + $"（TEMP 規則：人口少的聚落往人口多的搬），路線 {mate.Route.Length - 1} 格，攜帶糧食 {foodOut}",
+                        + $"，路線 {mate.Route.Length - 1} 格，攜帶路糧 {foodOut}",
                         batch.Id), 0));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, mate.Settlement.Id,
