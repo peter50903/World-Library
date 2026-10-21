@@ -47,7 +47,7 @@ public sealed class DemoLivingForagingTests
         for (var day = 0; day < 365 * 2; day++) world.AdvanceOneDay();
         var raw = world.ExportTempSave();
         var loaded = DemoObserverWorld.ImportTempSave(raw);
-        Assert.Equal("人類繁衍與自然死亡", loaded.TempScenarioDisplayName);
+        Assert.Equal("希望時代：人類採集", loaded.TempScenarioDisplayName);
         Assert.Equal(raw, loaded.ExportTempSave());
         for (var day = 0; day < 180; day++)
         {

@@ -40,6 +40,9 @@ public sealed record DemoTempDemographyRules(
     /// <summary>育齡上限【TEMP】（config/demo）。</summary>
     public int FertileAgeMaxYears { get; init; } = 45;
 
+    /// <summary>第 08-2 章：低於這個年齡不會自然死亡（希望時代只有老死；0＝照 39C 全年齡分段）。</summary>
+    public int NaturalDeathMinAgeYears { get; init; }
+
     public void Validate()
     {
         if (AdultAgeYears < 1 || TypicalLifespanYears <= AdultAgeYears
@@ -56,6 +59,8 @@ public sealed record DemoTempDemographyRules(
     /// <summary>39C 年度自然死亡機率（依年齡÷典型壽命 分段）；不是壽命到期強制死亡。</summary>
     public double AnnualNaturalDeathChance(int ageYears)
     {
+        if (ageYears < NaturalDeathMinAgeYears)
+            return 0;
         var ratio = (double)Math.Max(0, ageYears) / TypicalLifespanYears;
         foreach (var (upper, annual) in DeathBands)
             if (ratio < upper)
@@ -86,8 +91,13 @@ public sealed record DemoTempPerson(
     public bool IsWith(DemoTempPerson other)
         => BatchId is null ? other.BatchId is null && other.SettlementId == SettlementId : other.BatchId == BatchId;
 
+    /// <summary>第 08-1 章：親子（不得配對；config/demo KinExclusion＝PARENT_CHILD）。</summary>
+    public bool IsParentOrChildOf(DemoTempPerson other)
+        => other.Id == MotherId || other.Id == BirthFatherId || other.MotherId == Id || other.BirthFatherId == Id;
+
     /// <summary>
-    /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）不得配對（config/demo KinExclusion）。
+    /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）。
+    /// 第 08-1 章起手足可以配對（只在沒有非近親對象時，配對時優先非近親）；親子仍不得配對（<see cref="IsParentOrChildOf"/>）。
     /// 開局人口沒有記錄父母，彼此不算近親。
     /// </summary>
     public bool IsCloseKinOf(DemoTempPerson other)
@@ -201,7 +211,8 @@ public sealed class DemoTempDemography
             cumulative += b.Percent;
             if (pick < cumulative) { band = b; break; }
         }
-        if (slot < 2)
+        // 第 08-1 章【TEMP】：前六人是三對建村夫婦（三個不同家庭）。
+        if (slot < 6)
             band = bands.First(b => b.MinAge >= rules.AdultAgeYears && b.MaxAge < rules.FertileAgeMaxYears);
         var span = (ulong)(band.MaxAge - band.MinAge + 1);
         var rest = raw / 100;
@@ -209,8 +220,8 @@ public sealed class DemoTempDemography
         var dayInYear = (int)(rest / span % 365);
         var sex = slot switch
         {
-            0 => DemoTempSex.Female,
-            1 => DemoTempSex.Male,
+            0 or 2 or 4 => DemoTempSex.Female,
+            1 or 3 or 5 => DemoTempSex.Male,
             _ => draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male
         };
         return new DemoTempPerson(id, settlement, sex, checked(-(age * 365 + dayInYear)));
@@ -254,7 +265,7 @@ public sealed class DemoTempDemography
         foreach (var p in builder.Values.Where(p => p.PartnerId is not null))
         {
             if (!builder.TryGetValue(p.PartnerId!.Value, out var partner) || partner.PartnerId != p.Id
-                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsCloseKinOf(partner)
+                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsParentOrChildOf(partner)
                 || !partner.IsWith(p))
                 throw new InvalidOperationException("Invalid TEMP partnership.");
         }
@@ -420,12 +431,18 @@ public sealed class DemoTempDemography
                 people[p.Id] = p with { PartnerId = null };
         }
         // 第 07 章 b 節：只有定居者配對（途中不新配對；已配對的家庭整批同行，不會被拆開）。
+        // 第 08-1 章【TEMP 規則】：育齡女性先配（依 ID）、其後是其他成年女性；每位配給同聚落、未配對、非親子的成年男性，
+        // 優先非近親（手足只在沒有其他對象時才配），再取年齡最接近（同差距取 ID 小者）。
+        // 舊規則「ID 最小的男性」常讓老人占走年輕伴侶；手足一律不配則小聚落一代之後就斷代（使用者 2026-10-21：先允許近親婚，之後以文化與疾病降低傾向）。
         var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsSettled
             && m.IsAdultAt(day, rules)).ToList();
         foreach (var woman in people.Values.Where(w => w.Sex == DemoTempSex.Female && w.PartnerId is null
-            && w.IsSettled && w.IsAdultAt(day, rules)).ToArray())
+                     && w.IsSettled && w.IsAdultAt(day, rules))
+                 .OrderBy(w => w.AgeYearsAt(day) < rules.FertileAgeMaxYears ? 0 : 1).ThenBy(w => w.Id).ToArray())
         {
-            var man = freeMen.FirstOrDefault(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m));
+            var man = freeMen.Where(m => m.SettlementId == woman.SettlementId && !woman.IsParentOrChildOf(m))
+                .OrderBy(m => woman.IsCloseKinOf(m) ? 1 : 0)
+                .ThenBy(m => Math.Abs((long)m.BornDay - woman.BornDay)).ThenBy(m => m.Id).FirstOrDefault();
             if (man is null) continue;
             freeMen.Remove(man);
             people[woman.Id] = woman with { PartnerId = man.Id };

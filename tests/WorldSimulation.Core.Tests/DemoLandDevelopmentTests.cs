@@ -43,7 +43,8 @@ public sealed class DemoLandDevelopmentTests
     [Fact]
     public void OnlyUnsettledGrasslandCanBeDevelopedAndStatesAreValidated()
     {
-        var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.ForagingSample);
+        // 第 08-1 章起自然採集世界的開局聚落都靠水，這裡用開局有草原聚落的一般示範地圖驗證土地模型。
+        var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.Sample);
         var grass = world.Map.Cells.First(c => c.Terrain == DemoTerrain.Grassland && world.Sites.SettlementAt(c.Column, c.Row) is null);
         var forest = world.Map.Cells.First(c => c.Terrain == DemoTerrain.Forest);
         var land = DemoLandDevelopmentMap.Empty;

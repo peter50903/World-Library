@@ -10,6 +10,8 @@ namespace WorldSimulation.Core.World.Demo;
 /// 其餘死亡（Deaths－NaturalDeaths）是餓死（含途中）；出生與自然死亡各自對帶原因事件的人數
 /// （<see cref="BirthEvents"/>、<see cref="NaturalDeathEvents"/>，為事件 Count 合計）。
 /// 三個新欄位是選用參數（預設 0），不破壞既有呼叫。
+/// 第 08 章 b 節：加 <see cref="FoodSpoiled"/>（第 06 章 d 節腐敗）；途中隊伍的出生與自然死亡也計入（第 07 章 b 節）。
+/// 同一份年帳也由 <see cref="DemoYearLedger.FromWeeks"/> 只從週報彙整（觀察者年度圖表），兩者逐欄相同。
 /// </summary>
 public sealed record DemoYearSummary(
     int Year,
@@ -43,7 +45,8 @@ public sealed record DemoYearSummary(
     int FirstDay = 1,
     long NaturalDeaths = 0,
     long BirthEvents = 0,
-    long NaturalDeathEvents = 0)
+    long NaturalDeathEvents = 0,
+    long FoodSpoiled = 0)
 {
     /// <summary>本年餓死人數（聚落＋途中）＝全部死亡－自然死亡。</summary>
     public long StarvationDeaths => Deaths - NaturalDeaths;
@@ -70,8 +73,8 @@ public sealed record DemoYearSummary(
             problems.Add($"第 {Year} 年週結算次數 {Weeks}，第 {FirstDay}～{LastDay} 日應為 {ExpectedWeeks}");
         if (PopulationOpening + Births - Deaths != PopulationClosing)
             problems.Add($"第 {Year} 年人口帳不平衡：{PopulationOpening}＋{Births}－{Deaths}≠{PopulationClosing}");
-        if (FoodOpening + FoodProduced - FoodConsumed != FoodClosing)
-            problems.Add($"第 {Year} 年糧食帳不平衡：{FoodOpening}＋{FoodProduced}－{FoodConsumed}≠{FoodClosing}");
+        if (FoodOpening + FoodProduced - FoodConsumed - FoodSpoiled != FoodClosing)
+            problems.Add($"第 {Year} 年糧食帳不平衡：{FoodOpening}＋{FoodProduced}－{FoodConsumed}－腐敗 {FoodSpoiled}≠{FoodClosing}");
         if (ReserveOpening + Regenerated - Harvested != ReserveClosing)
             problems.Add($"第 {Year} 年資源存量帳不平衡：{ReserveOpening}＋{Regenerated}－{Harvested}≠{ReserveClosing}");
         if (FoodProduced != Harvested)
@@ -89,7 +92,7 @@ public sealed record DemoYearSummary(
         if (InhabitedSettlements > SettlementsClosing && SettlementsClosing > 0)
             problems.Add($"第 {Year} 年有人聚落 {InhabitedSettlements} 超過聚落總數 {SettlementsClosing}");
         if (PopulationClosing < 0 || FoodClosing < 0 || ReserveClosing < 0 || InhabitedSettlements < 0
-            || Emigrants < 0 || Immigrants < 0 || PopulationInTransit < 0 || SettlementsFounded < 0)
+            || Emigrants < 0 || Immigrants < 0 || PopulationInTransit < 0 || SettlementsFounded < 0 || FoodSpoiled < 0)
             problems.Add($"第 {Year} 年出現負值");
         return problems;
     }
@@ -105,11 +108,21 @@ public sealed record DemoYearSummary(
          + $"、外移 {EmigrationEvents}、抵達 {ArrivalEvents}）";
 }
 
-/// <summary>一次長跑的結果：種子、各年摘要與全部守恆錯誤（空＝零錯誤）。</summary>
+/// <summary>第 08 章 c 節：一條不變量在一次長跑中的檢查次數與違反次數（每年年底檢查一次）。</summary>
+public sealed record DemoInvariantTally(string Id, string Name, int Checks, int Failures, string? FirstProblem)
+{
+    public string Describe()
+        => Failures == 0
+            ? $"{Id} {Name} 通過 {Checks}／{Checks} 次"
+            : $"{Id} {Name} 失敗 {Failures}／{Checks} 次（第一處：{FirstProblem}）";
+}
+
+/// <summary>一次長跑的結果：種子、各年摘要與全部守恆錯誤（空＝零錯誤）；第 08 章 c 節起含不變量統計。</summary>
 public sealed record DemoCenturyReport(
     ulong Seed,
     IReadOnlyList<DemoYearSummary> Years,
-    IReadOnlyList<string> ConservationErrors);
+    IReadOnlyList<string> ConservationErrors,
+    IReadOnlyList<DemoInvariantTally>? Invariants = null);
 
 /// <summary>
 /// V0-05｜無畫面長跑（TEMP 示範）。用同一個 <see cref="DemoObserverWorld"/> 逐日原子推進，
@@ -159,6 +172,9 @@ public static class DemoCenturyRun
         var summaries = new List<DemoYearSummary>(years);
         var errors = new List<string>();
         var weeksSeen = 0;
+        // 第 08 章 c 節：每年年底以註冊表檢查全部不變量（增量：只看新週報，並確認舊帳未被改寫）。
+        DemoInvariantCheckpoint? checkpoint = null;
+        var tallies = DemoInvariants.All.ToDictionary(i => i.Id, _ => (Checks: 0, Failures: 0, First: (string?)null));
 
         for (var year = 1; year <= years; year++)
         {
@@ -170,7 +186,7 @@ public static class DemoCenturyRun
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0;
-            long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0;
+            long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0, spoiled = 0;
             var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = 0;
 
@@ -194,6 +210,7 @@ public static class DemoCenturyRun
                     produced = checked(produced + l.FoodProduced);
                     consumed = checked(consumed + l.FoodConsumed);
                     shortage = checked(shortage + l.FoodShortage);
+                    spoiled = checked(spoiled + l.FoodSpoiled);
                     regenerated = checked(regenerated + l.Regenerated);
                     harvested = checked(harvested + l.Harvested);
                     emigrants = checked(emigrants + l.Emigrants);
@@ -202,7 +219,10 @@ public static class DemoCenturyRun
 
                 foreach (var m in latest.Migrations)
                 {
-                    deaths = checked(deaths + m.Deaths);
+                    // 第 07 章 b 節：途中出生與自然死亡也是世界人口的增減。
+                    births = checked(births + m.Births);
+                    deaths = checked(deaths + m.Deaths + m.NaturalDeaths);
+                    naturalDeaths = checked(naturalDeaths + m.NaturalDeaths);
                     consumed = checked(consumed + m.FoodConsumed);
                     shortage = checked(shortage + m.FoodShortage);
                 }
@@ -258,14 +278,30 @@ public static class DemoCenturyRun
                 emigrants, immigrants, world.PopulationInTransit,
                 emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count,
                 firstDay,
-                naturalDeaths, birthsInEvents, naturalDeathsInEvents);
+                naturalDeaths, birthsInEvents, naturalDeathsInEvents, spoiled);
             errors.AddRange(summary.Problems());
+            foreach (var result in DemoInvariants.Check(world, checkpoint))
+            {
+                var t = tallies[result.Id];
+                t.Checks++;
+                if (!result.Ok)
+                {
+                    t.Failures++;
+                    t.First ??= $"第 {year} 年：{result.Problems[0]}";
+                    errors.Add($"第 {year} 年不變量 {result.Id}（{result.Name}）不成立：{result.Problems[0]}");
+                }
+                tallies[result.Id] = t;
+            }
+            checkpoint = DemoInvariants.Capture(world);
             summaries.Add(summary);
             onYear?.Invoke(summary);
             // #103：年底各聚落的 TEMP 承載估計（純讀取；只在呼叫端要求時計算，不影響世界與摘要）。
             onYearSettlements?.Invoke(summary, world.SettlementCapacities());
         }
 
-        return new DemoCenturyReport(seed, summaries.AsReadOnly(), errors.AsReadOnly());
+        var invariantTallies = DemoInvariants.All
+            .Select(i => new DemoInvariantTally(i.Id, i.Name, tallies[i.Id].Checks, tallies[i.Id].Failures, tallies[i.Id].First))
+            .ToList().AsReadOnly();
+        return new DemoCenturyReport(seed, summaries.AsReadOnly(), errors.AsReadOnly(), invariantTallies);
     }
 }

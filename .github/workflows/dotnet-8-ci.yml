@@ -14,7 +14,7 @@ jobs:
   dotnet:
     name: .NET 8 SDK and build verification
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -44,6 +44,16 @@ jobs:
           if [[ -f WorldSimulation.sln ]]; then
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
+            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。第 08-2 章：人口變多、長跑變慢，只診斷種子 1。
+            for s in 1; do
+              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
+              grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
+              # 註記上限約 4 KB：切成多段（每段約 40 行）。
+              split -l 40 -d "/tmp/diag-$s.txt" "/tmp/diag-$s-part-"
+              for part in /tmp/diag-$s-part-*; do
+                echo "::notice title=普通世界人口診斷 種子 $s $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
+              done
+            done
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
               grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80
@@ -69,6 +79,14 @@ jobs:
             ! git grep -nwE 'EntityRngCandidatePreflight|EntityRngResolutionCandidate|CommandGateway|CommandRequest|NormalizedCommand|EntityCandidatePreflight|EntityCreationDraft' -- ':!.github' ':!docs'
             # 提交暫存物件是唯一發布路徑：週報清單只在 DemoWorldCommit 與建立／讀檔安裝處被指派。
             test "$(grep -rn --include='*.cs' '_weeks = ' src/WorldSimulation.Core | grep -v 'DemoWorldCommit.cs' | grep -vc 'ImmutableList<DemoWeekReport>.Empty\|DemoObserverWorld.Snapshot.cs')" = "0"
+            # 第 08 章 b 節：y 年報＝已提交週報彙整的年帳（與 --years 年報同格式）；進行中的年份標示。
+            printf '400\ny\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-year.log
+            grep -q '年報（共 2 年，資料＝已提交週報彙整）' /tmp/observer-year.log
+            grep -q '  第 1 年（至第 365 日）｜週結算 52 次｜' /tmp/observer-year.log
+            grep -q '  第 2 年（至第 400 日）｜週結算 5 次｜.*（進行中）' /tmp/observer-year.log
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 | grep '^第 1 年' | sed 's/｜年末.*//' > /tmp/year-headless.txt
+            grep '  第 1 年' /tmp/observer-year.log | sed 's/^  //' > /tmp/year-interactive.txt
+            diff /tmp/year-headless.txt /tmp/year-interactive.txt
             # 第 03 章 b 節：ev N 印正式史庫事件（類型、地點、相關實體、原因邊＋根因、直接後果）；錯誤編號不改世界。
             printf '300\nev 1\nev abc\nev 999999\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --frontier --seed 42 | tee /tmp/observer-history.log
             grep -q '事件 #1｜世界第 [0-9]* 日｜' /tmp/observer-history.log
@@ -100,9 +118,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":15,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":17,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 15 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 17 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -118,7 +136,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 15 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 17 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -146,27 +164,57 @@ jobs:
             # #103: year-end per-settlement carrying evidence (TEMP estimate) for years 1/10/100, seeds 42/7/1.
             grep -q '第 100 年底各聚落承載（TEMP 估計' /tmp/observer-century.log
             grep -q '長期可養活' /tmp/observer-century.log
-            for s in 7 1; do
-              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed "$s" --years 100 | tee "/tmp/observer-century-$s.log"
-              grep -q "長測完成：種子 $s，100 年" "/tmp/observer-century-$s.log"
-              grep -q '守恆錯誤 0，' "/tmp/observer-century-$s.log"
-              grep -q '第 10 年底各聚落承載（TEMP 估計' "/tmp/observer-century-$s.log"
+            grep -q '不變量 7 項全部通過' /tmp/observer-century.log
+            # 第 08 章 c 節：長測執行器 --seeds——3 種子 × 100 年，每年年底檢查不變量註冊表（時間、ID、歷史、人口、資源、來源、遷徙）。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,1 --years 100 | tee /tmp/observer-longrun.log
+            for s in 42 7 1; do
+              grep -q "^--- 長測種子 $s ---" /tmp/observer-longrun.log
+              grep -q "長測完成：種子 $s，100 年（第 36500 日）" /tmp/observer-longrun.log
             done
+            test "$(grep -c '^不變量 7 項全部通過' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '  TIME_MONOTONIC 時間單調 通過 100／100 次' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '  MIGRATION_CONSERVATION 遷徙守恆 通過 100／100 次' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '第 10 年底各聚落承載（TEMP 估計' /tmp/observer-longrun.log)" = 3
+            grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun.log
+            # 人類採集情境（出生、自然死亡、共享採集來源帳、家庭遷徙與建村）也跑 3 種子 × 100 年。
+            living_rc=0
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living > /tmp/observer-longrun-living.log || living_rc=$?
+            tail -20 /tmp/observer-longrun-living.log
+            # 失敗時把守恆／不變量錯誤列成註記（API 可讀）。
+            bad="$(grep -E '守恆錯誤：|長測中止|失敗 [0-9]+／' /tmp/observer-longrun-living.log | head -10 || true)"
+            if [ -n "$bad" ]; then echo "::error title=人類採集長測錯誤::$(printf '%s' "$bad" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; fi
+            test "$living_rc" = 0
+            grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun-living.log
+            test "$(grep -c '  SOURCE_LEDGER 來源帳 通過 100／100 次' /tmp/observer-longrun-living.log)" = 3
+            if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 1,x --years 2 > /tmp/observer-longrun-bad.log; then
+              echo "--seeds with a bad value must be rejected"; exit 1
+            fi
+            grep -q -- '--seeds <非負整數,非負整數' /tmp/observer-longrun-bad.log
             # V0-06B: the TEMP frontier scenario (migrants may found settlements) must also run 100 years cleanly.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
-            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 | tee /tmp/observer-m1.log
+            # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
+            # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
+            summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '^  種子 [0-9]*｜人口 \|調查結果' /tmp/observer-m1.log)"
+            echo "::notice title=M1 正式驗收::$(printf '%s' "$summary" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
             # Every Enabled=TRUE CheckID from the CSV must be reported, in CSV order, in the summary.
             expected_ids="$(tail -n +2 'config/sheets/45G_M1驗收.csv' | tr -d '\r' | awk -F, '$NF=="TRUE"{print $1}')"
             test -n "$expected_ids"
             for id in $expected_ids; do grep -q "  $id｜" /tmp/observer-m1.log; done
             summary_ids="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log | grep -o '^  M1_[A-Z_]*' | tr -d ' ')"
             test "$summary_ids" = "$expected_ids"
-            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 9
+            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 12
             grep -q '沒有 Hard 項目失敗' /tmp/observer-m1.log
+            test "$(grep -c '^  種子 [0-9]*｜人口 ' /tmp/observer-m1.log)" = 20
+            grep -q '  調查結果：20 個種子中 [0-9]* 個活過 100 年' /tmp/observer-m1.log
+            test "$(grep -c '^  必要項目 M1_[A-Z_]*｜通過（PASS）' /tmp/observer-m1.log)" = 8
+            test "$(grep -c '^  案例｜.*｜找到｜' /tmp/observer-m1.log)" = 4
+            grep -q '^正式驗收：通過' /tmp/observer-m1.log
+            test -s /tmp/m1-report/M1驗收報告.txt
             # #82: --m1-check uses the same official year boundary as --demo --years.
             grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-m1.log
             # Bad arguments must fail loudly in Chinese, not be swallowed.
@@ -177,6 +225,14 @@ jobs:
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
+
+      - name: Upload M1 acceptance report (第 08 章 d 節)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-acceptance-report
+          path: /tmp/m1-report/
+          if-no-files-found: ignore
 
       - name: Restore and compile actual Godot observer C# project (V0-02)
         shell: bash
@@ -350,7 +406,14 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=28 Toolbar=1 MapMode=2 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=29 Toolbar=1 MapMode=2 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          # 第 08 章 b 節：年度圖表——工具列開圖表、年帳＝無畫面年報、四組系列、真的滑鼠點年份、篩選該年事件、點事件定位地圖。
+          WORLD_SIM_CHART_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-chart.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-chart.log; then
+            echo "Godot reported a runtime error in the year chart smoke."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_CHART_OK: Years=3 Complete=2 CliEqual=1 Series=4 ClickYear=[1-3] Events=[1-9][0-9]* Focus=1 CoreUnchanged=1' /tmp/godot-chart.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."

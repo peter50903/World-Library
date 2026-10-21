@@ -34,7 +34,7 @@ public sealed class DemoCenturyRunTests
 
             // M1_RES：資源存量與糧食各自守恆。
             Assert.Equal(y.ReserveClosing, y.ReserveOpening + y.Regenerated - y.Harvested);
-            Assert.Equal(y.FoodClosing, y.FoodOpening + y.FoodProduced - y.FoodConsumed);
+            Assert.Equal(y.FoodClosing, y.FoodOpening + y.FoodProduced - y.FoodConsumed - y.FoodSpoiled); // 第 08-1 章：存糧會腐敗
 
             // M1_NO_MAGIC_FOOD：糧食只來自實際採收。
             Assert.Equal(y.Harvested, y.FoodProduced);

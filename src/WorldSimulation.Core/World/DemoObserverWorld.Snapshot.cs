@@ -164,6 +164,10 @@ public sealed partial class DemoObserverWorld
         if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
             Reject("實體 ID 重複或不小於分配器下一號");
 
+        // 第 08 章 c 節：讀檔與長測共用同一份不變量註冊表（從第 1 週全部檢查）。
+        if (DemoInvariants.Check(candidate).FirstOrDefault(r => !r.Ok) is { } broken)
+            Reject($"不變量 {broken.Id}（{broken.Name}）不成立：{broken.Problems[0]}");
+
         // 安裝後重新匯出必須與檔案完全相同（含重算的時鐘、排程、亂數、日歷史與世界指紋）。
         var suppliedDoc = JsonNode.Parse(json);
         var generatedDoc = JsonNode.Parse(candidate.ExportTempSave());
@@ -189,9 +193,17 @@ public sealed partial class DemoObserverWorld
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
         {
-            if (report.Sources.Count != 0)
-                Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳");
+            if (report.Sources.Count != 0 || report.Settlements.Any(l => l.SourceSlack != 0))
+                Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳或來源餘量");
             return;
+        }
+        // 第 08-1 章：聚落帳上的來源餘量＝依地圖與本週來源帳重算（生育與擁擠外移都依它，不能竄改）。
+        var slack = DemoCrowding.SlackInReach(map,
+            sites.Settlements.Where(s => s.FoundedWeek < w && !(s.IsRuin && s.RuinedWeek < w)), report.Sources);
+        foreach (var ledger in report.Settlements)
+        {
+            if (ledger.SourceSlack != slack.GetValueOrDefault(ledger.SettlementId))
+                Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的來源餘量與地圖重算不符");
         }
         // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
         // 第 07 章 c 節：來源依「當週開始時」的人造佔格重算（新聚落建立後才佔格，遺跡恢復）。
@@ -219,7 +231,7 @@ public sealed partial class DemoObserverWorld
         foreach (var ledger in report.Settlements)
         {
             var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
-            var need = checked(ledger.FoodConsumed + ledger.FoodShortage); // 第 06 章 d 節：本週需求（兒童半份）
+            var need = DemoCrowding.Claim(weekly.HumanLifecycleEnabled, checked(ledger.FoodConsumed + ledger.FoodShortage), ledger.FoodOpening); // 第 06 章 d 節需求；第 08-1 章含補存糧
             var workers = (ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening) - ledger.WaterCarriers;
             var labour = checked(workers * weekly.YieldPerWorkerPerWeek);
             if (total > need || total > labour)
@@ -303,7 +315,8 @@ public sealed partial class DemoObserverWorld
         var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
         var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
             .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
-        var births = report.Settlements.Sum(l => l.Births);
+        // 第 08-2 章：途中隊伍的新生兒也在本週區間內配號（希望時代隊伍不再途中餓死後才顯出這個漏算）。
+        var births = report.Settlements.Sum(l => l.Births) + report.Migrations.Sum(m => m.Births);
         if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
             || checked(newIds.Count + births) != closing - opening)
             Reject($"第 {report.Week} 週新實體 ID 沒有恰好填滿配號區間");

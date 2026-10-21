@@ -5,7 +5,8 @@ using Xunit;
 namespace WorldSimulation.Core.Tests;
 
 /// <summary>
-/// 第 07 章 a 節驗收：多種子 100 年的人類繁衍世界出現出生、老死（自然死亡）、餓死三類；
+/// 第 07 章 a 節驗收：多種子 100 年的人類繁衍世界出現出生與老死（自然死亡）；
+/// 第 08-2 章起是希望時代：沒有餓死，自然死亡全部是老年人；
 /// 無近親配對；人口帳逐週平衡；同配方可重現；開局為混齡社會。
 /// </summary>
 public sealed class DemoHumanLifeRulesTests
@@ -13,7 +14,7 @@ public sealed class DemoHumanLifeRulesTests
     private static readonly ulong[] Seeds = { 42UL, 7UL, 20261021UL };
 
     [Fact]
-    public void MultiSeedCenturyHasBirthsNaturalDeathsAndStarvationWithoutKinPairs()
+    public void MultiSeedCenturyHasBirthsAndOldAgeDeathsButNoStarvationOrParentChildPairs()
     {
         long starvation = 0, births = 0, natural = 0;
         var summaries = new List<string>();
@@ -54,16 +55,20 @@ public sealed class DemoHumanLifeRulesTests
             {
                 var partner = people[p.PartnerId!.Value];
                 Assert.Equal(p.Id, partner.PartnerId);
-                Assert.False(p.IsCloseKinOf(partner), $"種子 {seed}：#{p.Id} 與 #{partner.Id} 是近親");
+                Assert.False(p.IsParentOrChildOf(partner), $"種子 {seed}：#{p.Id} 與 #{partner.Id} 是親子");
             }
             // 每次出生的雙親必須是當時的伴侶，事件原因列出雙親。
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.Birth),
                 e => Assert.Contains("雙親", e.Cause));
+            // 第 08-2 章：希望時代只有老死——每一筆自然死亡的年齡都達 TEMP 老年起算年齡。
+            Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath),
+                e => Assert.True(int.Parse(System.Text.RegularExpressions.Regex.Match(e.Cause, @"年齡 (\d+)").Groups[1].Value)
+                    >= DemoSurvivalTempSettings.Current.ElderAgeYears, $"種子 {seed}：{e.Cause}"));
         }
         var all = string.Join("／", summaries);
         Assert.True(births > 0, $"多種子百年都沒有出生｜{all}");
         Assert.True(natural > 0, $"多種子百年都沒有自然死亡｜{all}");
-        Assert.True(starvation > 0, $"多種子百年都沒有餓死｜{all}");
+        Assert.True(starvation == 0, $"希望時代不應有人餓死｜{all}");
         // 混齡：三個種子的開局合計有兒童，也有 45 歲以上的人。
         Assert.Contains(openings, p => !p.IsAdultAt(0, DemoTempDemographyRules.HumanFixture));
         Assert.Contains(openings, p => p.AgeYearsAt(0) >= 45);

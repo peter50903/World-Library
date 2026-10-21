@@ -12,21 +12,29 @@ Console.OutputEncoding = Encoding.UTF8;
 if (args.Length > 0 && args[0] == "--m1-check")
     return M1AcceptanceCli.Run(args.Skip(1).ToArray(), Console.Out);
 
+// 第 08-1 章：普通世界人口診斷（逐年人口結構、採收／需求／勞力、受孕條件與死因）。
+if (args.Length > 0 && args[0] == "--diagnose-living")
+    return LivingDiagnosis.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
+
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");
-    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42] [--history-seed N] [--years 100] [--frontier]");
+    Console.WriteLine("用法：dotnet run --project src/WorldSimulation.ObserverCli -- --demo [--seed 42 | --seeds 42,7,1] [--history-seed N] [--years 100] [--frontier | --living]");
     Console.WriteLine("  --history-seed N：互動模式自訂歷史種子（不給＝由世界種子衍生）；同世界種子換歷史種子，地圖與初始人口相同。");
     Console.WriteLine("  --years N：不開互動介面，直接跑 N 年（1～1000）並輸出年度摘要（V0-05 無畫面長測）。");
     Console.WriteLine("  --frontier：改用 TEMP 開拓情境（開局聚落全部缺糧，遷徙者可建立新聚落；V0-06B 測試用）。");
+    Console.WriteLine("  --living：改用 TEMP 人類採集情境（出生、孕期、自然死亡、共享採集；Godot 預設情境）。");
+    Console.WriteLine("  --seeds a,b,c：無畫面長測依序跑多個種子（第 08 章 c 節長測執行器；每年年底檢查不變量註冊表）。");
     Console.WriteLine("M1 驗收報告：dotnet run --project src/WorldSimulation.ObserverCli -- --m1-check [--years 100] [--seed N] [--preset normal|local-famine|frontier|famine]");
     return 2;
 }
 
 ulong seed = 42;
+List<ulong>? seedList = null;
 ulong? historySeed = null;
 int? years = null;
 var frontier = false;
+var living = false;
 for (var i = 1; i < args.Length; i += 2)
 {
     var value = i + 1 < args.Length ? args[i + 1] : null;
@@ -34,6 +42,15 @@ for (var i = 1; i < args.Length; i += 2)
     {
         frontier = true;
         i--; // 這個旗標沒有值。
+    }
+    else if (args[i] == "--living")
+    {
+        living = true;
+        i--; // 這個旗標沒有值。
+    }
+    else if (args[i] == "--seeds" && value is not null && TryParseSeeds(value, out var parsedSeeds))
+    {
+        seedList = parsedSeeds;
     }
     else if (args[i] == "--seed" && value is not null &&
         ulong.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsedSeed))
@@ -53,10 +70,23 @@ for (var i = 1; i < args.Length; i += 2)
     }
     else
     {
-        Console.WriteLine($"請以 --demo [--seed <非負整數>] [--history-seed <非負整數>] [--years <1～{DemoCenturyRun.MaxYears}>] [--frontier] 指定參數。");
+        Console.WriteLine($"請以 --demo [--seed <非負整數> | --seeds <非負整數,非負整數,…>] [--history-seed <非負整數>] [--years <1～{DemoCenturyRun.MaxYears}>] [--frontier | --living] 指定參數。");
         return 2;
     }
 }
+
+if (frontier && living)
+{
+    Console.WriteLine("--frontier 與 --living 只能擇一。");
+    return 2;
+}
+if (seedList is not null && years is null)
+{
+    Console.WriteLine("--seeds 只用於無畫面長測，請同時指定 --years。");
+    return 2;
+}
+var demoConfig = living ? DemoWeeklyTempConfig.LivingForagingSample
+    : frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample;
 
 if (years is not null && historySeed is not null)
 {
@@ -64,7 +94,7 @@ if (years is not null && historySeed is not null)
     return 2;
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜verify N 完整驗證槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜y 年報（第 08 章 b 節，與年度圖表同一份年帳）｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜verify N 完整驗證槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 // 第 02 章 b 節：互動與無畫面模式都先載入並驗證正式設定（01＋29），失敗就停止（結束碼 2）。
 var officialConfig = OfficialConfig.Load();
@@ -77,10 +107,10 @@ if (!officialConfig.IsValid)
 }
 
 if (years is int runYears)
-    return RunHeadless(seed, runYears, frontier);
+    return RunHeadless(seedList ?? new List<ulong> { seed }, runYears, demoConfig,
+        living ? "｜TEMP 人類採集情境" : frontier ? "｜TEMP 開拓情境（V0-06B）" : "");
 
-var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, historySeed),
-    frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample);
+var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, historySeed), demoConfig);
 WorldRecipe? pendingRecipe = null; // 第 02 章 a 節：已推進世界的 new 需要再輸入 yes 確認。
 Console.WriteLine("=== 世界觀察者 v0｜可執行示範 ===");
 Console.WriteLine("注意：聚落人口、糧食與每週結算皆為非正式的 TEMP 示範數值（正式數值參數已載入並驗證，尚未接進示範世界）。");
@@ -202,6 +232,26 @@ while (true)
         if (weeks.Count == 0) Console.WriteLine("  尚未發生任何週結算（第 7 日才有第一次週結算）。");
         continue;
     }
+    if (command is "y" or "year")
+    {
+        // 第 08 章 b 節：年報＝已提交週報彙整的年帳（Godot 年度圖表同一份 DemoYearLedger）；進行中的年份也列出。
+        WorldCalendar yearCalendar;
+        try
+        {
+            yearCalendar = WorldCalendarConfig.LoadDefault();
+        }
+        catch (WorldCalendarException ex)
+        {
+            Console.WriteLine($"無法讀取正式曆法：{ex.Message}");
+            continue;
+        }
+        var yearRows = DemoYearLedger.FromWeeks(world.WeekReports(), yearCalendar.DaysPerYear, world.Snapshot().DaysElapsed);
+        Console.WriteLine($"年報（共 {yearRows.Count} 年，資料＝已提交週報彙整）：");
+        foreach (var y in yearRows)
+            Console.WriteLine($"  {y.Describe()}{(DemoYearLedger.IsComplete(y, yearCalendar.DaysPerYear) ? "" : "（進行中）")}");
+        if (yearRows.Count == 0) Console.WriteLine("  尚未發生任何週結算（第 7 日才有第一次週結算）。");
+        continue;
+    }
     if (command is "rng")
     {
         // C05（44J FAIL_REPLAY）：最近一次週提交的十條亂數流計數器，供重播分歧定位。
@@ -315,8 +365,9 @@ void PrintStatus()
     Console.WriteLine(OfficialConfig.Current.Describe());
 }
 
-// V0-05：無畫面長跑。每年印一行摘要；最後印守恆錯誤數。任何錯誤 → 結束碼 1。
-static int RunHeadless(ulong seed, int years, bool frontier)
+// V0-05：無畫面長跑；第 08 章 c 節起為長測執行器：可依序跑多個種子，每年印一行摘要，
+// 每個種子印不變量註冊表結果與守恆錯誤數。任何錯誤 → 結束碼 1。
+static int RunHeadless(IReadOnlyList<ulong> seeds, int years, DemoWeeklyTempConfig config, string scenarioLabel)
 {
     Console.WriteLine("=== 世界觀察者 v0｜無畫面長測（V0-05）===");
     Console.WriteLine(OfficialConfig.Current.Describe());
@@ -334,39 +385,73 @@ static int RunHeadless(ulong seed, int years, bool frontier)
 
     Console.WriteLine(calendar.Describe());
     Console.WriteLine("注意：所有人口、糧食、資源與飢餓數值都是 TEMP 示範值；週結算每 7 日一次是既有示範機制。");
-    Console.WriteLine($"亂數種子：{seed}｜年數：{years}" + (frontier ? "｜TEMP 開拓情境（V0-06B）" : ""));
-    var watch = System.Diagnostics.Stopwatch.StartNew();
-    DemoCenturyReport report;
-    try
+    var failedSeeds = new List<ulong>();
+    foreach (var seed in seeds)
     {
-        report = DemoCenturyRun.Run(seed, years, calendar.DaysPerYear,
-            frontier ? DemoWeeklyTempConfig.FrontierSample : DemoWeeklyTempConfig.Sample,
-            onYear: y => Console.WriteLine($"{y.Describe()}｜年末 {calendar.Rules.Format(y.LastDay)}"), // C08：年末日期由 Core 曆法換算
-            onYearSettlements: (y, capacities) =>
-            {
-                // #103：第 1、10、100 年與最後一年列出各聚落的長期再生 vs 需求（TEMP 描述性估計）。
-                if (y.Year is not (1 or 10 or 100) && y.Year != years)
-                    return;
-                Console.WriteLine($"  第 {y.Year} 年底各聚落承載（TEMP 估計：存量與糧庫耗盡後每週再生 vs 需求；不含遷徙與出生）：");
-                foreach (var c in capacities)
-                    Console.WriteLine($"    {c.Describe()}");
-            });
-    }
-    catch (Exception ex) when (ex is OverflowException or InvalidOperationException)
-    {
-        Console.WriteLine($"長測中止（守恆或帳目錯誤）：{ex.Message}");
-        return 1;
+        if (seeds.Count > 1)
+            Console.WriteLine($"--- 長測種子 {seed} ---");
+        Console.WriteLine($"亂數種子：{seed}｜年數：{years}{scenarioLabel}");
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        DemoCenturyReport report;
+        try
+        {
+            report = DemoCenturyRun.Run(seed, years, calendar.DaysPerYear, config,
+                onYear: y => Console.WriteLine($"{y.Describe()}｜年末 {calendar.Rules.Format(y.LastDay)}"), // C08：年末日期由 Core 曆法換算
+                onYearSettlements: (y, capacities) =>
+                {
+                    // #103：第 1、10、100 年與最後一年列出各聚落的長期再生 vs 需求（TEMP 描述性估計）。
+                    if (y.Year is not (1 or 10 or 100) && y.Year != years)
+                        return;
+                    Console.WriteLine($"  第 {y.Year} 年底各聚落承載（TEMP 估計：存量與糧庫耗盡後每週再生 vs 需求；不含遷徙與出生）：");
+                    foreach (var c in capacities)
+                        Console.WriteLine($"    {c.Describe()}");
+                });
+        }
+        catch (Exception ex) when (ex is OverflowException or InvalidOperationException)
+        {
+            Console.WriteLine($"長測中止（守恆或帳目錯誤）：{ex.Message}");
+            failedSeeds.Add(seed);
+            continue;
+        }
+
+        watch.Stop();
+        var last = report.Years[^1];
+        var totalDeaths = report.Years.Sum(y => y.Deaths);
+        var totalBirths = report.Years.Sum(y => y.Births);
+        var totalEvents = report.Years.Sum(y => (long)y.SettlementEvents);
+        var totalFounded = report.Years.Sum(y => y.SettlementsFounded);
+        var tallies = report.Invariants ?? Array.Empty<DemoInvariantTally>();
+        Console.WriteLine("不變量（每年年底以註冊表檢查）：");
+        foreach (var t in tallies)
+            Console.WriteLine($"  {t.Describe()}");
+        var brokenInvariants = tallies.Count(t => t.Failures > 0);
+        Console.WriteLine(brokenInvariants == 0
+            ? $"不變量 {tallies.Count} 項全部通過"
+            : $"不變量 {tallies.Count} 項中 {brokenInvariants} 項失敗");
+        Console.WriteLine($"長測完成：種子 {seed}，{years} 年（第 {last.LastDay} 日），期末人口 {last.PopulationClosing}，"
+            + $"累計出生 {totalBirths}，累計死亡 {totalDeaths}，累計聚落事件 {totalEvents}，新建聚落 {totalFounded}，守恆錯誤 {report.ConservationErrors.Count}，"
+            + $"耗時 {watch.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture)} 秒");
+        foreach (var error in report.ConservationErrors)
+            Console.WriteLine($"  守恆錯誤：{error}");
+        if (report.ConservationErrors.Count > 0 || brokenInvariants > 0)
+            failedSeeds.Add(seed);
     }
 
-    watch.Stop();
-    var last = report.Years[^1];
-    var totalDeaths = report.Years.Sum(y => y.Deaths);
-    var totalEvents = report.Years.Sum(y => (long)y.SettlementEvents);
-    var totalFounded = report.Years.Sum(y => y.SettlementsFounded);
-    Console.WriteLine($"長測完成：種子 {seed}，{years} 年（第 {last.LastDay} 日），期末人口 {last.PopulationClosing}，"
-        + $"累計死亡 {totalDeaths}，累計聚落事件 {totalEvents}，新建聚落 {totalFounded}，守恆錯誤 {report.ConservationErrors.Count}，"
-        + $"耗時 {watch.Elapsed.TotalSeconds.ToString("0.0", CultureInfo.InvariantCulture)} 秒");
-    foreach (var error in report.ConservationErrors)
-        Console.WriteLine($"  守恆錯誤：{error}");
-    return report.ConservationErrors.Count == 0 ? 0 : 1;
+    if (seeds.Count > 1)
+        Console.WriteLine(failedSeeds.Count == 0
+            ? $"長測總結：{seeds.Count} 種子 × {years} 年全部通過（守恆錯誤 0、不變量 {DemoInvariants.All.Count} 項全部通過）"
+            : $"長測總結：{seeds.Count} 種子中 {failedSeeds.Count} 個失敗（{string.Join("、", failedSeeds)}）");
+    return failedSeeds.Count == 0 ? 0 : 1;
+}
+
+static bool TryParseSeeds(string text, out List<ulong> seeds)
+{
+    seeds = new List<ulong>();
+    foreach (var part in text.Split(',', StringSplitOptions.TrimEntries))
+    {
+        if (!ulong.TryParse(part, NumberStyles.None, CultureInfo.InvariantCulture, out var value) || seeds.Contains(value))
+            return false;
+        seeds.Add(value);
+    }
+    return seeds.Count is >= 1 and <= 100;
 }

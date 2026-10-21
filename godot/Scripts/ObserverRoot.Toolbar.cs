@@ -102,10 +102,15 @@ public partial class ObserverRoot
         _toolHelp = ToolButton(ArtAssets.UiHelp, "說明", "說明與快捷鍵");
         _toolHelp.Pressed += () => ToggleModal("help");
         row.AddChild(_toolHelp);
+        // 第 08 章 b 節：年度圖表（圖示 UI_ICON_CHART 尚待製作，缺少時顯示文字）。
+        _toolChart = ToolButton(ArtAssets.UiChart, "圖表", "年度圖表：人口、出生死亡、遷徙、糧食採收與缺口（點某年看該年事件）");
+        _toolChart.Pressed += () => ToggleModal("chart");
+        row.AddChild(_toolChart);
 
         BuildModalHost();
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
+        AddModalPage("chart", "年度圖表", BuildYearChartPage());
         AddModalPage("help", "說明", new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
@@ -125,7 +130,7 @@ public partial class ObserverRoot
                 "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「世界控制台」切換右側面板，再按一次收合。",
                 "右側聚落清單：依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情。",
                 "右下：時間控制（播放、+1 日、5 檔速度）。底部：世界紀錄，紅色＝重大事件，點事件看原因與後果並定位地圖。",
-                "底部工具列：情境與新世界、存讀檔、說明。",
+                "底部工具列：情境與新世界、存讀檔、說明、年度圖表（點某年 →「看這一年的事件」→ 點事件定位地圖）。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -193,6 +198,8 @@ public partial class ObserverRoot
         SizeModal();
         if (key == "save")
             RefreshSlots();
+        if (key == "chart")
+            RefreshYearChart();
     }
 
     private void CloseModal()
