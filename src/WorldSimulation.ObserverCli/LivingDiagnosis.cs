@@ -36,7 +36,15 @@ public static class LivingDiagnosis
                 world.AdvanceOneDay();
             var weeks = world.WeekReports().Skip(seen).ToList();
             seen = world.WeekReports().Count;
-            if (year % 5 != 0 && year != 1 && year != years)
+            var events = weeks.SelectMany(w => w.Events).ToList();
+            int Count(DemoSettlementEventKind kind, string? cause = null)
+                => events.Where(e => e.Kind == kind && (cause is null || e.Cause.Contains(cause, StringComparison.Ordinal))).Sum(e => (int)e.Count);
+            output.WriteLine($"Y{year} 人{world.WorldPopulation} 生{Count(DemoSettlementEventKind.Birth)} 餓{Count(DemoSettlementEventKind.StarvationDeath)}"
+                + $" 途餓{Count(DemoSettlementEventKind.MigrantStarvationDeath)} 老{Count(DemoSettlementEventKind.NaturalDeath)}"
+                + $" 缺糧走{Count(DemoSettlementEventKind.Emigration, "缺糧")} 擁擠走{Count(DemoSettlementEventKind.Emigration, "接近附近來源上限")}"
+                + $" 婚走{Count(DemoSettlementEventKind.Emigration, "婚嫁")} 建村{events.Count(e => e.Kind == DemoSettlementEventKind.SettlementFounded)}"
+                + $" 遺跡{events.Count(e => e.Kind == DemoSettlementEventKind.SettlementRuined)}");
+            if (year % 10 != 0 && year != 1)
                 continue;
             var day = world.Snapshot().DaysElapsed;
             IReadOnlyList<DemoTempPerson> people = world.HumanPopulationSnapshot is { } snapshot ? snapshot.People : Array.Empty<DemoTempPerson>();
@@ -44,7 +52,6 @@ public static class LivingDiagnosis
             var starved = weeks.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths) + w.Migrations.Sum(m => m.Deaths));
             var natural = weeks.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths) + w.Migrations.Sum(m => m.NaturalDeaths));
             var emig = weeks.Sum(w => w.Settlements.Sum(l => l.Emigrants));
-            output.WriteLine($"第 {year} 年｜人口 {world.WorldPopulation}（途中 {world.PopulationInTransit}）｜本年出生 {births}、餓死 {starved}、老死 {natural}、外移 {emig}");
             foreach (var s in world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0))
             {
                 var residents = people.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
@@ -64,7 +71,10 @@ public static class LivingDiagnosis
                 var food = world.SettlementFood(s.Id);
                 var ample = weeks.Count(w => w.Settlements.Any(l => l.SettlementId == s.Id
                     && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, DemoCrowding.Slack(w.Sources, s.Id))));
-                output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
+                var seeker = DemoFamilyMigration.MateSeeker(residents, day, rules);
+                var singleF = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules);
+                var singleM = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules);
+                output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}／單女 {singleF}／單男 {singleM}／尋偶 {(seeker is null ? "無" : seeker.Sex == DemoTempSex.Female ? "女" : "男")}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
                     + $"｜飽 {fed}、寬裕 {ample}／{ledgers.Count} 週");
             }
         }

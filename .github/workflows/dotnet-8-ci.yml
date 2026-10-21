@@ -185,7 +185,7 @@ jobs:
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
             # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。
-            for s in 1 4 7; do
+            for s in 1 4; do
               dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
               grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
               # 註記上限約 4 KB：切成多段（每段約 40 行）。
