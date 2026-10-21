@@ -90,6 +90,19 @@ public sealed class M1OfficialAcceptanceTests
     }
 
     [Fact]
+    public void FamineInSharedForagingUsesWorkersAndSourceStock()
+    {
+        // 共享採集情境：勞動力＝成人扣取水者、資源有剩看來源帳；診斷不得再引用永遠為 0 的聚落資源點。
+        var famine = Result(Evaluate(Living5.Value), "M1_FAMINE");
+        Assert.NotEqual(M1Verdict.Fail, famine.Verdict);
+        if (famine.Diagnosis.Contains("勞動力上限", StringComparison.Ordinal))
+        {
+            Assert.Contains("取用的來源", famine.Diagnosis);
+            Assert.DoesNotContain("資源點剩", famine.Diagnosis);
+        }
+    }
+
+    [Fact]
     public void MissingCaseIsReportedHonestly()
     {
         // 人類採集種子 1 在 10 年內全滅：找不到長期生存案例，不能報「找到」。

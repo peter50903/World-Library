@@ -654,6 +654,19 @@ public static class M1Evaluator
         foreach (var report in run.Weeks)
             foreach (var l in report.Settlements)
                 ledgerOf[(report.Week, l.SettlementId)] = l;
+        // 第 08 章 d 節：共享採集情境（人類採集）的自然來源不在聚落資源點，而在來源帳；
+        // 「資源有剩」改看這個聚落本週取用過的來源是否還有未採（存量不是限制）。
+        var sourceLeft = new HashSet<(int Week, int Settlement)>();
+        foreach (var report in run.Weeks)
+            foreach (var source in report.Sources.Where(x => x.Unharvested > 0))
+                foreach (var share in source.Shares ?? Array.Empty<DemoSourceShare>())
+                    sourceLeft.Add((report.Week, share.SettlementId));
+        string Left(DemoSettlementWeekLedger l)
+            => run.Preset.Config.SharedCatchmentEnabled
+                ? (sourceLeft.Contains((l.Week, l.SettlementId)) ? "取用的來源仍有未採" : "取用的來源已採完")
+                : $"資源點剩 {l.ReserveClosing}";
+        bool ResourceLeft(DemoSettlementWeekLedger l)
+            => run.Preset.Config.SharedCatchmentEnabled ? sourceLeft.Contains((l.Week, l.SettlementId)) : l.ReserveClosing > 0;
 
         // 恢復一定要有實際糧食來源。
         var problems = new List<string>();
@@ -684,14 +697,17 @@ public static class M1Evaluator
 
         // 生產力是量測值，不是由人口前後推斷：每週採收不得超過「期初人口×TEMP 每人每週產量」的勞動力上限。
         var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
+        // 勞動力＝期初可工作者（人類採集情境：成人，扣掉取水者；其他情境：全部人口）。
+        static long Workers(DemoSettlementWeekLedger l)
+            => Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers);
         foreach (var report in run.Weeks)
         {
             foreach (var l in report.Settlements)
             {
-                var cap = l.PopulationOpening * yieldPerWorker;
+                var cap = Workers(l) * yieldPerWorker;
                 if (l.FoodProduced > cap)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 採收 {l.FoodProduced} 超過勞動力上限 {cap}"
-                        + $"（期初人口 {l.PopulationOpening}×TEMP 每人每週產量 {yieldPerWorker}）");
+                        + $"（期初勞動力 {Workers(l)} 人×TEMP 每人每週產量 {yieldPerWorker}）");
             }
         }
 
@@ -724,23 +740,27 @@ public static class M1Evaluator
                 continue;
             }
 
-            var capBefore = during.PopulationOpening * yieldPerWorker;
-            var capAfter = next.PopulationOpening * yieldPerWorker;
-            var beforeBound = during.FoodProduced == capBefore && during.ReserveClosing > 0;
-            var afterBound = next.FoodProduced == capAfter && next.ReserveClosing > 0;
+            var capBefore = Workers(during) * yieldPerWorker;
+            var capAfter = Workers(next) * yieldPerWorker;
+            // 共享採集情境的採收也受本週需求限制：採收要等於勞動力上限且低於需求，才確定是勞力（不是需求）在限制。
+            bool LaborBound(DemoSettlementWeekLedger l, long cap)
+                => l.FoodProduced == cap && ResourceLeft(l)
+                && (!run.Preset.Config.SharedCatchmentEnabled || l.FoodProduced < l.FoodConsumed + l.FoodShortage);
+            var beforeBound = LaborBound(during, capBefore);
+            var afterBound = LaborBound(next, capAfter);
             var laborBound = capAfter < capBefore && beforeBound && afterBound && next.FoodProduced < during.FoodProduced;
             if (!laborBound)
             {
                 unmeasured ??= $"{head}，但勞動力上限 {capBefore}→{capAfter}、實際採收 {during.FoodProduced}→{next.FoodProduced}"
-                    + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}）：前後兩週不是都受勞力限制（產量受資源點存量限制、"
+                    + $"（{Left(during)}→{Left(next)}）：前後兩週不是都受勞力限制（產量受資源存量或需求限制、"
                     + "前週採收未達舊上限或勞動力未下降），量測不到生產力因人口減少而下降";
                 continue;
             }
 
-            chain = $"{head} → 下週勞動力 {during.PopulationOpening}→{next.PopulationOpening} 人，"
+            chain = $"{head} → 下週勞動力 {Workers(during)}→{Workers(next)} 人，"
                 + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {yieldPerWorker}），"
                 + $"實際採收 {during.FoodProduced}＝前週舊上限 → {next.FoodProduced}＝新上限"
-                + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}，前後兩週產量受勞力限制）";
+                + $"（{Left(during)}→{Left(next)}，前後兩週產量受勞力限制）";
             break;
         }
 
