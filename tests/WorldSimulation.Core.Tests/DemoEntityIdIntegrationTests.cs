@@ -114,19 +114,28 @@ public sealed class DemoEntityIdIntegrationTests
     [Fact]
     public void FailedCommitInAWeekThatAllocates_ConsumesNoIds()
     {
-        // 找一個會配號（有隊伍出發或新聚落）的週。
-        var probe = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.FrontierSample);
+        // 找一個會配號（有隊伍出發或新聚落）的週（第 06 章 a 節後地圖改變，種子依序搜尋：42，再 1～30）。
+        ulong seed = 0;
         var targetDay = 0;
-        for (var day = 1; day <= 5 * 365 && targetDay == 0; day++)
+        foreach (var candidate in new ulong[] { 42 }.Concat(Enumerable.Range(1, 30).Select(i => (ulong)i)))
         {
-            probe.AdvanceOneDay();
-            if (day % 7 == 0 && probe.LatestWeek is { } w && w.EntityIdNextClosing > w.EntityIdNextOpening)
-                targetDay = day;
+            var probe = new DemoObserverWorld(DemoScenario.Sample(candidate), DemoWeeklyTempConfig.FrontierSample);
+            for (var day = 1; day <= 5 * 365 && targetDay == 0; day++)
+            {
+                probe.AdvanceOneDay();
+                if (day % 7 == 0 && probe.LatestWeek is { } w && w.EntityIdNextClosing > w.EntityIdNextOpening)
+                    targetDay = day;
+            }
+            if (targetDay > 0)
+            {
+                seed = candidate;
+                break;
+            }
         }
         Assert.True(targetDay > 0, "開拓情境五年內應有配號的週。");
 
-        var world = Run(42, DemoWeeklyTempConfig.FrontierSample, targetDay - 1);
-        var direct = Run(42, DemoWeeklyTempConfig.FrontierSample, targetDay - 1);
+        var world = Run(seed, DemoWeeklyTempConfig.FrontierSample, targetDay - 1);
+        var direct = Run(seed, DemoWeeklyTempConfig.FrontierSample, targetDay - 1);
         var nextBefore = world.EntityIdNextValue;
         var fingerprint = world.StateFingerprint();
 
