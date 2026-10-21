@@ -20,7 +20,8 @@ public sealed record DemoCatchmentTempSettings(
     string MainRiverReach,
     string Notes,
     long GrasslandForageWeeklySupply = 0,
-    long OpenWaterWeeklySupply = 0)
+    long OpenWaterWeeklySupply = 0,
+    int SourceStockCapWeeks = 0)
 {
     public static DemoCatchmentTempSettings FromJson(string json)
     {
@@ -41,6 +42,7 @@ public sealed record DemoCatchmentTempSettings(
             || ForestWeeklySupply < 0 || MainRiverWeeklySupply < 0
             || UncultivatedFarmlandWeeklySupply != 0
             || GrasslandForageWeeklySupply <= 0 || OpenWaterWeeklySupply <= 0
+            || SourceStockCapWeeks < 1
             || Allocation != "ONE_SOURCE_TOTAL"
             || ForestReach != "SELF_AND_SIX_ADJACENT_LAND"
             || MainRiverReach != "SIX_ADJACENT_LAND_ONLY")

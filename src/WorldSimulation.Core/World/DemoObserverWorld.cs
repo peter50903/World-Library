@@ -66,6 +66,8 @@ public sealed partial class DemoObserverWorld
     private DemoWorldSites _sites;
     // 第 03 章 b 節：正式追加式史庫，只經 DemoWorldCommit.StageHistory→PublishTo 增加。
     private EventHistory _history = EventHistory.Empty;
+    // 第 06 章 c 節：共享採集各來源的期末存量（只列＞0）。
+    private ImmutableSortedDictionary<int, long> _sourceStocks = ImmutableSortedDictionary<int, long>.Empty;
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -191,9 +193,11 @@ public sealed partial class DemoObserverWorld
     {
         if (!UsesSharedForaging || LatestWeek is not { } week) return null;
         var opening = week.Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
+        // 第 06 章 c 節：可採量用帳上的期初存量＋再生（存量本身由逐週帳鏈決定）。
+        var available = week.Sources.Select(x => new DemoCatchmentFoodSource(x.SourceId, x.Column, x.Row, x.Kind, x.FoodAvailable)).ToArray();
         return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly,
             week.Settlements.ToDictionary(l => l.SettlementId,
-                l => l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening));
+                l => l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening), available);
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>
@@ -253,8 +257,11 @@ public sealed partial class DemoObserverWorld
         return DemoWeeklySettlement.Settle(
             week, TimeSpan.FromDays(7L * week), Map, _sites,
             _reserves, _settlementFood, _population, _hungerDebt,
-            _migrations, _entityIds, publishedWeeks, _weekly);
+            _migrations, _entityIds, publishedWeeks, _weekly, sourceStocks: _sourceStocks);
     }
+
+    /// <summary>第 06 章 c 節：共享採集各來源目前存量（未採累積；沒有＝0）。</summary>
+    public long SourceStock(int sourceId) => _sourceStocks.GetValueOrDefault(sourceId);
 
     /// <summary>#61: people living in settlements (sum of every settlement's current population).</summary>
     public long SettledPopulation => _population.Values.Sum();
@@ -306,7 +313,8 @@ public sealed partial class DemoObserverWorld
                 _reserves, _settlementFood, _population, _hungerDebt,
                 _migrations, _entityIds, _weeks, _weekly,
                 _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
-                    s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)));
+                    s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)),
+                _sourceStocks);
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -359,6 +367,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _settlementFood) sb.Append(inv, $"sfood{kv.Key}={kv.Value};");
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
         foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
+        foreach (var kv in _sourceStocks) sb.Append(inv, $"sstock{kv.Key}={kv.Value};"); // 第 06 章 c 節
         if (_demography is not null)
         {
             sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");

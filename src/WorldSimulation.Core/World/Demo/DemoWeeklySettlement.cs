@@ -330,7 +330,9 @@ public sealed record DemoSettlementWeekLedger(
 public sealed record DemoSourceShare(int SettlementId, long Food);
 
 /// <summary>
-/// 第 04 章 c 節：共享採集來源層級週帳。守恆：Σ份額＋未採＝預算，皆非負，同一來源不重複聚落。
+/// 第 04 章 c 節：共享採集來源層級週帳。守恆：Σ份額＋未採＝本週可採，皆非負，同一來源不重複聚落。
+/// 第 06 章 c 節：加期初存量與再生——本週可採（FoodAvailable）＝期初存量＋再生；
+/// 再生＝min(每週供應, 上限－期初)，上限＝每週供應 × TEMP 週數；未採（Unharvested）＝期末存量，留到下週。
 /// 份額陣列以值比較。
 /// </summary>
 public sealed record DemoSourceWeekLedger(
@@ -341,28 +343,57 @@ public sealed record DemoSourceWeekLedger(
     int Row,
     long FoodAvailable,
     IReadOnlyList<DemoSourceShare> Shares,
-    long Unharvested)
+    long Unharvested,
+    long StockOpening = 0,
+    long Regenerated = 0)
 {
+    /// <summary>本週採收合計（Σ份額）。</summary>
+    public long Harvested => (Shares ?? Array.Empty<DemoSourceShare>()).Sum(x => x.Food);
+
+    /// <summary>期末存量＝未採。</summary>
+    public long StockClosing => Unharvested;
+
     public bool Equals(DemoSourceWeekLedger? other)
         => other is not null && Week == other.Week && SourceId == other.SourceId && Kind == other.Kind
         && Column == other.Column && Row == other.Row && FoodAvailable == other.FoodAvailable
-        && Unharvested == other.Unharvested && (Shares ?? Array.Empty<DemoSourceShare>()).SequenceEqual(other.Shares ?? Array.Empty<DemoSourceShare>());
+        && Unharvested == other.Unharvested && StockOpening == other.StockOpening && Regenerated == other.Regenerated
+        && (Shares ?? Array.Empty<DemoSourceShare>()).SequenceEqual(other.Shares ?? Array.Empty<DemoSourceShare>());
 
     public override int GetHashCode()
-        => HashCode.Combine(Week, SourceId, Kind, Column, Row, FoodAvailable, Unharvested, Shares?.Count ?? 0);
+        => HashCode.Combine(Week, SourceId, Kind, Column, Row, FoodAvailable, Unharvested, HashCode.Combine(StockOpening, Regenerated, Shares?.Count ?? 0));
 
     public override string ToString()
         => FormattableString.Invariant(
-            $"source{SourceId}@w{Week}:{Kind}({Column},{Row}) {FoodAvailable}=[{string.Join(",", (Shares ?? Array.Empty<DemoSourceShare>()).Select(x => $"{x.SettlementId}:{x.Food}"))}]+{Unharvested}");
+            $"source{SourceId}@w{Week}:{Kind}({Column},{Row}) {StockOpening}+{Regenerated}={FoodAvailable}=[{string.Join(",", (Shares ?? Array.Empty<DemoSourceShare>()).Select(x => $"{x.SettlementId}:{x.Food}"))}]+{Unharvested}");
 
-    /// <summary>由一次共享分配組出全部來源帳（預算＞0 的來源，依編號）。</summary>
+    /// <summary>
+    /// 第 06 章 c 節：本週每個來源的期初存量、再生與可採（依編號；可採＞0 才列）。
+    /// <paramref name="potential"/> 的 FoodAvailable 是每週供應；<paramref name="stocks"/> 是上週期末存量（沒有＝0）。
+    /// </summary>
+    internal static IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated)> Plan(
+        IReadOnlyList<DemoCatchmentFoodSource> potential, IReadOnlyDictionary<int, long> stocks, int capWeeks)
+    {
+        var plan = new List<(DemoCatchmentFoodSource, long, long)>();
+        foreach (var source in potential.OrderBy(x => x.Id))
+        {
+            var opening = stocks.GetValueOrDefault(source.Id);
+            var cap = checked(source.FoodAvailable * capWeeks);
+            var regenerated = Math.Max(0, Math.Min(source.FoodAvailable, cap - opening));
+            var available = checked(opening + regenerated);
+            if (available > 0)
+                plan.Add((source with { FoodAvailable = available }, opening, regenerated));
+        }
+        return plan;
+    }
+
+    /// <summary>由一次共享分配組出全部來源帳。</summary>
     internal static IReadOnlyList<DemoSourceWeekLedger> From(int week,
-        IReadOnlyList<DemoCatchmentFoodSource> sources, DemoCatchmentFoodResult allocation)
-        => Array.AsReadOnly(sources.Where(x => x.FoodAvailable > 0).OrderBy(x => x.Id).Select(x =>
-            new DemoSourceWeekLedger(week, x.Id, x.Kind, x.Column, x.Row, x.FoodAvailable,
-                Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == x.Id).OrderBy(h => h.SettlementId)
+        IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated)> plan, DemoCatchmentFoodResult allocation)
+        => Array.AsReadOnly(plan.Select(p =>
+            new DemoSourceWeekLedger(week, p.Source.Id, p.Source.Kind, p.Source.Column, p.Source.Row, p.Source.FoodAvailable,
+                Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == p.Source.Id).OrderBy(h => h.SettlementId)
                     .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()),
-                allocation.UnharvestedSourceFood.GetValueOrDefault(x.Id))).ToArray());
+                allocation.UnharvestedSourceFood.GetValueOrDefault(p.Source.Id), p.Opening, p.Regenerated)).ToArray());
 }
 
 /// <summary>
@@ -433,7 +464,11 @@ internal sealed record DemoWeeklyOutcome(
     ImmutableSortedDictionary<int, long> HungerDebt,
     ImmutableList<DemoMigrationBatch> Migrations,
     EntityIdAllocatorSnapshot EntityIds,
-    DemoWorldSites Sites);
+    DemoWorldSites Sites)
+{
+    /// <summary>第 06 章 c 節：共享採集各來源的期末存量（只列＞0）；非共享情境為空。</summary>
+    public ImmutableSortedDictionary<int, long> SourceStocks { get; init; } = ImmutableSortedDictionary<int, long>.Empty;
+}
 
 /// <summary>
 /// V0-04A／V0-04B／V0-06A 每週 L2 聚落結算（TEMP 示範），順序依 44B：
@@ -478,7 +513,8 @@ internal static class DemoWeeklySettlement
         EntityIdAllocatorSnapshot entityIds,
         IReadOnlyList<DemoWeekReport> publishedWeeks,
         DemoWeeklyTempConfig config,
-        IReadOnlyDictionary<int, long>? adultWorkers = null)
+        IReadOnlyDictionary<int, long>? adultWorkers = null,
+        IReadOnlyDictionary<int, long>? sourceStocks = null)
     {
         ArgumentNullException.ThrowIfNull(migrations);
         ArgumentNullException.ThrowIfNull(publishedWeeks);
@@ -492,13 +528,21 @@ internal static class DemoWeeklySettlement
             throw new InvalidOperationException("Entity IDs must stay below the allocator's next ID (IDs are never reused).");
 
         // Allocate each forest/river source ONCE before per-settlement weekly accounting.
-        var sharedHarvest = config.SharedCatchmentEnabled
-            ? DemoForagingWorld.Allocate(map ?? throw new InvalidOperationException("Shared foraging needs map."),
-                sites, population, config, adultWorkers)
-            : null;
-        var sourceLedgers = sharedHarvest is null
-            ? Array.Empty<DemoSourceWeekLedger>()
-            : DemoSourceWeekLedger.From(week, DemoForagingWorld.Sources(map!, sites), sharedHarvest);
+        // 第 06 章 c 節：每個來源有持久存量（上週未採＋本週再生，上限 TEMP 週數），分配的是本週可採量。
+        DemoCatchmentFoodResult? sharedHarvest = null;
+        IReadOnlyList<DemoSourceWeekLedger> sourceLedgers = Array.Empty<DemoSourceWeekLedger>();
+        var nextSourceStocks = ImmutableSortedDictionary<int, long>.Empty;
+        if (config.SharedCatchmentEnabled)
+        {
+            var plan = DemoSourceWeekLedger.Plan(
+                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites),
+                sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
+            sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, adultWorkers,
+                plan.Select(p => p.Source).ToArray());
+            sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
+            nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
+                .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
+        }
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -837,7 +881,7 @@ internal static class DemoWeeklySettlement
         Verify(report);
         return new DemoWeeklyOutcome(report, nextReserves.ToImmutable(), nextFood.ToImmutable(),
             nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), ids.Capture(),
-            weekSites);
+            weekSites) { SourceStocks = nextSourceStocks };
     }
 
     /// <summary>
@@ -864,6 +908,9 @@ internal static class DemoWeeklySettlement
                 throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 的份額聚落重複或未排序。");
             if (checked(source.Shares.Sum(x => x.Food) + source.Unharvested) != source.FoodAvailable)
                 throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 不守恆：份額＋未採≠預算。");
+            if (source.StockOpening < 0 || source.Regenerated < 0
+                || checked(source.StockOpening + source.Regenerated) != source.FoodAvailable)
+                throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 不守恆：期初存量＋再生≠本週可採。");
         }
         var shares = sources.SelectMany(x => x.Shares).GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Food));

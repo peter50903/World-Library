@@ -65,6 +65,7 @@ public sealed partial class DemoObserverWorld
         var departedWeek = new Dictionary<int, int>();
         var entityNext = openingEntityNext;
         var rngCounters = openingRng.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
+        var sourceStocks = new Dictionary<int, long>(); // 第 06 章 c 節：逐週帳鏈重算的來源存量
         var lastBatchId = 0;
         for (var week = 1; week <= weekCount; week++)
         {
@@ -75,7 +76,7 @@ public sealed partial class DemoObserverWorld
 
             CheckSettlementLedgers(report, sites, reserves, food, population, debt);
             CheckEvents(report, sites);
-            CheckSourceLedgers(report, map, sites, weekly);
+            CheckSourceLedgers(report, map, sites, weekly, sourceStocks);
             lastBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, lastBatchId);
             entityNext = CheckEntityIdRange(report, sites, entityNext);
             CheckRngCounters(report, rngCounters);
@@ -98,6 +99,9 @@ public sealed partial class DemoObserverWorld
             || !SameBalances(ReadBalances(state, "Population"), population)
             || !SameBalances(ReadBalances(state, "HungerDebt"), debt))
             Reject("目前存量與最後一週週帳期末不一致");
+        // 第 06 章 c 節：目前來源存量＝最後一週來源帳期末（只列＞0）。
+        if (!SameBalances(ReadBalances(state, "SourceStocks"), sourceStocks))
+            Reject("目前來源存量與最後一週來源帳期末不一致");
         var entityIds = state.GetProperty("EntityIds").Deserialize<EntityIdAllocatorSnapshot>()
             ?? throw new InvalidDataException("TEMP 存檔缺少實體 ID 分配器狀態。");
         if (entityIds.Version != EntityIdAllocatorSnapshot.CurrentVersion || entityIds.Exhausted
@@ -113,6 +117,7 @@ public sealed partial class DemoObserverWorld
         candidate._settlementFood = food.ToImmutableSortedDictionary();
         candidate._population = population.ToImmutableSortedDictionary();
         candidate._hungerDebt = debt.ToImmutableSortedDictionary();
+        candidate._sourceStocks = sourceStocks.ToImmutableSortedDictionary();
         candidate._migrations = batches.ToImmutableList();
         candidate._entityIds = entityIds;
         candidate._sites = sites;
@@ -173,7 +178,8 @@ public sealed partial class DemoObserverWorld
     /// 來源清單＝依地圖與聚落重算（預算＞0）；份額只給可及範圍內的聚落；每聚落合計 ≤ 需求且 ≤ 勞力上限。
     /// 共享採集情境沒有建村，聚落清單即目前聚落。
     /// </summary>
-    private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly)
+    private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly,
+        Dictionary<int, long> stocks)
     {
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
@@ -182,16 +188,19 @@ public sealed partial class DemoObserverWorld
                 Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳");
             return;
         }
-        var expected = DemoForagingWorld.Sources(map, sites).Where(x => x.FoodAvailable > 0).OrderBy(x => x.Id).ToArray();
-        if (report.Sources.Count != expected.Length)
-            Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Length} 不符");
-        for (var i = 0; i < expected.Length; i++)
+        // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
+        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites), stocks,
+            DemoForagingWorld.Settings.SourceStockCapWeeks);
+        if (report.Sources.Count != expected.Count)
+            Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Count} 不符");
+        for (var i = 0; i < expected.Count; i++)
         {
             var source = report.Sources[i];
-            var truth = expected[i];
+            var (truth, opening, regenerated) = expected[i];
             if (source.SourceId != truth.Id || source.Kind != truth.Kind || source.Column != truth.Column
-                || source.Row != truth.Row || source.FoodAvailable != truth.FoodAvailable)
-                Reject($"第 {w} 週來源 #{source.SourceId} 的種類、位置或預算與地圖重算不符");
+                || source.Row != truth.Row || source.FoodAvailable != truth.FoodAvailable
+                || source.StockOpening != opening || source.Regenerated != regenerated)
+                Reject($"第 {w} 週來源 #{source.SourceId} 的種類、位置、存量或再生與地圖及上週帳重算不符");
             var origin = map.GetCell(source.Column, source.Row);
             var includeOrigin = source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
             foreach (var share in source.Shares)
@@ -210,6 +219,9 @@ public sealed partial class DemoObserverWorld
             if (total > need || total > labour)
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的採集合計 {total} 超過需求 {need} 或勞力上限 {labour}");
         }
+        stocks.Clear();
+        foreach (var source in report.Sources.Where(x => x.StockClosing > 0))
+            stocks[source.SourceId] = source.StockClosing;
     }
 
     private static List<DemoWeekReport> ReadWeekReports(JsonElement array)
