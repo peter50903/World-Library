@@ -46,7 +46,7 @@ public sealed class DemoSaveSlotTests : IDisposable
         DemoSaveSlots.Save(c, 3, _directory);
 
         var slots = DemoSaveSlots.ListAll(_directory);
-        Assert.Equal((42UL, 9, "一般示範", 5), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((42UL, 9, "一般示範", 6), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
         Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
         Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
         Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 6 版", slots[1].Describe());
