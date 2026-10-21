@@ -8,8 +8,11 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public sealed class PlaybackClock
 {
-    /// <summary>TEMP 速度選項：每秒推進的世界日數（下拉選單順序）。</summary>
-    public static IReadOnlyList<int> TempDaysPerSecondOptions { get; } = new[] { 1, 5, 30 };
+    /// <summary>
+    /// TEMP 速度選項：每秒推進的世界日數（下拉選單順序＝右下 1～5 檔）。第 05 章 b2 由 3 檔擴為 5 檔；
+    /// 前三檔維持 1／5／30，後兩檔約每秒一季、一年（實際受 <see cref="TempMaxDaysPerFrame"/> 與畫面幀率限制）。
+    /// </summary>
+    public static IReadOnlyList<int> TempDaysPerSecondOptions { get; } = new[] { 1, 5, 30, 90, 365 };
 
     /// <summary>
     /// TEMP：每幀最多推進的日數。畫面卡頓很久時不一次補跑大量日子（避免畫面凍結），

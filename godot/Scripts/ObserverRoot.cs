@@ -414,7 +414,7 @@ public partial class ObserverRoot : Control
         };
         feedScroll.AddChild(historyColumn);
 
-        var historyTitle = new Label { Text = "結算歷史｜最近 12 筆日結算＋最近 10 筆聚落事件（飢餓／餓死／解除／外移／抵達／建立新聚落）" };
+        var historyTitle = new Label { Text = "世界紀錄｜最近週結算與聚落事件（飢餓／餓死／解除／外移／抵達／建立新聚落）" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
         historyColumn.AddChild(historyTitle);
 
@@ -433,6 +433,7 @@ public partial class ObserverRoot : Control
         historyRow.AddChild(_history);
         BuildEventDetailPanel(historyRow);
 
+        BuildOutliner();
         BuildDetailPanel();
         BuildTimeControls();
         BuildMapModeBar();
@@ -1333,6 +1334,7 @@ public partial class ObserverRoot : Control
         _hexMap.Migrants = _world.MigrationsInTransit();
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
         _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。
+        RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         _hexMap.QueueRedraw();
 
         // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），
