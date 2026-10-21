@@ -69,6 +69,14 @@ jobs:
             ! git grep -nwE 'EntityRngCandidatePreflight|EntityRngResolutionCandidate|CommandGateway|CommandRequest|NormalizedCommand|EntityCandidatePreflight|EntityCreationDraft' -- ':!.github' ':!docs'
             # 提交暫存物件是唯一發布路徑：週報清單只在 DemoWorldCommit 與建立／讀檔安裝處被指派。
             test "$(grep -rn --include='*.cs' '_weeks = ' src/WorldSimulation.Core | grep -v 'DemoWorldCommit.cs' | grep -vc 'ImmutableList<DemoWeekReport>.Empty\|DemoObserverWorld.Snapshot.cs')" = "0"
+            # 第 08 章 b 節：y 年報＝已提交週報彙整的年帳（與 --years 年報同格式）；進行中的年份標示。
+            printf '400\ny\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-year.log
+            grep -q '年報（共 2 年，資料＝已提交週報彙整）' /tmp/observer-year.log
+            grep -q '  第 1 年（至第 365 日）｜週結算 52 次｜' /tmp/observer-year.log
+            grep -q '  第 2 年（至第 400 日）｜週結算 5 次｜.*（進行中）' /tmp/observer-year.log
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 1 | grep '^第 1 年' | sed 's/｜年末.*//' > /tmp/year-headless.txt
+            grep '  第 1 年' /tmp/observer-year.log | sed 's/^  //' > /tmp/year-interactive.txt
+            diff /tmp/year-headless.txt /tmp/year-interactive.txt
             # 第 03 章 b 節：ev N 印正式史庫事件（類型、地點、相關實體、原因邊＋根因、直接後果）；錯誤編號不改世界。
             printf '300\nev 1\nev abc\nev 999999\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --frontier --seed 42 | tee /tmp/observer-history.log
             grep -q '事件 #1｜世界第 [0-9]* 日｜' /tmp/observer-history.log
@@ -350,7 +358,14 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=28 Toolbar=1 MapMode=2 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize=2 Art=29 Toolbar=1 MapMode=2 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          # 第 08 章 b 節：年度圖表——工具列開圖表、年帳＝無畫面年報、四組系列、真的滑鼠點年份、篩選該年事件、點事件定位地圖。
+          WORLD_SIM_CHART_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-chart.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-chart.log; then
+            echo "Godot reported a runtime error in the year chart smoke."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_CHART_OK: Years=3 Complete=2 CliEqual=1 Series=4 ClickYear=[1-3] Events=[1-9][0-9]* Focus=1 CoreUnchanged=1' /tmp/godot-chart.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."
