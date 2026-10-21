@@ -207,7 +207,7 @@ public static class DemoMigrationRoutes
         {
             var cell = queue.Dequeue();
             var here = new DemoCellRef(cell.Column, cell.Row);
-            if (depth[here] > 0 && isFree(here) && HasWaterAccess(map, here))
+            if (depth[here] > 0 && cell.Terrain != DemoTerrain.Water && isFree(here) && HasWaterAccess(map, here))
             {
                 var path = new List<DemoCellRef>();
                 DemoCellRef? at = here;
@@ -228,7 +228,8 @@ public static class DemoMigrationRoutes
                 if (!byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
                     continue;
                 var key = new DemoCellRef(next.Column, next.Row);
-                if (previous.ContainsKey(key) || next.Terrain == DemoTerrain.Water)
+                // 第 06 章 a 節：只沿陸路路線段（野地／道路／橋／渡口）走；相鄰但沒有路線段＝不可通行。
+                if (previous.ContainsKey(key) || !map.Routes.IsLandPassable(here, key))
                     continue;
                 previous[key] = here;
                 depth[key] = depth[here] + 1;
@@ -240,7 +241,8 @@ public static class DemoMigrationRoutes
     }
 
     /// <summary>
-    /// 最短陸路（含起點與終點），找不到則回傳空陣列（45E MIG_NO_TARGET：沒有可達目的地就留下）。
+    /// 最短陸路（含起點與終點，依路線段步數），找不到則回傳空陣列（45E MIG_NO_TARGET：沒有可達目的地就留下）。
+    /// 第 06 章 a 節：只沿陸路路線段走，過河只能經渡口。
     /// </summary>
     public static ImmutableArray<DemoCellRef> FindRoute(DemoHexWorld map, DemoCellRef origin, DemoCellRef destination)
     {
@@ -268,7 +270,8 @@ public static class DemoMigrationRoutes
                 var key = new DemoCellRef(next.Column, next.Row);
                 if (previous.ContainsKey(key))
                     continue;
-                if (next.Terrain == DemoTerrain.Water && !ReferenceEquals(next, goal))
+                // 第 06 章 a 節：只沿陸路路線段走（過河只能經渡口）。
+                if (!map.Routes.IsLandPassable(new DemoCellRef(cell.Column, cell.Row), key))
                     continue;
                 previous[key] = new DemoCellRef(cell.Column, cell.Row);
                 queue.Enqueue(next);

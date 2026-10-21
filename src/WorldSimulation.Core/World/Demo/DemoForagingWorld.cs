@@ -15,17 +15,13 @@ public static class DemoForagingWorld
         => DemoCatchmentTempSettings.FromJson(Config.OfficialConfig.ReadDemoText("terrain-food-temp.json"));
 
     /// <summary>
-    /// TEMP river-main-channel geometry. Do not mistake this display fixture for
-    /// the formal RouteSegment river system. No food is generated for unmarked water.
+    /// 第 06 章 a 節：主水道格改讀地圖的正式主水道（連續佔格水域序列）；不再用顯示用的挑格規則。
+    /// 其他水域是一般水域。
     /// </summary>
     public static IReadOnlyList<DemoCellRef> MainRiverTiles(DemoHexWorld map)
     {
         ArgumentNullException.ThrowIfNull(map);
-        return Array.AsReadOnly(map.Cells
-            .Where(c => c.Terrain == DemoTerrain.Water && (c.Column + c.Row) % 3 == 0
-                && map.Cells.Any(l => l.Terrain != DemoTerrain.Water
-                    && DemoHexFoodCatchment.IsInReach(c, l, false)))
-            .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray());
+        return map.MainWaterway;
     }
 
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites = null)

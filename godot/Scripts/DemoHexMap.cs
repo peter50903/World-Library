@@ -105,8 +105,9 @@ public partial class DemoHexMap : Control
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
-            var isRiver = cell.Terrain == DemoTerrain.Water
-                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row));
+            // 第 06 章 a 節：主水道來自 Core 地圖（每個世界都有）；MainRiverTiles 只是舊注入的相容來源。
+            var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
+                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)));
             // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
             if (TerrainTexture(cell.Terrain, isRiver) is { } tile)
             {
@@ -164,6 +165,20 @@ public partial class DemoHexMap : Control
                 {
                     DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
                 }
+            }
+        }
+
+        // 第 06 章 a 節：渡口（過河唯一的陸路）畫一圈褐色虛線環，路線段全部來自 Core。
+        if (World.Routes.Ford is { } ford)
+        {
+            var fordCell = World.GetCell(ford.Column, ford.Row);
+            var fordCenter = start + HexCoordinates.Center(fordCell.AxialQ, fordCell.AxialR, radius);
+            DrawArc(fordCenter, radius * 0.45f, 0f, Mathf.Tau, 24, new Color(0.55f, 0.36f, 0.16f, 0.95f), 3f);
+            foreach (var segment in World.Routes.Segments.Where(x => x.Kind == DemoRouteKind.Ford))
+            {
+                var other = World.GetCell(segment.Other(ford).Column, segment.Other(ford).Row);
+                var otherCenter = start + HexCoordinates.Center(other.AxialQ, other.AxialR, radius);
+                DrawDashedLine(fordCenter, otherCenter, new Color(0.55f, 0.36f, 0.16f, 0.9f), 2f, 6f);
             }
         }
 

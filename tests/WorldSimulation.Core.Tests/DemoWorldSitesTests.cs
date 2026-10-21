@@ -90,7 +90,7 @@ public sealed class DemoWorldSitesTests
         var sites = DemoWorldSites.Generate(map, rng);
 
         var n = (ulong)sites.Settlements.Count;
-        Assert.Equal(96UL, rng.GetDrawCounter(RngStreams.Geography));
+        Assert.Equal((ulong)DemoHexWorld.GeographyDraws, rng.GetDrawCounter(RngStreams.Geography));
         Assert.Equal(1UL + 2UL * n, rng.GetDrawCounter(RngStreams.EcologyInit));
         Assert.Equal(0UL, rng.GetDrawCounter(RngStreams.Pop));
         Assert.Equal(0UL, rng.GetDrawCounter(RngStreams.Resource));
