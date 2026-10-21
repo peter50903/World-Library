@@ -623,6 +623,7 @@ internal static class DemoWeeklySettlement
         var slackBySettlement = config.SharedCatchmentEnabled && map is not null
             ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
             : new Dictionary<int, long>();
+        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers)); // 第 08-1 章開拓選址
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -890,12 +891,17 @@ internal static class DemoWeeklySettlement
                 // 第 07 章 c 節：選址另須可及至少一個未被佔用的自然來源（非水域、可取水已由 FindFoundingSite 檢查；
                 // 主水道是水域，不能建村）。遺跡格不能直接重建【TEMP】。
                 var occupiedNow = weekSites.OccupiedCells();
+                // 第 08-1 章：人類採集世界的開拓隊只選可持續餘量養得起預計人數的空地，並挑餘量最大者。
+                var partyLimit = crowded ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor;
+                var scoreSites = config.SharedCatchmentEnabled && config.HumanLifecycleEnabled;
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                     config.FoundingSearchMaxSteps,
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
-                        && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c)));
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor, DemoEmigrationMode.Founding) : 0;
+                        && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
+                        && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek)),
+                    scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;

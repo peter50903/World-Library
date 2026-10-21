@@ -34,6 +34,31 @@ public static class DemoCrowding
     public static Dictionary<int, long> SlackInReach(DemoHexWorld map, DemoWorldSites sites, IReadOnlyList<DemoSourceWeekLedger> sources)
         => SlackInReach(map, sites.Settlements.Where(s => !s.IsRuin), sources);
 
+    /// <summary>
+    /// 第 08-1 章：某一格可及範圍內全部來源的可持續餘量（每週供應 − 本週全部採收）。開拓選址用：
+    /// 只選餘量養得起預計開拓隊的空地，並挑餘量最大者，避免新聚落擠在舊聚落旁搶同一批來源。
+    /// </summary>
+    public static Dictionary<DemoCellRef, long> SpareMap(DemoHexWorld map, IReadOnlyList<DemoSourceWeekLedger> sources)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(sources);
+        var spare = new Dictionary<DemoCellRef, long>();
+        foreach (var source in sources)
+        {
+            var add = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
+            foreach (var c in DemoHexFoodCatchment.EligibleCells(map,
+                         new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable)))
+            {
+                var key = new DemoCellRef(c.Column, c.Row);
+                spare[key] = checked(spare.GetValueOrDefault(key) + add);
+            }
+        }
+        return spare;
+    }
+
+    /// <summary>【TEMP】擁擠分家分出的人數上限＝倖存人口 ÷ 這個除數（缺糧外移仍是一半）。</summary>
+    public const long TempCrowdingShareDivisor = 3;
+
     /// <summary>同上，指定本週開始時存在且不是遺跡的聚落（讀檔重算用）。</summary>
     public static Dictionary<int, long> SlackInReach(DemoHexWorld map, IEnumerable<DemoSettlement> active, IReadOnlyList<DemoSourceWeekLedger> sources)
     {

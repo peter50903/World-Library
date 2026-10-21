@@ -197,8 +197,12 @@ public static class DemoMigrationRoutes
     /// 不全知地挑全世界最好的地點。廣度優先、鄰格固定順序，所以結果是決定性的；不抽亂數。
     /// </summary>
     public static ImmutableArray<DemoCellRef> FindFoundingSite(
-        DemoHexWorld map, DemoCellRef origin, int maxSteps, Func<DemoCellRef, bool> isFree)
+        DemoHexWorld map, DemoCellRef origin, int maxSteps, Func<DemoCellRef, bool> isFree,
+        Func<DemoCellRef, long>? score = null)
     {
+        // 第 08-1 章：給了 score 時，走遍 maxSteps 內全部合格空地，挑分數最高者（同分取先找到的、較近的）。
+        ImmutableArray<DemoCellRef>? best = null;
+        var bestScore = long.MinValue;
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(isFree);
         if (maxSteps < 1)
@@ -225,7 +229,14 @@ public static class DemoMigrationRoutes
                 }
 
                 path.Reverse();
-                return path.ToImmutableArray();
+                if (score is null)
+                    return path.ToImmutableArray();
+                var value = score(here);
+                if (value > bestScore)
+                {
+                    bestScore = value;
+                    best = path.ToImmutableArray();
+                }
             }
 
             if (depth[here] == maxSteps)
@@ -244,7 +255,7 @@ public static class DemoMigrationRoutes
             }
         }
 
-        return ImmutableArray<DemoCellRef>.Empty;
+        return best ?? ImmutableArray<DemoCellRef>.Empty;
     }
 
     /// <summary>
