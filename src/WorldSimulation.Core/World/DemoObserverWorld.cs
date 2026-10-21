@@ -25,15 +25,6 @@ public sealed record DemoDayAdvance(int Day, TimeSpan WorldTime, DemoWeekReport?
 /// <summary>C05：世界時鐘狀態；<see cref="DaysElapsed"/> 由世界時間換算（不再是每日帳筆數）。</summary>
 public sealed record DemoWorldSnapshot(TimeSpan WorldTime, int DaysElapsed);
 
-/// <summary>V0-04A：一次原子提交內可注入故障的檢查點（只供自動測試使用）。</summary>
-internal enum DemoCommitStage
-{
-    AfterScheduleStaged,
-    AfterRngStaged,
-    AfterLedgerStaged,
-    BeforePublish
-}
-
 /// <summary>
 /// Runnable, headless Observer vertical slice driven by the existing WorldClock, Scheduler and
 /// deterministic RNG (C05: the daily tick only advances the clock; no daily food line),
@@ -43,8 +34,9 @@ internal enum DemoCommitStage
 /// hunger debt → starvation death with append-only, caused settlement events, and (V0-06A)
 /// starving settlements sending migrant batches cell by cell to a known fed settlement, and (V0-06B)
 /// founding batches that turn their survivors into a new settlement on an empty cell.
-/// It does NOT implement official population rules, EntityStore, canonical History,
-/// durability or Save/Load.
+/// 第 03 章 a 節：每一天經 <see cref="DemoWorldCommit"/> 以固定順序提交（排程 → 亂數 → 帳本 → 生死 → 歷史 → 發布），
+/// 五個故障檢查點見 <see cref="DemoCommitStage"/>；正式狀態只在發布步驟改變。
+/// It does NOT implement official population rules, EntityStore, canonical History or durability.
 /// </summary>
 public sealed partial class DemoObserverWorld
 {
@@ -57,7 +49,7 @@ public sealed partial class DemoObserverWorld
     private readonly DemoWeeklyTempConfig _weekly;
     private DemoTempDemography? _demography;
 
-    // Every field below is replaced only in the publish step of AdvanceOneDay.
+    // 下列欄位只在 DemoWorldCommit.PublishTo（AdvanceOneDay 的發布步驟）或建立／讀檔安裝時改變。
     private WorldClock _clock = new();
     private Scheduler _scheduler;
     private RngRegistry _rng;
@@ -262,113 +254,70 @@ public sealed partial class DemoObserverWorld
         => Array.AsReadOnly(_weeks.SelectMany(w => w.Events).ToArray());
 
     /// <summary>
-    /// Advances to the next scheduled day as ONE atomic commit (03 §4):
-    /// stage → validate → publish. Everything (clock, scheduler, RNG, weekly ledger,
-    /// RNG counters and settlement stocks) is first computed on private copies; the
-    /// live world is replaced only by the final field assignments, which cannot fail.
-    /// Any exception before that leaves Entity, RNG, Scheduler, History and Ledger unchanged.
+    /// 推進到下一個排程日，整天是一次原子提交（第 03 章 a 節，44F Stage 4～6）：
+    /// <see cref="DemoWorldCommit"/> 依固定順序暫存 ①排程與時鐘 → ②亂數 → ③帳本（週結算）→ ④生死 → ⑤歷史（週報），
+    /// 最後 ⑥發布（只做欄位指派、不可失敗）。五個故障檢查點：排程後、亂數後、帳本後（生死前）、生死後、發布前；
+    /// 非結算日也依序觸發。發布前任何例外都不改實體、亂數、排程、帳本與歷史。
     /// </summary>
     public DemoDayAdvance AdvanceOneDay() => AdvanceOneDayCore(settleWeekly: true);
 
+    /// <summary>測試用：開一個新的提交暫存物件（不推進世界）。</summary>
+    internal DemoWorldCommit BeginCommit(bool settleWeekly = true) => new(this, settleWeekly);
+
     /// <summary>
-    /// V0-07B: <paramref name="settleWeekly"/>＝false re-derives only the seed-determined part of a day
-    /// (clock, scheduler, RNG) for direct snapshot restore; the weekly state is then
-    /// installed from the verified save. Nothing draws RNG (C05), so both paths reach the
-    /// same clock, scheduler and RNG state.
+    /// V0-07B：<paramref name="settleWeekly"/>＝false 只重算一天中由種子決定的部分（時鐘、排程、亂數），
+    /// 走同一個提交物件、只略過帳本／生死／歷史三步；週狀態之後由已驗證的存檔安裝。
+    /// 目前不抽亂數（C05），兩條路徑得到相同的時鐘、排程與亂數狀態。
     /// </summary>
     private DemoDayAdvance AdvanceOneDayCore(bool settleWeekly)
     {
-        // ① Scheduler and clock: private copies.
-        var clock = _clock.Clone();
-        var scheduler = _scheduler.CloneOnto(clock);
-        var head = scheduler.PeekNext()
-            ?? throw new InvalidOperationException("No future work was scheduled.");
-        if (head.DueTime > TimeSpan.MaxValue - OneWeek)
-            throw new InvalidOperationException("Demo timeline is exhausted.");
-
-        var batch = scheduler.TakeNextDueBatch();
-        var daily = batch.Where(w => w.WorkKey == DailyWorkKey).ToList();
-        var weekly = batch.Where(w => w.WorkKey == WeeklyWorkKey).ToList();
-        if (daily.Count != 1 || weekly.Count > 1 || daily.Count + weekly.Count != batch.Count)
-            throw new InvalidOperationException("Unexpected demo schedule batch.");
-
-        var dueTime = daily[0].DueTime;
-        scheduler.Schedule(dueTime + OneDay, DailyWorkKey);
-        if (weekly.Count == 1)
-            scheduler.Schedule(dueTime + OneWeek, WeeklyWorkKey);
+        var commit = BeginCommit(settleWeekly);
+        commit.StageSchedule();
         Checkpoint(DemoCommitStage.AfterScheduleStaged);
-
-        // ② RNG on a private draft (C05: zero draws today; the draft, preflight and the AfterRngStaged
-        //    checkpoint stay as the hook for later rules, 44G SCHED_RNG_SCOPE).
-        var trial = RngResolutionDraft.Begin(_rng);
-        var proposedRng = trial.CaptureProposed();
-        if (!RngCandidatePreflight.IsCompatible(_rng.Capture(), trial.BaseSnapshot, proposedRng))
-            throw new InvalidOperationException("Demo RNG candidate failed preflight.");
-        var nextRng = RngRegistry.Restore(proposedRng);
+        commit.StageRng();
         Checkpoint(DemoCommitStage.AfterRngStaged);
 
-        // ③ V0-04A weekly settlement + ledger check (throws before publish if unbalanced).
-        var nextWeeks = _weeks;
-        var nextReserves = _reserves;
-        var nextSettlementFood = _settlementFood;
-        var nextPopulation = _population;
-        var nextHungerDebt = _hungerDebt;
-        var nextMigrations = _migrations;
-        var nextEntityIds = _entityIds;
-        var nextSites = _sites;
-        var nextDemography = _demography;
-        if (weekly.Count == 1 && settleWeekly)
+        if (commit.SettlesWeek)
         {
             var outcome = DemoWeeklySettlement.Settle(
-                checked(_weeks.Count + 1), dueTime, Map, _sites,
+                checked(_weeks.Count + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
                 _migrations, _entityIds, _weeks, _weekly,
                 _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
                     s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)));
+            commit.StageLedger(outcome);
+            Checkpoint(DemoCommitStage.AfterLedgerStaged);
+
             if (_demography is not null)
             {
-                var demographicTrial = DemoHumanLifecycle.Apply(outcome, _demography,
-                    DemoCausalIndex.NextEventId(_weeks));
-                outcome = demographicTrial.Outcome;
-                nextDemography = demographicTrial.Population;
+                var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, DemoCausalIndex.NextEventId(_weeks));
+                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population);
             }
-            // C05：十條流「提交前→提交後」計數器與週報同一交易寫入（失敗不消耗）。
-            var before = _rng.Capture().Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
-            var after = proposedRng.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
-            var counters = RngStreams.All.Select(id => new DemoRngCounter(id, before[id], after[id])).ToArray();
-            nextWeeks = _weeks.Add(outcome.Report with { RngCounters = Array.AsReadOnly(counters) });
-            nextReserves = outcome.Reserves;
-            nextSettlementFood = outcome.SettlementFood;
-            nextPopulation = outcome.Population;
-            nextHungerDebt = outcome.HungerDebt;
-            nextMigrations = outcome.Migrations;
-            nextEntityIds = outcome.EntityIds;
-            nextSites = outcome.Sites;
+            else
+            {
+                commit.StagePopulation(null, null);
+            }
+            Checkpoint(DemoCommitStage.AfterPopulationStaged);
+            commit.StageHistory(commit.Outcome.Report);
+        }
+        else
+        {
+            Checkpoint(DemoCommitStage.AfterLedgerStaged);
+            Checkpoint(DemoCommitStage.AfterPopulationStaged);
         }
 
-        Checkpoint(DemoCommitStage.AfterLedgerStaged);
         Checkpoint(DemoCommitStage.BeforePublish);
-
-        // ④ Publish: plain reference/value assignments only.
-        _clock = clock;
-        _scheduler = scheduler;
-        _rng = nextRng;
-        _weeks = nextWeeks;
-        _reserves = nextReserves;
-        _settlementFood = nextSettlementFood;
-        _population = nextPopulation;
-        _hungerDebt = nextHungerDebt;
-        _migrations = nextMigrations;
-        _entityIds = nextEntityIds;
-        _sites = nextSites;
-        _demography = nextDemography;
-        return new DemoDayAdvance(DaysOf(dueTime), dueTime,
-            weekly.Count == 1 && settleWeekly ? nextWeeks[nextWeeks.Count - 1] : null);
+        commit.PublishTo(this);
+        return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and
-    /// population), RNG, Scheduler (clock and queue), History and Ledger. Used by tests to
+    /// population), RNG, Scheduler (clock and queue), History and Ledger.
+    /// 第 03 章 a 節確認涵蓋：時鐘、排程、亂數與計數器、實體分配器、各帳（存量／糧食／人口／飢餓債）、
+    /// 聚落、資源點、遷徙隊伍、人口身分（示範人類個體）、週報（帳、事件、遷徙、亂數計數器、ID 區間）。
+    /// 人口群體只在開局由世界種子產生、建村不新增，人類名冊種子＝世界種子，皆由配方決定，不需另列
+    /// （指紋寫在存檔裡，多列會讓既有存檔失效）。 Used by tests to
     /// prove that a failed commit changed nothing and that the same seed gives the same world.
     /// </summary>
     internal string StateFingerprint()
