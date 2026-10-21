@@ -33,14 +33,15 @@ public partial class ObserverRoot
         var column = new VBoxContainer();
         column.AddThemeConstantOverride("separation", 6);
         _outlinerPanel.AddChild(column);
-        _outlinerTitle = new Label();
+        // 不放會自動換行的說明文字：換行標籤在面板寬度定案前會撐高最小高度，讓面板超出視窗。
+        _outlinerTitle = new Label
+        {
+            TooltipText = "點一列：地圖置中並開詳情。色塊＝糧食狀況（依最近一週聚落帳）。",
+            MouseFilter = MouseFilterEnum.Pass,
+            ClipText = true
+        };
         _outlinerTitle.AddThemeFontSizeOverride("font_size", 20);
         column.AddChild(_outlinerTitle);
-        column.AddChild(new Label
-        {
-            Text = "點一列：地圖置中並開詳情。糧食狀況依最近一週聚落帳。",
-            AutowrapMode = TextServer.AutowrapMode.WordSmart
-        });
         var scroll = new ScrollContainer
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
