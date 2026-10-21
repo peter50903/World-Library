@@ -63,7 +63,9 @@ public sealed record DemoWeeklyTempConfig(
         FoundingEnabled = true,
         // TEMP adult gather capacity: enough to support non-working dependents,
         // still limited by genuine natural-source budget (never mint food).
-        YieldPerWorkerPerWeek = 8
+        // 第 08-1 章：8→16。診斷（--diagnose-living）顯示 2 名成人扣 1 名取水者後勞力上限＝需求，
+        // 孩子一出生就缺糧餓死、人口無法成長；提高後限制人口的是可及自然來源（承載上限），不是勞力。
+        YieldPerWorkerPerWeek = 16
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
