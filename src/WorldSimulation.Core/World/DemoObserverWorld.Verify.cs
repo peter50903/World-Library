@@ -100,6 +100,13 @@ public sealed partial class DemoObserverWorld
             if (FirstFieldDifference(saved.Migrations[i], replayed.Migrations[i]) is { } field)
                 return $"第 {w} 週 遷徙隊伍 #{replayed.Migrations[i].BatchId} 的 {field}";
         }
+        if (saved.Sources.Count != replayed.Sources.Count)
+            return $"第 {w} 週 來源帳筆數：存檔 {saved.Sources.Count}，重算 {replayed.Sources.Count}";
+        for (var i = 0; i < replayed.Sources.Count; i++)
+        {
+            if (!saved.Sources[i].Equals(replayed.Sources[i]))
+                return $"第 {w} 週 來源 #{replayed.Sources[i].SourceId}：存檔 {saved.Sources[i]}，重算 {replayed.Sources[i]}";
+        }
         if (!saved.RngCounters.SequenceEqual(replayed.RngCounters))
             return $"第 {w} 週 亂數流計數器與重算不同";
         if (saved.EntityIdNextOpening != replayed.EntityIdNextOpening || saved.EntityIdNextClosing != replayed.EntityIdNextClosing)

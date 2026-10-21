@@ -141,12 +141,12 @@ public partial class ObserverRoot
                 + $"實採 {ledger.Harvested}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
                 + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，"
                 + $"出生 {ledger.Births}、自然死亡 {ledger.NaturalDeaths}、餓死 {ledger.StarvationDeaths}");
-            var origins = allocation?.Harvests.Where(h => h.SettlementId == place.Id)
-                .Select(h =>
-                {
-                    var source = allSources.Single(p => p.Id == h.SourceId);
-                    return $"({source.Column},{source.Row})→{h.FoodHarvested}";
-                }).ToArray() ?? Array.Empty<string>();
+            // 第 04 章 c 節：讀已提交的來源帳（每源預算與未採），不重算。
+            var origins = week!.Sources
+                .Select(source => (source, share: source.Shares.FirstOrDefault(x => x.SettlementId == place.Id)))
+                .Where(x => x.share is not null)
+                .Select(x => $"({x.source.Column},{x.source.Row})→{x.share!.Food}（預算 {x.source.FoodAvailable}，未採 {x.source.Unharvested}）")
+                .ToArray();
             output.Add("本週來源→採收：" + (origins.Length == 0 ? "無" : string.Join("、", origins)));
         }
         return string.Join("\n", output);

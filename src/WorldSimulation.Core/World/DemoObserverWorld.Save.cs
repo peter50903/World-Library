@@ -13,7 +13,8 @@ namespace WorldSimulation.Core.World;
 /// version 6 (第 03 章 b 節) adds State.History, the append-only formal event history (rebuilt and compared on load);
 /// version 7 (第 04 章 a 節) draws births/deaths from the history seed's POP stream and drops the demography seed;
 /// version 8 (第 04 章 b 節) keeps only Version, Manifest (<see cref="DemoSaveManifest"/>), WeeklyConfig and State at the top level
-/// and checks the header (structure/rules/config/TEMP config/code version, world time, State checksum) before anything else.
+/// and checks the header (structure/rules/config/TEMP config/code version, world time, State checksum) before anything else;
+/// version 9 (第 04 章 c 節) adds per-source weekly ledgers for shared foraging (DemoWeekReport.Sources).
 /// Every older version is rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
 /// no converter, the file is never modified or deleted, and the running world is untouched.
 /// The stored scenario and weekly config must also be one of the known TEMP presets
@@ -25,7 +26,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
     public ulong TempWorldSeed => _recipe.WorldSeed;
 
-    internal const int TempSaveVersion = 8; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼。比目前舊的一律「版本太舊」。
+    internal const int TempSaveVersion = 9; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼；第 04 章 c 節第 9 版週報加共享採集來源帳。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
