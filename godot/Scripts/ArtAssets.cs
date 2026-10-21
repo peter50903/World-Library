@@ -14,6 +14,8 @@ public static class ArtAssets
     public const string TileForest = "res://assets/tiles/forest.png";
     public const string TileWater = "res://assets/tiles/water.png";
     public const string TileRiver = "res://assets/tiles/river.png";
+    // 第 06-1 章：河流淺灘（渡口，TILE_RIVER_SHALLOW 待製作；缺少時用河流圖塊調淡＋踏石）。water.png 改作海洋（TILE_WATER 需重做成深海）。
+    public const string TileRiverShallow = "res://assets/tiles/river_shallow.png";
     public const string TileFarmland = "res://assets/tiles/farmland.png"; // 第 08 章 a 節
     public const string TileFarmlandClearing = "res://assets/tiles/farmland_clearing.png";
 

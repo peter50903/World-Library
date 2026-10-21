@@ -113,10 +113,13 @@ public partial class DemoHexMap : Control
                 && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)));
             // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
             var land = Land.StateOf(new DemoCellRef(cell.Column, cell.Row));
-            if ((LandTexture(land) ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
+            var shallowArt = cell.Shallow ? ArtAssets.Texture(ArtAssets.TileRiverShallow) : null;
+            if ((LandTexture(land) ?? shallowArt ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
             {
                 var full = HexCoordinates.Polygon(center, radius);
-                DrawPolygon(full, White6, HexUvs(full, center, radius), tile);
+                DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
+                if (cell.Shallow && shallowArt is null)
+                    DrawStones(center, radius);
                 DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
                 if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed)
                     DrawMarker(SettlementIcon(placed), center, radius * 1.4f);
@@ -132,7 +135,9 @@ public partial class DemoHexMap : Control
 
             // Explicit TEMP river cells are teal, other Water cells remain blue (not automatically fish sources).
             if (isRiver)
-                terrainColor = new Color(0.10f, 0.67f, 0.70f);
+                terrainColor = cell.Shallow ? new Color(0.45f, 0.80f, 0.78f) : new Color(0.10f, 0.67f, 0.70f);
+            else if (cell.Sea)
+                terrainColor = new Color(0.10f, 0.22f, 0.40f); // 第 06-1 章：海洋深藍
             // 第 08 章 a 節（沒有圖塊時的後備）：農田土黃、開墾中褐色。
             if (land == DemoLandDevelopment.Farmland)
                 terrainColor = new Color(0.72f, 0.62f, 0.30f);
@@ -188,7 +193,7 @@ public partial class DemoHexMap : Control
             }
         }
 
-        // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）；點格時詳情仍顯示「此格為渡口」與路線。
+        // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
 
         // 第 08-2 章：不再畫選取來源的供應範圍外框（使用者 2026-10-21：不需要用圈和線標示共用食物範圍）；
         // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
@@ -223,6 +228,30 @@ public partial class DemoHexMap : Control
             var labelPos = center + new Vector2(radius * 0.05f, radius * 0.38f);
             DrawCircle(labelPos + new Vector2(size * 0.3f, -size * 0.35f), size * 0.62f, new Color(0.12f, 0.08f, 0.05f, 0.85f));
             DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
+        }
+    }
+
+    /// <summary>
+    /// 第 06-1 章（TEMP 顯示）：海洋圖塊壓暗偏深藍、和河流分開；淺灘沒有專屬圖塊時把河流圖塊調淡。
+    /// 正式深海與淺灘圖塊交付後（TILE_WATER 重做、TILE_RIVER_SHALLOW）海洋與淺灘專屬圖塊不再調色。
+    /// </summary>
+    private static Color WaterTint(DemoHexCell cell, bool hasShallowArt)
+        => cell.Sea ? new Color(0.55f, 0.65f, 0.90f)
+            : cell.Shallow && !hasShallowArt ? new Color(1.35f, 1.30f, 1.10f)
+            : Colors.White;
+
+    private static Color[] Tint6(Color color) => color == Colors.White ? White6 : Enumerable.Repeat(color, 6).ToArray();
+
+    /// <summary>第 06-1 章（TEMP 後備）：淺灘的一排踏石（橫越河道，示意可涉水過河）。</summary>
+    private void DrawStones(Vector2 center, float radius)
+    {
+        var stone = new Color(0.78f, 0.70f, 0.55f);
+        var edge = new Color(0.35f, 0.30f, 0.22f);
+        for (var i = -2; i <= 2; i++)
+        {
+            var p = center + new Vector2(i * radius * 0.30f, (i % 2 == 0 ? -1 : 1) * radius * 0.06f);
+            DrawCircle(p, radius * 0.10f, edge);
+            DrawCircle(p, radius * 0.08f, stone);
         }
     }
 

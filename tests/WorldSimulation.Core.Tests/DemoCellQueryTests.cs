@@ -86,7 +86,7 @@ public sealed class DemoCellQueryTests
         {
             var view = world.QueryCell(column, row);
             Assert.Equal(world.Sites.SettlementAt(column, row)?.Id, view.SettlementId);
-            Assert.Contains($"核心地形：{DemoCellQuery.TerrainName(view.Cell.Terrain)}", view.Lines[2]);
+            Assert.Contains($"核心地形：{DemoCellQuery.TerrainName(view.Cell)}", view.Lines[2]);
         }
     }
 

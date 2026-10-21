@@ -56,6 +56,15 @@
 | 擁擠分家 | 餘量 ＜ 需求 10%、人口 ≥ 8、分出 1/3 | 在挨餓之前就擴散 |
 | 開拓選址 | 6 格、選餘量養得起開拓隊且最大的空地 | 避免擠在舊聚落旁 |
 
+#### D06-1｜海洋、河流與淺灘（第 06-1 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 陸地地形 | 草原、森林各半 | 水域不再隨機散落，改由海洋與河流決定 |
+| 海洋 | 南緣，每欄深度 1～2 列，只有深水 | 使用者 2026-10-22：海洋要像海、和河流分開 |
+| 河流 | 北緣往南流到海岸為止 | 河口接海 |
+| 淺灘渡口 | 兩岸都有陸地、不臨海的河流格 | 使用者：淺灘要兩端連結陸地才有價值 |
+
 #### D08-2｜希望時代（第 08-2 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -293,9 +302,9 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 11 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50% |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 2 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 5 | D7；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
-| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 14 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.ObserverCli/LivingDiagnosis.cs` | 1 | 第 08-1 章：普通世界人口診斷（只讀；婚嫁候選條件與結算同一套 TEMP 規則） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
@@ -304,7 +313,7 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
-| `godot/Scripts/DemoHexMap.cs` | 9 | D9；第 05 章 b 節糧食狀況地圖配色 |
+| `godot/Scripts/DemoHexMap.cs` | 11 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |

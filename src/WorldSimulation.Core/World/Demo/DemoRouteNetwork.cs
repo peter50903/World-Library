@@ -129,7 +129,7 @@ public sealed class DemoRouteNetwork
         DemoRouteKind.River => "河流",
         DemoRouteKind.Waterway => "水路",
         DemoRouteKind.Bridge => "橋",
-        DemoRouteKind.Ford => "渡口",
+        DemoRouteKind.Ford => "淺灘渡口",
         _ => kind.ToString()
     };
 

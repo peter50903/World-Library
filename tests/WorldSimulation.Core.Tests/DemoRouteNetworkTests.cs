@@ -15,14 +15,17 @@ public sealed class DemoRouteNetworkTests
     private static DemoCellRef Ref(DemoHexCell c) => new(c.Column, c.Row);
 
     [Fact]
-    public void MainWaterway_IsAContinuousWaterSequence_FromTheNorthEdgeToTheSouthEdge()
+    public void MainWaterway_IsAContinuousWaterSequence_FromTheNorthEdgeToTheSea()
     {
         foreach (var seed in Seeds)
         {
             var map = DemoHexWorld.Generate(seed);
             var waterway = map.MainWaterway;
-            Assert.Equal(DemoHexWorld.Rows, waterway.Count);
-            Assert.Equal(Enumerable.Range(0, DemoHexWorld.Rows), waterway.Select(c => c.Row));
+            // 第 06-1 章：從北緣連續往南，河口接海。
+            Assert.Equal(Enumerable.Range(0, waterway.Count), waterway.Select(c => c.Row));
+            var mouth = map.GetCell(waterway[^1].Column, waterway[^1].Row);
+            Assert.Contains(DemoRouteNetwork.Directions, d => Neighbour(map, mouth, d.Dq, d.Dr) is { Sea: true });
+            Assert.All(waterway, c => Assert.False(map.GetCell(c.Column, c.Row).Sea));
             Assert.All(waterway, c => Assert.Equal(DemoTerrain.Water, map.GetCell(c.Column, c.Row).Terrain));
             Assert.All(waterway.Zip(waterway.Skip(1)), p => Assert.True(DemoMigrationRoutes.AreAdjacent(p.First, p.Second)));
             // 相鄰水道格之間是河流段（水上路線），不供陸路。
@@ -34,6 +37,45 @@ public sealed class DemoRouteNetworkTests
                 Assert.False(map.Routes.IsLandPassable(p.First, p.Second));
             });
         }
+    }
+
+    [Fact]
+    public void SeaIsOneSouthernCoast_AndEveryWaterCellIsSeaOrRiver()
+    {
+        foreach (var seed in Seeds)
+        {
+            var map = DemoHexWorld.Generate(seed);
+            foreach (var col in Enumerable.Range(0, DemoHexWorld.Columns))
+            {
+                // 每欄最南一列是海，海往北只連續 1～2 列（TEMP），不會散落在陸地中間。
+                var depth = Enumerable.Range(0, DemoHexWorld.Rows).Count(r => map.GetCell(col, r).Sea);
+                Assert.InRange(depth, DemoHexWorld.TempSeaMinDepth, DemoHexWorld.TempSeaMaxDepth);
+                Assert.All(Enumerable.Range(DemoHexWorld.Rows - depth, depth), r => Assert.True(map.GetCell(col, r).Sea));
+            }
+            Assert.All(map.Cells.Where(c => c.Terrain == DemoTerrain.Water), c => Assert.True(c.Sea ^ c.MainWaterway));
+            Assert.All(map.Cells.Where(c => c.Sea), c => Assert.False(c.Shallow)); // 海只有深水
+        }
+    }
+
+    [Fact]
+    public void TheFordIsAShallowRiverCell_WithLandOnBothBanks_AwayFromTheSea()
+    {
+        var fords = 0;
+        foreach (var seed in Seeds)
+        {
+            var map = DemoHexWorld.Generate(seed);
+            Assert.True(map.Cells.Count(c => c.Shallow) <= 1);
+            if (map.Routes.Ford is not { } ford)
+                continue;
+            fords++;
+            var cell = map.GetCell(ford.Column, ford.Row);
+            Assert.True(cell.Shallow && cell.MainWaterway);
+            var neighbours = DemoRouteNetwork.Directions.Select(d => Neighbour(map, cell, d.Dq, d.Dr)).Where(n => n is not null).Select(n => n!).ToList();
+            Assert.DoesNotContain(neighbours, n => n.Sea);
+            Assert.Contains(neighbours, n => n.Terrain != DemoTerrain.Water && n.ScreenX < cell.ScreenX);
+            Assert.Contains(neighbours, n => n.Terrain != DemoTerrain.Water && n.ScreenX > cell.ScreenX);
+        }
+        Assert.True(fords >= 50, $"61 個種子只有 {fords} 個有淺灘");
     }
 
     [Fact]
