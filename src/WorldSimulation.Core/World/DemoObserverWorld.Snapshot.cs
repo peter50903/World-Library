@@ -223,7 +223,7 @@ public sealed partial class DemoObserverWorld
         foreach (var ledger in report.Settlements)
         {
             var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
-            var need = checked(ledger.FoodConsumed + ledger.FoodShortage); // 第 06 章 d 節：本週需求（兒童半份）
+            var need = DemoCrowding.Claim(weekly.HumanLifecycleEnabled, checked(ledger.FoodConsumed + ledger.FoodShortage), ledger.FoodOpening); // 第 06 章 d 節需求；第 08-1 章含補存糧
             var workers = (ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening) - ledger.WaterCarriers;
             var labour = checked(workers * weekly.YieldPerWorkerPerWeek);
             if (total > need || total > labour)

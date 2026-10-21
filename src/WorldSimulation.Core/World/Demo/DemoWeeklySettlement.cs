@@ -592,7 +592,9 @@ internal static class DemoWeeklySettlement
                 water[settlement.Id] = (adults, people - adults, carriers,
                     DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
                 foragingWorkers[settlement.Id] = adults - carriers;
-                foodNeeded[settlement.Id] = survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek);
+                // 第 08-1 章：人類採集世界向來源要求「需求＋補存糧」（DemoCrowding.Claim），消耗仍只算需求。
+                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled,
+                    survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek), settlementFood[settlement.Id]);
             }
         }
 

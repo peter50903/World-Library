@@ -2,7 +2,8 @@ namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>
 /// 第 08-1 章：自然採集世界（人類採集）的「接近承載上限」判斷。結算、生育條件與因果驗證共用這一份。
-/// 餘量＝本週聚落實際取用過的自然來源，分配完後還剩下的可採量合計（來源帳 Unharvested）。
+/// 餘量＝本週聚落實際取用過的自然來源，每週可持續供應減去本週所有聚落從它採走的量（可為負）。
+/// 不用累積存量（未採部分會累積到 TEMP 4 週），否則人口已超過再生量時仍會誤判寬裕、繼續生育，等存量見底才崩潰。
 /// <list type="bullet">
 /// <item>生育：本週沒缺糧、沒飢餓債，而且餘量 ≥ 需求的 <see cref="TempBirthSlackPercent"/>%（糧食寬裕才受孕）——人口逼近上限時出生自然放慢，不會衝過頭再崩潰。</item>
 /// <item>擁擠外移：本週沒缺糧、倖存人口 ≥ <see cref="TempCrowdingMinPopulation"/>、餘量 ＜ 需求的 <see cref="TempCrowdingSlackPercent"/>%——
@@ -21,13 +22,28 @@ public static class DemoCrowding
     /// <summary>【TEMP】擁擠外移需要的最少倖存人口（避免分出後兩邊都太小、無法繁衍）。</summary>
     public const long TempCrowdingMinPopulation = 8;
 
-    /// <summary>聚落本週取用過的來源在分配後的剩餘可採量合計。</summary>
+    /// <summary>【TEMP】存糧目標：需求的週數（第 08-1 章，人類採集世界）。</summary>
+    public const long TempStoreTargetWeeks = 4;
+
+    /// <summary>【TEMP】每週為補存糧多採的上限（需求的百分比）。</summary>
+    public const long TempStoreTopUpPercent = 50;
+
+    /// <summary>聚落本週取用過的來源：每週可持續供應 − 本週全部採收（可為負＝正在吃老本）。</summary>
     public static long Slack(IReadOnlyList<DemoSourceWeekLedger> sources, int settlementId)
     {
         ArgumentNullException.ThrowIfNull(sources);
         return sources.Where(s => (s.Shares ?? Array.Empty<DemoSourceShare>()).Any(x => x.SettlementId == settlementId && x.Food > 0))
-            .Sum(s => s.Unharvested);
+            .Sum(s => DemoForagingWorld.Settings.WeeklySupply(s.Kind) - s.Harvested);
     }
+
+    /// <summary>
+    /// 第 08-1 章【TEMP 規則】存糧：人類採集世界的聚落每週向來源要求「本週需求＋補存糧」，
+    /// 補存糧＝min(需求×50%, 需求×4 週－期初存糧)，不為負。出發的隊伍依人數比例帶走存糧當路糧。
+    /// 其他世界只要求本週需求。
+    /// </summary>
+    public static long Claim(bool storesFood, long need, long foodOpening)
+        => !storesFood ? need
+            : checked(need + Math.Max(0, Math.Min(need * TempStoreTopUpPercent / 100, need * TempStoreTargetWeeks - foodOpening)));
 
     /// <summary>糧食寬裕（可以受孕）：沒缺糧，且來源餘量 ≥ 需求 × TEMP 百分比。非共享採集世界沒有來源帳，只看缺糧。</summary>
     public static bool Ample(bool shared, long shortage, long need, long slack)
