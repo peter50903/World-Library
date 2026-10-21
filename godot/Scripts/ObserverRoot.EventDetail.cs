@@ -19,23 +19,29 @@ public partial class ObserverRoot
     private Button _causeButton = null!;
     private VBoxContainer _effectBox = null!;
     private readonly List<Button> _effectButtons = new();
+    private VBoxContainer _eventDetailColumn = null!;
 
     private DemoCausalIndex? _causal;
     private DemoObserverWorld? _causalWorld;
     private int _causalWeeks = -1;
     private long _selectedEventId;
 
-    /// <summary>在歷史列右側建立「事件清單＋事件詳情」。</summary>
+    /// <summary>
+    /// 建立「事件清單＋事件詳情」。第 08-3 章：放在右側「世界紀錄」分頁，上下排列；
+    /// 詳情只在點選一筆事件後出現。
+    /// </summary>
     private void BuildEventDetailPanel(Container parent)
     {
-        var listColumn = new VBoxContainer { CustomMinimumSize = new Vector2(330, 0) };
+        var listColumn = new VBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsStretchRatio = 2f };
         parent.AddChild(listColumn);
-        listColumn.AddChild(new Label { Text = "世界紀錄（新的在上；紅色＝重大事件；點選看原因鏈並定位地圖）" });
+        var title = new Label { Text = "世界紀錄", TooltipText = "新的在上；紅色＝重大事件；點一筆看詳情、原因與後果並定位地圖" };
+        title.AddThemeFontSizeOverride("font_size", 20);
+        listColumn.AddChild(title);
         BuildHistoryFilter(listColumn); // #96：篩選列在清單上方。
         _eventList = new ItemList
         {
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(330, 140),
+            CustomMinimumSize = new Vector2(0, 140),
             SelectMode = ItemList.SelectModeEnum.Single
         };
         _eventList.ItemSelected += index => SelectEvent(_eventList.GetItemMetadata((int)index).AsInt64());
@@ -43,9 +49,11 @@ public partial class ObserverRoot
 
         var detailColumn = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(360, 0),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            Visible = false
         };
+        _eventDetailColumn = detailColumn;
         parent.AddChild(detailColumn);
         detailColumn.AddChild(new Label { Text = "事件詳情" });
         _eventDetail = new RichTextLabel
@@ -55,7 +63,7 @@ public partial class ObserverRoot
             FitContent = false,
             SizeFlagsVertical = SizeFlags.ExpandFill,
             CustomMinimumSize = new Vector2(0, 80),
-            Text = "請在左側清單點選一筆聚落事件。"
+            Text = "請在上方清單點選一筆聚落事件。"
         };
         detailColumn.AddChild(_eventDetail);
         _causeButton = new Button { Text = "直接原因：—", Disabled = true };
@@ -95,7 +103,8 @@ public partial class ObserverRoot
         foreach (var e in shown)
         {
             var major = TempMajorKinds.Contains(e.Kind);
-            var index = _eventList.AddItem($"{(major ? "⚠ " : "")}#{e.EventId} 第 {e.Week} 週 {e.SettlementName} {DemoCausalIndex.KindText(e.Kind)}");
+            // 第 08-3 章：依時間列出（世界日期）。
+            var index = _eventList.AddItem($"{(major ? "⚠ " : "")}{DateText(DemoEventFilter.DayOf(e))}｜{e.SettlementName} {DemoCausalIndex.KindText(e.Kind)}（#{e.EventId}）");
             _eventList.SetItemMetadata(index, e.EventId);
             // 第 05 章 b2：重大事件（TEMP 種類，同自動暫停）以醒目紅字標示。
             if (major)
@@ -111,7 +120,7 @@ public partial class ObserverRoot
                 : $"符合 {matched.Count} 筆（顯示最新 {shown.Count} 筆）";
 
         if (_selectedEventId == 0 || _causal.Find(_selectedEventId) is null)
-            ShowNoEvent(events.Count == 0 ? "目前沒有聚落事件（第一次週結算在第 7 日）。" : "請在左側清單點選一筆聚落事件。");
+            ShowNoEvent(events.Count == 0 ? "目前沒有聚落事件（第一次週結算在第 7 日）。" : "請在上方清單點選一筆聚落事件。");
     }
 
     /// <summary>
@@ -127,6 +136,7 @@ public partial class ObserverRoot
     private void ShowNoEvent(string text)
     {
         _selectedEventId = 0;
+        _eventDetailColumn.Visible = false; // 第 08-3 章：沒有選取就不顯示詳情。
         _eventDetail.Text = text;
         _causeButton.Text = "直接原因：—";
         _causeButton.Disabled = true;
@@ -157,6 +167,13 @@ public partial class ObserverRoot
         }
 
         _selectedEventId = eventId;
+        _eventDetailColumn.Visible = true;
+        // 第 08-3 章：點了事件就切到右側「世界紀錄」分頁（例如從警示或圖表跳來時）。
+        if (_rightView != RightView.Console)
+        {
+            _rightView = RightView.Console;
+            ApplyHudLayout();
+        }
         for (var i = 0; i < _eventList.ItemCount; i++)
         {
             if (_eventList.GetItemMetadata(i).AsInt64() == eventId)

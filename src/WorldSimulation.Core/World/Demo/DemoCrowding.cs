@@ -91,6 +91,21 @@ public static class DemoCrowding
     public static bool Ample(bool shared, long shortage, long need, long slack)
         => shortage == 0 && (!shared || checked(slack * 100) >= checked(need * TempBirthSlackPercent));
 
+    /// <summary>
+    /// 第 08-3 章【TEMP 規則】受孕要留得下將來的口糧：每一個已懷孕的孩子和這一胎，都預留一份成人週食量——
+    /// ① 可及來源的可持續餘量 ≥ 預留量；② 採集勞力（成人扣取水者）× 週採集量 ≥ 本週需求＋預留量。
+    /// 人類採集世界才用（週採集量、食量讀 <see cref="DemoWeeklyTempConfig.LivingForagingSample"/>）。
+    /// </summary>
+    public static bool RoomForChild(DemoSettlementWeekLedger ledger, int pregnant)
+    {
+        ArgumentNullException.ThrowIfNull(ledger);
+        var config = DemoWeeklyTempConfig.LivingForagingSample;
+        var reserve = checked(config.FoodPerPersonPerWeek * (pregnant + 1L));
+        var workers = Math.Max(0, ledger.AdultWorkersOpening - ledger.WaterCarriers);
+        var demand = checked(ledger.FoodConsumed + ledger.FoodShortage);
+        return ledger.SourceSlack >= reserve && checked(workers * config.YieldPerWorkerPerWeek) >= checked(demand + reserve);
+    }
+
     /// <summary>擁擠（在挨餓前分出一戶開拓）：沒缺糧、人口夠多，但來源餘量 ＜ 需求 × TEMP 百分比。</summary>
     public static bool Crowded(long shortage, long need, long survivors, long slack)
         => shortage == 0 && need > 0 && survivors >= TempCrowdingMinPopulation

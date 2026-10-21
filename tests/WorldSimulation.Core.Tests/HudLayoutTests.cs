@@ -16,7 +16,7 @@ public sealed class HudLayoutTests
     public void AllPanelsOpen_StayInsideTheWindow_WithoutOverlapping(int width, int height)
     {
         var f = HudLayout.Compute(width, height, detailOpen: true, consoleOpen: true);
-        var panels = new[] { f.TopBar, f.Detail, f.Console, f.Time, f.Feed, f.Toolbar, f.MapModes };
+        var panels = new[] { f.TopBar, f.Detail, f.Console, f.Time, f.Toolbar };
         foreach (var p in panels)
             Assert.True(p.Inside(width, height), $"{p} 超出 {width}×{height}");
         for (var i = 0; i < panels.Length; i++)
@@ -33,8 +33,7 @@ public sealed class HudLayoutTests
         Assert.Equal(0, f.Detail.Width);
         Assert.Equal(0, f.Console.Width);
         Assert.Equal(width, f.MapVisibleWidth);
-        Assert.True(f.TopBar.Inside(width, height) && f.Time.Inside(width, height) && f.Feed.Inside(width, height)
-            && f.Toolbar.Inside(width, height) && f.MapModes.Inside(width, height));
+        Assert.True(f.TopBar.Inside(width, height) && f.Time.Inside(width, height) && f.Toolbar.Inside(width, height));
     }
 
     [Fact]
@@ -44,20 +43,27 @@ public sealed class HudLayoutTests
         Assert.Equal(new HudRect(0, 0, 1920, HudLayout.TempTopBarHeight), f.TopBar);
         Assert.Equal(1920 - HudLayout.TempMargin, f.Time.Right);
         Assert.Equal(1080 - HudLayout.TempMargin, f.Time.Bottom);
-        Assert.Equal(f.Time.Bottom, f.Feed.Bottom);
         Assert.True(f.Detail.X < f.Console.X);
     }
 
     [Fact]
-    public void ToolbarIsCentred_AndMapModesSitLeft_InTheRowAboveTheFeed()
+    public void ToolbarSitsBottomLeft_LevelWithTheTimeControls()
     {
+        // 第 08-3 章：地圖模式併入功能列，與右下時間控制並排置底；底部不再有事件列。
         var f = HudLayout.Compute(1920, 1080, true, true);
-        Assert.Equal(new HudRect((1920 - HudLayout.TempToolbarWidth) / 2, f.Feed.Y - HudLayout.TempMargin - HudLayout.TempBarHeight,
+        Assert.Equal(new HudRect(HudLayout.TempMargin, 1080 - HudLayout.TempMargin - HudLayout.TempBarHeight,
             HudLayout.TempToolbarWidth, HudLayout.TempBarHeight), f.Toolbar);
-        Assert.Equal(HudLayout.TempMargin, f.MapModes.X);
-        Assert.Equal(f.Toolbar.Y, f.MapModes.Y);
-        Assert.Equal(f.Toolbar.Bottom + HudLayout.TempMargin, f.Feed.Y);
-        Assert.True(f.Detail.Bottom <= f.Toolbar.Y && f.Console.Bottom <= f.Toolbar.Y);
+        Assert.Equal(f.Time.Bottom, f.Toolbar.Bottom);
+        Assert.True(f.Toolbar.Right < f.Time.X);
+        Assert.True(f.Detail.Bottom <= f.Toolbar.Y && f.Console.Bottom <= f.Time.Y);
+    }
+
+    [Fact]
+    public void NarrowWindows_PutTheToolbarAboveTheTimeControls()
+    {
+        var f = HudLayout.Compute(800, 600, true, true);
+        Assert.True(f.Toolbar.Bottom <= f.Time.Y);
+        Assert.True(f.Toolbar.Inside(800, 600));
     }
 
     [Fact]
@@ -76,8 +82,8 @@ public sealed class HudLayoutTests
             var f = HudLayout.Compute(w, h, true, true);
             var ww = Math.Max(w, 1);
             var hh = Math.Max(h, 1);
-            Assert.True(f.TopBar.Right <= ww && f.Time.Right <= ww && f.Feed.Right <= ww);
-            Assert.True(f.Time.Bottom <= hh && f.Feed.Bottom <= hh);
+            Assert.True(f.TopBar.Right <= ww && f.Time.Right <= ww && f.Toolbar.Right <= ww);
+            Assert.True(f.Time.Bottom <= hh && f.Toolbar.Bottom <= hh);
         }
     }
 }

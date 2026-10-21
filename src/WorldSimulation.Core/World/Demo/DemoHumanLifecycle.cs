@@ -93,9 +93,12 @@ internal static class DemoHumanLifecycle
         {
             var ledger = report.Settlements.Single(s => s.SettlementId == id);
             // 第 08-1 章：糧食寬裕才受孕（取用來源仍有 TEMP 餘量），人口逼近上限時出生自然放慢。
+            // 第 08-3 章：還要留得下「已懷孕＋這一胎」將來成年的食量（來源餘量與採集勞力都要夠），人口在上限附近停住、不衝過頭挨餓。
+            var pregnant = moved.People.Count(p => p.IsSettled && p.SettlementId == id && p.PregnancyDueWeek is not null);
             return ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0
                 && DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage,
-                    ledger.SourceSlack);
+                    ledger.SourceSlack)
+                && (report.Sources.Count == 0 || DemoCrowding.RoomForChild(ledger, pregnant));
         }, Rules, draws, entityAllocator);
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();

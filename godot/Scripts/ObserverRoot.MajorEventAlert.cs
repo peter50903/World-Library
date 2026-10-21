@@ -88,6 +88,18 @@ public partial class ObserverRoot
     }
 
     /// <summary>播放用的推進：逐日交給 Core；遇到重大事件就停在那一天、暫停並顯示提示。</summary>
+    /// <summary>
+    /// 第 08-3 章（TEMP 顯示）：快轉時每幀推進世界最多花這麼多毫秒，剩下的日子丟掉（實際速度可能低於選定速度），
+    /// 讓拖曳、縮放地圖保持順暢；面板文字每 <see cref="TempPanelRefreshMs"/> 毫秒才重算一次（地圖照常每幀重畫）。
+    /// CI 冒煙（任何 WORLD_SIM_*_SMOKE）時不節流，逐幀行為與以前相同。
+    /// </summary>
+    private const double TempFrameBudgetMs = 10, TempPanelRefreshMs = 250;
+
+    private static readonly bool RealtimeThrottle = !System.Environment.GetEnvironmentVariables().Keys.Cast<object>()
+        .Select(k => k.ToString() ?? string.Empty).Any(k => k.StartsWith("WORLD_SIM_", StringComparison.Ordinal) && k.EndsWith("_SMOKE", StringComparison.Ordinal));
+
+    private readonly System.Diagnostics.Stopwatch _sinceRefresh = System.Diagnostics.Stopwatch.StartNew();
+
     private void AdvancePlayback(int days)
     {
         try
@@ -95,8 +107,11 @@ public partial class ObserverRoot
             DemoDayAdvance? last = null;
             DemoSettlementEvent? alert = null;
             var advanced = 0;
+            var budget = System.Diagnostics.Stopwatch.StartNew();
             for (var i = 0; i < days; i++)
             {
+                if (RealtimeThrottle && advanced > 0 && budget.Elapsed.TotalMilliseconds > TempFrameBudgetMs)
+                    break;
                 last = _world.AdvanceOneDay();
                 advanced++;
                 var major = TakeNewMajorEvent();
@@ -109,6 +124,15 @@ public partial class ObserverRoot
 
             if (alert is null)
             {
+                if (RealtimeThrottle && _sinceRefresh.Elapsed.TotalMilliseconds < TempPanelRefreshMs)
+                {
+                    // 面板稍後再更新；地圖上的聚落、隊伍與糧食狀況仍跟著世界走。
+                    _hexMap.Migrants = _world.MigrationsInTransit();
+                    _hexMap.Sites = _world.Sites;
+                    _hexMap.QueueRedraw();
+                    return;
+                }
+                _sinceRefresh.Restart();
                 _notice.Text = $"{_playback.StatusText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
                 Refresh();
                 return;

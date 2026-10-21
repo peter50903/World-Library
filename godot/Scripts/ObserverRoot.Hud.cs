@@ -22,7 +22,6 @@ public partial class ObserverRoot
 
     private Control _hud = null!;
     private PanelContainer _consolePanel = null!;
-    private PanelContainer _feedPanel = null!;
     private PanelContainer _topBar = null!;
     private Label _topWorld = null!;
     private Label _topStats = null!;
@@ -150,7 +149,7 @@ public partial class ObserverRoot
         _outlinerToggle = new Button { Text = "聚落清單", ToggleMode = true, TooltipText = "右側聚落清單（再按一次收合）" };
         _outlinerToggle.Pressed += () => SetRightView(RightView.Outliner);
         row.AddChild(_outlinerToggle);
-        _consoleToggle = new Button { Text = "世界控制台", ToggleMode = true, TooltipText = "右側世界控制台：狀態、帳目、診斷、播放與重大事件設定（再按一次收合）" };
+        _consoleToggle = new Button { Text = "世界紀錄", ToggleMode = true, TooltipText = "右側世界紀錄：事件依時間列出，點一筆看詳情、原因與後果並定位地圖（再按一次收合）" };
         _consoleToggle.Pressed += () => SetRightView(RightView.Console);
         row.AddChild(_consoleToggle);
     }
@@ -330,7 +329,6 @@ public partial class ObserverRoot
         if (_outlinerPanel is not null)
             Place(_outlinerPanel, frame.Console, _rightView == RightView.Outliner);
         Place(_timePanel, frame.Time, true);
-        Place(_feedPanel, frame.Feed, true);
         PlaceToolbarRow(frame);
         _consoleToggle.SetPressedNoSignal(_rightView == RightView.Console);
         _outlinerToggle.SetPressedNoSignal(_rightView == RightView.Outliner);
@@ -417,8 +415,8 @@ public partial class ObserverRoot
             _hud.Size = new Vector2(w, h);
             ApplyHudLayout();
             foreach (var (name, control) in new (string, Control)[]
-                     { ("TopBar", _topBar), ("Outliner", _outlinerPanel), ("Time", _timePanel), ("Feed", _feedPanel),
-                       ("Toolbar", _toolbarPanel), ("MapModes", _mapModePanel) })
+                     { ("TopBar", _topBar), ("Outliner", _outlinerPanel), ("Time", _timePanel),
+                       ("Toolbar", _toolbarPanel) })
             {
                 var r = new Rect2(control.Position, control.Size);
                 if (!control.Visible || r.Position.X < 0 || r.Position.Y < 0 || r.End.X > w || r.End.Y > h)
@@ -488,6 +486,6 @@ public partial class ObserverRoot
         if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
             Fail("food stat missing from the top bar.");
 
-        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art} {toolbar} {outliner} Speeds={_timeSpeeds.Length}");
+        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize={resized} Art={art} {toolbar} {outliner} Speeds={_timeSpeeds.Length}");
     }
 }

@@ -105,7 +105,7 @@ public static class DemoCellQuery
             {
                 reach = Array.AsReadOnly(DemoHexFoodCatchment.EligibleCells(world.Map, sharedSource)
                     .Select(c => new DemoCellRef(c.Column, c.Row)).ToArray());
-                lines.Add($"共享來源：每週供糧上限 {sharedSource.FoodAvailable}（全圈共用一次）；黃框為可採集範圍");
+                lines.Add($"共享來源：每週供糧上限 {sharedSource.FoodAvailable}（全圈共用一次）");
             }
         }
 
@@ -140,6 +140,7 @@ public static class DemoCellQuery
             lines.Add(world.IsStarving(settlement.Id)
                 ? $"飢餓狀態：飢餓中（飢餓債 {world.SettlementHungerDebt(settlement.Id)}，最近一週缺糧 {world.LatestWeekShortage(settlement.Id)}）"
                 : population == 0 ? "飢餓狀態：聚落已無人口" : "飢餓狀態：正常");
+            lines.AddRange(DemoSettlementHistory.Lines(world, settlement.Id)); // 第 08-3 章：建立年數與聚落小史
         }
 
         return new DemoCellView(cell, isMainRiver, sharedSource, reach,
