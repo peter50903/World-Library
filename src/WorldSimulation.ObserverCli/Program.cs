@@ -222,8 +222,8 @@ while (true)
         }
         var day = (int)formal.WorldTime.TotalDays;
         Console.WriteLine($"事件 #{formal.EventId}｜世界第 {day} 日｜{formal.Summary}");
-        foreach (var line in DemoEventProjection.DescribeLines(formal))
-            Console.WriteLine($"  {line}");
+        foreach (var detailLine in DemoEventProjection.DescribeLines(formal))
+            Console.WriteLine($"  {detailLine}");
         var children = world.EventHistory.ChildrenOf(eventId);
         Console.WriteLine(children.Count == 0
             ? "  直接後果：目前沒有"
