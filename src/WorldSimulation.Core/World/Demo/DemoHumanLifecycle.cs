@@ -58,8 +58,11 @@ internal static class DemoHumanLifecycle
         var moved = afterStarvation;
         foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
         {
-            var ids = DemoFamilyMigration.Choose(moved.People.Where(p => p.IsSettled && p.SettlementId == leg.FromSettlementId),
-                leg.PopulationOpening, day, Rules, requireCouple: leg.Founding);
+            var residents = moved.People.Where(p => p.IsSettled && p.SettlementId == leg.FromSettlementId).ToList();
+            // 第 08-1 章：婚嫁遷移只出發那一位找不到伴侶的單身者。
+            var ids = leg.MateSeeking
+                ? DemoFamilyMigration.MateSeeker(residents, day, Rules) is { } seeker ? new[] { seeker.Id } : Array.Empty<long>()
+                : DemoFamilyMigration.Choose(residents, leg.PopulationOpening, day, Rules, requireCouple: leg.Founding);
             if (ids.Length != leg.PopulationOpening)
                 throw new InvalidOperationException("Departing families do not match the migration ledger.");
             moved = moved.Depart(ids, leg.BatchId);
@@ -205,12 +208,14 @@ internal static class DemoHumanLifecycle
     /// 再整戶挑選），保證結算的出發人數就是名冊實際出發的人數。
     /// </summary>
     public static long PlanEmigrants(DemoTempDemography opening, int week, int settlementId, long deaths, long limit,
-        DemoPopulationDraws draws, bool founding = false)
+        DemoPopulationDraws draws, DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
     {
         ArgumentNullException.ThrowIfNull(opening);
         var starved = StarvedIn(opening, settlementId, deaths, week, draws).ToHashSet();
-        var residents = opening.People.Where(p => p.IsSettled && p.SettlementId == settlementId && !starved.Contains(p.Id));
-        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: founding).Length;
+        var residents = opening.People.Where(p => p.IsSettled && p.SettlementId == settlementId && !starved.Contains(p.Id)).ToList();
+        if (mode == DemoEmigrationMode.Mate)
+            return limit >= 1 && DemoFamilyMigration.MateSeeker(residents, week * 7, Rules) is not null ? 1 : 0;
+        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: mode == DemoEmigrationMode.Founding).Length;
     }
 
     /// <summary>第 06 章 d 節：聚落餓死名單（定居者，依年齡權重）。</summary>

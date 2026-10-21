@@ -12,6 +12,27 @@ public static class DemoFamilyMigration
     /// <summary>【TEMP】第 08-1 章：開拓隊至少要帶的成年伴侶對數。</summary>
     public const int TempFoundingCouples = 2;
 
+    /// <summary>
+    /// 第 08-1 章【TEMP 規則】婚嫁遷移：本聚落最年輕的「找不到伴侶的育齡單身者」——
+    /// 育齡、沒有伴侶、沒有帶著未成年子女，而且聚落裡沒有任何未配對、非近親的成年異性。沒有就是 null。
+    /// </summary>
+    public static DemoTempPerson? MateSeeker(IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
+    {
+        ArgumentNullException.ThrowIfNull(residents);
+        ArgumentNullException.ThrowIfNull(rules);
+        var people = residents.Where(p => p.IsSettled).ToList();
+        return people
+            .Where(p => p.PartnerId is null && p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < rules.FertileAgeMaxYears
+                && !people.Any(c => !c.IsAdultAt(day, rules) && (c.MotherId == p.Id || c.BirthFatherId == p.Id))
+                && !people.Any(o => o.Sex != p.Sex && o.PartnerId is null && o.IsAdultAt(day, rules) && !p.IsCloseKinOf(o)))
+            .OrderByDescending(p => p.BornDay).ThenBy(p => p.Id)
+            .FirstOrDefault();
+    }
+
+    /// <summary>第 08-1 章：本聚落未配對的成年人數（依性別；婚嫁遷移選目的地用）。</summary>
+    public static int Unpaired(IEnumerable<DemoTempPerson> residents, DemoTempSex sex, int day, DemoTempDemographyRules rules)
+        => residents.Count(p => p.IsSettled && p.Sex == sex && p.PartnerId is null && p.IsAdultAt(day, rules));
+
     public static IReadOnlyList<IReadOnlyList<DemoTempPerson>> Families(
         IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
     {

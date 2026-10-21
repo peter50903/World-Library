@@ -335,7 +335,8 @@ public sealed partial class DemoObserverWorld
                 _sourceStocks,
                 // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
                 _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)),
-                _land);
+                _land,
+                _demography is null ? null : MateMarkets(_demography, _sites, checked(_weeks.Count + 1)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -364,8 +365,22 @@ public sealed partial class DemoObserverWorld
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
-    private static Func<int, long, long, bool, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
-        => (settlementId, deaths, limit, founding) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws, founding);
+    private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
+        => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws, mode);
+
+    /// <summary>第 08-1 章：各聚落婚嫁市場（找不到伴侶的單身者性別、未配對成年男女數；以本週開始時的名冊計）。</summary>
+    private static IReadOnlyDictionary<int, DemoMateMarket> MateMarkets(DemoTempDemography demography, DemoWorldSites sites, int week)
+    {
+        var day = week * 7; // 與出發規劃（PlanEmigrants）同一天，選出的人一致
+        var rules = DemoHumanLifecycle.Rules;
+        return sites.Settlements.ToDictionary(s => s.Id, s =>
+        {
+            var residents = demography.People.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
+            return new DemoMateMarket(DemoFamilyMigration.MateSeeker(residents, day, rules)?.Sex,
+                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules),
+                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules));
+        });
+    }
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and

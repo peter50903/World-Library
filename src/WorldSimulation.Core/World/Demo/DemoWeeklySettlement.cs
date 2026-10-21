@@ -468,6 +468,22 @@ public sealed record DemoWeekReport(
 /// <summary>C05：一條亂數流在一次週提交前後的抽樣計數器。</summary>
 public sealed record DemoRngCounter(string StreamId, ulong Before, ulong After);
 
+/// <summary>第 08-1 章：外移的種類（決定名冊依什麼規則挑出發者）。</summary>
+public enum DemoEmigrationMode
+{
+    /// <summary>缺糧外移到有糧聚落（整戶）。</summary>
+    Shortage = 0,
+
+    /// <summary>開拓新聚落（需兩對伴侶，整戶）。</summary>
+    Founding = 1,
+
+    /// <summary>婚嫁遷移（一位找不到伴侶的育齡單身者）。</summary>
+    Mate = 2
+}
+
+/// <summary>第 08-1 章：一個聚落的婚嫁市場（本週開始時名冊）。SeekerSex＝找不到伴侶的單身者性別（null＝沒有）。</summary>
+public sealed record DemoMateMarket(DemoTempSex? SeekerSex, int UnpairedWomen, int UnpairedMen);
+
 /// <summary>週結算的候選結果：報告與結算後的新狀態。在發布前不會寫入任何世界狀態。</summary>
 internal sealed record DemoWeeklyOutcome(
     DemoWeekReport Report,
@@ -528,15 +544,16 @@ internal static class DemoWeeklySettlement
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
         IReadOnlyDictionary<int, long>? sourceStocks = null,
-        Func<int, long, long, bool, long>? emigrantPlanner = null,
-        DemoLandDevelopmentMap? land = null)
+        Func<int, long, long, DemoEmigrationMode, long>? emigrantPlanner = null,
+        DemoLandDevelopmentMap? land = null,
+        IReadOnlyDictionary<int, DemoMateMarket>? mates = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
-        long PlanEmigrants(int settlementId, long deaths, long desired, bool founding = false)
+        long PlanEmigrants(int settlementId, long deaths, long desired, DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
         {
             if (emigrantPlanner is null || desired <= 0) return desired;
-            var planned = emigrantPlanner(settlementId, deaths, desired, founding);
+            var planned = emigrantPlanner(settlementId, deaths, desired, mode);
             if (planned < 0 || planned > desired)
                 throw new InvalidOperationException("The family emigrant plan exceeds the allowed emigrants.");
             return planned;
@@ -862,7 +879,7 @@ internal static class DemoWeeklySettlement
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c)));
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor, founding: true) : 0;
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -918,6 +935,54 @@ internal static class DemoWeeklySettlement
                         emigrants, 0, emigrants,
                         foodOut, 0, foodOut, 0,
                         debtOut, 0, 0, debtOut));
+                }
+            }
+            else if (!wantsToLeave && map is not null && config.MigrationEnabled && week >= 2 && survivors >= 2
+                     && mates is not null && mates.TryGetValue(settlement.Id, out var market) && market.SeekerSex is { } seekerSex
+                     && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
+            {
+                // 第 08-1 章【TEMP 規則】婚嫁遷移：找不到伴侶的育齡單身者，一個人走到 TEMP 已知路程內、
+                // 有未配對成年異性的最近聚落；只從人口少的聚落搬往人口多的（同人口時編號大的搬），避免兩邊對調。
+                (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route)? mateTarget = null;
+                foreach (var candidate in weekSites.Settlements.Where(c => c.Id != settlement.Id && !c.IsRuin).OrderBy(c => c.Id))
+                {
+                    if (!mates.TryGetValue(candidate.Id, out var other)
+                        || (seekerSex == DemoTempSex.Female ? other.UnpairedMen : other.UnpairedWomen) == 0)
+                        continue;
+                    var otherPeople = population.GetValueOrDefault(candidate.Id);
+                    if (otherPeople < people || (otherPeople == people && candidate.Id > settlement.Id))
+                        continue;
+                    var route = DemoMigrationRoutes.FindRoute(map,
+                        new DemoCellRef(settlement.Column, settlement.Row), new DemoCellRef(candidate.Column, candidate.Row));
+                    if (route.Length < 2 || route.Length - 1 > config.KnownRouteMaxSteps)
+                        continue;
+                    if (mateTarget is null || route.Length < mateTarget.Value.Route.Length)
+                        mateTarget = (candidate, route);
+                }
+
+                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths, 1, DemoEmigrationMode.Mate) == 1)
+                {
+                    emigrants = 1;
+                    foodOut = foodClosing / survivors;
+                    debtOut = debt / survivors;
+                    var batch = new DemoMigrationBatch(
+                        DemoEntityIds.NextInt(ids), settlement.Id, settlement.Name,
+                        mate.Settlement.Id, mate.Settlement.Name, mate.Route,
+                        StepIndex: 0, People: 1, Food: foodOut, HungerDebt: debtOut, DepartedWeek: week,
+                        NewsWeek: week - 1);
+                    nextMigrations.Add(batch);
+                    events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
+                        DemoSettlementEventKind.Emigration, 1,
+                        $"婚嫁遷移：聚落裡沒有可配對的成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}（只剩手足或同性），"
+                        + $"前往有未配對成年{(seekerSex == DemoTempSex.Female ? "男性" : "女性")}的{mate.Settlement.Name}"
+                        + $"（TEMP 規則：人口少的聚落往人口多的搬），路線 {mate.Route.Length - 1} 格，攜帶糧食 {foodOut}",
+                        batch.Id), 0));
+                    migrationLedgers.Add(new DemoMigrationWeekLedger(
+                        week, batch.Id, settlement.Id, mate.Settlement.Id,
+                        batch.Cell, batch.Cell, Departed: true, Arrived: false,
+                        1, 0, 1,
+                        foodOut, 0, foodOut, 0,
+                        debtOut, 0, 0, debtOut, MateSeeking: true));
                 }
             }
 

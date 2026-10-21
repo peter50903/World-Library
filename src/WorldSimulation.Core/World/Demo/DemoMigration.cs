@@ -79,7 +79,8 @@ public sealed record DemoMigrationWeekLedger(
     bool Founding = false,
     long Births = 0,
     long NaturalDeaths = 0,
-    long HungerDebtRemovedByNaturalDeath = 0)
+    long HungerDebtRemovedByNaturalDeath = 0,
+    bool MateSeeking = false)
 {
     /// <summary>第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。</summary>
     public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths == PopulationClosing;
