@@ -29,14 +29,22 @@ public sealed class DemoHumanLifeRulesTests
                 Assert.Contains(g, p => p.Sex == DemoTempSex.Male && p.AgeYearsAt(0) is >= 18 and < 45);
             });
 
+            var trace = new System.Text.StringBuilder();
             for (var day = 0; day < 100 * TestCalendar.DaysPerYear; day++)
+            {
                 world.AdvanceOneDay();
+                if ((day + 1) % (10 * TestCalendar.DaysPerYear) == 0)
+                    trace.Append($" {(day + 1) / TestCalendar.DaysPerYear}年:{world.SettledPopulation}+{world.PopulationInTransit}");
+            }
 
             var ledgers = world.WeekReports().SelectMany(w => w.Settlements).ToList();
+            var legs = world.WeekReports().SelectMany(w => w.Migrations).ToList();
+            var summary = $"種子 {seed}：出生 {ledgers.Sum(l => l.Births)}+{legs.Sum(m => m.Births)}、自然死亡 {ledgers.Sum(l => l.NaturalDeaths)}+{legs.Sum(m => m.NaturalDeaths)}、"
+                + $"餓死 {ledgers.Sum(l => l.Deaths - l.NaturalDeaths)}、途中餓死 {legs.Sum(m => m.Deaths)}、出發 {legs.Count(m => m.Departed)} 隊；人口{trace}";
             Assert.All(ledgers, l => Assert.True(l.IsBalanced, $"種子 {seed} 第 {l.SettlementId} 聚落週帳不平衡"));
-            Assert.True(ledgers.Sum(l => l.Births) > 0, $"種子 {seed} 百年無出生");
-            Assert.True(ledgers.Sum(l => l.NaturalDeaths) > 0, $"種子 {seed} 百年無自然死亡");
-            starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths);
+            Assert.True(ledgers.Sum(l => l.Births) + legs.Sum(m => m.Births) > 0, $"百年無出生｜{summary}");
+            Assert.True(ledgers.Sum(l => l.NaturalDeaths) + legs.Sum(m => m.NaturalDeaths) > 0, $"百年無自然死亡｜{summary}");
+            starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths) + legs.Sum(m => m.Deaths);
 
             var people = world.HumanPopulationSnapshot!.People.ToDictionary(p => p.Id);
             foreach (var p in people.Values.Where(p => p.PartnerId is not null))
