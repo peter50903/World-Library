@@ -22,8 +22,8 @@
 
 | 項目 | 內容 |
 |---|---|
-| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs:908`（只列「期末有人聚落 x／y」，不判定） |
-| 目前值 | 無門檻（TEMP：只列數據） |
+| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs`（`M1Evaluator.Stability`、`TempStabilityExplosionFactor`） |
+| 目前值 | **2026-10-21 Claude 定案【TEMP】（第 08 章 d 節，總綱第 8 節數值類）：選項 C**——一次長跑期末仍有人、且期末人口不超過期初 **10 倍**＝通過；全滅或爆量＝警告；矩陣（含普通世界調查）任一長跑通過即通過。理由：人類採集情境已有真實出生，爆量與全滅都量得到；10 倍遠高於目前任何種子的最高人口，只抓失控。 |
 | 設定檔現況 | `45G_M1驗收.csv` 第 9 列：條件「不是所有種子都因數值失控在 100 年內全滅或無限爆人口」，Warning；沒有量化門檻 |
 | 影響 | `--m1-check` 報告中這一項永遠是「警告」，無法說 M1 穩定性通過 |
 | 選項 | **A** 維持只列數據，等出生規則實作後再定門檻。<br>**B** 只檢查「全滅」：任一種子在一般情境 100 年內所有聚落全滅＝警告；不檢查爆量。<br>**C** 全滅與爆量都檢查；爆量倍數（期末／期初人口）需使用者給數字。 |
@@ -34,8 +34,8 @@
 
 | 項目 | 內容 |
 |---|---|
-| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs:919`（只列數據，不以種子不同代替環境差異） |
-| 目前值 | 無判定方式（TEMP） |
+| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs`（`M1Evaluator.Variety`、`TempVarietyRatio`） |
+| 目前值 | **2026-10-21 Claude 定案【TEMP】（第 08 章 d 節）：選項 B**——同一次長跑中依資源組合（未開墾草原／林地／漁場…）分群，兩群期末平均人口相差至少 **2 倍**（或一群有人、另一群無人）＝通過，否則警告。理由：資源組合是目前唯一真實的環境差異；氣候與產業實作後再擴充。M1_VARIETY 照常報告，不列入正式驗收必要項目（手冊第 08 章 d 節未列）。 |
 | 設定檔現況 | `45G_M1驗收.csv` 第 10 列：「資源／氣候／路線不同的地區應產生可觀察人口／產業差異」，Warning |
 | 影響 | 報告中永遠是「警告」 |
 | 選項 | **A** 質性列出：依資源點種類（農地／林地／漁場）分組列每組期末人口，不判定。<br>**B** 定量：分組人口差異超過某門檻才通過；門檻需使用者給數字。<br>**C** 維持現狀，等氣候與正式地區（54G 地形）實作後再定。 |
@@ -185,6 +185,7 @@
 | 內容 | 位置 |
 |---|---|
 | M1 驗收預設種子 42、7、1，預設 100 年 | `M1Acceptance.cs:965-968` |
+| 第 08 章 d 節：M1 預設矩陣加「人類採集（普通世界）」情境；普通世界長期生存調查種子 1～20（只如實統計存活數、找可重現種子，不挑選、不調數值） | `M1Acceptance.cs`（`M1Preset.Living`、`M1AcceptanceCli.SurveySeeds`） |
 | 饑荒、局部饑荒、開拓情境（`FamineSample`／`LocalFamineSample`／`FrontierSample`） | `DemoWeeklySettlement.cs:42-71`；M1 情境 `M1Acceptance.cs:227` |
 | Godot 預設種子 42、局部饑荒／開拓情境與 CI 冒煙測試挑種子（42，再 1～30）、冒煙天數（#81 起玩家也可在畫面選這些 TEMP 情境） | `godot/Scripts/ObserverRoot.cs:14-113` |
 | #87 觀察者播放速度：每秒 1／5／30 世界日、每幀最多推進 30 日（純畫面顯示，不是世界規則） | `godot/Scripts/PlaybackClock.cs:12-19` |
@@ -269,7 +270,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 2 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 14 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
-| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
+| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |

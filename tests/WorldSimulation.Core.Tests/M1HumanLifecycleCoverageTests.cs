@@ -7,7 +7,7 @@ namespace WorldSimulation.Core.Tests;
 /// <summary>
 /// C02：M1_POP 在人類繁衍情境（TEMP）下的對帳。合法出生要逐聚落對帶原因的出生事件、
 /// 死亡按原因分類（餓死對餓死事件、自然死亡對自然死亡事件），不得再把合法出生／自然死亡誤報為錯誤；
-/// 刪掉任一筆出生或自然死亡事件則必須 FAIL。此情境只用於測試，不加入 <see cref="M1Preset.Default"/>。
+/// 刪掉任一筆出生或自然死亡事件則必須 FAIL。第 08 章 d 節起此情境（<see cref="M1Preset.Living"/>）列入預設矩陣。
 /// </summary>
 /// <remarks>
 /// 實測（CI，2026-10-15）：種子 42 人類繁衍 45 年＝出生 15、聚落餓死 27、自然死亡 0，45 年底人口 0
@@ -80,7 +80,7 @@ public sealed class M1HumanLifecycleCoverageTests
         Assert.DoesNotContain("帶原因的自然死亡事件", pop.Diagnosis);
         Assert.Equal(M1Verdict.Pass, pop.Verdict);
         Assert.Contains("自然死亡", pop.Diagnosis);
-        Assert.Contains("出生只在人類繁衍情境發生，預設矩陣不含該情境", pop.Diagnosis);
+        Assert.Contains("出生、孕期與自然死亡由人類採集情境的個人身分產生", pop.Diagnosis);
     }
 
     [Fact]

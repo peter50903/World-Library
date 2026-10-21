@@ -189,10 +189,13 @@ public sealed record M1Preset(string Key, string Name, DemoWeeklyTempConfig Conf
 
     public static M1Preset Famine { get; } = new("famine", "全面饑荒", DemoWeeklyTempConfig.FamineSample);
 
-    public static IReadOnlyList<M1Preset> All { get; } = new[] { Normal, LocalFamine, Frontier, Famine };
+    /// <summary>第 08 章 d 節：普通世界＝Godot 預設的人類採集情境（出生、孕期、自然死亡、共享採集、家庭遷徙與建村）。</summary>
+    public static M1Preset Living { get; } = new("living", "人類採集（普通世界）", DemoWeeklyTempConfig.LivingForagingSample);
 
-    /// <summary>預設矩陣：一般／局部饑荒（遷徙）／開拓（新聚落）。</summary>
-    public static IReadOnlyList<M1Preset> Default { get; } = new[] { Normal, LocalFamine, Frontier };
+    public static IReadOnlyList<M1Preset> All { get; } = new[] { Normal, LocalFamine, Frontier, Famine, Living };
+
+    /// <summary>預設矩陣：一般／局部饑荒（遷徙）／開拓（新聚落）／人類採集（普通世界，第 08 章 d 節）。</summary>
+    public static IReadOnlyList<M1Preset> Default { get; } = new[] { Normal, LocalFamine, Frontier, Living };
 
     public static M1Preset? Find(string key) => All.FirstOrDefault(p => p.Key == key);
 }
@@ -402,17 +405,18 @@ public static class M1Evaluator
         if (run.Weeks.Count != expectedWeeks)
             problems.Add($"週結算次數 {run.Weeks.Count}，{run.Years} 年應為 {expectedWeeks}");
 
-        long ledgers = 0, migrationLedgers = 0, produced = 0, consumed = 0, regenerated = 0, harvested = 0, shortage = 0;
+        long ledgers = 0, migrationLedgers = 0, produced = 0, consumed = 0, regenerated = 0, harvested = 0, shortage = 0, spoiled = 0;
         var previous = run.Initial;
         for (var i = 0; i < run.Weeks.Count; i++)
         {
             var report = run.Weeks[i];
             if (report.Week != i + 1)
                 problems.Add($"週報編號不連續：第 {i + 1} 筆是第 {report.Week} 週");
-            long wProduced = 0, wConsumed = 0, wRegen = 0, wHarvested = 0;
+            long wProduced = 0, wConsumed = 0, wRegen = 0, wHarvested = 0, wSpoiled = 0;
             foreach (var l in report.Settlements)
             {
                 ledgers++;
+                wSpoiled += l.FoodSpoiled;
                 if (!l.ReserveBalanced)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 資源點存量帳：{l.ReserveOpening}＋再生 {l.Regenerated}－採收 {l.Harvested}≠{l.ReserveClosing}");
                 if (!l.FoodBalanced)
@@ -448,8 +452,8 @@ public static class M1Evaluator
             }
             else
             {
-                if (previous.Food + wProduced - wConsumed != after.Food)
-                    problems.Add($"{At(run, report.Week)} 世界糧食：{previous.Food}＋生產 {wProduced}－消耗 {wConsumed}≠世界狀態 {after.Food}");
+                if (previous.Food + wProduced - wConsumed - wSpoiled != after.Food)
+                    problems.Add($"{At(run, report.Week)} 世界糧食：{previous.Food}＋生產 {wProduced}－消耗 {wConsumed}－腐敗 {wSpoiled}≠世界狀態 {after.Food}");
                 if (previous.Reserve + wRegen - wHarvested != after.Reserve)
                     problems.Add($"{At(run, report.Week)} 世界資源點存量：{previous.Reserve}＋再生 {wRegen}－採收 {wHarvested}≠世界狀態 {after.Reserve}");
                 previous = after;
@@ -457,6 +461,7 @@ public static class M1Evaluator
 
             produced += wProduced;
             consumed += wConsumed;
+            spoiled += wSpoiled;
             regenerated += wRegen;
             harvested += wHarvested;
         }
@@ -464,7 +469,7 @@ public static class M1Evaluator
         var final = Final(run);
         return Judge(problems,
             $"{run.Weeks.Count} 週、聚落帳 {ledgers} 筆、遷徙隊伍帳 {migrationLedgers} 筆全部平衡；"
-            + $"世界糧食 期初 {run.Initial.Food}＋生產 {produced}－消耗 {consumed}＝期末 {final.Food}；"
+            + $"世界糧食 期初 {run.Initial.Food}＋生產 {produced}－消耗 {consumed}－腐敗 {spoiled}＝期末 {final.Food}；"
             + $"資源點存量 期初 {run.Initial.Reserve}＋再生 {regenerated}－採收 {harvested}＝期末 {final.Reserve}；"
             + $"缺糧合計 {shortage} 全部記入飢餓債（逐週與世界狀態對帳）");
     }
@@ -584,8 +589,11 @@ public static class M1Evaluator
             + $"＝期末 {final.Population}；遷出 {emigrants}、遷入 {immigrants}（差額＝途中與途中死亡，見 M1_MIG）；"
             + "逐聚落、逐隊伍期初＝上週期末，遷出／遷入人數與外移／抵達事件及隊伍帳一致"
             + "；出生與自然死亡逐聚落對帶原因的出生／自然死亡事件"
-            + "。【覆蓋限制 TEMP】出生只在人類繁衍情境發生，預設矩陣不含該情境；"
-            + "具體化：個體具體化尚未實作（未實作，不是通過），沒有量測；這兩項只確認沒有憑空增減，不代表已驗證");
+            + (run.Preset.Config.HumanLifecycleEnabled
+                ? "。出生、孕期與自然死亡由人類採集情境的個人身分產生"
+                : "。【覆蓋限制 TEMP】本情境沒有出生（出生只在人類採集情境發生）")
+            + "；"
+            + "【覆蓋限制 TEMP】具體化：個體具體化尚未實作（未實作，不是通過），沒有量測，只確認沒有憑空增減、不代表已驗證");
     }
 
     // ── M1_NO_MAGIC_FOOD：食物增量只能來自合法採集／農牧／配方／神蹟定義 ──────────
@@ -646,6 +654,19 @@ public static class M1Evaluator
         foreach (var report in run.Weeks)
             foreach (var l in report.Settlements)
                 ledgerOf[(report.Week, l.SettlementId)] = l;
+        // 第 08 章 d 節：共享採集情境（人類採集）的自然來源不在聚落資源點，而在來源帳；
+        // 「資源有剩」改看這個聚落本週取用過的來源是否還有未採（存量不是限制）。
+        var sourceLeft = new HashSet<(int Week, int Settlement)>();
+        foreach (var report in run.Weeks)
+            foreach (var source in report.Sources.Where(x => x.Unharvested > 0))
+                foreach (var share in source.Shares ?? Array.Empty<DemoSourceShare>())
+                    sourceLeft.Add((report.Week, share.SettlementId));
+        string Left(DemoSettlementWeekLedger l)
+            => run.Preset.Config.SharedCatchmentEnabled
+                ? (sourceLeft.Contains((l.Week, l.SettlementId)) ? "取用的來源仍有未採" : "取用的來源已採完")
+                : $"資源點剩 {l.ReserveClosing}";
+        bool ResourceLeft(DemoSettlementWeekLedger l)
+            => run.Preset.Config.SharedCatchmentEnabled ? sourceLeft.Contains((l.Week, l.SettlementId)) : l.ReserveClosing > 0;
 
         // 恢復一定要有實際糧食來源。
         var problems = new List<string>();
@@ -676,14 +697,21 @@ public static class M1Evaluator
 
         // 生產力是量測值，不是由人口前後推斷：每週採收不得超過「期初人口×TEMP 每人每週產量」的勞動力上限。
         var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
+        // 勞動力＝期初可工作者：共享採集情境（人類採集）＝成人扣掉取水者（DemoWeeklySettlement 共享分配同一算法）；
+        // 自有資源點情境＝全部期初人口（每人 TEMP 產量）。
+        var shared = run.Preset.Config.SharedCatchmentEnabled;
+        long Workers(DemoSettlementWeekLedger l)
+            => shared
+                ? Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers)
+                : l.PopulationOpening;
         foreach (var report in run.Weeks)
         {
             foreach (var l in report.Settlements)
             {
-                var cap = l.PopulationOpening * yieldPerWorker;
+                var cap = Workers(l) * yieldPerWorker;
                 if (l.FoodProduced > cap)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 採收 {l.FoodProduced} 超過勞動力上限 {cap}"
-                        + $"（期初人口 {l.PopulationOpening}×TEMP 每人每週產量 {yieldPerWorker}）");
+                        + $"（期初勞動力 {Workers(l)} 人×TEMP 每人每週產量 {yieldPerWorker}）");
             }
         }
 
@@ -716,23 +744,27 @@ public static class M1Evaluator
                 continue;
             }
 
-            var capBefore = during.PopulationOpening * yieldPerWorker;
-            var capAfter = next.PopulationOpening * yieldPerWorker;
-            var beforeBound = during.FoodProduced == capBefore && during.ReserveClosing > 0;
-            var afterBound = next.FoodProduced == capAfter && next.ReserveClosing > 0;
+            var capBefore = Workers(during) * yieldPerWorker;
+            var capAfter = Workers(next) * yieldPerWorker;
+            // 共享採集情境的採收也受本週需求限制：採收要等於勞動力上限且低於需求，才確定是勞力（不是需求）在限制。
+            bool LaborBound(DemoSettlementWeekLedger l, long cap)
+                => l.FoodProduced == cap && ResourceLeft(l)
+                && (!run.Preset.Config.SharedCatchmentEnabled || l.FoodProduced < l.FoodConsumed + l.FoodShortage);
+            var beforeBound = LaborBound(during, capBefore);
+            var afterBound = LaborBound(next, capAfter);
             var laborBound = capAfter < capBefore && beforeBound && afterBound && next.FoodProduced < during.FoodProduced;
             if (!laborBound)
             {
                 unmeasured ??= $"{head}，但勞動力上限 {capBefore}→{capAfter}、實際採收 {during.FoodProduced}→{next.FoodProduced}"
-                    + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}）：前後兩週不是都受勞力限制（產量受資源點存量限制、"
+                    + $"（{Left(during)}→{Left(next)}）：前後兩週不是都受勞力限制（產量受資源存量或需求限制、"
                     + "前週採收未達舊上限或勞動力未下降），量測不到生產力因人口減少而下降";
                 continue;
             }
 
-            chain = $"{head} → 下週勞動力 {during.PopulationOpening}→{next.PopulationOpening} 人，"
+            chain = $"{head} → 下週勞動力 {Workers(during)}→{Workers(next)} 人，"
                 + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {yieldPerWorker}），"
                 + $"實際採收 {during.FoodProduced}＝前週舊上限 → {next.FoodProduced}＝新上限"
-                + $"（資源點剩 {during.ReserveClosing}→{next.ReserveClosing}，前後兩週產量受勞力限制）";
+                + $"（{Left(during)}→{Left(next)}，前後兩週產量受勞力限制）";
             break;
         }
 
@@ -917,18 +949,31 @@ public static class M1Evaluator
             + (example is null ? string.Empty : $"。例：{example}"));
     }
 
-    // ── M1_STABILITY（Warning）：只列數據，正式門檻未定案 ─────────────────────────
+    /// <summary>【TEMP】M1_STABILITY 爆量門檻：期末世界人口超過期初的這個倍數＝無限爆人口（第 08 章 d 節 Claude 定案，D1）。</summary>
+    public const long TempStabilityExplosionFactor = 10;
+
+    /// <summary>【TEMP】M1_VARIETY 差異門檻：不同資源組合的聚落群，期末平均人口相差至少這個倍數（或一群有人、另一群無人）（D2）。</summary>
+    public const long TempVarietyRatio = 2;
+
+    // ── M1_STABILITY（Warning）：本次長跑沒有全滅、也沒有爆量（TEMP 門檻 D1）；矩陣中任一長跑通過即通過 ──
     private static M1Finding Stability(M1RunData run)
     {
         var final = Final(run);
         var populations = run.TotalsAfterWeek.Values.Select(t => t.Population).Append(run.Initial.Population).ToList();
         var inhabited = run.Weeks.Count == 0 ? 0 : run.Weeks[^1].Settlements.Count(l => l.PopulationClosing > 0);
         var settlements = run.Weeks.Count == 0 ? run.InitialSettlementIds.Count : run.Weeks[^1].Settlements.Count;
-        var note = final.Population == 0 ? "；本種子在期內全滅" : string.Empty;
-        return new M1Finding(M1Raw.DataOnly,
-            $"人口 期初 {run.Initial.Population} → 期末 {final.Population}（{run.Years} 年內最低 {populations.Min()}、最高 {populations.Max()}）；"
-            + $"期末有人聚落 {inhabited}／{settlements}{note}；{CapacityEvidence(run)}"
-            + "「穩定」的正式門檻未定案，只列數據不判定（TEMP，見 #75）");
+        var births = run.Weeks.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
+        var data = $"人口 期初 {run.Initial.Population} → 期末 {final.Population}（{run.Years} 年內最低 {populations.Min()}、最高 {populations.Max()}、出生 {births}）；"
+            + $"期末有人聚落 {inhabited}／{settlements}；{CapacityEvidence(run)}";
+        var rule = $"【TEMP 門檻 D1】期末仍有人、且期末人口不超過期初 {TempStabilityExplosionFactor} 倍才算穩定（45G：不是所有種子都全滅或無限爆人口；矩陣任一長跑通過即通過）";
+        if (final.Population == 0)
+        {
+            var extinct = run.TotalsAfterWeek.Where(kv => kv.Value.Population == 0).Select(kv => kv.Key).DefaultIfEmpty(0).Min();
+            return new M1Finding(M1Raw.Violation, $"本長跑在 {At(run, extinct)} 全滅；{data}{rule}");
+        }
+        if (final.Population > run.Initial.Population * TempStabilityExplosionFactor)
+            return new M1Finding(M1Raw.Violation, $"本長跑人口爆量（期末超過期初 {TempStabilityExplosionFactor} 倍）；{data}{rule}");
+        return new M1Finding(M1Raw.Ok, $"{run.Years} 年後仍有 {final.Population} 人、{inhabited} 個有人聚落，未爆量；{data}{rule}");
     }
 
     /// <summary>
@@ -959,15 +1004,32 @@ public static class M1Evaluator
         return $"各聚落承載（TEMP 估計：存量與糧庫耗盡後每週再生 vs 需求）：{string.Join("；", parts)}；";
     }
 
-    // ── M1_VARIETY（Warning）：只列各聚落差異，氣候與產業尚未實作 ──────────────────
+    // ── M1_VARIETY（Warning）：不同資源組合的聚落群期末結果不同（TEMP 門檻 D2）；氣候與產業尚未實作 ──
     private static M1Finding Variety(M1RunData run)
     {
         var parts = run.Settlements
             .Select(s => $"{s.Name}（#{s.Id}，{(s.ResourceKinds.Length == 0 ? "無資源點" : s.ResourceKinds)}{(s.Founded ? "，新建" : string.Empty)}）{s.FinalPopulation} 人")
             .ToList();
-        return new M1Finding(M1Raw.DataOnly,
-            $"期末各聚落：{string.Join("、", parts)}；氣候、產業尚未實作，地區差異的正式門檻未定案，"
-            + "只列數據，不以種子不同代替環境差異（TEMP，見 #75）");
+        var data = $"期末各聚落：{string.Join("、", parts)}；";
+        const string rule = "【TEMP 門檻 D2】依資源組合分群，兩群期末平均人口相差至少 2 倍（或一群有人、另一群無人）才算有差異；"
+            + "氣候、產業尚未實作，不以種子不同代替環境差異";
+        var groups = run.Settlements.Where(s => s.ResourceKinds.Length > 0)
+            .GroupBy(s => s.ResourceKinds)
+            .Select(g => (Kinds: g.Key, Count: g.Count(), Mean: g.Average(s => (double)s.FinalPopulation)))
+            .OrderBy(g => g.Kinds, StringComparer.Ordinal)
+            .ToList();
+        if (groups.Count < 2)
+            return new M1Finding(M1Raw.NotObserved, $"本長跑的聚落只有 {groups.Count} 種資源組合，無法比較；{data}{rule}");
+        foreach (var a in groups)
+        {
+            foreach (var b in groups.Where(b => b.Mean < a.Mean))
+            {
+                if (b.Mean == 0 || a.Mean >= b.Mean * TempVarietyRatio)
+                    return new M1Finding(M1Raw.Ok,
+                        $"{a.Kinds} 聚落 {a.Count} 個期末平均 {a.Mean:0.#} 人，{b.Kinds} 聚落 {b.Count} 個期末平均 {b.Mean:0.#} 人；{data}{rule}");
+            }
+        }
+        return new M1Finding(M1Raw.Violation, $"各資源組合的期末平均人口差異不到 {TempVarietyRatio} 倍；{data}{rule}");
     }
 
     // ── M1_HISTORY（Behavior Check）：地方史看得出原因→效果（#88：43F 因果索引） ─────────
@@ -1022,17 +1084,164 @@ public static class M1Evaluator
     }
 }
 
+/// <summary>第 08 章 d 節：正式驗收需要的一個案例（找到＝有具體的種子與情境可重現）。</summary>
+public sealed record M1AcceptanceCase(string Name, bool Found, string Evidence);
+
+/// <summary>
+/// 第 08 章 d 節：P1-M1 正式驗收判定。條件（手冊第 08 章規則與 d 節，TEMP 門檻見 docs/TEMP_待裁決清單.md D1／D2）：
+/// ① 手冊列出的八項（M1_RES、M1_POP、M1_NO_MAGIC_FOOD、M1_STABILITY、M1_MIG、M1_SETTLE、M1_FAMINE、M1_HISTORY）
+///    在全部長跑合併後都是「通過」，且沒有任何 Hard 失敗；
+/// ② 四個案例都找得到：普通世界（人類採集）由真實資源支撐長期有人生存且人口曾因合法出生增加、資源差導致衰退、
+///    局部或全面饑荒、開拓建立新聚落。M1_ACCESS、M1_VARIETY 照常報告，不列入正式條件（手冊 d 節未列）。
+/// 只讀長跑證據，不改任何規則或數值。
+/// </summary>
+public static class M1OfficialAcceptance
+{
+    public static IReadOnlyList<string> RequiredIds { get; } = new[]
+    {
+        "M1_RES", "M1_POP", "M1_NO_MAGIC_FOOD", "M1_STABILITY", "M1_MIG", "M1_SETTLE", "M1_FAMINE", "M1_HISTORY"
+    };
+
+    private static string Where(M1RunData run) => $"種子 {run.Seed}｜{run.Preset.Name}";
+
+    public static IReadOnlyList<M1AcceptanceCase> Cases(IReadOnlyList<M1RunReport> reports)
+    {
+        ArgumentNullException.ThrowIfNull(reports);
+        var runs = reports.Where(r => r.Run.AbortReason is null).Select(r => r.Run).ToList();
+        return new[] { LongLived(runs), Decline(runs), Famine(runs), Frontier(runs) };
+    }
+
+    /// <summary>普通世界長期生存：人類採集情境跑滿全期仍有人，期內有出生，且至少一年因出生使人口增加。</summary>
+    private static M1AcceptanceCase LongLived(IReadOnlyList<M1RunData> runs)
+    {
+        const string name = "普通世界長期有人生存且人口因合法出生增加";
+        var living = runs.Where(r => r.Preset.Config.HumanLifecycleEnabled).ToList();
+        foreach (var run in living)
+        {
+            var years = DemoYearLedger.FromWeeks(run.Weeks, run.DaysPerYear, run.Years * run.DaysPerYear);
+            var last = years.Count == 0 ? null : years[^1];
+            var growth = years.FirstOrDefault(y => y.Births > 0 && y.PopulationClosing > y.PopulationOpening);
+            if (last is null || last.PopulationClosing == 0 || growth is null)
+                continue;
+            var births = years.Sum(y => y.Births);
+            return new M1AcceptanceCase(name, true,
+                $"{Where(run)}：{run.Years} 年後仍有 {last.PopulationClosing} 人（{last.InhabitedSettlements} 個有人聚落），期內出生 {births} 人；"
+                + $"第 {growth.Year} 年出生 {growth.Births} 人，人口 {growth.PopulationOpening}→{growth.PopulationClosing}；"
+                + $"糧食全部來自實際採集（生產 {years.Sum(y => y.FoodProduced)}＝採收 {years.Sum(y => y.Harvested)}）"
+                + $"。人類採集共跑 {living.Count} 個種子，其中 {living.Count(r => Survived(r))} 個活過 {run.Years} 年");
+        }
+        return new M1AcceptanceCase(name, false,
+            $"人類採集共跑 {living.Count} 個種子，沒有一個跑滿全期仍有人且人口曾因出生增加（如實記錄，不調數值）");
+    }
+
+    private static bool Survived(M1RunData run)
+        => run.Weeks.Count > 0 && run.TotalsAfterWeek.TryGetValue(run.Weeks[^1].Week, out var t) && t.Population > 0;
+
+    /// <summary>資源差導致衰退：非 TEST 饑荒聚落、長期承載不足（每週再生養不活期初人口），人口下降（自有資源點情境）。</summary>
+    private static M1AcceptanceCase Decline(IReadOnlyList<M1RunData> runs)
+    {
+        const string name = "資源差導致衰退";
+        foreach (var run in runs)
+        {
+            // 承載估計只適用各聚落自有資源點的情境；共享採集情境的來源由多聚落分用，不用它判斷資源差。
+            if (run.FinalCapacities is null || run.Weeks.Count == 0 || run.Preset.Config.SharedCatchmentEnabled)
+                continue;
+            foreach (var c in run.FinalCapacities.Where(c => !c.TempFamineSettlement))
+            {
+                var opening = run.Weeks[0].Settlements.FirstOrDefault(l => l.SettlementId == c.SettlementId)?.PopulationOpening ?? 0;
+                if (opening > 0 && c.Population < opening && c.SustainablePopulation < opening)
+                    return new M1AcceptanceCase(name, true,
+                        $"{Where(run)}：{c.SettlementName}（{c.ResourceKinds}，每週再生 {c.RegenPerWeek}，長期可養活 "
+                        + $"{(c.SustainablePopulation == long.MaxValue ? "不限" : c.SustainablePopulation.ToString(CultureInfo.InvariantCulture))} 人）"
+                        + $"人口 {opening}→{c.Population}");
+            }
+        }
+        return new M1AcceptanceCase(name, false, "沒有找到承載不足而衰退的一般聚落");
+    }
+
+    /// <summary>局部或全面饑荒：缺糧之後同一聚落有帶原因的餓死或外移。</summary>
+    private static M1AcceptanceCase Famine(IReadOnlyList<M1RunData> runs)
+    {
+        const string name = "局部或全面饑荒";
+        foreach (var run in runs)
+        {
+            var events = run.Weeks.SelectMany(w => w.Events).ToList();
+            var effect = events.FirstOrDefault(e => e.Kind is DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.Emigration
+                && events.Any(h => h.Kind == DemoSettlementEventKind.Hunger && h.SettlementId == e.SettlementId && h.EventId == e.CauseEventId));
+            if (effect is null)
+                continue;
+            var what = effect.Kind == DemoSettlementEventKind.StarvationDeath ? "餓死" : "外移";
+            return new M1AcceptanceCase(name, true,
+                $"{Where(run)}：{effect.SettlementName}（#{effect.SettlementId}）缺糧事件 #{effect.CauseEventId} → 事件 #{effect.EventId} {effect.Count} 人{what}");
+        }
+        return new M1AcceptanceCase(name, false, "沒有找到缺糧造成餓死或外移的案例");
+    }
+
+    /// <summary>開拓：遷徙隊伍建立新聚落。</summary>
+    private static M1AcceptanceCase Frontier(IReadOnlyList<M1RunData> runs)
+    {
+        const string name = "開拓建立新聚落";
+        foreach (var run in runs)
+        {
+            var founded = run.Weeks.SelectMany(w => w.Events).FirstOrDefault(e => e.Kind == DemoSettlementEventKind.SettlementFounded);
+            if (founded is not null)
+                return new M1AcceptanceCase(name, true,
+                    $"{Where(run)}：第 {founded.Week} 週 {founded.Count} 名遷徙者建立 {founded.SettlementName}（#{founded.SettlementId}）");
+        }
+        return new M1AcceptanceCase(name, false, "沒有找到開拓建立新聚落的案例");
+    }
+}
+
+/// <summary>同時寫到兩個輸出（主控台＋報告檔）。</summary>
+internal sealed class M1TeeWriter : TextWriter
+{
+    private readonly TextWriter _a;
+    private readonly TextWriter _b;
+
+    public M1TeeWriter(TextWriter a, TextWriter b)
+    {
+        _a = a;
+        _b = b;
+    }
+
+    public override Encoding Encoding => Encoding.UTF8;
+
+    public override void Write(char value)
+    {
+        _a.Write(value);
+        _b.Write(value);
+    }
+
+    public override void Write(string? value)
+    {
+        _a.Write(value);
+        _b.Write(value);
+    }
+
+    public override void WriteLine(string? value)
+    {
+        _a.WriteLine(value);
+        _b.WriteLine(value);
+    }
+}
+
 /// <summary>文字觀察者的 --m1-check 入口。</summary>
 public static class M1AcceptanceCli
 {
     /// <summary>TEMP 測試 fixture：預設三個固定種子。</summary>
     public static IReadOnlyList<ulong> DefaultSeeds { get; } = new ulong[] { 42, 7, 1 };
 
+    /// <summary>
+    /// 第 08 章 d 節 TEMP fixture：普通世界（人類採集）長期生存調查的種子 1～20。
+    /// 只用來如實統計「多少種子活過百年」並找出可重現的長期生存種子；不挑選、不調數值。
+    /// </summary>
+    public static IReadOnlyList<ulong> SurveySeeds { get; } = Enumerable.Range(1, 20).Select(i => (ulong)i).ToArray();
+
     public const int DefaultYears = 100;
 
     public static string Usage
         => $"用法：--m1-check [--years <1～{DemoCenturyRun.MaxYears}，預設 {DefaultYears}>] [--seed <非負整數>] "
-         + $"[--preset {string.Join("|", M1Preset.All.Select(p => p.Key))}] [--checks <45G CSV 路徑>] [--world-params <01 CSV 路徑>]";
+         + $"[--preset {string.Join("|", M1Preset.All.Select(p => p.Key))}] [--checks <45G CSV 路徑>] [--world-params <01 CSV 路徑>] [--report <輸出報告路徑>]";
 
     /// <summary>執行並回傳結束碼：0＝Hard 全部沒有失敗；1＝有 Hard 失敗；2＝參數或清單錯誤。</summary>
     public static int Run(IReadOnlyList<string> args, TextWriter output)
@@ -1044,11 +1253,12 @@ public static class M1AcceptanceCli
         M1Preset? preset = null;
         string? checksPath = null;
         string? worldParamsPath = null;
+        string? reportPath = null;
         for (var i = 0; i < args.Count; i += 2)
         {
             var flag = args[i];
             var value = i + 1 < args.Count ? args[i + 1] : null;
-            if (flag is not ("--years" or "--seed" or "--preset" or "--checks" or "--world-params"))
+            if (flag is not ("--years" or "--seed" or "--preset" or "--checks" or "--world-params" or "--report"))
                 return Error(output, $"不認得的參數「{flag}」。");
             if (value is null)
                 return Error(output, $"參數 {flag} 缺少值。");
@@ -1072,6 +1282,9 @@ public static class M1AcceptanceCli
                     break;
                 case "--world-params":
                     worldParamsPath = value;
+                    break;
+                case "--report":
+                    reportPath = value;
                     break;
                 default:
                     checksPath = value;
@@ -1104,9 +1317,34 @@ public static class M1AcceptanceCli
             return Error(output, ex.Message);
         }
 
+        var report = new StringWriter();
+        var writer = reportPath is null ? output : new M1TeeWriter(output, report);
+        var code = RunChecks(checks, calendar, years, seed, preset, writer);
+        if (reportPath is not null)
+        {
+            try
+            {
+                var full = Path.GetFullPath(reportPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+                File.WriteAllText(full, report.ToString(), new UTF8Encoding(false));
+                output.WriteLine($"驗收報告已寫入：{full}");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                return Error(output, $"無法寫入驗收報告 {reportPath}：{ex.Message}");
+            }
+        }
+        return code;
+    }
+
+    private static int RunChecks(IReadOnlyList<M1CheckDefinition> checks, WorldCalendar calendar, int years, ulong? seed, M1Preset? preset,
+        TextWriter output)
+    {
         var seeds = seed is ulong s ? new[] { s } : DefaultSeeds.ToArray();
         var presets = preset is not null ? new[] { preset } : M1Preset.Default.ToArray();
-        output.WriteLine("=== 世界觀察者 v0｜表 45G M1 驗收報告（V0-08A）===");
+        // 正式驗收（不指定種子與情境）才跑普通世界長期生存調查。
+        var official = seed is null && preset is null;
+        output.WriteLine("=== 世界觀察者 v0｜表 45G M1 驗收報告（第 08 章 d 節）===");
         output.WriteLine($"檢查清單：{M1CheckCatalog.RelativePath}（Enabled=TRUE 共 {checks.Count} 項，依清單順序）");
         output.WriteLine(calendar.Describe());
         output.WriteLine("注意：種子、情境、人口與糧食數值都是 TEMP 測試 fixture；本報告只量測，不改任何模擬規則或數值。");
@@ -1122,7 +1360,48 @@ public static class M1AcceptanceCli
             }
         }
 
-        return WriteSummary(checks, reports, seeds.Length, presets.Length, years, output);
+        var survey = new List<M1RunReport>();
+        if (official)
+        {
+            output.WriteLine();
+            output.WriteLine($"=== 普通世界長期生存調查（{M1Preset.Living.Name}，種子 {SurveySeeds[0]}～{SurveySeeds[^1]}，各 {years} 年；TEMP fixture）===");
+            foreach (var runSeed in SurveySeeds)
+            {
+                var report = DefaultSeeds.Contains(runSeed)
+                    ? reports.First(r => r.Run.Seed == runSeed && r.Run.Preset == M1Preset.Living)
+                    : M1Evaluator.Evaluate(M1RunCollector.Collect(runSeed, M1Preset.Living, years, calendar.DaysPerYear), checks);
+                survey.Add(report);
+                output.WriteLine($"  {SurveyLine(report)}");
+            }
+            var alive = survey.Count(r => SurveyAlive(r.Run));
+            output.WriteLine($"  調查結果：{survey.Count} 個種子中 {alive} 個活過 {years} 年，{survey.Count - alive} 個全滅（如實記錄，不調數值）。");
+        }
+
+        return WriteSummary(checks, reports, survey, seeds.Length, presets.Length, years, official, output);
+    }
+
+    private static bool SurveyAlive(M1RunData run)
+        => run.AbortReason is null && run.Weeks.Count > 0 && run.TotalsAfterWeek.TryGetValue(run.Weeks[^1].Week, out var t) && t.Population > 0;
+
+    private static string SurveyLine(M1RunReport report)
+    {
+        var run = report.Run;
+        var populations = run.TotalsAfterWeek.OrderBy(kv => kv.Key).Select(kv => kv.Value.Population).ToList();
+        var final = populations.Count == 0 ? run.Initial.Population : populations[^1];
+        var births = run.Weeks.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
+        var founded = run.Weeks.Sum(w => w.Events.Count(e => e.Kind == DemoSettlementEventKind.SettlementFounded));
+        string fate;
+        if (run.AbortReason is not null)
+            fate = $"中止：{run.AbortReason}";
+        else if (final > 0)
+            fate = $"存活（期末有人聚落 {run.Weeks[^1].Settlements.Count(l => l.PopulationClosing > 0)} 個）";
+        else
+        {
+            var week = run.TotalsAfterWeek.Where(kv => kv.Value.Population == 0).Select(kv => kv.Key).Min();
+            fate = $"第 {WorldCalendarRules.WeeklySettlementInYear(week, run.DaysPerYear).Year} 年全滅";
+        }
+        var hard = report.Results.Count(r => r.Verdict == M1Verdict.Fail);
+        return $"種子 {run.Seed}｜人口 {run.Initial.Population}→{final}（最高 {populations.Append(run.Initial.Population).Max()}）｜出生 {births}｜新建聚落 {founded}｜{fate}｜Hard 失敗 {hard}";
     }
 
     public static void WriteRun(M1RunReport report, TextWriter output)
@@ -1135,18 +1414,21 @@ public static class M1AcceptanceCli
     }
 
     private static int WriteSummary(
-        IReadOnlyList<M1CheckDefinition> checks, IReadOnlyList<M1RunReport> reports,
-        int seedCount, int presetCount, int years, TextWriter output)
+        IReadOnlyList<M1CheckDefinition> checks, IReadOnlyList<M1RunReport> reports, IReadOnlyList<M1RunReport> survey,
+        int seedCount, int presetCount, int years, bool official, TextWriter output)
     {
         output.WriteLine();
         output.WriteLine($"=== M1 驗收總結（{seedCount} 種子 × {presetCount} 情境，各 {years} 年；依 45G 順序）===");
+        var all = reports.Concat(survey.Where(r => !reports.Contains(r))).ToList();
         var failed = new List<string>();
+        var overallOf = new Dictionary<string, M1Verdict>(StringComparer.Ordinal);
         var hardPassed = 0;
         var hardTotal = 0;
         foreach (var check in checks)
         {
-            var verdicts = reports.Select(r => r.Results.Single(x => x.Check.Id == check.Id).Verdict).ToList();
+            var verdicts = all.Select(r => r.Results.Single(x => x.Check.Id == check.Id).Verdict).ToList();
             var overall = M1Evaluator.Aggregate(verdicts);
+            overallOf[check.Id] = overall;
             output.WriteLine($"  {check.Id}｜{check.Name}｜{check.CategoryText}｜{M1Evaluator.Label(overall)}｜"
                 + $"通過 {verdicts.Count(v => v == M1Verdict.Pass)}、警告 {verdicts.Count(v => v == M1Verdict.Warn)}、"
                 + $"失敗 {verdicts.Count(v => v == M1Verdict.Fail)}、尚未實作 {verdicts.Count(v => v == M1Verdict.Unimplemented)}");
@@ -1161,15 +1443,43 @@ public static class M1AcceptanceCli
         }
 
         output.WriteLine($"Hard 項目：通過 {hardPassed}／{hardTotal}，失敗 {failed.Count} 項。");
+        if (official)
+            WriteOfficial(overallOf, all, failed.Count == 0, output);
         if (failed.Count > 0)
         {
             output.WriteLine($"結論：有 Hard 項目失敗（{string.Join("、", failed)}），結束碼 1。");
             return 1;
         }
 
-        output.WriteLine("結論：沒有 Hard 項目失敗；Warning／Behavior Check 只報告、不影響結束碼。"
-            + "這不等於 P1-M1 已正式驗收（門檻與情境仍是 TEMP，見 #75）。");
+        output.WriteLine(official
+            ? "結論：沒有 Hard 項目失敗；正式驗收結果見上方「正式驗收」。"
+            : "結論：沒有 Hard 項目失敗；Warning／Behavior Check 只報告、不影響結束碼（單一種子或情境不做正式驗收）。");
         return 0;
+    }
+
+    private static void WriteOfficial(IReadOnlyDictionary<string, M1Verdict> overallOf, IReadOnlyList<M1RunReport> all, bool noHardFailure,
+        TextWriter output)
+    {
+        output.WriteLine();
+        output.WriteLine("=== P1-M1 正式驗收（第 08 章 d 節；TEMP 門檻見 docs/TEMP_待裁決清單.md D1／D2）===");
+        var missing = new List<string>();
+        foreach (var id in M1OfficialAcceptance.RequiredIds)
+        {
+            var verdict = overallOf.TryGetValue(id, out var v) ? v : M1Verdict.Unimplemented;
+            output.WriteLine($"  必要項目 {id}｜{M1Evaluator.Label(verdict)}");
+            if (verdict != M1Verdict.Pass)
+                missing.Add(id);
+        }
+        foreach (var c in M1OfficialAcceptance.Cases(all))
+        {
+            output.WriteLine($"  案例｜{c.Name}｜{(c.Found ? "找到" : "沒有找到")}｜{c.Evidence}");
+            if (!c.Found)
+                missing.Add(c.Name);
+        }
+        output.WriteLine("  不列入正式條件：M1_ACCESS（聚落內分組取用尚未實作）、M1_VARIETY（只報告）。");
+        output.WriteLine(missing.Count == 0 && noHardFailure
+            ? "正式驗收：通過——P1-M1 生存聚落功能閉環達標（門檻為 TEMP）。"
+            : $"正式驗收：未通過（{string.Join("、", missing.DefaultIfEmpty("有 Hard 失敗"))}）。");
     }
 
     private static int Error(TextWriter output, string message)
