@@ -86,8 +86,13 @@ public sealed record DemoTempPerson(
     public bool IsWith(DemoTempPerson other)
         => BatchId is null ? other.BatchId is null && other.SettlementId == SettlementId : other.BatchId == BatchId;
 
+    /// <summary>第 08-1 章：親子（不得配對；config/demo KinExclusion＝PARENT_CHILD）。</summary>
+    public bool IsParentOrChildOf(DemoTempPerson other)
+        => other.Id == MotherId || other.Id == BirthFatherId || other.MotherId == Id || other.BirthFatherId == Id;
+
     /// <summary>
-    /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）不得配對（config/demo KinExclusion）。
+    /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）。
+    /// 第 08-1 章起手足可以配對（只在沒有非近親對象時，配對時優先非近親）；親子仍不得配對（<see cref="IsParentOrChildOf"/>）。
     /// 開局人口沒有記錄父母，彼此不算近親。
     /// </summary>
     public bool IsCloseKinOf(DemoTempPerson other)
@@ -255,7 +260,7 @@ public sealed class DemoTempDemography
         foreach (var p in builder.Values.Where(p => p.PartnerId is not null))
         {
             if (!builder.TryGetValue(p.PartnerId!.Value, out var partner) || partner.PartnerId != p.Id
-                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsCloseKinOf(partner)
+                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsParentOrChildOf(partner)
                 || !partner.IsWith(p))
                 throw new InvalidOperationException("Invalid TEMP partnership.");
         }
@@ -421,16 +426,18 @@ public sealed class DemoTempDemography
                 people[p.Id] = p with { PartnerId = null };
         }
         // 第 07 章 b 節：只有定居者配對（途中不新配對；已配對的家庭整批同行，不會被拆開）。
-        // 第 08-1 章【TEMP 規則】：育齡女性先配（依 ID）、其後是其他成年女性；每位配給同聚落、未配對、非近親、
-        // 年齡最接近的成年男性（同差距取 ID 小者）。舊規則「ID 最小的男性」常讓老人占走年輕伴侶、育齡女性配不到。
+        // 第 08-1 章【TEMP 規則】：育齡女性先配（依 ID）、其後是其他成年女性；每位配給同聚落、未配對、非親子的成年男性，
+        // 優先非近親（手足只在沒有其他對象時才配），再取年齡最接近（同差距取 ID 小者）。
+        // 舊規則「ID 最小的男性」常讓老人占走年輕伴侶；手足一律不配則小聚落一代之後就斷代（使用者 2026-10-21：先允許近親婚，之後以文化與疾病降低傾向）。
         var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsSettled
             && m.IsAdultAt(day, rules)).ToList();
         foreach (var woman in people.Values.Where(w => w.Sex == DemoTempSex.Female && w.PartnerId is null
                      && w.IsSettled && w.IsAdultAt(day, rules))
                  .OrderBy(w => w.AgeYearsAt(day) < rules.FertileAgeMaxYears ? 0 : 1).ThenBy(w => w.Id).ToArray())
         {
-            var man = freeMen.Where(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m))
-                .OrderBy(m => Math.Abs((long)m.BornDay - woman.BornDay)).ThenBy(m => m.Id).FirstOrDefault();
+            var man = freeMen.Where(m => m.SettlementId == woman.SettlementId && !woman.IsParentOrChildOf(m))
+                .OrderBy(m => woman.IsCloseKinOf(m) ? 1 : 0)
+                .ThenBy(m => Math.Abs((long)m.BornDay - woman.BornDay)).ThenBy(m => m.Id).FirstOrDefault();
             if (man is null) continue;
             freeMen.Remove(man);
             people[woman.Id] = woman with { PartnerId = man.Id };

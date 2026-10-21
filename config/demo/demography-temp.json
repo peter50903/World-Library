@@ -1,14 +1,30 @@
 {
   "SchemaVersion": 1,
   "Status": "TEMP",
-  "Notes": "第 07 章 a 節 TEMP 人口參數：孕期週數、育齡上限、開局年齡層比例（百分比，合計 100）、近親排除範圍。成年年齡、典型壽命、月受孕基率讀 02_種族 RACE_HUMAN；自然死亡讀 39C LIFE_DEATH_BANDS；流產基準讀 39C REP_MISCARRIAGE。",
+  "Notes": "第 07 章 a 節 TEMP 人口參數：孕期週數、育齡上限、開局年齡層比例（百分比，合計 100）、近親排除範圍（第 08-1 章起只排除親子；手足可配但配對時優先非近親，之後以文化與疾病降低傾向）。成年年齡、典型壽命、月受孕基率讀 02_種族 RACE_HUMAN；自然死亡讀 39C LIFE_DEATH_BANDS；流產基準讀 39C REP_MISCARRIAGE。",
   "GestationWeeks": 39,
   "FertileAgeMaxYears": 45,
-  "KinExclusion": "PARENT_CHILD_SIBLING",
+  "KinExclusion": "PARENT_CHILD",
   "OpeningAgeBands": [
-    { "MinAge": 0, "MaxAge": 17, "Percent": 35 },
-    { "MinAge": 18, "MaxAge": 44, "Percent": 45 },
-    { "MinAge": 45, "MaxAge": 59, "Percent": 12 },
-    { "MinAge": 60, "MaxAge": 79, "Percent": 8 }
+    {
+      "MinAge": 0,
+      "MaxAge": 17,
+      "Percent": 35
+    },
+    {
+      "MinAge": 18,
+      "MaxAge": 44,
+      "Percent": 45
+    },
+    {
+      "MinAge": 45,
+      "MaxAge": 59,
+      "Percent": 12
+    },
+    {
+      "MinAge": 60,
+      "MaxAge": 79,
+      "Percent": 8
+    }
   ]
 }

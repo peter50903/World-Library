@@ -232,6 +232,28 @@ public sealed class DemoTempDemographyTests
             new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(8)).People.ToArray());
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void PairingPrefersNonKinButAllowsSiblingsAndNeverParentChild(bool withStranger)
+    {
+        // 第 08-1 章：手足可配但優先非近親；親子永遠不配。
+        var people = new List<DemoTempPerson>
+        {
+            new(1, 1, DemoTempSex.Female, -60 * 365),
+            new(2, 1, DemoTempSex.Male, -61 * 365),
+            new(3, 1, DemoTempSex.Female, -20 * 365, MotherId: 1, BirthFatherId: 2),
+            new(4, 1, DemoTempSex.Male, -21 * 365, MotherId: 1, BirthFatherId: 2)
+        };
+        if (withStranger)
+            people.Add(new DemoTempPerson(5, 1, DemoTempSex.Male, -30 * 365));
+        var pop = DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 6, people.ToImmutableArray()), Rules);
+        var after = pop.AdvanceWeek(1, _ => true, Rules, Draws(11)).Population.People.ToDictionary(p => p.Id);
+        Assert.Equal(withStranger ? 5 : 4, after[3].PartnerId);
+        Assert.All(after.Values.Where(p => p.PartnerId is not null),
+            p => Assert.False(p.IsParentOrChildOf(after[p.PartnerId!.Value])));
+    }
+
     [Fact]
     public void ConceptionOnlyWithStablePartnerAndNeverCloseKin()
     {
@@ -250,7 +272,7 @@ public sealed class DemoTempDemographyTests
                 var partner = result.Population.People.Single(q => q.Id == p.PartnerId);
                 Assert.Equal(p.Id, partner.PartnerId);
                 Assert.NotEqual(p.Sex, partner.Sex);
-                Assert.False(p.IsCloseKinOf(partner));
+                Assert.False(p.IsParentOrChildOf(partner)); // 第 08-1 章：手足可配，親子不可
                 Assert.True(p.IsAdultAt(week * 7, Rules));
                 // 穩定：已存在的配對只會因死亡或分居解除，不換人。
                 if (partners.TryGetValue(p.Id, out var before) && result.Population.People.Any(q => q.Id == before))

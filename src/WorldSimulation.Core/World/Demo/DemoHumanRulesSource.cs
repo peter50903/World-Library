@@ -23,7 +23,7 @@ public sealed record DemoDemographyTempSettings(
         var settings = JsonSerializer.Deserialize<DemoDemographyTempSettings>(OfficialConfig.ReadDemoText("demography-temp.json"))
             ?? throw new InvalidOperationException("config/demo/demography-temp.json 讀不到。");
         if (settings.SchemaVersion != 1 || settings.Status != "TEMP" || settings.GestationWeeks < 1 || settings.FertileAgeMaxYears < 1
-            || settings.KinExclusion != "PARENT_CHILD_SIBLING" || settings.OpeningAgeBands is not { Count: > 0 }
+            || settings.KinExclusion != "PARENT_CHILD" || settings.OpeningAgeBands is not { Count: > 0 }
             || settings.OpeningAgeBands.Sum(b => b.Percent) != 100
             || settings.OpeningAgeBands.Any(b => b.MinAge < 0 || b.MaxAge < b.MinAge || b.Percent < 0))
             throw new InvalidOperationException("config/demo/demography-temp.json 內容不合法。");

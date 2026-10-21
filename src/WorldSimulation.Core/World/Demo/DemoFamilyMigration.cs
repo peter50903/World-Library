@@ -14,7 +14,7 @@ public static class DemoFamilyMigration
 
     /// <summary>
     /// 第 08-1 章【TEMP 規則】婚嫁遷移：本聚落最年輕的「找不到伴侶的育齡單身者」——
-    /// 育齡、沒有伴侶、沒有帶著未成年子女，而且聚落裡沒有任何未配對、非近親的成年異性。沒有就是 null。
+    /// 育齡、沒有伴侶、沒有帶著未成年子女，而且聚落裡沒有任何未配對、非親子的成年異性（手足可配，見配對規則）。沒有就是 null。
     /// </summary>
     public static DemoTempPerson? MateSeeker(IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
     {
@@ -24,7 +24,7 @@ public static class DemoFamilyMigration
         return people
             .Where(p => p.PartnerId is null && p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < rules.FertileAgeMaxYears
                 && !people.Any(c => !c.IsAdultAt(day, rules) && (c.MotherId == p.Id || c.BirthFatherId == p.Id))
-                && !people.Any(o => o.Sex != p.Sex && o.PartnerId is null && o.IsAdultAt(day, rules) && !p.IsCloseKinOf(o)))
+                && !people.Any(o => o.Sex != p.Sex && o.PartnerId is null && o.IsAdultAt(day, rules) && !p.IsParentOrChildOf(o)))
             .OrderByDescending(p => p.BornDay).ThenBy(p => p.Id)
             .FirstOrDefault();
     }
