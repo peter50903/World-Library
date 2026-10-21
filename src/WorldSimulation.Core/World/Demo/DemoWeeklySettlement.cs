@@ -283,7 +283,8 @@ public sealed record DemoSettlementWeekLedger(
     long WaterShortage = 0,
     long WaterCarriers = 0,
     long ChildStarvationDeaths = 0,
-    long ElderStarvationDeaths = 0)
+    long ElderStarvationDeaths = 0,
+    long SourceSlack = 0)
 {
     /// <summary>
     /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
@@ -609,6 +610,10 @@ internal static class DemoWeeklySettlement
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
         }
+        // 第 08-1 章：每個聚落可及範圍內全部自然來源的「每週可持續供應－本週全部採收」（DemoCrowding）。
+        var slackBySettlement = config.SharedCatchmentEnabled && map is not null
+            ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
+            : new Dictionary<int, long>();
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -857,7 +862,7 @@ internal static class DemoWeeklySettlement
             // 沒有已知可達的目的地就留下（45E MIG_NO_TARGET）；這不是人口自動平衡器。
             long emigrants = 0, foodOut = 0, debtOut = 0;
             // 第 08-1 章：人類採集世界在挨餓之前就分出一戶開拓（擁擠外移，只開拓新聚落、不搬進別的聚落）。
-            var slack = config.SharedCatchmentEnabled ? DemoCrowding.Slack(sourceLedgers, settlement.Id) : 0;
+            var slack = slackBySettlement.GetValueOrDefault(settlement.Id);
             var crowded = map is not null && config.MigrationEnabled && config.FoundingEnabled
                 && config.SharedCatchmentEnabled && config.HumanLifecycleEnabled
                 && DemoCrowding.Crowded(shortage, demand, survivors, slack);
@@ -1010,7 +1015,8 @@ internal static class DemoWeeklySettlement
                 FoodCarriedIn: arrived.Food, FoodCarriedOut: foodOut,
                 HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
                 AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
-                FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers));
+                FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
+                SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id)));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))

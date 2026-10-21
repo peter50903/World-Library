@@ -70,7 +70,7 @@ public static class LivingDiagnosis
                 var supply = weeks.Count == 0 ? 0 : weeks[^1].Sources.Where(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Any(sh => sh.SettlementId == s.Id)).Sum(x => x.FoodAvailable);
                 var food = world.SettlementFood(s.Id);
                 var ample = weeks.Count(w => w.Settlements.Any(l => l.SettlementId == s.Id
-                    && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, DemoCrowding.Slack(w.Sources, s.Id))));
+                    && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, l.SourceSlack)));
                 var seeker = DemoFamilyMigration.MateSeeker(residents, day, rules);
                 var singleF = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules);
                 var singleM = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules);

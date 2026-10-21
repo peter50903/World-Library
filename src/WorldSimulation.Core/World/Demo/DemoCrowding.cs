@@ -2,7 +2,8 @@ namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>
 /// 第 08-1 章：自然採集世界（人類採集）的「接近承載上限」判斷。結算、生育條件與因果驗證共用這一份。
-/// 餘量＝本週聚落實際取用過的自然來源，每週可持續供應減去本週所有聚落從它採走的量（可為負）。
+/// 餘量＝聚落可及範圍內全部自然來源的每週可持續供應，減去本週所有聚落從這些來源採走的量（可為負）；
+/// 結算時算好記在聚落週帳 <see cref="DemoSettlementWeekLedger.SourceSlack"/>，讀檔依地圖重算核對。
 /// 不用累積存量（未採部分會累積到 TEMP 4 週），否則人口已超過再生量時仍會誤判寬裕、繼續生育，等存量見底才崩潰。
 /// <list type="bullet">
 /// <item>生育：本週沒缺糧、沒飢餓債，而且餘量 ≥ 需求的 <see cref="TempBirthSlackPercent"/>%（糧食寬裕才受孕）——人口逼近上限時出生自然放慢，不會衝過頭再崩潰。</item>
@@ -28,12 +29,27 @@ public static class DemoCrowding
     /// <summary>【TEMP】每週為補存糧多採的上限（需求的百分比）。</summary>
     public const long TempStoreTopUpPercent = 50;
 
-    /// <summary>聚落本週取用過的來源：每週可持續供應 − 本週全部採收（可為負＝正在吃老本）。</summary>
-    public static long Slack(IReadOnlyList<DemoSourceWeekLedger> sources, int settlementId)
+    /// <summary>各聚落（非遺跡）可及範圍內全部來源：每週可持續供應 − 本週全部採收（可為負＝正在吃老本）。</summary>
+    public static Dictionary<int, long> SlackInReach(DemoHexWorld map, DemoWorldSites sites, IReadOnlyList<DemoSourceWeekLedger> sources)
+        => SlackInReach(map, sites.Settlements.Where(s => !s.IsRuin), sources);
+
+    /// <summary>同上，指定本週開始時存在且不是遺跡的聚落（讀檔重算用）。</summary>
+    public static Dictionary<int, long> SlackInReach(DemoHexWorld map, IEnumerable<DemoSettlement> active, IReadOnlyList<DemoSourceWeekLedger> sources)
     {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(active);
         ArgumentNullException.ThrowIfNull(sources);
-        return sources.Where(s => (s.Shares ?? Array.Empty<DemoSourceShare>()).Any(x => x.SettlementId == settlementId && x.Food > 0))
-            .Sum(s => DemoForagingWorld.Settings.WeeklySupply(s.Kind) - s.Harvested);
+        var settlements = active.ToList();
+        var result = settlements.ToDictionary(s => s.Id, _ => 0L);
+        foreach (var source in sources)
+        {
+            var spare = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
+            var cells = DemoHexFoodCatchment.EligibleCells(map,
+                new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
+            foreach (var settlement in settlements.Where(s => cells.Any(c => c.Column == s.Column && c.Row == s.Row)))
+                result[settlement.Id] = checked(result[settlement.Id] + spare);
+        }
+        return result;
     }
 
     /// <summary>
@@ -61,6 +77,6 @@ public static class DemoCrowding
         ArgumentNullException.ThrowIfNull(ledger);
         return report.Sources.Count > 0
             && Crowded(ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage,
-                ledger.PopulationOpening - ledger.StarvationDeaths, Slack(report.Sources, ledger.SettlementId));
+                ledger.PopulationOpening - ledger.StarvationDeaths, ledger.SourceSlack);
     }
 }

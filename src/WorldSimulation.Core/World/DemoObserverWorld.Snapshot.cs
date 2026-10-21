@@ -193,9 +193,17 @@ public sealed partial class DemoObserverWorld
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
         {
-            if (report.Sources.Count != 0)
-                Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳");
+            if (report.Sources.Count != 0 || report.Settlements.Any(l => l.SourceSlack != 0))
+                Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳或來源餘量");
             return;
+        }
+        // 第 08-1 章：聚落帳上的來源餘量＝依地圖與本週來源帳重算（生育與擁擠外移都依它，不能竄改）。
+        var slack = DemoCrowding.SlackInReach(map,
+            sites.Settlements.Where(s => s.FoundedWeek < w && !(s.IsRuin && s.RuinedWeek < w)), report.Sources);
+        foreach (var ledger in report.Settlements)
+        {
+            if (ledger.SourceSlack != slack.GetValueOrDefault(ledger.SettlementId))
+                Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的來源餘量與地圖重算不符");
         }
         // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
         // 第 07 章 c 節：來源依「當週開始時」的人造佔格重算（新聚落建立後才佔格，遺跡恢復）。

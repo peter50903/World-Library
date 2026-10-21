@@ -88,7 +88,7 @@ internal static class DemoHumanLifecycle
             // 第 08-1 章：糧食寬裕才受孕（取用來源仍有 TEMP 餘量），人口逼近上限時出生自然放慢。
             return ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0
                 && DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage,
-                    DemoCrowding.Slack(report.Sources, id));
+                    ledger.SourceSlack);
         }, Rules, draws, entityAllocator);
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
