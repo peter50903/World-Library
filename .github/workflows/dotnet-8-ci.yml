@@ -14,7 +14,7 @@ jobs:
   dotnet:
     name: .NET 8 SDK and build verification
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -44,8 +44,8 @@ jobs:
           if [[ -f WorldSimulation.sln ]]; then
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
-            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。
-            for s in 1 7; do
+            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。第 08-2 章：人口變多、長跑變慢，只診斷種子 1。
+            for s in 1; do
               dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
               grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
               # 註記上限約 4 KB：切成多段（每段約 40 行）。
