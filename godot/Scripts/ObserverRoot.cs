@@ -103,7 +103,7 @@ public partial class ObserverRoot : Control
         TempScenario.Frontier => "開拓｜觀察新聚落（TEMP）",
         TempScenario.Foraging => "森林／河流採集生存（預設，TEMP）",
         TempScenario.CrowdedForaging => "森林周邊人口過密｜觀察缺糧（TEMP）",
-        TempScenario.LivingForaging => "人類繁衍＋自然死亡（預設，TEMP）",
+        TempScenario.LivingForaging => "希望時代：人類採集（預設，TEMP）",
         _ => "舊版一般（TEMP，舊農田測試）"
     };
 
@@ -116,7 +116,7 @@ public partial class ObserverRoot : Control
         "開拓" => TempScenario.Frontier,
         "森林河流生存" => TempScenario.Foraging,
         "森林周邊人口過密" => TempScenario.CrowdedForaging,
-        "人類繁衍與自然死亡" => TempScenario.LivingForaging,
+        "希望時代：人類採集" => TempScenario.LivingForaging,
         _ => null
     };
 
@@ -1061,6 +1061,10 @@ public partial class ObserverRoot : Control
         if (_world.MigrationsInTransit().Count == 0 || _hexMap.Migrants.Count != _world.MigrationsInTransit().Count
             || !_history.Text.Contains("因缺糧外移", StringComparison.Ordinal))
             Fail("local famine did not show Core's migrant batch.");
+        // 第 08-2 章：遷徙圖示畫在所在六角格的正中央。
+        var migrantCell = _world.Map.GetCell(_world.MigrationsInTransit()[0].Cell.Column, _world.MigrationsInTransit()[0].Cell.Row);
+        if (_hexMap.MigrantCenter(migrantCell) != _hexMap.CellCenter(migrantCell))
+            Fail("the migrant marker is not centred on its hex.");
         CheckSameAsCore(TempScenario.LocalFamine);
         var migrationDay = _world.Snapshot().DaysElapsed;
 

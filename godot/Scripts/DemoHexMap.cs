@@ -202,17 +202,8 @@ public partial class DemoHexMap : Control
             }
         }
 
-        // #113: show all and only the Core-reachable cells for a selected food source.
-        foreach (var tile in FoodReachCells)
-        {
-            var cell = World.GetCell(tile.Column, tile.Row);
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
-            var ring = new Vector2[7];
-            for (var i = 0; i < 6; i++) ring[i] = vertices[i];
-            ring[6] = vertices[0];
-            DrawPolyline(ring, new Color(0.97f, 0.82f, 0.25f, 0.85f), 2.5f);
-        }
+        // 第 08-2 章：不再畫選取來源的供應範圍外框（使用者 2026-10-21：不需要用圈和線標示共用食物範圍）；
+        // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
         if (Highlight is { } focus && focus.Column >= 0 && focus.Column < DemoHexWorld.Columns
@@ -228,14 +219,12 @@ public partial class DemoHexMap : Control
             DrawPolyline(ring, new Color(1f, 0.95f, 0.35f), 3.5f);
         }
 
-        // V0-06A: travelling migrants, offset to the lower right so a batch still standing on its
-        // source settlement does not hide the golden settlement marker.
+        // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
         var font = ThemeDB.FallbackFont;
         foreach (var batch in Migrants)
         {
             var cell = World.GetCell(batch.Cell.Column, batch.Cell.Row);
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius)
-                + new Vector2(radius * 0.38f, radius * 0.30f);
+            var center = MigrantMarkerCenter(start, radius, cell);
             if (!DrawMarker(ArtAssets.IconMigrants, center, radius * 0.95f))
             {
                 DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
@@ -247,6 +236,17 @@ public partial class DemoHexMap : Control
             DrawCircle(labelPos + new Vector2(size * 0.3f, -size * 0.35f), size * 0.62f, new Color(0.12f, 0.08f, 0.05f, 0.85f));
             DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
         }
+    }
+
+    /// <summary>第 08-2 章：遷徙隊伍圖示的中心＝所在六角格的中心（冒煙測試核對）。</summary>
+    private static Vector2 MigrantMarkerCenter(Vector2 start, float radius, DemoHexCell cell)
+        => start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+
+    /// <summary>冒煙測試用：某一格遷徙圖示的畫面中心（應等於 <see cref="CellCenter"/>）。</summary>
+    public Vector2 MigrantCenter(DemoHexCell cell)
+    {
+        var (start, radius) = ViewLayout();
+        return MigrantMarkerCenter(start, radius, cell);
     }
 
     /// <summary>第 08 章 a 節：開發狀態的圖塊（未開發＝null，改用地形圖塊）。</summary>

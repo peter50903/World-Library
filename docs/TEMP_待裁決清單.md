@@ -56,6 +56,17 @@
 | 擁擠分家 | 餘量 ＜ 需求 10%、人口 ≥ 8、分出 1/3 | 在挨餓之前就擴散 |
 | 開拓選址 | 6 格、選餘量養得起開拓隊且最大的空地 | 避免擠在舊聚落旁 |
 
+#### D08-2｜希望時代（第 08-2 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 飢餓致死 | 希望時代不致死（飢餓債照記，只停止受孕、促成遷徙） | 使用者 2026-10-21：希望時代沒有餓死 |
+| 自然死亡年齡 | 60 歲以上（survival-temp.json 老年起算） | 使用者：只有老死 |
+| 開局存糧 | 每人 16（4 週成人食量） | 開局不應立刻挨餓 |
+| 開局間距 | 開局聚落相隔 ≥ 3 格（不共用來源） | 開局聚落搶同一批來源 |
+| 開局選址供應下限 | 可及來源每週 ≥ 60 | 14 人開局約需 46 |
+| 外移保留 | 最年輕一對育齡夫婦一定留下 | 外移帶走全部夫婦，原村只能老去 |
+
 #### D3｜每週生存結算數值組（`DemoWeeklyTempConfig.Sample`）
 
 | 參數 | 目前 TEMP 值 | 單位 | 程式位置 |
@@ -262,19 +273,19 @@
 |---|---|---|
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 25 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）；第 08-1 章擇偶依年齡、開局兩對建村夫婦 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementTempSettings.cs` | 2 | 第 07 章 c 節：人口連續為 0 滿 52 週成為遺跡（config/demo/settlement-temp.json）；遺跡格不能直接重建、開拓選址須可及未被佔用的自然來源 |
-| `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 5 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）；第 08-1 章開拓需伴侶、開拓需兩對伴侶、婚嫁遷移出發者 |
+| `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 6 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）；第 08-1 章開拓需伴侶、開拓需兩對伴侶、婚嫁遷移出發者；第 08-2 章外移保留一對育齡夫婦 |
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
-| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 11 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕 |
+| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 12 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 8 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 51 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 54 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 17 | D7；第 08-1 章宜居開局 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 21 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 18 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |

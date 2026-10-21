@@ -70,12 +70,20 @@ public static class DemoFamilyMigration
     /// 第 08-1 章【TEMP 規則】：<paramref name="requireCouple"/>（開拓隊）時，最先放入兩戶成年伴侶（兩個不同家庭），
     /// 放不下兩對就不出發（回傳空）——只有一個家庭的新聚落，下一代都是手足、無法通婚。
     /// </summary>
+    /// <remarks>
+    /// 第 08-2 章【TEMP 規則】<paramref name="keepCouple"/>（希望時代）：原聚落有育齡伴侶時，最年輕的一對育齡伴侶（連同子女）一定留下，
+    /// 外移不會帶走原聚落全部的育齡夫婦、讓留下的人只能老去。
+    /// </remarks>
     public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules,
-        bool requireCouple = false)
+        bool requireCouple = false, bool keepCouple = false)
     {
         var chosen = new List<long>();
         var left = limit;
         var families = Families(residents, day, rules).ToList();
+        if (keepCouple && families.FirstOrDefault(f => f.Count(p => p.IsAdultAt(day, rules)) == 2
+                && f.Any(p => p.Sex == DemoTempSex.Female && p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < rules.FertileAgeMaxYears))
+            is { } stay)
+            families.Remove(stay);
         if (requireCouple)
         {
             var couples = new List<IReadOnlyList<DemoTempPerson>>();

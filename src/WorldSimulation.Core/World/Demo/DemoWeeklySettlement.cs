@@ -67,7 +67,9 @@ public sealed record DemoWeeklyTempConfig(
         // still limited by genuine natural-source budget (never mint food).
         // 第 08-1 章：8→16。診斷（--diagnose-living）顯示 2 名成人扣 1 名取水者後勞力上限＝需求，
         // 孩子一出生就缺糧餓死、人口無法成長；提高後限制人口的是可及自然來源（承載上限），不是勞力。
-        YieldPerWorkerPerWeek = 16
+        YieldPerWorkerPerWeek = 16,
+        // 第 08-2 章【TEMP】希望時代開局存糧：每人 4 週食量（成人每週 4 × 4），開局不會一開始就挨餓。
+        InitialFoodPerPerson = 16
     };
 
     /// <summary>Player comparison mode: same forest20 / river5, but unusually crowded camps
@@ -107,6 +109,16 @@ public sealed record DemoWeeklyTempConfig(
         TempFamineAllOriginal = true,
         FoundingEnabled = true
     };
+
+    /// <summary>
+    /// 第 08-2 章：希望時代（世界的第一個時代；目前＝人類採集普通世界）。沒有災難、沒有紛爭，
+    /// 飢餓與缺水不致死（缺糧只會停止受孕、促成遷徙，飢餓債照記），只有老年才會自然死亡（見 <see cref="DemoHumanLifecycle.Rules"/>）。
+    /// 其他 TEMP 情境（局部饑荒、開拓等驗收用情境）仍照舊會餓死。
+    /// </summary>
+    public bool HopeEra => HumanLifecycleEnabled;
+
+    /// <summary>第 08-2 章：時代名稱（沒有時代標籤的 TEMP 情境＝null）。</summary>
+    public string? EraName => HopeEra ? "希望時代" : null;
 
     internal void Validate()
     {
@@ -665,7 +677,8 @@ internal static class DemoWeeklySettlement
                 debt -= recovered;
             }
 
-            var deaths = Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
+            // 第 08-2 章：希望時代飢餓不致死（飢餓債照記，只停止受孕、促成遷徙）。
+            var deaths = config.HopeEra ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
             if (survivors == 0)
@@ -825,7 +838,8 @@ internal static class DemoWeeklySettlement
             }
 
             // ⑦ 健康後果：每累積 TEMP 門檻的飢餓債造成 1 人餓死，該部分債務隨死者移除。
-            var deaths = Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
+            // 第 08-2 章：希望時代飢餓不致死（飢餓債照記，只停止受孕、促成遷徙）。
+            var deaths = config.HopeEra ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
             if (survivors == 0)

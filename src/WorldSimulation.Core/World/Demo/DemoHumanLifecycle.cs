@@ -10,7 +10,14 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 internal static class DemoHumanLifecycle
 {
-    public static DemoTempDemographyRules Rules => DemoTempDemographyRules.HumanFixture;
+    /// <summary>
+    /// 人族規則。第 08-2 章：人類繁衍目前只出現在希望時代，只有老年（TEMP 老年起算年齡，survival-temp.json）才會自然死亡；
+    /// 39C 年輕族群的自然死亡風險在希望時代不套用。
+    /// </summary>
+    public static DemoTempDemographyRules Rules { get; } = DemoTempDemographyRules.HumanFixture with
+    {
+        NaturalDeathMinAgeYears = DemoSurvivalTempSettings.Current.ElderAgeYears
+    };
 
     /// <returns>
     /// 生死後的週結算、人口名冊，以及第 03 章 b 節的「事件 ID → 當事人」：出生＝新生兒＋母＋父；
@@ -62,7 +69,7 @@ internal static class DemoHumanLifecycle
             // 第 08-1 章：婚嫁遷移只出發那一位找不到伴侶的單身者。
             var ids = leg.MateSeeking
                 ? DemoFamilyMigration.MateSeeker(residents, day, Rules) is { } seeker ? new[] { seeker.Id } : Array.Empty<long>()
-                : DemoFamilyMigration.Choose(residents, leg.PopulationOpening, day, Rules, requireCouple: leg.Founding);
+                : DemoFamilyMigration.Choose(residents, leg.PopulationOpening, day, Rules, requireCouple: leg.Founding, keepCouple: true);
             if (ids.Length != leg.PopulationOpening)
                 throw new InvalidOperationException("Departing families do not match the migration ledger.");
             moved = moved.Depart(ids, leg.BatchId);
@@ -215,7 +222,8 @@ internal static class DemoHumanLifecycle
         var residents = opening.People.Where(p => p.IsSettled && p.SettlementId == settlementId && !starved.Contains(p.Id)).ToList();
         if (mode == DemoEmigrationMode.Mate)
             return limit >= 1 && DemoFamilyMigration.MateSeeker(residents, week * 7, Rules) is not null ? 1 : 0;
-        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: mode == DemoEmigrationMode.Founding).Length;
+        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: mode == DemoEmigrationMode.Founding,
+            keepCouple: true).Length;
     }
 
     /// <summary>第 06 章 d 節：聚落餓死名單（定居者，依年齡權重）。</summary>
