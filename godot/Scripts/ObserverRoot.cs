@@ -473,6 +473,8 @@ public partial class ObserverRoot : Control
             VerifyHumanLifecycleSmoke();
         if (ForagingSmoke)
             VerifyForagingSmoke(nextButton);
+        if (ChartSmoke)
+            VerifyYearChartSmoke();
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.
@@ -1372,6 +1374,7 @@ public partial class ObserverRoot : Control
         _hexMap.Land = _world.Land;
         _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
+        RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。
         _hexMap.QueueRedraw();
 
         // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），

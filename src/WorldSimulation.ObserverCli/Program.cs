@@ -64,7 +64,7 @@ if (years is not null && historySeed is not null)
     return 2;
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜verify N 完整驗證槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜y 年報（第 08 章 b 節，與年度圖表同一份年帳）｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜verify N 完整驗證槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 // 第 02 章 b 節：互動與無畫面模式都先載入並驗證正式設定（01＋29），失敗就停止（結束碼 2）。
 var officialConfig = OfficialConfig.Load();
@@ -200,6 +200,26 @@ while (true)
         foreach (var w in weeks.Skip(Math.Max(0, weeks.Count - 10)))
             Console.WriteLine($"  {w.Summary()}");
         if (weeks.Count == 0) Console.WriteLine("  尚未發生任何週結算（第 7 日才有第一次週結算）。");
+        continue;
+    }
+    if (command is "y" or "year")
+    {
+        // 第 08 章 b 節：年報＝已提交週報彙整的年帳（Godot 年度圖表同一份 DemoYearLedger）；進行中的年份也列出。
+        WorldCalendar yearCalendar;
+        try
+        {
+            yearCalendar = WorldCalendarConfig.LoadDefault();
+        }
+        catch (WorldCalendarException ex)
+        {
+            Console.WriteLine($"無法讀取正式曆法：{ex.Message}");
+            continue;
+        }
+        var yearRows = DemoYearLedger.FromWeeks(world.WeekReports(), yearCalendar.DaysPerYear, world.Snapshot().DaysElapsed);
+        Console.WriteLine($"年報（共 {yearRows.Count} 年，資料＝已提交週報彙整）：");
+        foreach (var y in yearRows)
+            Console.WriteLine($"  {y.Describe()}{(DemoYearLedger.IsComplete(y, yearCalendar.DaysPerYear) ? "" : "（進行中）")}");
+        if (yearRows.Count == 0) Console.WriteLine("  尚未發生任何週結算（第 7 日才有第一次週結算）。");
         continue;
     }
     if (command is "rng")

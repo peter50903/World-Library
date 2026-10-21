@@ -39,6 +39,8 @@ public static class ArtAssets
     public const string UiHelp = "res://assets/ui/ui_icon_help.png";
     public const string UiMapTerrain = "res://assets/ui/ui_icon_mapmode_terrain.png";
     public const string UiMapFood = "res://assets/ui/ui_icon_mapmode_food.png";
+    public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
+    public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（UI_ICON_CHART 待製作；缺少時按鈕顯示「圖表」）
 
     // 音訊
     public const string SfxClick = "res://assets/audio/sfx_click.ogg";
@@ -51,7 +53,7 @@ public static class ArtAssets
         TileGrassland, TileForest, TileWater, TileRiver, TileFarmland, TileFarmlandClearing,
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
-        UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood,
+        UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame,
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
@@ -121,6 +123,19 @@ public static class ArtAssets
             Texture = board,
             TextureMarginLeft = 24, TextureMarginRight = 24, TextureMarginTop = 10, TextureMarginBottom = 10, // TEMP：依素材邊框
             ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 4, ContentMarginBottom = 4
+        });
+    }
+
+    /// <summary>第 08 章 b 節：年度圖表外框（UI_CHART_FRAME）；中央留空給長條圖。</summary>
+    public static StyleBoxTexture? ChartFrameStyle()
+    {
+        if (Texture(UiChartFrame) is not { } frame)
+            return null;
+        return Track(new StyleBoxTexture
+        {
+            Texture = frame,
+            TextureMarginLeft = 44, TextureMarginRight = 44, TextureMarginTop = 40, TextureMarginBottom = 40, // TEMP：依素材包角
+            ContentMarginLeft = 30, ContentMarginRight = 30, ContentMarginTop = 28, ContentMarginBottom = 28
         });
     }
 
