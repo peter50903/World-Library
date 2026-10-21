@@ -326,6 +326,45 @@ public sealed record DemoSettlementWeekLedger(
         && HungerDebtBalanced && NonNegative;
 }
 
+/// <summary>第 04 章 c 節：一個共享自然來源本週分給一個聚落的量。</summary>
+public sealed record DemoSourceShare(int SettlementId, long Food);
+
+/// <summary>
+/// 第 04 章 c 節：共享採集來源層級週帳。守恆：Σ份額＋未採＝預算，皆非負，同一來源不重複聚落。
+/// 份額陣列以值比較。
+/// </summary>
+public sealed record DemoSourceWeekLedger(
+    int Week,
+    int SourceId,
+    DemoCatchmentSourceKind Kind,
+    int Column,
+    int Row,
+    long FoodAvailable,
+    IReadOnlyList<DemoSourceShare> Shares,
+    long Unharvested)
+{
+    public bool Equals(DemoSourceWeekLedger? other)
+        => other is not null && Week == other.Week && SourceId == other.SourceId && Kind == other.Kind
+        && Column == other.Column && Row == other.Row && FoodAvailable == other.FoodAvailable
+        && Unharvested == other.Unharvested && (Shares ?? Array.Empty<DemoSourceShare>()).SequenceEqual(other.Shares ?? Array.Empty<DemoSourceShare>());
+
+    public override int GetHashCode()
+        => HashCode.Combine(Week, SourceId, Kind, Column, Row, FoodAvailable, Unharvested, Shares?.Count ?? 0);
+
+    public override string ToString()
+        => FormattableString.Invariant(
+            $"source{SourceId}@w{Week}:{Kind}({Column},{Row}) {FoodAvailable}=[{string.Join(",", (Shares ?? Array.Empty<DemoSourceShare>()).Select(x => $"{x.SettlementId}:{x.Food}"))}]+{Unharvested}");
+
+    /// <summary>由一次共享分配組出全部來源帳（預算＞0 的來源，依編號）。</summary>
+    internal static IReadOnlyList<DemoSourceWeekLedger> From(int week,
+        IReadOnlyList<DemoCatchmentFoodSource> sources, DemoCatchmentFoodResult allocation)
+        => Array.AsReadOnly(sources.Where(x => x.FoodAvailable > 0).OrderBy(x => x.Id).Select(x =>
+            new DemoSourceWeekLedger(week, x.Id, x.Kind, x.Column, x.Row, x.FoodAvailable,
+                Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == x.Id).OrderBy(h => h.SettlementId)
+                    .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()),
+                allocation.UnharvestedSourceFood.GetValueOrDefault(x.Id))).ToArray());
+}
+
 /// <summary>
 /// 一次週結算的結果：第幾週、結算時的世界時間、各聚落帳目（依聚落編號排序），
 /// 本週產生的帶原因事件（V0-04B，依聚落編號、事件順序排列），
@@ -352,6 +391,12 @@ public sealed record DemoWeekReport(
         : this(week, worldTime, settlements, events, Array.Empty<DemoMigrationWeekLedger>())
     {
     }
+
+    /// <summary>
+    /// 第 04 章 c 節：共享採集來源層級週帳（每來源本週預算、分給哪些聚落各多少、未採多少），
+    /// 依 SourceId 遞增、份額依 SettlementId 遞增；只列預算＞0 的來源。非共享情境為空。
+    /// </summary>
+    public IReadOnlyList<DemoSourceWeekLedger> Sources { get; init; } = Array.Empty<DemoSourceWeekLedger>();
 
     /// <summary>C04：本週結算開始時世界實體 ID 分配器的下一號（0＝未記錄，舊格式）。</summary>
     public long EntityIdNextOpening { get; init; }
@@ -451,6 +496,9 @@ internal static class DemoWeeklySettlement
             ? DemoForagingWorld.Allocate(map ?? throw new InvalidOperationException("Shared foraging needs map."),
                 sites, population, config, adultWorkers)
             : null;
+        var sourceLedgers = sharedHarvest is null
+            ? Array.Empty<DemoSourceWeekLedger>()
+            : DemoSourceWeekLedger.From(week, DemoForagingWorld.Sources(map!, sites), sharedHarvest);
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -582,7 +630,7 @@ internal static class DemoWeeklySettlement
                         throw new InvalidOperationException("Foraging settlement reserve must stay zero.");
                     nextReserves[point.Id] = 0;
                 }
-                regenerated = share;
+                regenerated = share; // 第 04 章 c 節：共享模式的 Regenerated＝由來源帳轉入（Σ份額），不是本地再生。
                 harvested = share;
                 fromGathering = share;
             }
@@ -783,12 +831,51 @@ internal static class DemoWeeklySettlement
             Array.AsReadOnly(migrationLedgers.OrderBy(m => m.BatchId).ToArray()))
         {
             EntityIdNextOpening = entityIdOpening,
-            EntityIdNextClosing = DemoEntityIds.NextValue(ids.Capture())
+            EntityIdNextClosing = DemoEntityIds.NextValue(ids.Capture()),
+            Sources = sourceLedgers
         };
         Verify(report);
         return new DemoWeeklyOutcome(report, nextReserves.ToImmutable(), nextFood.ToImmutable(),
             nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), ids.Capture(),
             weekSites);
+    }
+
+    /// <summary>
+    /// 第 04 章 c 節：來源帳內部一致——每源 Σ份額＋未採＝預算、皆非負、同源不重複聚落、依編號排序；
+    /// 有來源帳時（共享模式）每個聚落的 Harvested＝Regenerated＝它從各來源分到的合計。
+    /// </summary>
+    private static void VerifySources(DemoWeekReport report)
+    {
+        var sources = report.Sources ?? Array.Empty<DemoSourceWeekLedger>();
+        if (sources.Count == 0)
+            return;
+        var previousId = 0;
+        foreach (var source in sources)
+        {
+            if (source is null || source.Shares is null)
+                throw new InvalidOperationException($"第 {report.Week} 週來源帳有空白項目。");
+            if (source.Week != report.Week || source.SourceId <= previousId)
+                throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 的週次或排序不符。");
+            previousId = source.SourceId;
+            if (source.FoodAvailable <= 0 || source.Unharvested < 0 || source.Shares.Any(x => x is null || x.Food <= 0))
+                throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 的預算、份額或未採為負或為 0。");
+            if (source.Shares.Select(x => x.SettlementId).Distinct().Count() != source.Shares.Count
+                || !source.Shares.Select(x => x.SettlementId).SequenceEqual(source.Shares.Select(x => x.SettlementId).Order()))
+                throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 的份額聚落重複或未排序。");
+            if (checked(source.Shares.Sum(x => x.Food) + source.Unharvested) != source.FoodAvailable)
+                throw new InvalidOperationException($"第 {report.Week} 週來源 #{source.SourceId} 不守恆：份額＋未採≠預算。");
+        }
+        var shares = sources.SelectMany(x => x.Shares).GroupBy(x => x.SettlementId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Food));
+        if (shares.Keys.Any(id => report.Settlements.All(l => l.SettlementId != id)))
+            throw new InvalidOperationException($"第 {report.Week} 週來源帳分給了不在週帳裡的聚落。");
+        foreach (var ledger in report.Settlements)
+        {
+            var total = shares.GetValueOrDefault(ledger.SettlementId);
+            if (ledger.Harvested != total || ledger.Regenerated != total)
+                throw new InvalidOperationException(
+                    $"第 {report.Week} 週 {ledger.SettlementName} 的採收 {ledger.Harvested}／轉入 {ledger.Regenerated} 與來源帳合計 {total} 不符。");
+        }
     }
 
     /// <summary>
@@ -856,6 +943,7 @@ internal static class DemoWeeklySettlement
     {
         ArgumentNullException.ThrowIfNull(report);
         var migrations = report.Migrations ?? Array.Empty<DemoMigrationWeekLedger>();
+        VerifySources(report);
         foreach (var ledger in report.Settlements)
         {
             if (!ledger.IsBalanced)

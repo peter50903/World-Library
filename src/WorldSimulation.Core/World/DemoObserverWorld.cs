@@ -171,7 +171,23 @@ public sealed partial class DemoObserverWorld
     public bool IsMainRiverCell(int column, int row)
         => UsesSharedForaging && DemoForagingWorld.MainRiverTiles(Map).Contains(new DemoCellRef(column, row));
 
+    /// <summary>
+    /// 第 04 章 c 節：最近一週的共享採集分配，讀已提交的來源帳（不重算）。
+    /// 未滿足需求＝需求（期初人口×每人消耗）－實採。
+    /// </summary>
     public DemoCatchmentFoodResult? LatestSharedHarvest()
+    {
+        if (!UsesSharedForaging || LatestWeek is not { } week) return null;
+        var harvests = week.Sources.SelectMany(x => x.Shares.Select(share => new DemoCatchmentHarvest(x.SourceId, share.SettlementId, share.Food)))
+            .ToArray();
+        var unmet = week.Settlements.ToDictionary(l => l.SettlementId,
+            l => Math.Max(0, checked(l.PopulationOpening * _weekly.FoodPerPersonPerWeek) - l.Harvested));
+        var unharvested = week.Sources.ToDictionary(x => x.SourceId, x => x.Unharvested);
+        return new DemoCatchmentFoodResult(Array.AsReadOnly(harvests), unmet, unharvested);
+    }
+
+    /// <summary>第 04 章 c 節：依目前地圖與最近一週期初人口重算共享分配（只供冒煙與測試比對來源帳）。</summary>
+    public DemoCatchmentFoodResult? RecomputeLatestSharedHarvest()
     {
         if (!UsesSharedForaging || LatestWeek is not { } week) return null;
         var opening = week.Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
@@ -360,6 +376,7 @@ public sealed partial class DemoObserverWorld
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
             foreach (var m in week.Migrations) sb.Append(inv, $"{m};");
+            foreach (var source in week.Sources) sb.Append(inv, $"{source};"); // 第 04 章 c 節：來源帳
         }
         foreach (var e in _history.Events) sb.Append(inv, $"{e.Fingerprint()};"); // 第 03 章 b 節：史庫
 

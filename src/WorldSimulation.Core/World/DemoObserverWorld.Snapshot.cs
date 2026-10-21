@@ -75,6 +75,7 @@ public sealed partial class DemoObserverWorld
 
             CheckSettlementLedgers(report, sites, reserves, food, population, debt);
             CheckEvents(report, sites);
+            CheckSourceLedgers(report, map, sites, weekly);
             lastBatchId = CheckMigrationLedgers(report, sites, transit, departedWeek, lastBatchId);
             entityNext = CheckEntityIdRange(report, sites, entityNext);
             CheckRngCounters(report, rngCounters);
@@ -167,6 +168,50 @@ public sealed partial class DemoObserverWorld
         return candidate;
     }
 
+    /// <summary>
+    /// 第 04 章 c 節：來源帳（內部守恆已由 <see cref="DemoWeeklySettlement.Verify"/> 檢查）再對照地圖：
+    /// 來源清單＝依地圖與聚落重算（預算＞0）；份額只給可及範圍內的聚落；每聚落合計 ≤ 需求且 ≤ 勞力上限。
+    /// 共享採集情境沒有建村，聚落清單即目前聚落。
+    /// </summary>
+    private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly)
+    {
+        var w = report.Week;
+        if (!weekly.SharedCatchmentEnabled)
+        {
+            if (report.Sources.Count != 0)
+                Reject($"第 {w} 週來源帳：非共享採集情境不應有來源帳");
+            return;
+        }
+        var expected = DemoForagingWorld.Sources(map, sites).Where(x => x.FoodAvailable > 0).OrderBy(x => x.Id).ToArray();
+        if (report.Sources.Count != expected.Length)
+            Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Length} 不符");
+        for (var i = 0; i < expected.Length; i++)
+        {
+            var source = report.Sources[i];
+            var truth = expected[i];
+            if (source.SourceId != truth.Id || source.Kind != truth.Kind || source.Column != truth.Column
+                || source.Row != truth.Row || source.FoodAvailable != truth.FoodAvailable)
+                Reject($"第 {w} 週來源 #{source.SourceId} 的種類、位置或預算與地圖重算不符");
+            var origin = map.GetCell(source.Column, source.Row);
+            var includeOrigin = source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
+            foreach (var share in source.Shares)
+            {
+                var place = sites.Settlements.FirstOrDefault(s => s.Id == share.SettlementId);
+                if (place is null || !DemoHexFoodCatchment.IsInReach(origin, map.GetCell(place.Column, place.Row), includeOrigin))
+                    Reject($"第 {w} 週來源 #{source.SourceId} 分給了範圍外的聚落 #{share.SettlementId}");
+            }
+        }
+        foreach (var ledger in report.Settlements)
+        {
+            var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
+            var need = checked(ledger.PopulationOpening * weekly.FoodPerPersonPerWeek);
+            var workers = ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening;
+            var labour = checked(workers * weekly.YieldPerWorkerPerWeek);
+            if (total > need || total > labour)
+                Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的採集合計 {total} 超過需求 {need} 或勞力上限 {labour}");
+        }
+    }
+
     private static List<DemoWeekReport> ReadWeekReports(JsonElement array)
     {
         var reports = new List<DemoWeekReport>();
@@ -184,7 +229,8 @@ public sealed partial class DemoObserverWorld
             {
                 EntityIdNextOpening = item.GetProperty("EntityIdNextOpening").GetInt64(),
                 EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64(),
-                RngCounters = Array.AsReadOnly(ReadArray<DemoRngCounter>(item, "RngCounters").ToArray())
+                RngCounters = Array.AsReadOnly(ReadArray<DemoRngCounter>(item, "RngCounters").ToArray()),
+                Sources = Array.AsReadOnly(ReadArray<DemoSourceWeekLedger>(item, "Sources").ToArray())
             });
         }
 

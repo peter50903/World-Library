@@ -142,7 +142,7 @@ public sealed class DemoSaveLedgerTamperTests
     /// 依竄改後的週報重算存檔裡的世界指紋（週報以外的部分沿用原指紋），
     /// 讓偽造檔不會只因指紋過期而被擋下。格式與 <c>DemoObserverWorld.StateFingerprint</c> 的週報段相同。
     /// </summary>
-    private static void RecomputeFingerprint(JsonNode doc)
+    internal static void RecomputeFingerprint(JsonNode doc)
     {
         var state = doc["State"]!;
         var fingerprint = state["WorldFingerprint"]!.GetValue<string>();
@@ -158,6 +158,7 @@ public sealed class DemoSaveLedgerTamperTests
             foreach (var ledger in week["Settlements"]!.Deserialize<List<DemoSettlementWeekLedger>>()!) sb.Append(inv, $"{ledger};");
             foreach (var e in week["Events"]!.Deserialize<List<DemoSettlementEvent>>()!) sb.Append(inv, $"{e};");
             foreach (var m in week["Migrations"]!.Deserialize<List<DemoMigrationWeekLedger>>()!) sb.Append(inv, $"{m};");
+            foreach (var x in week["Sources"]!.Deserialize<List<DemoSourceWeekLedger>>()!) sb.Append(inv, $"{x};");
         }
         // 第 03 章 b 節：指紋尾段是正式史庫（沿用檔內史庫；史庫本身另由讀檔重建比對）。
         foreach (var e in state["History"]!.Deserialize<List<WorldSimulation.Core.History.WorldEvent>>()!)

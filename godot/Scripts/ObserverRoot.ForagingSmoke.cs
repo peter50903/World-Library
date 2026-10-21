@@ -60,6 +60,16 @@ public partial class ObserverRoot
         foreach (var source in _world.SharedFoodSources())
             if (harvest.Harvests.Where(h => h.SourceId == source.Id).Sum(h => h.FoodHarvested) > source.FoodAvailable)
                 Fail("a forest or river source has been collected more than once");
+        // 第 04 章 c 節：讀帳結果＝依地圖重算；畫面「來源→採收」帶預算與未採。
+        var recomputed = _world.RecomputeLatestSharedHarvest()!;
+        if (_world.LatestWeek!.Sources.Count == 0
+            || !harvest.Harvests.OrderBy(h => h.SourceId).ThenBy(h => h.SettlementId)
+                .SequenceEqual(recomputed.Harvests.OrderBy(h => h.SourceId).ThenBy(h => h.SettlementId))
+            || _world.LatestWeek.Sources.Any(x => recomputed.UnharvestedSourceFood[x.SourceId] != x.Unharvested))
+            Fail("committed source ledger differs from the recomputed shared allocation");
+        var sharesHere = _world.LatestWeek.Sources.Any(x => x.Shares.Any(sh => sh.SettlementId == settlement.Id));
+        if (sharesHere && !_foodInfo.Text.Contains("（預算 ", StringComparison.Ordinal))
+            Fail("food diagnostics does not show source budget/unharvested from the ledger");
 
         var save = _world.ExportTempSave();
         var restored = WorldSimulation.Core.World.DemoObserverWorld.ImportTempSave(save);
@@ -80,6 +90,6 @@ public partial class ObserverRoot
             Fail("crowded settlements did not face actual shortage/death");
         if (_world.LatestSharedHarvest()?.TotalHarvested <= 0)
             Fail("crowded mode falsified starvation by switching off all actual food sources");
-        GD.Print($"WORLD_SIM_FORAGING_OK: Weeks=5 Harvest={actual} Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1 CrowdedStarved=1");
+        GD.Print($"WORLD_SIM_FORAGING_OK: Weeks=5 Harvest={actual} Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1 CrowdedStarved=1 SourceLedger=1");
     }
 }
