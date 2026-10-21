@@ -12,7 +12,6 @@ namespace WorldSimulation.Core.World.Demo;
 public sealed record DemoWeeklyTempConfig(
     long InitialReservePerPoint,
     long ReserveCapPerPoint,
-    long FarmlandRegenPerWeek,
     long WoodlandRegenPerWeek,
     long FisheryRegenPerWeek,
     long YieldPerWorkerPerWeek,
@@ -37,7 +36,7 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig Sample { get; } = new(
         InitialReservePerPoint: 60,
         ReserveCapPerPoint: 120,
-        FarmlandRegenPerWeek: 30,
+        // 第 08 章 a 節：舊「草原自動農田 30」退場——草原不再自動產農糧（開墾與農田產出待第 11 章知識系統）。
         WoodlandRegenPerWeek: 20,
         FisheryRegenPerWeek: 25,
         YieldPerWorkerPerWeek: 5,
@@ -51,7 +50,6 @@ public sealed record DemoWeeklyTempConfig(
         SharedCatchmentEnabled = true,
         InitialReservePerPoint = 0,
         ReserveCapPerPoint = 0,
-        FarmlandRegenPerWeek = 0,
         WoodlandRegenPerWeek = 0,
         FisheryRegenPerWeek = 0
     };
@@ -83,7 +81,6 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig FamineSample { get; } = Sample with
     {
         InitialReservePerPoint = 0,
-        FarmlandRegenPerWeek = 0,
         WoodlandRegenPerWeek = 0,
         FisheryRegenPerWeek = 0,
         InitialFoodPerPerson = 0
@@ -110,7 +107,7 @@ public sealed record DemoWeeklyTempConfig(
     internal void Validate()
     {
         if (InitialReservePerPoint < 0 || ReserveCapPerPoint < InitialReservePerPoint
-            || FarmlandRegenPerWeek < 0 || WoodlandRegenPerWeek < 0 || FisheryRegenPerWeek < 0
+            || WoodlandRegenPerWeek < 0 || FisheryRegenPerWeek < 0
             || YieldPerWorkerPerWeek < 0 || FoodPerPersonPerWeek < 0 || InitialFoodPerPerson < 0
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
@@ -132,7 +129,6 @@ public sealed record DemoWeeklyTempConfig(
 
     internal long RegenFor(DemoResourceKind kind) => kind switch
     {
-        DemoResourceKind.Farmland => FarmlandRegenPerWeek,
         DemoResourceKind.Woodland => WoodlandRegenPerWeek,
         DemoResourceKind.Fishery => FisheryRegenPerWeek,
         DemoResourceKind.Uncultivated => 0,
@@ -140,12 +136,12 @@ public sealed record DemoWeeklyTempConfig(
     };
 
     /// <summary>
-    /// M1_NO_MAGIC_FOOD 的合法來源（TEMP 對應）：農地＝農牧；林地（採集狩獵）與漁場（漁撈）＝採集。
+    /// M1_NO_MAGIC_FOOD 的合法來源（TEMP 對應）：林地（採集狩獵）與漁場（漁撈）＝採集。
+    /// 第 08 章 a 節：農牧只能來自真實開墾的農田（<see cref="DemoLandDevelopment"/>），本章尚不產糧。
     /// 沒有對應合法來源的資源種類不得產生糧食。
     /// </summary>
     internal static DemoFoodSource FoodSourceOf(DemoResourceKind kind) => kind switch
     {
-        DemoResourceKind.Farmland => DemoFoodSource.Farming,
         DemoResourceKind.Woodland => DemoFoodSource.Gathering,
         DemoResourceKind.Fishery => DemoFoodSource.Gathering,
         DemoResourceKind.Uncultivated => throw new InvalidOperationException("Uncultivated land produces no farm food."),
@@ -530,7 +526,8 @@ internal static class DemoWeeklySettlement
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
         IReadOnlyDictionary<int, long>? sourceStocks = null,
-        Func<int, long, long, long>? emigrantPlanner = null)
+        Func<int, long, long, long>? emigrantPlanner = null,
+        DemoLandDevelopmentMap? land = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
@@ -583,7 +580,7 @@ internal static class DemoWeeklySettlement
         if (config.SharedCatchmentEnabled)
         {
             var plan = DemoSourceWeekLedger.Plan(
-                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites),
+                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land),
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
                 plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded);
@@ -734,6 +731,14 @@ internal static class DemoWeeklySettlement
             foreach (var point in weekSites.ResourcePointsOf(settlement.Id).OrderBy(p => p.Id))
             {
                 var opening = reserves[point.Id];
+                if (point.Kind == DemoResourceKind.Uncultivated)
+                {
+                    // 第 08 章 a 節：未開發草原沒有存量、不再生、不產糧（農田需真實開墾，第 11 章才產糧）。
+                    if (opening != 0)
+                        throw new InvalidOperationException("Uncultivated grassland cannot hold a food reserve.");
+                    nextReserves[point.Id] = 0;
+                    continue;
+                }
                 var regenPerWeek = config.IsFamineSettlement(settlement) ? 0 : config.RegenFor(point.Kind);
                 var regen = Math.Max(0, Math.Min(regenPerWeek, config.ReserveCapPerPoint - opening));
                 var afterRegen = checked(opening + regen);

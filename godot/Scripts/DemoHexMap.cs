@@ -16,6 +16,9 @@ public partial class DemoHexMap : Control
     /// <summary>Injected by ObserverRoot; settlement markers come only from Core.</summary>
     public DemoWorldSites? Sites { get; set; }
 
+    /// <summary>第 08 章 a 節：土地開發狀態（開墾中、農田用專屬圖塊；與地形分離，只影響顯示）。</summary>
+    public DemoLandDevelopmentMap Land { get; set; } = DemoLandDevelopmentMap.Empty;
+
     /// <summary>Visible TEMP river bank markers, computed by Core only for the foraging scenario.</summary>
     public IReadOnlyList<DemoCellRef> MainRiverTiles { get; set; } = Array.Empty<DemoCellRef>();
 
@@ -109,7 +112,8 @@ public partial class DemoHexMap : Control
             var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
                 && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)));
             // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
-            if (TerrainTexture(cell.Terrain, isRiver) is { } tile)
+            var land = Land.StateOf(new DemoCellRef(cell.Column, cell.Row));
+            if ((LandTexture(land) ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
             {
                 var full = HexCoordinates.Polygon(center, radius);
                 DrawPolygon(full, White6, HexUvs(full, center, radius), tile);
@@ -129,6 +133,11 @@ public partial class DemoHexMap : Control
             // Explicit TEMP river cells are teal, other Water cells remain blue (not automatically fish sources).
             if (isRiver)
                 terrainColor = new Color(0.10f, 0.67f, 0.70f);
+            // 第 08 章 a 節（沒有圖塊時的後備）：農田土黃、開墾中褐色。
+            if (land == DemoLandDevelopment.Farmland)
+                terrainColor = new Color(0.72f, 0.62f, 0.30f);
+            else if (land == DemoLandDevelopment.Clearing)
+                terrainColor = new Color(0.52f, 0.42f, 0.28f);
             DrawColoredPolygon(vertices, terrainColor);
             var outline = new Vector2[7];
             for (var i = 0; i < 6; i++)
@@ -239,6 +248,18 @@ public partial class DemoHexMap : Control
             DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
         }
     }
+
+    /// <summary>第 08 章 a 節：開發狀態的圖塊（未開發＝null，改用地形圖塊）。</summary>
+    private static Texture2D? LandTexture(DemoLandDevelopment state) => state switch
+    {
+        DemoLandDevelopment.Farmland => ArtAssets.Texture(ArtAssets.TileFarmland),
+        DemoLandDevelopment.Clearing => ArtAssets.Texture(ArtAssets.TileFarmlandClearing),
+        _ => null
+    };
+
+    /// <summary>第 08 章 a 節：冒煙測試用——農田與開墾中的圖塊都讀得到。</summary>
+    public static bool HasLandArt
+        => LandTexture(DemoLandDevelopment.Farmland) is not null && LandTexture(DemoLandDevelopment.Clearing) is not null;
 
     private static Texture2D? TerrainTexture(DemoTerrain terrain, bool river) => terrain switch
     {

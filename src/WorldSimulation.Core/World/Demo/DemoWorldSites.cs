@@ -6,15 +6,12 @@ namespace WorldSimulation.Core.World.Demo;
 /// <summary>TEMP resource-point kinds for the V0-03B fixture only; NOT official resource definitions.</summary>
 public enum DemoResourceKind
 {
-    /// <summary>農地（TEMP）：位於草原格。</summary>
-    Farmland = 0,
-
     /// <summary>林地（TEMP）：位於森林格。</summary>
     Woodland = 1,
 
     /// <summary>漁場（TEMP）：位於水域格。</summary>
     Fishery = 2,
-    /// <summary>TEMP undeveloped grassland: no free farm yield.</summary>
+    /// <summary>TEMP 未開發草原：不自動產農糧（第 08 章 a 節起所有情境的草原都是這種；舊「農地＝0」退場）。</summary>
     Uncultivated = 3
 }
 
@@ -253,7 +250,7 @@ public sealed class DemoWorldSites
 
     private static DemoResourceKind KindFor(DemoTerrain terrain, bool foragingOnly = false) => terrain switch
     {
-        DemoTerrain.Grassland => foragingOnly ? DemoResourceKind.Uncultivated : DemoResourceKind.Farmland,
+        DemoTerrain.Grassland => DemoResourceKind.Uncultivated, // 第 08 章 a 節：草原不再自動成為農地
         DemoTerrain.Forest => DemoResourceKind.Woodland,
         DemoTerrain.Water => DemoResourceKind.Fishery,
         _ => throw new InvalidOperationException("Unknown TEMP terrain value.")

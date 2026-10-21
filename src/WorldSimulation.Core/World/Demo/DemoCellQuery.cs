@@ -31,7 +31,6 @@ public static class DemoCellQuery
     /// <summary>TEMP 資源點中文名稱。</summary>
     public static string ResourceName(DemoResourceKind kind) => kind switch
     {
-        DemoResourceKind.Farmland => "農地（TEMP）",
         DemoResourceKind.Woodland => "林地（TEMP）",
         DemoResourceKind.Fishery => "漁場（TEMP）",
         DemoResourceKind.Uncultivated => "未開墾草原（農業產量 0，TEMP）",
@@ -47,6 +46,14 @@ public static class DemoCellQuery
             ? $"路線：無（不可通行）{ford}"
             : $"路線：{string.Join("、", exits.Select(e => $"{e.Direction} {DemoRouteNetwork.KindName(e.Segment.Kind)}（成本 {e.Segment.Cost}）"))}{ford}";
     }
+
+    /// <summary>第 08 章 a 節：土地開發狀態中文名稱。</summary>
+    public static string LandName(DemoLandDevelopment state) => state switch
+    {
+        DemoLandDevelopment.Clearing => "開墾中",
+        DemoLandDevelopment.Farmland => "農田",
+        _ => "未開發"
+    };
 
     /// <summary>TEMP 地形中文名稱。</summary>
     public static string TerrainName(DemoTerrain terrain) => terrain switch
@@ -75,6 +82,9 @@ public static class DemoCellQuery
             // 第 06 章 a 節：出入口由路線段衍生（相鄰但沒有路線段＝不可通行）。
             RoutesLine(world.Map, new DemoCellRef(cell.Column, cell.Row))
         };
+        // 第 08 章 a 節：土地開發狀態（與地形分離；未開發不另列）。
+        if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
+            lines.Add($"土地開發：{LandName(parcel.State)}（開發程度 {parcel.DevelopmentPercent}%；農糧產量待第 11 章農業知識）");
 
         DemoCatchmentFoodSource? sharedSource = null;
         IReadOnlyList<DemoCellRef> reach = Array.Empty<DemoCellRef>();

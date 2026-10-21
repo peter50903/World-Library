@@ -48,7 +48,7 @@
 |---|---|---|---|
 | 資源點初始存量 `InitialReservePerPoint` | 60 | 糧食單位 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs:33` |
 | 資源點存量上限 `ReserveCapPerPoint` | 120 | 糧食單位 | 同上 `:34` |
-| 農地／林地／漁場每週再生 | 30／20／25 | 糧食單位／週 | 同上 `:35-37` |
+| 林地／漁場每週再生（農地 30 已於第 08 章 a 節退場：草原一律未開墾、不產糧） | 20／25 | 糧食單位／週 | 同上 `:35-37` |
 | 每人每週產量 `YieldPerWorkerPerWeek` | 5 | 糧食單位／人／週 | 同上 `:38` |
 | 每人每週消耗 `FoodPerPersonPerWeek` | 4 | 糧食單位／人／週 | 同上 `:39` |
 | 聚落初始糧食 `InitialFoodPerPerson` | 7 | 糧食單位／人 | 同上 `:40` |
@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 14 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死＋遺跡；第 07 章 c 節），第 1～13 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 15 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死＋遺跡＋土地開發狀態；第 08 章 a 節），第 1～14 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -210,6 +210,7 @@
 - **2026-10-11 玩家同意的 TEMP 數值**：`config/demo/terrain-food-temp.json` 是程式可讀的暫定設定，森林每來源格每週 **20** 糧食單位、明確標記的主河道水域來源每週 **5** 單位、原始未開墾農田每週 **0**。每片來源格**整個共享供應只有一份**，不因六鄰取得多份；人族適用。Core `DemoCatchmentTempSettings.FromJson/BuildPotentialSources` 驗證設定格式並僅對真森林與明確河道產生來源，仍是可得預算、受成年勞工/真存量/需求約束，現有真週帳與存檔尚未接入。這些屬測試值而非正式 Excel 數值；依 Notion03 §2.5 **不寫回正式 XLSX/CSV**。**仍待裁決**：真正來源存量、開發農田的級距/技術、共用分配優先政策（現純模型以來源 ID→聚落 ID 的 TEMP 先後順序）；單元測試的森林12或9、河流3只是守恆反例數字，與已同意的示範20/5不同。
 - 森林在地與接壤格可能存在非陸地格；供應範圍幾何涵蓋六鄰接，但只有合法居住的陸地聚落能採集；主河道不是 RouteSegment 過河通行權。現在 DemoTerrain.Water 僅在明確建立 MainRiver 食物來源 ID 時才視為「主河道漁食源」，一般水域不自動生產。
 - 農田並非草原預設值；在 #113 修週結算之前，現主世界仍有 `DemoWorldSites.KindFor(Grassland)=Farmland` 的舊 TEMP 行為，必須下一批移除。農田開發程度/科技上限另見 #115。
+- **第 08 章 a 節更新（2026-10-21）**：上一條的舊行為已移除——所有情境的草原資源點都是「未開墾草原」（存量 0、不再生、不產糧），`FarmlandRegenPerWeek` 與 `DemoResourceKind.Farmland` 刪除；土地開發狀態 `DemoLandDevelopmentMap`（未開發／開墾中／農田＋開發程度）與地形分離，目前沒有開墾行動、永遠為空，讀檔非空即拒讀。開墾中仍可野採、農田不可野採【TEMP】。
 ## #118｜所有自然地塊野採、人造佔格不產自然食物
 - 玩家要求所有自然地塊按類型產出不同的野生可採食物，已占用的聚落／未來城市／道路地塊不得同時當自然來源。Demo 目前只有森林、草原、水域；主河道另由 Core 明確標記，未建道路與城市物件。
 - 供食 TEMP 每來源格每週：森林20、草原野採8、主河道5、一般水域3，森林20/河道5沿用已同意值，新增草原8/一般水域3僅是測試預設，不升格正式值。每自然來源只分配一次給可達陸地，已存在聚落格自身不再生成自然來源；草原野採不是農田，未開墾農業產量仍0。
@@ -258,7 +259,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 17 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 16 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
@@ -267,7 +268,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 3 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 2 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
-| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 15 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 14 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 16 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 13 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |

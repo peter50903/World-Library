@@ -15,7 +15,7 @@ public sealed class DemoForagingPlayableTests
         Assert.Equal("森林河流生存", world.TempScenarioDisplayName);
         Assert.All(world.Sites.Settlements, s =>
             Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(s.Column, s.Row).Terrain));
-        Assert.DoesNotContain(world.Sites.ResourcePoints, p => p.Kind == DemoResourceKind.Farmland);
+        Assert.Empty(world.Land.Parcels); // 第 08 章 a 節：沒有自動農田
         Assert.All(world.Sites.ResourcePoints, p => Assert.Equal(0, world.ResourceReserve(p.Id)));
         var sources = world.SharedFoodSources();
         Assert.NotEmpty(sources);

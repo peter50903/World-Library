@@ -28,6 +28,11 @@ public static class DemoForagingWorld
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites = null)
         => Sources(map, sites?.OccupiedCells());
 
+    /// <summary>第 08 章 a 節：農田格不再提供野採（與聚落佔格一樣從自然來源移除）。</summary>
+    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites, DemoLandDevelopmentMap? land)
+        => Sources(map, (sites?.OccupiedCells() ?? Array.Empty<DemoCellRef>())
+            .Concat(land?.FarmlandCells() ?? Array.Empty<DemoCellRef>()).Distinct().ToArray());
+
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied)
         => Settings.BuildPotentialSources(map, MainRiverTiles(map), occupied);
 

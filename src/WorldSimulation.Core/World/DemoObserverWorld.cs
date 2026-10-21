@@ -49,6 +49,8 @@ public sealed partial class DemoObserverWorld
     private readonly WorldRecipe _recipe;
     private readonly DemoWeeklyTempConfig _weekly;
     private DemoTempDemography? _demography;
+    /// <summary>第 08 章 a 節：土地開發狀態（與地形分離）。目前沒有開墾行動，永遠是空的。</summary>
+    private DemoLandDevelopmentMap _land = DemoLandDevelopmentMap.Empty;
 
     // 下列欄位只在 DemoWorldCommit.PublishTo（AdvanceOneDay 的發布步驟）或建立／讀檔安裝時改變。
     private WorldClock _clock = new();
@@ -108,7 +110,8 @@ public sealed partial class DemoObserverWorld
         // every settlement with InitialFoodPerPerson per member of its population groups.
         // V0-06A TEST scenario: the TEMP local-famine settlement starts with nothing.
         _reserves = Sites.ResourcePoints.ToImmutableSortedDictionary(
-            p => p.Id, p => weekly.IsFamineSettlement(p.SettlementId) ? 0L : weekly.InitialReservePerPoint);
+            p => p.Id, p => weekly.IsFamineSettlement(p.SettlementId) || p.Kind == DemoResourceKind.Uncultivated
+                ? 0L : weekly.InitialReservePerPoint); // 第 08 章 a 節：未開發草原沒有糧食存量
         _population = Sites.Settlements.ToImmutableSortedDictionary(
             s => s.Id, s => Sites.PopGroupsOf(s.Id).Sum(p => (long)p.Size));
         _settlementFood = _population.ToImmutableSortedDictionary(
@@ -134,6 +137,9 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>The cached TEMP hex map generated from this world's registry (never regenerated).</summary>
     public DemoHexWorld Map { get; }
+
+    /// <summary>第 08 章 a 節：土地開發狀態（未開發的格不列出）。</summary>
+    public DemoLandDevelopmentMap Land => _land;
 
     /// <summary>
     /// The TEMP settlements / resource points / population groups. Generated once from the seed;
@@ -169,7 +175,7 @@ public sealed partial class DemoObserverWorld
     public bool UsesSharedForaging => _weekly.SharedCatchmentEnabled;
 
     public IReadOnlyList<DemoCatchmentFoodSource> SharedFoodSources()
-        => UsesSharedForaging ? DemoForagingWorld.Sources(Map, _sites) : Array.Empty<DemoCatchmentFoodSource>();
+        => UsesSharedForaging ? DemoForagingWorld.Sources(Map, _sites, _land) : Array.Empty<DemoCatchmentFoodSource>();
 
     public bool IsMainRiverCell(int column, int row)
         => UsesSharedForaging && DemoForagingWorld.MainRiverTiles(Map).Contains(new DemoCellRef(column, row));
@@ -319,7 +325,8 @@ public sealed partial class DemoObserverWorld
                     s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)),
                 _sourceStocks,
                 // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
-                _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)));
+                _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)),
+                _land);
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -376,6 +383,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _population) sb.Append(inv, $"pop{kv.Key}={kv.Value};");
         foreach (var kv in _hungerDebt) sb.Append(inv, $"debt{kv.Key}={kv.Value};");
         foreach (var kv in _sourceStocks) sb.Append(inv, $"sstock{kv.Key}={kv.Value};"); // 第 06 章 c 節
+        sb.Append(inv, $"land={_land.Fingerprint()};"); // 第 08 章 a 節
         if (_demography is not null)
         {
             sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");

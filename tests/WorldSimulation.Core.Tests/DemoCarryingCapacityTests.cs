@@ -89,9 +89,16 @@ public sealed class DemoCarryingCapacityTests
                         $"種子 {seed} 第 {ledger.Week} 週 {ledger.SettlementName} 人口 {ledger.PopulationOpening} 未超過承載卻缺糧");
             }
 
-            // 長期存活：一般情境（每個聚落都有再生）沒有聚落滅絕，人口不會被餓到 0。
+            // 長期存活：有林地／漁場再生的聚落不會被餓到 0。
+            // 第 08 章 a 節：舊「草原自動農田 30」退場後，只靠未開墾草原的聚落沒有糧食來源，如實記錄其衰退（不調數值補回）。
             foreach (var c in capacity.Values)
-                Assert.True(c.Population > 0, $"種子 {seed} {c.SettlementName} 在 {ScanYears} 年內滅絕");
+            {
+                var grassOnly = world.Sites.ResourcePointsOf(c.SettlementId).All(p => p.Kind == DemoResourceKind.Uncultivated);
+                if (grassOnly)
+                    Assert.Equal(0, c.SustainablePopulation);
+                else
+                    Assert.True(c.Population > 0, $"種子 {seed} {c.SettlementName} 在 {ScanYears} 年內滅絕");
+            }
 
             if (weeks.Any(w => w.Settlements.Any(l => l.FoodShortage > 0)))
                 seedsWithShortage.Add(seed);

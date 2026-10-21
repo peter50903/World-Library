@@ -102,6 +102,9 @@ public sealed partial class DemoObserverWorld
         // 第 06 章 c 節：目前來源存量＝最後一週來源帳期末（只列＞0）。
         if (!SameBalances(ReadBalances(state, "SourceStocks"), sourceStocks))
             Reject("目前來源存量與最後一週來源帳期末不一致");
+        // 第 08 章 a 節：目前沒有任何合法的開墾行動，土地開發狀態必須全部未開發（時間或人口不會自動變農田）。
+        if (ReadArray<DemoLandParcel>(state, "Land").Count != 0)
+            Reject("土地開發狀態沒有合法來源（尚無開墾行動）");
         var entityIds = state.GetProperty("EntityIds").Deserialize<EntityIdAllocatorSnapshot>()
             ?? throw new InvalidDataException("TEMP 存檔缺少實體 ID 分配器狀態。");
         if (entityIds.Version != EntityIdAllocatorSnapshot.CurrentVersion || entityIds.Exhausted
