@@ -167,10 +167,13 @@ jobs:
             test "$(grep -c '第 10 年底各聚落承載（TEMP 估計' /tmp/observer-longrun.log)" = 3
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun.log
             # 人類採集情境（出生、自然死亡、共享採集來源帳、家庭遷徙與建村）也跑 3 種子 × 100 年。
-            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living | tee /tmp/observer-longrun-living.log
+            living_rc=0
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living > /tmp/observer-longrun-living.log || living_rc=$?
+            tail -20 /tmp/observer-longrun-living.log
             # 失敗時把守恆／不變量錯誤列成註記（API 可讀）。
             bad="$(grep -E '守恆錯誤：|長測中止|失敗 [0-9]+／' /tmp/observer-longrun-living.log | head -10 || true)"
             if [ -n "$bad" ]; then echo "::error title=人類採集長測錯誤::$(printf '%s' "$bad" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"; fi
+            test "$living_rc" = 0
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun-living.log
             test "$(grep -c '  SOURCE_LEDGER 來源帳 通過 100／100 次' /tmp/observer-longrun-living.log)" = 3
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 1,x --years 2 > /tmp/observer-longrun-bad.log; then
