@@ -108,11 +108,21 @@ public sealed record DemoYearSummary(
          + $"、外移 {EmigrationEvents}、抵達 {ArrivalEvents}）";
 }
 
-/// <summary>一次長跑的結果：種子、各年摘要與全部守恆錯誤（空＝零錯誤）。</summary>
+/// <summary>第 08 章 c 節：一條不變量在一次長跑中的檢查次數與違反次數（每年年底檢查一次）。</summary>
+public sealed record DemoInvariantTally(string Id, string Name, int Checks, int Failures, string? FirstProblem)
+{
+    public string Describe()
+        => Failures == 0
+            ? $"{Id} {Name} 通過 {Checks}／{Checks} 次"
+            : $"{Id} {Name} 失敗 {Failures}／{Checks} 次（第一處：{FirstProblem}）";
+}
+
+/// <summary>一次長跑的結果：種子、各年摘要與全部守恆錯誤（空＝零錯誤）；第 08 章 c 節起含不變量統計。</summary>
 public sealed record DemoCenturyReport(
     ulong Seed,
     IReadOnlyList<DemoYearSummary> Years,
-    IReadOnlyList<string> ConservationErrors);
+    IReadOnlyList<string> ConservationErrors,
+    IReadOnlyList<DemoInvariantTally>? Invariants = null);
 
 /// <summary>
 /// V0-05｜無畫面長跑（TEMP 示範）。用同一個 <see cref="DemoObserverWorld"/> 逐日原子推進，
@@ -162,6 +172,9 @@ public static class DemoCenturyRun
         var summaries = new List<DemoYearSummary>(years);
         var errors = new List<string>();
         var weeksSeen = 0;
+        // 第 08 章 c 節：每年年底以註冊表檢查全部不變量（增量：只看新週報，並確認舊帳未被改寫）。
+        DemoInvariantCheckpoint? checkpoint = null;
+        var tallies = DemoInvariants.All.ToDictionary(i => i.Id, _ => (Checks: 0, Failures: 0, First: (string?)null));
 
         for (var year = 1; year <= years; year++)
         {
@@ -267,12 +280,28 @@ public static class DemoCenturyRun
                 firstDay,
                 naturalDeaths, birthsInEvents, naturalDeathsInEvents, spoiled);
             errors.AddRange(summary.Problems());
+            foreach (var result in DemoInvariants.Check(world, checkpoint))
+            {
+                var t = tallies[result.Id];
+                t.Checks++;
+                if (!result.Ok)
+                {
+                    t.Failures++;
+                    t.First ??= $"第 {year} 年：{result.Problems[0]}";
+                    errors.Add($"第 {year} 年不變量 {result.Id}（{result.Name}）不成立：{result.Problems[0]}");
+                }
+                tallies[result.Id] = t;
+            }
+            checkpoint = DemoInvariants.Capture(world);
             summaries.Add(summary);
             onYear?.Invoke(summary);
             // #103：年底各聚落的 TEMP 承載估計（純讀取；只在呼叫端要求時計算，不影響世界與摘要）。
             onYearSettlements?.Invoke(summary, world.SettlementCapacities());
         }
 
-        return new DemoCenturyReport(seed, summaries.AsReadOnly(), errors.AsReadOnly());
+        var invariantTallies = DemoInvariants.All
+            .Select(i => new DemoInvariantTally(i.Id, i.Name, tallies[i.Id].Checks, tallies[i.Id].Failures, tallies[i.Id].First))
+            .ToList().AsReadOnly();
+        return new DemoCenturyReport(seed, summaries.AsReadOnly(), errors.AsReadOnly(), invariantTallies);
     }
 }
