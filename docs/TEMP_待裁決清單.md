@@ -302,7 +302,7 @@
 | `godot/Scripts/HudLayout.cs` | 15 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列） |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
-| `godot/Scripts/YearChart.cs` | 2 | 第 08 章 b 節年度長條圖邊距、配色 |
+| `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 1 | 第 03 章 b 節：根因分類「生命週期」暫定 |
