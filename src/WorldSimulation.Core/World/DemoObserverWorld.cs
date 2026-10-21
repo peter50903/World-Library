@@ -210,7 +210,9 @@ public sealed partial class DemoObserverWorld
         return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly,
             week.Settlements.ToDictionary(l => l.SettlementId,
                 l => (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers), available,
-            foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId, l => l.FoodConsumed + l.FoodShortage));
+            // 第 08-1 章：人類採集世界的要求量含補存糧（DemoCrowding.Claim，期初存糧＝帳上期初）。
+            foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId,
+                l => DemoCrowding.Claim(_weekly.HumanLifecycleEnabled, l.FoodConsumed + l.FoodShortage, l.FoodOpening)));
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>
