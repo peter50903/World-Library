@@ -76,7 +76,7 @@ public sealed class DemoPopulationDrawsTests
             var openB = Living(w, b, 0);
             Assert.Equal(openA.Map.Cells, openB.Map.Cells);
             Assert.Equal(openA.Sites.Settlements, openB.Sites.Settlements);
-            Assert.Equal(openA.HumanPopulationSnapshot!.People, openB.HumanPopulationSnapshot!.People);
+            Assert.Equal(openA.HumanPopulationSnapshot!.People.ToArray(), openB.HumanPopulationSnapshot!.People.ToArray());
 
             var tenA = Living(w, a, 10 * 365);
             var tenB = Living(w, b, 10 * 365);
