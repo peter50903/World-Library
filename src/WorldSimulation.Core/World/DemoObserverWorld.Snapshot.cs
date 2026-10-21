@@ -164,6 +164,10 @@ public sealed partial class DemoObserverWorld
         if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
             Reject("實體 ID 重複或不小於分配器下一號");
 
+        // 第 08 章 c 節：讀檔與長測共用同一份不變量註冊表（從第 1 週全部檢查）。
+        if (DemoInvariants.Check(candidate).FirstOrDefault(r => !r.Ok) is { } broken)
+            Reject($"不變量 {broken.Id}（{broken.Name}）不成立：{broken.Problems[0]}");
+
         // 安裝後重新匯出必須與檔案完全相同（含重算的時鐘、排程、亂數、日歷史與世界指紋）。
         var suppliedDoc = JsonNode.Parse(json);
         var generatedDoc = JsonNode.Parse(candidate.ExportTempSave());

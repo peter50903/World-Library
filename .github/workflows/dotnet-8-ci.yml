@@ -154,12 +154,26 @@ jobs:
             # #103: year-end per-settlement carrying evidence (TEMP estimate) for years 1/10/100, seeds 42/7/1.
             grep -q '第 100 年底各聚落承載（TEMP 估計' /tmp/observer-century.log
             grep -q '長期可養活' /tmp/observer-century.log
-            for s in 7 1; do
-              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed "$s" --years 100 | tee "/tmp/observer-century-$s.log"
-              grep -q "長測完成：種子 $s，100 年" "/tmp/observer-century-$s.log"
-              grep -q '守恆錯誤 0，' "/tmp/observer-century-$s.log"
-              grep -q '第 10 年底各聚落承載（TEMP 估計' "/tmp/observer-century-$s.log"
+            grep -q '不變量 7 項全部通過' /tmp/observer-century.log
+            # 第 08 章 c 節：長測執行器 --seeds——3 種子 × 100 年，每年年底檢查不變量註冊表（時間、ID、歷史、人口、資源、來源、遷徙）。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,1 --years 100 | tee /tmp/observer-longrun.log
+            for s in 42 7 1; do
+              grep -q "^--- 長測種子 $s ---" /tmp/observer-longrun.log
+              grep -q "長測完成：種子 $s，100 年（第 36500 日）" /tmp/observer-longrun.log
             done
+            test "$(grep -c '^不變量 7 項全部通過' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '  TIME_MONOTONIC 時間單調 通過 100／100 次' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '  MIGRATION_CONSERVATION 遷徙守恆 通過 100／100 次' /tmp/observer-longrun.log)" = 3
+            test "$(grep -c '第 10 年底各聚落承載（TEMP 估計' /tmp/observer-longrun.log)" = 3
+            grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun.log
+            # 人類採集情境（出生、自然死亡、共享採集來源帳、家庭遷徙與建村）也跑 3 種子 × 100 年。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living | tee /tmp/observer-longrun-living.log
+            grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun-living.log
+            test "$(grep -c '  SOURCE_LEDGER 來源帳 通過 100／100 次' /tmp/observer-longrun-living.log)" = 3
+            if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 1,x --years 2 > /tmp/observer-longrun-bad.log; then
+              echo "--seeds with a bad value must be rejected"; exit 1
+            fi
+            grep -q -- '--seeds <非負整數,非負整數' /tmp/observer-longrun-bad.log
             # V0-06B: the TEMP frontier scenario (migrants may found settlements) must also run 100 years cleanly.
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
