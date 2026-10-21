@@ -1143,7 +1143,8 @@ internal static class DemoWeeklySettlement
             throw new InvalidOperationException($"第 {report.Week} 週遷徙隊伍編號重複。");
 
         // 45G M1_SETTLE：新聚落不憑空。每個「建立新聚落」事件都對應一支本週抵達的開拓隊，
-        // 新聚落的期初人口／糧食／飢餓債／資源點存量全部為 0、沒有出生，人口＝隊伍抵達人數；
+        // 新聚落的期初人口／糧食／飢餓債／資源點存量全部為 0，遷入＝隊伍抵達人數；
+        // 第 08-1 章：建村當週隊伍裡的孕婦可以分娩（出生另由帶原因的出生事件對帳），不再要求出生為 0；
         // 每支抵達的開拓隊都建立了一個聚落（一對一）。糧食與飢餓債由上面的兩端對帳檢查。
         var foundedEvents = report.Events.Where(e => e.Kind == DemoSettlementEventKind.SettlementFounded).ToList();
         var foundingArrivals = migrations.Where(m => m.Founding && m.Arrived).ToList();
@@ -1158,7 +1159,7 @@ internal static class DemoWeeklySettlement
                 || string.IsNullOrWhiteSpace(founded.Cause)
                 || founded.Count != batch.PopulationClosing || founded.Count <= 0
                 || ledger.PopulationOpening != 0 || ledger.FoodOpening != 0 || ledger.HungerDebtOpening != 0
-                || ledger.ReserveOpening != 0 || ledger.Births != 0
+                || ledger.ReserveOpening != 0
                 || ledger.Immigrants != batch.PopulationClosing)
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週新聚落 {founded.SettlementName} 不是完全由開拓隊建立（M1_SETTLE：新聚落不憑空）。");

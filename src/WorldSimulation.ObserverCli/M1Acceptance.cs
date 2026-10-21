@@ -920,8 +920,9 @@ public static class M1Evaluator
 
                 if (!foundingDepartures.TryGetValue(batch.BatchId, out var origin))
                     problems.Add($"{at} 的開拓隊 #{batch.BatchId} 沒有出發紀錄");
+                // 第 08-1 章：建村當週隊伍裡的孕婦可以分娩；出生由 M1_POP 對帶原因的出生事件。
                 if (ledger.PopulationOpening != 0 || ledger.FoodOpening != 0 || ledger.HungerDebtOpening != 0
-                    || ledger.ReserveOpening != 0 || ledger.Births != 0)
+                    || ledger.ReserveOpening != 0)
                     problems.Add($"{at} 期初不是全 0（人口 {ledger.PopulationOpening}、糧食 {ledger.FoodOpening}、存量 {ledger.ReserveOpening}）");
                 if (ledger.Immigrants != batch.PopulationClosing || e.Count != batch.PopulationClosing || e.Count <= 0
                     || ledger.FoodCarriedIn != batch.FoodClosing)
