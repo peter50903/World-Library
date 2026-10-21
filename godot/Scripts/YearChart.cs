@@ -72,6 +72,19 @@ public partial class YearChart : Control
     /// <summary>目前選取的年份（0＝沒有）。</summary>
     public int SelectedYear => _selectedYear;
 
+    private long _capacity;
+
+    /// <summary>第 08-1 章：地圖理論承載上限（人口系列畫成虛線；0＝不畫）。</summary>
+    public long Capacity
+    {
+        get => _capacity;
+        set
+        {
+            _capacity = Math.Max(0, value);
+            QueueRedraw();
+        }
+    }
+
     /// <summary>目前系列每一年每一條長條的數值（與畫面一致；冒煙用來和年帳比對）。</summary>
     public IReadOnlyList<long[]> Values()
         => _rows.Select(r => AllSeries[_series].Bars.Select(b => b.Value(r)).ToArray()).ToList();
@@ -142,7 +155,8 @@ public partial class YearChart : Control
         }
 
         var values = Values();
-        var max = Math.Max(1L, values.SelectMany(v => v).DefaultIfEmpty(0).Max());
+        var showCapacity = _series == 0 && _capacity > 0;
+        var max = Math.Max(1L, Math.Max(values.SelectMany(v => v).DefaultIfEmpty(0).Max(), showCapacity ? _capacity : 0));
         DrawString(font, new Vector2(4, plot.Position.Y + 10), max.ToString(System.Globalization.CultureInfo.InvariantCulture),
             HorizontalAlignment.Left, TempLeft - 8, fontSize, ink);
         DrawString(font, new Vector2(4, plot.End.Y), "0", HorizontalAlignment.Left, -1, fontSize, ink);
@@ -159,6 +173,14 @@ public partial class YearChart : Control
                 var h = plot.Size.Y * values[i][b] / max;
                 DrawRect(new Rect2(left + group * 0.1f + b * barWidth, plot.End.Y - h, barWidth, h), series.Bars[b].Color);
             }
+        }
+
+        if (showCapacity)
+        {
+            // 第 08-1 章：地圖理論承載上限（TEMP 估計）虛線。
+            var y = plot.End.Y - plot.Size.Y * _capacity / max;
+            DrawDashedLine(new Vector2(plot.Position.X, y), new Vector2(plot.End.X, y), new Color(0.55f, 0.25f, 0.10f), 2f, 6f);
+            DrawString(font, new Vector2(plot.Position.X + 4, y - 4), $"理論上限 {_capacity}", HorizontalAlignment.Left, -1, fontSize, ink);
         }
 
         // 年份刻度：第一年與最後一年。
