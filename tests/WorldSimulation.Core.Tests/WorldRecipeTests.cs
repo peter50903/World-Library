@@ -136,7 +136,7 @@ public sealed class WorldRecipeTests
         var live = Run(WorldRecipe.ForSeeds(123, 456), DemoWeeklyTempConfig.Sample, 14);
         var original = live.ExportTempSave();
         var doc = JsonNode.Parse(original)!;
-        doc["Recipe"]![field] = JsonNode.Parse(valueJson);
+        doc["Manifest"]!["Recipe"]![field] = JsonNode.Parse(valueJson);
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
         Assert.Equal(original, live.ExportTempSave());
     }
@@ -145,20 +145,25 @@ public sealed class WorldRecipeTests
     public void RulesVersionMismatch_SaysSo()
     {
         var doc = JsonNode.Parse(Run(WorldRecipe.ForSeeds(1), DemoWeeklyTempConfig.Sample, 7).ExportTempSave())!;
-        doc["Recipe"]!["RulesVersion"] = "TEMP-RULES-99";
+        doc["Manifest"]!["RulesVersion"] = "TEMP-RULES-99";
+        doc["Manifest"]!["Recipe"]!["RulesVersion"] = "TEMP-RULES-99";
         var ex = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
-        Assert.Contains("規則版本不符", ex.Message, StringComparison.Ordinal);
+        Assert.Contains("規則版本不符（存檔 TEMP-RULES-99，目前 TEMP-RULES-0）", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void CodeVersionAndConfigHash_AreOnlyRecorded_SoAnotherBuildCanStillLoad()
+    public void CodeVersionMismatch_OnlyWarns_SoAnotherBuildCanStillLoad()
     {
+        // 第 04 章 b 節：程式版本不同只警告、不拒讀；設定雜湊不同則拒讀（見 DemoSaveManifestTests）。
         var world = Run(WorldRecipe.ForSeeds(9, 10), DemoWeeklyTempConfig.Sample, 9);
         var doc = JsonNode.Parse(world.ExportTempSave())!;
-        doc["Recipe"]!["CodeVersion"] = "0123456789abcdef0123456789abcdef01234567";
+        doc["Manifest"]!["CodeVersion"] = "0123456789abcdef0123456789abcdef01234567";
+        doc["Manifest"]!["Recipe"]!["CodeVersion"] = "0123456789abcdef0123456789abcdef01234567";
         var other = doc.ToJsonString();
         var restored = DemoObserverWorld.ImportTempSave(other);
         Assert.Equal("0123456789abcdef0123456789abcdef01234567", restored.Recipe.CodeVersion);
+        Assert.Contains("程式版本不同", restored.LoadWarning, StringComparison.Ordinal);
+        Assert.Null(DemoObserverWorld.ImportTempSave(world.ExportTempSave()).LoadWarning);
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(other), JsonNode.Parse(restored.ExportTempSave())));
     }
 
@@ -171,8 +176,10 @@ public sealed class WorldRecipeTests
             DemoSaveSlots.Save(Run(WorldRecipe.ForSeeds(7, 8), DemoWeeklyTempConfig.Sample, 3), 1, directory);
             DemoSaveSlots.Save(Run(WorldRecipe.ForSeeds(7), DemoWeeklyTempConfig.Sample, 3), 2, directory);
             var slots = DemoSaveSlots.ListAll(directory);
-            Assert.Equal("槽 1：第 3 日｜種子 7｜自訂歷史種子 8｜一般示範｜存檔第 7 版", slots[0].Describe());
-            Assert.Equal("槽 2：第 3 日｜種子 7｜一般示範｜存檔第 7 版", slots[1].Describe());
+            var config = WorldRecipe.CurrentConfigHash[..8];
+            var derived = WorldRecipe.ForSeeds(7).HistorySeed;
+            Assert.Equal($"槽 1：第 3 日｜世界種子 7｜歷史種子 8｜一般示範｜設定 {config}｜存檔第 8 版｜可讀", slots[0].Describe());
+            Assert.Equal($"槽 2：第 3 日｜世界種子 7｜歷史種子 {derived}（衍生）｜一般示範｜設定 {config}｜存檔第 8 版｜可讀", slots[1].Describe());
         }
         finally
         {

@@ -46,10 +46,11 @@ public sealed class DemoSaveSlotTests : IDisposable
         DemoSaveSlots.Save(c, 3, _directory);
 
         var slots = DemoSaveSlots.ListAll(_directory);
-        Assert.Equal((42UL, 9, "一般示範", 7), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((42UL, 9, "一般示範", 8), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
         Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
         Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
-        Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 7 版", slots[1].Describe());
+        Assert.Equal($"槽 2：第 21 日｜世界種子 7｜歷史種子 {WorldRecipe.ForSeeds(7).HistorySeed}（衍生）｜開拓｜設定 {WorldRecipe.CurrentConfigHash[..8]}｜存檔第 8 版｜可讀", slots[1].Describe());
+        Assert.All(slots, s => Assert.True(s.Compatible));
 
         Assert.Equal(a.ExportTempSave(), DemoSaveSlots.Load(1, _directory).ExportTempSave());
         Assert.Equal(b.ExportTempSave(), DemoSaveSlots.Load(2, _directory).ExportTempSave());
@@ -86,7 +87,7 @@ public sealed class DemoSaveSlotTests : IDisposable
     [Fact]
     public void SlotInfo_ReadsOnlyHeader_EvenWhenStateIsCorrupt()
     {
-        // 檔頭完整、世界狀態被截斷：槽位資訊仍可顯示（只讀檔頭），但真正讀檔整份驗證後拒絕。
+        // 檔頭完整、世界狀態被截斷：槽位資訊仍可顯示，但校驗碼無法成立→不相容（第 04 章 b 節）；真正讀檔也拒絕。
         var json = World(42, DemoWeeklyTempConfig.Sample, 12).ExportTempSave();
         var cut = json[..(json.IndexOf("\"State\"", StringComparison.Ordinal) + 20)];
         Directory.CreateDirectory(_directory);
@@ -95,6 +96,9 @@ public sealed class DemoSaveSlotTests : IDisposable
         var info = DemoSaveSlots.ReadInfo(2, _directory);
         Assert.Null(info.Error);
         Assert.Equal(12, info.DaysElapsed);
+        Assert.False(info.Compatible);
+        Assert.Contains("校驗碼不符", info.IncompatibleReason, StringComparison.Ordinal);
+        Assert.EndsWith("｜不相容（存檔內容損毀（校驗碼不符））", info.Describe(), StringComparison.Ordinal);
         Assert.Throws<InvalidDataException>(() => DemoSaveSlots.Load(2, _directory));
     }
 
@@ -127,11 +131,11 @@ public sealed class DemoSaveSlotTests : IDisposable
         Assert.Equal("不是已知的示範情境", DemoSaveSlots.ReadInfo(1, _directory).Error);
     }
 
-    // ── 版本策略（C04／C05）：只有第 7 版可讀；第 1～6 版「版本太舊，請建立新世界」；其他版本不受支援 ──
+    // ── 版本策略（C04／C05）：只有第 8 版可讀；第 1～7 版「版本太舊，請建立新世界」；其他版本不受支援 ──
 
     [Theory]
     [InlineData(0)]
-    [InlineData(8)]
+    [InlineData(9)]
     [InlineData(99)]
     [InlineData(-2)]
     public void UnknownVersion_IsRejected(int version)
@@ -169,6 +173,7 @@ public sealed class DemoSaveSlotTests : IDisposable
     [InlineData(4)]
     [InlineData(5)]
     [InlineData(6)]
+    [InlineData(7)]
     public void OlderVersions_InSlots_ShowTooOldAndStayUntouched(int version)
     {
         var world = World(42, DemoWeeklyTempConfig.FrontierSample, 40);

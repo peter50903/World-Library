@@ -50,6 +50,8 @@ jobs:
               exit 1
             fi
             tail -5 /tmp/observer-tests.log
+            # 第 04 章 b 節：100 年存檔讀檔與完整驗證耗時（以註記列出，供 PR 說明引用）。
+            if [ -f /tmp/wsim-save-timing.txt ]; then echo "::notice title=100 年存檔耗時::$(cat /tmp/wsim-save-timing.txt)"; fi
             # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
             printf 'n\ns\nh\n7\nh\nrng\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
@@ -98,9 +100,12 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":7,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
-            printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜種子 42｜一般示範｜存檔第 7 版' /tmp/observer-slots.log
+            printf '{"Version":8,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 8 版｜可讀' /tmp/observer-slots.log
+            # 第 04 章 b 節：選用完整驗證。
+            grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
+            grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
             grep -q '已讀取 TEMP 存檔槽 2。' /tmp/observer-slots.log
             grep -q '世界狀態｜種子 42｜第 9 日' /tmp/observer-slots.log
             grep -q '槽 1：（空）' /tmp/observer-slots.log
@@ -113,7 +118,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 7 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 8 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -274,6 +279,7 @@ jobs:
           fi
           grep -q 'WORLD_SIM_SAVE_OK: SavedDay=9 RestoredDay=9 ResumedDay=10' /tmp/godot-save.log
           grep -q 'WORLD_SIM_SLOTS_OK: Slot=2 SavedDay=9 RestoredDay=9 CorruptSlot=3 Rejected=1' /tmp/godot-save.log
+          grep -q 'WORLD_SIM_SAVE_HEADER_OK: Compatible=1 ConfigMismatchRejected=1 ReplayVerified=1' /tmp/godot-save.log
           # #81: player-visible TEMP scenario picker — real picker/buttons, confirmation before discarding an
           # advanced world, fresh day-0 rebuild without residue, migration / founding / famine visible,
           # loading a slot restores its own scenario, and switching never touches the save slots.

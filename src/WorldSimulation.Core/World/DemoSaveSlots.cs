@@ -18,17 +18,29 @@ public sealed record DemoSaveSlotInfo(
     int? DaysElapsed = null,
     string? ScenarioName = null,
     string? Error = null,
-    ulong? HistorySeedInput = null)
+    ulong? HistorySeedInput = null,
+    WorldRecipe? Recipe = null,
+    bool Compatible = false,
+    string? IncompatibleReason = null,
+    string? Warning = null)
 {
-    /// <summary>給觀察者畫面與文字介面的一行繁體中文說明。</summary>
+    /// <summary>
+    /// 給觀察者畫面與文字介面的一行繁體中文說明（第 04 章 b 節）：
+    /// 「槽 N：第 D 日｜世界種子 W｜歷史種子 H｜情境｜設定 前8碼｜存檔第 V 版｜可讀」或「…｜不相容（原因）」；
+    /// 檔頭本身讀不出來時「槽 N：無法辨識（原因）」。
+    /// </summary>
     public string Describe()
     {
         if (!Exists)
             return $"槽 {Slot}：（空）";
-        if (Error is not null)
-            return $"槽 {Slot}：無法辨識（{Error}）";
+        if (Error is not null || Recipe is null)
+            return $"槽 {Slot}：無法辨識（{Error ?? "檔頭缺少世界資訊"}）";
+        var history = Recipe.HistorySeedDerived
+            ? $"歷史種子 {Recipe.HistorySeed}（衍生）"
+            : $"歷史種子 {Recipe.HistorySeed}";
+        var config = Recipe.ConfigHash.Length > 8 ? Recipe.ConfigHash[..8] : Recipe.ConfigHash;
         return string.Create(CultureInfo.InvariantCulture,
-            $"槽 {Slot}：第 {DaysElapsed} 日｜種子 {Seed}{(HistorySeedInput is { } h ? $"｜自訂歷史種子 {h}" : "")}｜{ScenarioName}｜存檔第 {Version} 版");
+            $"槽 {Slot}：第 {DaysElapsed} 日｜世界種子 {Seed}｜{history}｜{ScenarioName}｜設定 {config}｜存檔第 {Version} 版｜{(Compatible ? "可讀" : $"不相容（{IncompatibleReason}）")}");
     }
 }
 
@@ -79,6 +91,17 @@ public static class DemoSaveSlots
         return DemoObserverWorld.LoadTempFile(path);
     }
 
+    /// <summary>第 04 章 b 節：選用完整驗證（從第 0 日重跑逐週比對）；空槽回傳不一致並說明。不改世界、不寫檔。</summary>
+    public static DemoReplayVerification Verify(int slot, string? directory = null)
+    {
+        var path = PathFor(slot, directory);
+        if (!File.Exists(path))
+            return new DemoReplayVerification(false, null, $"存檔槽 {slot} 是空的", TimeSpan.Zero);
+        if (new FileInfo(path).Length > DemoObserverWorld.TempMaxSaveFileBytes)
+            return new DemoReplayVerification(false, null, "檔案超過大小限制", TimeSpan.Zero);
+        return DemoObserverWorld.VerifyTempSaveByReplay(File.ReadAllText(path, System.Text.Encoding.UTF8));
+    }
+
     public static IReadOnlyList<DemoSaveSlotInfo> ListAll(string? directory = null)
         => Enumerable.Range(1, TempSlotCount).Select(slot => ReadInfo(slot, directory)).ToArray();
 
@@ -100,12 +123,16 @@ public static class DemoSaveSlots
         }
     }
 
+    /// <summary>
+    /// 第 04 章 b 節：讀檔頭並做標頭檢查①～⑧（不解析世界狀態，只取 State 原文算校驗碼）。
+    /// 檔頭讀不出來回傳 Error；讀得出來但②～⑧不符回傳 Compatible＝false 與原因。不丟例外。
+    /// </summary>
     internal static DemoSaveSlotInfo ReadHeader(int slot, string path, byte[] bytes)
     {
         int? version = null;
-        int? days = null;
-        WorldRecipe? recipe = null;
+        DemoSaveManifest? manifest = null;
         DemoWeeklyTempConfig? weekly = null;
+        byte[]? state = null;
         try
         {
             var reader = new Utf8JsonReader(bytes, new JsonReaderOptions { MaxDepth = 128 });
@@ -114,8 +141,6 @@ public static class DemoSaveSlots
             while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
             {
                 var name = reader.GetString();
-                if (name == "State")
-                    break; // 檔頭結束；不解析世界狀態。
                 if (!reader.Read())
                     return Bad("檔頭不完整");
                 switch (name)
@@ -123,14 +148,25 @@ public static class DemoSaveSlots
                     case "Version":
                         version = reader.GetInt32();
                         break;
-                    case "DaysElapsed":
-                        days = reader.GetInt32();
-                        break;
-                    case "Recipe":
-                        recipe = JsonSerializer.Deserialize<WorldRecipe>(ref reader);
+                    case "Manifest":
+                        manifest = JsonSerializer.Deserialize<DemoSaveManifest>(ref reader);
                         break;
                     case "WeeklyConfig":
                         weekly = JsonSerializer.Deserialize<DemoWeeklyTempConfig>(ref reader);
+                        break;
+                    case "State":
+                        // 只截取原文算校驗碼；檔案不完整時 state 維持 null（⑧ 判為損毀，檔頭資訊仍可顯示）。
+                        var start = (int)reader.TokenStartIndex;
+                        try
+                        {
+                            reader.Skip();
+                            state = bytes[start..(int)reader.BytesConsumed];
+                        }
+                        catch (JsonException)
+                        {
+                            state = null;
+                            goto done;
+                        }
                         break;
                     default:
                         reader.Skip();
@@ -141,30 +177,46 @@ public static class DemoSaveSlots
         catch (Exception ex) when (ex is JsonException or FormatException or InvalidOperationException
             or NotSupportedException or ArgumentException)
         {
-            return Bad("檔頭損毀");
+            // 版本讀得到就繼續往下判斷（缺標頭→「檔頭缺少世界資訊」）；連版本都讀不到才是檔頭損毀。
+            if (version is null)
+                return Bad("檔頭損毀");
         }
+        done:
 
+        // ① 版本。
         if (version is not null && DemoObserverWorld.IsOutdatedTempSaveVersion(version.Value))
             return Bad(DemoObserverWorld.OutdatedTempSaveMessage(version.Value));
         if (version is null || !DemoObserverWorld.IsSupportedTempSaveVersion(version.Value))
             return Bad("存檔版本不受支援");
-        if (recipe is null || weekly is null || days is null || days < 0)
+        if (manifest?.Recipe is null || weekly is null)
             return Bad("檔頭缺少世界資訊");
         try
         {
-            recipe.Validate();
+            manifest.Recipe.Validate();
         }
         catch (InvalidDataException)
         {
             return Bad("世界配方損毀");
         }
-        if (recipe.RulesVersion != WorldRecipe.TempRulesVersion)
-            return Bad($"規則版本不符（存檔 {recipe.RulesVersion}）");
         var scenarioName = DemoObserverWorld.TempScenarioName(weekly);
         if (scenarioName is null)
             return Bad("不是已知的示範情境");
-        return new DemoSaveSlotInfo(slot, path, true, version, recipe.WorldSeed, days, scenarioName,
-            HistorySeedInput: recipe.HistorySeedInput);
+
+        var recipe = manifest.Recipe;
+        var days = manifest.WorldTimeTicks >= 0 && manifest.WorldTimeTicks % TimeSpan.TicksPerDay == 0
+            ? (int?)checked((int)Math.Min(manifest.WorldTimeTicks / TimeSpan.TicksPerDay, int.MaxValue))
+            : null;
+        var info = new DemoSaveSlotInfo(slot, path, true, version, recipe.WorldSeed, days, scenarioName,
+            HistorySeedInput: recipe.HistorySeedInput, Recipe: recipe);
+        try
+        {
+            var (_, warning) = DemoSaveHeader.Check(version.Value, manifest, state);
+            return info with { Compatible = true, Warning = warning };
+        }
+        catch (InvalidDataException ex)
+        {
+            return info with { IncompatibleReason = ex.Message.Replace("，已拒絕載入。", "", StringComparison.Ordinal).TrimEnd('。') };
+        }
 
         DemoSaveSlotInfo Bad(string reason) => new(slot, path, true, Error: reason);
     }

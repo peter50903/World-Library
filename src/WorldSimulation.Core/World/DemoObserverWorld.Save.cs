@@ -11,7 +11,9 @@ namespace WorldSimulation.Core.World;
 /// version 4 (C05) retires the V0-01 daily food fields and adds per-week RNG stream counters;
 /// version 5 stores the full world recipe (world/history seed, rules version, config hash, code version);
 /// version 6 (第 03 章 b 節) adds State.History, the append-only formal event history (rebuilt and compared on load);
-/// version 7 (第 04 章 a 節) draws births/deaths from the history seed's POP stream and drops the demography seed.
+/// version 7 (第 04 章 a 節) draws births/deaths from the history seed's POP stream and drops the demography seed;
+/// version 8 (第 04 章 b 節) keeps only Version, Manifest (<see cref="DemoSaveManifest"/>), WeeklyConfig and State at the top level
+/// and checks the header (structure/rules/config/TEMP config/code version, world time, State checksum) before anything else.
 /// Every older version is rejected with ONE message, "版本太舊，請建立新世界" (user ruling 2026-10-14):
 /// no converter, the file is never modified or deleted, and the running world is untouched.
 /// The stored scenario and weekly config must also be one of the known TEMP presets
@@ -23,7 +25,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
     public ulong TempWorldSeed => _recipe.WorldSeed;
 
-    internal const int TempSaveVersion = 7; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子。比目前舊的一律「版本太舊」。
+    internal const int TempSaveVersion = 8; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
     private const int TempMaxSaveBytes = 64 * 1024 * 1024;
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
@@ -94,15 +96,23 @@ public sealed partial class DemoObserverWorld
             Demography = _demography?.Snapshot(),
             History = _history.Events.ToArray()
         };
+        // 第 04 章 b 節：State 先單獨序列化（無縮排），校驗碼取這段 UTF-8 位元組；再原文嵌入整份檔案。
+        var stateJson = JsonSerializer.Serialize(state);
+        using var stateDocument = JsonDocument.Parse(stateJson);
+        var manifest = new DemoSaveManifest(
+            TempSaveVersion, _recipe.RulesVersion, _recipe.ConfigHash, DemoSaveHeader.CurrentTempConfigHash,
+            _recipe.CodeVersion, _clock.Now.Ticks, _recipe, DemoSaveHeader.Checksum(Encoding.UTF8.GetBytes(stateJson)));
         return JsonSerializer.Serialize(new
         {
             Version = TempSaveVersion,
-            Recipe = _recipe,
+            Manifest = manifest,
             WeeklyConfig = _weekly,
-            DaysElapsed = DaysOf(_clock.Now),
-            State = state
+            State = stateDocument.RootElement
         });
     }
+
+    /// <summary>第 04 章 b 節：讀檔時程式版本與存檔不同的警告（不拒讀）；沒有就是 null。不屬於世界狀態。</summary>
+    public string? LoadWarning { get; private set; }
 
     /// <summary>
     /// Builds a new fully verified world, leaving the caller's existing world untouched on error.
@@ -129,30 +139,36 @@ public sealed partial class DemoObserverWorld
             if (!IsSupportedTempSaveVersion(version))
                 throw new InvalidDataException("TEMP 存檔版本不受支援。");
 
-            var recipe = root.GetProperty("Recipe").Deserialize<WorldRecipe>()
-                ?? throw new InvalidDataException("TEMP 存檔缺少世界配方。");
-            recipe.Validate();
-            // 規則版本不符：存檔是在不同規則下產生的，拒讀。程式版本與設定雜湊只記錄、不比對（第 04 章 b 節）。
-            if (recipe.RulesVersion != WorldRecipe.TempRulesVersion)
-                throw new InvalidDataException(
-                    $"規則版本不符（存檔 {recipe.RulesVersion}，目前 {WorldRecipe.TempRulesVersion}），已拒絕載入。");
-            var weekly = root.GetProperty("WeeklyConfig").Deserialize<DemoWeeklyTempConfig>()
-                ?? throw new InvalidDataException("TEMP 存檔缺少生存情境。");
-            // Record value equality: every field must equal a known TEMP preset exactly.
-            if (!KnownTempWeeklyConfigs.Contains(weekly))
-                throw new InvalidDataException("TEMP 存檔的生存情境不是已知的示範情境，已拒絕載入。");
-            var days = root.GetProperty("DaysElapsed").GetInt32();
-            if (days < 0 || days > TempMaxSaveDays)
-                throw new InvalidDataException("TEMP 存檔世界日期超出可重播範圍。");
+            var (manifest, weekly, days, warning) = CheckHeader(root, version);
 
             // Current version restores directly (seed-determined parts re-derived, weekly state verified).
-            return ImportDirectSnapshot(json, root, recipe, weekly, days);
+            var world = ImportDirectSnapshot(json, root, manifest.Recipe, weekly, days);
+            world.LoadWarning = warning;
+            return world;
         }
         catch (Exception ex) when (ex is JsonException or FormatException or ArgumentException
             or OverflowException or InvalidOperationException or KeyNotFoundException or NotSupportedException)
         {
             throw new InvalidDataException("TEMP 存檔損毀、格式不符或無法重播驗證。", ex);
         }
+    }
+
+    /// <summary>
+    /// 第 04 章 b 節：①之後的標頭檢查（②～⑧，見 <see cref="DemoSaveHeader.Check"/>）＋已知 TEMP 生存情境。
+    /// </summary>
+    private static (DemoSaveManifest Manifest, DemoWeeklyTempConfig Weekly, int Days, string? Warning) CheckHeader(
+        JsonElement root, int version)
+    {
+        var manifest = root.GetProperty("Manifest").Deserialize<DemoSaveManifest>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少標頭。");
+        var state = root.GetProperty("State");
+        var (days, warning) = DemoSaveHeader.Check(version, manifest, Encoding.UTF8.GetBytes(state.GetRawText()));
+        var weekly = root.GetProperty("WeeklyConfig").Deserialize<DemoWeeklyTempConfig>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少生存情境。");
+        // Record value equality: every field must equal a known TEMP preset exactly.
+        if (!KnownTempWeeklyConfigs.Contains(weekly))
+            throw new InvalidDataException("TEMP 存檔的生存情境不是已知的示範情境，已拒絕載入。");
+        return (manifest, weekly, days, warning);
     }
 
     /// <summary>Atomic same-directory replacement so a failed write does not destroy a prior save.</summary>

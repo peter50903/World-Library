@@ -26,11 +26,11 @@ public sealed class DemoDirectSnapshotTests
     }
 
     [Fact]
-    public void NewSaves_AreVersion7()
+    public void NewSaves_AreVersion8()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
         world.AdvanceOneDay();
-        Assert.Equal(7, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
+        Assert.Equal(8, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
     }
 
     [Theory]
@@ -93,9 +93,10 @@ public sealed class DemoDirectSnapshotTests
     [InlineData(4)]
     [InlineData(5)]
     [InlineData(6)]
+    [InlineData(7)]
     public void OlderSaveVersions_AreRejectedAsTooOld(int version)
     {
-        // C04／C05：比目前第 7 版舊的存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
+        // C04／C05：比目前第 8 版舊的存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
         var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.FrontierSample);
         for (var i = 0; i < 30; i++)
             world.AdvanceOneDay();
@@ -252,6 +253,8 @@ public sealed class DemoDirectSnapshotTests
                 throw new ArgumentOutOfRangeException(nameof(tampering));
         }
 
+        // 第 04 章 b 節：補正校驗碼，確認拒絕來自內容驗證而不只是校驗碼。
+        doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(System.Text.Encoding.UTF8.GetBytes(state.ToJsonString()));
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
         Assert.Equal(original, live.ExportTempSave());
     }

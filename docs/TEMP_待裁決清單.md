@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 7 版（直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋人口改走 POP 流；第 04 章 a 節），第 1～6 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 8 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫；第 04 章 b 節），第 1～7 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -250,7 +250,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 37 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 22 | D8、第 3 節 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
+| `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 16 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |

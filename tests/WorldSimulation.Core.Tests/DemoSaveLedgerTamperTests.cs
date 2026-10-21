@@ -164,6 +164,9 @@ public sealed class DemoSaveLedgerTamperTests
             sb.Append(inv, $"{e.Fingerprint()};");
 
         state["WorldFingerprint"] = sb.ToString();
+        // 第 04 章 b 節：連標頭校驗碼一起補正，讓偽造檔不會只因校驗碼被擋下，仍需靠內容驗證拒絕。
+        doc["Manifest"]!["StateChecksum"] = WorldSimulation.Core.World.DemoSaveHeader.Checksum(
+            Encoding.UTF8.GetBytes(state.ToJsonString()));
     }
 
     // ── 竄改目錄：名稱 →（存檔需含的目標、竄改方式）。全部要被拒絕。 ──
