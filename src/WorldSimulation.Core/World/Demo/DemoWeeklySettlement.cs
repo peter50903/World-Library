@@ -944,7 +944,8 @@ internal static class DemoWeeklySettlement
                         debtOut, 0, 0, debtOut));
                 }
             }
-            else if (!wantsToLeave && map is not null && config.MigrationEnabled && week >= 2 && survivors >= 2
+            // 第 08-1 章：本週沒有人因缺糧或擁擠實際出發，才考慮婚嫁遷移（擁擠但湊不到兩對伴侶開拓時，仍可婚嫁）。
+            if (emigrants == 0 && map is not null && config.MigrationEnabled && week >= 2 && survivors >= 2
                      && mates is not null && mates.TryGetValue(settlement.Id, out var market) && market.SeekerSex is { } seekerSex
                      && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
             {
