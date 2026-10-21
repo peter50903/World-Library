@@ -1,0 +1,12 @@
+{
+  "SchemaVersion": 1,
+  "Status": "TEMP",
+  "Notes": "第 06 章 a 節 TEMP 路線段成本（每段相對成本，道路＝1）與單格尺度；正式值待地圖與交通規則定案。野地比道路慢 3 倍；渡口涉水最慢。",
+  "KmPerCell": 10,
+  "WildCost": 3,
+  "RoadCost": 1,
+  "BridgeCost": 1,
+  "FordCost": 4,
+  "RiverCost": 2,
+  "WaterwayCost": 2
+}

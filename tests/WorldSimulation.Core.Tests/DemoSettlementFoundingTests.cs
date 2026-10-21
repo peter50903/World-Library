@@ -54,7 +54,10 @@ public sealed class DemoSettlementFoundingTests
                 for (var i = 1; i < site.Length; i++)
                 {
                     Assert.True(DemoMigrationRoutes.AreAdjacent(site[i - 1], site[i]));
-                    Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(site[i].Column, site[i].Row).Terrain);
+                    Assert.True(world.Map.Routes.IsLandPassable(site[i - 1], site[i]));
+                    // 第 06 章 a 節：中途只有渡口可以是水域格；新聚落地點一定是陸地。
+                    if (i == site.Length - 1 || world.Map.Routes.Ford != site[i])
+                        Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(site[i].Column, site[i].Row).Terrain);
                 }
 
                 var end = site[^1];

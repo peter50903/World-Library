@@ -88,8 +88,12 @@ public sealed class DemoMigrationTests
                 Assert.Equal(route.Length, route.Distinct().Count());
                 for (var i = 1; i < route.Length; i++)
                     Assert.True(DemoMigrationRoutes.AreAdjacent(route[i - 1], route[i]));
+                // 第 06 章 a 節：中途只有渡口可以是水域格；每一步都要有陸路路線段。
                 for (var i = 1; i < route.Length - 1; i++)
-                    Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(route[i].Column, route[i].Row).Terrain);
+                    if (world.Map.Routes.Ford != route[i])
+                        Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(route[i].Column, route[i].Row).Terrain);
+                for (var i = 1; i < route.Length; i++)
+                    Assert.True(world.Map.Routes.IsLandPassable(route[i - 1], route[i]));
             }
         }
 

@@ -38,6 +38,16 @@ public static class DemoCellQuery
         _ => "未定義（TEMP）"
     };
 
+    /// <summary>第 06 章 a 節：「路線：東 野地（成本 3）、西 渡口（成本 4）…」或「路線：無（不可通行）」。</summary>
+    public static string RoutesLine(DemoHexWorld map, DemoCellRef cell)
+    {
+        var exits = map.Routes.Exits(map, cell);
+        var ford = map.Routes.Ford == cell ? "｜此格為渡口" : "";
+        return exits.Count == 0
+            ? $"路線：無（不可通行）{ford}"
+            : $"路線：{string.Join("、", exits.Select(e => $"{e.Direction} {DemoRouteNetwork.KindName(e.Segment.Kind)}（成本 {e.Segment.Cost}）"))}{ford}";
+    }
+
     /// <summary>TEMP 地形中文名稱。</summary>
     public static string TerrainName(DemoTerrain terrain) => terrain switch
     {
@@ -61,7 +71,9 @@ public static class DemoCellQuery
             $"軸向座標 ({cell.AxialQ}, {cell.AxialR})",
             $"核心地形：{TerrainName(cell.Terrain)}"
                 + (world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland ? "（未開墾，農田糧食 0）" : "")
-                + (isMainRiver ? "（主河道，禁止定居，鄰格漁撈）" : "")
+                + (cell.MainWaterway ? "（主水道，禁止定居" + (world.UsesSharedForaging ? "，鄰格漁撈）" : "）") : ""),
+            // 第 06 章 a 節：出入口由路線段衍生（相鄰但沒有路線段＝不可通行）。
+            RoutesLine(world.Map, new DemoCellRef(cell.Column, cell.Row))
         };
 
         DemoCatchmentFoodSource? sharedSource = null;
