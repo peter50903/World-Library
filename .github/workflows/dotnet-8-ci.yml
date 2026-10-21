@@ -178,6 +178,12 @@ jobs:
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
+            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。
+            for s in 1 4 7; do
+              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
+              grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
+              echo "::notice title=普通世界人口診斷 種子 $s::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "/tmp/diag-$s.txt")"
+            done
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
             # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
