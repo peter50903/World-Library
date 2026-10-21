@@ -35,7 +35,6 @@ public partial class ObserverRoot
     private Button _timeStep = null!;
     private Button[] _timeSpeeds = null!;
     private bool _detailOpen;
-    private bool _consoleOpen = true;
     private Label _topFood = null!;
     private Label _topBirths = null!;
     private Label _topDeaths = null!;
@@ -147,8 +146,12 @@ public partial class ObserverRoot
         _musicToggle = new Button { Text = "♪", TooltipText = "背景音樂 開／關" , ToggleMode = true };
         _musicToggle.Toggled += OnMusicToggled;
         row.AddChild(_musicToggle);
-        _consoleToggle = new Button { Text = "世界控制台 ▸", TooltipText = "收合或展開右側世界控制台" };
-        _consoleToggle.Pressed += ToggleConsole;
+        // 第 05 章 b2：右側分頁——聚落清單（預設）／世界控制台；按目前分頁就收合。
+        _outlinerToggle = new Button { Text = "聚落清單", ToggleMode = true, TooltipText = "右側聚落清單（再按一次收合）" };
+        _outlinerToggle.Pressed += () => SetRightView(RightView.Outliner);
+        row.AddChild(_outlinerToggle);
+        _consoleToggle = new Button { Text = "世界控制台", ToggleMode = true, TooltipText = "右側世界控制台：狀態、帳目、診斷、播放與重大事件設定（再按一次收合）" };
+        _consoleToggle.Pressed += () => SetRightView(RightView.Console);
         row.AddChild(_consoleToggle);
     }
 
@@ -278,7 +281,7 @@ public partial class ObserverRoot
             {
                 Text = $"{i + 1}",
                 ToggleMode = true,
-                CustomMinimumSize = new Vector2(52, 36),
+                CustomMinimumSize = new Vector2(40, 36),
                 TooltipText = $"速度 {i + 1} 檔：每秒 {options[i]} 天（TEMP；數字鍵 {i + 1}）"
             };
             if (ArtAssets.Texture(ArtAssets.UiFast) is { } fast)
@@ -303,12 +306,6 @@ public partial class ObserverRoot
         RefreshHud();
     }
 
-    private void ToggleConsole()
-    {
-        _consoleOpen = !_consoleOpen;
-        ApplyHudLayout();
-    }
-
     private void ShowDetail(string text)
     {
         _detailText.Text = text;
@@ -326,14 +323,17 @@ public partial class ObserverRoot
     private void ApplyHudLayout()
     {
         var size = _hud.Size;
-        var frame = HudLayout.Compute((int)size.X, (int)size.Y, _detailOpen, _consoleOpen);
+        var frame = HudLayout.Compute((int)size.X, (int)size.Y, _detailOpen, _rightView != RightView.None);
         Place(_topBar, frame.TopBar, true);
         Place(_detailPanel, frame.Detail, _detailOpen);
-        Place(_consolePanel, frame.Console, _consoleOpen);
+        Place(_consolePanel, frame.Console, _rightView == RightView.Console);
+        if (_outlinerPanel is not null)
+            Place(_outlinerPanel, frame.Console, _rightView == RightView.Outliner);
         Place(_timePanel, frame.Time, true);
         Place(_feedPanel, frame.Feed, true);
         PlaceToolbarRow(frame);
-        _consoleToggle.Text = _consoleOpen ? "世界控制台 ▸" : "◂ 世界控制台";
+        _consoleToggle.SetPressedNoSignal(_rightView == RightView.Console);
+        _outlinerToggle.SetPressedNoSignal(_rightView == RightView.Outliner);
     }
 
     private static void Place(Control control, HudRect rect, bool visible)
@@ -417,7 +417,7 @@ public partial class ObserverRoot
             _hud.Size = new Vector2(w, h);
             ApplyHudLayout();
             foreach (var (name, control) in new (string, Control)[]
-                     { ("TopBar", _topBar), ("Console", _consolePanel), ("Time", _timePanel), ("Feed", _feedPanel),
+                     { ("TopBar", _topBar), ("Outliner", _outlinerPanel), ("Time", _timePanel), ("Feed", _feedPanel),
                        ("Toolbar", _toolbarPanel), ("MapModes", _mapModePanel) })
             {
                 var r = new Rect2(control.Position, control.Size);
@@ -459,14 +459,13 @@ public partial class ObserverRoot
         if (_playback.DaysPerSecond != PlaybackClock.TempDaysPerSecondOptions[1] || !_timeSpeeds[1].ButtonPressed
             || _speedPicker.Selected != 1)
             Fail("key 2 did not select the second speed.");
+        PressKey(Godot.Key.Key5);
+        if (_playback.DaysPerSecond != PlaybackClock.TempDaysPerSecondOptions[4] || !_timeSpeeds[4].ButtonPressed
+            || _speedPicker.Selected != 4 || _timeSpeeds.Length != 5)
+            Fail("key 5 did not select the fifth speed.");
 
-        // 收合／展開控制台。
-        _consoleToggle.EmitSignal(BaseButton.SignalName.Pressed);
-        if (_consolePanel.Visible)
-            Fail("console did not collapse.");
-        _consoleToggle.EmitSignal(BaseButton.SignalName.Pressed);
-        if (!_consolePanel.Visible)
-            Fail("console did not expand.");
+        // b2：右側聚落清單（預設）、點列定位、分頁切換與收合。
+        var outliner = VerifyOutlinerSmoke(Fail);
 
         var toolbar = VerifyToolbarSmoke(Fail, PressKey);
 
@@ -481,6 +480,7 @@ public partial class ObserverRoot
                     ? ArtAssets.Audio(p) : (Resource?)ArtAssets.Texture(p)) is null)));
         if (_timeStep.Icon is null || _timeSpeeds[0].Icon is null
             || _consolePanel.GetThemeStylebox("panel") is not StyleBoxTexture
+            || _outlinerPanel.GetThemeStylebox("panel") is not StyleBoxTexture
             || _topBar.GetThemeStylebox("panel") is not StyleBoxTexture
             || _clickPlayer.Stream is null || _alertPlayer.Stream is null || _musicPlayer.Stream is null
             || !_hexMap.UsesTerrainArt)
@@ -488,6 +488,6 @@ public partial class ObserverRoot
         if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
             Fail("food stat missing from the top bar.");
 
-        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art} {toolbar}");
+        GD.Print($"WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Console=1 Feed=1 Keys=1 Resize={resized} Art={art} {toolbar} {outliner} Speeds={_timeSpeeds.Length}");
     }
 }

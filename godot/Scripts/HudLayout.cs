@@ -35,7 +35,7 @@ public static class HudLayout
 {
     public const int TempMargin = 8;          // TEMP：面板與視窗邊緣的間距
     public const int TempTopBarHeight = 44;   // TEMP
-    public const int TempTimeWidth = 300;     // TEMP：右下時間控制
+    public const int TempTimeWidth = 360;     // TEMP：右下時間控制（播放、+1 日、5 檔速度）
     public const int TempTimeHeight = 64;     // TEMP：圖示按鈕 36＋羊皮紙框上下內距 14×2
     public const int TempFeedMinHeight = 120; // TEMP：底部事件列
     public const int TempFeedMaxHeight = 240; // TEMP

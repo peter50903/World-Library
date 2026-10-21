@@ -30,7 +30,7 @@ public partial class ObserverRoot
     {
         var listColumn = new VBoxContainer { CustomMinimumSize = new Vector2(330, 0) };
         parent.AddChild(listColumn);
-        listColumn.AddChild(new Label { Text = "聚落事件（點選看原因鏈）" });
+        listColumn.AddChild(new Label { Text = "世界紀錄（新的在上；紅色＝重大事件；點選看原因鏈並定位地圖）" });
         BuildHistoryFilter(listColumn); // #96：篩選列在清單上方。
         _eventList = new ItemList
         {
@@ -94,8 +94,12 @@ public partial class ObserverRoot
         _eventList.Clear();
         foreach (var e in shown)
         {
-            var index = _eventList.AddItem($"#{e.EventId} 第 {e.Week} 週 {e.SettlementName} {DemoCausalIndex.KindText(e.Kind)}");
+            var major = TempMajorKinds.Contains(e.Kind);
+            var index = _eventList.AddItem($"{(major ? "⚠ " : "")}#{e.EventId} 第 {e.Week} 週 {e.SettlementName} {DemoCausalIndex.KindText(e.Kind)}");
             _eventList.SetItemMetadata(index, e.EventId);
+            // 第 05 章 b2：重大事件（TEMP 種類，同自動暫停）以醒目紅字標示。
+            if (major)
+                _eventList.SetItemCustomFgColor(index, new Color(0.85f, 0.20f, 0.15f));
             if (e.EventId == _selectedEventId)
                 _eventList.Select(index);
         }
