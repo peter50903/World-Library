@@ -166,7 +166,7 @@ public sealed class DemoTempDemography
                 people.Add(id, draws is null
                     ? new DemoTempPerson(id, settlement, i % 2 == 0 ? DemoTempSex.Female : DemoTempSex.Male,
                         checked(-(rules.AdultAgeYears + i % 5) * 365))
-                    : OpeningPerson(id, settlement, draws));
+                    : OpeningPerson(id, settlement, i, draws, rules));
                 id = ids is null ? checked(id + 1) : DemoEntityIds.NextValue(ids.Capture());
             }
         }
@@ -174,8 +174,13 @@ public sealed class DemoTempDemography
             people.Values.ToImmutableArray()), rules);
     }
 
-    /// <summary>第 07 章 a 節：依年齡層比例抽一個開局人（年齡層→年齡→年內出生日；性別各半）。</summary>
-    internal static DemoTempPerson OpeningPerson(long id, int settlement, DemoOpeningDraws draws)
+    /// <summary>
+    /// 第 07 章 a 節：抽一個開局人（年齡層→年齡→年內出生日；性別各半）。
+    /// 示範聚落只有 3～8 人，純隨機常抽不到可生育的一對，所以每個聚落的第 1、2 人固定是育齡女性、育齡男性
+    /// （「建村夫婦」【TEMP】，年齡仍在育齡層內隨機），其餘人依年齡層比例抽。
+    /// </summary>
+    internal static DemoTempPerson OpeningPerson(long id, int settlement, int slot, DemoOpeningDraws draws,
+        DemoTempDemographyRules rules)
     {
         var bands = DemoDemographyTempSettings.Current.OpeningAgeBands;
         var raw = draws.Age(id);
@@ -187,11 +192,18 @@ public sealed class DemoTempDemography
             cumulative += b.Percent;
             if (pick < cumulative) { band = b; break; }
         }
+        if (slot < 2)
+            band = bands.First(b => b.MinAge >= rules.AdultAgeYears && b.MaxAge < rules.FertileAgeMaxYears);
         var span = (ulong)(band.MaxAge - band.MinAge + 1);
         var rest = raw / 100;
         var age = band.MinAge + (int)(rest % span);
         var dayInYear = (int)(rest / span % 365);
-        var sex = draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male;
+        var sex = slot switch
+        {
+            0 => DemoTempSex.Female,
+            1 => DemoTempSex.Male,
+            _ => draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male
+        };
         return new DemoTempPerson(id, settlement, sex, checked(-(age * 365 + dayInYear)));
     }
 

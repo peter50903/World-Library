@@ -16,12 +16,18 @@ public sealed class DemoHumanLifeRulesTests
     public void MultiSeedCenturyHasBirthsNaturalDeathsAndStarvationWithoutKinPairs()
     {
         long starvation = 0;
+        var openings = new List<DemoTempPerson>();
         foreach (var seed in Seeds)
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
             var opening = world.HumanPopulationSnapshot!.People;
-            Assert.Contains(opening, p => !p.IsAdultAt(0, DemoTempDemographyRules.HumanFixture));
-            Assert.Contains(opening, p => p.AgeYearsAt(0) >= 60);
+            openings.AddRange(opening);
+            // 每個聚落至少有一對育齡建村夫婦。
+            Assert.All(opening.GroupBy(p => p.SettlementId), g =>
+            {
+                Assert.Contains(g, p => p.Sex == DemoTempSex.Female && p.AgeYearsAt(0) is >= 18 and < 45);
+                Assert.Contains(g, p => p.Sex == DemoTempSex.Male && p.AgeYearsAt(0) is >= 18 and < 45);
+            });
 
             for (var day = 0; day < 100 * TestCalendar.DaysPerYear; day++)
                 world.AdvanceOneDay();
@@ -44,6 +50,9 @@ public sealed class DemoHumanLifeRulesTests
                 e => Assert.Contains("雙親", e.Cause));
         }
         Assert.True(starvation > 0, "多種子百年都沒有餓死");
+        // 混齡：三個種子的開局合計有兒童，也有 45 歲以上的人。
+        Assert.Contains(openings, p => !p.IsAdultAt(0, DemoTempDemographyRules.HumanFixture));
+        Assert.Contains(openings, p => p.AgeYearsAt(0) >= 45);
     }
 
     [Fact]
