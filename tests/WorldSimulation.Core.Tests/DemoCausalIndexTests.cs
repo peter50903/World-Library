@@ -71,8 +71,8 @@ public sealed class DemoCausalIndexTests
             Assert.Equal(Enumerable.Range(1, events.Count).Select(i => (long)i), events.Select(e => e.EventId));
             foreach (var e in events)
             {
-                if (e.Kind == DemoSettlementEventKind.Hunger)
-                    Assert.Equal(0, e.CauseEventId); // 根因：週帳缺糧本身。
+                if (e.Kind is DemoSettlementEventKind.Hunger or DemoSettlementEventKind.SettlementRuined)
+                    Assert.Equal(0, e.CauseEventId); // 根因：週帳缺糧本身；第 07 章 c 節：遺跡的證據是連續空置的週帳。
                 else
                     Assert.InRange(e.CauseEventId, 1L, e.EventId - 1); // 其他事件都有更早的直接原因。
             }
