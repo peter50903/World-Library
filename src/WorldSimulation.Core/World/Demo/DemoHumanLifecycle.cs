@@ -18,10 +18,11 @@ internal static class DemoHumanLifecycle
     /// 自然死亡＝死者；本週聚落餓死事件＝本週被移除的餓死者（受孕、流產不入史）。
     /// </returns>
     public static (DemoWeeklyOutcome Outcome, DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Apply(
-        DemoWeeklyOutcome weekly, DemoTempDemography opening, long firstNewEventId = 1)
+        DemoWeeklyOutcome weekly, DemoTempDemography opening, DemoPopulationDraws draws, long firstNewEventId = 1)
     {
         ArgumentNullException.ThrowIfNull(weekly);
         ArgumentNullException.ThrowIfNull(opening);
+        ArgumentNullException.ThrowIfNull(draws);
         var report = weekly.Report;
         if (report.Migrations.Count != 0 || weekly.Migrations.Count != 0)
             throw new InvalidOperationException("TEMP pregnancy identities cannot be transported yet.");
@@ -57,7 +58,7 @@ internal static class DemoHumanLifecycle
         {
             var ledger = report.Settlements.Single(s => s.SettlementId == id);
             return ledger.FoodShortage == 0 && ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0;
-        }, Rules, entityAllocator);
+        }, Rules, draws, entityAllocator);
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
         var ledgers = new List<DemoSettlementWeekLedger>(report.Settlements.Count);
@@ -133,8 +134,9 @@ internal static class DemoHumanLifecycle
     /// <summary>Reconstruct pregnancy and age from the entire independently checked
     /// weekly ledger chain, and reject tampered births/deaths in a TEMP v2 save.</summary>
     public static (DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Replay(
-        DemoTempDemography opening, IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites)
+        DemoTempDemography opening, IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites, DemoPopulationDraws draws)
     {
+        ArgumentNullException.ThrowIfNull(draws);
         var current = opening;
         var participants = new Dictionary<long, IReadOnlyList<long>>();
         long nextEventId = 1;
@@ -168,7 +170,7 @@ internal static class DemoHumanLifecycle
                 ImmutableList<DemoMigrationBatch>.Empty,
                 new EntityIdAllocatorSnapshot(EntityIdAllocatorSnapshot.CurrentVersion,
                     checked((ulong)stripped.EntityIdNextClosing), false), sites);
-            var trial = Apply(temp, current, nextEventId);
+            var trial = Apply(temp, current, draws, nextEventId);
             if (!trial.Outcome.Report.Settlements.SequenceEqual(stored.Settlements)
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))
                 throw new InvalidDataException("TEMP birth/death events do not match reconstructed pregnancies and age.");

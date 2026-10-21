@@ -46,10 +46,10 @@ public sealed class DemoSaveSlotTests : IDisposable
         DemoSaveSlots.Save(c, 3, _directory);
 
         var slots = DemoSaveSlots.ListAll(_directory);
-        Assert.Equal((42UL, 9, "一般示範", 6), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((42UL, 9, "一般示範", 7), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
         Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
         Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
-        Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 6 版", slots[1].Describe());
+        Assert.Equal("槽 2：第 21 日｜種子 7｜開拓｜存檔第 7 版", slots[1].Describe());
 
         Assert.Equal(a.ExportTempSave(), DemoSaveSlots.Load(1, _directory).ExportTempSave());
         Assert.Equal(b.ExportTempSave(), DemoSaveSlots.Load(2, _directory).ExportTempSave());
@@ -127,11 +127,11 @@ public sealed class DemoSaveSlotTests : IDisposable
         Assert.Equal("不是已知的示範情境", DemoSaveSlots.ReadInfo(1, _directory).Error);
     }
 
-    // ── 版本策略（C04／C05）：只有第 6 版可讀；第 1～5 版「版本太舊，請建立新世界」；其他版本不受支援 ──
+    // ── 版本策略（C04／C05）：只有第 7 版可讀；第 1～6 版「版本太舊，請建立新世界」；其他版本不受支援 ──
 
     [Theory]
     [InlineData(0)]
-    [InlineData(7)]
+    [InlineData(8)]
     [InlineData(99)]
     [InlineData(-2)]
     public void UnknownVersion_IsRejected(int version)
@@ -168,6 +168,7 @@ public sealed class DemoSaveSlotTests : IDisposable
     [InlineData(3)]
     [InlineData(4)]
     [InlineData(5)]
+    [InlineData(6)]
     public void OlderVersions_InSlots_ShowTooOldAndStayUntouched(int version)
     {
         var world = World(42, DemoWeeklyTempConfig.FrontierSample, 40);
