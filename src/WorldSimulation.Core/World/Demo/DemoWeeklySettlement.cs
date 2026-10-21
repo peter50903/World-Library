@@ -602,6 +602,7 @@ internal static class DemoWeeklySettlement
         var water = new Dictionary<int, (long Adults, long Children, long Carriers, long WaterShortage)>();
         var foragingWorkers = new Dictionary<int, long>();
         var foodNeeded = new Dictionary<int, long>();
+        var baseNeeds = new Dictionary<int, long>();
         if (config.SharedCatchmentEnabled)
         {
             foreach (var settlement in sites.Settlements)
@@ -615,8 +616,8 @@ internal static class DemoWeeklySettlement
                     DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
                 foragingWorkers[settlement.Id] = adults - carriers;
                 // 第 08-1 章：人類採集世界向來源要求「需求＋補存糧」（DemoCrowding.Claim），消耗仍只算需求。
-                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled,
-                    survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek), settlementFood[settlement.Id]);
+                baseNeeds[settlement.Id] = survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek);
+                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled, baseNeeds[settlement.Id], settlementFood[settlement.Id]);
             }
         }
 
@@ -626,7 +627,8 @@ internal static class DemoWeeklySettlement
                 DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land),
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
-                plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded);
+                plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,
+                baseNeeds: config.HumanLifecycleEnabled ? baseNeeds : null); // 第 08-3 章兩階段分配
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);

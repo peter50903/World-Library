@@ -72,6 +72,7 @@
 | 受孕預留口糧 | 已懷孕＋這一胎，每胎預留一份成人週食量（來源餘量與採集勞力都要夠） | 人口在上限附近停住，不衝過頭挨餓（使用者：中後期應幾乎只剩老死、維持溫飽） |
 | 孩子長大預留 | 每名孩子預留（成人份－兒童份）食量 | 孩子成年時食量加倍，未預留就集體缺糧（長期調查最後 20 年缺糧週 23～36%） |
 | 外移目的地餘量 | 希望時代缺糧外移只去已知來源餘量 ≥ 外移人數×週食量的聚落 | 缺糧者湧入別村造成連鎖缺糧外移（每年 200～300 人次） |
+| 共享來源分配 | 先只分本週需求、可及聚落少的來源先分；需求分完才補存糧 | 某村用共用來源補存糧、鄰村卻挨餓 |
 | 村莊門檻 | 人口 ≥ 10 稱村莊 | 聚落小史「由聚落發展為村莊」 |
 | 人口里程碑 | 10／25／50／100 | 聚落小史 |
 | 快轉每幀時間預算 | 10 毫秒（超過就不補跑剩下的日子，實際速度可能低於選定速度） | 使用者：3 倍速以上拖曳地圖卡頓 |
@@ -301,7 +302,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 12 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 8 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 55 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
@@ -318,7 +319,6 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 5 | D7；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
-| `src/WorldSimulation.ObserverCli/LivingDiagnosis.cs` | 1 | 第 08-1 章：普通世界人口診斷（只讀；婚嫁候選條件與結算同一套 TEMP 規則） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
