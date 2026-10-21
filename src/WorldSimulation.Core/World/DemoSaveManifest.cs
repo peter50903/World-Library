@@ -66,7 +66,9 @@ internal static class DemoSaveHeader
             ? null
             : $"⚠ 程式版本不同（存檔 {Short(manifest.CodeVersion, 12)}，目前 {Short(WorldRecipe.CurrentCodeVersion, 12)}）：仍可讀取，之後的推進以目前程式為準。";
         // ⑦ 世界時間必須是整日且在可讀範圍內。
-        if (manifest.WorldTimeTicks < 0 || manifest.WorldTimeTicks % TimeSpan.TicksPerDay != 0)
+        if (manifest.WorldTimeTicks < 0)
+            throw new InvalidDataException("TEMP 存檔世界日期超出可重播範圍。");
+        if (manifest.WorldTimeTicks % TimeSpan.TicksPerDay != 0)
             throw new InvalidDataException("存檔世界時間不是整日，已拒絕載入。");
         var days = manifest.WorldTimeTicks / TimeSpan.TicksPerDay;
         if (days > DemoObserverWorld.TempMaxSaveDays)
