@@ -53,7 +53,8 @@ public sealed class DemoSourceLedgerTests
 
             // 帳＝依地圖與本週期初人口重算的分配，逐筆相同。
             var recomputed = world.RecomputeLatestSharedHarvest()!;
-            var plan = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(world.Map, world.Sites), stocks,
+            // 第 07 章 c 節：來源依「本週開始時」的人造佔格（本週末才成為遺跡的聚落本週仍佔格）。
+            var plan = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(world.Map, world.Sites.OccupiedCellsAtWeek(week.Week)), stocks,
                 DemoForagingWorld.Settings.SourceStockCapWeeks);
             var expected = DemoSourceWeekLedger.From(week.Week, plan, recomputed);
             Assert.Equal(expected, week.Sources);

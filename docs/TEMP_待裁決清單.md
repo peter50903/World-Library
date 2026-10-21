@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 13 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死；第 07 章 b 節），第 1～12 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 14 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死＋遺跡；第 07 章 c 節），第 1～13 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -245,6 +245,7 @@
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 23 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）|
+| `src/WorldSimulation.Core/World/Demo/DemoSettlementTempSettings.cs` | 2 | 第 07 章 c 節：人口連續為 0 滿 52 週成為遺跡（config/demo/settlement-temp.json）；遺跡格不能直接重建、開拓選址須可及未被佔用的自然來源 |
 | `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 2 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）|
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
@@ -253,17 +254,17 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 10 | #105 TEMP人族週帳出生／老死／身分重播驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 8 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 41 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 45 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 17 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 16 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
-| `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
+| `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 3 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 2 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 15 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
@@ -285,7 +286,7 @@
 | `godot/Scripts/ArtAssets.cs` | 3 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 1 | 第 03 章 b 節：根因分類「生命週期」暫定 |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 12 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b） |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 13 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b） |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

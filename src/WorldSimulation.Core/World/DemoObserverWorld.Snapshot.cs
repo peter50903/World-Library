@@ -178,7 +178,7 @@ public sealed partial class DemoObserverWorld
     /// <summary>
     /// 第 04 章 c 節：來源帳（內部守恆已由 <see cref="DemoWeeklySettlement.Verify"/> 檢查）再對照地圖：
     /// 來源清單＝依地圖與聚落重算（預算＞0）；份額只給可及範圍內的聚落；每聚落合計 ≤ 需求且 ≤ 勞力上限。
-    /// 共享採集情境沒有建村，聚落清單即目前聚落。
+    /// 第 07 章 c 節起共享採集情境也會建村與成為遺跡：來源清單依當週開始時的人造佔格重算。
     /// </summary>
     private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly,
         Dictionary<int, long> stocks)
@@ -191,7 +191,8 @@ public sealed partial class DemoObserverWorld
             return;
         }
         // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
-        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites), stocks,
+        // 第 07 章 c 節：來源依「當週開始時」的人造佔格重算（新聚落建立後才佔格，遺跡恢復）。
+        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites.OccupiedCellsAtWeek(w)), stocks,
             DemoForagingWorld.Settings.SourceStockCapWeeks);
         if (report.Sources.Count != expected.Count)
             Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Count} 不符");
@@ -329,12 +330,14 @@ public sealed partial class DemoObserverWorld
         DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount)
     {
         var count = initial.Settlements.Count;
-        if (settlements.Count < count || !settlements.Take(count).SequenceEqual(initial.Settlements))
+        // 第 07 章 c 節：成為遺跡的週次另外套用（之後由事件與週帳逐週核對）。
+        if (settlements.Count < count
+            || !settlements.Take(count).Select(s => s with { RuinedWeek = 0 }).SequenceEqual(initial.Settlements))
             Reject("開局聚落與世界種子產生的結果不同");
 
         var sites = initial;
         var lastWeek = 1;
-        foreach (var founded in settlements.Skip(count))
+        foreach (var founded in settlements.Skip(count).Select(s => s with { RuinedWeek = 0 }))
         {
             var from = sites.Settlements.FirstOrDefault(s => s.Id == founded.FoundedFromSettlementId);
             if (!founded.IsFounded || founded.FoundedWeek < lastWeek || founded.FoundedWeek > weekCount
@@ -350,6 +353,12 @@ public sealed partial class DemoObserverWorld
         if (sites.Settlements.Select(s => s.FoundedByBatchId).Where(id => id > 0).Distinct().Count()
             != sites.Settlements.Count - count)
             Reject("同一支開拓隊建立了多個聚落");
+        foreach (var ruin in settlements.Where(s => s.IsRuin))
+        {
+            if (ruin.RuinedWeek > weekCount || ruin.RuinedWeek <= ruin.FoundedWeek)
+                Reject($"聚落 #{ruin.Id} 的遺跡週次不合法");
+            sites = sites.WithRuin(ruin.Id, ruin.RuinedWeek);
+        }
         return sites;
     }
 
@@ -404,6 +413,14 @@ public sealed partial class DemoObserverWorld
             if (e.Kind == DemoSettlementEventKind.SettlementFounded
                 && (settlement.FoundedWeek != report.Week || settlement.FoundedByBatchId != e.MigrationBatchId))
                 Reject($"第 {report.Week} 週建立聚落事件與聚落紀錄不符");
+            if (e.Kind == DemoSettlementEventKind.SettlementRuined && settlement.RuinedWeek != report.Week)
+                Reject($"第 {report.Week} 週成為遺跡事件與聚落紀錄不符");
+        }
+
+        foreach (var ruin in sites.Settlements.Where(s => s.RuinedWeek == report.Week))
+        {
+            if (report.Events.Count(e => e.Kind == DemoSettlementEventKind.SettlementRuined && e.SettlementId == ruin.Id) != 1)
+                Reject($"遺跡 {ruin.Name} 沒有對應的成為遺跡事件");
         }
 
         foreach (var founded in sites.Settlements.Where(s => s.FoundedWeek == report.Week))

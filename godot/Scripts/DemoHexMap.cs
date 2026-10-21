@@ -115,7 +115,7 @@ public partial class DemoHexMap : Control
                 DrawPolygon(full, White6, HexUvs(full, center, radius), tile);
                 DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
                 if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed)
-                    DrawMarker(placed.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage, center, radius * 1.4f);
+                    DrawMarker(SettlementIcon(placed), center, radius * 1.4f);
                 continue;
             }
             var terrainColor = cell.Terrain switch
@@ -136,7 +136,13 @@ public partial class DemoHexMap : Control
             outline[6] = vertices[0];
             DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
 
-            if (Sites?.SettlementAt(cell.Column, cell.Row) is { } settlement)
+            if (Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } ruin)
+            {
+                // 第 07 章 c 節：遺跡（沒有圖塊時的後備）：灰色小點。
+                if (!DrawMarker(ArtAssets.IconRuin, center, radius * 1.4f))
+                    DrawCircle(center, radius * 0.17f, new Color(0.45f, 0.43f, 0.40f));
+            }
+            else if (Sites?.SettlementAt(cell.Column, cell.Row) is { } settlement)
             {
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
@@ -153,13 +159,18 @@ public partial class DemoHexMap : Control
             {
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var hex = HexCoordinates.Polygon(center, radius - 1.4f);
-                if (Sites.SettlementAt(cell.Column, cell.Row) is { } site)
+                if (Sites.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } ruinSite)
+                {
+                    DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                    DrawMarker(SettlementIcon(ruinSite), center, radius * 1.4f);
+                }
+                else if (Sites.SettlementAt(cell.Column, cell.Row) is { } site)
                 {
                     var status = FoodStatuses.TryGetValue(site.Id, out var known) ? known : FoodStatus.Unsettled;
                     var color = FoodStatusColor(status);
                     DrawColoredPolygon(hex, new Color(color, 0.55f));
                     DrawPolyline(Closed(hex), color, 3.5f);
-                    DrawMarker(site.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage, center, radius * 1.4f);
+                    DrawMarker(SettlementIcon(site), center, radius * 1.4f);
                 }
                 else
                 {
@@ -257,6 +268,10 @@ public partial class DemoHexMap : Control
     }
 
     /// <summary>在中心畫一個正方形圖示；素材不存在回傳 false（呼叫端改畫圓點）。</summary>
+    /// <summary>第 07 章 c 節：遺跡／新聚落／村莊圖示。</summary>
+    private static string SettlementIcon(DemoSettlement settlement)
+        => settlement.IsRuin ? ArtAssets.IconRuin : settlement.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage;
+
     private bool DrawMarker(string path, Vector2 center, float size)
     {
         if (ArtAssets.Texture(path) is not { } icon)
