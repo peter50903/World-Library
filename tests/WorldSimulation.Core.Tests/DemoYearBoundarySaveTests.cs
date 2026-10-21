@@ -140,9 +140,9 @@ public sealed class DemoYearBoundarySaveTests
         var before = world.ExportTempSave();
 
         var tooLate = JsonNode.Parse(before)!;
-        tooLate["DaysElapsed"] = DemoObserverWorld.TempMaxSaveDays + 1;
+        tooLate["Manifest"]!["WorldTimeTicks"] = TimeSpan.FromDays(DemoObserverWorld.TempMaxSaveDays + 1).Ticks;
         var negative = JsonNode.Parse(before)!;
-        negative["DaysElapsed"] = -1;
+        negative["Manifest"]!["WorldTimeTicks"] = -TimeSpan.TicksPerDay;
         var truncated = before[..(before.Length / 2)];
 
         foreach (var file in new[] { tooLate.ToJsonString(), negative.ToJsonString(), truncated })

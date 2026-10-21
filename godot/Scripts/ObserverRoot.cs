@@ -153,6 +153,7 @@ public partial class ObserverRoot : Control
     private Label _status = null!;
     private Label _notice = null!;
     private Label[] _slotLabels = null!;
+    private Button[] _verifyButtons = null!;
     private RichTextLabel _history = null!;
     private RichTextLabel _ledger = null!;
     // #81: TEMP scenario picker + explicit confirmation before discarding an advanced world.
@@ -371,6 +372,7 @@ public partial class ObserverRoot : Control
         var saveButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
         var loadButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
         _slotLabels = new Label[DemoSaveSlots.TempSlotCount + 1];
+        _verifyButtons = new Button[DemoSaveSlots.TempSlotCount + 1];
         for (var slot = 1; slot <= DemoSaveSlots.TempSlotCount; slot++)
         {
             var row = new HBoxContainer();
@@ -389,6 +391,10 @@ public partial class ObserverRoot : Control
             loadButtons[slot] = new Button { Text = "讀" };
             loadButtons[slot].Pressed += () => LoadWorld(number);
             row.AddChild(loadButtons[slot]);
+            // 第 04 章 b 節：選用完整驗證（從第 0 日重跑逐週比對；不改世界）。
+            _verifyButtons[slot] = new Button { Text = "驗", TooltipText = $"完整驗證槽 {number}：從第 0 日重跑到存檔日逐週比對" };
+            _verifyButtons[slot].Pressed += () => VerifySlot(number);
+            row.AddChild(_verifyButtons[slot]);
         }
         RefreshSlots();
 
@@ -790,7 +796,8 @@ public partial class ObserverRoot : Control
             // New fully validated world; never mutate the old one on failure. The save keeps its OWN
             // scenario (#81): the picker follows the loaded world, never the other way round.
             InstallWorld(restored, "TEMP 世界讀取完成；請點選地圖格或聚落查看資料。");
-            _notice.Text = $"TEMP 存檔槽 {slot} 讀檔成功：第 {restored.Snapshot().DaysElapsed} 日";
+            _notice.Text = $"TEMP 存檔槽 {slot} 讀檔成功：第 {restored.Snapshot().DaysElapsed} 日"
+                + (restored.LoadWarning is { } warning ? $"\n{warning}" : ""); // 第 04 章 b 節：程式版本不同只警告
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
             or ArgumentException or InvalidOperationException)
@@ -798,6 +805,13 @@ public partial class ObserverRoot : Control
             _notice.Text = $"TEMP 存檔槽 {slot} 讀檔失敗，世界未改變：{ex.Message}";
         }
         RefreshSlots();
+    }
+
+    /// <summary>第 04 章 b 節：完整驗證一個存檔槽（選用工具；不改世界）。</summary>
+    private void VerifySlot(int slot)
+    {
+        PausePlayback();
+        _notice.Text = DemoSaveSlots.Verify(slot).Describe(slot);
     }
 
     // ---------- #81: TEMP scenario switching (always a NEW Core demo world) ----------
@@ -1132,6 +1146,27 @@ public partial class ObserverRoot : Control
             || !_slotLabels[3].Text.StartsWith("槽 3：無法辨識", StringComparison.Ordinal))
             throw new InvalidOperationException("TEMP corrupt slot 3 was not rejected visibly.");
         GD.Print("WORLD_SIM_SLOTS_OK: Slot=2 SavedDay=9 RestoredDay=9 CorruptSlot=3 Rejected=1");
+
+        // 第 04 章 b 節：存檔標頭——可讀槽標「可讀」；正式設定雜湊不符的檔案在槽位標「不相容」且讀檔被拒；完整驗證一致。
+        if (!_slotLabels[2].Text.EndsWith("｜可讀", StringComparison.Ordinal)
+            || !_slotLabels[2].Text.Contains("｜世界種子 42｜", StringComparison.Ordinal))
+            throw new InvalidOperationException($"slot 2 header is not shown as compatible: {_slotLabels[2].Text}");
+        var mismatched = System.Text.Json.Nodes.JsonNode.Parse(System.IO.File.ReadAllText(DemoSaveSlots.PathFor(2)))!;
+        var otherHash = new string('0', 64);
+        mismatched["Manifest"]!["ConfigHash"] = otherHash;
+        mismatched["Manifest"]!["Recipe"]!["ConfigHash"] = otherHash;
+        System.IO.File.WriteAllText(DemoSaveSlots.PathFor(1), mismatched.ToJsonString());
+        RefreshSlots();
+        var beforeMismatch = _world.ExportTempSave();
+        loadButtons[1].EmitSignal(BaseButton.SignalName.Pressed);
+        if (_world.ExportTempSave() != beforeMismatch
+            || !_notice.Text.Contains("正式設定不符", StringComparison.Ordinal)
+            || !_slotLabels[1].Text.Contains("｜不相容（正式設定不符", StringComparison.Ordinal))
+            throw new InvalidOperationException($"config-mismatched slot 1 was not rejected visibly: {_slotLabels[1].Text} / {_notice.Text}");
+        _verifyButtons[2].EmitSignal(BaseButton.SignalName.Pressed);
+        if (!_notice.Text.StartsWith("完整驗證槽 2：一致", StringComparison.Ordinal) || _world.ExportTempSave() != beforeMismatch)
+            throw new InvalidOperationException($"full replay verification of slot 2 failed: {_notice.Text}");
+        GD.Print("WORLD_SIM_SAVE_HEADER_OK: Compatible=1 ConfigMismatchRejected=1 ReplayVerified=1");
     }
 
     // C07：資訊框文字全部來自 Core 唯讀點格查詢；Godot 只放字串、更新黃框與糧食面板選取。

@@ -264,6 +264,8 @@ public sealed class EventHistoryTests
             case "WorldTime": target["WorldTime"] = "1.00:00:00"; break;
             case "Drop": history.Remove(target); break;
         }
+        // 補正校驗碼（第 04 章 b 節），確認是史庫重建比對把它擋下。
+        doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(System.Text.Encoding.UTF8.GetBytes(doc["State"]!.ToJsonString()));
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
 

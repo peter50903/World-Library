@@ -64,7 +64,7 @@ if (years is not null && historySeed is not null)
     return 2;
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜verify N 完整驗證槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 // 第 02 章 b 節：互動與無畫面模式都先載入並驗證正式設定（01＋29），失敗就停止（結束碼 2）。
 var officialConfig = OfficialConfig.Load();
@@ -169,6 +169,8 @@ while (true)
             var candidate = DemoSaveSlots.Load(loadSlot);
             world = candidate; // Replace only after the whole TEMP save is verified.
             Console.WriteLine($"已讀取 TEMP 存檔槽 {loadSlot}。");
+            if (world.LoadWarning is { } loadWarning)
+                Console.WriteLine(loadWarning); // 第 04 章 b 節：程式版本不同只警告。
             PrintStatus();
         }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException
@@ -178,9 +180,16 @@ while (true)
         }
         continue;
     }
-    if (command.StartsWith("save", StringComparison.Ordinal) || command.StartsWith("load", StringComparison.Ordinal))
+    if (TryParseSlotCommand(command, "verify", out var verifySlot))
     {
-        Console.WriteLine($"存檔槽必須是 1～{DemoSaveSlots.TempSlotCount}，例如 save 2、load 2。");
+        // 第 04 章 b 節：選用完整驗證——從第 0 日重跑到存檔日逐週比對；不改世界。
+        Console.WriteLine(DemoSaveSlots.Verify(verifySlot).Describe(verifySlot));
+        continue;
+    }
+    if (command.StartsWith("save", StringComparison.Ordinal) || command.StartsWith("load", StringComparison.Ordinal)
+        || command.StartsWith("verify", StringComparison.Ordinal))
+    {
+        Console.WriteLine($"存檔槽必須是 1～{DemoSaveSlots.TempSlotCount}，例如 save 2、load 2、verify 2。");
         continue;
     }
     if (command is "h" or "history")
