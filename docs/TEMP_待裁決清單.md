@@ -270,7 +270,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 2 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 14 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
-| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 24 | D1、D2、D3、D5、第 3 節 |
+| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 25 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |
