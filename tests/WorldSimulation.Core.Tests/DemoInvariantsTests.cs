@@ -174,7 +174,7 @@ public sealed class DemoInvariantsTests
     [Fact]
     public void EmigrantsWithoutDepartingBatchAreCaught()
     {
-        var world = Run(DemoWeeklyTempConfig.Sample, 42, 70);
+        var world = Run(DemoWeeklyTempConfig.Sample, TestSeeds.NormalWithWoodlandAndGrassland, 70);
         var target = world.WeekReports()[9].Settlements.First(l => l.PopulationClosing > 0).SettlementId;
         ReplaceWeek(world, 9, w => w with
         {

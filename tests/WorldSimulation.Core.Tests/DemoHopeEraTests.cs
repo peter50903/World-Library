@@ -25,24 +25,28 @@ public sealed class DemoHopeEraTests
     [Fact]
     public void OpeningVillagesHaveFourWeeksOfFoodAreSpreadOutAndDoNotStarveAtFirst()
     {
+        var problems = new List<string>();
+        var spaced = 0;
         for (ulong seed = 1; seed <= 20; seed++)
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), Hope);
             foreach (var s in world.Sites.Settlements)
-                Assert.Equal(world.SettlementPopulation(s.Id) * Hope.FoodPerPersonPerWeek * 4, world.SettlementFood(s.Id));
+                if (world.SettlementPopulation(s.Id) * Hope.FoodPerPersonPerWeek * 4 != world.SettlementFood(s.Id))
+                    problems.Add($"種子 {seed} #{s.Id} 開局存糧 {world.SettlementFood(s.Id)}");
 
-            // 開局聚落彼此相隔至少 TEMP 3 格（沒有足夠空間時才退回，這張地圖 12×8 的調查種子都放得下）。
+            // 開局聚落彼此相隔至少 TEMP 3 格；可住的海岸與河岸不夠時才退回（第 06-1 章起可住地只在水邊）。
             var cells = world.Sites.Settlements.Select(s => world.Map.GetCell(s.Column, s.Row)).ToList();
-            foreach (var a in cells)
-                foreach (var b in cells.Where(b => !ReferenceEquals(a, b)))
-                    Assert.True(DemoWorldSites.HexDistance(a, b) >= DemoWorldSites.TempOpeningSpacing,
-                        $"種子 {seed}：開局聚落 ({a.Column},{a.Row}) 與 ({b.Column},{b.Row}) 太近");
+            if (cells.All(a => cells.All(b => ReferenceEquals(a, b) || DemoWorldSites.HexDistance(a, b) >= DemoWorldSites.TempOpeningSpacing)))
+                spaced++;
 
             for (var d = 0; d < 4 * 7; d++)
                 world.AdvanceOneDay();
-            Assert.All(world.WeekReports(), w => Assert.All(w.Settlements, l =>
-                Assert.True(l.FoodShortage == 0 && l.WaterShortage == 0, $"種子 {seed} 第 {w.Week} 週 #{l.SettlementId} 開局就缺糧／缺水")));
+            foreach (var w in world.WeekReports())
+                foreach (var l in w.Settlements.Where(l => l.FoodShortage > 0 || l.WaterShortage > 0))
+                    problems.Add($"種子 {seed} 第 {w.Week} 週 #{l.SettlementId} 缺糧 {l.FoodShortage}／缺水 {l.WaterShortage}");
         }
+        Assert.True(problems.Count == 0, string.Join("；", problems.Take(10)));
+        Assert.True(spaced >= 15, $"20 個種子只有 {spaced} 個開局聚落彼此相隔 ≥ 3 格");
     }
 
     [Fact]

@@ -112,7 +112,7 @@ public sealed class DemoStarvationTests
         // 直接呼叫純函式：聚落帶著飢餓債、資源點有存量。採收足以滿足需求的週，
         // 飢餓債才依 TEMP 速率下降，降到 0 時出現帶來源的「飢餓解除」事件。
         var cfg = DemoWeeklyTempConfig.Sample;
-        var sites = new DemoObserverWorld(DemoScenario.Sample(42)).Sites;
+        var sites = new DemoObserverWorld(DemoScenario.Sample(TestSeeds.NormalWithWoodlandAndGrassland)).Sites;
         // 第 08 章 a 節：未開墾草原沒有存量、不產糧，只檢查有林地／漁場的聚落。
         var reserves = sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id,
             p => p.Kind == DemoResourceKind.Uncultivated ? 0L : 100L);
