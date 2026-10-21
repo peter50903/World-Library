@@ -44,6 +44,16 @@ jobs:
           if [[ -f WorldSimulation.sln ]]; then
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
+            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。
+            for s in 1 7; do
+              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
+              grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
+              # 註記上限約 4 KB：切成多段（每段約 40 行）。
+              split -l 40 -d "/tmp/diag-$s.txt" "/tmp/diag-$s-part-"
+              for part in /tmp/diag-$s-part-*; do
+                echo "::notice title=普通世界人口診斷 種子 $s $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
+              done
+            done
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
               grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80
@@ -184,16 +194,6 @@ jobs:
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --years 100 --frontier | tee /tmp/observer-frontier.log
             grep -q '長測完成：種子 42，100 年' /tmp/observer-frontier.log
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
-            # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。
-            for s in 1 4; do
-              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
-              grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
-              # 註記上限約 4 KB：切成多段（每段約 40 行）。
-              split -l 40 -d "/tmp/diag-$s.txt" "/tmp/diag-$s-part-"
-              for part in /tmp/diag-$s-part-*; do
-                echo "::notice title=普通世界人口診斷 種子 $s $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
-              done
-            done
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
             # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。

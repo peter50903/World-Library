@@ -292,12 +292,18 @@ public sealed class DemoTempDemographyTests
             new DemoTempPerson(2, 1, DemoTempSex.Male, -20 * 365));
         Assert.Throws<InvalidOperationException>(() =>
             DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 3, oneSided), Rules));
-        var kin = ImmutableArray.Create(
+        // 第 08-1 章：親子配對拒讀；手足配對可讀。
+        var parentChild = ImmutableArray.Create(
+            new DemoTempPerson(1, 1, DemoTempSex.Female, -60 * 365, PartnerId: 4),
+            new DemoTempPerson(2, 1, DemoTempSex.Male, -60 * 365),
+            new DemoTempPerson(4, 1, DemoTempSex.Male, -20 * 365, MotherId: 1, BirthFatherId: 2, PartnerId: 1));
+        Assert.Throws<InvalidOperationException>(() =>
+            DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 5, parentChild), Rules));
+        var siblings = ImmutableArray.Create(
             new DemoTempPerson(1, 1, DemoTempSex.Female, -60 * 365),
             new DemoTempPerson(2, 1, DemoTempSex.Male, -60 * 365),
             new DemoTempPerson(3, 1, DemoTempSex.Female, -20 * 365, MotherId: 1, BirthFatherId: 2, PartnerId: 4),
             new DemoTempPerson(4, 1, DemoTempSex.Male, -20 * 365, MotherId: 1, BirthFatherId: 2, PartnerId: 3));
-        Assert.Throws<InvalidOperationException>(() =>
-            DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 5, kin), Rules));
+        Assert.Equal(4, DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 5, siblings), Rules).Count);
     }
 }
