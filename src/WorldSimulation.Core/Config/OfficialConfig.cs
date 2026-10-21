@@ -159,6 +159,16 @@ public sealed class OfficialConfig
         return files.AsReadOnly();
     }
 
+    /// <summary>第 07 章 a 節：讀出編入組件的單一正式分頁原文（config/sheets/&lt;name&gt;，已去 BOM、CRLF→LF）。</summary>
+    internal static string ReadSheetText(string name)
+    {
+        using var stream = typeof(OfficialConfig).Assembly.GetManifestResourceStream(SheetPrefix + name)
+            ?? throw new InvalidOperationException($"編入的正式設定缺少 config/sheets/{name}。");
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        return Encoding.UTF8.GetString(global::WorldSimulation.Core.Config.ConfigHash.Normalize(memory.ToArray()));
+    }
+
     /// <summary>讀出編入組件的單一 TEMP 示範檔（config/demo/&lt;name&gt;）。</summary>
     internal static string ReadDemoText(string name)
     {

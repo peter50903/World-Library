@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 11 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳；第 06 章 d 節），第 1～10 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 12 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶；第 07 章 a 節），第 1～11 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -201,6 +201,7 @@
 - `DemoTempDemography.cs` 目前是**獨立且未接線的**人口身分／孕期／出生／自然死亡原型：只做人族示範，不改 `DemoWeeklySettlement.Births:0`，不改目前 Godot 觀察者的人口、不更新正式設定表；不得把這張 PR 宣稱為完整 #105 功能。
 - 原有正式來源：`02_種族` 人族成年 18、典型壽命 75、月生育基準 0.08；`29_數值參數` 流產月率 0.005 仍標未平衡。本第一切片只有 HumanFixture 作人工驗證參考，日後須由正式設定權威取得且不能直接套所有種族，尤其龍族 `SPECIAL_EVENT`。
 - **TEMP 待裁決**：開局全部成年人、男女交錯、初始年齡 18–22；單一孕期 39 週；育齡上限 45；自然死亡年風險曲線（典型壽命前 15 年開始 0.008 年風險，達典型壽命 0.02，往後每歲增加 0.04，年風險上限 0.95）；一年 365 日、每週 7 日、每年 12 個月做機率換算。典型壽命**不是必死年齡**。暫時缺 HP，吃飽判準由未來真實 Core 週帳提供。
+- **第 07 章 a 節更新（2026-10-21）**：上一條的自創死亡曲線與全成人開局已退場——自然死亡改讀 39C `LIFE_DEATH_BANDS`（年度，依 年齡÷典型壽命 分段）、流產讀 39C `REP_MISCARRIAGE`、成年／壽命／受孕讀 02 `RACE_HUMAN`；開局改混齡（0–17 35%／18–44 45%／45–59 12%／60–79 8%【TEMP】）；受孕只與穩定伴侶（同聚落、ID 最小的未配對非近親成年男性），排除父母子女與手足。孕期 39 週、育齡上限 45 仍是 TEMP（config/demo/demography-temp.json）。
 - 此切片的 `Transfer` 是身份搬移小模型，未接既有在途遷徙隊伍；`RemoveStarvation` 只是外部真死亡人員清單的移除接口，尚未連動世界飢餓債與遷徙人口帳。快照只是可序列化形狀，不是已發布 v2 存檔協定。#105 下一切片必須接入兩者、修正『所有人都能勞動』的 #103 承載假設、逐筆驗證因果、遷徙與存檔原子回滾。
 ## #112｜森林／河流共享供糧範圍（正式地形關係，數值待裁決）
 
@@ -243,7 +244,9 @@
 
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
-| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 15 | #110 獨立出生／死亡 TEMP 原型（尚未接入世界） |
+| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 20 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除）|
+| `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
+| `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |

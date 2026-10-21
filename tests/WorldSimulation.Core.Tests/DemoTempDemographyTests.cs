@@ -15,6 +15,7 @@ public sealed class DemoTempDemographyTests
 
     /// <summary>第 04 章 a 節：生死抽樣改由世界的 POP 流（原本傳給 Open 的種子改當世界種子）。</summary>
     private static DemoPopulationDraws Draws(ulong worldSeed) => new(RngRegistry.Create(worldSeed));
+    private static DemoOpeningDraws Opening(ulong worldSeed) => new(RngRegistry.Create(worldSeed));
 
     [Fact]
     public void OpeningPopulationHasRealAdultSexesAndNoImaginaryBirths()
@@ -84,17 +85,18 @@ public sealed class DemoTempDemographyTests
             pop = result.Population;
         }
         Assert.NotEmpty(births);
-        Assert.Equal(8 + births.Count, pop.Count); // Opening adults are too young for TEMP natural death here.
-        Assert.Equal(8, pop.AdultsIn(1, Rules)); // Every newborn is younger than 18.
+        // 第 07 章 a 節：39C 死亡分段下年輕成人也有很小的自然死亡機率，所以只核對守恆。
+        Assert.Equal(pop.Count, pop.People.Count(p => p.BornDay <= 0) + births.Count(b => pop.People.Any(p => p.Id == b.PersonId)));
+        Assert.Equal(pop.People.Count(p => p.BornDay <= 0), pop.AdultsIn(1, Rules)); // Every newborn is younger than 18.
     }
 
     [Fact]
     public void OldAgeHasRealNaturalDeathsNotAnExactForcedLifespan()
     {
         var old = DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 2,
-            ImmutableArray.Create(new DemoTempPerson(1, 1, DemoTempSex.Male, -100 * 365))), Rules);
+            ImmutableArray.Create(new DemoTempPerson(1, 1, DemoTempSex.Male, -120 * 365))), Rules);
         var deaths = new List<DemoTempDemographicEvent>();
-        for (var week = 1; week <= 260; week++)
+        for (var week = 1; week <= 52 * 25; week++)
         {
             var result = old.AdvanceWeek(week, _ => true, Rules, Draws(42));
             deaths.AddRange(result.Events.Where(e => e.Kind == DemoTempDemographicKind.NaturalDeath));
@@ -103,7 +105,12 @@ public sealed class DemoTempDemographyTests
         Assert.Single(deaths);
         Assert.Equal(0, old.Count);
         Assert.Equal(1L, deaths[0].PersonId);
-        Assert.Equal(0, Rules.WeeklyNaturalDeathChance(40));
+        // 第 07 章 a 節：39C LIFE_DEATH_BANDS（年度，依 年齡÷典型壽命 75）。
+        Assert.Equal(0.0005, Rules.AnnualNaturalDeathChance(40), 10);   // 0.53 < 0.6
+        Assert.Equal(0.002, Rules.AnnualNaturalDeathChance(45), 10);    // 0.6
+        Assert.Equal(0.05, Rules.AnnualNaturalDeathChance(75), 10);     // 1.0
+        Assert.Equal(0.35, Rules.AnnualNaturalDeathChance(113), 10);    // ≥1.5
+        Assert.True(Rules.WeeklyNaturalDeathChance(40) > 0);
         Assert.True(Rules.WeeklyNaturalDeathChance(100) > Rules.WeeklyNaturalDeathChance(75));
     }
 
@@ -192,5 +199,83 @@ public sealed class DemoTempDemographyTests
         Assert.Throws<InvalidOperationException>(() => DemoTempDemography.Restore(
             good with { People = good.People.SetItem(1, good.People[1] with { PregnancyDueWeek = 39, FatherId = 4 }) },
             Rules)); // Male cannot be pregnant.
+    }
+
+    [Fact]
+    public void HumanRulesComeFromRaceAndLifecycleSheets()
+    {
+        Assert.Equal(18, Rules.AdultAgeYears);
+        Assert.Equal(75, Rules.TypicalLifespanYears);
+        Assert.Equal(0.08, Rules.FertilityMonthly, 10);
+        Assert.Equal(0.005, Rules.MiscarriageMonthly, 10);
+        Assert.Equal(39, Rules.GestationWeeks);
+        Assert.Equal(45, Rules.FertileAgeMaxYears);
+        Assert.Equal(6, Rules.DeathBands.Count);
+        Assert.True(double.IsPositiveInfinity(Rules.DeathBands[^1].UpperRatio));
+        Assert.Throws<InvalidOperationException>(() => DemoHumanRulesSource.ParseDeathBands("Age/ExpectedLife:<0.6=1%"));
+    }
+
+    [Fact]
+    public void MixedAgeOpeningFollowsTempBandsAndIsReproducible()
+    {
+        var a = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(7));
+        var b = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(7));
+        Assert.Equal(a.People.ToArray(), b.People.ToArray());
+        var children = a.People.Count(p => !p.IsAdultAt(0, Rules));
+        var elders = a.People.Count(p => p.AgeYearsAt(0) >= 60);
+        Assert.InRange(children, 800 * 25 / 100, 800 * 45 / 100);   // TEMP 35%
+        Assert.InRange(elders, 800 * 3 / 100, 800 * 14 / 100);      // TEMP 8%
+        Assert.All(a.People, p => Assert.InRange(p.AgeYearsAt(0), 0, 79));
+        Assert.InRange(a.People.Count(p => p.Sex == DemoTempSex.Female), 340, 460);
+        Assert.True(a.People.Select(p => p.BornDay % 365).Distinct().Count() > 100); // 年內出生日分散
+        Assert.NotEqual(a.People.ToArray(), DemoTempDemography.Open(
+            new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(8)).People.ToArray());
+    }
+
+    [Fact]
+    public void ConceptionOnlyWithStablePartnerAndNeverCloseKin()
+    {
+        var pop = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 12 }, Rules);
+        var partners = new Dictionary<long, long>();
+        for (var week = 1; week <= 52 * 60; week++)
+        {
+            var result = pop.AdvanceWeek(week, _ => true, Rules, Draws(11));
+            foreach (var e in result.Events.Where(e => e.Kind == DemoTempDemographicKind.Conception))
+            {
+                var mother = result.Population.People.Single(p => p.Id == e.MotherId);
+                Assert.Equal(mother.PartnerId, e.FatherId);
+            }
+            foreach (var p in result.Population.People.Where(p => p.PartnerId is not null))
+            {
+                var partner = result.Population.People.Single(q => q.Id == p.PartnerId);
+                Assert.Equal(p.Id, partner.PartnerId);
+                Assert.NotEqual(p.Sex, partner.Sex);
+                Assert.False(p.IsCloseKinOf(partner));
+                Assert.True(p.IsAdultAt(week * 7, Rules));
+                // 穩定：已存在的配對只會因死亡或分居解除，不換人。
+                if (partners.TryGetValue(p.Id, out var before) && result.Population.People.Any(q => q.Id == before))
+                    Assert.Equal(before, p.PartnerId);
+                partners[p.Id] = p.PartnerId!.Value;
+            }
+            pop = DemoTempDemography.Restore(result.Population.Snapshot(), Rules);
+        }
+        Assert.Contains(pop.People, p => p.MotherId is not null && p.PartnerId is not null); // 第二代也配對
+    }
+
+    [Fact]
+    public void RestoreRejectsBrokenPartnerships()
+    {
+        var oneSided = ImmutableArray.Create(
+            new DemoTempPerson(1, 1, DemoTempSex.Female, -20 * 365, PartnerId: 2),
+            new DemoTempPerson(2, 1, DemoTempSex.Male, -20 * 365));
+        Assert.Throws<InvalidOperationException>(() =>
+            DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 3, oneSided), Rules));
+        var kin = ImmutableArray.Create(
+            new DemoTempPerson(1, 1, DemoTempSex.Female, -60 * 365),
+            new DemoTempPerson(2, 1, DemoTempSex.Male, -60 * 365),
+            new DemoTempPerson(3, 1, DemoTempSex.Female, -20 * 365, MotherId: 1, BirthFatherId: 2, PartnerId: 4),
+            new DemoTempPerson(4, 1, DemoTempSex.Male, -20 * 365, MotherId: 1, BirthFatherId: 2, PartnerId: 3));
+        Assert.Throws<InvalidOperationException>(() =>
+            DemoTempDemography.Restore(new DemoTempDemographicSnapshot(0, 5, kin), Rules));
     }
 }

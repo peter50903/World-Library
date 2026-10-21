@@ -43,7 +43,8 @@ public sealed class DemoCommitFaultMatrixTests
 
     private static bool IsInteresting(string config, DemoWeekReport week)
         => config == "LivingForagingSample"
-            ? week.Settlements.Any(l => l.Births > 0 || l.NaturalDeaths > 0)
+            // 第 07 章 a 節：混齡開局後部分種子頭兩年沒有出生／自然死亡，餓死等事件同樣經過生死階段。
+            ? week.Settlements.Any(l => l.Births > 0 || l.NaturalDeaths > 0) || week.Events.Count > 0
             : week.Events.Count > 0;
 
     /// <summary>

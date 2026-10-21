@@ -20,8 +20,10 @@ public enum DemoTempDemographicKind
     TravelStarvationDeath
 }
 
-/// <summary>Formal human age/fertility inputs must eventually be loaded from 02_種族;
-/// gestation and the mortality curve below are TEMP, not approved world parameters.</summary>
+/// <summary>
+/// 人族生死規則。第 07 章 a 節起由 <see cref="DemoHumanRulesSource"/> 從 02_種族、39C 與 config/demo 載入：
+/// 自然死亡依 39C LIFE_DEATH_BANDS（年齡÷典型壽命 分段的年度機率，【TEMP】數值未定案），不再用自創曲線。
+/// </summary>
 public sealed record DemoTempDemographyRules(
     int AdultAgeYears,
     int TypicalLifespanYears,
@@ -29,16 +31,21 @@ public sealed record DemoTempDemographyRules(
     double MiscarriageMonthly,
     int GestationWeeks)
 {
-    /// <summary>Human fixture: age 18 / lifespan 75 / fertility .08 from 02_種族;
-    /// miscarriage .005 from 29_數值參數 (unbalanced); gestation 39 weeks TEMP.</summary>
-    public static DemoTempDemographyRules HumanFixture { get; } = new(18, 75, 0.08, 0.005, 39);
+    /// <summary>人族：02 成年 18／典型壽命 75／月受孕 0.08；39C 流產 0.5%／月、死亡分段；孕期 39 週【TEMP】。</summary>
+    public static DemoTempDemographyRules HumanFixture { get; } = DemoHumanRulesSource.Load();
+
+    /// <summary>39C LIFE_DEATH_BANDS：(年齡÷典型壽命 的上界（不含）, 年度機率)。</summary>
+    public IReadOnlyList<(double UpperRatio, double Annual)> DeathBands { get; init; } = Array.Empty<(double, double)>();
+
+    /// <summary>育齡上限【TEMP】（config/demo）。</summary>
+    public int FertileAgeMaxYears { get; init; } = 45;
 
     public void Validate()
     {
         if (AdultAgeYears < 1 || TypicalLifespanYears <= AdultAgeYears
             || FertilityMonthly is < 0 or > 1 || double.IsNaN(FertilityMonthly)
             || MiscarriageMonthly is < 0 or > 1 || double.IsNaN(MiscarriageMonthly)
-            || GestationWeeks < 1)
+            || GestationWeeks < 1 || DeathBands.Count == 0 || FertileAgeMaxYears <= AdultAgeYears)
             throw new ArgumentOutOfRangeException(nameof(DemoTempDemographyRules));
     }
 
@@ -46,15 +53,18 @@ public sealed record DemoTempDemographyRules(
     public double WeeklyConceptionChance => 1 - Math.Pow(1 - FertilityMonthly, 84.0 / 365);
     public double WeeklyMiscarriageChance => 1 - Math.Pow(1 - MiscarriageMonthly, 84.0 / 365);
 
-    /// <summary>TEMP age-dependent natural-death hazard; not a forced death at typical lifespan.</summary>
-    public double WeeklyNaturalDeathChance(int ageYears)
+    /// <summary>39C 年度自然死亡機率（依年齡÷典型壽命 分段）；不是壽命到期強制死亡。</summary>
+    public double AnnualNaturalDeathChance(int ageYears)
     {
-        if (ageYears < TypicalLifespanYears - 15) return 0;
-        var annual = Math.Min(0.95, ageYears < TypicalLifespanYears
-            ? 0.008
-            : 0.02 + 0.04 * (ageYears - TypicalLifespanYears));
-        return 1 - Math.Pow(1 - annual, 7.0 / 365);
+        var ratio = (double)Math.Max(0, ageYears) / TypicalLifespanYears;
+        foreach (var (upper, annual) in DeathBands)
+            if (ratio < upper)
+                return annual;
+        return DeathBands[^1].Annual;
     }
+
+    public double WeeklyNaturalDeathChance(int ageYears)
+        => 1 - Math.Pow(1 - AnnualNaturalDeathChance(ageYears), 7.0 / 365);
 }
 
 public sealed record DemoTempPerson(
@@ -63,8 +73,21 @@ public sealed record DemoTempPerson(
     DemoTempSex Sex,
     int BornDay,
     int? PregnancyDueWeek = null,
-    long? FatherId = null)
+    long? FatherId = null,
+    long? MotherId = null,
+    long? BirthFatherId = null,
+    long? PartnerId = null)
 {
+    /// <summary>
+    /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）不得配對（config/demo KinExclusion）。
+    /// 開局人口沒有記錄父母，彼此不算近親。
+    /// </summary>
+    public bool IsCloseKinOf(DemoTempPerson other)
+        => other.Id == MotherId || other.Id == BirthFatherId
+        || other.MotherId == Id || other.BirthFatherId == Id
+        || (MotherId is not null && MotherId == other.MotherId)
+        || (BirthFatherId is not null && BirthFatherId == other.BirthFatherId);
+
     public int AgeYearsAt(int day)
         => day < BornDay ? 0 : (day - BornDay) / 365;
     public bool IsAdultAt(int day, DemoTempDemographyRules rules)
@@ -116,13 +139,17 @@ public sealed class DemoTempDemography
         _people = people;
     }
 
-    /// <summary>Opening population (TEMP): all adults, alternating sex; age varies 18–22 years.</summary>
+    /// <summary>
+    /// 第 07 章 a 節：混齡開局。每人的年齡層、年齡（含年內出生日）、性別由 <paramref name="draws"/>
+    /// （世界種子 ECOLOGY_INIT 流的實體局部亂數）抽出；年齡層比例取自 config/demo/demography-temp.json【TEMP】。
+    /// 不傳 <paramref name="draws"/> 時沿用舊的全成人開局（18～22 歲、男女交替，只供單元測試）。
+    /// </summary>
     /// <remarks>
     /// C04：傳入 <paramref name="ids"/>（世界唯一實體 ID 分配器）時，每個人的 ID 依聚落、人序向它取號，
     /// <see cref="NextId"/> 等於分配器取號後的下一號；不傳時沿用獨立序號（只供單元測試）。
     /// </remarks>
     public static DemoTempDemography Open(IReadOnlyDictionary<int, int> settlements,
-        DemoTempDemographyRules rules, EntityIdAllocator? ids = null)
+        DemoTempDemographyRules rules, EntityIdAllocator? ids = null, DemoOpeningDraws? draws = null)
     {
         ArgumentNullException.ThrowIfNull(settlements);
         ArgumentNullException.ThrowIfNull(rules);
@@ -135,16 +162,49 @@ public sealed class DemoTempDemography
                 throw new ArgumentOutOfRangeException(nameof(settlements));
             for (var i = 0; i < count; i++)
             {
-                var age = checked(rules.AdultAgeYears + i % 5);
                 if (ids is not null) id = DemoEntityIds.NextLong(ids);
-                people.Add(id, new DemoTempPerson(id, settlement,
-                    i % 2 == 0 ? DemoTempSex.Female : DemoTempSex.Male,
-                    checked(-age * 365)));
+                people.Add(id, draws is null
+                    ? new DemoTempPerson(id, settlement, i % 2 == 0 ? DemoTempSex.Female : DemoTempSex.Male,
+                        checked(-(rules.AdultAgeYears + i % 5) * 365))
+                    : OpeningPerson(id, settlement, i, draws, rules));
                 id = ids is null ? checked(id + 1) : DemoEntityIds.NextValue(ids.Capture());
             }
         }
         return Restore(new DemoTempDemographicSnapshot(0, id,
             people.Values.ToImmutableArray()), rules);
+    }
+
+    /// <summary>
+    /// 第 07 章 a 節：抽一個開局人（年齡層→年齡→年內出生日；性別各半）。
+    /// 示範聚落只有 3～8 人，純隨機常抽不到可生育的一對，所以每個聚落的第 1、2 人固定是育齡女性、育齡男性
+    /// （「建村夫婦」【TEMP】，年齡仍在育齡層內隨機），其餘人依年齡層比例抽。
+    /// </summary>
+    internal static DemoTempPerson OpeningPerson(long id, int settlement, int slot, DemoOpeningDraws draws,
+        DemoTempDemographyRules rules)
+    {
+        var bands = DemoDemographyTempSettings.Current.OpeningAgeBands;
+        var raw = draws.Age(id);
+        var pick = (int)(raw % 100);
+        var band = bands[^1];
+        var cumulative = 0;
+        foreach (var b in bands)
+        {
+            cumulative += b.Percent;
+            if (pick < cumulative) { band = b; break; }
+        }
+        if (slot < 2)
+            band = bands.First(b => b.MinAge >= rules.AdultAgeYears && b.MaxAge < rules.FertileAgeMaxYears);
+        var span = (ulong)(band.MaxAge - band.MinAge + 1);
+        var rest = raw / 100;
+        var age = band.MinAge + (int)(rest % span);
+        var dayInYear = (int)(rest / span % 365);
+        var sex = slot switch
+        {
+            0 => DemoTempSex.Female,
+            1 => DemoTempSex.Male,
+            _ => draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male
+        };
+        return new DemoTempPerson(id, settlement, sex, checked(-(age * 365 + dayInYear)));
     }
 
     public DemoTempDemographicSnapshot Snapshot()
@@ -173,9 +233,19 @@ public sealed class DemoTempDemography
                     || p.FatherId!.Value <= 0
                     || p.FatherId.Value >= snapshot.NextId)))
                 throw new InvalidOperationException("Invalid TEMP demographic member or pregnancy.");
+            if (p.MotherId is <= 0 || p.MotherId >= p.Id || p.BirthFatherId is <= 0 || p.BirthFatherId >= p.Id
+                || p.MotherId.HasValue != p.BirthFatherId.HasValue || p.PartnerId is <= 0 || p.PartnerId == p.Id)
+                throw new InvalidOperationException("Invalid TEMP parent or partner identity.");
             if (builder.ContainsKey(p.Id))
                 throw new InvalidOperationException("Duplicate TEMP population identity.");
             builder.Add(p.Id, p);
+        }
+        // 第 07 章 a 節：伴侶必須在名冊上、互為伴侶、異性、皆成年且不是近親。
+        foreach (var p in builder.Values.Where(p => p.PartnerId is not null))
+        {
+            if (!builder.TryGetValue(p.PartnerId!.Value, out var partner) || partner.PartnerId != p.Id
+                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsCloseKinOf(partner))
+                throw new InvalidOperationException("Invalid TEMP partnership.");
         }
         return new DemoTempDemography(snapshot.LastWeek, snapshot.NextId,
             builder.ToImmutable());
@@ -248,6 +318,8 @@ public sealed class DemoTempDemography
                 p.Id, p.SettlementId));
         }
 
+        Pair(next, day, rules);
+
         foreach (var p in _people.Values.Where(p => p.Sex == DemoTempSex.Female))
         {
             if (!next.TryGetValue(p.Id, out var mother)) continue;
@@ -257,7 +329,8 @@ public sealed class DemoTempDemography
                 {
                     if (ids is not null) nextId = DemoEntityIds.NextLong(ids);
                     var newborn = new DemoTempPerson(nextId, mother.SettlementId,
-                        draws.Hit(nextId, week, DemoPopulationAction.NewbornSex, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day);
+                        draws.Hit(nextId, week, DemoPopulationAction.NewbornSex, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day,
+                        MotherId: mother.Id, BirthFatherId: mother.FatherId);
                     next.Add(nextId, newborn);
                     events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Birth,
                         nextId, mother.SettlementId, mother.Id, mother.FatherId));
@@ -273,24 +346,47 @@ public sealed class DemoTempDemography
                 continue;
             }
 
-            // Temporary fertile-age cut-off: no fabricated pregnancy without a live adult male
-            // at the same settlement, and no conception when real settlement food is insufficient.
-            if (mother.AgeYearsAt(day) < rules.AdultAgeYears || mother.AgeYearsAt(day) >= 45
-                || !settlementFed(mother.SettlementId))
+            // 第 07 章 a 節：只與穩定伴侶受孕；育齡上限【TEMP】；聚落本週真實糧帳不足時不受孕。
+            if (mother.AgeYearsAt(day) < rules.AdultAgeYears || mother.AgeYearsAt(day) >= rules.FertileAgeMaxYears
+                || !settlementFed(mother.SettlementId) || mother.PartnerId is not long partnerId
+                || !next.TryGetValue(partnerId, out var father))
                 continue;
-            var father = next.Values.FirstOrDefault(m => m.SettlementId == mother.SettlementId
-                && m.Sex == DemoTempSex.Male && m.IsAdultAt(day, rules));
-            if (father is null || !draws.Hit(mother.Id, week, DemoPopulationAction.Conception, rules.WeeklyConceptionChance))
+            if (!draws.Hit(mother.Id, week, DemoPopulationAction.Conception, rules.WeeklyConceptionChance))
                 continue;
             next[mother.Id] = mother with { PregnancyDueWeek = checked(week + rules.GestationWeeks), FatherId = father.Id };
             events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Conception,
                 mother.Id, mother.SettlementId, mother.Id, father.Id));
         }
 
+        // 出生之後清除（尚未成年的新生兒不會配對；死者已在配對前清除）。
         var after = new DemoTempDemography(week, nextId, next.ToImmutable());
         if (after.Count != Count + events.Count(x => x.Kind == DemoTempDemographicKind.Birth)
             - events.Count(x => x.Kind == DemoTempDemographicKind.NaturalDeath))
             throw new InvalidOperationException("TEMP births and natural deaths failed conservation.");
         return new DemoTempDemographicOutcome(after, events.ToImmutable());
+    }
+
+    /// <summary>
+    /// 第 07 章 a 節：穩定配對【TEMP】。先解除伴侶已不在名冊或不在同聚落的配對；
+    /// 再依 ID 順序，讓每位未配對的成年女性配給同聚落、ID 最小、未配對、非近親的成年男性。不用亂數。
+    /// </summary>
+    private static void Pair(ImmutableSortedDictionary<long, DemoTempPerson>.Builder people, int day, DemoTempDemographyRules rules)
+    {
+        foreach (var p in people.Values.Where(p => p.PartnerId is not null).ToArray())
+        {
+            if (!people.TryGetValue(p.PartnerId!.Value, out var partner) || partner.SettlementId != p.SettlementId)
+                people[p.Id] = p with { PartnerId = null };
+        }
+        var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsAdultAt(day, rules))
+            .ToList();
+        foreach (var woman in people.Values.Where(w => w.Sex == DemoTempSex.Female && w.PartnerId is null
+            && w.IsAdultAt(day, rules)).ToArray())
+        {
+            var man = freeMen.FirstOrDefault(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m));
+            if (man is null) continue;
+            freeMen.Remove(man);
+            people[woman.Id] = woman with { PartnerId = man.Id };
+            people[man.Id] = man with { PartnerId = woman.Id };
+        }
     }
 }
