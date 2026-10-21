@@ -202,10 +202,18 @@ public sealed class DemoCausalIndex
 
             case DemoSettlementEventKind.Emigration:
             {
-                if (parent is null || parent.Kind != DemoSettlementEventKind.Hunger
+                var departed = report.Migrations.SingleOrDefault(m => m.BatchId == e.MigrationBatchId && m.Departed);
+                if (parent is null)
+                {
+                    // 第 08-1 章：擁擠外移是根因——證據是本週聚落帳沒缺糧、人口夠多且取用來源餘量低於 TEMP 門檻，
+                    // 而且只能是開拓隊（不搬進別的聚落）。
+                    var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
+                    if (ledger is null || departed is null || !departed.Founding || !DemoCrowding.Crowded(report, ledger))
+                        return "外移的直接原因必須是同一聚落同一週的飢餓事件（或有週帳證據的擁擠開拓）";
+                }
+                else if (parent.Kind != DemoSettlementEventKind.Hunger
                     || parent.SettlementId != e.SettlementId || parent.Week != e.Week)
                     return "外移的直接原因必須是同一聚落同一週的飢餓事件";
-                var departed = report.Migrations.SingleOrDefault(m => m.BatchId == e.MigrationBatchId && m.Departed);
                 if (departed is null || departed.FromSettlementId != e.SettlementId || departed.PopulationOpening != e.Count)
                     return $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 出發紀錄（人數 {e.Count}）";
                 return null;

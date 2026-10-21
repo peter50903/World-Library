@@ -837,14 +837,19 @@ internal static class DemoWeeklySettlement
             // 一部分人帶著等比例的糧食與飢餓債組成隊伍出發（原子出發；本週停在來源格）。
             // 沒有已知可達的目的地就留下（45E MIG_NO_TARGET）；這不是人口自動平衡器。
             long emigrants = 0, foodOut = 0, debtOut = 0;
-            var wantsToLeave = map is not null && config.MigrationEnabled && shortage > 0
+            // 第 08-1 章：人類採集世界在挨餓之前就分出一戶開拓（擁擠外移，只開拓新聚落、不搬進別的聚落）。
+            var slack = config.SharedCatchmentEnabled ? DemoCrowding.Slack(sourceLedgers, settlement.Id) : 0;
+            var crowded = map is not null && config.MigrationEnabled && config.FoundingEnabled
+                && config.SharedCatchmentEnabled && config.HumanLifecycleEnabled
+                && DemoCrowding.Crowded(shortage, demand, survivors, slack);
+            var wantsToLeave = map is not null && config.MigrationEnabled && (shortage > 0 || crowded)
                 && survivors >= config.MinPopulationToEmigrate;
-            var target = wantsToLeave
+            var target = wantsToLeave && !crowded
                 ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config)
                 : null;
             if (wantsToLeave && target is null && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
-                && AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config))
+                && (crowded || AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config)))
             {
                 // V0-06B：已知範圍內每個可達聚落的消息都已傳到、沒有一個有糧（或根本沒有可達聚落）→
                 // 改派開拓隊到附近 TEMP 範圍內有水源的空格（不能是聚落，也不能是別支開拓隊的目的格）。
@@ -872,10 +877,13 @@ internal static class DemoWeeklySettlement
 
                     events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
-                        $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，"
+                        (crowded
+                            ? $"人口接近附近來源上限：本週取用來源只剩 {slack}（＜需求 {demand} 的 TEMP {DemoCrowding.TempCrowdingSlackPercent}%），"
+                              + "在挨餓之前分出一戶，"
+                            : $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，")
                         + $"前往 {destination} 開拓新聚落（TEMP 選址：{config.FoundingSearchMaxSteps} 格內有水源的空地），"
                         + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
-                        batch.Id), hungerEventId));
+                        batch.Id), crowded ? 0 : hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, 0,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
