@@ -213,8 +213,8 @@ public static class DemoInvariants
         var settled = world.Sites.Settlements.Sum(s => world.SettlementPopulation(s.Id));
         if (world.SettledPopulation != settled || world.WorldPopulation != settled + world.PopulationInTransit)
             yield return $"世界人口 {world.WorldPopulation}≠聚落 {settled}＋途中 {world.PopulationInTransit}";
-        if (world.HumanPopulationSnapshot is { } people && people.People.Count != world.WorldPopulation)
-            yield return $"人口身分 {people.People.Count} 人≠世界人口 {world.WorldPopulation} 人";
+        if (world.HumanPopulationSnapshot is { } people && people.People.Length != world.WorldPopulation)
+            yield return $"人口身分 {people.People.Length} 人≠世界人口 {world.WorldPopulation} 人";
     }
 
     // ── 資源：資源點存量、糧食、飢餓債逐帳平衡且逐週銜接；無魔法糧食；目前存量＝最後一週期末 ──────
