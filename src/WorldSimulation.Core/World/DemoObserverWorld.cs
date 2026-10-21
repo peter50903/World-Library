@@ -103,10 +103,10 @@ public sealed partial class DemoObserverWorld
         _sites = DemoWorldSites.Generate(Map, _rng,
             weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
-                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 6～10 人（含兩對育齡伴侶，見 DemoTempDemography.OpeningPerson），
-                // 讓下一代有不同家庭可以通婚（近親不配對）。
+                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 12～18 人（含三對育齡伴侶，見 DemoTempDemography.OpeningPerson）。
+                // 診斷：開局 6～10 人時，小世界常因性別比例的隨機波動斷代（例：種子 7 全世界找不到單身女性）。
                 : weekly.HumanLifecycleEnabled
-                ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 6, MaxPopGroupSize = 10 }
+                ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 12, MaxPopGroupSize = 18 }
                 : DemoSitesTempConfig.Sample,
             weekly.SharedCatchmentEnabled).WithOpeningEntityIds(openingIds);
 
