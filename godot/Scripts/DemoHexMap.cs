@@ -188,19 +188,7 @@ public partial class DemoHexMap : Control
             }
         }
 
-        // 第 06 章 a 節：渡口（過河唯一的陸路）畫一圈褐色虛線環，路線段全部來自 Core。
-        if (World.Routes.Ford is { } ford)
-        {
-            var fordCell = World.GetCell(ford.Column, ford.Row);
-            var fordCenter = start + HexCoordinates.Center(fordCell.AxialQ, fordCell.AxialR, radius);
-            DrawArc(fordCenter, radius * 0.45f, 0f, Mathf.Tau, 24, new Color(0.55f, 0.36f, 0.16f, 0.95f), 3f);
-            foreach (var segment in World.Routes.Segments.Where(x => x.Kind == DemoRouteKind.Ford))
-            {
-                var other = World.GetCell(segment.Other(ford).Column, segment.Other(ford).Row);
-                var otherCenter = start + HexCoordinates.Center(other.AxialQ, other.AxialR, radius);
-                DrawDashedLine(fordCenter, otherCenter, new Color(0.55f, 0.36f, 0.16f, 0.9f), 2f, 6f);
-            }
-        }
+        // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）；點格時詳情仍顯示「此格為渡口」與路線。
 
         // 第 08-2 章：不再畫選取來源的供應範圍外框（使用者 2026-10-21：不需要用圈和線標示共用食物範圍）；
         // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
