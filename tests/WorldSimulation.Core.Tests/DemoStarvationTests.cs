@@ -113,7 +113,12 @@ public sealed class DemoStarvationTests
         // 飢餓債才依 TEMP 速率下降，降到 0 時出現帶來源的「飢餓解除」事件。
         var cfg = DemoWeeklyTempConfig.Sample;
         var sites = new DemoObserverWorld(DemoScenario.Sample(42)).Sites;
-        var reserves = sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id, _ => 100L);
+        // 第 08 章 a 節：未開墾草原沒有存量、不產糧，只檢查有林地／漁場的聚落。
+        var reserves = sites.ResourcePoints.ToImmutableSortedDictionary(p => p.Id,
+            p => p.Kind == DemoResourceKind.Uncultivated ? 0L : 100L);
+        var fed = sites.Settlements.Where(s => sites.ResourcePointsOf(s.Id).Any(p => p.Kind != DemoResourceKind.Uncultivated))
+            .Select(s => s.Id).ToHashSet();
+        Assert.NotEmpty(fed);
         var food = sites.Settlements.ToImmutableSortedDictionary(s => s.Id, _ => 0L);
         var population = sites.Settlements.ToImmutableSortedDictionary(
             s => s.Id, s => sites.PopGroupsOf(s.Id).Sum(p => (long)p.Size));
@@ -124,7 +129,7 @@ public sealed class DemoStarvationTests
         {
             var outcome = DemoWeeklySettlement.Settle(week, TimeSpan.FromDays(7 * week), sites,
                 reserves, food, population, debt, cfg);
-            foreach (var l in outcome.Report.Settlements)
+            foreach (var l in outcome.Report.Settlements.Where(l => fed.Contains(l.SettlementId)))
             {
                 Assert.True(l.IsBalanced);
                 Assert.Equal(0, l.FoodShortage);
@@ -133,7 +138,7 @@ public sealed class DemoStarvationTests
                     l.HungerDebtRecovered);
             }
 
-            foreach (var e in outcome.Report.Events)
+            foreach (var e in outcome.Report.Events.Where(e => fed.Contains(e.SettlementId)))
             {
                 Assert.Equal(DemoSettlementEventKind.HungerRecovered, e.Kind);
                 Assert.Contains("來源", e.Cause);
@@ -143,8 +148,8 @@ public sealed class DemoStarvationTests
             (reserves, food, population, debt) = (outcome.Reserves, outcome.SettlementFood, outcome.Population, outcome.HungerDebt);
         }
 
-        Assert.True(recovered.SetEquals(sites.Settlements.Select(s => s.Id)));
-        Assert.All(debt.Values, d => Assert.Equal(0, d));
+        Assert.True(recovered.SetEquals(fed));
+        Assert.All(fed, id => Assert.Equal(0, debt[id]));
     }
 
     [Theory]
