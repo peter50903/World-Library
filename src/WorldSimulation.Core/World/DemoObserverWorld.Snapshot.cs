@@ -213,12 +213,29 @@ public sealed partial class DemoObserverWorld
         foreach (var ledger in report.Settlements)
         {
             var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
-            var need = checked(ledger.PopulationOpening * weekly.FoodPerPersonPerWeek);
-            var workers = ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening;
+            var need = checked(ledger.FoodConsumed + ledger.FoodShortage); // 第 06 章 d 節：本週需求（兒童半份）
+            var workers = (ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening) - ledger.WaterCarriers;
             var labour = checked(workers * weekly.YieldPerWorkerPerWeek);
             if (total > need || total > labour)
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的採集合計 {total} 超過需求 {need} 或勞力上限 {labour}");
         }
+        // 第 06 章 d 節：取水者、缺水債、腐敗與需求依規則重算比對。
+        var survival = DemoSurvivalTempSettings.Current;
+        foreach (var ledger in report.Settlements)
+        {
+            var place = sites.Settlements.Single(s => s.Id == ledger.SettlementId);
+            var people = ledger.PopulationOpening;
+            var adults = Math.Min(people, ledger.AdultWorkersOpening < 0 ? people : ledger.AdultWorkersOpening);
+            var hasWater = DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(place.Column, place.Row));
+            var carriers = hasWater ? Math.Min(adults, survival.CarriersNeeded(people)) : 0;
+            var served = hasWater ? Math.Min(people, checked(carriers * survival.PeoplePerWaterCarrier)) : 0;
+            if (ledger.WaterCarriers != carriers
+                || ledger.WaterShortage != DemoSurvivalTempSettings.DehydrationDebt(people - served, weekly.FoodPerPersonPerWeek)
+                || ledger.FoodSpoiled != DemoSurvivalTempSettings.Spoilage(ledger.FoodOpening)
+                || ledger.FoodConsumed + ledger.FoodShortage != survival.Demand(adults, people - adults, weekly.FoodPerPersonPerWeek))
+                Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的取水、缺水、腐敗或需求與規則重算不符");
+        }
+
         stocks.Clear();
         foreach (var source in report.Sources.Where(x => x.StockClosing > 0))
             stocks[source.SourceId] = source.StockClosing;

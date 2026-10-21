@@ -39,13 +39,14 @@ public static class DemoForagingWorld
         DemoWeeklyTempConfig weekly,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
         IReadOnlyList<DemoCatchmentFoodSource>? availableSources = null,
-        DemoCatchmentAllocation mode = DemoCatchmentAllocation.LabourProportional)
+        DemoCatchmentAllocation mode = DemoCatchmentAllocation.LabourProportional,
+        IReadOnlyDictionary<int, long>? foodNeeded = null)
     {
         if (!weekly.SharedCatchmentEnabled)
             throw new InvalidOperationException("Not a shared catchment world.");
         var claims = sites.Settlements.OrderBy(s => s.Id).Select(s =>
             new DemoCatchmentFoodClaim(s.Id, s.Column, s.Row,
-                checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
+                foodNeeded?.GetValueOrDefault(s.Id) ?? checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
                 checked((adultWorkers?.GetValueOrDefault(s.Id) ?? openingPopulation[s.Id]) * weekly.YieldPerWorkerPerWeek)));
         // 第 06 章 c 節：availableSources＝本週可採（期初存量＋再生）；不給時用每週供應（只供舊測試與診斷）。
         return DemoHexFoodCatchment.Allocate(map, availableSources ?? Sources(map, sites), claims, mode);

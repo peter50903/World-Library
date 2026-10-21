@@ -183,7 +183,7 @@ public sealed partial class DemoObserverWorld
         var harvests = week.Sources.SelectMany(x => x.Shares.Select(share => new DemoCatchmentHarvest(x.SourceId, share.SettlementId, share.Food)))
             .ToArray();
         var unmet = week.Settlements.ToDictionary(l => l.SettlementId,
-            l => Math.Max(0, checked(l.PopulationOpening * _weekly.FoodPerPersonPerWeek) - l.Harvested));
+            l => Math.Max(0, checked(l.FoodConsumed + l.FoodShortage) - l.Harvested));
         var unharvested = week.Sources.ToDictionary(x => x.SourceId, x => x.Unharvested);
         return new DemoCatchmentFoodResult(Array.AsReadOnly(harvests), unmet, unharvested);
     }
@@ -195,9 +195,11 @@ public sealed partial class DemoObserverWorld
         var opening = week.Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationOpening);
         // 第 06 章 c 節：可採量用帳上的期初存量＋再生（存量本身由逐週帳鏈決定）。
         var available = week.Sources.Select(x => new DemoCatchmentFoodSource(x.SourceId, x.Column, x.Row, x.Kind, x.FoodAvailable)).ToArray();
+        // 第 06 章 d 節：採集勞力＝成年人－取水者；需求＝本週需求（兒童半份）＝消耗＋缺糧。
         return DemoForagingWorld.Allocate(Map, _sites, opening, _weekly,
             week.Settlements.ToDictionary(l => l.SettlementId,
-                l => l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening), available);
+                l => (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers), available,
+            foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId, l => l.FoodConsumed + l.FoodShortage));
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>

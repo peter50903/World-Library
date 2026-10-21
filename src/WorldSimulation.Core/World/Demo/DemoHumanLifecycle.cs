@@ -35,14 +35,18 @@ internal static class DemoHumanLifecycle
         var starvedBySettlement = new Dictionary<int, long[]>();
         foreach (var ledger in report.Settlements)
         {
-            if (ledger.Births != 0 || ledger.NaturalDeaths != 0)
+            if (ledger.Births != 0 || ledger.NaturalDeaths != 0 || ledger.ChildStarvationDeaths != 0 || ledger.ElderStarvationDeaths != 0)
                 throw new InvalidOperationException("Expected pre-demography weekly food ledger.");
             if (ledger.Deaths > int.MaxValue)
                 throw new InvalidOperationException("Too many people for TEMP identity cohort.");
+            // 第 06 章 d 節：餓死名單以 POP 流（實體局部亂數）依年齡權重抽取——兒童與老人權重較高【TEMP】；
+            // 鍵值＝原始抽樣值÷權重（以整數交叉相乘比較，可重現），取最小的 Deaths 人。
+            var day = report.Week * 7;
             var ids = afterStarvation.People.Where(p => p.SettlementId == ledger.SettlementId)
-                .OrderByDescending(p => p.AgeYearsAt(report.Week * 7))
-                .ThenBy(p => p.Id)
-                .Take((int)ledger.Deaths).Select(p => p.Id).ToArray();
+                .Select(p => (Person: p, Raw: draws.Raw(p.Id, report.Week, DemoPopulationAction.StarvationSelection),
+                    Weight: (ulong)StarvationWeight(p, day)))
+                .OrderBy(x => x, StarvationOrder.Instance)
+                .Take((int)ledger.Deaths).Select(x => x.Person.Id).ToArray();
             if (ids.Length != ledger.Deaths)
                 throw new InvalidOperationException("Unverifiable starvation identity loss.");
             afterStarvation = afterStarvation.RemoveStarvation(ids, inTransit: false).Population;
@@ -72,8 +76,12 @@ internal static class DemoHumanLifecycle
             if (closing < 0 || result.Population.People.Count(p => p.SettlementId == ledger.SettlementId) != closing)
                 throw new InvalidOperationException("Birth/death identities do not match world population.");
             var excessDebt = closing == 0 ? ledger.HungerDebtClosing : 0L;
+            var starved = starvedBySettlement.GetValueOrDefault(ledger.SettlementId) ?? Array.Empty<long>();
+            var starvedPeople = opening.People.Where(p => starved.Contains(p.Id)).ToArray();
             var modified = ledger with
             {
+                ChildStarvationDeaths = starvedPeople.Count(p => !p.IsAdultAt(report.Week * 7, Rules)),
+                ElderStarvationDeaths = starvedPeople.Count(p => p.AgeYearsAt(report.Week * 7) >= DemoSurvivalTempSettings.Current.ElderAgeYears),
                 Births = births,
                 Deaths = checked(ledger.Deaths + natural),
                 NaturalDeaths = natural,
@@ -154,6 +162,8 @@ internal static class DemoHumanLifecycle
                     (DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)).ToArray(),
                 Settlements = stored.Settlements.Select(l => l with
                 {
+                    ChildStarvationDeaths = 0,
+                    ElderStarvationDeaths = 0,
                     Births = 0,
                     Deaths = l.Deaths - l.NaturalDeaths,
                     NaturalDeaths = 0,
@@ -180,5 +190,27 @@ internal static class DemoHumanLifecycle
             if (stored.Events.Count > 0) nextEventId = checked(stored.Events[^1].EventId + 1);
         }
         return (current, participants);
+    }
+
+    /// <summary>第 06 章 d 節：餓死抽樣權重（兒童、成人、老人；config/demo/survival-temp.json【TEMP】）。</summary>
+    private static int StarvationWeight(DemoTempPerson person, int day)
+    {
+        var settings = DemoSurvivalTempSettings.Current;
+        if (!person.IsAdultAt(day, Rules)) return settings.ChildStarvationWeight;
+        return person.AgeYearsAt(day) >= settings.ElderAgeYears ? settings.ElderStarvationWeight : settings.AdultStarvationWeight;
+    }
+
+    /// <summary>鍵值 Raw÷Weight 由小到大（以 UInt128 交叉相乘比較），同值依人 ID。</summary>
+    private sealed class StarvationOrder : IComparer<(DemoTempPerson Person, ulong Raw, ulong Weight)>
+    {
+        public static readonly StarvationOrder Instance = new();
+
+        public int Compare((DemoTempPerson Person, ulong Raw, ulong Weight) a, (DemoTempPerson Person, ulong Raw, ulong Weight) b)
+        {
+            var left = (UInt128)a.Raw * b.Weight;
+            var right = (UInt128)b.Raw * a.Weight;
+            var c = left.CompareTo(right);
+            return c != 0 ? c : a.Person.Id.CompareTo(b.Person.Id);
+        }
     }
 }

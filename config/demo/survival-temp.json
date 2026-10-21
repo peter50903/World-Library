@@ -1,0 +1,11 @@
+{
+  "SchemaVersion": 1,
+  "Status": "TEMP",
+  "Notes": "第 06 章 d 節 TEMP 生存參數（只用於森林／河流自然採集世界）：兒童食量為成人的百分比；每多少人需要 1 名成年取水者（取水者不採集）；老年起算年齡；餓死抽樣權重（兒童、成人、老人）。缺水惡化倍率與週腐敗率讀 29 數值參數 P_WATER_DEHYDRATION_RATE、P_FOOD_LOSS_WEEK。",
+  "ChildFoodPercent": 50,
+  "PeoplePerWaterCarrier": 10,
+  "ElderAgeYears": 60,
+  "ChildStarvationWeight": 2,
+  "AdultStarvationWeight": 1,
+  "ElderStarvationWeight": 2
+}
