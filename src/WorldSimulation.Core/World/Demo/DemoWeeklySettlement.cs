@@ -61,6 +61,8 @@ public sealed record DemoWeeklyTempConfig(
         HumanLifecycleEnabled = true,
         // 第 07 章 b 節：遷徙隊伍攜帶家庭身分，人類繁衍情境不再禁止遷徙；c 節：也可開拓新聚落。
         FoundingEnabled = true,
+        // 第 08-1 章【TEMP】：開拓選址 3→6 格，聚落群附近的空地用完後仍能擴散到地圖其他地方。
+        FoundingSearchMaxSteps = 6,
         // TEMP adult gather capacity: enough to support non-working dependents,
         // still limited by genuine natural-source budget (never mint food).
         // 第 08-1 章：8→16。診斷（--diagnose-living）顯示 2 名成人扣 1 名取水者後勞力上限＝需求，

@@ -14,8 +14,9 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoCrowding
 {
-    /// <summary>【TEMP】受孕需要的來源餘量（需求的百分比）。</summary>
-    public const long TempBirthSlackPercent = 25;
+    /// <summary>【TEMP】受孕需要的來源餘量（需求的百分比）。0＝只要不吃老本（可持續供應 ≥ 本週採收）就可受孕。
+    /// 25% 時相鄰聚落共用來源，餘量常不足，吃飽也長期不生育而老化衰退（診斷種子 2）。</summary>
+    public const long TempBirthSlackPercent = 0;
 
     /// <summary>【TEMP】低於這個餘量（需求的百分比）視為擁擠。</summary>
     public const long TempCrowdingSlackPercent = 10;
