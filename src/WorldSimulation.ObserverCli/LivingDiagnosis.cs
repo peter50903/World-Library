@@ -74,6 +74,21 @@ public static class LivingDiagnosis
                 var seeker = DemoFamilyMigration.MateSeeker(residents, day, rules);
                 var singleF = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules);
                 var singleM = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules);
+                if (seeker is not null)
+                {
+                    // 婚嫁候選：與結算同一套條件（有未配對異性、目的地人口較多、陸路 TEMP 已知格數內）。
+                    var notes = new List<string>();
+                    foreach (var c in world.Sites.Settlements.Where(c => c.Id != s.Id && !c.IsRuin))
+                    {
+                        var theirs = people.Where(p => p.IsSettled && p.SettlementId == c.Id).ToList();
+                        var opposite = DemoFamilyMigration.Unpaired(theirs, seeker.Sex == DemoTempSex.Female ? DemoTempSex.Male : DemoTempSex.Female, day, rules);
+                        var route = DemoMigrationRoutes.FindRoute(world.Map, new DemoCellRef(s.Column, s.Row), new DemoCellRef(c.Column, c.Row));
+                        var steps = route.Length < 2 ? "無路" : $"{route.Length - 1}格";
+                        var bigger = world.SettlementPopulation(c.Id) > residents.Count || (world.SettlementPopulation(c.Id) == residents.Count && c.Id < s.Id);
+                        notes.Add($"#{c.Id}:{steps}/異{opposite}/{(bigger ? "大" : "小")}");
+                    }
+                    output.WriteLine($"    尋偶候選 {string.Join(" ", notes)}");
+                }
                 output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}／單女 {singleF}／單男 {singleM}／尋偶 {(seeker is null ? "無" : seeker.Sex == DemoTempSex.Female ? "女" : "男")}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
                     + $"｜飽 {fed}、寬裕 {ample}／{ledgers.Count} 週");
             }
