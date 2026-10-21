@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 5 版（直接快照＋實體 ID 分配器＋世界配方；第 02 章 a 節），第 1～4 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 6 版（直接快照＋實體 ID 分配器＋世界配方＋正式史庫；第 03 章 b 節），第 1～5 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -230,6 +230,13 @@
 - 出生及年齡自然死亡由 Core 真週結算附到人口帳（Births／Deaths／NaturalDeaths），另保留真正飢餓死亡，有合法事件ID、因果與存讀回放的身分驗證。年齡／孕期／死亡風險均僅TEMP，不改正式種族數值表；自然死需要較長時間才容易出現。
 - 遷徙人員的懷孕／年齡身分隨隊伍攜帶尚未安全完成；**這個新人口場景暫停遷徙**，不能宣稱人口所有動態及M1正式人口驗收已全面完成；舊遷徙/開拓場景保留供CI。舊TEMP世界仍讀舊模式，新的生育模式有獨立存檔場景識別。
 
+## #03b｜正式事件類型對照（第 03 章 b 節，Claude 定案，TEMP）
+
+- 出生→正式 `EV_BIRTH`；餓死、途中餓死、自然死亡→正式 `EV_DEATH`（死因放根因與摘要）。
+- 24 表尚無正式列的 5 種暫用：`TEMP_EV_HUNGER`（飢餓）、`TEMP_EV_HUNGER_RECOVERED`（飢餓解除）、`TEMP_EV_EMIGRATION`（外移）、`TEMP_EV_ARRIVAL`（抵達）、`TEMP_EV_SETTLEMENT_FOUNDED`（建立新聚落）。單一對照表在 `DemoEventTypes`。
+- 根因：飢餓類、遷徙類、建村＝資源；出生、自然死亡＝生命週期【TEMP】。不給重要度（第 13 章）。
+- 待使用者或後續章節在 24 表新增正式列後替換；替換時存檔版本＋1。
+
 ## 附錄 A｜`TEMP` 標記檔案清單（盤點基準 `0f0e76f`）
 
 每個檔案的標記已歸入上面的項目；其餘標記是說明文字、錯誤訊息或畫面標籤（說明該資料是 TEMP），不另含數值。
@@ -248,7 +255,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 16 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 8 | D8；#88 舊版無事件編號存檔拒絕讀取 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 2 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因） |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 3 | D7 |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 15 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字） |
@@ -268,7 +275,9 @@
 | `godot/Scripts/HudLayout.cs` | 15 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列） |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
 | `godot/Scripts/ArtAssets.cs` | 3 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度 |
-| `godot/Scripts/ObserverRoot.EventDetail.cs` | 1 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅 |
+| `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
+| `src/WorldSimulation.Core/History/WorldEvent.cs` | 1 | 第 03 章 b 節：根因分類「生命週期」暫定 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 12 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b） |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

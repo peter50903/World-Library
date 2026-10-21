@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.History;
 using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.Scheduling;
@@ -66,6 +67,8 @@ public sealed partial class DemoObserverWorld
         private DemoWorldSites _sites;
         private DemoTempDemography? _demography;
         private DemoWeeklyOutcome? _outcome;
+        private EventHistory _history;
+        private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
         internal DemoWorldCommit(DemoObserverWorld world, bool settleWeekly)
         {
@@ -82,6 +85,7 @@ public sealed partial class DemoObserverWorld
             _entityIds = world._entityIds;
             _sites = world._sites;
             _demography = world._demography;
+            _history = world._history;
         }
 
         /// <summary>本日到期時間（<see cref="StageSchedule"/> 後才有）。</summary>
@@ -156,7 +160,8 @@ public sealed partial class DemoObserverWorld
         /// ④ 生死：有人類繁衍時以生死後的結果取代週結算結果並暫存新的人口名冊；
         /// 未啟用生死的情境傳 null（步驟仍要走，確保順序固定）。
         /// </summary>
-        public void StagePopulation(DemoWeeklyOutcome? outcomeAfterLifecycle, DemoTempDemography? demography)
+        public void StagePopulation(DemoWeeklyOutcome? outcomeAfterLifecycle, DemoTempDemography? demography,
+            IReadOnlyDictionary<long, IReadOnlyList<long>>? participants = null)
         {
             RequireWeekly(nameof(StagePopulation));
             Advance(Step.Ledger, Step.Population, nameof(StagePopulation));
@@ -164,10 +169,11 @@ public sealed partial class DemoObserverWorld
             {
                 _outcome = outcomeAfterLifecycle;
                 _demography = demography ?? throw new ArgumentNullException(nameof(demography));
+                _participants = participants;
             }
-            else if (demography is not null)
+            else if (demography is not null || participants is not null)
             {
-                throw new ArgumentException("沒有生死結果時不可替換人口名冊。", nameof(demography));
+                throw new ArgumentException("沒有生死結果時不可替換人口名冊或當事人。", nameof(demography));
             }
 
             var outcome = _outcome!;
@@ -180,7 +186,10 @@ public sealed partial class DemoObserverWorld
             _sites = outcome.Sites;
         }
 
-        /// <summary>⑤ 歷史：週報（附十條亂數流「提交前→提交後」計數器）只追加，與帳本同一交易。</summary>
+        /// <summary>
+        /// ⑤ 歷史：週報（附十條亂數流「提交前→提交後」計數器）只追加；同一步經同一個轉換器把本週聚落事件
+        /// 追加進正式史庫（第 03 章 b 節，<see cref="WorldSimulation.Core.History.EventHistory.AppendCommitted"/> 的唯一呼叫處），與帳本同一交易。
+        /// </summary>
         public void StageHistory(DemoWeekReport report)
         {
             ArgumentNullException.ThrowIfNull(report);
@@ -192,6 +201,7 @@ public sealed partial class DemoObserverWorld
             var after = _proposedRng!.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
             var counters = RngStreams.All.Select(id => new DemoRngCounter(id, before[id], after[id])).ToArray();
             _weeks = _baseWeeks.Add(report with { RngCounters = Array.AsReadOnly(counters) });
+            _history = _world._history.AppendCommitted(DemoEventProjection.ToWorldEvents(report, _sites, _participants));
         }
 
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
@@ -221,6 +231,7 @@ public sealed partial class DemoObserverWorld
             world._entityIds = _entityIds;
             world._sites = _sites;
             world._demography = _demography;
+            world._history = _history;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }
 

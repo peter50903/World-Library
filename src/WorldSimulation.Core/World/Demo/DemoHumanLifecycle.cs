@@ -13,7 +13,11 @@ internal static class DemoHumanLifecycle
 {
     public static DemoTempDemographyRules Rules => DemoTempDemographyRules.HumanFixture;
 
-    public static (DemoWeeklyOutcome Outcome, DemoTempDemography Population) Apply(
+    /// <returns>
+    /// 生死後的週結算、人口名冊，以及第 03 章 b 節的「事件 ID → 當事人」：出生＝新生兒＋母＋父；
+    /// 自然死亡＝死者；本週聚落餓死事件＝本週被移除的餓死者（受孕、流產不入史）。
+    /// </returns>
+    public static (DemoWeeklyOutcome Outcome, DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Apply(
         DemoWeeklyOutcome weekly, DemoTempDemography opening, long firstNewEventId = 1)
     {
         ArgumentNullException.ThrowIfNull(weekly);
@@ -27,6 +31,7 @@ internal static class DemoHumanLifecycle
         // The existing weekly food/death ledger provides actual starvation evidence.
         // Remove only the corresponding real identity tokens; never invent a survivor.
         var afterStarvation = opening;
+        var starvedBySettlement = new Dictionary<int, long[]>();
         foreach (var ledger in report.Settlements)
         {
             if (ledger.Births != 0 || ledger.NaturalDeaths != 0)
@@ -40,6 +45,8 @@ internal static class DemoHumanLifecycle
             if (ids.Length != ledger.Deaths)
                 throw new InvalidOperationException("Unverifiable starvation identity loss.");
             afterStarvation = afterStarvation.RemoveStarvation(ids, inTransit: false).Population;
+            if (ids.Length > 0)
+                starvedBySettlement[ledger.SettlementId] = ids;
         }
 
         // Pregnancy begins only with food that the Core's TRUE weekly account
@@ -79,6 +86,12 @@ internal static class DemoHumanLifecycle
         }
 
         var events = report.Events.ToList();
+        var participants = new Dictionary<long, IReadOnlyList<long>>();
+        foreach (var starved in events.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath))
+        {
+            if (starvedBySettlement.Remove(starved.SettlementId, out var ids))
+                participants[starved.EventId] = Array.AsReadOnly(ids.OrderBy(id => id).ToArray());
+        }
         long eventId = events.Count == 0 ? firstNewEventId : checked(events[events.Count - 1].EventId + 1);
         foreach (var e in result.Events.Where(e => e.Kind is
             DemoTempDemographicKind.Birth or DemoTempDemographicKind.NaturalDeath))
@@ -90,12 +103,14 @@ internal static class DemoHumanLifecycle
             {
                 kind = DemoSettlementEventKind.Birth;
                 cause = $"TEMP人族：雙親 #{e.MotherId}／#{e.FatherId} 已經受孕與懷孕 {Rules.GestationWeeks} 週，新生人口 #{e.PersonId}";
+                participants[eventId] = new[] { e.PersonId, e.MotherId ?? 0, e.FatherId ?? 0 }.Where(id => id > 0).ToArray();
             }
             else
             {
                 kind = DemoSettlementEventKind.NaturalDeath;
                 var departed = afterStarvation.People.Single(p => p.Id == e.PersonId);
                 cause = $"TEMP人族：人口 #{e.PersonId} 年齡 {departed.AgeYearsAt(report.Week * 7)}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險";
+                participants[eventId] = new[] { e.PersonId };
             }
             events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
                 kind, 1, cause, EventId: eventId++));
@@ -112,15 +127,16 @@ internal static class DemoHumanLifecycle
         {
             Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),
             EntityIds = entityIds
-        }, result.Population);
+        }, result.Population, participants);
     }
 
     /// <summary>Reconstruct pregnancy and age from the entire independently checked
     /// weekly ledger chain, and reject tampered births/deaths in a TEMP v2 save.</summary>
-    public static DemoTempDemography Replay(
+    public static (DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Replay(
         DemoTempDemography opening, IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites)
     {
         var current = opening;
+        var participants = new Dictionary<long, IReadOnlyList<long>>();
         long nextEventId = 1;
         foreach (var stored in reports)
         {
@@ -157,8 +173,10 @@ internal static class DemoHumanLifecycle
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))
                 throw new InvalidDataException("TEMP birth/death events do not match reconstructed pregnancies and age.");
             current = trial.Population;
+            foreach (var (id, people) in trial.Participants)
+                participants[id] = people;
             if (stored.Events.Count > 0) nextEventId = checked(stored.Events[^1].EventId + 1);
         }
-        return current;
+        return (current, participants);
     }
 }
