@@ -62,9 +62,13 @@ public sealed class DemoHexFoodCatchmentTests
         };
         var r = DemoHexFoodCatchment.Allocate(Map, new[] { source }, claims);
         Assert.Equal(9, r.TotalHarvested);
-        Assert.Equal(8, r.Harvests.Single(h => h.SettlementId == 10).FoodHarvested);
-        Assert.Equal(1, r.Harvests.Single(h => h.SettlementId == 20).FoodHarvested);
-        Assert.Equal(7, r.UnmetDemand[20]);
+        // 第 06 章 c 節：同勞力依比例平分（4／4），取整餘數 1 依聚落 ID 遞增給 #10。
+        Assert.Equal(5, r.Harvests.Single(h => h.SettlementId == 10).FoodHarvested);
+        Assert.Equal(4, r.Harvests.Single(h => h.SettlementId == 20).FoodHarvested);
+        Assert.Equal(4, r.UnmetDemand[20]);
+        var greedy = DemoHexFoodCatchment.Allocate(Map, new[] { source }, claims, DemoCatchmentAllocation.Greedy);
+        Assert.Equal(8, greedy.Harvests.Single(h => h.SettlementId == 10).FoodHarvested);
+        Assert.Equal(1, greedy.Harvests.Single(h => h.SettlementId == 20).FoodHarvested);
         Assert.Equal(0, r.UnharvestedSourceFood[2]);
         var repeated = DemoHexFoodCatchment.Allocate(Map, new[] { source }, claims.Reverse());
         Assert.Equal(r.Harvests, repeated.Harvests);
