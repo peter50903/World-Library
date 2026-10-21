@@ -180,15 +180,25 @@ jobs:
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
-            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 | tee /tmp/observer-m1.log
+            # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
+            # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
+            summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '調查結果' /tmp/observer-m1.log)"
+            echo "::notice title=M1 正式驗收::$(printf '%s' "$summary" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
             # Every Enabled=TRUE CheckID from the CSV must be reported, in CSV order, in the summary.
             expected_ids="$(tail -n +2 'config/sheets/45G_M1驗收.csv' | tr -d '\r' | awk -F, '$NF=="TRUE"{print $1}')"
             test -n "$expected_ids"
             for id in $expected_ids; do grep -q "  $id｜" /tmp/observer-m1.log; done
             summary_ids="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log | grep -o '^  M1_[A-Z_]*' | tr -d ' ')"
             test "$summary_ids" = "$expected_ids"
-            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 9
+            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 12
             grep -q '沒有 Hard 項目失敗' /tmp/observer-m1.log
+            test "$(grep -c '^  種子 [0-9]*｜人口 ' /tmp/observer-m1.log)" = 20
+            grep -q '  調查結果：20 個種子中 [0-9]* 個活過 100 年' /tmp/observer-m1.log
+            test "$(grep -c '^  必要項目 M1_[A-Z_]*｜通過（PASS）' /tmp/observer-m1.log)" = 8
+            test "$(grep -c '^  案例｜.*｜找到｜' /tmp/observer-m1.log)" = 4
+            grep -q '^正式驗收：通過' /tmp/observer-m1.log
+            test -s /tmp/m1-report/M1驗收報告.txt
             # #82: --m1-check uses the same official year boundary as --demo --years.
             grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-m1.log
             # Bad arguments must fail loudly in Chinese, not be swallowed.
@@ -199,6 +209,14 @@ jobs:
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
+
+      - name: Upload M1 acceptance report (第 08 章 d 節)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-acceptance-report
+          path: /tmp/m1-report/
+          if-no-files-found: ignore
 
       - name: Restore and compile actual Godot observer C# project (V0-02)
         shell: bash

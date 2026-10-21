@@ -5,7 +5,7 @@ using Xunit;
 namespace WorldSimulation.Core.Tests;
 
 /// <summary>
-/// V0-08A（#74）：表 45G M1 驗收報告。三個 TEMP 固定種子 × 三個既有 TEMP 情境各跑 100 年，
+/// V0-08A（#74）：表 45G M1 驗收報告。三個 TEMP 固定種子 × 四個 TEMP 情境（第 08 章 d 節加人類採集）各跑 100 年，
 /// 每一項都要有結果、順序跟 45G CSV 一致、可重現；Hard 項目不能失敗，而且竄改證據時要被抓到。
 /// </summary>
 public sealed class M1AcceptanceReportTests
@@ -46,10 +46,10 @@ public sealed class M1AcceptanceReportTests
     }
 
     [Fact]
-    public void ThreeSeedsTimesThreePresetsReportEveryCheckInOrderWithNoHardFailure()
+    public void ThreeSeedsTimesFourPresetsReportEveryCheckInOrderWithNoHardFailure()
     {
         var expectedOrder = Checks.Value.Select(c => c.Id).ToList();
-        Assert.Equal(9, Matrix.Value.Count);
+        Assert.Equal(12, Matrix.Value.Count);
         foreach (var report in Matrix.Value)
         {
             Assert.Equal(expectedOrder, report.Results.Select(r => r.Check.Id).ToList());
@@ -65,13 +65,18 @@ public sealed class M1AcceptanceReportTests
     }
 
     [Fact]
-    public void WarningsOnlyShowDataAndMissingFeaturesAreNotReportedAsPass()
+    public void WarningsUseTempThresholdsAndMissingFeaturesAreNotReportedAsPass()
     {
         foreach (var report in Matrix.Value)
         {
-            // 正式門檻未定案：只列數據，不可能「通過」。
-            Assert.Equal(M1Verdict.Warn, Result(report, "M1_STABILITY").Verdict);
-            Assert.Equal(M1Verdict.Warn, Result(report, "M1_VARIETY").Verdict);
+            // 第 08 章 d 節 TEMP 門檻（D1）：期末仍有人且未爆量才通過；全滅＝警告。
+            var final = report.Run.TotalsAfterWeek[report.Run.Weeks[^1].Week].Population;
+            var stability = Result(report, "M1_STABILITY");
+            Assert.Equal(final > 0 ? M1Verdict.Pass : M1Verdict.Warn, stability.Verdict);
+            Assert.Contains("【TEMP 門檻 D1】", stability.Diagnosis);
+            var variety = Result(report, "M1_VARIETY");
+            Assert.NotEqual(M1Verdict.Fail, variety.Verdict);
+            Assert.Contains("【TEMP 門檻 D2】", variety.Diagnosis);
             // 聚落內分組取用尚未實作。
             Assert.Equal(M1Verdict.Unimplemented, Result(report, "M1_ACCESS").Verdict);
         }

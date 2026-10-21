@@ -134,7 +134,8 @@ public sealed class DemoCarryingCapacityTests
         Assert.NotNull(path);
         var report = M1Evaluator.Evaluate(run, M1CheckCatalog.Load(path!));
         var stability = report.Results.Single(r => r.Check.Id == "M1_STABILITY");
-        Assert.Equal(M1Verdict.Warn, stability.Verdict); // 仍只列數據，不偽造通過門檻。
+        // 第 08 章 d 節 TEMP 門檻 D1：10 年後仍有人、未爆量＝通過；承載證據照列。
+        Assert.Equal(M1Verdict.Pass, stability.Verdict);
         Assert.Contains("長期可養活", stability.Diagnosis);
         foreach (var c in run.FinalCapacities!)
             Assert.Contains(c.SettlementName, stability.Diagnosis);
