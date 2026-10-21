@@ -420,12 +420,16 @@ public sealed class DemoTempDemography
                 people[p.Id] = p with { PartnerId = null };
         }
         // 第 07 章 b 節：只有定居者配對（途中不新配對；已配對的家庭整批同行，不會被拆開）。
+        // 第 08-1 章【TEMP 規則】：育齡女性先配（依 ID）、其後是其他成年女性；每位配給同聚落、未配對、非近親、
+        // 年齡最接近的成年男性（同差距取 ID 小者）。舊規則「ID 最小的男性」常讓老人占走年輕伴侶、育齡女性配不到。
         var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsSettled
             && m.IsAdultAt(day, rules)).ToList();
         foreach (var woman in people.Values.Where(w => w.Sex == DemoTempSex.Female && w.PartnerId is null
-            && w.IsSettled && w.IsAdultAt(day, rules)).ToArray())
+                     && w.IsSettled && w.IsAdultAt(day, rules))
+                 .OrderBy(w => w.AgeYearsAt(day) < rules.FertileAgeMaxYears ? 0 : 1).ThenBy(w => w.Id).ToArray())
         {
-            var man = freeMen.FirstOrDefault(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m));
+            var man = freeMen.Where(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m))
+                .OrderBy(m => Math.Abs((long)m.BornDay - woman.BornDay)).ThenBy(m => m.Id).FirstOrDefault();
             if (man is null) continue;
             freeMen.Remove(man);
             people[woman.Id] = woman with { PartnerId = man.Id };

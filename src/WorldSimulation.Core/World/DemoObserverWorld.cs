@@ -224,6 +224,11 @@ public sealed partial class DemoObserverWorld
     /// <summary>
     /// #103：各聚落「長期資源再生 vs 目前需求」的 TEMP 描述性估計（依聚落編號排序）。純讀取，不改世界、不產生糧食。
     /// </summary>
+    private DemoMapCapacity? _mapCapacity;
+
+    /// <summary>第 08-1 章：地圖理論承載上限（TEMP 估計；只由地圖與設定決定，不是世界狀態）。</summary>
+    public DemoMapCapacity MapCapacity => _mapCapacity ??= DemoMapCapacity.For(Map, _weekly);
+
     public IReadOnlyList<DemoSettlementCapacity> SettlementCapacities()
         => DemoCarryingCapacity.Of(_sites, _weekly, SettlementPopulation, ResourceReserve, SettlementFood, SettlementHungerDebt);
 
@@ -355,8 +360,8 @@ public sealed partial class DemoObserverWorld
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
-    private static Func<int, long, long, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
-        => (settlementId, deaths, limit) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws);
+    private static Func<int, long, long, bool, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
+        => (settlementId, deaths, limit, founding) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws, founding);
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and

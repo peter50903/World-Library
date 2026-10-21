@@ -222,7 +222,8 @@ public sealed record M1RunData(
     IReadOnlyDictionary<int, DemoCellRef> SettlementCells,
     IReadOnlyList<M1SettlementInfo> Settlements,
     string? AbortReason = null,
-    IReadOnlyList<DemoSettlementCapacity>? FinalCapacities = null);
+    IReadOnlyList<DemoSettlementCapacity>? FinalCapacities = null,
+    long MapCapacity = 0);
 
 /// <summary>跑一個種子 × 情境 × 年數，收集證據。不改 Core 任何規則。</summary>
 public static class M1RunCollector
@@ -271,7 +272,7 @@ public static class M1RunCollector
                 s.IsFounded, world.SettlementPopulation(s.Id)))
             .ToList();
         return new M1RunData(seed, preset, years, daysPerYear, initial, initialIds, world.WeekReports(), totals, cells, infos, abort,
-            world.SettlementCapacities());
+            world.SettlementCapacities(), world.MapCapacity.People);
     }
 
     private static M1WorldTotals Totals(DemoObserverWorld world)
@@ -1401,7 +1402,14 @@ public static class M1AcceptanceCli
             fate = $"第 {WorldCalendarRules.WeeklySettlementInYear(week, run.DaysPerYear).Year} 年全滅";
         }
         var hard = report.Results.Count(r => r.Verdict == M1Verdict.Fail);
-        return $"種子 {run.Seed}｜人口 {run.Initial.Population}→{final}（最高 {populations.Append(run.Initial.Population).Max()}）｜出生 {births}｜新建聚落 {founded}｜{fate}｜Hard 失敗 {hard}";
+        // 第 08-1 章：對照地圖理論承載上限——峰值與最後 20 年（年末）人口區間。
+        var yearEnds = DemoYearLedger.FromWeeks(run.Weeks, run.DaysPerYear, run.Years * run.DaysPerYear).Select(y => y.PopulationClosing).ToList();
+        var tail = yearEnds.Skip(Math.Max(0, yearEnds.Count - 20)).DefaultIfEmpty(final).ToList();
+        string Pct(long v) => run.MapCapacity <= 0 ? "—" : $"{v * 100 / run.MapCapacity}%";
+        var capacity = run.MapCapacity <= 0 ? string.Empty
+            : $"｜上限 {run.MapCapacity}｜峰值 {populations.Append(run.Initial.Population).Max()}（{Pct(populations.Append(run.Initial.Population).Max())}）"
+              + $"｜最後 20 年 {tail.Min()}～{tail.Max()}（{Pct(tail.Min())}～{Pct(tail.Max())}）";
+        return $"種子 {run.Seed}｜人口 {run.Initial.Population}→{final}（最高 {populations.Append(run.Initial.Population).Max()}）｜出生 {births}｜新建聚落 {founded}｜{fate}｜Hard 失敗 {hard}{capacity}";
     }
 
     public static void WriteRun(M1RunReport report, TextWriter output)

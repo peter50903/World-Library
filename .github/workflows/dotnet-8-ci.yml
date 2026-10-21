@@ -108,9 +108,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":15,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":16,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 15 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 16 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -126,7 +126,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 15 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 16 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -183,7 +183,7 @@ jobs:
             # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
             # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
-            summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '調查結果' /tmp/observer-m1.log)"
+            summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '^  種子 [0-9]*｜人口 \|調查結果' /tmp/observer-m1.log)"
             echo "::notice title=M1 正式驗收::$(printf '%s' "$summary" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
             # Every Enabled=TRUE CheckID from the CSV must be reported, in CSV order, in the summary.
             expected_ids="$(tail -n +2 'config/sheets/45G_M1驗收.csv' | tr -d '\r' | awk -F, '$NF=="TRUE"{print $1}')"

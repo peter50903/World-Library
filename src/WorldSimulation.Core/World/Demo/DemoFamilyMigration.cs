@@ -41,12 +41,26 @@ public static class DemoFamilyMigration
             .ToArray();
     }
 
-    /// <summary>不超過 <paramref name="limit"/> 人、整戶出發的成員 ID（遞增排序）。</summary>
-    public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules)
+    /// <summary>
+    /// 不超過 <paramref name="limit"/> 人、整戶出發的成員 ID（遞增排序）。
+    /// 第 08-1 章【TEMP 規則】：<paramref name="requireCouple"/>（開拓隊）時，第一戶必須是一對成年伴侶，
+    /// 放不下任何一對就不出發（回傳空）——沒有一對伴侶的新聚落無法繁衍。
+    /// </summary>
+    public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules,
+        bool requireCouple = false)
     {
         var chosen = new List<long>();
         var left = limit;
-        foreach (var family in Families(residents, day, rules))
+        var families = Families(residents, day, rules).ToList();
+        if (requireCouple)
+        {
+            var couple = families.FirstOrDefault(f => f.Count <= left && f.Count(p => p.IsAdultAt(day, rules)) == 2);
+            if (couple is null)
+                return Array.Empty<long>();
+            families.Remove(couple);
+            families.Insert(0, couple);
+        }
+        foreach (var family in families)
         {
             if (family.Count > left) continue;
             chosen.AddRange(family.Select(p => p.Id));

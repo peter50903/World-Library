@@ -113,3 +113,31 @@ public static class DemoCarryingCapacity
         return list.AsReadOnly();
     }
 }
+
+/// <summary>
+/// 第 08-1 章：一張自然採集地圖的理論承載上限（TEMP 估計）。
+/// 每週供應＝所有「至少一個可取水陸地格可及」的自然來源每週供應合計（不扣任何聚落佔格）；
+/// 上限人數＝每週供應 ÷ 成人每人每週食量（成人當量；兒童食量較少，實際可養的人頭數略高）。
+/// 不含存量緩衝、腐敗與取水者；只是讓人口曲線有一條可對照的上限線。
+/// </summary>
+public sealed record DemoMapCapacity(long WeeklySupply, int Sources, long People)
+{
+    public string Describe()
+        => $"地圖理論承載上限 {People} 人（{Sources} 個可及自然來源，每週供應 {WeeklySupply}，成人當量；TEMP 估計）";
+
+    public static DemoMapCapacity For(DemoHexWorld map, DemoWeeklyTempConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(config);
+        if (!config.SharedCatchmentEnabled || config.FoodPerPersonPerWeek <= 0)
+            return new DemoMapCapacity(0, 0, 0);
+        var habitable = new HashSet<(int, int)>(map.Cells
+            .Where(c => c.Terrain != DemoTerrain.Water && DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(c.Column, c.Row)))
+            .Select(c => (c.Column, c.Row)));
+        var reachable = DemoForagingWorld.Sources(map, Array.Empty<DemoCellRef>())
+            .Where(s => s.FoodAvailable > 0 && DemoHexFoodCatchment.EligibleCells(map, s).Any(c => habitable.Contains((c.Column, c.Row))))
+            .ToList();
+        var supply = reachable.Sum(s => s.FoodAvailable);
+        return new DemoMapCapacity(supply, reachable.Count, supply / config.FoodPerPersonPerWeek);
+    }
+}

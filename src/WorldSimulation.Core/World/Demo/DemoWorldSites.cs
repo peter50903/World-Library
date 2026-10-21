@@ -124,6 +124,15 @@ public sealed class DemoWorldSites
         var resources = new List<DemoResourcePoint>(count);
         var pops = new List<DemoPopGroup>(count);
 
+        // 第 08-1 章：自然採集世界（foragingOnly）的開局聚落只放在可取水的陸地（聚落格相鄰有水域）【TEMP 規則】，
+        // 否則開局第一週就因缺水累積生存債；抽樣次數與順序不變，舊情境的位置完全不變。可取水格不夠時才退回全部陸地。
+        if (foragingOnly)
+        {
+            var habitable = land.Where(c => DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(c.Column, c.Row))).ToList();
+            if (habitable.Count >= count)
+                land = habitable;
+        }
+
         // ① Placement: same ECOLOGY_INIT draw order as before C05, so positions are unchanged for every seed.
         for (var i = 0; i < count; i++)
         {

@@ -59,7 +59,7 @@ internal static class DemoHumanLifecycle
         foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
         {
             var ids = DemoFamilyMigration.Choose(moved.People.Where(p => p.IsSettled && p.SettlementId == leg.FromSettlementId),
-                leg.PopulationOpening, day, Rules);
+                leg.PopulationOpening, day, Rules, requireCouple: leg.Founding);
             if (ids.Length != leg.PopulationOpening)
                 throw new InvalidOperationException("Departing families do not match the migration ledger.");
             moved = moved.Depart(ids, leg.BatchId);
@@ -202,12 +202,12 @@ internal static class DemoHumanLifecycle
     /// 再整戶挑選），保證結算的出發人數就是名冊實際出發的人數。
     /// </summary>
     public static long PlanEmigrants(DemoTempDemography opening, int week, int settlementId, long deaths, long limit,
-        DemoPopulationDraws draws)
+        DemoPopulationDraws draws, bool founding = false)
     {
         ArgumentNullException.ThrowIfNull(opening);
         var starved = StarvedIn(opening, settlementId, deaths, week, draws).ToHashSet();
         var residents = opening.People.Where(p => p.IsSettled && p.SettlementId == settlementId && !starved.Contains(p.Id));
-        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules).Length;
+        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: founding).Length;
     }
 
     /// <summary>第 06 章 d 節：聚落餓死名單（定居者，依年齡權重）。</summary>

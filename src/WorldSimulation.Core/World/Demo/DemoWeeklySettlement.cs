@@ -526,15 +526,15 @@ internal static class DemoWeeklySettlement
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
         IReadOnlyDictionary<int, long>? sourceStocks = null,
-        Func<int, long, long, long>? emigrantPlanner = null,
+        Func<int, long, long, bool, long>? emigrantPlanner = null,
         DemoLandDevelopmentMap? land = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
-        long PlanEmigrants(int settlementId, long deaths, long desired)
+        long PlanEmigrants(int settlementId, long deaths, long desired, bool founding = false)
         {
             if (emigrantPlanner is null || desired <= 0) return desired;
-            var planned = emigrantPlanner(settlementId, deaths, desired);
+            var planned = emigrantPlanner(settlementId, deaths, desired, founding);
             if (planned < 0 || planned > desired)
                 throw new InvalidOperationException("The family emigrant plan exceeds the allowed emigrants.");
             return planned;
@@ -855,7 +855,7 @@ internal static class DemoWeeklySettlement
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c)));
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor) : 0;
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor, founding: true) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;

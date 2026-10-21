@@ -246,9 +246,9 @@
 
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
-| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 23 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）|
+| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 24 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）；第 08-1 章擇偶依年齡 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementTempSettings.cs` | 2 | 第 07 章 c 節：人口連續為 0 滿 52 週成為遺跡（config/demo/settlement-temp.json）；遺跡格不能直接重建、開拓選址須可及未被佔用的自然來源 |
-| `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 2 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）|
+| `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 3 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）；第 08-1 章開拓需伴侶 |
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
@@ -260,9 +260,9 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 16 | D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 17 | D7；第 08-1 章宜居開局 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 16 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役） |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 17 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
@@ -281,7 +281,7 @@
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
-| `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 9 | 第 3 節 #103 承載估計（D3／D4 推導） |
+| `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 15 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列） |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
