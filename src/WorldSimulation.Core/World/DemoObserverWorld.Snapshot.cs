@@ -315,7 +315,8 @@ public sealed partial class DemoObserverWorld
         var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
         var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
             .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
-        var births = report.Settlements.Sum(l => l.Births);
+        // 第 08-2 章：途中隊伍的新生兒也在本週區間內配號（希望時代隊伍不再途中餓死後才顯出這個漏算）。
+        var births = report.Settlements.Sum(l => l.Births) + report.Migrations.Sum(m => m.Births);
         if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
             || checked(newIds.Count + births) != closing - opening)
             Reject($"第 {report.Week} 週新實體 ID 沒有恰好填滿配號區間");
