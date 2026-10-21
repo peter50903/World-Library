@@ -64,7 +64,7 @@ jobs:
             # 第 03 章 a 節（使用者裁決）：孤立預檢模組已刪除，程式與測試中這些型別名稱必須 0 筆（手冊與本檔除外）。
             ! git grep -nwE 'EntityRngCandidatePreflight|EntityRngResolutionCandidate|CommandGateway|CommandRequest|NormalizedCommand|EntityCandidatePreflight|EntityCreationDraft' -- ':!.github' ':!docs'
             # 提交暫存物件是唯一發布路徑：週報清單只在 DemoWorldCommit 與建立／讀檔安裝處被指派。
-            test "$(grep -rn '_weeks = ' src/WorldSimulation.Core | grep -v 'DemoWorldCommit.cs' | grep -vc 'ImmutableList<DemoWeekReport>.Empty\|DemoObserverWorld.Snapshot.cs')" = "0"
+            test "$(grep -rn --include='*.cs' '_weeks = ' src/WorldSimulation.Core | grep -v 'DemoWorldCommit.cs' | grep -vc 'ImmutableList<DemoWeekReport>.Empty\|DemoObserverWorld.Snapshot.cs')" = "0"
             # 第 03 章 b 節：ev N 印正式史庫事件（類型、地點、相關實體、原因邊＋根因、直接後果）；錯誤編號不改世界。
             printf '300\nev 1\nev abc\nev 999999\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --frontier --seed 42 | tee /tmp/observer-history.log
             grep -q '事件 #1｜世界第 [0-9]* 日｜' /tmp/observer-history.log
@@ -76,7 +76,7 @@ jobs:
             grep -q '用法：ev 事件編號' /tmp/observer-history.log
             grep -q '正式史庫沒有事件 #999999' /tmp/observer-history.log
             # AppendCommitted 只出現在史庫與提交物件（及測試）。
-            test -z "$(grep -rln 'AppendCommitted' src godot | grep -v 'src/WorldSimulation.Core/History/EventHistory.cs' | grep -v 'src/WorldSimulation.Core/World/DemoWorldCommit.cs')"
+            test -z "$(grep -rln --include='*.cs' 'AppendCommitted' src godot | grep -v 'src/WorldSimulation.Core/History/EventHistory.cs' | grep -v 'src/WorldSimulation.Core/World/DemoWorldCommit.cs')"
             # 第 02 章 a 節：世界配方——啟動自訂歷史種子、已推進世界的 new 需 yes 確認、其他指令即取消、錯誤種子不改世界。
             printf 's\n3\nnew 5 6\nyes\ns\nn\nnew 9\nn\nnew abc\ns\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 --history-seed 7 | tee /tmp/observer-recipe.log
             grep -q '世界配方｜世界種子 42｜歷史種子 7（自訂）｜規則版本 【TEMP】TEMP-RULES-0｜設定雜湊 [0-9a-f]\{16\}｜' /tmp/observer-recipe.log
