@@ -1,11 +1,20 @@
 name: .NET 8 environment and project CI
 
 # CI does not call Claude. It only checks the .NET SDK and any future solution.
+# 2026-10-22：GitHub Actions 免費額度快用完——
+# ① 只在 PR 上跑（同一 head 已在 PR 驗過，合併到 main 不再重跑）；② 同一 PR 有新推送就取消舊的；
+# ③ 只改手冊／文件時不跑；④ 百年長測、M1 正式驗收與人口診斷只在手動執行或 PR 貼了「long-run」標籤時跑。
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
+
+concurrency:
+  group: dotnet-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,6 +24,8 @@ jobs:
     name: .NET 8 SDK and build verification
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      FULL: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'long-run') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,7 +56,8 @@ jobs:
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
             # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。第 08-2 章：人口變多、長跑變慢，只診斷種子 1。
-            for s in 1; do
+            # 2026-10-22：只在完整長測（FULL）時跑。
+            for s in $([ "$FULL" = true ] && echo 1); do
               dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
               grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
               # 註記上限約 4 KB：切成多段（每段約 40 行）。
@@ -176,6 +188,7 @@ jobs:
             test "$(grep -c '  MIGRATION_CONSERVATION 遷徙守恆 通過 100／100 次' /tmp/observer-longrun.log)" = 3
             test "$(grep -c '第 10 年底各聚落承載（TEMP 估計' /tmp/observer-longrun.log)" = 3
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun.log
+            if [ "$FULL" = true ]; then
             # 人類採集情境（出生、自然死亡、共享採集來源帳、家庭遷徙與建村）也跑 3 種子 × 100 年。
             living_rc=0
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living > /tmp/observer-longrun-living.log || living_rc=$?
@@ -186,6 +199,7 @@ jobs:
             test "$living_rc" = 0
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun-living.log
             test "$(grep -c '  SOURCE_LEDGER 來源帳 通過 100／100 次' /tmp/observer-longrun-living.log)" = 3
+            fi
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 1,x --years 2 > /tmp/observer-longrun-bad.log; then
               echo "--seeds with a bad value must be rejected"; exit 1
             fi
@@ -197,6 +211,8 @@ jobs:
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
             # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
+            # 2026-10-22：只在完整長測（FULL）時跑。
+            if [ "$FULL" = true ]; then
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
             # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
             summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '^  種子 [0-9]*｜人口 \|調查結果' /tmp/observer-m1.log)"
@@ -217,6 +233,9 @@ jobs:
             test -s /tmp/m1-report/M1驗收報告.txt
             # #82: --m1-check uses the same official year boundary as --demo --years.
             grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-m1.log
+            else
+              echo "::notice title=長測略過::百年長測、M1 正式驗收與人口診斷只在手動執行或 PR 貼「long-run」標籤時跑（節省 Actions 額度）。"
+            fi
             # Bad arguments must fail loudly in Chinese, not be swallowed.
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 0 > /tmp/observer-m1-bad.log; then
               echo "--m1-check --years 0 should fail."; exit 1
