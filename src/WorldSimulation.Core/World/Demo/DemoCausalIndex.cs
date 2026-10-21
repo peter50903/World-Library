@@ -123,11 +123,12 @@ public sealed class DemoCausalIndex
         {
             foreach (var ledger in report.Settlements)
             {
-                var debtAfterDeaths = ledger.HungerDebtOpening + ledger.FoodShortage
+                var survival = ledger.FoodShortage + ledger.WaterShortage; // 第 06 章 d 節：缺水併入生存短缺
+                var debtAfterDeaths = ledger.HungerDebtOpening + survival
                     - ledger.HungerDebtRecovered - ledger.HungerDebtRemovedByDeath - ledger.HungerDebtRemovedByNaturalDeath;
-                var recovered = ledger.HungerDebtOpening > 0 && ledger.FoodShortage == 0
+                var recovered = ledger.HungerDebtOpening > 0 && survival == 0
                     && debtAfterDeaths == 0 && ledger.PopulationOpening - (ledger.Deaths - ledger.NaturalDeaths) > 0;
-                CheckCount(report, ledger, DemoSettlementEventKind.Hunger, ledger.FoodShortage > 0 ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.Hunger, survival > 0 ? 1 : 0);
                 CheckCount(report, ledger, DemoSettlementEventKind.StarvationDeath, ledger.Deaths > ledger.NaturalDeaths ? 1 : 0);
                 CheckCount(report, ledger, DemoSettlementEventKind.Birth, checked((int)ledger.Births));
                 CheckCount(report, ledger, DemoSettlementEventKind.NaturalDeath, checked((int)ledger.NaturalDeaths));
@@ -173,8 +174,9 @@ public sealed class DemoCausalIndex
                 if (parent is not null)
                     return "飢餓是根因（本週需求大於可取得），不應有直接原因事件";
                 var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
-                if (ledger is null || ledger.FoodShortage <= 0 || ledger.FoodShortage != e.Count)
-                    return $"週帳沒有對應的缺糧（事件缺糧 {e.Count}，週帳 {ledger?.FoodShortage.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "無"}）";
+                var survival = ledger is null ? 0 : ledger.FoodShortage + ledger.WaterShortage;
+                if (ledger is null || survival <= 0 || survival != e.Count)
+                    return $"週帳沒有對應的缺糧或缺水（事件 {e.Count}，週帳 {survival.ToString(System.Globalization.CultureInfo.InvariantCulture)}）";
                 return null;
             }
 

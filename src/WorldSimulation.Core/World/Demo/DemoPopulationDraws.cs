@@ -9,7 +9,9 @@ public enum DemoPopulationAction
     NaturalDeath = 1,
     NewbornSex = 2,
     Miscarriage = 3,
-    Conception = 4
+    Conception = 4,
+    /// <summary>第 06 章 d 節：餓死名單抽樣（依年齡權重）。</summary>
+    StarvationSelection = 5
 }
 
 /// <summary>

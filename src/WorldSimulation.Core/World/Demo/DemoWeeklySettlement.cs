@@ -274,7 +274,12 @@ public sealed record DemoSettlementWeekLedger(
     long HungerDebtCarriedOut = 0,
     long NaturalDeaths = 0,
     long HungerDebtRemovedByNaturalDeath = 0,
-    long AdultWorkersOpening = -1)
+    long AdultWorkersOpening = -1,
+    long FoodSpoiled = 0,
+    long WaterShortage = 0,
+    long WaterCarriers = 0,
+    long ChildStarvationDeaths = 0,
+    long ElderStarvationDeaths = 0)
 {
     /// <summary>
     /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
@@ -284,8 +289,9 @@ public sealed record DemoSettlementWeekLedger(
 
     public bool ReserveBalanced => ReserveOpening + Regenerated - Harvested == ReserveClosing;
 
+    /// <summary>糧食帳：期初＋生產＋帶入－消耗－帶出－腐敗（第 06 章 d 節）＝期末。</summary>
     public bool FoodBalanced
-        => FoodOpening + FoodProduced + FoodCarriedIn - FoodConsumed - FoodCarriedOut == FoodClosing;
+        => FoodOpening + FoodProduced + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing;
 
     /// <summary>
     /// M1_NO_MAGIC_FOOD：糧食只能來自資源點的實際採收，且每一單位都歸屬合法來源（農牧／採集）。
@@ -294,7 +300,7 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>飢餓債帳：期初＋缺糧－恢復－隨死者移除＝期末；有死亡必有移除的飢餓債（死亡有原因）。</summary>
     public bool HungerDebtBalanced
-        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath - HungerDebtRemovedByNaturalDeath
+        => HungerDebtOpening + FoodShortage + WaterShortage - HungerDebtRecovered - HungerDebtRemovedByDeath - HungerDebtRemovedByNaturalDeath
             + HungerDebtCarriedIn - HungerDebtCarriedOut == HungerDebtClosing
         && (Deaths == NaturalDeaths || HungerDebtRemovedByDeath > 0)
         && (PopulationClosing > 0 || HungerDebtClosing == 0);
@@ -303,7 +309,7 @@ public sealed record DemoSettlementWeekLedger(
     /// M1_RES：聚落總資源（資源點存量＋糧食）只因再生與遷徙隊伍帶入增加、只因消耗與帶出減少。
     /// </summary>
     public bool TotalResourceBalanced
-        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn - FoodConsumed - FoodCarriedOut
+        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled
             == ReserveClosing + FoodClosing;
 
     /// <summary>M1_POP 的人口帳部分。</summary>
@@ -319,7 +325,10 @@ public sealed record DemoSettlementWeekLedger(
         && HungerDebtRemovedByDeath >= 0 && HungerDebtClosing >= 0
         && Immigrants >= 0 && Emigrants >= 0 && FoodCarriedIn >= 0 && FoodCarriedOut >= 0
         && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0
-        && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening);
+        && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening)
+        && FoodSpoiled >= 0 && WaterShortage >= 0 && WaterCarriers >= 0
+        && ChildStarvationDeaths >= 0 && ElderStarvationDeaths >= 0
+        && ChildStarvationDeaths + ElderStarvationDeaths <= Deaths - NaturalDeaths;
 
     public bool IsBalanced
         => ReserveBalanced && FoodBalanced && NoMagicFood && TotalResourceBalanced && PopulationBalanced
@@ -532,13 +541,35 @@ internal static class DemoWeeklySettlement
         DemoCatchmentFoodResult? sharedHarvest = null;
         IReadOnlyList<DemoSourceWeekLedger> sourceLedgers = Array.Empty<DemoSourceWeekLedger>();
         var nextSourceStocks = ImmutableSortedDictionary<int, long>.Empty;
+        // 第 06 章 d 節（只用於自然採集世界）：取水——聚落格或鄰格有水域才可取水，每 TEMP 人數需 1 名成年取水者，
+        // 取水者不採集；取不到水的人形成缺水生存債。兒童食量為成人 TEMP 百分比；存糧每週腐敗（29 P_FOOD_LOSS_WEEK）。
+        var survival = DemoSurvivalTempSettings.Current;
+        var water = new Dictionary<int, (long Adults, long Children, long Carriers, long WaterShortage)>();
+        var foragingWorkers = new Dictionary<int, long>();
+        var foodNeeded = new Dictionary<int, long>();
+        if (config.SharedCatchmentEnabled)
+        {
+            foreach (var settlement in sites.Settlements)
+            {
+                var people = population[settlement.Id];
+                var adults = Math.Min(people, adultWorkers?.GetValueOrDefault(settlement.Id) ?? people);
+                var hasWater = DemoMigrationRoutes.HasWaterAccess(map!, new DemoCellRef(settlement.Column, settlement.Row));
+                var carriers = hasWater ? Math.Min(adults, survival.CarriersNeeded(people)) : 0;
+                var served = hasWater ? Math.Min(people, checked(carriers * survival.PeoplePerWaterCarrier)) : 0;
+                water[settlement.Id] = (adults, people - adults, carriers,
+                    DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
+                foragingWorkers[settlement.Id] = adults - carriers;
+                foodNeeded[settlement.Id] = survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek);
+            }
+        }
+
         if (config.SharedCatchmentEnabled)
         {
             var plan = DemoSourceWeekLedger.Plan(
                 DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites),
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
-            sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, adultWorkers,
-                plan.Select(p => p.Source).ToArray());
+            sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
+                plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded);
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
@@ -708,19 +739,26 @@ internal static class DemoWeeklySettlement
             }
 
             // ⑥ 消耗：糧食只來自庫存與本週採收；取得量低於需求的部分形成飢餓債。
+            // 第 06 章 d 節（自然採集世界）：先扣存糧腐敗；兒童半份；缺水另加生存債（併入飢餓債）。
             var foodOpening = settlementFood[settlement.Id];
-            var available = checked(foodOpening + harvested);
-            var demand = checked(people * config.FoodPerPersonPerWeek);
+            var waterPlan = water.GetValueOrDefault(settlement.Id, (people, 0L, 0L, 0L));
+            var spoiled = config.SharedCatchmentEnabled ? DemoSurvivalTempSettings.Spoilage(foodOpening) : 0L;
+            var available = checked(foodOpening - spoiled + harvested);
+            var demand = config.SharedCatchmentEnabled
+                ? survival.Demand(waterPlan.Adults, waterPlan.Children, config.FoodPerPersonPerWeek)
+                : checked(people * config.FoodPerPersonPerWeek);
             var consumed = Math.Min(available, demand);
             var foodClosing = available - consumed;
             var shortage = demand - consumed;
+            var waterShortage = waterPlan.WaterShortage;
+            var survivalShortage = checked(shortage + waterShortage);
 
             var debtOpening = hungerDebt[settlement.Id];
-            var debt = checked(debtOpening + shortage);
+            var debt = checked(debtOpening + survivalShortage);
 
-            // 恢復也需來源：只有本週需求被實際糧食完全滿足時，飢餓債才下降（TEMP 速率）。
+            // 恢復也需來源：只有本週食物與水都被實際滿足時，飢餓債才下降（TEMP 速率）。
             long recovered = 0;
-            if (shortage == 0 && debt > 0)
+            if (survivalShortage == 0 && debt > 0)
             {
                 recovered = Math.Min(debt, checked(people * config.HungerRecoveryPerPersonPerWeek));
                 debt -= recovered;
@@ -737,11 +775,13 @@ internal static class DemoWeeklySettlement
             // #88 因果：飢餓是根因（週帳缺糧為證據）；餓死與飢餓解除的直接原因是本聚落最近一筆
             // 帶來飢餓債的事件（本週飢餓，否則往回找飢餓或帶著飢餓債抵達／建立）；外移的直接原因是本週飢餓。
             long hungerEventId = 0;
-            if (shortage > 0)
+            if (survivalShortage > 0)
             {
                 var hunger = Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
-                    DemoSettlementEventKind.Hunger, shortage,
-                    $"需求 {demand}，可取得 {available}，飢餓債 {debtOpening}→{checked(debtOpening + shortage)}"), 0);
+                    DemoSettlementEventKind.Hunger, survivalShortage,
+                    (shortage > 0 ? $"需求 {demand}，可取得 {available}" : "糧食足夠")
+                    + (waterShortage > 0 ? $"，缺水（生存債 +{waterShortage}）" : "")
+                    + $"，飢餓債 {debtOpening}→{checked(debtOpening + survivalShortage)}"), 0);
                 hungerEventId = hunger.EventId;
                 events.Add(hunger);
             }
@@ -760,7 +800,7 @@ internal static class DemoWeeklySettlement
                     debtSourceEventId));
             }
 
-            if (debtOpening > 0 && debt == 0 && survivors > 0 && shortage == 0)
+            if (debtOpening > 0 && debt == 0 && survivors > 0 && survivalShortage == 0)
             {
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.HungerRecovered, 0,
@@ -864,7 +904,8 @@ internal static class DemoWeeklySettlement
                 Immigrants: arrived.People, Emigrants: emigrants,
                 FoodCarriedIn: arrived.Food, FoodCarriedOut: foodOut,
                 HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
-                AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people));
+                AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
+                FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))

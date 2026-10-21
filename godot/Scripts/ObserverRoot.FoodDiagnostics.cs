@@ -137,8 +137,9 @@ public partial class ObserverRoot
             output.Add("尚無週報：快轉至第7日，才能看到真實採收與人口缺糧。");
         else
         {
-            output.Add($"本週：需求 {ledger.PopulationOpening * DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek}，"
-                + $"實採 {ledger.Harvested}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
+            // 第 06 章 d 節：需求已含兒童半份（＝消耗＋缺糧）；另列腐敗、取水與老幼餓死分類。
+            output.Add($"本週：需求 {ledger.FoodConsumed + ledger.FoodShortage}，"
+                + $"實採 {ledger.Harvested}，腐敗 {ledger.FoodSpoiled}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
                 + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，"
                 + $"出生 {ledger.Births}、自然死亡 {ledger.NaturalDeaths}、餓死 {ledger.StarvationDeaths}");
             // 第 04 章 c 節：讀已提交的來源帳（每源預算與未採），不重算。
@@ -148,6 +149,12 @@ public partial class ObserverRoot
                 .Select(x => $"({x.source.Column},{x.source.Row})→{x.share!.Food}（預算 {x.source.FoodAvailable}，未採 {x.source.Unharvested}）")
                 .ToArray();
             output.Add("本週來源→採收：" + (origins.Length == 0 ? "無" : string.Join("、", origins)));
+            output.Add(ledger.WaterShortage > 0
+                ? $"水：不足（取水者 {ledger.WaterCarriers}；缺水生存債 +{ledger.WaterShortage}）"
+                : $"水：可取（取水者 {ledger.WaterCarriers}）");
+            var starvedTotal = ledger.StarvationDeaths;
+            output.Add($"餓死分類：兒童 {ledger.ChildStarvationDeaths}、老人 {ledger.ElderStarvationDeaths}、"
+                + $"成人 {starvedTotal - ledger.ChildStarvationDeaths - ledger.ElderStarvationDeaths}");
         }
         return string.Join("\n", output);
     }
