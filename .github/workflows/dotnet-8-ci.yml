@@ -443,3 +443,8 @@ jobs:
           [ -n "$lines" ] || lines="$(tail -30 "$f" | cut -c1-240)"
           msg="$(printf '%s' "$lines" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
           echo "::error title=LAST $(basename "$f")::$msg"
+          # 單元測試失敗時另列全部失敗測試名稱（上面的關鍵行只有前 80 行）。
+          if [ -f /tmp/observer-tests.log ]; then
+            names="$(grep -E '^\s+Failed WorldSimulation' /tmp/observer-tests.log | sed 's/^ *Failed //' | head -60)"
+            [ -z "$names" ] || echo "::error title=FAILED TESTS::$(printf '%s' "$names" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+          fi
