@@ -62,6 +62,7 @@ public sealed partial class DemoObserverWorld
         private ImmutableSortedDictionary<int, long> _settlementFood;
         private ImmutableSortedDictionary<int, long> _population;
         private ImmutableSortedDictionary<int, long> _hungerDebt;
+        private ImmutableSortedDictionary<int, long> _sourceStocks;
         private ImmutableList<DemoMigrationBatch> _migrations;
         private EntityIdAllocatorSnapshot _entityIds;
         private DemoWorldSites _sites;
@@ -81,6 +82,7 @@ public sealed partial class DemoObserverWorld
             _settlementFood = world._settlementFood;
             _population = world._population;
             _hungerDebt = world._hungerDebt;
+            _sourceStocks = world._sourceStocks;
             _migrations = world._migrations;
             _entityIds = world._entityIds;
             _sites = world._sites;
@@ -181,6 +183,7 @@ public sealed partial class DemoObserverWorld
             _settlementFood = outcome.SettlementFood;
             _population = outcome.Population;
             _hungerDebt = outcome.HungerDebt;
+            _sourceStocks = outcome.SourceStocks;
             _migrations = outcome.Migrations;
             _entityIds = outcome.EntityIds;
             _sites = outcome.Sites;
@@ -227,6 +230,7 @@ public sealed partial class DemoObserverWorld
             world._settlementFood = _settlementFood;
             world._population = _population;
             world._hungerDebt = _hungerDebt;
+            world._sourceStocks = _sourceStocks;
             world._migrations = _migrations;
             world._entityIds = _entityIds;
             world._sites = _sites;

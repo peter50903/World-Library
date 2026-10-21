@@ -45,11 +45,22 @@ public sealed record DemoCatchmentFoodResult(
     public long TotalHarvested => checked(Harvests.Sum(h => h.FoodHarvested));
 }
 
+/// <summary>第 06 章 c 節：同一來源內的分配方式。正式規則是依成年勞力比例；貪婪只供對照測試。</summary>
+public enum DemoCatchmentAllocation
+{
+    /// <summary>依各聚落成年勞力（採集能力）比例分配，取整餘數依聚落 ID 遞增逐一分配。</summary>
+    LabourProportional = 0,
+
+    /// <summary>舊規則：依聚落 ID 順序先到先得（只供對照「可避免的餓死」）。</summary>
+    Greedy = 1
+}
+
 /// <summary>
 /// A pure, deterministic weekly food-allocation model. Each resource is accounted once,
 /// even if many neighbours can use it; each settlement has a single aggregate demand
 /// and a single real workforce harvest capacity across ALL eligible food sources.
-/// Allocation order (TEMP, pending formal rule): source ID, then settlement ID.
+/// 第 06 章 c 節：來源依編號處理；同一來源依各聚落成年勞力比例分配（每聚落不超過剩餘需求與勞力），
+/// 取整餘數依聚落 ID 遞增逐一分配，可重現。
 /// NO food, terrain, events, stores, or population are added by this calculation.
 /// </summary>
 public static class DemoHexFoodCatchment
@@ -89,7 +100,8 @@ public static class DemoHexFoodCatchment
     public static DemoCatchmentFoodResult Allocate(
         DemoHexWorld map,
         IEnumerable<DemoCatchmentFoodSource> sources,
-        IEnumerable<DemoCatchmentFoodClaim> claims)
+        IEnumerable<DemoCatchmentFoodClaim> claims,
+        DemoCatchmentAllocation mode = DemoCatchmentAllocation.LabourProportional)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sources);
@@ -126,16 +138,16 @@ public static class DemoHexFoodCatchment
         var harvest = new List<DemoCatchmentHarvest>();
         foreach (var source in sourceList)
         {
-            var remaining = source.FoodAvailable;
             var origin = map.GetCell(source.Column, source.Row);
-            foreach (var claim in claimList)
+            var eligible = claimList.Where(claim => IsInReach(origin, map.GetCell(claim.Column, claim.Row),
+                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToArray();
+            var takes = mode == DemoCatchmentAllocation.Greedy
+                ? GreedyShares(source.FoodAvailable, eligible, needs, labour)
+                : ProportionalShares(source.FoodAvailable, eligible, needs, labour);
+            var remaining = source.FoodAvailable;
+            foreach (var claim in eligible)
             {
-                if (remaining == 0) break;
-                var cell = map.GetCell(claim.Column, claim.Row);
-                if (!IsInReach(origin, cell,
-                    source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage))
-                    continue;
-                var take = Math.Min(remaining, Math.Min(needs[claim.SettlementId], labour[claim.SettlementId]));
+                var take = takes.GetValueOrDefault(claim.SettlementId);
                 if (take == 0) continue;
                 harvest.Add(new DemoCatchmentHarvest(source.Id, claim.SettlementId, take));
                 remaining -= take;
@@ -150,6 +162,57 @@ public static class DemoHexFoodCatchment
                 .Sum(h => h.FoodHarvested) > Math.Min(c.FoodNeeded, c.HarvestCapacity)))
             throw new InvalidOperationException("TEMP food catchment resource conservation failed.");
         return new DemoCatchmentFoodResult(harvest.AsReadOnly(), needs, remainingSources);
+    }
+
+    private static Dictionary<int, long> GreedyShares(long available, IReadOnlyList<DemoCatchmentFoodClaim> eligible,
+        IReadOnlyDictionary<int, long> needs, IReadOnlyDictionary<int, long> labour)
+    {
+        var takes = new Dictionary<int, long>();
+        foreach (var claim in eligible)
+        {
+            if (available == 0) break;
+            var take = Math.Min(available, Math.Min(needs[claim.SettlementId], labour[claim.SettlementId]));
+            takes[claim.SettlementId] = take;
+            available -= take;
+        }
+        return takes;
+    }
+
+    /// <summary>
+    /// 第 06 章 c 節：依成年勞力（本週原始採集能力）比例注水分配——每輪把剩餘量依權重按比例取整分給還沒滿的聚落
+    /// （不超過其剩餘需求與勞力），取整後一點都分不出去時，餘數依聚落 ID 遞增每個 1 單位；直到分完或全部滿。
+    /// </summary>
+    private static Dictionary<int, long> ProportionalShares(long available, IReadOnlyList<DemoCatchmentFoodClaim> eligible,
+        IReadOnlyDictionary<int, long> needs, IReadOnlyDictionary<int, long> labour)
+    {
+        var takes = eligible.ToDictionary(c => c.SettlementId, _ => 0L);
+        long Room(DemoCatchmentFoodClaim c) => Math.Min(needs[c.SettlementId], labour[c.SettlementId]) - takes[c.SettlementId];
+        while (available > 0)
+        {
+            var open = eligible.Where(c => Room(c) > 0 && c.HarvestCapacity > 0).ToArray();
+            if (open.Length == 0)
+                break;
+            var totalWeight = open.Aggregate((Int128)0, (sum, c) => sum + c.HarvestCapacity);
+            long distributed = 0;
+            foreach (var claim in open)
+            {
+                var share = (long)((Int128)available * claim.HarvestCapacity / totalWeight);
+                var give = Math.Min(share, Room(claim));
+                takes[claim.SettlementId] += give;
+                distributed += give;
+            }
+            if (distributed == 0)
+            {
+                foreach (var claim in open.OrderBy(c => c.SettlementId))
+                {
+                    if (available - distributed == 0) break;
+                    takes[claim.SettlementId] += 1;
+                    distributed += 1;
+                }
+            }
+            available -= distributed;
+        }
+        return takes;
     }
 
     private static void ValidateSource(DemoHexWorld map, DemoCatchmentFoodSource source)

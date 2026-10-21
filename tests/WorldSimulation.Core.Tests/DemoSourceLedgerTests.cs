@@ -38,6 +38,7 @@ public sealed class DemoSourceLedgerTests
     {
         var weekly = Shared[config];
         var world = new DemoObserverWorld(DemoScenario.Sample(seed), weekly);
+        var stocks = new Dictionary<int, long>(); // 第 06 章 c 節：上週期末存量
         for (var day = 1; day <= 2 * 365; day++)
         {
             var advance = world.AdvanceOneDay();
@@ -52,8 +53,12 @@ public sealed class DemoSourceLedgerTests
 
             // 帳＝依地圖與本週期初人口重算的分配，逐筆相同。
             var recomputed = world.RecomputeLatestSharedHarvest()!;
-            var expected = DemoSourceWeekLedger.From(week.Week, DemoForagingWorld.Sources(world.Map, world.Sites), recomputed);
+            var plan = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(world.Map, world.Sites), stocks,
+                DemoForagingWorld.Settings.SourceStockCapWeeks);
+            var expected = DemoSourceWeekLedger.From(week.Week, plan, recomputed);
             Assert.Equal(expected, week.Sources);
+            stocks = week.Sources.Where(x => x.StockClosing > 0).ToDictionary(x => x.SourceId, x => x.StockClosing);
+            Assert.All(week.Sources, x => Assert.Equal(x.StockClosing, world.SourceStock(x.SourceId)));
             var fromLedger = world.LatestSharedHarvest()!;
             Assert.Equal(recomputed.Harvests.OrderBy(h => h.SourceId).ThenBy(h => h.SettlementId),
                 fromLedger.Harvests.OrderBy(h => h.SourceId).ThenBy(h => h.SettlementId));
