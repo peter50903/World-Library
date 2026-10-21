@@ -16,28 +16,22 @@ public sealed class DemoSurvivalTests
     }
 
     [Fact]
-    public void SettlementFarFromWater_GetsDehydrationDebt_WithACause()
+    public void ForagingWorldsOpenOnlyBesideWater_AndDehydrationDebtFormulaHolds()
     {
+        // 第 08-1 章【TEMP 規則】宜居開局：自然採集世界的開局聚落一律相鄰水域（不再有開局第一週就缺水的聚落）。
         foreach (ulong seed in Enumerable.Range(1, 200).Select(i => (ulong)i))
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.ForagingSample);
-            var dry = world.Sites.Settlements.FirstOrDefault(s =>
-                !DemoMigrationRoutes.HasWaterAccess(world.Map, new DemoCellRef(s.Column, s.Row)));
-            if (dry is null) continue;
-            for (var i = 0; i < 7; i++)
-                world.AdvanceOneDay();
-            var ledger = world.LatestWeek!.Settlements.Single(l => l.SettlementId == dry.Id);
-            Assert.Equal(0, ledger.WaterCarriers);
-            Assert.True(ledger.WaterShortage > 0);
-            Assert.Equal(DemoSurvivalTempSettings.DehydrationDebt(ledger.PopulationOpening, DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek),
-                ledger.WaterShortage);
-            var hunger = world.LatestWeek.Events.Single(e => e.SettlementId == dry.Id && e.Kind == DemoSettlementEventKind.Hunger);
-            Assert.Contains("缺水", hunger.Cause, StringComparison.Ordinal);
-            Assert.Equal(ledger.FoodShortage + ledger.WaterShortage, hunger.Count);
-            Assert.Empty(DemoCausalIndex.Build(world.WeekReports()).Problems);
-            return;
+            Assert.All(world.Sites.Settlements, s =>
+                Assert.True(DemoMigrationRoutes.HasWaterAccess(world.Map, new DemoCellRef(s.Column, s.Row)), $"種子 {seed} 的 {s.Name} 不靠水"));
         }
-        Assert.Fail("200 個種子都沒有遠離水源的聚落。");
+        // 缺水生存債規則本身不變：未取到水的人數 × 每人週食量 × 缺水倍率。
+        var food = DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek;
+        Assert.Equal((long)Math.Floor(5 * food * DemoSurvivalTempSettings.DehydrationRate), DemoSurvivalTempSettings.DehydrationDebt(5, food));
+        Assert.Equal(0, DemoSurvivalTempSettings.DehydrationDebt(0, food));
+        // 舊情境（非自然採集）的開局位置不受影響：一般示範仍可能有不靠水的聚落。
+        Assert.Contains(Enumerable.Range(1, 200).Select(i => new DemoObserverWorld(DemoScenario.Sample((ulong)i), DemoWeeklyTempConfig.Sample)),
+            w => w.Sites.Settlements.Any(s => !DemoMigrationRoutes.HasWaterAccess(w.Map, new DemoCellRef(s.Column, s.Row))));
     }
 
     [Fact]
