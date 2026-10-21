@@ -893,7 +893,9 @@ internal static class DemoWeeklySettlement
             var wantsToLeave = map is not null && config.MigrationEnabled && (shortage > 0 || crowded)
                 && survivors >= config.MinPopulationToEmigrate;
             var target = wantsToLeave && !crowded
-                ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config)
+                // 第 08-3 章：希望時代只搬去「已知來源餘量養得起這批人」的聚落，避免缺糧者湧入別村、別村再缺糧外移的連鎖。
+                ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config,
+                    config.HopeEra ? checked(survivors / config.EmigrationShareDivisor * config.FoodPerPersonPerWeek) : 0)
                 : null;
             if (wantsToLeave && target is null && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
@@ -1154,7 +1156,7 @@ internal static class DemoWeeklySettlement
     /// </summary>
     private static (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? ChooseDestination(
         DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, int week,
-        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config)
+        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config, long minSlack = 0)
     {
         (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? best = null;
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
@@ -1170,6 +1172,8 @@ internal static class DemoWeeklySettlement
             var news = DemoMigrationNews.Received(publishedWeeks, week, candidate.Id, route.Length - 1,
                 config.NewsDelayWeeksPerCell);
             if (news is null || !DemoMigrationNews.SaysFed(news.Value.Ledger))
+                continue;
+            if (minSlack > 0 && news.Value.Ledger.SourceSlack < minSlack) // 第 08-3 章【TEMP 規則】
                 continue;
             if (best is null || route.Length < best.Value.Route.Length)
                 best = (candidate, route, news.Value.Week);

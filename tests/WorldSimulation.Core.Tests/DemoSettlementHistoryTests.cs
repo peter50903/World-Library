@@ -53,12 +53,13 @@ public sealed class DemoSettlementHistoryTests
         var config = DemoWeeklyTempConfig.LivingForagingSample;
         var ledger = new DemoSettlementWeekLedger(1, 1, "測試", 0, 0, 0, 0, 0, 0, 20, 0, 0, 5, 0, 0, 5,
             AdultWorkersOpening: 3, WaterCarriers: 1, SourceSlack: 8);
-        // 勞力 2×16＝32 ≥ 需求 20＋預留 4；餘量 8 ≥ 4。
+        // 5 人中 3 名成人、2 名孩子：孩子長大後多吃 2×(4－2)＝4；這一胎 4 → 預留 8。
+        // 勞力 (3－1)×16＝32 ≥ 需求 20＋8；餘量 8 ≥ 8。
         Assert.True(DemoCrowding.RoomForChild(ledger, pregnant: 0));
-        // 已有一胎：預留 8，餘量 8 剛好；兩胎：預留 12 超過餘量。
-        Assert.True(DemoCrowding.RoomForChild(ledger, pregnant: 1));
-        Assert.False(DemoCrowding.RoomForChild(ledger, pregnant: 2));
-        // 只剩一名採集者：16 ＜ 20＋4。
+        // 已有一胎：預留 12 超過餘量。
+        Assert.False(DemoCrowding.RoomForChild(ledger, pregnant: 1));
+        Assert.True(DemoCrowding.RoomForChild(ledger with { SourceSlack = 12 }, pregnant: 1));
+        // 只剩一名採集者：16 ＜ 20＋8。
         Assert.False(DemoCrowding.RoomForChild(ledger with { AdultWorkersOpening = 2 }, pregnant: 0));
         Assert.Equal(4, config.FoodPerPersonPerWeek);
     }
