@@ -201,7 +201,8 @@ public sealed class DemoTempDemography
             cumulative += b.Percent;
             if (pick < cumulative) { band = b; break; }
         }
-        if (slot < 2)
+        // 第 08-1 章【TEMP】：前四人是兩對建村夫婦（兩個不同家庭，下一代可以通婚）。
+        if (slot < 4)
             band = bands.First(b => b.MinAge >= rules.AdultAgeYears && b.MaxAge < rules.FertileAgeMaxYears);
         var span = (ulong)(band.MaxAge - band.MinAge + 1);
         var rest = raw / 100;
@@ -209,8 +210,8 @@ public sealed class DemoTempDemography
         var dayInYear = (int)(rest / span % 365);
         var sex = slot switch
         {
-            0 => DemoTempSex.Female,
-            1 => DemoTempSex.Male,
+            0 or 2 => DemoTempSex.Female,
+            1 or 3 => DemoTempSex.Male,
             _ => draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male
         };
         return new DemoTempPerson(id, settlement, sex, checked(-(age * 365 + dayInYear)));

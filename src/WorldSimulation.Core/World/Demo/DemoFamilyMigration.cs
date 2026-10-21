@@ -9,6 +9,9 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoFamilyMigration
 {
+    /// <summary>【TEMP】第 08-1 章：開拓隊至少要帶的成年伴侶對數。</summary>
+    public const int TempFoundingCouples = 2;
+
     public static IReadOnlyList<IReadOnlyList<DemoTempPerson>> Families(
         IEnumerable<DemoTempPerson> residents, int day, DemoTempDemographyRules rules)
     {
@@ -43,8 +46,8 @@ public static class DemoFamilyMigration
 
     /// <summary>
     /// 不超過 <paramref name="limit"/> 人、整戶出發的成員 ID（遞增排序）。
-    /// 第 08-1 章【TEMP 規則】：<paramref name="requireCouple"/>（開拓隊）時，第一戶必須是一對成年伴侶，
-    /// 放不下任何一對就不出發（回傳空）——沒有一對伴侶的新聚落無法繁衍。
+    /// 第 08-1 章【TEMP 規則】：<paramref name="requireCouple"/>（開拓隊）時，最先放入兩戶成年伴侶（兩個不同家庭），
+    /// 放不下兩對就不出發（回傳空）——只有一個家庭的新聚落，下一代都是手足、無法通婚。
     /// </summary>
     public static long[] Choose(IEnumerable<DemoTempPerson> residents, long limit, int day, DemoTempDemographyRules rules,
         bool requireCouple = false)
@@ -54,11 +57,20 @@ public static class DemoFamilyMigration
         var families = Families(residents, day, rules).ToList();
         if (requireCouple)
         {
-            var couple = families.FirstOrDefault(f => f.Count <= left && f.Count(p => p.IsAdultAt(day, rules)) == 2);
-            if (couple is null)
+            var couples = new List<IReadOnlyList<DemoTempPerson>>();
+            var room = left;
+            foreach (var f in families.Where(f => f.Count(p => p.IsAdultAt(day, rules)) == 2))
+            {
+                if (f.Count > room) continue;
+                couples.Add(f);
+                room -= f.Count;
+                if (couples.Count == TempFoundingCouples) break;
+            }
+            if (couples.Count < TempFoundingCouples)
                 return Array.Empty<long>();
-            families.Remove(couple);
-            families.Insert(0, couple);
+            foreach (var c in couples)
+                families.Remove(c);
+            families.InsertRange(0, couples);
         }
         foreach (var family in families)
         {

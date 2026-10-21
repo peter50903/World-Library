@@ -36,7 +36,7 @@ public static class LivingDiagnosis
                 world.AdvanceOneDay();
             var weeks = world.WeekReports().Skip(seen).ToList();
             seen = world.WeekReports().Count;
-            if (year is not (1 or 2 or 3 or 5 or 10 or 20 or 30 or 50 or 75 or 100) && year != years)
+            if (year % 5 != 0 && year != 1 && year != years)
                 continue;
             var day = world.Snapshot().DaysElapsed;
             IReadOnlyList<DemoTempPerson> people = world.HumanPopulationSnapshot is { } snapshot ? snapshot.People : Array.Empty<DemoTempPerson>();
@@ -62,9 +62,10 @@ public static class LivingDiagnosis
                 var carriers = ledgers.Sum(l => l.WaterCarriers) / (double)n;
                 var supply = weeks.Count == 0 ? 0 : weeks[^1].Sources.Where(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Any(sh => sh.SettlementId == s.Id)).Sum(x => x.FoodAvailable);
                 var food = world.SettlementFood(s.Id);
-                output.WriteLine($"  {s.Name}（#{s.Id}）人口 {residents.Count}：成人 {adults}、兒童 {residents.Count - adults}、育齡女 {fertileWomen}、育齡伴侶 {couples}、懷孕 {pregnant}"
-                    + $"｜週均 採收 {harvest}／需求 {demand}／勞力上限 {labour}（取水 {carriers:0.0} 人）｜分到的來源可採 {supply}｜存糧 {food}"
-                    + $"｜無缺糧週 {fed}/{ledgers.Count}、缺水週 {waterShort}");
+                var ample = weeks.Count(w => w.Settlements.Any(l => l.SettlementId == s.Id
+                    && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, DemoCrowding.Slack(w.Sources, s.Id))));
+                output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
+                    + $"｜飽 {fed}、寬裕 {ample}／{ledgers.Count} 週");
             }
         }
         return 0;

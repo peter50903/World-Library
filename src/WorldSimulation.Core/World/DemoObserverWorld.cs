@@ -103,6 +103,10 @@ public sealed partial class DemoObserverWorld
         _sites = DemoWorldSites.Generate(Map, _rng,
             weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
+                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 6～10 人（含兩對育齡伴侶，見 DemoTempDemography.OpeningPerson），
+                // 讓下一代有不同家庭可以通婚（近親不配對）。
+                : weekly.HumanLifecycleEnabled
+                ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 6, MaxPopGroupSize = 10 }
                 : DemoSitesTempConfig.Sample,
             weekly.SharedCatchmentEnabled).WithOpeningEntityIds(openingIds);
 
