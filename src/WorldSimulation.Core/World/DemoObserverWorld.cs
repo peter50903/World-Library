@@ -108,7 +108,7 @@ public sealed partial class DemoObserverWorld
                 : weekly.HumanLifecycleEnabled
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 10, MaxPopGroupSize = 14 }
                 : DemoSitesTempConfig.Sample,
-            weekly.SharedCatchmentEnabled).WithOpeningEntityIds(openingIds);
+            weekly.SharedCatchmentEnabled, spaced: weekly.HopeEra).WithOpeningEntityIds(openingIds);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
         // every settlement with InitialFoodPerPerson per member of its population groups.

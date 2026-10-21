@@ -40,6 +40,9 @@ public sealed record DemoTempDemographyRules(
     /// <summary>育齡上限【TEMP】（config/demo）。</summary>
     public int FertileAgeMaxYears { get; init; } = 45;
 
+    /// <summary>第 08-2 章：低於這個年齡不會自然死亡（希望時代只有老死；0＝照 39C 全年齡分段）。</summary>
+    public int NaturalDeathMinAgeYears { get; init; }
+
     public void Validate()
     {
         if (AdultAgeYears < 1 || TypicalLifespanYears <= AdultAgeYears
@@ -56,6 +59,8 @@ public sealed record DemoTempDemographyRules(
     /// <summary>39C 年度自然死亡機率（依年齡÷典型壽命 分段）；不是壽命到期強制死亡。</summary>
     public double AnnualNaturalDeathChance(int ageYears)
     {
+        if (ageYears < NaturalDeathMinAgeYears)
+            return 0;
         var ratio = (double)Math.Max(0, ageYears) / TypicalLifespanYears;
         foreach (var (upper, annual) in DeathBands)
             if (ratio < upper)

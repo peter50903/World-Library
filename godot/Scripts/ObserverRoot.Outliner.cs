@@ -1,5 +1,6 @@
 using System.Globalization;
 using Godot;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.GodotClient;
 
@@ -20,6 +21,7 @@ public partial class ObserverRoot
     private RightView _rightView = RightView.Outliner;
     private PanelContainer _outlinerPanel = null!;
     private Label _outlinerTitle = null!;
+    private Label _overviewText = null!;
     private VBoxContainer _outlinerRows = null!;
     private Button _outlinerToggle = null!;
     private readonly List<(int SettlementId, Button Row, Control Line)> _outlinerButtons = new();
@@ -33,6 +35,18 @@ public partial class ObserverRoot
         var column = new VBoxContainer();
         column.AddThemeConstantOverride("separation", 6);
         _outlinerPanel.AddChild(column);
+        // 第 08-2 章：世界總覽（人口、村莊、遷徙、年齡結構、糧食、今年生死；Core DemoWorldOverview）。
+        var overviewTitle = new Label { Text = "世界總覽", MouseFilter = MouseFilterEnum.Pass };
+        overviewTitle.AddThemeFontSizeOverride("font_size", 20);
+        column.AddChild(overviewTitle);
+        _overviewText = new Label
+        {
+            TooltipText = "世界總覽：資料來自已提交的世界狀態與週報（今年＝目前這一年，進行中）",
+            MouseFilter = MouseFilterEnum.Pass,
+            ClipText = true
+        };
+        column.AddChild(_overviewText);
+        column.AddChild(new HSeparator());
         // 不放會自動換行的說明文字：換行標籤在面板寬度定案前會撐高最小高度，讓面板超出視窗。
         _outlinerTitle = new Label
         {
@@ -66,13 +80,14 @@ public partial class ObserverRoot
     {
         if (_outlinerRows is null)
             return;
+        _overviewText.Text = OverviewText();
         var entries = OutlinerEntries();
         var signature = string.Join("|", entries.Select(e => $"{e.Id},{e.Population},{e.Food}"));
         if (signature == _outlinerSignature)
             return;
         _outlinerSignature = signature;
         _outlinerTitle.Text = string.Create(CultureInfo.InvariantCulture,
-            $"聚落（{entries.Count}）｜人口 {entries.Sum(e => e.Population)}");
+            $"聚落清單（{entries.Count(e => !IsRuin(e.Id))} 村莊）");
 
         foreach (var (_, _, line) in _outlinerButtons)
         {
@@ -118,6 +133,25 @@ public partial class ObserverRoot
         }
     }
 
+    private bool IsRuin(int settlementId) => _world.Sites.Settlements.Any(s => s.Id == settlementId && s.IsRuin);
+
+    /// <summary>第 08-2 章：世界總覽文字（Core 共用列）。</summary>
+    private string OverviewText()
+    {
+        // 世界狀態只在週結算時改變：同一世界、同一週、同一年就沿用上次的文字（快轉時不重算整份年帳）。
+        var daysPerYear = _calendar?.DaysPerYear ?? 365;
+        var week = _world.LatestWeek?.Week ?? 0;
+        var year = Math.Max(0, _world.Snapshot().DaysElapsed - 1) / daysPerYear;
+        if (_overviewKey is { } cached && ReferenceEquals(cached.World, _world) && cached.Week == week && cached.Year == year)
+            return _overviewCache;
+        _overviewKey = (_world, week, year);
+        _overviewCache = string.Join("\n", DemoWorldOverview.Of(_world, daysPerYear).Lines());
+        return _overviewCache;
+    }
+
+    private (WorldSimulation.Core.World.DemoObserverWorld World, int Week, int Year)? _overviewKey;
+    private string _overviewCache = string.Empty;
+
     private void FocusSettlement(int settlementId)
     {
         var settlement = _world.Sites.Settlements.FirstOrDefault(s => s.Id == settlementId);
@@ -141,6 +175,8 @@ public partial class ObserverRoot
         if (_rightView != RightView.Outliner || !_outlinerPanel.Visible || _consolePanel.Visible)
             fail("settlement outliner is not the default right panel.");
         RefreshOutliner();
+        if (_overviewText.Text != OverviewText() || !_overviewText.Text.Contains("世界人口", StringComparison.Ordinal))
+            fail("world overview does not show Core's overview lines.");
         var expected = OutlinerEntries();
         if (_outlinerButtons.Count != _world.Sites.Settlements.Count
             || !_outlinerButtons.Select(b => b.SettlementId).SequenceEqual(expected.Select(e => e.Id))
