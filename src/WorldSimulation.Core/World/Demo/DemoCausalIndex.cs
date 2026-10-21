@@ -139,7 +139,8 @@ public sealed class DemoCausalIndex
 
     private void CheckCount(DemoWeekReport report, DemoSettlementWeekLedger ledger, DemoSettlementEventKind kind, int expected)
     {
-        var n = report.Events.Count(e => e.Kind == kind && e.SettlementId == ledger.SettlementId);
+        var n = report.Events.Count(e => e.Kind == kind && e.SettlementId == ledger.SettlementId
+            && (kind is not (DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath) || e.MigrationBatchId == 0));
         if (n != expected)
             _problems.Add($"第 {report.Week} 週 {ledger.SettlementName} 的週帳應有 {expected} 筆{KindText(kind)}事件，實際 {n} 筆（漏記、重複或拆分）");
     }
@@ -162,8 +163,19 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.Birth:
             case DemoSettlementEventKind.NaturalDeath:
             {
-                var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
-                var budget = e.Kind == DemoSettlementEventKind.Birth ? ledger?.Births : ledger?.NaturalDeaths;
+                // 第 07 章 b 節：途中隊伍的出生／自然死亡以隊伍帳為證據。
+                long? budget;
+                if (e.MigrationBatchId > 0)
+                {
+                    var leg = report.Migrations.SingleOrDefault(m => m.BatchId == e.MigrationBatchId);
+                    budget = leg is null || leg.FromSettlementId != e.SettlementId ? null
+                        : e.Kind == DemoSettlementEventKind.Birth ? leg.Births : leg.NaturalDeaths;
+                }
+                else
+                {
+                    var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
+                    budget = e.Kind == DemoSettlementEventKind.Birth ? ledger?.Births : ledger?.NaturalDeaths;
+                }
                 if (parent is not null || e.Count != 1 || budget is null || budget == 0
                     || string.IsNullOrWhiteSpace(e.Cause))
                     return "自然出生／死亡需要本週人口帳、個體來源與自足的合法根因";
@@ -269,6 +281,17 @@ public sealed class DemoCausalIndex
                     && e.MigrationBatchId == ledger.BatchId && e.SettlementId == ledger.FromSettlementId);
                 if (n != 1)
                     _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳記為出發，但有 {n} 筆外移事件（應恰好 1 筆）");
+            }
+
+            foreach (var ledger in report.Migrations)
+            {
+                // 第 07 章 b 節：途中出生／自然死亡（出發週也可能）：每人恰好一筆事件。
+                foreach (var (kind, expected) in new[] { (DemoSettlementEventKind.Birth, ledger.Births), (DemoSettlementEventKind.NaturalDeath, ledger.NaturalDeaths) })
+                {
+                    var n = report.Events.Count(e => e.Kind == kind && e.MigrationBatchId == ledger.BatchId);
+                    if (n != expected)
+                        _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳{KindText(kind)} {expected}，但有 {n} 筆事件");
+                }
             }
 
             foreach (var ledger in report.Migrations.Where(m => !m.Departed))

@@ -127,7 +127,7 @@
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
 | 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
-| 存檔格式 | JSON 第 12 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶；第 07 章 a 節），第 1～11 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
+| 存檔格式 | JSON 第 13 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死；第 07 章 b 節），第 1～12 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
 - 推薦：**C**。日數上限源自 V0-07A 重播讀檔，第 2 版直接快照後是否仍需要，可在正式存檔規格時一併檢討。
@@ -244,13 +244,14 @@
 
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
-| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 20 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除）|
+| `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 23 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）|
+| `src/WorldSimulation.Core/World/Demo/DemoFamilyMigration.cs` | 2 | 第 07 章 b 節：整戶遷徙（父母都不在的未成年人不單獨出發；最年輕家庭先走、放不下的家庭跳過）|
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
-| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 11 | #105 TEMP人族週帳出生／老死／身分重播驗證 |
+| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 10 | #105 TEMP人族週帳出生／老死／身分重播驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 8 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 41 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |

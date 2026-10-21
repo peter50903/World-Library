@@ -317,7 +317,9 @@ public sealed partial class DemoObserverWorld
                 _migrations, _entityIds, _weeks, _weekly,
                 _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
                     s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)),
-                _sourceStocks);
+                _sourceStocks,
+                // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
+                _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -345,6 +347,9 @@ public sealed partial class DemoObserverWorld
         commit.PublishTo(this);
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
+
+    private static Func<int, long, long, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
+        => (settlementId, deaths, limit) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws);
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and
@@ -375,7 +380,7 @@ public sealed partial class DemoObserverWorld
         {
             sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");
             foreach (var p in _demography.People)
-                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId}:{p.MotherId}:{p.BirthFatherId}:{p.PartnerId};");
+                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId}:{p.MotherId}:{p.BirthFatherId}:{p.PartnerId}:{p.BatchId};");
         }
         sb.Append(inv, $"nextEntity={_entityIds.NextValue}/{_entityIds.Exhausted};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");

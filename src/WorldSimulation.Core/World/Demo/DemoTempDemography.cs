@@ -76,8 +76,16 @@ public sealed record DemoTempPerson(
     long? FatherId = null,
     long? MotherId = null,
     long? BirthFatherId = null,
-    long? PartnerId = null)
+    long? PartnerId = null,
+    int? BatchId = null)
 {
+    /// <summary>第 07 章 b 節：不在遷徙隊伍裡（住在 <see cref="SettlementId"/>）。途中的人 SettlementId 仍是出發聚落。</summary>
+    public bool IsSettled => BatchId is null;
+
+    /// <summary>同一處：同聚落且都定居，或同一支隊伍。</summary>
+    public bool IsWith(DemoTempPerson other)
+        => BatchId is null ? other.BatchId is null && other.SettlementId == SettlementId : other.BatchId == BatchId;
+
     /// <summary>
     /// 第 07 章 a 節：可追溯的近親（父母、子女、同父或同母的手足）不得配對（config/demo KinExclusion）。
     /// 開局人口沒有記錄父母，彼此不算近親。
@@ -100,7 +108,8 @@ public sealed record DemoTempDemographicEvent(
     long PersonId,
     int SettlementId,
     long? MotherId = null,
-    long? FatherId = null);
+    long? FatherId = null,
+    int? BatchId = null);
 
 /// <summary>Serialized-shaped snapshot for an eventual atomic world save; not yet a save version.</summary>
 public sealed record DemoTempDemographicSnapshot(
@@ -234,7 +243,8 @@ public sealed class DemoTempDemography
                     || p.FatherId.Value >= snapshot.NextId)))
                 throw new InvalidOperationException("Invalid TEMP demographic member or pregnancy.");
             if (p.MotherId is <= 0 || p.MotherId >= p.Id || p.BirthFatherId is <= 0 || p.BirthFatherId >= p.Id
-                || p.MotherId.HasValue != p.BirthFatherId.HasValue || p.PartnerId is <= 0 || p.PartnerId == p.Id)
+                || p.MotherId.HasValue != p.BirthFatherId.HasValue || p.PartnerId is <= 0 || p.PartnerId == p.Id
+                || p.BatchId is <= 0)
                 throw new InvalidOperationException("Invalid TEMP parent or partner identity.");
             if (builder.ContainsKey(p.Id))
                 throw new InvalidOperationException("Duplicate TEMP population identity.");
@@ -244,7 +254,8 @@ public sealed class DemoTempDemography
         foreach (var p in builder.Values.Where(p => p.PartnerId is not null))
         {
             if (!builder.TryGetValue(p.PartnerId!.Value, out var partner) || partner.PartnerId != p.Id
-                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsCloseKinOf(partner))
+                || partner.Sex == p.Sex || !p.IsAdultAt(snapshot.LastWeek * 7, rules) || p.IsCloseKinOf(partner)
+                || !partner.IsWith(p))
                 throw new InvalidOperationException("Invalid TEMP partnership.");
         }
         return new DemoTempDemography(snapshot.LastWeek, snapshot.NextId,
@@ -252,7 +263,37 @@ public sealed class DemoTempDemography
     }
 
     public int AdultsIn(int settlementId, DemoTempDemographyRules rules)
-        => _people.Values.Count(p => p.SettlementId == settlementId && p.IsAdultAt(LastWeek * 7, rules));
+        => _people.Values.Count(p => p.IsSettled && p.SettlementId == settlementId && p.IsAdultAt(LastWeek * 7, rules));
+
+    /// <summary>第 07 章 b 節：定居在某聚落的人數（不含途中隊伍）。</summary>
+    public int ResidentsOf(int settlementId) => _people.Values.Count(p => p.IsSettled && p.SettlementId == settlementId);
+
+    /// <summary>第 07 章 b 節：某支隊伍的成員人數。</summary>
+    public int MembersOf(int batchId) => _people.Values.Count(p => p.BatchId == batchId);
+
+    /// <summary>第 07 章 b 節：指定的定居者整批出發，加入隊伍 <paramref name="batchId"/>（身分、孕期、年齡隨隊）。</summary>
+    public DemoTempDemography Depart(IReadOnlyCollection<long> ids, int batchId)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (batchId < 1 || ids.Count != ids.Distinct().Count()
+            || ids.Any(id => !_people.TryGetValue(id, out var p) || !p.IsSettled))
+            throw new InvalidOperationException("Invalid TEMP departure identities.");
+        var next = _people.ToBuilder();
+        foreach (var id in ids)
+            next[id] = next[id] with { BatchId = batchId };
+        return new DemoTempDemography(LastWeek, NextId, next.ToImmutable());
+    }
+
+    /// <summary>第 07 章 b 節：隊伍全體抵達並定居 <paramref name="settlementId"/>。</summary>
+    public DemoTempDemography Arrive(int batchId, int settlementId)
+    {
+        if (batchId < 1 || settlementId < 1)
+            throw new InvalidOperationException("Invalid TEMP arrival.");
+        var next = _people.ToBuilder();
+        foreach (var p in _people.Values.Where(p => p.BatchId == batchId))
+            next[p.Id] = p with { BatchId = null, SettlementId = settlementId };
+        return new DemoTempDemography(LastWeek, NextId, next.ToImmutable());
+    }
 
     /// <summary>Atomic transfer of specific identity tokens; does not by itself move actual world migrants.</summary>
     public DemoTempDemography Transfer(IReadOnlyCollection<long> ids, int destinationSettlement)
@@ -281,7 +322,7 @@ public sealed class DemoTempDemography
             next.Remove(id);
             events.Add(new DemoTempDemographicEvent(LastWeek,
                 inTransit ? DemoTempDemographicKind.TravelStarvationDeath : DemoTempDemographicKind.StarvationDeath,
-                id, p.SettlementId));
+                id, p.SettlementId, BatchId: p.BatchId));
         }
         return new DemoTempDemographicOutcome(
             new DemoTempDemography(LastWeek, NextId, next.ToImmutable()), events.ToImmutable());
@@ -315,7 +356,7 @@ public sealed class DemoTempDemography
             if (!draws.Hit(p.Id, week, DemoPopulationAction.NaturalDeath, chance)) continue;
             next.Remove(p.Id);
             events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.NaturalDeath,
-                p.Id, p.SettlementId));
+                p.Id, p.SettlementId, BatchId: p.BatchId));
         }
 
         Pair(next, day, rules);
@@ -330,10 +371,10 @@ public sealed class DemoTempDemography
                     if (ids is not null) nextId = DemoEntityIds.NextLong(ids);
                     var newborn = new DemoTempPerson(nextId, mother.SettlementId,
                         draws.Hit(nextId, week, DemoPopulationAction.NewbornSex, 0.5) ? DemoTempSex.Female : DemoTempSex.Male, day,
-                        MotherId: mother.Id, BirthFatherId: mother.FatherId);
+                        MotherId: mother.Id, BirthFatherId: mother.FatherId, BatchId: mother.BatchId); // 第 07 章 b 節：途中出生歸隊伍
                     next.Add(nextId, newborn);
                     events.Add(new DemoTempDemographicEvent(week, DemoTempDemographicKind.Birth,
-                        nextId, mother.SettlementId, mother.Id, mother.FatherId));
+                        nextId, mother.SettlementId, mother.Id, mother.FatherId, mother.BatchId));
                     nextId = ids is null ? checked(nextId + 1) : DemoEntityIds.NextValue(ids.Capture());
                     next[mother.Id] = mother with { PregnancyDueWeek = null, FatherId = null };
                 }
@@ -346,9 +387,10 @@ public sealed class DemoTempDemography
                 continue;
             }
 
-            // 第 07 章 a 節：只與穩定伴侶受孕；育齡上限【TEMP】；聚落本週真實糧帳不足時不受孕。
+            // 第 07 章 a 節：只與穩定伴侶受孕；育齡上限【TEMP】；聚落本週真實糧帳不足時不受孕；
+            // 第 07 章 b 節：途中不受孕【TEMP】（已懷孕的照常推進，可在途中分娩）。
             if (mother.AgeYearsAt(day) < rules.AdultAgeYears || mother.AgeYearsAt(day) >= rules.FertileAgeMaxYears
-                || !settlementFed(mother.SettlementId) || mother.PartnerId is not long partnerId
+                || !mother.IsSettled || !settlementFed(mother.SettlementId) || mother.PartnerId is not long partnerId
                 || !next.TryGetValue(partnerId, out var father))
                 continue;
             if (!draws.Hit(mother.Id, week, DemoPopulationAction.Conception, rules.WeeklyConceptionChance))
@@ -374,13 +416,14 @@ public sealed class DemoTempDemography
     {
         foreach (var p in people.Values.Where(p => p.PartnerId is not null).ToArray())
         {
-            if (!people.TryGetValue(p.PartnerId!.Value, out var partner) || partner.SettlementId != p.SettlementId)
+            if (!people.TryGetValue(p.PartnerId!.Value, out var partner) || !partner.IsWith(p))
                 people[p.Id] = p with { PartnerId = null };
         }
-        var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsAdultAt(day, rules))
-            .ToList();
+        // 第 07 章 b 節：只有定居者配對（途中不新配對；已配對的家庭整批同行，不會被拆開）。
+        var freeMen = people.Values.Where(m => m.Sex == DemoTempSex.Male && m.PartnerId is null && m.IsSettled
+            && m.IsAdultAt(day, rules)).ToList();
         foreach (var woman in people.Values.Where(w => w.Sex == DemoTempSex.Female && w.PartnerId is null
-            && w.IsAdultAt(day, rules)).ToArray())
+            && w.IsSettled && w.IsAdultAt(day, rules)).ToArray())
         {
             var man = freeMen.FirstOrDefault(m => m.SettlementId == woman.SettlementId && !woman.IsCloseKinOf(m));
             if (man is null) continue;
