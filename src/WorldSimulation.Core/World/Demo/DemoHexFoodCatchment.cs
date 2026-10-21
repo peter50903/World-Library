@@ -192,7 +192,7 @@ public static class DemoHexFoodCatchment
             var open = eligible.Where(c => Room(c) > 0 && c.HarvestCapacity > 0).ToArray();
             if (open.Length == 0)
                 break;
-            var totalWeight = open.Sum(c => (Int128)c.HarvestCapacity);
+            var totalWeight = open.Aggregate((Int128)0, (sum, c) => sum + c.HarvestCapacity);
             long distributed = 0;
             foreach (var claim in open)
             {
