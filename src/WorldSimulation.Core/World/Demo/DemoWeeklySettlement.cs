@@ -741,7 +741,9 @@ internal static class DemoWeeklySettlement
             // ⑥ 消耗：糧食只來自庫存與本週採收；取得量低於需求的部分形成飢餓債。
             // 第 06 章 d 節（自然採集世界）：先扣存糧腐敗；兒童半份；缺水另加生存債（併入飢餓債）。
             var foodOpening = settlementFood[settlement.Id];
-            var waterPlan = water.GetValueOrDefault(settlement.Id, (people, 0L, 0L, 0L));
+            var waterPlan = water.TryGetValue(settlement.Id, out var plannedWater)
+                ? plannedWater
+                : (Adults: people, Children: 0L, Carriers: 0L, WaterShortage: 0L);
             var spoiled = config.SharedCatchmentEnabled ? DemoSurvivalTempSettings.Spoilage(foodOpening) : 0L;
             var available = checked(foodOpening - spoiled + harvested);
             var demand = config.SharedCatchmentEnabled
