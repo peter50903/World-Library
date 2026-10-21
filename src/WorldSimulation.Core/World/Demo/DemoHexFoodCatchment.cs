@@ -173,7 +173,8 @@ public static class DemoHexFoodCatchment
             // （各聚落先用自己獨享的來源），共用來源留給沒有其他來源的聚落；需求都分完後，剩下的才給補存糧。
             // 避免某聚落用共用來源補存糧、鄰村卻挨餓。
             var first = claimList.ToDictionary(c => c.SettlementId, c => Math.Min(c.FoodNeeded, Math.Max(0, baseNeeds.GetValueOrDefault(c.SettlementId))));
-            Pass(sourceList.OrderBy(s => eligibleOf[s.Id].Length).ThenBy(s => s.Id), first);
+            // 只計真的要採的聚落（有需求、有勞力）；沒有勞力的聚落（例如本週剛建立）不影響順序。
+            Pass(sourceList.OrderBy(s => eligibleOf[s.Id].Count(c => c.HarvestCapacity > 0 && first[c.SettlementId] > 0)).ThenBy(s => s.Id), first);
             Pass(sourceList, needs);
         }
 
