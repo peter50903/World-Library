@@ -321,14 +321,14 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_FAMINE_OK: HungerEvents=[1-9][0-9]* Deaths=[1-9][0-9]*' /tmp/godot-famine.log
-          # V0-06A: TEMP local famine — starving people leave settlement #1 on foot; the real
+          # V0-06A: TEMP local famine — starving people leave a settlement on foot (第 06-1 章起草原聚落也會缺糧，出發聚落不一定是 #1); the real
           # Godot map must show the migrant batch and the history the caused emigration event.
           WORLD_SIM_MIGRATION_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-migration.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-migration.log; then
             echo "Godot reported a runtime error in the migration scenario."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_MIGRATION_OK: Day=[0-9]+ Batches=[1-9][0-9]* People=[1-9][0-9]* From=1 To=[2-4]' /tmp/godot-migration.log
+          grep -Eq 'WORLD_SIM_MIGRATION_OK: Day=[0-9]+ Batches=[1-9][0-9]* People=[1-9][0-9]* From=[1-4] To=[1-4]' /tmp/godot-migration.log
           # V0-06B: TEMP frontier — migrants found a new settlement on an empty cell; the real Godot map
           # must show the new settlement, the history the caused founding event, and the cell panel its source.
           WORLD_SIM_SETTLE_SMOKE=1 timeout 60 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-settle.log
