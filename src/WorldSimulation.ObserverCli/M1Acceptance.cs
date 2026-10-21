@@ -495,7 +495,7 @@ public static class M1Evaluator
 
                 // #98／C02：出生必須逐筆有帶原因的出生事件（人類繁衍情境才會發生）；人數要與本週該聚落 Birth 事件合計一致。
                 var birthEvents = report.Events
-                    .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.Birth)
+                    .Where(e => e.SettlementId == l.SettlementId && e.MigrationBatchId == 0 && e.Kind == DemoSettlementEventKind.Birth)
                     .ToList();
                 var birthEventCount = birthEvents.Sum(e => e.Count);
                 if (birthEventCount != l.Births || birthEvents.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
@@ -527,7 +527,7 @@ public static class M1Evaluator
                 if (causedDeaths.Sum(e => e.Count) != l.StarvationDeaths || causedDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} {Name(l)} 餓死 {l.StarvationDeaths} 人，帶原因的餓死事件 {causedDeaths.Sum(e => e.Count)} 人");
                 var naturalEvents = report.Events
-                    .Where(e => e.SettlementId == l.SettlementId && e.Kind == DemoSettlementEventKind.NaturalDeath)
+                    .Where(e => e.SettlementId == l.SettlementId && e.MigrationBatchId == 0 && e.Kind == DemoSettlementEventKind.NaturalDeath)
                     .ToList();
                 if (naturalEvents.Sum(e => e.Count) != l.NaturalDeaths || naturalEvents.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} {Name(l)} 自然死亡 {l.NaturalDeaths} 人，帶原因的自然死亡事件 {naturalEvents.Sum(e => e.Count)} 人");
@@ -542,7 +542,7 @@ public static class M1Evaluator
             foreach (var m in report.Migrations)
             {
                 if (!m.PopulationBalanced)
-                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 人口帳：{m.PopulationOpening}－死亡 {m.Deaths}≠{m.PopulationClosing}");
+                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 人口帳：{m.PopulationOpening}＋途中出生 {m.Births}－餓死 {m.Deaths}－自然死亡 {m.NaturalDeaths}≠{m.PopulationClosing}");
 
                 // #98：途中隊伍逐週銜接：本週期初＝上週期末（上週仍在路上）。
                 if (!m.Departed)
@@ -556,7 +556,9 @@ public static class M1Evaluator
                     .ToList();
                 if (causedDeaths.Sum(e => e.Count) != m.Deaths || causedDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 途中死亡 {m.Deaths} 人，帶原因事件 {causedDeaths.Sum(e => e.Count)} 人");
-                wDeaths += m.Deaths;
+                // 第 07 章 b 節：途中出生與自然死亡也算進世界人口。
+                wBirths += m.Births;
+                wDeaths += m.Deaths + m.NaturalDeaths;
                 roadDeaths += m.Deaths;
             }
 

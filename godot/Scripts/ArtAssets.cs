@@ -22,6 +22,7 @@ public static class ArtAssets
     public const string IconBirth = "res://assets/icons/icon_birth.png";
     public const string IconDeath = "res://assets/icons/icon_death.png";
     public const string IconFood = "res://assets/icons/icon_food.png";
+    public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
 
     // 介面（第 05 章）
     public const string UiPlay = "res://assets/ui/ui_icon_play.png";
@@ -46,7 +47,7 @@ public static class ArtAssets
     public static readonly string[] Used =
     {
         TileGrassland, TileForest, TileWater, TileRiver,
-        IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood,
+        IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood,
         SfxClick, SfxEventAlert, MusicObserverLoop

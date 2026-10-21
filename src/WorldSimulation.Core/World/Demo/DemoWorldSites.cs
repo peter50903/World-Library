@@ -30,10 +30,14 @@ public sealed record DemoSettlement(
     int Row,
     int FoundedWeek = 0,
     int FoundedFromSettlementId = 0,
-    int FoundedByBatchId = 0)
+    int FoundedByBatchId = 0,
+    int RuinedWeek = 0)
 {
     /// <summary>V0-06B：是否為遷徙隊伍建立的新聚落。</summary>
     public bool IsFounded => FoundedWeek > 0;
+
+    /// <summary>第 07 章 c 節：人口連續為 0 滿 TEMP 週數後成為遺跡（保留編號與歷史；不佔格、不是遷徙目的地）。</summary>
+    public bool IsRuin => RuinedWeek > 0;
 }
 
 /// <summary>TEMP 示範資源點，屬於一個示範聚落，位於該聚落所在格。Id 由世界唯一實體 ID 分配器發號。</summary>
@@ -212,6 +216,30 @@ public sealed class DemoWorldSites
             Array.AsReadOnly(ResourcePoints.Append(point).ToArray()),
             PopGroups, ForagingOnly);
     }
+
+    /// <summary>第 07 章 c 節：聚落於第 <paramref name="week"/> 週末成為遺跡。</summary>
+    internal DemoWorldSites WithRuin(int settlementId, int week)
+    {
+        var target = Settlements.SingleOrDefault(s => s.Id == settlementId)
+            ?? throw new InvalidOperationException("Unknown settlement for ruin.");
+        if (target.IsRuin || week < 1 || week <= target.FoundedWeek)
+            throw new InvalidOperationException("A settlement can become a ruin only once, after it was founded.");
+        return new DemoWorldSites(
+            Array.AsReadOnly(Settlements.Select(s => s.Id == settlementId ? s with { RuinedWeek = week } : s).ToArray()),
+            ResourcePoints, PopGroups, ForagingOnly);
+    }
+
+    /// <summary>
+    /// 第 07 章 c 節：第 <paramref name="week"/> 週開始時的人造佔格（已建立、尚未成為遺跡的聚落所在格）。
+    /// 聚落在第 F 週末建立，從第 F＋1 週起佔格；在第 R 週末成為遺跡，從第 R＋1 週起不再佔格。
+    /// </summary>
+    public IReadOnlyList<DemoCellRef> OccupiedCellsAtWeek(int week)
+        => Array.AsReadOnly(Settlements.Where(s => s.FoundedWeek < week && (!s.IsRuin || s.RuinedWeek >= week))
+            .Select(s => new DemoCellRef(s.Column, s.Row)).ToArray());
+
+    /// <summary>目前的人造佔格（遺跡不佔格）。</summary>
+    public IReadOnlyList<DemoCellRef> OccupiedCells()
+        => Array.AsReadOnly(Settlements.Where(s => !s.IsRuin).Select(s => new DemoCellRef(s.Column, s.Row)).ToArray());
 
     /// <summary>Settlement at the offset cell, or null. Pure query.</summary>
     public DemoSettlement? SettlementAt(int column, int row)

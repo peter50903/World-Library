@@ -13,13 +13,14 @@ public partial class ObserverRoot
 {
     private static readonly bool AlertSmoke = OS.HasEnvironment("WORLD_SIM_ALERT_SMOKE");
 
-    /// <summary>TEMP：會觸發提示與自動暫停的事件種類（餓死、途中餓死、外移、建立新聚落）。</summary>
+    /// <summary>TEMP：會觸發提示與自動暫停的事件種類（餓死、途中餓死、外移、建立新聚落、成為遺跡）。</summary>
     private static readonly DemoSettlementEventKind[] TempMajorKinds =
     {
         DemoSettlementEventKind.StarvationDeath,
         DemoSettlementEventKind.MigrantStarvationDeath,
         DemoSettlementEventKind.Emigration,
-        DemoSettlementEventKind.SettlementFounded
+        DemoSettlementEventKind.SettlementFounded,
+        DemoSettlementEventKind.SettlementRuined // 第 07 章 c 節
     };
 
     private CheckBox _autoPauseOnMajor = null!;

@@ -1,0 +1,6 @@
+{
+  "SchemaVersion": 1,
+  "Status": "TEMP",
+  "Notes": "第 07 章 c 節 TEMP 聚落參數：人口連續為 0 滿多少週自動成為遺跡（遺跡格恢復自然來源、不再是遷徙目的地）。",
+  "RuinAfterEmptyWeeks": 52
+}

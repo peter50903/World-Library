@@ -24,9 +24,20 @@ public static class DemoForagingWorld
         return map.MainWaterway;
     }
 
+    /// <summary>第 07 章 c 節：聚落所在格不是自然來源；遺跡格恢復。</summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites = null)
-        => Settings.BuildPotentialSources(map, MainRiverTiles(map),
-            sites?.Settlements.Select(s => new DemoCellRef(s.Column, s.Row)).ToArray());
+        => Sources(map, sites?.OccupiedCells());
+
+    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied)
+        => Settings.BuildPotentialSources(map, MainRiverTiles(map), occupied);
+
+    /// <summary>第 07 章 c 節：<paramref name="cell"/> 可及至少一個未被佔用的自然來源（開拓選址條件）。</summary>
+    public static bool ReachesFreeSource(DemoHexWorld map, IReadOnlyList<DemoCellRef> occupied, DemoCellRef cell)
+    {
+        var occupiedPlusSite = occupied.Append(cell).ToArray();
+        return Sources(map, occupiedPlusSite).Any(source => source.FoodAvailable > 0
+            && DemoHexFoodCatchment.EligibleCells(map, source).Any(c => c.Column == cell.Column && c.Row == cell.Row));
+    }
 
     /// <summary>
     /// Food harvest is a one-week, one-source budget. No local farm and no source-specific
@@ -44,7 +55,7 @@ public static class DemoForagingWorld
     {
         if (!weekly.SharedCatchmentEnabled)
             throw new InvalidOperationException("Not a shared catchment world.");
-        var claims = sites.Settlements.OrderBy(s => s.Id).Select(s =>
+        var claims = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).Select(s => // 第 07 章 c 節：遺跡不採集
             new DemoCatchmentFoodClaim(s.Id, s.Column, s.Row,
                 foodNeeded?.GetValueOrDefault(s.Id) ?? checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
                 checked((adultWorkers?.GetValueOrDefault(s.Id) ?? openingPopulation[s.Id]) * weekly.YieldPerWorkerPerWeek)));

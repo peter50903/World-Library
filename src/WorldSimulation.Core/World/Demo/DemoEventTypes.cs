@@ -29,7 +29,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.MigrantStarvationDeath] = new("EV_DEATH", "死亡", CauseRootCategory.Resource),
         [DemoSettlementEventKind.SettlementFounded] = new("TEMP_EV_SETTLEMENT_FOUNDED", "建立新聚落", CauseRootCategory.Resource),
         [DemoSettlementEventKind.Birth] = new("EV_BIRTH", "出生", CauseRootCategory.Lifecycle),
-        [DemoSettlementEventKind.NaturalDeath] = new("EV_DEATH", "死亡", CauseRootCategory.Lifecycle)
+        [DemoSettlementEventKind.NaturalDeath] = new("EV_DEATH", "死亡", CauseRootCategory.Lifecycle),
+        [DemoSettlementEventKind.SettlementRuined] = new("TEMP_EV_SETTLEMENT_RUINED", "聚落成為遺跡", CauseRootCategory.Resource)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

@@ -119,6 +119,7 @@ public sealed class DemoCausalIndex
     /// </summary>
     private void CheckSettlementLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports)
     {
+        var ruined = new HashSet<int>();
         foreach (var report in reports)
         {
             foreach (var ledger in report.Settlements)
@@ -133,6 +134,13 @@ public sealed class DemoCausalIndex
                 CheckCount(report, ledger, DemoSettlementEventKind.Birth, checked((int)ledger.Births));
                 CheckCount(report, ledger, DemoSettlementEventKind.NaturalDeath, checked((int)ledger.NaturalDeaths));
                 CheckCount(report, ledger, DemoSettlementEventKind.HungerRecovered, recovered ? 1 : 0);
+                // 第 07 章 c 節：空置滿 TEMP 週數的那一週恰好 1 筆成為遺跡（之前已成遺跡、或仍有隊伍正前往則 0 筆）。
+                var ruin = ledger.PopulationClosing == 0
+                    && !ruined.Contains(ledger.SettlementId)
+                    && DemoSettlementTempSettings.Current.EmptyLongEnough(ledger.SettlementId, report.Week, 0, reports)
+                    && !report.Migrations.Any(m => !m.Arrived && m.PopulationClosing > 0 && m.ToSettlementId == ledger.SettlementId);
+                CheckCount(report, ledger, DemoSettlementEventKind.SettlementRuined, ruin ? 1 : 0);
+                if (ruin) ruined.Add(ledger.SettlementId);
             }
         }
     }
@@ -239,6 +247,20 @@ public sealed class DemoCausalIndex
                 return e.CauseEventId == latest
                     ? null
                     : $"直接原因 #{e.CauseEventId} 不是此聚落最近一筆帶來飢餓債的事件（應為 #{latest}）";
+            }
+
+            case DemoSettlementEventKind.SettlementRuined:
+            {
+                // 第 07 章 c 節：根因；證據是此週與前面連續週帳的期末人口都是 0。
+                var rule = DemoSettlementTempSettings.Current;
+                var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
+                if (parent is not null || ledger is null || e.Count != rule.RuinAfterEmptyWeeks
+                    || !rule.EmptyLongEnough(e.SettlementId, report.Week, ledger.PopulationClosing, reports))
+                    return "成為遺跡需要連續空置週數的週帳證據，且是根因";
+                if (reports.Take(reportIndex).Any(r => r.Events.Any(x => x.Kind == DemoSettlementEventKind.SettlementRuined
+                    && x.SettlementId == e.SettlementId)))
+                    return "同一聚落不能重複成為遺跡";
+                return null;
             }
 
             default:
@@ -414,6 +436,7 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.SettlementFounded => "建立新聚落",
         DemoSettlementEventKind.Birth => "出生",
         DemoSettlementEventKind.NaturalDeath => "自然死亡",
+        DemoSettlementEventKind.SettlementRuined => "成為遺跡",
         _ => "未知"
     };
 }

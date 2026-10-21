@@ -61,7 +61,8 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig LivingForagingSample { get; } = ForagingSample with
     {
         HumanLifecycleEnabled = true,
-        // 第 07 章 b 節：遷徙隊伍攜帶家庭身分，人類繁衍情境不再禁止遷徙。
+        // 第 07 章 b 節：遷徙隊伍攜帶家庭身分，人類繁衍情境不再禁止遷徙；c 節：也可開拓新聚落。
+        FoundingEnabled = true,
         // TEMP adult gather capacity: enough to support non-working dependents,
         // still limited by genuine natural-source budget (never mint food).
         YieldPerWorkerPerWeek = 8
@@ -191,7 +192,12 @@ public enum DemoSettlementEventKind
     /// <summary>Verified human pregnancy completed after 39 TEMP weeks.</summary>
     Birth = 7,
     /// <summary>Verified age/typical lifespan-based natural death, not hunger death.</summary>
-    NaturalDeath = 8
+    NaturalDeath = 8,
+    /// <summary>
+    /// 第 07 章 c 節：聚落人口連續為 0 滿 TEMP 週數，成為遺跡（45F SETTLE_FAIL 留下遺跡）；該格恢復自然來源。
+    /// 根因事件，證據是週帳連續的期末人口 0。Count＝空置週數。
+    /// </summary>
+    SettlementRuined = 9
 }
 
 /// <summary>
@@ -228,6 +234,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.SettlementFounded => $"第 {day} 天  |  建立新聚落「{SettlementName}」：{Count} 名遷徙者定居（{Cause}）",
             DemoSettlementEventKind.Birth => $"第 {day} 天  |  {SettlementName} 出生 {Count} 人（{Cause}）",
             DemoSettlementEventKind.NaturalDeath => $"第 {day} 天  |  {SettlementName} 自然死亡 {Count} 人（{Cause}）",
+            DemoSettlementEventKind.SettlementRuined => $"第 {day} 天  |  {SettlementName} 成為遺跡（{Cause}）",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -835,10 +842,14 @@ internal static class DemoWeeklySettlement
                 // V0-06B：已知範圍內每個可達聚落的消息都已傳到、沒有一個有糧（或根本沒有可達聚落）→
                 // 改派開拓隊到附近 TEMP 範圍內有水源的空格（不能是聚落，也不能是別支開拓隊的目的格）。
                 // 每個聚落同時最多一支開拓隊在路上（TEMP）。
+                // 第 07 章 c 節：選址另須可及至少一個未被佔用的自然來源（非水域、可取水已由 FindFoundingSite 檢查；
+                // 主水道是水域，不能建村）。遺跡格不能直接重建【TEMP】。
+                var occupiedNow = weekSites.OccupiedCells();
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                     config.FoundingSearchMaxSteps,
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
-                        && !nextMigrations.Any(b => b.Founding && b.Destination == c));
+                        && !nextMigrations.Any(b => b.Founding && b.Destination == c)
+                        && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c)));
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor) : 0;
                 if (emigrants > 0)
                 {
@@ -923,6 +934,20 @@ internal static class DemoWeeklySettlement
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
             throw new InvalidOperationException("A migration batch arrived at an unknown settlement.");
 
+        // 第 07 章 c 節：人口連續為 0 滿 TEMP 週數的聚落成為遺跡（仍有隊伍正前往時延後）。
+        var ruinRule = DemoSettlementTempSettings.Current;
+        foreach (var ledger in ledgers)
+        {
+            var place = weekSites.Settlements.Single(s => s.Id == ledger.SettlementId);
+            if (place.IsRuin || !ruinRule.EmptyLongEnough(place.Id, week, ledger.PopulationClosing, publishedWeeks)
+                || nextMigrations.Any(b => b.ToSettlementId == place.Id))
+                continue;
+            weekSites = weekSites.WithRuin(place.Id, week);
+            events.Add(Stamp(new DemoSettlementEvent(week, worldTime, place.Id, place.Name,
+                DemoSettlementEventKind.SettlementRuined, ruinRule.RuinAfterEmptyWeeks,
+                $"人口連續 {ruinRule.RuinAfterEmptyWeeks} 週為 0（TEMP），聚落成為遺跡；該格恢復自然產出"), 0));
+        }
+
         var report = new DemoWeekReport(week, worldTime, Array.AsReadOnly(ledgers.ToArray()),
             Array.AsReadOnly(events.ToArray()),
             Array.AsReadOnly(migrationLedgers.OrderBy(m => m.BatchId).ToArray()))
@@ -989,7 +1014,7 @@ internal static class DemoWeeklySettlement
     {
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
         {
-            if (candidate.Id == source.Id)
+            if (candidate.Id == source.Id || candidate.IsRuin)
                 continue;
             var route = DemoMigrationRoutes.FindRoute(map,
                 new DemoCellRef(source.Column, source.Row), new DemoCellRef(candidate.Column, candidate.Row));
@@ -1016,7 +1041,7 @@ internal static class DemoWeeklySettlement
         (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? best = null;
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
         {
-            if (candidate.Id == source.Id)
+            if (candidate.Id == source.Id || candidate.IsRuin) // 第 07 章 c 節：遺跡不是遷徙目的地
                 continue;
 
             var route = DemoMigrationRoutes.FindRoute(map,
