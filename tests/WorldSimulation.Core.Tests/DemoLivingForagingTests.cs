@@ -17,9 +17,10 @@ public sealed class DemoLivingForagingTests
         var initial = world.WorldPopulation;
         for (var day = 0; day < 3 * 365; day++) world.AdvanceOneDay();
         var reports = world.WeekReports();
-        var births = reports.Sum(w => w.Settlements.Sum(l => l.Births));
-        var starvation = reports.Sum(w => w.Settlements.Sum(l => l.Deaths - l.NaturalDeaths));
-        var ageDeaths = reports.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths));
+        // 第 07 章 b 節：遷徙隊伍途中的出生、餓死、自然死亡也計入世界人口。
+        var births = reports.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
+        var starvation = reports.Sum(w => w.Settlements.Sum(l => l.Deaths - l.NaturalDeaths) + w.Migrations.Sum(m => m.Deaths));
+        var ageDeaths = reports.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths) + w.Migrations.Sum(m => m.NaturalDeaths));
         Assert.True(births > 0, "The playable world must contain actual births, not Births:0 forever.");
         Assert.Equal(initial + births - starvation - ageDeaths, world.WorldPopulation);
         Assert.All(reports, w => Assert.All(w.Settlements, l =>
@@ -33,7 +34,9 @@ public sealed class DemoLivingForagingTests
         Assert.True(world.HumanPopulationSnapshot!.People.Any(p =>
             !p.IsAdultAt(world.Snapshot().DaysElapsed, DemoTempDemographyRules.HumanFixture)));
         Assert.True(reports.Last().Settlements.Any(l => l.AdultWorkersOpening < l.PopulationOpening));
-        Assert.Empty(world.MigrationsInTransit()); // until cohort identities can actually travel.
+        // 第 07 章 b 節：途中隊伍的人數就是它攜帶的身分數。
+        Assert.All(world.MigrationsInTransit(), b =>
+            Assert.Equal(b.People, world.HumanPopulationSnapshot!.People.Count(p => p.BatchId == b.Id)));
     }
 
     [Fact]

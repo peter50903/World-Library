@@ -57,12 +57,11 @@ public sealed record DemoWeeklyTempConfig(
     };
 
     /// <summary>TEMP playable human births, pregnancy and age-related deaths.
-    /// Migrant identity transfer still needs an audited cohort carrier, so this
-    /// mode disables migration rather than inventing or duplicating persons.</summary>
+    /// 第 07 章 b 節起遷徙隊伍以家庭為單位攜帶個人身分（不複製、不遺失）。</summary>
     public static DemoWeeklyTempConfig LivingForagingSample { get; } = ForagingSample with
     {
         HumanLifecycleEnabled = true,
-        MigrationEnabled = false,
+        // 第 07 章 b 節：遷徙隊伍攜帶家庭身分，人類繁衍情境不再禁止遷徙。
         // TEMP adult gather capacity: enough to support non-working dependents,
         // still limited by genuine natural-source budget (never mint food).
         YieldPerWorkerPerWeek = 8
@@ -115,7 +114,7 @@ public sealed record DemoWeeklyTempConfig(
             || HungerDebtPerStarvationDeath <= 0 || HungerRecoveryPerPersonPerWeek < 0
             || MinPopulationToEmigrate < 2 || EmigrationShareDivisor < 2 || KnownRouteMaxSteps < 1
             || TempFamineSettlementId < 0 || NewsDelayWeeksPerCell < 1 || FoundingSearchMaxSteps < 1
-            || HumanLifecycleEnabled && (!SharedCatchmentEnabled || MigrationEnabled))
+            || HumanLifecycleEnabled && !SharedCatchmentEnabled)
             throw new ArgumentOutOfRangeException(nameof(DemoWeeklyTempConfig), "Invalid TEMP weekly settlement config.");
     }
 
@@ -523,8 +522,19 @@ internal static class DemoWeeklySettlement
         IReadOnlyList<DemoWeekReport> publishedWeeks,
         DemoWeeklyTempConfig config,
         IReadOnlyDictionary<int, long>? adultWorkers = null,
-        IReadOnlyDictionary<int, long>? sourceStocks = null)
+        IReadOnlyDictionary<int, long>? sourceStocks = null,
+        Func<int, long, long, long>? emigrantPlanner = null)
     {
+        // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
+        // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
+        long PlanEmigrants(int settlementId, long deaths, long desired)
+        {
+            if (emigrantPlanner is null || desired <= 0) return desired;
+            var planned = emigrantPlanner(settlementId, deaths, desired);
+            if (planned < 0 || planned > desired)
+                throw new InvalidOperationException("The family emigrant plan exceeds the allowed emigrants.");
+            return planned;
+        }
         ArgumentNullException.ThrowIfNull(migrations);
         ArgumentNullException.ThrowIfNull(publishedWeeks);
         if (publishedWeeks.Count > 0 && publishedWeeks[publishedWeeks.Count - 1].Week >= week)
@@ -829,7 +839,7 @@ internal static class DemoWeeklySettlement
                     config.FoundingSearchMaxSteps,
                     c => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c));
-                emigrants = site.Length >= 2 ? survivors / config.EmigrationShareDivisor : 0;
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -858,7 +868,7 @@ internal static class DemoWeeklySettlement
             }
             else if (target is { } chosen)
             {
-                emigrants = survivors / config.EmigrationShareDivisor;
+                emigrants = PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor);
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -1041,14 +1051,17 @@ internal static class DemoWeeklySettlement
                     $"第 {report.Week} 週 {ledger.SettlementName} 帳目不平衡（ledger imbalance）。");
 
             // SURV_DEATH：死亡必須有原因。帳上的死亡數必須等於帶原因的餓死事件人數。
+            // 第 07 章 b 節：途中隊伍的出生／自然死亡事件帶隊伍編號，記在隊伍帳，不算聚落的。
             var deathEvents = report.Events
-                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind is
+                .Where(e => e.SettlementId == ledger.SettlementId && e.MigrationBatchId == 0 && e.Kind is
                     DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.NaturalDeath)
                 .Sum(e => e.Count);
             var naturalEvents = report.Events
-                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
+                .Where(e => e.SettlementId == ledger.SettlementId && e.MigrationBatchId == 0
+                    && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
             var birthEvents = report.Events
-                .Where(e => e.SettlementId == ledger.SettlementId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
+                .Where(e => e.SettlementId == ledger.SettlementId && e.MigrationBatchId == 0
+                    && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
             if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths
                 || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId
@@ -1087,6 +1100,11 @@ internal static class DemoWeeklySettlement
             if (migrantDeaths.Sum(e => e.Count) != m.Deaths || migrantDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 途中死亡沒有對應的帶原因事件（death without cause）。");
+            var travelBirths = report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
+            var travelNatural = report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
+            if (travelBirths != m.Births || travelNatural != m.NaturalDeaths)
+                throw new InvalidOperationException(
+                    $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 途中出生／自然死亡沒有對應的事件。");
         }
 
         if (migrations.Select(m => m.BatchId).Distinct().Count() != migrations.Count)
@@ -1119,8 +1137,8 @@ internal static class DemoWeeklySettlement
             + migrations.Where(m => !m.Departed).Sum(m => m.PopulationOpening);
         var closing = report.Settlements.Sum(l => l.PopulationClosing)
             + migrations.Where(m => !m.Arrived).Sum(m => m.PopulationClosing);
-        var births = report.Settlements.Sum(l => l.Births);
-        var deaths = report.Settlements.Sum(l => l.Deaths) + migrations.Sum(m => m.Deaths);
+        var births = report.Settlements.Sum(l => l.Births) + migrations.Sum(m => m.Births);
+        var deaths = report.Settlements.Sum(l => l.Deaths) + migrations.Sum(m => m.Deaths + m.NaturalDeaths);
         if (opening + births - deaths != closing)
             throw new InvalidOperationException(
                 $"第 {report.Week} 週世界人口不守恆：{opening}＋{births}－{deaths}≠{closing}（含途中人口）。");

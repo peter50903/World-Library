@@ -76,14 +76,19 @@ public sealed record DemoMigrationWeekLedger(
     long HungerDebtRecovered,
     long HungerDebtRemovedByDeath,
     long HungerDebtClosing,
-    bool Founding = false)
+    bool Founding = false,
+    long Births = 0,
+    long NaturalDeaths = 0,
+    long HungerDebtRemovedByNaturalDeath = 0)
 {
-    public bool PopulationBalanced => PopulationOpening - Deaths == PopulationClosing;
+    /// <summary>第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。</summary>
+    public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths == PopulationClosing;
 
     public bool FoodBalanced => FoodOpening - FoodConsumed == FoodClosing;
 
     public bool HungerDebtBalanced
-        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath == HungerDebtClosing
+        => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath
+            - HungerDebtRemovedByNaturalDeath == HungerDebtClosing
         && (Deaths == 0 || HungerDebtRemovedByDeath > 0)
         && (PopulationClosing > 0 || HungerDebtClosing == 0);
 
@@ -97,7 +102,8 @@ public sealed record DemoMigrationWeekLedger(
         => PopulationOpening >= 0 && Deaths >= 0 && PopulationClosing >= 0
         && FoodOpening >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
         && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0 && HungerDebtRemovedByDeath >= 0
-        && HungerDebtClosing >= 0;
+        && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0
+        && (Arrived ? Births == 0 && NaturalDeaths == 0 : true); // 抵達週的成員已併入目的聚落，生死記在聚落帳
 
     public bool IsBalanced
         => PopulationBalanced && FoodBalanced && HungerDebtBalanced && NoTeleport && NonNegative;

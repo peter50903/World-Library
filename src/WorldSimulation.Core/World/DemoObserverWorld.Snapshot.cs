@@ -135,8 +135,10 @@ public sealed partial class DemoObserverWorld
             if (supplied.LastWeek != candidateSnapshot.LastWeek
                 || supplied.NextId != candidateSnapshot.NextId
                 || !supplied.People.SequenceEqual(candidateSnapshot.People)
-                || sites.Settlements.Any(place =>
-                    replayed.People.Count(p => p.SettlementId == place.Id) != population[place.Id]))
+                || sites.Settlements.Any(place => replayed.ResidentsOf(place.Id) != population[place.Id])
+                // 第 07 章 b 節：途中隊伍的人數＝攜帶的身分數；沒有不屬於任何現存隊伍的旅人。
+                || batches.Any(b => replayed.MembersOf(b.Id) != b.People)
+                || replayed.People.Any(p => p.BatchId is int id && batches.All(b => b.Id != id)))
                 Reject("出生／自然死亡人口身份、孕期或週帳遭篡改");
             candidate._demography = replayed;
         }

@@ -15,7 +15,8 @@ public sealed class DemoHumanLifeRulesTests
     [Fact]
     public void MultiSeedCenturyHasBirthsNaturalDeathsAndStarvationWithoutKinPairs()
     {
-        long starvation = 0;
+        long starvation = 0, births = 0, natural = 0;
+        var summaries = new List<string>();
         var openings = new List<DemoTempPerson>();
         foreach (var seed in Seeds)
         {
@@ -29,14 +30,24 @@ public sealed class DemoHumanLifeRulesTests
                 Assert.Contains(g, p => p.Sex == DemoTempSex.Male && p.AgeYearsAt(0) is >= 18 and < 45);
             });
 
+            var trace = new System.Text.StringBuilder();
             for (var day = 0; day < 100 * TestCalendar.DaysPerYear; day++)
+            {
                 world.AdvanceOneDay();
+                if ((day + 1) % (10 * TestCalendar.DaysPerYear) == 0)
+                    trace.Append($" {(day + 1) / TestCalendar.DaysPerYear}年:{world.SettledPopulation}+{world.PopulationInTransit}");
+            }
 
             var ledgers = world.WeekReports().SelectMany(w => w.Settlements).ToList();
+            var legs = world.WeekReports().SelectMany(w => w.Migrations).ToList();
+            var summary = $"種子 {seed}：出生 {ledgers.Sum(l => l.Births)}+{legs.Sum(m => m.Births)}、自然死亡 {ledgers.Sum(l => l.NaturalDeaths)}+{legs.Sum(m => m.NaturalDeaths)}、"
+                + $"餓死 {ledgers.Sum(l => l.Deaths - l.NaturalDeaths)}、途中餓死 {legs.Sum(m => m.Deaths)}、出發 {legs.Count(m => m.Departed)} 隊；人口{trace}";
             Assert.All(ledgers, l => Assert.True(l.IsBalanced, $"種子 {seed} 第 {l.SettlementId} 聚落週帳不平衡"));
-            Assert.True(ledgers.Sum(l => l.Births) > 0, $"種子 {seed} 百年無出生");
-            Assert.True(ledgers.Sum(l => l.NaturalDeaths) > 0, $"種子 {seed} 百年無自然死亡");
-            starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths);
+            // 第 07 章 b 節起小型世界可能整體滅絕（例：種子 7 約 20 年內），所以出生／老死／餓死三類以多種子合計驗收。
+            births += ledgers.Sum(l => l.Births) + legs.Sum(m => m.Births);
+            natural += ledgers.Sum(l => l.NaturalDeaths) + legs.Sum(m => m.NaturalDeaths);
+            summaries.Add(summary);
+            starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths) + legs.Sum(m => m.Deaths);
 
             var people = world.HumanPopulationSnapshot!.People.ToDictionary(p => p.Id);
             foreach (var p in people.Values.Where(p => p.PartnerId is not null))
@@ -49,7 +60,10 @@ public sealed class DemoHumanLifeRulesTests
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.Birth),
                 e => Assert.Contains("雙親", e.Cause));
         }
-        Assert.True(starvation > 0, "多種子百年都沒有餓死");
+        var all = string.Join("／", summaries);
+        Assert.True(births > 0, $"多種子百年都沒有出生｜{all}");
+        Assert.True(natural > 0, $"多種子百年都沒有自然死亡｜{all}");
+        Assert.True(starvation > 0, $"多種子百年都沒有餓死｜{all}");
         // 混齡：三個種子的開局合計有兒童，也有 45 歲以上的人。
         Assert.Contains(openings, p => !p.IsAdultAt(0, DemoTempDemographyRules.HumanFixture));
         Assert.Contains(openings, p => p.AgeYearsAt(0) >= 45);
