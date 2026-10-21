@@ -15,6 +15,7 @@ public sealed class DemoTempDemographyTests
 
     /// <summary>第 04 章 a 節：生死抽樣改由世界的 POP 流（原本傳給 Open 的種子改當世界種子）。</summary>
     private static DemoPopulationDraws Draws(ulong worldSeed) => new(RngRegistry.Create(worldSeed));
+    private static DemoOpeningDraws Opening(ulong worldSeed) => new(RngRegistry.Create(worldSeed));
 
     [Fact]
     public void OpeningPopulationHasRealAdultSexesAndNoImaginaryBirths()
@@ -217,8 +218,8 @@ public sealed class DemoTempDemographyTests
     [Fact]
     public void MixedAgeOpeningFollowsTempBandsAndIsReproducible()
     {
-        var a = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Draws(7));
-        var b = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Draws(7));
+        var a = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(7));
+        var b = DemoTempDemography.Open(new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(7));
         Assert.Equal(a.People.ToArray(), b.People.ToArray());
         var children = a.People.Count(p => !p.IsAdultAt(0, Rules));
         var elders = a.People.Count(p => p.AgeYearsAt(0) >= 60);
@@ -228,7 +229,7 @@ public sealed class DemoTempDemographyTests
         Assert.InRange(a.People.Count(p => p.Sex == DemoTempSex.Female), 340, 460);
         Assert.True(a.People.Select(p => p.BornDay % 365).Distinct().Count() > 100); // 年內出生日分散
         Assert.NotEqual(a.People.ToArray(), DemoTempDemography.Open(
-            new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Draws(8)).People.ToArray());
+            new Dictionary<int, int> { [1] = 400, [2] = 400 }, Rules, null, Opening(8)).People.ToArray());
     }
 
     [Fact]

@@ -118,7 +118,7 @@ public sealed partial class DemoObserverWorld
         if (weekly.HumanLifecycleEnabled)
             _demography = DemoTempDemography.Open(
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds,
-                new DemoPopulationDraws(_rng)); // 第 07 章 a 節：混齡開局（POP 流第 0 週，不推進計數器）
+                new DemoOpeningDraws(_rng)); // 第 07 章 a 節：混齡開局（世界種子 ECOLOGY_INIT 流，不推進計數器）
         _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);

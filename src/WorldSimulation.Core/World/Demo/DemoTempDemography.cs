@@ -141,7 +141,7 @@ public sealed class DemoTempDemography
 
     /// <summary>
     /// 第 07 章 a 節：混齡開局。每人的年齡層、年齡（含年內出生日）、性別由 <paramref name="draws"/>
-    /// （POP 流、實體局部亂數，第 0 週、動作 6／7）抽出；年齡層比例取自 config/demo/demography-temp.json【TEMP】。
+    /// （世界種子 ECOLOGY_INIT 流的實體局部亂數）抽出；年齡層比例取自 config/demo/demography-temp.json【TEMP】。
     /// 不傳 <paramref name="draws"/> 時沿用舊的全成人開局（18～22 歲、男女交替，只供單元測試）。
     /// </summary>
     /// <remarks>
@@ -149,7 +149,7 @@ public sealed class DemoTempDemography
     /// <see cref="NextId"/> 等於分配器取號後的下一號；不傳時沿用獨立序號（只供單元測試）。
     /// </remarks>
     public static DemoTempDemography Open(IReadOnlyDictionary<int, int> settlements,
-        DemoTempDemographyRules rules, EntityIdAllocator? ids = null, DemoPopulationDraws? draws = null)
+        DemoTempDemographyRules rules, EntityIdAllocator? ids = null, DemoOpeningDraws? draws = null)
     {
         ArgumentNullException.ThrowIfNull(settlements);
         ArgumentNullException.ThrowIfNull(rules);
@@ -175,10 +175,10 @@ public sealed class DemoTempDemography
     }
 
     /// <summary>第 07 章 a 節：依年齡層比例抽一個開局人（年齡層→年齡→年內出生日；性別各半）。</summary>
-    internal static DemoTempPerson OpeningPerson(long id, int settlement, DemoPopulationDraws draws)
+    internal static DemoTempPerson OpeningPerson(long id, int settlement, DemoOpeningDraws draws)
     {
         var bands = DemoDemographyTempSettings.Current.OpeningAgeBands;
-        var raw = draws.Raw(id, 0, DemoPopulationAction.OpeningAge);
+        var raw = draws.Age(id);
         var pick = (int)(raw % 100);
         var band = bands[^1];
         var cumulative = 0;
@@ -191,7 +191,7 @@ public sealed class DemoTempDemography
         var rest = raw / 100;
         var age = band.MinAge + (int)(rest % span);
         var dayInYear = (int)(rest / span % 365);
-        var sex = draws.Hit(id, 0, DemoPopulationAction.OpeningSex, 0.5) ? DemoTempSex.Female : DemoTempSex.Male;
+        var sex = draws.IsFemale(id) ? DemoTempSex.Female : DemoTempSex.Male;
         return new DemoTempPerson(id, settlement, sex, checked(-(age * 365 + dayInYear)));
     }
 

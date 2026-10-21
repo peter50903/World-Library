@@ -245,6 +245,7 @@
 | 檔案 | 標記數 | 歸入項目 |
 |---|---|---|
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 19 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局、穩定配對與近親排除）|
+| `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |

@@ -11,11 +11,7 @@ public enum DemoPopulationAction
     Miscarriage = 3,
     Conception = 4,
     /// <summary>第 06 章 d 節：餓死名單抽樣（依年齡權重）。</summary>
-    StarvationSelection = 5,
-    /// <summary>第 07 章 a 節：混齡開局的年齡層與年齡（只用第 0 週）。</summary>
-    OpeningAge = 6,
-    /// <summary>第 07 章 a 節：混齡開局的性別（只用第 0 週）。</summary>
-    OpeningSex = 7
+    StarvationSelection = 5
 }
 
 /// <summary>
