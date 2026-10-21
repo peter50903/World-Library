@@ -44,7 +44,12 @@ jobs:
           if [[ -f WorldSimulation.sln ]]; then
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
-            dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal"
+            # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
+            if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
+              grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80
+              exit 1
+            fi
+            tail -5 /tmp/observer-tests.log
             # V0-01: exercise an actual interactive Observer CLI, not just unit tests.
             printf 'n\ns\nh\n7\nh\nrng\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-demo-smoke.log
             grep -q '已處理事件' /tmp/observer-demo-smoke.log
@@ -363,7 +368,7 @@ jobs:
           # 本工作階段讀不到 CI 原始日誌，失敗時把「最後寫入的日誌」關鍵行轉成註記（API 可讀）。
           f="$(ls -t /tmp/godot-*.log /tmp/observer-*.log 2>/dev/null | head -1)"
           [ -n "$f" ] || exit 0
-          lines="$(grep -nE '(SCRIPT ERROR|ERROR|Unhandled exception|Exception|WORLD_SIM_|   at |失敗|FAIL|still in use|Leaked|res://)' "$f" | tail -60 | cut -c1-240)"
+          lines="$(grep -nE '(SCRIPT ERROR|ERROR|Unhandled exception|Exception|WORLD_SIM_|   at |失敗|FAIL|Failed |Error Message|Expected|Actual|still in use|Leaked|res://)' "$f" | grep -v 'Passed ' | head -60 | cut -c1-300)"
           [ -n "$lines" ] || lines="$(tail -30 "$f" | cut -c1-240)"
           msg="$(printf '%s' "$lines" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
           echo "::error title=LAST $(basename "$f")::$msg"
