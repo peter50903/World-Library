@@ -74,7 +74,7 @@ public sealed class DemoCommitFaultMatrixTests
         return (7, firstSettlement!);
     }
 
-    private sealed record Observed(string Fingerprint, int Weeks, string People, string Rng, ulong NextEntity, int Day);
+    private sealed record Observed(string Fingerprint, int Weeks, string People, string Rng, ulong NextEntity, int Day, int History);
 
     private static Observed Observe(DemoObserverWorld world) => new(
         world.StateFingerprint(),
@@ -82,7 +82,8 @@ public sealed class DemoCommitFaultMatrixTests
         world.HumanPopulationSnapshot is { } h ? $"{h.Seed}/{h.LastWeek}/{h.NextId}/{string.Join(",", h.People)}" : "none",
         string.Join(",", world.RngState()),
         world.EntityIdNextValue,
-        world.Snapshot().DaysElapsed);
+        world.Snapshot().DaysElapsed,
+        world.EventHistory.Count); // 第 03 章 b 節：史庫筆數
 
     [Theory]
     [MemberData(nameof(Matrix))]

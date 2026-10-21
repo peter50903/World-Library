@@ -64,7 +64,7 @@ if (years is not null && historySeed is not null)
     return 2;
 }
 
-const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
+const string HelpText = "指令：n 下一日｜1-1000 快轉天數｜s 狀態｜new W [H] 以世界種子 W（與歷史種子 H）建立新世界｜cell C R 查格子｜ev N 查正式史庫事件 N｜h 最近 10 週週結算｜rng 最近一週十條亂數流計數器｜save N 存到槽 N｜load N 讀槽 N｜slots 列出存檔槽（N＝1～3，TEMP）｜q 離開";
 
 // 第 02 章 b 節：互動與無畫面模式都先載入並驗證正式設定（01＋29），失敗就停止（結束碼 2）。
 var officialConfig = OfficialConfig.Load();
@@ -204,6 +204,30 @@ while (true)
         Console.WriteLine($"第 {latest.Week} 週亂數流計數器（提交前→提交後）：");
         foreach (var c in latest.RngCounters)
             Console.WriteLine($"  {c.StreamId} 提交前 {c.Before}→提交後 {c.After}");
+        continue;
+    }
+    if (command == "ev" || command.StartsWith("ev ", StringComparison.Ordinal))
+    {
+        // 第 03 章 b 節：正式史庫的一筆事件（與 Godot 事件詳情同格式）＋直接後果 ID。
+        var arg = command.Length > 2 ? command[3..].Trim() : "";
+        if (!long.TryParse(arg, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId) || eventId < 1)
+        {
+            Console.WriteLine($"用法：ev 事件編號（1～{Math.Max(1, world.EventHistory.LastEventId)}），世界未改變。");
+            continue;
+        }
+        if (world.EventHistory.Find(eventId) is not { } formal)
+        {
+            Console.WriteLine($"正式史庫沒有事件 #{eventId}（目前共 {world.EventHistory.Count} 筆）。");
+            continue;
+        }
+        var day = (int)formal.WorldTime.TotalDays;
+        Console.WriteLine($"事件 #{formal.EventId}｜世界第 {day} 日｜{formal.Summary}");
+        foreach (var detailLine in DemoEventProjection.DescribeLines(formal))
+            Console.WriteLine($"  {detailLine}");
+        var children = world.EventHistory.ChildrenOf(eventId);
+        Console.WriteLine(children.Count == 0
+            ? "  直接後果：目前沒有"
+            : $"  直接後果：{string.Join("、", children.Select(c => $"#{c.EventId}"))}");
         continue;
     }
     if (command is "?" or "help")

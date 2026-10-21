@@ -3,13 +3,14 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.History;
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.World;
 
 /// <summary>
-/// V0-07B TEMP direct snapshot restore（第 02 章 a 節起為存檔格式第 5 版，仍是 TEMP，不是正式存檔規格）。
+/// V0-07B TEMP direct snapshot restore（第 03 章 b 節起為存檔格式第 6 版，仍是 TEMP，不是正式存檔規格）。
 /// 讀檔不再從第 0 天重播整個世界：
 /// ① 由種子決定、成本很低的部分（時鐘、排程、十條亂數流）用
 ///    <see cref="AdvanceOneDayCore"/>(settleWeekly: false) 重算，與存檔逐項比對（無法偽造）；
@@ -114,10 +115,12 @@ public sealed partial class DemoObserverWorld
         candidate._migrations = batches.ToImmutableList();
         candidate._entityIds = entityIds;
         candidate._sites = sites;
+        IReadOnlyDictionary<long, IReadOnlyList<long>>? participants = null;
         if (weekly.HumanLifecycleEnabled)
         {
             var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
-            var replayed = DemoHumanLifecycle.Replay(initial, reports, sites);
+            var (replayed, replayedParticipants) = DemoHumanLifecycle.Replay(initial, reports, sites);
+            participants = replayedParticipants;
             var supplied = state.GetProperty("Demography").Deserialize<DemoTempDemographicSnapshot>()
                 ?? throw new InvalidDataException("Missing human pregnancy/age snapshot.");
             var candidateSnapshot = replayed.Snapshot();
@@ -128,6 +131,18 @@ public sealed partial class DemoObserverWorld
                     replayed.People.Count(p => p.SettlementId == place.Id) != population[place.Id]))
                 Reject("出生／自然死亡人口身份、孕期或週帳遭篡改");
             candidate._demography = replayed;
+        }
+
+        // 第 03 章 b 節：不信任檔內史庫——由已驗證的週報＋人口重播，經提交時同一個轉換器重建；
+        // 檔內 State.History 必須與重建結果逐字相同（下方重新匯出比對）。
+        try
+        {
+            candidate._history = EventHistory.Rebuild(
+                reports.Select(r => DemoEventProjection.ToWorldEvents(r, sites, participants)));
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new InvalidDataException($"TEMP 存檔被拒絕：正式史庫無法由週報重建（{ex.Message}）。", ex);
         }
 
         // C04（40C INV_ENTITY_ID）：現存全部實體 ID 互不重複，且都小於分配器下一號。

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
 using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.History;
 using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.Scheduling;
 using WorldSimulation.Core.Time;
@@ -63,6 +64,8 @@ public sealed partial class DemoObserverWorld
     // 遷徙隊伍、TEMP 人類個體）共用一個 ID 空間；週內在私有副本上配號，只在發布時寫回。
     private EntityIdAllocatorSnapshot _entityIds = DemoEntityIds.Fresh;
     private DemoWorldSites _sites;
+    // 第 03 章 b 節：正式追加式史庫，只經 DemoWorldCommit.StageHistory→PublishTo 增加。
+    private EventHistory _history = EventHistory.Empty;
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -148,6 +151,9 @@ public sealed partial class DemoObserverWorld
     public IReadOnlyList<RngStreamState> RngState() => _rng.Capture().Streams.ToArray();
 
     private static int DaysOf(TimeSpan worldTime) => checked((int)(worldTime.Ticks / OneDay.Ticks));
+
+    /// <summary>第 03 章 b 節：正式追加式史庫（唯讀、不可變；只有提交能追加）。</summary>
+    public EventHistory EventHistory => _history;
 
     /// <summary>All committed weekly settlement reports, oldest first (detached copy).</summary>
     public IReadOnlyList<DemoWeekReport> WeekReports()
@@ -291,7 +297,7 @@ public sealed partial class DemoObserverWorld
             if (_demography is not null)
             {
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, DemoCausalIndex.NextEventId(_weeks));
-                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population);
+                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population, lifecycle.Participants);
             }
             else
             {
@@ -353,6 +359,7 @@ public sealed partial class DemoObserverWorld
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
             foreach (var m in week.Migrations) sb.Append(inv, $"{m};");
         }
+        foreach (var e in _history.Events) sb.Append(inv, $"{e.Fingerprint()};"); // 第 03 章 b 節：史庫
 
         return sb.ToString();
     }

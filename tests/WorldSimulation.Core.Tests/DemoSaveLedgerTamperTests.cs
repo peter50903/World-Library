@@ -159,6 +159,9 @@ public sealed class DemoSaveLedgerTamperTests
             foreach (var e in week["Events"]!.Deserialize<List<DemoSettlementEvent>>()!) sb.Append(inv, $"{e};");
             foreach (var m in week["Migrations"]!.Deserialize<List<DemoMigrationWeekLedger>>()!) sb.Append(inv, $"{m};");
         }
+        // 第 03 章 b 節：指紋尾段是正式史庫（沿用檔內史庫；史庫本身另由讀檔重建比對）。
+        foreach (var e in state["History"]!.Deserialize<List<WorldSimulation.Core.History.WorldEvent>>()!)
+            sb.Append(inv, $"{e.Fingerprint()};");
 
         state["WorldFingerprint"] = sb.ToString();
     }

@@ -171,6 +171,10 @@ public partial class ObserverRoot
             $"聚落：{e.SettlementName}（實體 ID {e.SettlementId}）｜種類：{DemoCausalIndex.KindText(e.Kind)}｜數量：{e.Count}",
             e.MigrationBatchId > 0 ? $"遷徙隊伍：#{e.MigrationBatchId}" : "",
             $"原因說明：{e.Cause}",
+            // 第 03 章 b 節：正式史庫的同一筆事件（類型、地點、相關實體、原因邊＋根因；Core 共用格式）。
+            _world.EventHistory.Find(e.EventId) is { } formal
+                ? string.Join("\n", DemoEventProjection.DescribeLines(formal))
+                : "⚠ 正式史庫找不到這筆事件",
             parent is null
                 ? "直接原因：無（根因：本週需求大於可取得，週帳缺糧為證據）"
                 : $"直接原因：#{parent.EventId} {parent.SettlementName} {DemoCausalIndex.KindText(parent.Kind)}（第 {parent.Week} 週）",
@@ -280,7 +284,22 @@ public partial class ObserverRoot
             Fail("effect button did not select the emigration");
 
         var foundedSettlement = _world.Sites.Settlements.Single(s => s.Id == founded.SettlementId);
+
+        // 第 03 章 b 節：建村事件在正式史庫的類型、地點、相關實體（新聚落＋隊伍＋來源聚落）與一條直接原因邊。
+        var formal = _world.EventHistory.Find(founded.EventId);
+        if (formal is null || formal.EventTypeId != "TEMP_EV_SETTLEMENT_FOUNDED"
+            || formal.Causes.Length != 1 || formal.Causes[0].Kind != WorldSimulation.Core.History.CauseEdgeKind.Direct
+            || formal.Causes[0].ParentEventId != emigration.EventId
+            || (formal.LocationColumn, formal.LocationRow) != (foundedSettlement.Column, foundedSettlement.Row)
+            || !formal.RelatedEntityIds.Contains(founded.SettlementId))
+            Fail("formal history record of the founding is wrong");
+        SelectEvent(founded.EventId);
+        foreach (var line in DemoEventProjection.DescribeLines(formal!))
+            if (!_eventDetail.Text.Contains(line, StringComparison.Ordinal))
+                Fail($"event detail is missing the formal line: {line}");
+
         GD.Print($"WORLD_SIM_EVENT_DETAIL_OK: Founded=#{founded.EventId} Emigration=#{emigration.EventId} " +
-            $"Hunger=#{hunger!.EventId} Cell=({foundedSettlement.Column},{foundedSettlement.Row})");
+            $"Hunger=#{hunger!.EventId} Cell=({foundedSettlement.Column},{foundedSettlement.Row}) " +
+            $"Type={formal!.EventTypeId} Edge={formal.Causes[0].Kind}");
     }
 }
