@@ -697,9 +697,13 @@ public static class M1Evaluator
 
         // 生產力是量測值，不是由人口前後推斷：每週採收不得超過「期初人口×TEMP 每人每週產量」的勞動力上限。
         var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
-        // 勞動力＝期初可工作者（人類採集情境：成人，扣掉取水者；其他情境：全部人口）。
-        static long Workers(DemoSettlementWeekLedger l)
-            => Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers);
+        // 勞動力＝期初可工作者：共享採集情境（人類採集）＝成人扣掉取水者（DemoWeeklySettlement 共享分配同一算法）；
+        // 自有資源點情境＝全部期初人口（每人 TEMP 產量）。
+        var shared = run.Preset.Config.SharedCatchmentEnabled;
+        long Workers(DemoSettlementWeekLedger l)
+            => shared
+                ? Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers)
+                : l.PopulationOpening;
         foreach (var report in run.Weeks)
         {
             foreach (var l in report.Settlements)
