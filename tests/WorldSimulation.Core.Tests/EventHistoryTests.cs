@@ -231,34 +231,24 @@ public sealed class EventHistoryTests
         Assert.Equal(world.EventHistory.Events, loaded.EventHistory.Events);
     }
 
-    public static TheoryData<string> HistoryTampering() => new()
+    [Fact]
+    public void SaveDoesNotStoreTheFormalHistory_LoadRebuildsItFromEvents()
     {
-        "EventTypeId", "LocationColumn", "RelatedEntityIds", "Causes", "Root", "Summary", "WorldTime", "Drop"
-    };
-
-    [Theory]
-    [MemberData(nameof(HistoryTampering))]
-    public void TamperedHistoryField_IsRejected(string field)
-    {
-        var world = Run("FrontierSample", 42, 300);
+        // 第 04-2 章：正式史庫不另存，讀檔由較早事件＋近期週報經提交時同一個轉換器重建。
+        var world = Run("FrontierSample", 42, 3 * 365);
         var doc = JsonNode.Parse(world.ExportTempSave())!;
-        var history = doc["State"]!["History"]!.AsArray();
-        Assert.NotEmpty(history);
-        var target = history.Last(e => e!["Causes"]!.AsArray().Count > 0)!;
-        switch (field)
+        Assert.Null(doc["State"]!["History"]);
+        var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.EventHistory.Events, loaded.EventHistory.Events);
+
+        // 竄改較早事件的編號 → 重建失敗（編號必須連續）→ 拒讀。
+        var earlier = doc["State"]!["EarlierEvents"]!.AsArray();
+        if (earlier.Count > 1)
         {
-            case "EventTypeId": target["EventTypeId"] = "EV_BIRTH"; break;
-            case "LocationColumn": target["LocationColumn"] = target["LocationColumn"]!.GetValue<int>() + 1; break;
-            case "RelatedEntityIds": target["RelatedEntityIds"]!.AsArray().Add(999999); break;
-            case "Causes": target["Causes"] = new JsonArray(); break;
-            case "Root": target["Root"] = 2; break;
-            case "Summary": target["Summary"] = "竄改"; break;
-            case "WorldTime": target["WorldTime"] = "1.00:00:00"; break;
-            case "Drop": history.Remove(target); break;
+            earlier[1]!["EventId"] = earlier[1]!["EventId"]!.GetValue<long>() + 5;
+            doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(System.Text.Encoding.UTF8.GetBytes(doc["State"]!.ToJsonString()));
+            Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
         }
-        // 補正校驗碼（第 04 章 b 節），確認是史庫重建比對把它擋下。
-        doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(System.Text.Encoding.UTF8.GetBytes(doc["State"]!.ToJsonString()));
-        Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
 
     [Fact]
@@ -266,7 +256,6 @@ public sealed class EventHistoryTests
     {
         var doc = JsonNode.Parse(Run("Sample", 42, 30).ExportTempSave())!;
         doc["Version"] = 5;
-        doc["State"]!.AsObject().Remove("History");
         var ex = Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
         Assert.Contains("版本太舊，請建立新世界", ex.Message, StringComparison.Ordinal);
     }

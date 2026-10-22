@@ -527,6 +527,22 @@ public sealed partial class DemoObserverWorld
         return Math.Max(FirstWeekOfYear(YearsBeforeWeek(start) + 1), FirstRetainedWeek);
     }
 
+    /// <summary>
+    /// 第 04-2 章：較早事件中位置不是聚落格的（途中餓死＝當時隊伍所在格），讀檔重建正式史庫時要用。
+    /// </summary>
+    internal SortedDictionary<long, int[]> EarlierEventCells(int windowStart)
+    {
+        var result = new SortedDictionary<long, int[]>();
+        foreach (var e in SettlementEvents().Where(e => e.Week < windowStart && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath))
+        {
+            var formal = _history.Find(e.EventId);
+            var place = _sites.Settlements.Single(s => s.Id == e.SettlementId);
+            if (formal is not null && (formal.LocationColumn != place.Column || formal.LocationRow != place.Row))
+                result[e.EventId] = new[] { formal.LocationColumn, formal.LocationRow };
+        }
+        return result;
+    }
+
     /// <summary>第 04-1 章：聚落最近一筆帶來飢餓債的事件（飢餓，或帶著飢餓債抵達／建立）；沒有為 0。</summary>
     internal long DebtSourceOf(int settlementId) => _debtSources.GetValueOrDefault(settlementId);
 
