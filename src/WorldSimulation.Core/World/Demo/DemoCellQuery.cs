@@ -41,7 +41,7 @@ public static class DemoCellQuery
     public static string RoutesLine(DemoHexWorld map, DemoCellRef cell)
     {
         var exits = map.Routes.Exits(map, cell);
-        var ford = map.Routes.Ford == cell ? "｜此格為淺灘渡口（可涉水過河）" : "";
+        var ford = map.GetCell(cell.Column, cell.Row).Shallow ? "｜此格為淺灘渡口（可涉水過河）" : "";
         return exits.Count == 0
             ? $"路線：無（不可通行）{ford}"
             : $"路線：{string.Join("、", exits.Select(e => $"{e.Direction} {DemoRouteNetwork.KindName(e.Segment.Kind)}（成本 {e.Segment.Cost}）"))}{ford}";

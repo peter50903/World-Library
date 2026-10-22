@@ -29,9 +29,9 @@ internal static class CellCommand
             return true;
         }
 
-        if (column < 0 || column >= DemoHexWorld.Columns || row < 0 || row >= DemoHexWorld.Rows)
+        if (!world.Map.Contains(column, row))
         {
-            output.WriteLine(OutOfRange);
+            output.WriteLine(OutOfRange(world.Map));
             return true;
         }
 
@@ -39,6 +39,6 @@ internal static class CellCommand
         return true;
     }
 
-    public static string OutOfRange =>
-        $"格子超出地圖：欄 0～{DemoHexWorld.Columns - 1}、列 0～{DemoHexWorld.Rows - 1}";
+    public static string OutOfRange(DemoHexWorld map) =>
+        $"格子超出地圖：欄 0～{map.Columns - 1}、列 0～{map.Rows - 1}";
 }

@@ -20,8 +20,8 @@ public sealed class DemoHexWorldTests
         Assert.Equal(96, a.Cells.Count);
         Assert.Equal(a.Cells.ToArray(), b.Cells.ToArray());
 
-        for (var row = 0; row < DemoHexWorld.Rows; row++)
-        for (var col = 0; col < DemoHexWorld.Columns; col++)
+        for (var row = 0; row < DemoHexWorld.SmallRows; row++)
+        for (var col = 0; col < DemoHexWorld.SmallColumns; col++)
         {
             var item = a.GetCell(col, row);
             Assert.Equal(col, item.Column);

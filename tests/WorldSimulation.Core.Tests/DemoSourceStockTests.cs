@@ -28,7 +28,7 @@ public sealed class DemoSourceStockTests
         var source = new DemoCatchmentFoodSource(1, 0, 0, DemoCatchmentSourceKind.Forest, 20);
         var reach = DemoHexFoodCatchment.EligibleCells(map, source);
         Assert.True(reach.Count <= 4, $"角落森林最多自身＋3 個存在的鄰格，實際 {reach.Count}");
-        Assert.All(reach, c => Assert.InRange(c.Column, 0, DemoHexWorld.Columns - 1));
+        Assert.All(reach, c => Assert.InRange(c.Column, 0, DemoHexWorld.SmallColumns - 1));
         Assert.All(reach, c => Assert.NotEqual(DemoTerrain.Water, c.Terrain));
     }
 

@@ -255,7 +255,7 @@ public sealed class DemoDirectSnapshotTests
             case "extra-settlement":
                 var copy = JsonNode.Parse(founded.ToJsonString())!;
                 copy["Id"] = founded["Id"]!.GetValue<int>() + 1;
-                copy["Column"] = (founded["Column"]!.GetValue<int>() + 1) % DemoHexWorld.Columns;
+                copy["Column"] = (founded["Column"]!.GetValue<int>() + 1) % DemoHexWorld.SmallColumns;
                 settlements.Add(copy);
                 break;
             case "resource-point":

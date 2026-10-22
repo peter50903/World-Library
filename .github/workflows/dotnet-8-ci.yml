@@ -69,6 +69,13 @@ jobs:
                 echo "::notice title=普通世界人口診斷 種子 $s $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
               done
             done
+            # 第 07-1 章 c 節：中、大地圖效能診斷（只報告；完整長測時跑 30 年）。
+            for m in $([ "$FULL" = true ] && echo medium large); do
+              if ! timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed 1 --years 30 --map "$m" > "/tmp/diag-map-$m.txt" 2>&1; then
+                echo "::warning title=地圖 $m 效能診斷未完成::$(tail -30 "/tmp/diag-map-$m.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+              fi
+              echo "::notice title=地圖 $m 效能診斷::$(grep -E '===|耗時|^Y(1|10|20|30) |彙整' "/tmp/diag-map-$m.txt" | cut -c1-240 | head -30 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+            done
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
               grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80

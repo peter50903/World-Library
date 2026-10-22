@@ -199,8 +199,7 @@ public partial class DemoHexMap : Control
         // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
-        if (Highlight is { } focus && focus.Column >= 0 && focus.Column < DemoHexWorld.Columns
-            && focus.Row >= 0 && focus.Row < DemoHexWorld.Rows)
+        if (Highlight is { } focus && World.Contains(focus.Column, focus.Row))
         {
             var cell = World.GetCell(focus.Column, focus.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
@@ -412,8 +411,10 @@ public partial class DemoHexMap : Control
     {
         const float padding = 28f;
         var sqrtThree = Mathf.Sqrt(3f);
-        var widthUnits = sqrtThree * (DemoHexWorld.Columns + 0.5f);
-        var heightUnits = 1.5f * (DemoHexWorld.Rows - 1) + 2f;
+        var columns = World?.Columns ?? DemoHexWorld.SmallColumns;
+        var rows = World?.Rows ?? DemoHexWorld.SmallRows;
+        var widthUnits = sqrtThree * (columns + 0.5f);
+        var heightUnits = 1.5f * (rows - 1) + 2f;
         var radius = Mathf.Max(4f, Mathf.Min(
             (Size.X - 2f * padding) / widthUnits,
             (Size.Y - 2f * padding) / heightUnits));

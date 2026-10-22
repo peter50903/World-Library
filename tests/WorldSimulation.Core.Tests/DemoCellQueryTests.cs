@@ -38,8 +38,8 @@ public sealed class DemoCellQueryTests
 
     private static IEnumerable<(int Column, int Row)> AllCells()
     {
-        for (var row = 0; row < DemoHexWorld.Rows; row++)
-            for (var column = 0; column < DemoHexWorld.Columns; column++)
+        for (var row = 0; row < DemoHexWorld.SmallRows; row++)
+            for (var column = 0; column < DemoHexWorld.SmallColumns; column++)
                 yield return (column, row);
     }
 

@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Text.Json.Serialization;
 using WorldSimulation.Core.Config;
 using WorldSimulation.Core.Rng;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.Core.World;
 
@@ -19,6 +20,9 @@ public sealed record WorldRecipe(
     string ConfigHash,
     string CodeVersion)
 {
+    /// <summary>第 07-1 章 c 節：建立世界時選的地圖尺寸（世界種子之外的開局參數；舊配方沒有這欄＝小地圖）。</summary>
+    public DemoMapSize MapSize { get; init; } = DemoMapSize.Small;
+
     /// <summary>TEMP：尚無正式規則版號制度。</summary>
     public const string TempRulesVersion = "TEMP-RULES-0";
 
@@ -41,8 +45,8 @@ public sealed record WorldRecipe(
     private static bool IsFullHash(string? text) => text is { Length: 64 } && text.All(Uri.IsHexDigit);
 
     /// <summary>以目前建置的規則版本、設定雜湊與程式版本組成配方。</summary>
-    public static WorldRecipe ForSeeds(ulong worldSeed, ulong? historySeed = null)
-        => new(worldSeed, historySeed, TempRulesVersion, CurrentConfigHash, CurrentCodeVersion);
+    public static WorldRecipe ForSeeds(ulong worldSeed, ulong? historySeed = null, DemoMapSize mapSize = DemoMapSize.Small)
+        => new(worldSeed, historySeed, TempRulesVersion, CurrentConfigHash, CurrentCodeVersion) { MapSize = mapSize };
 
     /// <summary>本建置編入的正式設定雜湊（第 02 章 b 節）；讀取失敗為 <see cref="InvalidConfigHash"/>。</summary>
     public static string CurrentConfigHash => OfficialConfig.Load().Config?.ConfigHash ?? InvalidConfigHash;
@@ -77,6 +81,19 @@ public sealed record WorldRecipe(
         Check(RulesVersion, "規則版本");
         Check(ConfigHash, "設定雜湊");
         Check(CodeVersion, "程式版本");
+        if (!Enum.IsDefined(MapSize))
+            throw new InvalidDataException("世界配方的地圖尺寸不合法。");
+    }
+
+    /// <summary>小地圖不顯示（與第 07-1 章 c 節之前的說明文字相同）。</summary>
+    private string MapSizeText
+    {
+        get
+        {
+            if (MapSize == DemoMapSize.Small) return "";
+            var (columns, rows) = DemoMapSizes.Dimensions(MapSize);
+            return string.Create(CultureInfo.InvariantCulture, $"｜地圖 {DemoMapSizes.Name(MapSize)}（{columns}×{rows}）");
+        }
     }
 
     private string ConfigHashText => ConfigHashIsTemp
@@ -95,11 +112,12 @@ public sealed record WorldRecipe(
 
     /// <summary>一行繁體中文（CLI `s` 與存檔說明共用）。</summary>
     public string Describe() => string.Create(CultureInfo.InvariantCulture,
-        $"世界配方｜世界種子 {WorldSeed}｜歷史種子 {HistorySeedText}｜規則版本 {RulesVersionText}｜設定雜湊 {ConfigHashText}｜程式版本 {CodeVersionText}");
+        $"世界配方｜世界種子 {WorldSeed}{MapSizeText}｜歷史種子 {HistorySeedText}｜規則版本 {RulesVersionText}｜設定雜湊 {ConfigHashText}｜程式版本 {CodeVersionText}");
 
     /// <summary>多行版（Godot 狀態欄）。</summary>
     public string DescribeLines() => string.Join('\n',
         string.Create(CultureInfo.InvariantCulture, $"世界種子：{WorldSeed}"),
+        $"地圖：{DemoMapSizes.Name(MapSize)}（{DemoMapSizes.Dimensions(MapSize).Columns}×{DemoMapSizes.Dimensions(MapSize).Rows}）",
         $"歷史種子：{HistorySeedText}",
         $"規則版本：{RulesVersionText}",
         $"設定雜湊：{ConfigHashText}",
