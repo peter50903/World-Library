@@ -19,7 +19,10 @@ public sealed record DemoPregnancyGroup(int SettlementId, int BatchId, int DueWe
 public enum DemoRepresentativeRole
 {
     /// <summary>村長（權力者）。</summary>
-    Leader = 0
+    Leader = 0,
+
+    /// <summary>第 08-6 章：農師（農耕知識持有者）。</summary>
+    Farmer = 1
 }
 
 /// <summary>
@@ -32,6 +35,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
     public static string RoleName(DemoRepresentativeRole role) => role switch
     {
         DemoRepresentativeRole.Leader => "村長",
+        DemoRepresentativeRole.Farmer => "農師",
         _ => "代表"
     };
 }

@@ -319,6 +319,14 @@ public sealed class DemoCausalIndex
                 return null;
             }
 
+            case DemoSettlementEventKind.KnowledgeLearned:
+                // 第 08-6 章：根因（經驗累積或遷入者帶來；進度另存於知識狀態）。
+                return parent is null && Enum.IsDefined((DemoTechnology)e.Count) ? null : "習得技術是根因，事件人數欄必須是已登錄的技術";
+            case DemoSettlementEventKind.EraBegan:
+                return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week
+                    && parent.SettlementId == e.SettlementId && Enum.IsDefined((DemoEra)e.Count)
+                    ? null : "時代開始的直接原因必須是同週同聚落的習得技術事件";
+
             default:
                 return "未知的事件種類";
         }

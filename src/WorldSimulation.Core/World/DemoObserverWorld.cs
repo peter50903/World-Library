@@ -76,6 +76,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableList<DemoSettlementEvent> _earlierEvents = ImmutableList<DemoSettlementEvent>.Empty; // _weeks 之前的聚落事件
     private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle = ImmutableSortedDictionary<int, DemoSettlementChronicle>.Empty;
     private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
+    private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -208,6 +209,12 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 04-1 章：全部聚落事件的因果索引（讀檔前的較早事件只建索引；近期週報照常檢查）。</summary>
     public DemoCausalIndex BuildCausalIndex() => DemoCausalIndex.Build(_earlierEvents, _weeks);
+
+    /// <summary>第 08-6 章：知識樹（各聚落研究進度與已習得的技術）與目前時代。</summary>
+    public DemoKnowledgeState Knowledge => _knowledge;
+
+    /// <summary>第 08-6 章：目前時代。</summary>
+    public DemoEra Era => _knowledge.Era;
 
     /// <summary>第 04-1 章：聚落自己記得的小史（沒有紀錄＝空）。</summary>
     public DemoSettlementChronicle ChronicleOf(int settlementId)
@@ -406,8 +413,15 @@ public sealed partial class DemoObserverWorld
             {
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
-                    checked(_history.LastEventId + 1));
-                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population);
+                    checked(_history.LastEventId + 1), _knowledge);
+                // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
+                var report = lifecycle.Outcome.Report;
+                var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
+                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId);
+                var withKnowledge = learned.Count == 0 ? lifecycle.Outcome
+                    : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(learned).ToArray() } };
+                commit.StagePopulation(withKnowledge, lifecycle.Population);
+                commit.StageKnowledge(knowledge);
             }
             else
             {
@@ -489,6 +503,7 @@ public sealed partial class DemoObserverWorld
         foreach (var e in SettlementEvents().Where(e => e.Week < windowStart)) sb.Append(inv, $"early{e};");
         foreach (var kv in _chronicle) sb.Append(inv, $"chronicle{kv.Key}={kv.Value.Fingerprint()};");
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
+        sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

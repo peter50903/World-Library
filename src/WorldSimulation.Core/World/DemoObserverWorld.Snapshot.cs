@@ -133,6 +133,18 @@ public sealed partial class DemoObserverWorld
         if (debtSources.Keys.Any(id => sites.Settlements.All(s => s.Id != id)) || debtSources.Values.Any(v => v < 1))
             Reject("飢餓債來源指向不存在的聚落或事件");
         candidate._debtSources = debtSources.ToImmutableSortedDictionary();
+        // 第 08-6 章：知識樹與時代（結構檢查：聚落存在、進度在範圍內、習得週不晚於現在、時代與習得一致）。
+        var knowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
+        if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
+            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
+                || r.Progress < 0 || r.Progress > DemoKnowledge.TempThreshold || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
+                || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.TempThreshold))
+            || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
+            || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)
+            || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
+            Reject("知識樹或時代不合法");
+        candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };
         candidate._reserves = reserves.ToImmutableSortedDictionary();
         candidate._settlementFood = food.ToImmutableSortedDictionary();
         candidate._population = population.ToImmutableSortedDictionary();

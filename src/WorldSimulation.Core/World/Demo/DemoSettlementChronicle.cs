@@ -63,6 +63,16 @@ public sealed record DemoSettlementChronicle(
                 builder[ledger.SettlementId] = updated;
         }
 
+        // 第 08-6 章：習得技術、本聚落率先讓世界進入新時代。
+        foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan))
+        {
+            var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
+            var text = e.Kind == DemoSettlementEventKind.KnowledgeLearned
+                ? $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}"
+                : $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}";
+            builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };
+        }
+
         var known = inOffice.ToDictionary(r => r.Id);
         foreach (var r in report.Appointments)
         {

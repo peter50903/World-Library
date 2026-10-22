@@ -30,7 +30,9 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.SettlementFounded] = new("TEMP_EV_SETTLEMENT_FOUNDED", "建立新聚落", CauseRootCategory.Resource),
         [DemoSettlementEventKind.Birth] = new("EV_BIRTH", "出生", CauseRootCategory.Lifecycle),
         [DemoSettlementEventKind.NaturalDeath] = new("EV_DEATH", "死亡", CauseRootCategory.Lifecycle),
-        [DemoSettlementEventKind.SettlementRuined] = new("TEMP_EV_SETTLEMENT_RUINED", "聚落成為遺跡", CauseRootCategory.Resource)
+        [DemoSettlementEventKind.SettlementRuined] = new("TEMP_EV_SETTLEMENT_RUINED", "聚落成為遺跡", CauseRootCategory.Resource),
+        [DemoSettlementEventKind.KnowledgeLearned] = new("TEMP_EV_KNOWLEDGE_LEARNED", "習得技術", CauseRootCategory.Knowledge),
+        [DemoSettlementEventKind.EraBegan] = new("TEMP_EV_ERA_BEGAN", "時代開始", CauseRootCategory.Knowledge)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);
@@ -51,6 +53,7 @@ public static class DemoEventTypes
     {
         CauseRootCategory.Resource => "資源",
         CauseRootCategory.Lifecycle => "【TEMP】生命週期",
+        CauseRootCategory.Knowledge => "【TEMP】知識",
         _ => root.ToString()
     };
 }

@@ -22,7 +22,10 @@ public enum CauseRootCategory
     Resource = 1,
 
     /// <summary>【TEMP】生命週期：出生、自然死亡。</summary>
-    Lifecycle = 2
+    Lifecycle = 2,
+
+    /// <summary>【TEMP】第 08-6 章 知識：習得技術、時代開始。</summary>
+    Knowledge = 3
 }
 
 /// <summary>
