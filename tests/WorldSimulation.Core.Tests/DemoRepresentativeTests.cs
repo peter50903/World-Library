@@ -89,8 +89,10 @@ public sealed class DemoRepresentativeTests
         var history = DemoSettlementHistory.Lines(world, leaderExit.SettlementId);
         Assert.Contains(history, l => l.Contains("卸任：老死", StringComparison.Ordinal));
         Assert.Contains(history, l => l.Contains("成為", StringComparison.Ordinal));
-        // 存讀檔後代表人物相同。
-        var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
-        Assert.Equal(world.HumanPopulationSnapshot!.Representatives, loaded.HumanPopulationSnapshot!.Representatives);
+        // 存讀檔後代表人物相同（十年存檔；四十年的週帳存檔超過 TEMP 大小上限，另見第 07-1 章 c 節）。
+        var young = Run(1, 10 * TestCalendar.DaysPerYear);
+        var loaded = DemoObserverWorld.ImportTempSave(young.ExportTempSave());
+        Assert.Equal(young.HumanPopulationSnapshot!.Representatives, loaded.HumanPopulationSnapshot!.Representatives);
+        Assert.Equal(young.WeekReports().SelectMany(w => w.Appointments), loaded.WeekReports().SelectMany(w => w.Appointments));
     }
 }
