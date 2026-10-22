@@ -646,7 +646,7 @@ internal static class DemoWeeklySettlement
         var slackBySettlement = config.SharedCatchmentEnabled && map is not null
             ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
             : new Dictionary<int, long>();
-        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers)); // 第 08-1 章開拓選址
+        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers, sites.Settlements.Where(x => !x.IsRuin))); // 第 08-1 章開拓選址
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
@@ -900,6 +900,10 @@ internal static class DemoWeeklySettlement
             // 一部分人帶著等比例的糧食與飢餓債組成隊伍出發（原子出發；本週停在來源格）。
             // 沒有已知可達的目的地就留下（45E MIG_NO_TARGET）；這不是人口自動平衡器。
             long emigrants = 0, foodOut = 0, debtOut = 0;
+            // 第 08-4 章【TEMP 規則】希望時代：已在路上前往某聚落的人數佔用它的來源餘量（同一週多個聚落不會同時湧入同一村）。
+            long CommittedTo(int destinationId)
+                => checked(nextMigrations.Where(b => !b.Founding && b.ToSettlementId == destinationId).Sum(b => b.People)
+                    * config.FoodPerPersonPerWeek);
             // 第 08-1 章：人類採集世界在挨餓之前就分出一戶開拓（擁擠外移，只開拓新聚落、不搬進別的聚落）。
             var slack = slackBySettlement.GetValueOrDefault(settlement.Id);
             var crowded = map is not null && config.MigrationEnabled && config.FoundingEnabled
@@ -910,7 +914,8 @@ internal static class DemoWeeklySettlement
             var target = wantsToLeave && !crowded
                 // 第 08-3 章：希望時代只搬去「已知來源餘量養得起這批人」的聚落，避免缺糧者湧入別村、別村再缺糧外移的連鎖。
                 ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config,
-                    config.HopeEra ? checked(survivors / config.EmigrationShareDivisor * config.FoodPerPersonPerWeek) : 0)
+                    config.HopeEra ? checked(survivors / config.EmigrationShareDivisor * config.FoodPerPersonPerWeek) : 0,
+                    config.HopeEra ? CommittedTo : null)
                 : null;
             if (wantsToLeave && target is null && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
@@ -925,13 +930,17 @@ internal static class DemoWeeklySettlement
                 // 第 08-1 章：人類採集世界的開拓隊只選可持續餘量養得起預計人數的空地，並挑餘量最大者。
                 var partyLimit = crowded ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor;
                 var scoreSites = config.SharedCatchmentEnabled && config.HumanLifecycleEnabled;
-                var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                    config.FoundingSearchMaxSteps,
-                    c => weekSites.SettlementAt(c.Column, c.Row) is null
+                bool SiteOk(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is null
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
-                        && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek)),
-                    scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                        && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
+                var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
+                    config.FoundingSearchMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                // 第 08-4 章【TEMP 規則】希望時代：附近找不到空地時，缺糧或擁擠的聚落願意走得更遠（婚嫁範圍）去開拓，
+                // 不會一直困在養不起的地方。
+                if (site.Length < 2 && config.HopeEra && config.FoundingSearchMaxSteps < DemoMateTempSettings.MateRouteMaxSteps)
+                    site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
+                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
@@ -1009,6 +1018,13 @@ internal static class DemoWeeklySettlement
                         new DemoCellRef(settlement.Column, settlement.Row), new DemoCellRef(candidate.Column, candidate.Row));
                     if (route.Length < 2 || route.Length - 1 > DemoMateTempSettings.MateRouteMaxSteps)
                         continue;
+                    // 第 08-4 章【TEMP 規則】希望時代：只嫁娶到已知來源餘量還養得起一個人的聚落（扣掉已在路上的人）。
+                    if (config.HopeEra)
+                    {
+                        var news = DemoMigrationNews.Received(publishedWeeks, week, candidate.Id, route.Length - 1, config.NewsDelayWeeksPerCell);
+                        if (news is null || news.Value.Ledger.SourceSlack - CommittedTo(candidate.Id) < config.FoodPerPersonPerWeek)
+                            continue;
+                    }
                     if (mateTarget is null || route.Length < mateTarget.Value.Route.Length)
                         mateTarget = (candidate, route);
                 }
@@ -1171,7 +1187,8 @@ internal static class DemoWeeklySettlement
     /// </summary>
     private static (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? ChooseDestination(
         DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, int week,
-        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config, long minSlack = 0)
+        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config, long minSlack = 0,
+        Func<int, long>? committed = null)
     {
         (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? best = null;
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
@@ -1188,7 +1205,7 @@ internal static class DemoWeeklySettlement
                 config.NewsDelayWeeksPerCell);
             if (news is null || !DemoMigrationNews.SaysFed(news.Value.Ledger))
                 continue;
-            if (minSlack > 0 && news.Value.Ledger.SourceSlack < minSlack) // 第 08-3 章【TEMP 規則】
+            if (minSlack > 0 && news.Value.Ledger.SourceSlack - (committed?.Invoke(candidate.Id) ?? 0) < minSlack) // 第 08-3 章【TEMP 規則】；第 08-4 章扣掉已在路上的人
                 continue;
             if (best is null || route.Length < best.Value.Route.Length)
                 best = (candidate, route, news.Value.Week);

@@ -183,18 +183,29 @@ public sealed class DemoWorldSites
         // 並且彼此相隔 ≥ TEMP 格數（不共用任何來源）——開局不會一開始就因搶同一批來源而挨餓。
         // 抽樣次數與順序不變；符合條件的格不夠時退回上面的候選格。
         var fallback = land.ToList();
+        var richPlacement = false;
         if (spaced)
         {
             var supply = OpeningReachSupply(map);
             var rich = land.Where(c => supply.GetValueOrDefault(new DemoCellRef(c.Column, c.Row)) >= TempOpeningMinSupply).ToList();
             if (rich.Count >= count)
+            {
                 land = rich;
+                richPlacement = true;
+            }
         }
 
         // ① Placement: same ECOLOGY_INIT draw order as before C05, so positions are unchanged for every seed.
         for (var i = 0; i < count; i++)
         {
             var pool = land;
+            // 第 08-4 章【TEMP 規則】希望時代：間隔合格的宜居格用完就不再放（少放幾個聚落），
+            // 不退回擠在一起的空地——大地圖開局聚落多，退回後鄰村共用來源、從第 1 年起就長期缺糧。
+            if (pool.Count == 0)
+            {
+                count = i;
+                break;
+            }
             var pick = (int)(rng.NextUInt64(RngStreams.EcologyInit) % (ulong)pool.Count);
             var cell = pool[pick];
             pool.RemoveAt(pick);
@@ -202,7 +213,7 @@ public sealed class DemoWorldSites
             if (spaced)
             {
                 pool.RemoveAll(c => HexDistance(c, cell) < TempOpeningSpacing);
-                if (pool.Count == 0)
+                if (pool.Count == 0 && !richPlacement)
                 {
                     pool.AddRange(fallback);
                     land = pool;
