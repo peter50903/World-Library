@@ -110,7 +110,6 @@ public static class DemoInvariants
 
         var live = world.Sites.EntityIds()
             .Concat(world.MigrationsInTransit().Select(b => (long)b.Id))
-            .Concat(world.HumanPopulationSnapshot?.People.Select(x => x.Id) ?? Enumerable.Empty<long>())
             .ToList();
         var duplicate = live.GroupBy(x => x).FirstOrDefault(g => g.Count() > 1);
         if (duplicate is not null)
@@ -213,8 +212,9 @@ public static class DemoInvariants
         var settled = world.Sites.Settlements.Sum(s => world.SettlementPopulation(s.Id));
         if (world.SettledPopulation != settled || world.WorldPopulation != settled + world.PopulationInTransit)
             yield return $"世界人口 {world.WorldPopulation}≠聚落 {settled}＋途中 {world.PopulationInTransit}";
-        if (world.HumanPopulationSnapshot is { } people && people.People.Length != world.WorldPopulation)
-            yield return $"人口身分 {people.People.Length} 人≠世界人口 {world.WorldPopulation} 人";
+        // 第 07-1 章：群體人口的總人數＝世界人口。
+        if (world.HumanPopulationSnapshot is { } people && people.Groups.Sum(g => g.Count) != world.WorldPopulation)
+            yield return $"群體人口 {people.Groups.Sum(g => g.Count)} 人≠世界人口 {world.WorldPopulation} 人";
     }
 
     // ── 資源：資源點存量、糧食、飢餓債逐帳平衡且逐週銜接；無魔法糧食；目前存量＝最後一週期末 ──────

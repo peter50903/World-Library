@@ -27,8 +27,7 @@ public sealed class DemoEntityIdIntegrationTests
             .Concat(world.Sites.PopGroups.Select(g => (long)g.Id))
             .Concat(world.WeekReports().SelectMany(w => w.Migrations).Where(m => m.Departed).Select(m => (long)m.BatchId))
             .ToList();
-        if (world.HumanPopulationSnapshot is { } humans)
-            ids.AddRange(humans.People.Select(p => p.Id));
+        // 第 07-1 章：群體人口不配實體 ID。
         return ids;
     }
 

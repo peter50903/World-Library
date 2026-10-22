@@ -4,9 +4,9 @@ using WorldSimulation.Core.Entity;
 namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>
-/// #105 TEMP human cohort integration. A verified 39-week pregnancy is the ONLY
-/// source of a new person; deaths are tracked independently as starvation vs age.
-/// 第 07 章 b 節：遷徙隊伍以家庭為單位攜帶身分；途中餓死、出生、自然死亡都對應真實個體。
+/// #105 TEMP 人類生死與週帳整合。第 07-1 章 a 節起人口是群體統計（<see cref="DemoCohortDemography"/>）：
+/// 出生只來自到期的懷孕、死亡只依年齡風險（希望時代只有老年），遷徙依 <see cref="DemoCohortMigration"/> 規劃的年齡群同行。
+/// 結算（DemoWeeklySettlement）先決定糧食、遷徙人數，這裡再套用到群體人口並補上出生／自然死亡的週帳與事件。
 /// </summary>
 internal static class DemoHumanLifecycle
 {
@@ -19,60 +19,32 @@ internal static class DemoHumanLifecycle
         NaturalDeathMinAgeYears = DemoSurvivalTempSettings.Current.ElderAgeYears
     };
 
-    /// <returns>
-    /// 生死後的週結算、人口名冊，以及第 03 章 b 節的「事件 ID → 當事人」：出生＝新生兒＋母＋父；
-    /// 自然死亡＝死者；本週聚落餓死事件＝本週被移除的餓死者（受孕、流產不入史）。
-    /// </returns>
-    public static (DemoWeeklyOutcome Outcome, DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Apply(
-        DemoWeeklyOutcome weekly, DemoTempDemography opening, DemoPopulationDraws draws, long firstNewEventId = 1)
+    private static DemoEmigrationMode ModeOf(DemoMigrationWeekLedger leg)
+        => leg.MateSeeking ? DemoEmigrationMode.Mate : leg.Founding ? DemoEmigrationMode.Founding : DemoEmigrationMode.Shortage;
+
+    /// <returns>生死後的週結算與群體人口（第 07-1 章起沒有個體當事人；事件只記聚落與人數）。</returns>
+    public static (DemoWeeklyOutcome Outcome, DemoCohortDemography Population) Apply(
+        DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, long firstNewEventId = 1)
     {
         ArgumentNullException.ThrowIfNull(weekly);
         ArgumentNullException.ThrowIfNull(opening);
         ArgumentNullException.ThrowIfNull(draws);
         var report = weekly.Report;
         if (opening.LastWeek + 1 != report.Week)
-            throw new InvalidOperationException("TEMP pregnancies must advance one committed week.");
+            throw new InvalidOperationException("Cohort lifecycle must advance one committed week.");
         var day = report.Week * 7;
+        if (report.Settlements.Any(l => l.Births != 0 || l.NaturalDeaths != 0 || l.Deaths != 0)
+            || report.Migrations.Any(m => m.Births != 0 || m.NaturalDeaths != 0 || m.Deaths != 0))
+            throw new InvalidOperationException("Cohort lifecycle expects a pre-demography Hope-era ledger (no starvation deaths).");
 
-        // ① 途中餓死（第 07 章 b 節）：隊伍帳的死亡人數＝從隊伍成員中依年齡權重抽出的真實身分。
-        var afterStarvation = opening;
-        var starvedByBatch = new Dictionary<int, long[]>();
-        foreach (var leg in report.Migrations)
-        {
-            if (leg.Births != 0 || leg.NaturalDeaths != 0 || leg.HungerDebtRemovedByNaturalDeath != 0)
-                throw new InvalidOperationException("Expected pre-demography migration ledger.");
-            if (leg.Departed || leg.Deaths == 0) continue;
-            var ids = StarvedAmong(afterStarvation.People.Where(p => p.BatchId == leg.BatchId), leg.Deaths, report.Week, draws);
-            afterStarvation = afterStarvation.RemoveStarvation(ids, inTransit: true).Population;
-            starvedByBatch[leg.BatchId] = ids;
-        }
-
-        // ② 聚落餓死：已有的週帳提供真實證據，只移除對應的真實身分，不憑空生出倖存者。
-        var starvedBySettlement = new Dictionary<int, long[]>();
-        foreach (var ledger in report.Settlements)
-        {
-            if (ledger.Births != 0 || ledger.NaturalDeaths != 0 || ledger.ChildStarvationDeaths != 0 || ledger.ElderStarvationDeaths != 0)
-                throw new InvalidOperationException("Expected pre-demography weekly food ledger.");
-            if (ledger.Deaths > int.MaxValue)
-                throw new InvalidOperationException("Too many people for TEMP identity cohort.");
-            var ids = StarvedIn(afterStarvation, ledger.SettlementId, ledger.Deaths, report.Week, draws);
-            afterStarvation = afterStarvation.RemoveStarvation(ids, inTransit: false).Population;
-            if (ids.Length > 0)
-                starvedBySettlement[ledger.SettlementId] = ids;
-        }
-
-        // ③ 出發：整戶挑選（與結算時的人數規劃同一函式），身分加入隊伍。④ 抵達：隊伍成員定居目的聚落。
-        var moved = afterStarvation;
+        // ① 出發：與結算時同一份規劃。② 抵達：隊伍的年齡群與懷孕併入目的聚落。
+        var moved = opening;
         foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
         {
-            var residents = moved.People.Where(p => p.IsSettled && p.SettlementId == leg.FromSettlementId).ToList();
-            // 第 08-1 章：婚嫁遷移只出發那一位找不到伴侶的單身者。
-            var ids = leg.MateSeeking
-                ? DemoFamilyMigration.MateSeeker(residents, day, Rules) is { } seeker ? new[] { seeker.Id } : Array.Empty<long>()
-                : DemoFamilyMigration.Choose(residents, leg.PopulationOpening, day, Rules, requireCouple: leg.Founding, keepCouple: true);
-            if (ids.Length != leg.PopulationOpening)
-                throw new InvalidOperationException("Departing families do not match the migration ledger.");
-            moved = moved.Depart(ids, leg.BatchId);
+            var plan = DemoCohortMigration.Plan(moved, leg.FromSettlementId, leg.PopulationOpening, ModeOf(leg), day, Rules);
+            if (plan.People != leg.PopulationOpening)
+                throw new InvalidOperationException("Departing cohorts do not match the migration ledger.");
+            moved = moved.Depart(leg.FromSettlementId, plan.Take, plan.Pregnancies, leg.BatchId);
         }
         foreach (var leg in report.Migrations.Where(m => m.Arrived).OrderBy(m => m.BatchId))
         {
@@ -86,39 +58,33 @@ internal static class DemoHumanLifecycle
                 throw new InvalidOperationException("Travelling migrants do not match the migration ledger.");
         }
 
-        // ⑤ 受孕只在本週真實糧帳足夠的聚落；出生與自然死亡在週末（定居者記聚落帳，途中者記隊伍帳）。
-        // C04：新生兒接在本週結算的配號之後，向同一個私有分配器取號。
-        var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
-        var result = moved.AdvanceWeek(report.Week, id =>
+        // ③ 生死：受孕只在本週真實糧帳寬裕的聚落，數量不超過可預留的口糧（第 08-3 章）。
+        var outcome = moved.AdvanceWeek(report.Week, id =>
         {
-            var ledger = report.Settlements.Single(s => s.SettlementId == id);
-            // 第 08-1 章：糧食寬裕才受孕（取用來源仍有 TEMP 餘量），人口逼近上限時出生自然放慢。
-            // 第 08-3 章：還要留得下「已懷孕＋這一胎」將來成年的食量（來源餘量與採集勞力都要夠），人口在上限附近停住、不衝過頭挨餓。
-            var pregnant = moved.People.Count(p => p.IsSettled && p.SettlementId == id && p.PregnancyDueWeek is not null);
-            return ledger.HungerDebtClosing == 0 && ledger.PopulationClosing > 0
-                && DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage,
-                    ledger.SourceSlack)
-                && (report.Sources.Count == 0 || DemoCrowding.RoomForChild(ledger, pregnant));
-        }, Rules, draws, entityAllocator);
+            var ledger = report.Settlements.SingleOrDefault(s => s.SettlementId == id);
+            if (ledger is null || ledger.HungerDebtClosing != 0 || ledger.PopulationClosing <= 0
+                || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, ledger.SourceSlack))
+                return 0;
+            return report.Sources.Count == 0 ? long.MaxValue
+                : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);
+        }, Rules, draws);
+
+        long Sum(DemoTempDemographicKind kind, int settlement, int batch)
+            => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
+
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
         var ledgers = new List<DemoSettlementWeekLedger>(report.Settlements.Count);
         foreach (var ledger in report.Settlements)
         {
-            var births = result.Events.Count(e => e.SettlementId == ledger.SettlementId && e.BatchId is null
-                && e.Kind == DemoTempDemographicKind.Birth);
-            var natural = result.Events.Count(e => e.SettlementId == ledger.SettlementId && e.BatchId is null
-                && e.Kind == DemoTempDemographicKind.NaturalDeath);
+            var births = Sum(DemoTempDemographicKind.Birth, ledger.SettlementId, 0);
+            var natural = Sum(DemoTempDemographicKind.NaturalDeath, ledger.SettlementId, 0);
             var closing = checked(ledger.PopulationClosing + births - natural);
-            if (closing < 0 || result.Population.ResidentsOf(ledger.SettlementId) != closing)
-                throw new InvalidOperationException("Birth/death identities do not match world population.");
+            if (closing < 0 || outcome.Population.ResidentsOf(ledger.SettlementId) != closing)
+                throw new InvalidOperationException("Cohort births/deaths do not match world population.");
             var excessDebt = closing == 0 ? ledger.HungerDebtClosing : 0L;
-            var starved = starvedBySettlement.GetValueOrDefault(ledger.SettlementId) ?? Array.Empty<long>();
-            var starvedPeople = opening.People.Where(p => starved.Contains(p.Id)).ToArray();
             var modified = ledger with
             {
-                ChildStarvationDeaths = starvedPeople.Count(p => !p.IsAdultAt(day, Rules)),
-                ElderStarvationDeaths = starvedPeople.Count(p => p.AgeYearsAt(day) >= DemoSurvivalTempSettings.Current.ElderAgeYears),
                 Births = births,
                 Deaths = checked(ledger.Deaths + natural),
                 NaturalDeaths = natural,
@@ -137,12 +103,12 @@ internal static class DemoHumanLifecycle
         foreach (var leg in report.Migrations)
         {
             if (leg.Arrived) { legs.Add(leg); continue; }
-            var births = result.Events.Count(e => e.BatchId == leg.BatchId && e.Kind == DemoTempDemographicKind.Birth);
-            var natural = result.Events.Count(e => e.BatchId == leg.BatchId && e.Kind == DemoTempDemographicKind.NaturalDeath);
+            var births = Sum(DemoTempDemographicKind.Birth, leg.FromSettlementId, leg.BatchId);
+            var natural = Sum(DemoTempDemographicKind.NaturalDeath, leg.FromSettlementId, leg.BatchId);
             if (births == 0 && natural == 0) { legs.Add(leg); continue; }
             var closing = checked(leg.PopulationClosing + births - natural);
-            if (closing < 0 || result.Population.MembersOf(leg.BatchId) != closing)
-                throw new InvalidOperationException("Travel birth/death identities do not match the migration ledger.");
+            if (closing < 0 || outcome.Population.MembersOf(leg.BatchId) != closing)
+                throw new InvalidOperationException("Travel birth/death cohorts do not match the migration ledger.");
             var excessDebt = closing == 0 ? leg.HungerDebtClosing : 0L;
             var revisedLeg = leg with
             {
@@ -158,117 +124,70 @@ internal static class DemoHumanLifecycle
             }
         }
 
+        // 事件：每位新生兒、每位自然死亡者各一筆（第 07 章 b 節的對帳規則不變；群體版沒有個體編號）。
         var events = report.Events.ToList();
-        var participants = new Dictionary<long, IReadOnlyList<long>>();
-        foreach (var starved in events.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath))
-        {
-            if (starvedBySettlement.Remove(starved.SettlementId, out var ids))
-                participants[starved.EventId] = Array.AsReadOnly(ids.OrderBy(id => id).ToArray());
-        }
-        foreach (var starved in events.Where(e => e.Kind == DemoSettlementEventKind.MigrantStarvationDeath))
-        {
-            if (starvedByBatch.Remove(starved.MigrationBatchId, out var ids))
-                participants[starved.EventId] = Array.AsReadOnly(ids.OrderBy(id => id).ToArray());
-        }
-        // 第 07 章 b 節：外移事件的當事人＝整戶出發的成員。
-        foreach (var emigration in events.Where(e => e.Kind == DemoSettlementEventKind.Emigration))
-            participants[emigration.EventId] = Array.AsReadOnly(moved.People.Where(p => p.BatchId == emigration.MigrationBatchId
-                && report.Migrations.Any(m => m.Departed && m.BatchId == emigration.MigrationBatchId)).Select(p => p.Id).ToArray());
-        long eventId = events.Count == 0 ? firstNewEventId : checked(events[events.Count - 1].EventId + 1);
-        foreach (var e in result.Events.Where(e => e.Kind is
-            DemoTempDemographicKind.Birth or DemoTempDemographicKind.NaturalDeath))
+        long eventId = events.Count == 0 ? firstNewEventId : checked(events[^1].EventId + 1);
+        foreach (var e in outcome.Events.Where(e => e.Kind is DemoTempDemographicKind.NaturalDeath or DemoTempDemographicKind.Birth)
+                     .OrderBy(e => e.Kind == DemoTempDemographicKind.Birth ? 1 : 0).ThenBy(e => e.BatchId).ThenBy(e => e.SettlementId).ThenByDescending(e => e.Age))
         {
             var site = weekly.Sites.Settlements.Single(s => s.Id == e.SettlementId);
-            var travel = e.BatchId is int batchId ? $"（遷徙隊伍 #{batchId} 途中）" : "";
-            string cause;
-            DemoSettlementEventKind kind;
-            if (e.Kind == DemoTempDemographicKind.Birth)
-            {
-                kind = DemoSettlementEventKind.Birth;
-                cause = $"TEMP人族：雙親 #{e.MotherId}／#{e.FatherId} 已經受孕與懷孕 {Rules.GestationWeeks} 週，新生人口 #{e.PersonId}{travel}";
-                participants[eventId] = new[] { e.PersonId, e.MotherId ?? 0, e.FatherId ?? 0 }.Where(id => id > 0).ToArray();
-            }
-            else
-            {
-                kind = DemoSettlementEventKind.NaturalDeath;
-                var departed = moved.People.Single(p => p.Id == e.PersonId);
-                cause = $"TEMP人族：人口 #{e.PersonId} 年齡 {departed.AgeYearsAt(day)}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險{travel}";
-                participants[eventId] = new[] { e.PersonId };
-            }
-            events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
-                kind, 1, cause, MigrationBatchId: e.BatchId ?? 0, EventId: eventId++));
+            var travel = e.BatchId > 0 ? $"（遷徙隊伍 #{e.BatchId} 途中）" : "";
+            var (kind, cause) = e.Kind == DemoTempDemographicKind.Birth
+                ? (DemoSettlementEventKind.Birth, $"TEMP人族：懷孕 {Rules.GestationWeeks} 週到期，新生兒出生{travel}")
+                : (DemoSettlementEventKind.NaturalDeath, $"TEMP人族：年齡 {e.Age}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險{travel}");
+            for (var i = 0; i < e.Count; i++)
+                events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
+                    kind, 1, cause, MigrationBatchId: e.BatchId, EventId: eventId++));
         }
 
-        var entityIds = entityAllocator.Capture();
         var revised = report with
         {
-            Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(), Migrations = legs.AsReadOnly(),
-            EntityIdNextClosing = DemoEntityIds.NextValue(entityIds)
+            Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(), Migrations = legs.AsReadOnly()
         };
         DemoWeeklySettlement.Verify(revised);
         return (weekly with
         {
             Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),
-            EntityIds = entityIds, Migrations = batches.ToImmutable()
-        }, result.Population, participants);
+            Migrations = batches.ToImmutable()
+        }, outcome.Population);
     }
 
-    /// <summary>
-    /// 第 07 章 b 節：結算時的整戶外移人數規劃——與 <see cref="Apply"/> 同一套規則（先依本週餓死人數移除餓死者，
-    /// 再整戶挑選），保證結算的出發人數就是名冊實際出發的人數。
-    /// </summary>
-    public static long PlanEmigrants(DemoTempDemography opening, int week, int settlementId, long deaths, long limit,
-        DemoPopulationDraws draws, DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
+    /// <summary>結算時的外移人數規劃——與 <see cref="Apply"/> 同一份 <see cref="DemoCohortMigration.Plan"/>。</summary>
+    public static long PlanEmigrants(DemoCohortDemography opening, int week, int settlementId, long limit,
+        DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
     {
         ArgumentNullException.ThrowIfNull(opening);
-        var starved = StarvedIn(opening, settlementId, deaths, week, draws).ToHashSet();
-        var residents = opening.People.Where(p => p.IsSettled && p.SettlementId == settlementId && !starved.Contains(p.Id)).ToList();
-        if (mode == DemoEmigrationMode.Mate)
-            return limit >= 1 && DemoFamilyMigration.MateSeeker(residents, week * 7, Rules) is not null ? 1 : 0;
-        return DemoFamilyMigration.Choose(residents, limit, week * 7, Rules, requireCouple: mode == DemoEmigrationMode.Founding,
-            keepCouple: true).Length;
+        return DemoCohortMigration.Plan(opening, settlementId, limit, mode, week * 7, Rules).People;
     }
 
-    /// <summary>第 06 章 d 節：聚落餓死名單（定居者，依年齡權重）。</summary>
-    private static long[] StarvedIn(DemoTempDemography population, int settlementId, long deaths, int week, DemoPopulationDraws draws)
-        => StarvedAmong(population.People.Where(p => p.IsSettled && p.SettlementId == settlementId), deaths, week, draws);
-
-    /// <summary>
-    /// 第 06 章 d 節：餓死名單以 POP 流（實體局部亂數）依年齡權重抽取——兒童與老人權重較高【TEMP】；
-    /// 鍵值＝原始抽樣值÷權重（以整數交叉相乘比較，可重現），取最小的 deaths 人。
-    /// </summary>
-    private static long[] StarvedAmong(IEnumerable<DemoTempPerson> candidates, long deaths, int week, DemoPopulationDraws draws)
+    /// <summary>第 08-1 章：各聚落婚嫁市場（找不到伴侶的單身者性別、未配對育齡男女數）。</summary>
+    public static IReadOnlyDictionary<int, DemoMateMarket> MateMarkets(DemoCohortDemography population, DemoWorldSites sites, int week)
     {
+        ArgumentNullException.ThrowIfNull(population);
+        ArgumentNullException.ThrowIfNull(sites);
         var day = week * 7;
-        var ids = candidates
-            .Select(p => (Person: p, Raw: draws.Raw(p.Id, week, DemoPopulationAction.StarvationSelection),
-                Weight: (ulong)StarvationWeight(p, day)))
-            .OrderBy(x => x, StarvationOrder.Instance)
-            .Take(checked((int)deaths)).Select(x => x.Person.Id).ToArray();
-        if (ids.Length != deaths)
-            throw new InvalidOperationException("Unverifiable starvation identity loss.");
-        return ids;
+        return sites.Settlements.ToDictionary(s => s.Id, s =>
+        {
+            var st = population.StatsOf(s.Id, 0, day, Rules);
+            DemoTempSex? seeker = st.UnpairedWomen > 0 && st.UnpairedMen == 0 ? DemoTempSex.Female
+                : st.UnpairedMen > 0 && st.UnpairedWomen == 0 ? DemoTempSex.Male : null;
+            return new DemoMateMarket(seeker, checked((int)st.UnpairedWomen), checked((int)st.UnpairedMen));
+        });
     }
 
-    /// <summary>Reconstruct pregnancy and age from the entire independently checked
-    /// weekly ledger chain, and reject tampered births/deaths in a TEMP v2 save.</summary>
-    public static (DemoTempDemography Population, IReadOnlyDictionary<long, IReadOnlyList<long>> Participants) Replay(
-        DemoTempDemography opening, IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites, DemoPopulationDraws draws)
+    /// <summary>讀檔：由開局群體與已驗證的週帳鏈逐週重播生死，任何出生／自然死亡帳或事件被竄改都拒絕。</summary>
+    public static DemoCohortDemography Replay(DemoCohortDemography opening, IReadOnlyList<DemoWeekReport> reports,
+        DemoWorldSites sites, DemoPopulationDraws draws)
     {
         ArgumentNullException.ThrowIfNull(draws);
         var current = opening;
-        var participants = new Dictionary<long, IReadOnlyList<long>>();
         long nextEventId = 1;
         foreach (var stored in reports)
         {
-            if (stored.Settlements.Any(l => l.AdultWorkersOpening !=
-                current.AdultsIn(l.SettlementId, Rules)))
-                throw new InvalidDataException("TEMP adult workers differ from actual human ages.");
-            // C04：新生兒的號碼位於本週配號區間的尾端；剝掉出生後，分配器回到出生前的位置重新發號。
-            var births = stored.Settlements.Sum(l => l.Births) + stored.Migrations.Sum(m => m.Births);
+            if (stored.Settlements.Any(l => l.AdultWorkersOpening != current.AdultsIn(l.SettlementId, Rules)))
+                throw new InvalidDataException("TEMP adult workers differ from the cohort ages.");
             var stripped = stored with
             {
-                // 第 07 章 b 節：途中隊伍帳也剝掉出生／自然死亡。
                 Migrations = stored.Migrations.Select(m => m with
                 {
                     Births = 0,
@@ -277,13 +196,10 @@ internal static class DemoHumanLifecycle
                     HungerDebtClosing = m.HungerDebtClosing + m.HungerDebtRemovedByNaturalDeath,
                     HungerDebtRemovedByNaturalDeath = 0
                 }).ToArray(),
-                EntityIdNextClosing = checked(stored.EntityIdNextClosing - births),
                 Events = stored.Events.Where(e => e.Kind is not
                     (DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)).ToArray(),
                 Settlements = stored.Settlements.Select(l => l with
                 {
-                    ChildStarvationDeaths = 0,
-                    ElderStarvationDeaths = 0,
                     Births = 0,
                     Deaths = l.Deaths - l.NaturalDeaths,
                     NaturalDeaths = 0,
@@ -304,34 +220,10 @@ internal static class DemoHumanLifecycle
             if (!trial.Outcome.Report.Settlements.SequenceEqual(stored.Settlements)
                 || !trial.Outcome.Report.Migrations.SequenceEqual(stored.Migrations)
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))
-                throw new InvalidDataException("TEMP birth/death events do not match reconstructed pregnancies and age.");
+                throw new InvalidDataException("TEMP birth/death events do not match the reconstructed cohorts.");
             current = trial.Population;
-            foreach (var (id, people) in trial.Participants)
-                participants[id] = people;
             if (stored.Events.Count > 0) nextEventId = checked(stored.Events[^1].EventId + 1);
         }
-        return (current, participants);
-    }
-
-    /// <summary>第 06 章 d 節：餓死抽樣權重（兒童、成人、老人；config/demo/survival-temp.json【TEMP】）。</summary>
-    private static int StarvationWeight(DemoTempPerson person, int day)
-    {
-        var settings = DemoSurvivalTempSettings.Current;
-        if (!person.IsAdultAt(day, Rules)) return settings.ChildStarvationWeight;
-        return person.AgeYearsAt(day) >= settings.ElderAgeYears ? settings.ElderStarvationWeight : settings.AdultStarvationWeight;
-    }
-
-    /// <summary>鍵值 Raw÷Weight 由小到大（以 UInt128 交叉相乘比較），同值依人 ID。</summary>
-    private sealed class StarvationOrder : IComparer<(DemoTempPerson Person, ulong Raw, ulong Weight)>
-    {
-        public static readonly StarvationOrder Instance = new();
-
-        public int Compare((DemoTempPerson Person, ulong Raw, ulong Weight) a, (DemoTempPerson Person, ulong Raw, ulong Weight) b)
-        {
-            var left = (UInt128)a.Raw * b.Weight;
-            var right = (UInt128)b.Raw * a.Weight;
-            var c = left.CompareTo(right);
-            return c != 0 ? c : a.Person.Id.CompareTo(b.Person.Id);
-        }
+        return current;
     }
 }

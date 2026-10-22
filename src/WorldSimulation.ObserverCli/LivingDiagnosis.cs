@@ -27,7 +27,6 @@ public static class LivingDiagnosis
         }
 
         var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
-        var rules = DemoTempDemographyRules.HumanFixture;
         output.WriteLine($"=== 普通世界人口診斷｜種子 {seed}｜{years} 年｜{world.MapCapacity.Describe()} ===");
         var seen = 0;
         for (var year = 1; year <= years; year++)
@@ -47,20 +46,20 @@ public static class LivingDiagnosis
             if (year % 10 != 0 && year != 1)
                 continue;
             var day = world.Snapshot().DaysElapsed;
-            IReadOnlyList<DemoTempPerson> people = world.HumanPopulationSnapshot is { } snapshot ? snapshot.People : Array.Empty<DemoTempPerson>();
             var births = weeks.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
             var starved = weeks.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths) + w.Migrations.Sum(m => m.Deaths));
             var natural = weeks.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths) + w.Migrations.Sum(m => m.NaturalDeaths));
             var emig = weeks.Sum(w => w.Settlements.Sum(l => l.Emigrants));
             // 第 08-3 章：每 10 年一行彙整（註記長度有限，逐聚落明細只在最後一年列出）。
-            int shortVillages = 0, labourShort = 0, sourceShort = 0, fertileTotal = 0, couplesTotal = 0, pregnantTotal = 0, villages = 0;
+            long shortVillages = 0, labourShort = 0, sourceShort = 0, fertileTotal = 0, couplesTotal = 0, pregnantTotal = 0, villages = 0;
             foreach (var s in world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0))
             {
-                var residents = people.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
-                var adults = residents.Count(p => p.IsAdultAt(day, rules));
-                var fertileWomen = residents.Count(p => p.Sex == DemoTempSex.Female && p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < rules.FertileAgeMaxYears);
-                var couples = residents.Count(p => p.Sex == DemoTempSex.Female && p.PartnerId is not null && p.AgeYearsAt(day) < rules.FertileAgeMaxYears);
-                var pregnant = residents.Count(p => p.PregnancyDueWeek is not null);
+                // 第 07-1 章：群體人口統計。
+                var st = world.PopulationStats(s.Id) ?? new DemoCohortStats(0, 0, 0, 0, 0, 0, 0, 0);
+                var adults = st.Adults + st.Elders;
+                var fertileWomen = st.FertileWomen;
+                var couples = st.Couples;
+                var pregnant = st.Pregnant;
                 var ledgers = weeks.SelectMany(w => w.Settlements).Where(l => l.SettlementId == s.Id).ToList();
                 var n = Math.Max(1, ledgers.Count);
                 var fed = ledgers.Count(l => l.FoodShortage == 0 && l.HungerDebtClosing == 0);
@@ -85,10 +84,7 @@ public static class LivingDiagnosis
                 }
                 if (year != years)
                     continue;
-                var seeker = DemoFamilyMigration.MateSeeker(residents, day, rules);
-                var singleF = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules);
-                var singleM = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules);
-                output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}／單女 {singleF}／單男 {singleM}／尋偶 {(seeker is null ? "無" : seeker.Sex == DemoTempSex.Female ? "女" : "男")}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
+                output.WriteLine($"  #{s.Id} 人 {st.Total}（成 {adults}／老 {st.Elders}／伴 {couples}／孕 {pregnant}／單女 {st.UnpairedWomen}／單男 {st.UnpairedMen}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
                     + $"｜飽 {fed}、寬裕 {ample}／{ledgers.Count} 週");
             }
             output.WriteLine($"  彙整：有人聚落 {villages}，過半週缺糧 {shortVillages}（勞力不足 {labourShort}、來源不足 {sourceShort}）"

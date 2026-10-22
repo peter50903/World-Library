@@ -111,10 +111,10 @@ public sealed class EventHistoryTests
         Assert.Equal(a.EventHistory.Events, b.EventHistory.Events);
     }
 
-    // ── 人類繁衍：出生與自然死亡的當事人 ──
+    // ── 人類繁衍：出生與自然死亡（第 07-1 章起是群體人口，事件只連到聚落，沒有個體編號）──
 
     [Fact]
-    public void BirthAndNaturalDeath_NameTheirPeople()
+    public void BirthAndNaturalDeath_AreFormalLifecycleEventsOfTheirSettlement()
     {
         var world = Run("LivingForagingSample", 42, 3 * 365);
         var reports = world.WeekReports().SelectMany(w => w.Events).ToList();
@@ -123,24 +123,16 @@ public sealed class EventHistoryTests
         var formalBirth = world.EventHistory.Find(birth!.EventId)!;
         Assert.Equal("EV_BIRTH", formalBirth.EventTypeId);
         Assert.Equal(CauseRootCategory.Lifecycle, formalBirth.Root);
-        // 新生兒＋母＋父（聚落之外至少三個人）；新生兒在人口名冊裡。
-        var people = formalBirth.RelatedEntityIds.Where(id => id != birth.SettlementId).ToArray();
-        Assert.Equal(3, people.Length);
-        var roster = world.HumanPopulationSnapshot!.People.Select(p => p.Id).ToHashSet();
-        Assert.Contains(people[0], roster.Concat(DeadIds(world)));
+        Assert.Contains((long)birth.SettlementId, formalBirth.RelatedEntityIds);
 
         var death = reports.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.NaturalDeath);
         if (death is not null)
         {
             var formalDeath = world.EventHistory.Find(death.EventId)!;
             Assert.Equal("EV_DEATH", formalDeath.EventTypeId);
-            var deceased = formalDeath.RelatedEntityIds.Single(id => id != death.SettlementId);
-            Assert.DoesNotContain(deceased, roster); // 死者不在人口快照，但事件仍查得到
+            Assert.Contains((long)death.SettlementId, formalDeath.RelatedEntityIds);
         }
     }
-
-    private static IEnumerable<long> DeadIds(DemoObserverWorld world)
-        => world.EventHistory.Events.Where(e => e.EventTypeId == "EV_DEATH").SelectMany(e => e.RelatedEntityIds);
 
     // ── AppendCommitted 反例：全拒且原物件不變 ──
 

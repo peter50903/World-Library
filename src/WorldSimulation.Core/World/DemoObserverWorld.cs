@@ -48,7 +48,7 @@ public sealed partial class DemoObserverWorld
 
     private readonly WorldRecipe _recipe;
     private readonly DemoWeeklyTempConfig _weekly;
-    private DemoTempDemography? _demography;
+    private DemoCohortDemography? _demography; // 第 07-1 章 a 節：群體人口
     /// <summary>第 08 章 a 節：土地開發狀態（與地形分離）。目前沒有開墾行動，永遠是空的。</summary>
     private DemoLandDevelopmentMap _land = DemoLandDevelopmentMap.Empty;
 
@@ -103,7 +103,7 @@ public sealed partial class DemoObserverWorld
         _sites = DemoWorldSites.Generate(Map, _rng,
             weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
-                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 10～14 人（含三對育齡伴侶，見 DemoTempDemography.OpeningPerson）。
+                // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 10～14 人（含三對育齡伴侶，見 DemoCohortDemography.OpeningPerson）。
                 // 診斷：6～10 人時小世界常因性別比例的隨機波動斷代；12～18 人時開局就超過附近來源，第 1 年大饑荒。
                 : weekly.HumanLifecycleEnabled
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 10, MaxPopGroupSize = 14 }
@@ -123,9 +123,9 @@ public sealed partial class DemoObserverWorld
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
         if (weekly.HumanLifecycleEnabled)
-            _demography = DemoTempDemography.Open(
-                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules, openingIds,
-                new DemoOpeningDraws(_rng)); // 第 07 章 a 節：混齡開局（世界種子 ECOLOGY_INIT 流，不推進計數器）
+            _demography = DemoCohortDemography.Open(
+                _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules,
+                new DemoOpeningDraws(_rng)); // 第 07 章 a 節：混齡開局（世界種子 ECOLOGY_INIT 流，不推進計數器）；第 07-1 章：只記群體人數
         _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);
@@ -292,7 +292,15 @@ public sealed partial class DemoObserverWorld
     public long WorldPopulation => checked(SettledPopulation + PopulationInTransit);
 
     /// <summary>The actual born/aged human cohort in this TEMP world; null in legacy scenarios.</summary>
-    public DemoTempDemographicSnapshot? HumanPopulationSnapshot => _demography?.Snapshot();
+    public DemoCohortSnapshot? HumanPopulationSnapshot => _demography?.Snapshot();
+
+    /// <summary>第 07-1 章 a 節：某地人口結構（定居者 batchId＝0）；非人類繁衍世界為 null。</summary>
+    public DemoCohortStats? PopulationStats(int settlementId, int batchId = 0)
+        => _demography?.StatsOf(settlementId, batchId, Snapshot().DaysElapsed, DemoHumanLifecycle.Rules);
+
+    /// <summary>第 07-1 章 a 節：全世界人口結構；非人類繁衍世界為 null。</summary>
+    public DemoCohortStats? WorldPopulationStats
+        => _demography?.WorldStats(Snapshot().DaysElapsed, DemoHumanLifecycle.Rules);
 
     /// <summary>V0-06A: food carried by travelling migrant batches.</summary>
     public long FoodInTransit => _migrations.Sum(b => b.Food);
@@ -335,12 +343,12 @@ public sealed partial class DemoObserverWorld
                 _reserves, _settlementFood, _population, _hungerDebt,
                 _migrations, _entityIds, _weeks, _weekly,
                 _demography is null ? null : _sites.Settlements.ToDictionary(s => s.Id,
-                    s => (long)_demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)),
+                    s => _demography.AdultsIn(s.Id, DemoHumanLifecycle.Rules)),
                 _sourceStocks,
                 // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
-                _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1), new DemoPopulationDraws(_rng)),
+                _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1)),
                 _land,
-                _demography is null ? null : MateMarkets(_demography, _sites, checked(_weeks.Count + 1)));
+                _demography is null ? null : DemoHumanLifecycle.MateMarkets(_demography, _sites, checked(_weeks.Count + 1)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -349,7 +357,7 @@ public sealed partial class DemoObserverWorld
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng),
                     DemoCausalIndex.NextEventId(_weeks));
-                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population, lifecycle.Participants);
+                commit.StagePopulation(lifecycle.Outcome, lifecycle.Population);
             }
             else
             {
@@ -369,22 +377,8 @@ public sealed partial class DemoObserverWorld
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
-    private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoTempDemography demography, int week, DemoPopulationDraws draws)
-        => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, deaths, limit, draws, mode);
-
-    /// <summary>第 08-1 章：各聚落婚嫁市場（找不到伴侶的單身者性別、未配對成年男女數；以本週開始時的名冊計）。</summary>
-    private static IReadOnlyDictionary<int, DemoMateMarket> MateMarkets(DemoTempDemography demography, DemoWorldSites sites, int week)
-    {
-        var day = week * 7; // 與出發規劃（PlanEmigrants）同一天，選出的人一致
-        var rules = DemoHumanLifecycle.Rules;
-        return sites.Settlements.ToDictionary(s => s.Id, s =>
-        {
-            var residents = demography.People.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
-            return new DemoMateMarket(DemoFamilyMigration.MateSeeker(residents, day, rules)?.Sex,
-                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules),
-                DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules));
-        });
-    }
+    private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoCohortDemography demography, int week)
+        => (settlementId, _, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode);
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and
@@ -414,9 +408,11 @@ public sealed partial class DemoObserverWorld
         sb.Append(inv, $"land={_land.Fingerprint()};"); // 第 08 章 a 節
         if (_demography is not null)
         {
-            sb.Append(inv, $"humanWeek={_demography.LastWeek};nextPerson={_demography.NextId};");
-            foreach (var p in _demography.People)
-                sb.Append(inv, $"person{p.Id}:{p.SettlementId}:{p.Sex}:{p.BornDay}:{p.PregnancyDueWeek}:{p.FatherId}:{p.MotherId}:{p.BirthFatherId}:{p.PartnerId}:{p.BatchId};");
+            sb.Append(inv, $"humanWeek={_demography.LastWeek};");
+            foreach (var g in _demography.Groups)
+                sb.Append(inv, $"cohort{g.SettlementId}/{g.BatchId}/{g.BirthYear}/{g.Sex}={g.Count};");
+            foreach (var p in _demography.Pregnancies)
+                sb.Append(inv, $"preg{p.SettlementId}/{p.BatchId}/{p.DueWeek}={p.Count};");
         }
         sb.Append(inv, $"nextEntity={_entityIds.NextValue}/{_entityIds.Exhausted};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
