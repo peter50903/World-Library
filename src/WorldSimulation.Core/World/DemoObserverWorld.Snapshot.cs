@@ -57,7 +57,7 @@ public sealed partial class DemoObserverWorld
         var settlements = ReadArray<DemoSettlement>(state, "Settlements");
         var points = ReadArray<DemoResourcePoint>(state, "ResourcePoints");
         var groups = ReadArray<DemoPopGroup>(state, "PopulationGroups");
-        var sites = RebuildSites(map, initialSites, settlements, weekCount);
+        var sites = RebuildSites(map, initialSites, settlements, weekCount, weekly.HopeEra ? new DemoNames(candidate._rng) : null);
         if (!points.SequenceEqual(sites.ResourcePoints) || !groups.SequenceEqual(sites.PopGroups))
             Reject("資源點或人口群體與聚落紀錄不一致");
 
@@ -277,7 +277,10 @@ public sealed partial class DemoObserverWorld
                 EntityIdNextOpening = item.GetProperty("EntityIdNextOpening").GetInt64(),
                 EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64(),
                 RngCounters = Array.AsReadOnly(ReadArray<DemoRngCounter>(item, "RngCounters").ToArray()),
-                Sources = Array.AsReadOnly(ReadArray<DemoSourceWeekLedger>(item, "Sources").ToArray())
+                Sources = Array.AsReadOnly(ReadArray<DemoSourceWeekLedger>(item, "Sources").ToArray()),
+                // 第 07-1 章 b 節：代表人物就任與卸任（之後由生死重播逐週核對）。
+                Appointments = Array.AsReadOnly(ReadArray<DemoRepresentative>(item, "Appointments").ToArray()),
+                RepresentativeExits = Array.AsReadOnly(ReadArray<DemoRepresentativeExit>(item, "RepresentativeExits").ToArray())
             });
         }
 
@@ -342,7 +345,7 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>開局聚落必須等於種子產生的結果；之後的新聚落依序重新套用建立規則（ID、空格、非水域）。</summary>
     private static DemoWorldSites RebuildSites(
-        DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount)
+        DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount, DemoNames? names)
     {
         var count = initial.Settlements.Count;
         // 第 07 章 c 節：成為遺跡的週次另外套用（之後由事件與週帳逐週核對）。
@@ -355,8 +358,12 @@ public sealed partial class DemoObserverWorld
         foreach (var founded in settlements.Skip(count).Select(s => s with { RuinedWeek = 0 }))
         {
             var from = sites.Settlements.FirstOrDefault(s => s.Id == founded.FoundedFromSettlementId);
+            // 第 07-1 章 b 節：希望時代的新聚落名依同規則重算（母村前綴、當時已有的名字）。
+            var expectedName = names is null || from is null
+                ? $"新聚落{checked(sites.FoundedSettlementCount + 1)}號"
+                : names.Settlement(map, founded, DemoNames.PrefixOf(from.Name), sites.Settlements.Select(s => s.Name).ToHashSet(), opening: false);
             if (!founded.IsFounded || founded.FoundedWeek < lastWeek || founded.FoundedWeek > weekCount
-                || founded.Name != $"新聚落{checked(sites.FoundedSettlementCount + 1)}號" || founded.FoundedByBatchId < 1
+                || founded.Name != expectedName || founded.FoundedByBatchId < 1
                 || from is null || from.FoundedWeek >= founded.FoundedWeek
                 || !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(founded.Column, founded.Row)))
                 Reject($"新聚落 #{founded.Id} 的建立紀錄不合法");
