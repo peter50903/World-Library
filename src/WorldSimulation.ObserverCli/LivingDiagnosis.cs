@@ -99,7 +99,7 @@ public static class LivingDiagnosis
                     var cell = world.Map.GetCell(s.Column, s.Row);
                     var reach = weeks.Count == 0 ? new List<DemoSourceWeekLedger>() : weeks[^1].Sources
                         .Where(x => DemoHexFoodCatchment.IsInReach(world.Map.GetCell(x.Column, x.Row), cell,
-                            x.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToList();
+                            DemoCatchmentSourceKinds.IncludesOrigin(x.Kind))).ToList();
                     var rivals = reach.SelectMany(x => x.Shares ?? Array.Empty<DemoSourceShare>()).Select(x => x.SettlementId)
                         .Where(id => id != s.Id).Distinct().Count();
                     var own = reach.Sum(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Where(sh => sh.SettlementId == s.Id).Sum(sh => sh.Food));

@@ -72,14 +72,18 @@ public sealed class DemoLandDevelopmentTests
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.ForagingSample);
         var grass = world.Map.Cells.First(c => c.Terrain == DemoTerrain.Grassland && world.Sites.SettlementAt(c.Column, c.Row) is null);
-        bool HasSource(DemoLandDevelopmentMap land) => DemoForagingWorld.Sources(world.Map, world.Sites, land)
-            .Any(s => s.Column == grass.Column && s.Row == grass.Row);
-        Assert.True(HasSource(DemoLandDevelopmentMap.Empty));
+        DemoCatchmentFoodSource Source(DemoLandDevelopmentMap land) => DemoForagingWorld.Sources(world.Map, world.Sites, land)
+            .Single(s => s.Column == grass.Column && s.Row == grass.Row);
+        Assert.Equal(DemoCatchmentSourceKind.GrasslandForage, Source(DemoLandDevelopmentMap.Empty).Kind);
         var clearing = DemoLandDevelopmentMap.Empty.With(world.Map, world.Sites,
             new DemoLandParcel(grass.Column, grass.Row, DemoLandDevelopment.Clearing, 50));
-        Assert.True(HasSource(clearing)); // 開墾中仍可野採【TEMP】
+        Assert.Equal(DemoCatchmentSourceKind.GrasslandForage, Source(clearing).Kind); // 開墾中仍可野採【TEMP】
         var farm = clearing.With(world.Map, world.Sites, new DemoLandParcel(grass.Column, grass.Row, DemoLandDevelopment.Farmland, 100));
-        Assert.False(HasSource(farm));
+        // 第 08-6 章 c 節：農田不再野採，改為農田來源（同一格編號、供應較高）。
+        var farmSource = Source(farm);
+        Assert.Equal(DemoCatchmentSourceKind.Farmland, farmSource.Kind);
+        Assert.Equal(Source(DemoLandDevelopmentMap.Empty).Id, farmSource.Id);
+        Assert.Equal(DemoLandClearing.TempFarmlandWeeklySupply, farmSource.FoodAvailable);
     }
 
     [Fact]

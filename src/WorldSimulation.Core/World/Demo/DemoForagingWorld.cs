@@ -28,10 +28,25 @@ public static class DemoForagingWorld
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites = null)
         => Sources(map, sites?.OccupiedCells());
 
-    /// <summary>第 08 章 a 節：農田格不再提供野採（與聚落佔格一樣從自然來源移除）。</summary>
+    /// <summary>
+    /// 第 08 章 a 節：農田格不再提供野採。第 08-6 章 c 節：農田格改為農田來源（同一格編號，供應較高），
+    /// 可及規則與草原野採相同（本格與六鄰格）。
+    /// </summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites, DemoLandDevelopmentMap? land)
-        => Sources(map, (sites?.OccupiedCells() ?? Array.Empty<DemoCellRef>())
-            .Concat(land?.FarmlandCells() ?? Array.Empty<DemoCellRef>()).Distinct().ToArray());
+        => Sources(map, sites?.OccupiedCells(), land?.FarmlandCells());
+
+    /// <summary>第 08-6 章 c 節：佔格之外的自然來源，<paramref name="farmland"/> 格改為農田來源。</summary>
+    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied,
+        IReadOnlyCollection<DemoCellRef>? farmland)
+    {
+        var natural = Sources(map, occupied);
+        if (farmland is null || farmland.Count == 0)
+            return natural;
+        var cells = farmland.ToHashSet();
+        return natural.Select(s => cells.Contains(new DemoCellRef(s.Column, s.Row))
+            ? s with { Kind = DemoCatchmentSourceKind.Farmland, FoodAvailable = DemoLandClearing.TempFarmlandWeeklySupply }
+            : s).ToArray();
+    }
 
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied)
         => Settings.BuildPotentialSources(map, MainRiverTiles(map), occupied);
@@ -47,7 +62,7 @@ public static class DemoForagingWorld
             && Math.Abs(source.Row - cell.Row) <= 1 && Math.Abs(source.Column - cell.Column) <= 1
             && !blocked.Contains(new DemoCellRef(source.Column, source.Row))
             && DemoHexFoodCatchment.IsInReach(map.GetCell(source.Column, source.Row), here,
-                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)
+                DemoCatchmentSourceKinds.IncludesOrigin(source.Kind))
             && here.Terrain != DemoTerrain.Water);
     }
 

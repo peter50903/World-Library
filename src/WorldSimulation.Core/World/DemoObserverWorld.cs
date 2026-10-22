@@ -419,10 +419,15 @@ public sealed partial class DemoObserverWorld
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
                 var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId);
-                var withKnowledge = learned.Count == 0 ? lifecycle.Outcome
-                    : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(learned).ToArray() } };
+                // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
+                var landNextId = checked(nextId + learned.Count);
+                var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
+                    lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
+                var added = learned.Concat(cleared).ToArray();
+                var withKnowledge = added.Length == 0 ? lifecycle.Outcome
+                    : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
-                commit.StageKnowledge(knowledge);
+                commit.StageKnowledge(knowledge, land);
             }
             else
             {

@@ -99,7 +99,19 @@
 | 遷入帶來的知識 | 每人帶來門檻的 25% | 使用者：知識透過婚嫁與遷徙傳播，比自行研究快 |
 | 農師 | 已習得農耕的聚落一位（人數最多的非老年成年年齡群） | 使用者：專業知識持有者才算代表人物 |
 | 希望時代飢餓債上限 | 致死門檻－1（超過的計為恢復）；開拓時代起恢復餓死 | 使用者：不餓死是希望時代的特性；進入開拓時代時不因多年累積的債一次餓死 |
+| 餓死的人 | 先老人（最年長起）、再兒童（最年幼起）、最後成年人（最年長起）；代表人物在同年齡群中最後才餓死 | 老幼最脆弱；代表人物不隨機消失，事件可追 |
 | 事件類型 | TEMP_EV_KNOWLEDGE_LEARNED、TEMP_EV_ERA_BEGAN；根因分類「知識」 | 24 表尚無對應 |
+
+#### D08-6c｜農田開墾（第 08-6 章 c 節，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 誰開墾 | 已習得農耕、至少 2 名成年人的聚落；每週一塊相鄰草原（已在開墾的優先，否則列、欄最小的未開發草原） | 使用者：農耕可以把草原變成農田 |
+| 開墾速度 | 每週＋2%（約一年一塊）；鄰接多個開墾聚落時各自累加 | 人多的地方開得快 |
+| 農田供應 | 每週 24（草原野採 8 的三倍），可及規則同草原野採；採收記為農糧 | 農耕提高食物上限 |
+| 開墾勞力 | 第一版不扣採集勞力 | 先接上開墾行動，勞力分工待職業章 |
+| 建村限制 | 開拓隊不在開墾中或農田格建村；開墾也不選開拓隊目的格 | 避免土地狀態與聚落佔格衝突 |
+| 事件類型 | TEMP_EV_FARMLAND_CLEARED（根因，人數欄＝格編號）；讀檔時農田＝開墾完成事件的格 | 24 表尚無對應 |
 
 #### D08-4｜希望時代收尾（第 08-4 章，Claude 定案【TEMP】）
 
@@ -351,7 +363,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTempDemography.cs` | 5 | 人族出生／死亡／配對 TEMP 規則（第 07 章 a 節：死亡讀 39C LIFE_DEATH_BANDS、混齡開局含每聚落一對育齡建村夫婦、穩定配對與近親排除；b 節：途中不受孕、不新配對）；第 08-1 章擇偶依年齡、開局兩對建村夫婦；第 07-1 章起只剩人族規則（個體名冊移除） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementTempSettings.cs` | 2 | 第 07 章 c 節：人口連續為 0 滿 52 週成為遺跡（config/demo/settlement-temp.json）；遺跡格不能直接重建、開拓選址須可及未被佔用的自然來源 |
 | `src/WorldSimulation.Core/World/Demo/DemoCohortMigration.cs` | 1 | 第 07-1 章 a 節：群體人口外移規劃（留育齡女性與可配對男性、開拓帶兩對、依年齡群比例、懷孕隨育齡女性等比例） |
-| `src/WorldSimulation.Core/World/Demo/DemoCohortDemography.cs` | 3 | 第 07-1 章 a 節：群體人口（伴侶數＝育齡女性與可配對男性較小者、開局三對建村夫婦、途中不受孕） |
+| `src/WorldSimulation.Core/World/Demo/DemoCohortDemography.cs` | 4 | 第 07-1 章 a 節：群體人口（伴侶數＝育齡女性與可配對男性較小者、開局三對建村夫婦、途中不受孕）；第 08-6 章 b 節餓死順序 |
 | `src/WorldSimulation.Core/World/Demo/DemoNames.cs` | 5 | 第 07-1 章 b 節：西式奇幻音譯命名（詞素在 config/demo/names-temp.json，不超過六字） |
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
@@ -375,7 +387,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 8 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
-| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 18 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
@@ -397,7 +409,8 @@
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 4 | 第 08-6 章知識樹門檻與傳播（D08-6a） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 16 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始 |
+| `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 17 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

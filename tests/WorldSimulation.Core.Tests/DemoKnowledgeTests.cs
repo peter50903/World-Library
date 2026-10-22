@@ -56,6 +56,49 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void FarmingVillagesClearGrassland_IntoFarmlandThatFeedsThem()
+    {
+        // 第 08-6 章 c 節：學會農耕的聚落開墾相鄰草原（每週＋2%），完成後成為農田來源、採收記為農糧。
+        var world = UntilPioneer();
+        for (var day = 0; day < 6 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
+            world.AdvanceOneDay();
+        var cleared = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
+        Assert.True(cleared.Count > 0, $"開拓時代 6 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
+        var cell = DemoLandClearing.CellOf(world.Map, cleared[0].Count);
+        Assert.Equal(DemoLandDevelopment.Farmland, world.Land.StateOf(cell));
+        Assert.Equal(DemoTerrain.Grassland, world.Map.GetCell(cell.Column, cell.Row).Terrain);
+        Assert.True(world.Knowledge.Knows(cleared[0].SettlementId, DemoTechnology.Farming));
+        Assert.Contains(DemoSettlementHistory.Lines(world, cleared[0].SettlementId), l => l.Contains("開墾一塊農田", StringComparison.Ordinal));
+        Assert.Contains(world.QueryCell(cell.Column, cell.Row).Lines, l => l.StartsWith("土地開發：農田", StringComparison.Ordinal));
+
+        for (var day = 0; day < 14; day++)
+            world.AdvanceOneDay();
+        var source = Assert.Single(world.LatestWeek!.Sources, x => x.Column == cell.Column && x.Row == cell.Row);
+        Assert.Equal(DemoCatchmentSourceKind.Farmland, source.Kind);
+        Assert.True(world.LatestWeek!.Settlements.Sum(l => l.FoodFromFarming) > 0);
+        Assert.All(world.LatestWeek!.Settlements, l => Assert.True(l.NoMagicFood));
+        Assert.Empty(world.BuildCausalIndex().Problems);
+
+        // 存讀檔後土地相同，續跑一致；竄改農田（沒有開墾事件）會被拒讀。
+        var save = world.ExportTempSave();
+        var loaded = DemoObserverWorld.ImportTempSave(save);
+        Assert.Equal(world.Land.Parcels, loaded.Land.Parcels);
+        for (var day = 0; day < 30; day++)
+        {
+            world.AdvanceOneDay();
+            loaded.AdvanceOneDay();
+        }
+        Assert.Equal(world.ExportTempSave(), loaded.ExportTempSave());
+        var doc = System.Text.Json.Nodes.JsonNode.Parse(save)!;
+        var parcels = doc["State"]!["Land"]!.AsArray();
+        var farm = parcels.First(p => (int)p!["State"]! == (int)DemoLandDevelopment.Farmland)!;
+        farm["State"] = (int)DemoLandDevelopment.Clearing;
+        farm["DevelopmentPercent"] = 50;
+        doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(System.Text.Encoding.UTF8.GetBytes(doc["State"]!.ToJsonString()));
+        Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
+    }
+
+    [Fact]
     public void ResearchGrowsWithAdults_AndIsCappedAtTheThreshold()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);

@@ -125,13 +125,13 @@ public partial class ObserverRoot
         var adjacentSources = allSources.Where(x =>
             DemoHexFoodCatchment.IsInReach(
                 world.Map.GetCell(x.Column, x.Row), position,
-                x.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).OrderBy(x => x.Id).ToArray();
+                DemoCatchmentSourceKinds.IncludesOrigin(x.Kind))).OrderBy(x => x.Id).ToArray();
         output.Add($"聚落：{place.Name}；人口 {world.SettlementPopulation(place.Id)}；"
             + $"糧庫 {world.SettlementFood(place.Id)}");
         output.Add($"可採集來源 {adjacentSources.Length} 格："
             + (adjacentSources.Length == 0 ? "沒有鄰近自然來源（即使草原有野採，也須有人採集）"
               : string.Join("、", adjacentSources.Select(x =>
-                  $"{(x.Kind switch { DemoCatchmentSourceKind.Forest => "森林", DemoCatchmentSourceKind.MainRiver => "主河道", DemoCatchmentSourceKind.GrasslandForage => "草原野採", _ => "海洋" })}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
+                  $"{(x.Kind switch { DemoCatchmentSourceKind.Forest => "森林", DemoCatchmentSourceKind.MainRiver => "主河道", DemoCatchmentSourceKind.GrasslandForage => "草原野採", DemoCatchmentSourceKind.Farmland => "農田", _ => "海洋" })}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
         var ledger = week?.Settlements.FirstOrDefault(l => l.SettlementId == place.Id);
         if (ledger is null)
             output.Add("尚無週報：快轉至第7日，才能看到真實採收與人口缺糧。");

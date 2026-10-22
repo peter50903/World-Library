@@ -102,14 +102,17 @@ public static class DemoCellQuery
             $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})",
             $"軸向座標 ({cell.AxialQ}, {cell.AxialR})",
             $"核心地形：{TerrainName(cell)}"
-                + (world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland ? "（未開墾，農田糧食 0）" : "")
+                + (world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland
+                    && world.Land.StateOf(new DemoCellRef(cell.Column, cell.Row)) != DemoLandDevelopment.Farmland ? "（未開墾，農田糧食 0）" : "")
                 + (cell.MainWaterway ? "（主水道，禁止定居" + (world.UsesSharedForaging ? "，鄰格漁撈）" : "）") : ""),
             // 第 06 章 a 節：出入口由路線段衍生（相鄰但沒有路線段＝不可通行）。
             RoutesLine(world.Map, new DemoCellRef(cell.Column, cell.Row))
         };
         // 第 08 章 a 節：土地開發狀態（與地形分離；未開發不另列）。
         if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
-            lines.Add($"土地開發：{LandName(parcel.State)}（開發程度 {parcel.DevelopmentPercent}%；農糧產量待第 11 章農業知識）");
+            lines.Add(parcel.State == DemoLandDevelopment.Farmland
+                ? $"土地開發：農田（每週供糧 {DemoLandClearing.TempFarmlandWeeklySupply}，TEMP）"
+                : $"土地開發：開墾中 {parcel.DevelopmentPercent}%（每週＋{DemoLandClearing.TempPercentPerWeek}%，TEMP）");
 
         DemoCatchmentFoodSource? sharedSource = null;
         IReadOnlyList<DemoCellRef> reach = Array.Empty<DemoCellRef>();
