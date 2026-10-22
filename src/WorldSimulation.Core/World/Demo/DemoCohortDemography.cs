@@ -347,7 +347,11 @@ public sealed class DemoCohortDemography
             if (chance <= 0) continue;
             var dead = DemoBinomial.Draw(n, chance, draws.Raw(CohortKey(key.Settlement, key.Batch, key.BirthYear, key.Sex), week, DemoPopulationAction.NaturalDeath));
             // 第 07-1 章 b 節：代表人物本人老死時，所屬年齡群至少死這麼多人（他就是其中之一）。
-            dead = Math.Min(n, Math.Max(dead, minimumDeaths?.GetValueOrDefault(key) ?? 0));
+            var repDead = minimumDeaths?.GetValueOrDefault(key) ?? 0;
+            dead = Math.Min(n, Math.Max(dead, repDead));
+            // 存活的代表人物不在年齡群的死亡人數裡（死亡人數上限＝人數－存活代表人物數）。
+            var repAlive = key.Batch == 0 ? Math.Max(0, RepresentativesIn(key.Settlement, key.BirthYear, key.Sex) - repDead) : 0;
+            dead = Math.Min(dead, Math.Max(0, n - repAlive));
             if (dead == 0) continue;
             Set(groups, key, n - dead);
             events.Add(new DemoCohortEvent(DemoTempDemographicKind.NaturalDeath, key.Settlement, key.Batch, dead, age));
