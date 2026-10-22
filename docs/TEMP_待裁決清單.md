@@ -98,6 +98,7 @@
 | 目的地已佔用餘量 | 已在路上前往的人數 × 每人週食量，從目的地的來源餘量扣除 | 診斷：同一週多村同時湧入同一村（一年遷入 21 人）後長期缺糧 |
 | 遠方開拓 | 附近 6 格找不到空地時，改找 12 格（婚嫁範圍） | 缺糧村困在養不起的地方、只能等老死 |
 | 婚嫁目的地 | 已知來源餘量（扣掉在路上的人）至少養得起一人 | 婚嫁不把人送進缺糧村 |
+| 開局聚落放不下 | 希望時代間隔合格的宜居格用完就不再放（少放幾個），不退回擠在一起的空地 | 診斷：大地圖開局聚落多，退回後鄰村從第 1 年起長期缺糧 |
 | 共用來源餘量 | 由可及的聚落平分（開拓選址：既有聚落與新來者平分） | 診斷：相鄰聚落各自把同一份餘量算成自己的，同時生育、接納遷入而超過來源 |
 
 #### D07-1c｜地圖大小（第 07-1 章 c 節，Claude 定案【TEMP】）
@@ -353,7 +354,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 22 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
