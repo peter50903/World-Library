@@ -166,6 +166,7 @@ public partial class ObserverRoot : Control
     // 第 02 章 a 節：世界種子／歷史種子輸入；確認列待確認的配方（null＝情境切換沿用預設種子）。
     private LineEdit _worldSeedInput = null!;
     private LineEdit _historySeedInput = null!;
+    private OptionButton _mapSizePicker = null!; // 第 07-1 章 c 節
     private Button _seedStartButton = null!;
     private WorldRecipe? _pendingRecipe;
     // #87: play / pause. The clock only decides HOW MANY days to advance; Core advances them one by one.
@@ -262,6 +263,17 @@ public partial class ObserverRoot : Control
         seedRow.AddChild(new Label { Text = "歷史種子" });
         _historySeedInput = new LineEdit { PlaceholderText = "留空＝由世界種子衍生", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         seedRow.AddChild(_historySeedInput);
+        // 第 07-1 章 c 節：建立世界時選地圖大小（只套用在「以此種子建立世界」）。
+        var sizeRow = new HBoxContainer();
+        scenarioBox.AddChild(sizeRow);
+        sizeRow.AddChild(new Label { Text = "地圖大小" });
+        _mapSizePicker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var size in Enum.GetValues<DemoMapSize>())
+        {
+            var (columns, rows) = DemoMapSizes.Dimensions(size);
+            _mapSizePicker.AddItem($"{DemoMapSizes.Name(size)}（{columns}×{rows} 格）", (int)size);
+        }
+        sizeRow.AddChild(_mapSizePicker);
         _seedStartButton = new Button { Text = "以此種子建立世界", CustomMinimumSize = new Vector2(0, 36) };
         _seedStartButton.Pressed += RequestSeedWorld;
         scenarioBox.AddChild(_seedStartButton);
@@ -885,7 +897,7 @@ public partial class ObserverRoot : Control
                 return false;
             history = h;
         }
-        recipe = WorldRecipe.ForSeeds(worldSeed, history);
+        recipe = WorldRecipe.ForSeeds(worldSeed, history, (DemoMapSize)_mapSizePicker.GetSelectedId());
         return true;
     }
 
@@ -945,6 +957,7 @@ public partial class ObserverRoot : Control
         HideDetail(); // 第 05 章：換世界不殘留前一個世界的詳情。
         _worldSeedInput.Text = world.Recipe.WorldSeed.ToString(CultureInfo.InvariantCulture);
         _historySeedInput.Text = world.Recipe.HistorySeedInput?.ToString(CultureInfo.InvariantCulture) ?? "";
+        _mapSizePicker.Select(_mapSizePicker.GetItemIndex((int)world.Recipe.MapSize));
         _hexMap.World = world.Map;
         _hexMap.Sites = world.Sites;
         _hexMap.Land = world.Land; // 第 08 章 a 節

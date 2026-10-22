@@ -85,7 +85,10 @@ public static class DemoHexFoodCatchment
         ArgumentNullException.ThrowIfNull(source);
         ValidateSource(map, source);
         var origin = map.GetCell(source.Column, source.Row);
-        return Array.AsReadOnly(map.Cells.Where(c =>
+        // 第 07-1 章 c 節：只看本格與六個鄰格（原本逐格掃全圖，結果相同）。
+        var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
+            .Where(c => c is not null).Select(c => c!).Prepend(origin);
+        return Array.AsReadOnly(nearby.Where(c =>
             c.Terrain != DemoTerrain.Water
             && IsInReach(origin, c,
                 source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage))

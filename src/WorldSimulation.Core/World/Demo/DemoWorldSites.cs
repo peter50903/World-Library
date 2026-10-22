@@ -61,6 +61,21 @@ public sealed record DemoSitesTempConfig(
         MinPopGroupSize: 3,
         MaxPopGroupSize: 8,
         SettlementNames: Array.AsReadOnly(new[] { "示範聚落甲", "示範聚落乙", "示範聚落丙", "示範聚落丁" }));
+
+    /// <summary>
+    /// 第 07-1 章 c 節【TEMP】：開局聚落數依地圖格數倍率放大（小地圖不變）；名字不夠時補「示範聚落 N」
+    /// （希望時代另以 <see cref="DemoNames"/> 命名）。
+    /// </summary>
+    public DemoSitesTempConfig ScaledFor(DemoHexWorld map)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var factor = map.AreaFactor;
+        if (factor <= 1) return this;
+        var max = MaxSettlements * factor;
+        var names = SettlementNames.Concat(Enumerable.Range(SettlementNames.Count + 1, Math.Max(0, max - SettlementNames.Count))
+            .Select(i => $"示範聚落{i}")).ToArray();
+        return this with { MinSettlements = MinSettlements * factor, MaxSettlements = max, SettlementNames = Array.AsReadOnly(names) };
+    }
 }
 
 /// <summary>

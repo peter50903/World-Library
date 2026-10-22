@@ -64,8 +64,8 @@ public partial class ObserverRoot
         if (_world.Recipe != WorldRecipe.ForSeeds(123, 789) || _world.Snapshot().DaysElapsed != 0)
             Fail("confirmed seed 123/789 was not built.");
         var mapSame = true;
-        for (var row = 0; row < DemoHexWorld.Rows; row++)
-            for (var col = 0; col < DemoHexWorld.Columns; col++)
+        for (var row = 0; row < _world.Map.Rows; row++)
+            for (var col = 0; col < _world.Map.Columns; col++)
                 mapSame &= _world.Map.GetCell(col, row) == reference.Map.GetCell(col, row);
         if (!mapSame
             || !_world.Sites.Settlements.SequenceEqual(reference.Sites.Settlements)

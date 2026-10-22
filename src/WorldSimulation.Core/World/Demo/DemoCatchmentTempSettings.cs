@@ -96,7 +96,7 @@ public sealed record DemoCatchmentTempSettings(
         foreach (var tile in map.Cells)
         {
             if (occupied.Contains(new DemoCellRef(tile.Column, tile.Row))) continue;
-            var id = checked(tile.Row * DemoHexWorld.Columns + tile.Column + 1);
+            var id = checked(tile.Row * map.Columns + tile.Column + 1);
             if (tile.Terrain == DemoTerrain.Forest)
                 all.Add(new DemoCatchmentFoodSource(
                     id, tile.Column, tile.Row, DemoCatchmentSourceKind.Forest, ForestWeeklySupply));

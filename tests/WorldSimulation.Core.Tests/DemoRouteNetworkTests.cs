@@ -45,12 +45,12 @@ public sealed class DemoRouteNetworkTests
         foreach (var seed in Seeds)
         {
             var map = DemoHexWorld.Generate(seed);
-            foreach (var col in Enumerable.Range(0, DemoHexWorld.Columns))
+            foreach (var col in Enumerable.Range(0, DemoHexWorld.SmallColumns))
             {
                 // 每欄最南一列是海，海往北只連續 1～2 列（TEMP），不會散落在陸地中間。
-                var depth = Enumerable.Range(0, DemoHexWorld.Rows).Count(r => map.GetCell(col, r).Sea);
+                var depth = Enumerable.Range(0, DemoHexWorld.SmallRows).Count(r => map.GetCell(col, r).Sea);
                 Assert.InRange(depth, DemoHexWorld.TempSeaMinDepth, DemoHexWorld.TempSeaMaxDepth);
-                Assert.All(Enumerable.Range(DemoHexWorld.Rows - depth, depth), r => Assert.True(map.GetCell(col, r).Sea));
+                Assert.All(Enumerable.Range(DemoHexWorld.SmallRows - depth, depth), r => Assert.True(map.GetCell(col, r).Sea));
             }
             Assert.All(map.Cells.Where(c => c.Terrain == DemoTerrain.Water), c => Assert.True(c.Sea ^ c.MainWaterway));
             Assert.All(map.Cells.Where(c => c.Sea), c => Assert.False(c.Shallow)); // 海只有深水

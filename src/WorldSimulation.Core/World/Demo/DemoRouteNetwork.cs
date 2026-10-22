@@ -79,10 +79,10 @@ public sealed class DemoRouteNetwork
     private readonly Dictionary<(DemoCellRef, DemoCellRef), DemoRouteSegment> _byPair = new();
     private readonly Dictionary<DemoCellRef, List<DemoRouteSegment>> _byCell = new();
 
-    private DemoRouteNetwork(IReadOnlyList<DemoRouteSegment> segments, DemoCellRef? ford)
+    private DemoRouteNetwork(IReadOnlyList<DemoRouteSegment> segments, IReadOnlyList<DemoCellRef> fords)
     {
         Segments = segments;
-        Ford = ford;
+        Fords = fords;
         foreach (var s in segments)
         {
             _byPair[(s.A, s.B)] = s;
@@ -99,8 +99,11 @@ public sealed class DemoRouteNetwork
     /// <summary>全部路線段（依 A 的列、欄，再依 B 排序）。</summary>
     public IReadOnlyList<DemoRouteSegment> Segments { get; }
 
-    /// <summary>主水道上的渡口格；沒有可設渡口的水道格時為 null。</summary>
-    public DemoCellRef? Ford { get; }
+    /// <summary>主水道上的第一個渡口格（依列）；沒有可設渡口的水道格時為 null。</summary>
+    public DemoCellRef? Ford => Fords.Count == 0 ? null : Fords[0];
+
+    /// <summary>第 07-1 章 c 節：全部渡口格（依列、欄）。</summary>
+    public IReadOnlyList<DemoCellRef> Fords { get; }
 
     public DemoRouteSegment? Between(DemoCellRef a, DemoCellRef b) => _byPair.GetValueOrDefault((a, b));
 
@@ -115,7 +118,7 @@ public sealed class DemoRouteNetwork
         var result = new List<(string, DemoRouteSegment)>();
         foreach (var (dq, dr, name) in Directions)
         {
-            var next = map.Cells.FirstOrDefault(c => c.AxialQ == here.AxialQ + dq && c.AxialR == here.AxialR + dr);
+            var next = map.AtAxial(here.AxialQ + dq, here.AxialR + dr);
             if (next is not null && Between(cell, new DemoCellRef(next.Column, next.Row)) is { } segment)
                 result.Add((name, segment));
         }
@@ -134,12 +137,13 @@ public sealed class DemoRouteNetwork
     };
 
     /// <summary>由地圖與渡口位置建立路線網（純函式）。</summary>
-    internal static DemoRouteNetwork Build(IReadOnlyList<DemoHexCell> cells, DemoCellRef? ford, DemoRouteTempSettings settings)
+    internal static DemoRouteNetwork Build(IReadOnlyList<DemoHexCell> cells, DemoRouteTempSettings settings)
     {
+        var fords = cells.Where(c => c.Shallow).OrderBy(c => c.Row).ThenBy(c => c.Column).Select(c => new DemoCellRef(c.Column, c.Row)).ToArray();
         var byAxial = cells.ToDictionary(c => (c.AxialQ, c.AxialR));
         var segments = new List<DemoRouteSegment>();
         static DemoCellRef Ref(DemoHexCell c) => new(c.Column, c.Row);
-        static int Order(DemoHexCell c) => c.Row * 1000 + c.Column;
+        static int Order(DemoHexCell c) => c.Row * 100000 + c.Column;
         foreach (var cell in cells)
         {
             foreach (var (dq, dr, _) in Directions)
@@ -151,14 +155,14 @@ public sealed class DemoRouteNetwork
                     kind = DemoRouteKind.Wild;
                 else if (cell.MainWaterway && next.MainWaterway)
                     kind = DemoRouteKind.River;
-                else if (ford is { } f && ((Ref(cell) == f && next.Terrain != DemoTerrain.Water)
-                             || (Ref(next) == f && cell.Terrain != DemoTerrain.Water)))
+                else if ((cell.Shallow && next.Terrain != DemoTerrain.Water)
+                             || (next.Shallow && cell.Terrain != DemoTerrain.Water))
                     kind = DemoRouteKind.Ford;
                 if (kind is { } k)
                     segments.Add(new DemoRouteSegment(Ref(cell), Ref(next), k, settings.CostOf(k)));
             }
         }
         return new DemoRouteNetwork(segments.OrderBy(s => s.A.Row).ThenBy(s => s.A.Column)
-            .ThenBy(s => s.B.Row).ThenBy(s => s.B.Column).ToArray(), ford);
+            .ThenBy(s => s.B.Row).ThenBy(s => s.B.Column).ToArray(), fords);
     }
 }

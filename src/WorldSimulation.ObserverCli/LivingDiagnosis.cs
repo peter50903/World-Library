@@ -7,7 +7,7 @@ namespace WorldSimulation.ObserverCli;
 /// <summary>
 /// 第 08-1 章：普通世界（人類採集）人口診斷。逐年列出世界與各聚落的人口結構、伴侶、採收／需求／勞力上限、
 /// 可及來源供應、無缺糧週比例（受孕條件）與死因，用來找出人口成長不起來的環節。只讀世界，不改規則。
-/// 用法：--diagnose-living --seed N [--years 100]
+/// 用法：--diagnose-living --seed N [--years 100] [--map small|medium|large]（第 07-1 章 c 節：每 10 年列出耗時）
 /// </summary>
 public static class LivingDiagnosis
 {
@@ -15,19 +15,24 @@ public static class LivingDiagnosis
     {
         ulong seed = 1;
         var years = 100;
+        var size = DemoMapSize.Small;
         for (var i = 0; i + 1 < args.Count; i += 2)
         {
             if (args[i] == "--seed" && ulong.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var s)) seed = s;
             else if (args[i] == "--years" && int.TryParse(args[i + 1], NumberStyles.None, CultureInfo.InvariantCulture, out var y) && y is >= 1 and <= 1000) years = y;
+            else if (args[i] == "--map" && Enum.TryParse<DemoMapSize>(args[i + 1], ignoreCase: true, out var m) && Enum.IsDefined(m)) size = m;
             else
             {
-                output.WriteLine("用法：--diagnose-living --seed N [--years 1～1000]");
+                output.WriteLine("用法：--diagnose-living --seed N [--years 1～1000] [--map small|medium|large]");
                 return 2;
             }
         }
 
-        var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
-        output.WriteLine($"=== 普通世界人口診斷｜種子 {seed}｜{years} 年｜{world.MapCapacity.Describe()} ===");
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, null, size), DemoWeeklyTempConfig.LivingForagingSample);
+        output.WriteLine($"=== 普通世界人口診斷｜種子 {seed}｜{years} 年｜地圖 {DemoMapSizes.Name(size)}（{world.Map.Columns}×{world.Map.Rows}）｜{world.MapCapacity.Describe()} ===");
+        var lap = clock.Elapsed;
+        var lapYear = 0;
         var seen = 0;
         for (var year = 1; year <= years; year++)
         {
@@ -45,6 +50,12 @@ public static class LivingDiagnosis
                 + $" 遺跡{events.Count(e => e.Kind == DemoSettlementEventKind.SettlementRuined)}");
             if (year % 10 != 0 && year != 1)
                 continue;
+            // 第 07-1 章 c 節：效能（這段年數的牆鐘時間、平均每年秒數）。
+            var now = clock.Elapsed;
+            output.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"  耗時：到第 {year} 年共 {now.TotalSeconds:F1} 秒（這段每年 {(now - lap).TotalSeconds / (year - lapYear):F2} 秒）｜週報 {world.WeekReports().Count} 份｜事件 {world.WeekReports().Sum(w => w.Events.Count)} 筆"));
+            lap = now;
+            lapYear = year;
             var day = world.Snapshot().DaysElapsed;
             var births = weeks.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
             var starved = weeks.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths) + w.Migrations.Sum(m => m.Deaths));
@@ -90,6 +101,23 @@ public static class LivingDiagnosis
             output.WriteLine($"  彙整：有人聚落 {villages}，過半週缺糧 {shortVillages}（勞力不足 {labourShort}、來源不足 {sourceShort}）"
                 + $"｜育齡婦女 {fertileTotal}、育齡伴侶 {couplesTotal}、懷孕 {pregnantTotal}");
         }
+        SaveSizes(world, output);
         return 0;
+    }
+
+    /// <summary>第 07-1 章 c 節：存檔大小與各部分佔比（找出存檔變大的來源）。</summary>
+    private static void SaveSizes(DemoObserverWorld world, TextWriter output)
+    {
+        var json = world.ExportTempSave();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var state = doc.RootElement.GetProperty("State");
+        long Bytes(System.Text.Json.JsonElement e) => System.Text.Encoding.UTF8.GetByteCount(e.GetRawText());
+        var parts = state.EnumerateObject().Select(p => (p.Name, Size: Bytes(p.Value))).OrderByDescending(p => p.Size).Take(6);
+        output.WriteLine($"  存檔：共 {System.Text.Encoding.UTF8.GetByteCount(json) / 1024} KB｜" + string.Join("、", parts.Select(p => $"{p.Name} {p.Size / 1024} KB")));
+        var fields = new Dictionary<string, long>();
+        foreach (var week in state.GetProperty("WeekReports").EnumerateArray())
+            foreach (var f in week.EnumerateObject())
+                fields[f.Name] = fields.GetValueOrDefault(f.Name) + Bytes(f.Value);
+        output.WriteLine("  週報欄位：" + string.Join("、", fields.OrderByDescending(kv => kv.Value).Take(6).Select(kv => $"{kv.Key} {kv.Value / 1024} KB")));
     }
 }

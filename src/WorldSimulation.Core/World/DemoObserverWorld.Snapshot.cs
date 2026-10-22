@@ -509,7 +509,7 @@ public sealed partial class DemoObserverWorld
             var ledger = transit[batch.Id];
             var path = batch.Path;
             var from = sites.Settlements.Single(s => s.Id == batch.FromSettlementId);
-            if (path.IsDefault || path.Length < 2 || path.Any(c => !OnMap(c))
+            if (path.IsDefault || path.Length < 2 || path.Any(c => !map.Contains(c.Column, c.Row))
                 || path.Zip(path.Skip(1)).Any(p => !map.Routes.IsLandPassable(p.First, p.Second)) // 第 06 章 a 節：每步都要有陸路路線段
                 || path[0] != new DemoCellRef(from.Column, from.Row))
                 Reject($"途中隊伍 #{batch.Id} 的路線不合法");
@@ -532,9 +532,6 @@ public sealed partial class DemoObserverWorld
                 Reject($"途中隊伍 #{batch.Id} 與帳目不一致");
         }
     }
-
-    private static bool OnMap(DemoCellRef cell)
-        => cell.Column >= 0 && cell.Column < DemoHexWorld.Columns && cell.Row >= 0 && cell.Row < DemoHexWorld.Rows;
 
     [DoesNotReturn]
     private static void Reject(string reason)

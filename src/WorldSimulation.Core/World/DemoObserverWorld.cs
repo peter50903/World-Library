@@ -98,16 +98,16 @@ public sealed partial class DemoObserverWorld
         // are generated once here and cached. C05: nothing draws RNG at run time (RESOURCE is never
         // drawn after the opening; POP is reserved for birth/death, 41A SEED_POP).
         _rng = RngRegistry.Create(recipe.WorldSeed, recipe.HistorySeedInput);
-        Map = DemoHexWorld.Generate(_rng);
+        Map = DemoHexWorld.Generate(_rng, recipe.MapSize);
         var openingIds = new EntityIdAllocator();
-        _sites = DemoWorldSites.Generate(Map, _rng,
-            weekly.CrowdedForaging
+        var sitesConfig = weekly.CrowdedForaging
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 40, MaxPopGroupSize = 48 }
                 // 第 08-1 章【TEMP】：人類採集世界每個開局聚落 10～14 人（含三對育齡伴侶，見 DemoCohortDemography.OpeningPerson）。
                 // 診斷：6～10 人時小世界常因性別比例的隨機波動斷代；12～18 人時開局就超過附近來源，第 1 年大饑荒。
                 : weekly.HumanLifecycleEnabled
                 ? DemoSitesTempConfig.Sample with { MinPopGroupSize = 10, MaxPopGroupSize = 14 }
-                : DemoSitesTempConfig.Sample,
+                : DemoSitesTempConfig.Sample;
+        _sites = DemoWorldSites.Generate(Map, _rng, sitesConfig.ScaledFor(Map),
             weekly.SharedCatchmentEnabled, spaced: weekly.HopeEra).WithOpeningEntityIds(openingIds);
 
         // V0-04A TEMP opening balances: every resource point starts with the same reserve,
@@ -272,7 +272,7 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>
     /// C07（P1.0.01-b）：觀察者點格查詢。唯讀投影，每次重算；不改世界、不消耗亂數。
-    /// 越界拋 <see cref="ArgumentOutOfRangeException"/>（地圖 12×8）。Godot 與 CLI `cell` 共用。
+    /// 越界拋 <see cref="ArgumentOutOfRangeException"/>（小地圖 12×8；第 07-1 章 c 節起依地圖尺寸）。Godot 與 CLI `cell` 共用。
     /// </summary>
     public DemoCellView QueryCell(int column, int row) => DemoCellQuery.Build(this, column, row);
 

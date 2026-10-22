@@ -83,6 +83,15 @@
 | 卸任與補任 | 老死或聚落無人即卸任；下週結算依同規則補任 | 代表人物也會老死 |
 | 命名詞素 | config/demo/names-temp.json（人名「名·姓」、地名前綴＋地形後綴、新村可沿用母村名加方位字） | 使用者：西式奇幻音譯、不超過六字 |
 
+#### D07-1c｜地圖大小（第 07-1 章 c 節，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 地圖尺寸 | 小 12×8（預設）、中 24×16、大 48×32 | 建立世界時選；小地圖完全不變 |
+| 海岸深度 | 每欄 1～2 列 × 列數倍率（中 2～4、大 4～8） | 海洋比例與小地圖相近 |
+| 淺灘數 | 每 8 列一段河道一個（小 1、中 2、大 4） | 大地圖只有一處渡口太遠 |
+| 開局聚落數 | 2～4 × 格數倍率（中 8～16、大 32～64） | 人口密度與小地圖相近 |
+
 #### D08-3｜觀察者介面與人口平衡（第 08-3 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -174,7 +183,7 @@
 
 | 參數 | 目前 TEMP 值 | 程式位置 |
 |---|---|---|
-| 地圖尺寸 | 12×8 格 | `DemoHexWorld.cs:34-35` |
+| 地圖尺寸 | 12×8 格（第 07-1 章 c 節起為小地圖，另見 D07-1c） | `DemoHexWorld.cs` |
 | 地形 | 草原／森林／水域各 1／3 機率 | `DemoHexWorld.cs:74` |
 | 偏移座標→軸向座標 | odd-r | `DemoHexWorld.cs:71-73`、`DemoMigration.cs:163`、`godot/Scripts/HexCoordinates.cs:14` |
 | 聚落數量 | 2～4 | `DemoWorldSites.cs:55-56` |
@@ -327,7 +336,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 21 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限 |
+| `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 22 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 18 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
@@ -336,7 +345,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 12 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 3 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 5 | D7；第 06-1 章海洋與河流、淺灘 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 7 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
