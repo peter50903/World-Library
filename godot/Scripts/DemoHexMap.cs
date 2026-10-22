@@ -232,12 +232,10 @@ public partial class DemoHexMap : Control
     }
 
     /// <summary>
-    /// 第 06-1 章（TEMP 顯示）：海洋圖塊壓暗偏深藍、和河流分開；淺灘沒有專屬圖塊時把河流圖塊調淡。
-    /// 正式深海與淺灘圖塊交付後（TILE_WATER 重做、TILE_RIVER_SHALLOW）海洋與淺灘專屬圖塊不再調色。
+    /// 第 06-1 章（TEMP 顯示）：淺灘沒有專屬圖塊時把河流圖塊調淡（海洋已有深海圖塊，不再調色）。
     /// </summary>
     private static Color WaterTint(DemoHexCell cell, bool hasShallowArt)
-        => cell.Sea ? new Color(0.55f, 0.65f, 0.90f)
-            : cell.Shallow && !hasShallowArt ? new Color(1.35f, 1.30f, 1.10f)
+        => cell.Shallow && !hasShallowArt ? new Color(1.35f, 1.30f, 1.10f)
             : Colors.White;
 
     private static Color[] Tint6(Color color) => color == Colors.White ? White6 : Enumerable.Repeat(color, 6).ToArray();
