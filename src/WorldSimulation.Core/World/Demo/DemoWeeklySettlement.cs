@@ -469,6 +469,12 @@ public sealed record DemoWeekReport(
     /// </summary>
     public IReadOnlyList<DemoRngCounter> RngCounters { get; init; } = Array.Empty<DemoRngCounter>();
 
+    /// <summary>第 07-1 章 b 節：本週新任的代表人物（實體 ID 在本週配號區間內）。</summary>
+    public IReadOnlyList<DemoRepresentative> Appointments { get; init; } = Array.Empty<DemoRepresentative>();
+
+    /// <summary>第 07-1 章 b 節：本週卸任的代表人物（老死、聚落無人）。</summary>
+    public IReadOnlyList<DemoRepresentativeExit> RepresentativeExits { get; init; } = Array.Empty<DemoRepresentativeExit>();
+
     /// <summary>C05：一行繁體中文週結算摘要（Godot 通知／歷史欄與 CLI 共用；只加總本週既有週帳欄位）。</summary>
     public string Summary()
     {
@@ -568,7 +574,8 @@ internal static class DemoWeeklySettlement
         IReadOnlyDictionary<int, long>? sourceStocks = null,
         Func<int, long, long, DemoEmigrationMode, long>? emigrantPlanner = null,
         DemoLandDevelopmentMap? land = null,
-        IReadOnlyDictionary<int, DemoMateMarket>? mates = null)
+        IReadOnlyDictionary<int, DemoMateMarket>? mates = null,
+        Func<DemoSettlement, ISet<string>, string>? namer = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
@@ -715,6 +722,9 @@ internal static class DemoWeeklySettlement
                 var founded = new DemoSettlement(foundedId, $"新聚落{checked(weekSites.FoundedSettlementCount + 1)}號",
                     cell.Column, cell.Row, FoundedWeek: week, FoundedFromSettlementId: batch.FromSettlementId,
                     FoundedByBatchId: batch.Id);
+                // 第 07-1 章 b 節：希望時代的新聚落取西式奇幻音譯名（可能沿用母村名，例：新索倫）。
+                if (namer is not null)
+                    founded = founded with { Name = namer(founded, weekSites.Settlements.Select(s => s.Name).ToHashSet()) };
                 weekSites = weekSites.WithFoundedSettlement(founded, DemoEntityIds.NextInt(ids), map);
                 var point = weekSites.ResourcePointsOf(founded.Id).Single();
                 reserves = reserves.Add(point.Id, 0);

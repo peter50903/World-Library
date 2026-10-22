@@ -255,6 +255,14 @@ public sealed class DemoWorldSites
     /// 新聚落沒有初始人口群體：人口全部來自遷徙隊伍，記在每週人口帳的遷入（M1_SETTLE）。
     /// C04：兩個 ID 都由世界唯一分配器發號，必須大於既有全部 ID（只遞增、不重用）。
     /// </summary>
+    /// <summary>第 07-1 章 b 節：換上開局聚落名（希望時代的西式奇幻音譯名）；其他資料不變。</summary>
+    internal DemoWorldSites WithSettlementNames(IReadOnlyDictionary<int, string> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        var settlements = Settlements.Select(s => names.TryGetValue(s.Id, out var n) ? s with { Name = n } : s).ToArray();
+        return new DemoWorldSites(Array.AsReadOnly(settlements), ResourcePoints, PopGroups, ForagingOnly);
+    }
+
     internal DemoWorldSites WithFoundedSettlement(DemoSettlement settlement, int resourcePointId, DemoHexWorld map)
     {
         ArgumentNullException.ThrowIfNull(settlement);

@@ -57,7 +57,7 @@ public sealed partial class DemoObserverWorld
         var settlements = ReadArray<DemoSettlement>(state, "Settlements");
         var points = ReadArray<DemoResourcePoint>(state, "ResourcePoints");
         var groups = ReadArray<DemoPopGroup>(state, "PopulationGroups");
-        var sites = RebuildSites(map, initialSites, settlements, weekCount);
+        var sites = RebuildSites(map, initialSites, settlements, weekCount, weekly.HopeEra ? new DemoNames(candidate._rng) : null);
         if (!points.SequenceEqual(sites.ResourcePoints) || !groups.SequenceEqual(sites.PopGroups))
             Reject("資源點或人口群體與聚落紀錄不一致");
 
@@ -129,7 +129,7 @@ public sealed partial class DemoObserverWorld
         {
             var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
             var replayed = DemoHumanLifecycle.Replay(initial, reports, sites,
-                new DemoPopulationDraws(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
+                new DemoPopulationDraws(candidate._rng), new DemoNames(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
             var supplied = state.GetProperty("Demography").Deserialize<DemoCohortSnapshot>()
                 ?? throw new InvalidDataException("Missing human cohort snapshot.");
             var candidateSnapshot = replayed.Snapshot();
@@ -137,6 +137,7 @@ public sealed partial class DemoObserverWorld
                 || supplied.Groups.IsDefault || supplied.Pregnancies.IsDefault
                 || !supplied.Groups.SequenceEqual(candidateSnapshot.Groups)
                 || !supplied.Pregnancies.SequenceEqual(candidateSnapshot.Pregnancies)
+                || !supplied.Representatives.SequenceEqual(candidateSnapshot.Representatives)
                 || sites.Settlements.Any(place => replayed.ResidentsOf(place.Id) != population[place.Id])
                 // 第 07 章 b 節：途中隊伍的人數＝攜帶的人數；沒有不屬於任何現存隊伍的旅人。
                 || batches.Any(b => replayed.MembersOf(b.Id) != b.People)
@@ -158,7 +159,8 @@ public sealed partial class DemoObserverWorld
         }
 
         // C04（40C INV_ENTITY_ID）：現存全部實體 ID 互不重複，且都小於分配器下一號。
-        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id)).ToList(); // 第 07-1 章：群體人口不配實體 ID
+        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id))
+            .Concat(candidate._demography?.Representatives.Select(r => r.Id) ?? Enumerable.Empty<long>()).ToList(); // 第 07-1 章：只有代表人物配實體 ID
         if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
             Reject("實體 ID 重複或不小於分配器下一號");
 
@@ -275,7 +277,10 @@ public sealed partial class DemoObserverWorld
                 EntityIdNextOpening = item.GetProperty("EntityIdNextOpening").GetInt64(),
                 EntityIdNextClosing = item.GetProperty("EntityIdNextClosing").GetInt64(),
                 RngCounters = Array.AsReadOnly(ReadArray<DemoRngCounter>(item, "RngCounters").ToArray()),
-                Sources = Array.AsReadOnly(ReadArray<DemoSourceWeekLedger>(item, "Sources").ToArray())
+                Sources = Array.AsReadOnly(ReadArray<DemoSourceWeekLedger>(item, "Sources").ToArray()),
+                // 第 07-1 章 b 節：代表人物就任與卸任（之後由生死重播逐週核對）。
+                Appointments = Array.AsReadOnly(ReadArray<DemoRepresentative>(item, "Appointments").ToArray()),
+                RepresentativeExits = Array.AsReadOnly(ReadArray<DemoRepresentativeExit>(item, "RepresentativeExits").ToArray())
             });
         }
 
@@ -311,7 +316,8 @@ public sealed partial class DemoObserverWorld
             Reject($"第 {report.Week} 週實體 ID 配號區間與上週不銜接");
         var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
         var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
-            .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
+            .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId))
+            .Concat(report.Appointments.Select(a => a.Id)).ToList(); // 第 07-1 章 b 節：本週新任代表人物
         // 第 07-1 章：群體人口的新生兒不配實體 ID。
         if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
             || newIds.Count != closing - opening)
@@ -339,7 +345,7 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>開局聚落必須等於種子產生的結果；之後的新聚落依序重新套用建立規則（ID、空格、非水域）。</summary>
     private static DemoWorldSites RebuildSites(
-        DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount)
+        DemoHexWorld map, DemoWorldSites initial, IReadOnlyList<DemoSettlement> settlements, int weekCount, DemoNames? names)
     {
         var count = initial.Settlements.Count;
         // 第 07 章 c 節：成為遺跡的週次另外套用（之後由事件與週帳逐週核對）。
@@ -352,8 +358,12 @@ public sealed partial class DemoObserverWorld
         foreach (var founded in settlements.Skip(count).Select(s => s with { RuinedWeek = 0 }))
         {
             var from = sites.Settlements.FirstOrDefault(s => s.Id == founded.FoundedFromSettlementId);
+            // 第 07-1 章 b 節：希望時代的新聚落名依同規則重算（母村前綴、當時已有的名字）。
+            var expectedName = names is null || from is null
+                ? $"新聚落{checked(sites.FoundedSettlementCount + 1)}號"
+                : names.Settlement(map, founded, DemoNames.PrefixOf(from.Name), sites.Settlements.Select(s => s.Name).ToHashSet(), opening: false);
             if (!founded.IsFounded || founded.FoundedWeek < lastWeek || founded.FoundedWeek > weekCount
-                || founded.Name != $"新聚落{checked(sites.FoundedSettlementCount + 1)}號" || founded.FoundedByBatchId < 1
+                || founded.Name != expectedName || founded.FoundedByBatchId < 1
                 || from is null || from.FoundedWeek >= founded.FoundedWeek
                 || !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(founded.Column, founded.Row)))
                 Reject($"新聚落 #{founded.Id} 的建立紀錄不合法");

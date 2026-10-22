@@ -140,6 +140,12 @@ public static class DemoCellQuery
             lines.Add(world.IsStarving(settlement.Id)
                 ? $"飢餓狀態：飢餓中（飢餓債 {world.SettlementHungerDebt(settlement.Id)}，最近一週缺糧 {world.LatestWeekShortage(settlement.Id)}）"
                 : population == 0 ? "飢餓狀態：聚落已無人口" : "飢餓狀態：正常");
+            // 第 07-1 章：人口結構與代表人物。
+            if (world.PopulationStats(settlement.Id) is { } st && st.Total > 0)
+                lines.Add($"人口結構：兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}｜育齡伴侶約 {st.Couples} 對｜懷孕中 {st.Pregnant}");
+            var day = world.Snapshot().DaysElapsed;
+            foreach (var r in world.RepresentativesOf(settlement.Id))
+                lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
             lines.AddRange(DemoSettlementHistory.Lines(world, settlement.Id)); // 第 08-3 章：建立年數與聚落小史
         }
 

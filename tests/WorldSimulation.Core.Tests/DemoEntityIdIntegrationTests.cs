@@ -26,6 +26,7 @@ public sealed class DemoEntityIdIntegrationTests
             .Concat(world.Sites.ResourcePoints.Select(p => (long)p.Id))
             .Concat(world.Sites.PopGroups.Select(g => (long)g.Id))
             .Concat(world.WeekReports().SelectMany(w => w.Migrations).Where(m => m.Departed).Select(m => (long)m.BatchId))
+            .Concat(world.WeekReports().SelectMany(w => w.Appointments).Select(r => r.Id)) // 第 07-1 章 b 節：代表人物
             .ToList();
         // 第 07-1 章：群體人口不配實體 ID。
         return ids;

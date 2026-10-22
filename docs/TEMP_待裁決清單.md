@@ -75,6 +75,14 @@
 | 外移組成 | 留至少一名育齡女性與一名可配對男性；開拓先帶兩名最年輕的育齡女性與可配對男性，其餘依年齡群比例；懷孕隨育齡女性等比例 | 取代整戶挑選 |
 | 事件 | 每位新生兒、自然死亡者仍各一筆事件，但不連個體編號 | 對帳規則不變；大量時再彙整 |
 
+#### D07-1b｜代表人物與命名（第 07-1 章 b 節，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 代表人物職位 | 村長（最年長的成年人）、採集代表（人數最多的壯年年齡群）、漁撈代表（本週有河海漁獲的聚落） | 使用者：只需要知道權力者與各產業代表 |
+| 卸任與補任 | 老死或聚落無人即卸任；下週結算依同規則補任 | 代表人物也會老死 |
+| 命名詞素 | config/demo/names-temp.json（人名「名·姓」、地名前綴＋地形後綴、新村可沿用母村名加方位字） | 使用者：西式奇幻音譯、不超過六字 |
+
 #### D08-3｜觀察者介面與人口平衡（第 08-3 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -307,12 +315,13 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementTempSettings.cs` | 2 | 第 07 章 c 節：人口連續為 0 滿 52 週成為遺跡（config/demo/settlement-temp.json）；遺跡格不能直接重建、開拓選址須可及未被佔用的自然來源 |
 | `src/WorldSimulation.Core/World/Demo/DemoCohortMigration.cs` | 1 | 第 07-1 章 a 節：群體人口外移規劃（留育齡女性與可配對男性、開拓帶兩對、依年齡群比例、懷孕隨育齡女性等比例） |
 | `src/WorldSimulation.Core/World/Demo/DemoCohortDemography.cs` | 3 | 第 07-1 章 a 節：群體人口（伴侶數＝育齡女性與可配對男性較小者、開局三對建村夫婦、途中不受孕） |
+| `src/WorldSimulation.Core/World/Demo/DemoNames.cs` | 5 | 第 07-1 章 b 節：西式奇幻音譯命名（詞素在 config/demo/names-temp.json，不超過六字） |
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
-| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 6 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口 |
+| `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 55 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |

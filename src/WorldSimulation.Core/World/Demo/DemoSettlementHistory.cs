@@ -71,6 +71,20 @@ public static class DemoSettlementHistory
                      .OrderBy(s => s.FoundedWeek).ThenBy(s => s.Id))
             Add(YearOfWeek(child.FoundedWeek), $"分出開拓隊，建立{child.Name}");
 
+        // 第 07-1 章 b 節：代表人物的就任與卸任。
+        var known = new Dictionary<long, DemoRepresentative>();
+        foreach (var report in world.WeekReports())
+        {
+            foreach (var r in report.Appointments.Where(r => r.SettlementId == settlementId))
+            {
+                known[r.Id] = r;
+                Add(YearOfWeek(report.Week), $"{r.Name} 成為{DemoRepresentative.RoleName(r.Role)}");
+            }
+            foreach (var x in report.RepresentativeExits.Where(x => x.SettlementId == settlementId))
+                if (known.TryGetValue(x.Id, out var who))
+                    Add(YearOfWeek(report.Week), $"{DemoRepresentative.RoleName(who.Role)} {who.Name} 卸任：{x.Reason}");
+        }
+
         if (peak > 0)
             Add(YearOfWeek(peakWeek), $"人口高峰 {peak} 人");
         if (settlement.IsRuin)

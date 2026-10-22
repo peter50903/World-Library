@@ -122,6 +122,20 @@ public sealed partial class DemoObserverWorld
             kv => kv.Key,
             kv => weekly.IsFamineSettlement(kv.Key) ? 0L : checked(kv.Value * weekly.InitialFoodPerPerson));
         _hungerDebt = _population.ToImmutableSortedDictionary(kv => kv.Key, _ => 0L);
+        // 第 07-1 章 b 節：希望時代的開局聚落取西式奇幻音譯名（世界種子決定）。
+        if (weekly.HopeEra)
+        {
+            var names = new DemoNames(_rng);
+            var taken = new HashSet<string>();
+            var chosen = new Dictionary<int, string>();
+            foreach (var s in _sites.Settlements)
+            {
+                var name = names.Settlement(Map, s, null, taken, opening: true);
+                taken.Add(name);
+                chosen[s.Id] = name;
+            }
+            _sites = _sites.WithSettlementNames(chosen);
+        }
         if (weekly.HumanLifecycleEnabled)
             _demography = DemoCohortDemography.Open(
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules,
@@ -298,6 +312,11 @@ public sealed partial class DemoObserverWorld
     public DemoCohortStats? PopulationStats(int settlementId, int batchId = 0)
         => _demography?.StatsOf(settlementId, batchId, Snapshot().DaysElapsed, DemoHumanLifecycle.Rules);
 
+    /// <summary>第 07-1 章 b 節：某聚落在任的代表人物（村長、產業代表）；沒有則為空。</summary>
+    public IReadOnlyList<DemoRepresentative> RepresentativesOf(int settlementId)
+        => _demography?.Representatives.Where(r => r.SettlementId == settlementId).OrderBy(r => r.Role).ToList()
+            ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>();
+
     /// <summary>第 07-1 章 a 節：全世界人口結構；非人類繁衍世界為 null。</summary>
     public DemoCohortStats? WorldPopulationStats
         => _demography?.WorldStats(Snapshot().DaysElapsed, DemoHumanLifecycle.Rules);
@@ -348,14 +367,15 @@ public sealed partial class DemoObserverWorld
                 // 第 07 章 b 節：人類繁衍世界的外移人數依家庭決定（不拆散家庭）。
                 _demography is null ? null : PlanFamilies(_demography, checked(_weeks.Count + 1)),
                 _land,
-                _demography is null ? null : DemoHumanLifecycle.MateMarkets(_demography, _sites, checked(_weeks.Count + 1)));
+                _demography is null ? null : DemoHumanLifecycle.MateMarkets(_demography, _sites, checked(_weeks.Count + 1)),
+                _weekly.HopeEra ? FoundedNamer() : null);
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
             if (_demography is not null)
             {
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
-                var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng),
+                var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
                     DemoCausalIndex.NextEventId(_weeks));
                 commit.StagePopulation(lifecycle.Outcome, lifecycle.Population);
             }
@@ -375,6 +395,18 @@ public sealed partial class DemoObserverWorld
         Checkpoint(DemoCommitStage.BeforePublish);
         commit.PublishTo(this);
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
+    }
+
+    /// <summary>第 07-1 章 b 節：新建聚落命名（沿用母村前綴或新取，不與既有聚落重名）。</summary>
+    private Func<DemoSettlement, ISet<string>, string> FoundedNamer()
+    {
+        var names = new DemoNames(_rng);
+        var sites = _sites;
+        return (founded, taken) =>
+        {
+            var mother = sites.Settlements.FirstOrDefault(s => s.Id == founded.FoundedFromSettlementId);
+            return names.Settlement(Map, founded, mother is null ? null : DemoNames.PrefixOf(mother.Name), taken, opening: false);
+        };
     }
 
     private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoCohortDemography demography, int week)
@@ -413,6 +445,8 @@ public sealed partial class DemoObserverWorld
                 sb.Append(inv, $"cohort{g.SettlementId}/{g.BatchId}/{g.BirthYear}/{g.Sex}={g.Count};");
             foreach (var p in _demography.Pregnancies)
                 sb.Append(inv, $"preg{p.SettlementId}/{p.BatchId}/{p.DueWeek}={p.Count};");
+            foreach (var r in _demography.Representatives)
+                sb.Append(inv, $"{r};");
         }
         sb.Append(inv, $"nextEntity={_entityIds.NextValue}/{_entityIds.Exhausted};");
         foreach (var site in _sites.Settlements) sb.Append(inv, $"{site};");
@@ -424,6 +458,8 @@ public sealed partial class DemoObserverWorld
             foreach (var c in week.RngCounters) sb.Append(inv, $"rngc{c.StreamId}={c.Before}-{c.After};");
             foreach (var ledger in week.Settlements) sb.Append(inv, $"{ledger};");
             foreach (var e in week.Events) sb.Append(inv, $"{e};");
+            foreach (var r in week.Appointments) sb.Append(inv, $"appoint{r};"); // 第 07-1 章 b 節
+            foreach (var x in week.RepresentativeExits) sb.Append(inv, $"exit{x};");
             foreach (var m in week.Migrations) sb.Append(inv, $"{m};");
             foreach (var source in week.Sources) sb.Append(inv, $"{source};"); // 第 04 章 c 節：來源帳
         }
