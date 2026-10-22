@@ -12,11 +12,14 @@ public enum DemoEra
     Pioneer = 1
 }
 
-/// <summary>第 08-6 章：知識樹上的技術（第一版只有農耕；木工、鍛造、石工隨後各節加入）。</summary>
+/// <summary>第 08-6 章：知識樹上的技術（農耕、木工；鍛造、石工隨後各節加入）。</summary>
 public enum DemoTechnology
 {
     /// <summary>農耕：草原可開墾成農田，提高食物上限。</summary>
-    Farming = 0
+    Farming = 0,
+
+    /// <summary>第 08-6 章 d 節：木工：有木匠；聚落升為村莊的條件。</summary>
+    Woodworking = 1
 }
 
 /// <summary>某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。</summary>
@@ -53,15 +56,21 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
 /// 第 08-6 章 a 節【TEMP 規則】知識的累積與傳播（使用者 2026-10-23：經歷一段時間自動學會，該產業的人越多、學者越多越快；
 /// 知識透過婚嫁與遷徙帶到別的聚落）。純函式、不抽亂數。
 /// <list type="bullet">
-/// <item>每週研究進度＋＝該產業從業者人數（農耕：聚落的成年人，都在採集植物）×1；學者尚未出現。</item>
-/// <item>進度達 <see cref="TempThreshold"/> 就習得；第一個習得任何技術的聚落讓世界進入開拓時代。</item>
+/// <item>每週研究進度＋＝該產業從業者人數×1（農耕：聚落的成年人，都在採集植物；木工：可及森林的聚落的成年人）；學者尚未出現。</item>
+/// <item>進度達門檻（<see cref="ThresholdOf"/>）就習得；第一個習得任何技術的聚落讓世界進入開拓時代。</item>
 /// <item>從已習得的聚落抵達的人，每人帶來門檻的 <see cref="TempCarryPercent"/>% 進度（比自行研究快）。</item>
 /// </list>
 /// </summary>
 public static class DemoKnowledge
 {
-    /// <summary>【TEMP】習得門檻（研究點）：20 個成年人約 25 年。</summary>
+    /// <summary>【TEMP】農耕習得門檻（研究點）：20 個成年人約 25 年。</summary>
     public const long TempThreshold = 26_000;
+
+    /// <summary>【TEMP】第 08-6 章 d 節：木工習得門檻：農耕的 1.5 倍。</summary>
+    public const long TempWoodworkingThreshold = 39_000;
+
+    public static long ThresholdOf(DemoTechnology technology)
+        => technology == DemoTechnology.Woodworking ? TempWoodworkingThreshold : TempThreshold;
 
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
     public const long TempCarryPercent = 25;
@@ -69,6 +78,7 @@ public static class DemoKnowledge
     public static string Name(DemoTechnology technology) => technology switch
     {
         DemoTechnology.Farming => "農耕",
+        DemoTechnology.Woodworking => "木工",
         _ => technology.ToString()
     };
 
@@ -84,7 +94,8 @@ public static class DemoKnowledge
     /// 事件編號從 <paramref name="nextEventId"/> 起。只有人類繁衍世界有知識。
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
-        DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId)
+        DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
+        DemoHexWorld? map = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -103,21 +114,25 @@ public static class DemoKnowledge
                 var current = records.GetValueOrDefault(key) ?? new DemoKnowledgeRecord(settlement.Id, technology, 0, 0);
                 if (current.Learned)
                     continue;
-                var practitioners = population.AdultsIn(settlement.Id, rules);
+                var practitioners = technology == DemoTechnology.Woodworking && (map is null || !NearForest(map, settlement))
+                    ? 0 : population.AdultsIn(settlement.Id, rules);
+                var threshold = ThresholdOf(technology);
                 var carried = report.Migrations
                     .Where(m => m.Arrived && m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
-                var gain = checked(practitioners + carried * TempThreshold * TempCarryPercent / 100);
+                var gain = checked(practitioners + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
-                var progress = Math.Min(TempThreshold, checked(current.Progress + gain));
-                var learned = progress >= TempThreshold;
+                var progress = Math.Min(threshold, checked(current.Progress + gain));
+                var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0 };
                 if (!learned)
                     continue;
                 var cause = carried > 0
                     ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
-                    : $"{practitioners} 名成年人長年採集植物的經驗累積";
+                    : technology == DemoTechnology.Woodworking
+                        ? $"{practitioners} 名成年人長年在森林取木的經驗累積"
+                        : $"{practitioners} 名成年人長年採集植物的經驗累積";
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.KnowledgeLearned, (long)technology, $"學會{Name(technology)}：{cause}【TEMP】",
                     EventId: nextEventId++);
@@ -137,5 +152,14 @@ public static class DemoKnowledge
         var next = new DemoKnowledgeState(
             records.Values.OrderBy(r => r.SettlementId).ThenBy(r => r.Technology).ToImmutableList(), era, eraWeek);
         return (next, events);
+    }
+
+    /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>
+    public static bool NearForest(DemoHexWorld map, DemoSettlement settlement)
+    {
+        var origin = map.GetCell(settlement.Column, settlement.Row);
+        return origin.Terrain == DemoTerrain.Forest || DemoRouteNetwork.Directions
+            .Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
+            .Any(c => c is { Terrain: DemoTerrain.Forest });
     }
 }

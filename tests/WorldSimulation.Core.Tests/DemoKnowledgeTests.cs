@@ -99,13 +99,56 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void WoodworkingBringsACarpenter_AndACarpenterVillageIsAVillage()
+    {
+        // 第 08-6 章 d 節：可及森林的聚落研究木工；學會後補任木匠，有木匠且人口達門檻才是村莊。
+        DemoObserverWorld? world = null;
+        DemoSettlementEvent? learned = null;
+        foreach (var seed in new ulong[] { 1, 2, 3 })
+        {
+            world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
+            for (var day = 0; day < 80 * 365 && !world.Knowledge.Records.Any(r => r.Technology == DemoTechnology.Woodworking && r.Learned); day++)
+                world.AdvanceOneDay();
+            learned = world.LatestWeek?.Events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.KnowledgeLearned
+                && (DemoTechnology)e.Count == DemoTechnology.Woodworking);
+            if (learned is not null) break;
+        }
+        Assert.NotNull(learned);
+        var place = world!.Sites.Settlements.Single(s => s.Id == learned!.SettlementId);
+        Assert.True(DemoKnowledge.NearForest(world.Map, place));
+        for (var day = 0; day < 7; day++)
+            world.AdvanceOneDay();
+        var carpenter = world.RepresentativesOf(place.Id).Any(r => r.Role == DemoRepresentativeRole.Carpenter);
+        var population = world.SettlementPopulation(place.Id);
+        Assert.True(carpenter || population == 0, "學會木工的聚落應補任木匠");
+        Assert.Equal(DemoSettlementHistory.TierFor(population, carpenter, world.ChronicleOf(place.Id).Tier), world.ChronicleOf(place.Id).Tier);
+        if (world.ChronicleOf(place.Id).Tier == DemoSettlementTier.Village)
+            Assert.Contains(DemoSettlementHistory.Lines(world, place.Id), l => l.Contains("發展為村莊", StringComparison.Ordinal));
+        Assert.Empty(world.BuildCausalIndex().Problems);
+        var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.ChronicleOf(place.Id), loaded.ChronicleOf(place.Id));
+    }
+
+    [Fact]
+    public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
+    {
+        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
+        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillagePopulation - 1, true));
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillagePopulation, true));
+        // 已是村莊：人口降到保留門檻以下、或失去木匠才降一級。
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillageKeepPopulation, true, DemoSettlementTier.Village));
+        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillageKeepPopulation - 1, true, DemoSettlementTier.Village));
+        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, false, DemoSettlementTier.Village));
+    }
+
+    [Fact]
     public void ResearchGrowsWithAdults_AndIsCappedAtTheThreshold()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
         for (var day = 0; day < 365; day++)
             world.AdvanceOneDay();
         Assert.Equal(DemoEra.Hope, world.Era);
-        Assert.All(world.Knowledge.Records, r => Assert.InRange(r.Progress, 0, DemoKnowledge.TempThreshold));
+        Assert.All(world.Knowledge.Records, r => Assert.InRange(r.Progress, 0, DemoKnowledge.ThresholdOf(r.Technology)));
         // 一年後每個有人的聚落都有研究進度，人多的聚落進度較多（每週＋成年人數）。
         var inhabited = world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0).ToList();
         Assert.All(inhabited, s => Assert.True(world.Knowledge.Of(s.Id, DemoTechnology.Farming)?.Progress > 0));

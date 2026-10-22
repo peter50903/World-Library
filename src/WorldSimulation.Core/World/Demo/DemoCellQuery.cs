@@ -172,7 +172,7 @@ public static class DemoCellQuery
                     var record = world.Knowledge.Of(settlement.Id, technology);
                     lines.Add(record is { Learned: true }
                         ? $"知識：{DemoKnowledge.Name(technology)}（第 {DemoSettlementHistory.YearOfDay(record.LearnedWeek * 7)} 年習得）"
-                        : $"知識：{DemoKnowledge.Name(technology)}研究中 {(record?.Progress ?? 0) * 100 / DemoKnowledge.TempThreshold}%");
+                        : $"知識：{DemoKnowledge.Name(technology)}研究中 {(record?.Progress ?? 0) * 100 / DemoKnowledge.ThresholdOf(technology)}%");
                 }
             lines.AddRange(DemoSettlementHistory.Lines(world, settlement.Id)); // 第 08-3 章：建立年數與聚落小史
         }

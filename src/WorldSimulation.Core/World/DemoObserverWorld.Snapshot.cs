@@ -143,8 +143,8 @@ public sealed partial class DemoObserverWorld
             ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
         if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
             || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
-                || r.Progress < 0 || r.Progress > DemoKnowledge.TempThreshold || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
-                || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.TempThreshold))
+                || r.Progress < 0 || r.Progress > DemoKnowledge.ThresholdOf(r.Technology) || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
+                || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
             || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))

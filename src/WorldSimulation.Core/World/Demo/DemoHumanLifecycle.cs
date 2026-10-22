@@ -223,11 +223,11 @@ internal static class DemoHumanLifecycle
             long Free(DemoCohortGroup g) => g.Count - current.Count(r => r.SettlementId == settlement.Id && r.BirthYear == g.BirthYear && r.Sex == g.Sex);
             var adults = population.GroupsAt(settlement.Id, 0)
                 .Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) >= Rules.AdultAgeYears).ToList();
-            foreach (var role in new[] { DemoRepresentativeRole.Leader, DemoRepresentativeRole.Farmer })
+            foreach (var role in Enum.GetValues<DemoRepresentativeRole>())
             {
                 if (current.Any(r => r.SettlementId == settlement.Id && r.Role == role)) continue;
-                // 第 08-6 章：專業知識持有者只在已習得該技術的聚落（農師＝農耕）。
-                if (role == DemoRepresentativeRole.Farmer && !knowledge.Knows(settlement.Id, DemoTechnology.Farming)) continue;
+                // 第 08-6 章：專業知識持有者只在已習得該技術的聚落（農師＝農耕、木匠＝木工）。
+                if (DemoRepresentative.TechnologyOf(role) is { } needed && !knowledge.Knows(settlement.Id, needed)) continue;
                 var candidates = adults.Where(g => Free(g) > 0).ToList();
                 if (role != DemoRepresentativeRole.Leader)
                     candidates = candidates.Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) < DemoSurvivalTempSettings.Current.ElderAgeYears).ToList();

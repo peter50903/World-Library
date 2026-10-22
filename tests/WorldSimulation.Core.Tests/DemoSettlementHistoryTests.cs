@@ -41,10 +41,12 @@ public sealed class DemoSettlementHistoryTests
         var child = world.Sites.Settlements.FirstOrDefault(s => s.IsFounded);
         Assert.NotNull(child);
         Assert.Contains(DemoSettlementHistory.Lines(world, child!.FoundedFromSettlementId), l => l.Contains($"建立{child.Name}"));
-        // 人口曾達 10 人的聚落記下「發展為村莊」。
+        // 人口曾達 10 人的聚落記下里程碑；第 08-6 章 d 節起村莊另需木匠（見 DemoKnowledgeTests）。
         var grown = world.Sites.Settlements.First(s => world.WeekReports()
             .Any(w => w.Settlements.Any(l => l.SettlementId == s.Id && l.PopulationClosing >= DemoSettlementHistory.TempVillagePopulation)));
-        Assert.Contains(DemoSettlementHistory.Lines(world, grown.Id), l => l.Contains("由聚落發展為村莊"));
+        Assert.Contains(DemoSettlementHistory.Lines(world, grown.Id), l => l.Contains("人口首次達到 10 人"));
+        Assert.All(world.Sites.Settlements.Where(s => !world.RepresentativesOf(s.Id).Any(r => r.Role == DemoRepresentativeRole.Carpenter)),
+            s => Assert.Equal(DemoSettlementTier.Settlement, world.ChronicleOf(s.Id).Tier));
     }
 
     [Fact]
