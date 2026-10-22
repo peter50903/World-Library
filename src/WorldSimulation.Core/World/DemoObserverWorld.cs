@@ -406,7 +406,8 @@ public sealed partial class DemoObserverWorld
                 _weekly.HopeEra ? FoundedNamer() : null,
                 firstEventId: checked(_history.LastEventId + 1), // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
                 debtSourceOf: DebtSourceOf,
-                hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope); // 第 08-6 章 b 節：開拓時代恢復餓死
+                hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
+                toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1))); // e 節：工具
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 

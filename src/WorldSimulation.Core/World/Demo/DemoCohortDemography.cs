@@ -25,7 +25,10 @@ public enum DemoRepresentativeRole
     Farmer = 1,
 
     /// <summary>第 08-6 章 d 節：木匠（木工知識持有者；聚落升為村莊的條件）。</summary>
-    Carpenter = 2
+    Carpenter = 2,
+
+    /// <summary>第 08-6 章 e 節：鐵匠（鍛造知識持有者）。</summary>
+    Smith = 3
 }
 
 /// <summary>
@@ -40,6 +43,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Leader => "村長",
         DemoRepresentativeRole.Farmer => "農師",
         DemoRepresentativeRole.Carpenter => "木匠",
+        DemoRepresentativeRole.Smith => "鐵匠",
         _ => "代表"
     };
 
@@ -48,6 +52,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
     {
         DemoRepresentativeRole.Farmer => DemoTechnology.Farming,
         DemoRepresentativeRole.Carpenter => DemoTechnology.Woodworking,
+        DemoRepresentativeRole.Smith => DemoTechnology.Smithing,
         _ => null
     };
 }

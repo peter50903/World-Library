@@ -307,8 +307,13 @@ public sealed record DemoSettlementWeekLedger(
     long WaterCarriers = 0,
     long ChildStarvationDeaths = 0,
     long ElderStarvationDeaths = 0,
-    long SourceSlack = 0)
+    long SourceSlack = 0,
+    long ToolYieldPercent = 0)
 {
+    /// <summary>第 08-6 章 e 節：本週每名勞力可採量（工具加成後）。</summary>
+    public long YieldPerWorker(DemoWeeklyTempConfig config)
+        => checked(config.YieldPerWorkerPerWeek * (100 + ToolYieldPercent) / 100);
+
     /// <summary>
     /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
     /// 下游（Godot 診斷、M1 驗收、百年長測）一律用此屬性，不各自相減。
@@ -587,7 +592,8 @@ internal static class DemoWeeklySettlement
         Func<DemoSettlement, ISet<string>, string>? namer = null,
         long? firstEventId = null,
         Func<int, long>? debtSourceOf = null,
-        bool? hopeRules = null)
+        bool? hopeRules = null,
+        Func<int, long>? toolYieldPercent = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -657,6 +663,7 @@ internal static class DemoWeeklySettlement
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
                 plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,
+                yieldPercent: toolYieldPercent, // 第 08-6 章 e 節：工具提高採集效率
                 baseNeeds: config.HumanLifecycleEnabled ? baseNeeds : null); // 第 08-3 章兩階段分配
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
@@ -1108,7 +1115,8 @@ internal static class DemoWeeklySettlement
                 HungerDebtCarriedIn: arrived.Debt, HungerDebtCarriedOut: debtOut,
                 AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
                 FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
-                SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id)));
+                SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id),
+                ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))

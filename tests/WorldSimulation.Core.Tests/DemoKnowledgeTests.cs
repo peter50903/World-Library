@@ -142,6 +142,28 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void SmithingToolsRaiseYieldFromTheWeekAfterLearning()
+    {
+        // 第 08-6 章 e 節：鍛造在木工之後；習得後下一週起每名勞力可採量＋25%。
+        var state = DemoKnowledgeState.Initial with
+        {
+            Records = System.Collections.Immutable.ImmutableList.Create(
+                new DemoKnowledgeRecord(1, DemoTechnology.Smithing, DemoKnowledge.TempSmithingThreshold, 10)),
+            Era = DemoEra.Pioneer, EraWeek = 5
+        };
+        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 1, 10));
+        Assert.Equal(DemoKnowledge.TempToolYieldPercent, DemoKnowledge.ToolYieldPercent(state, 1, 11));
+        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 2, 11));
+        Assert.Equal(DemoRepresentativeRole.Smith, Enum.GetValues<DemoRepresentativeRole>().Single(r => DemoRepresentative.TechnologyOf(r) == DemoTechnology.Smithing));
+        Assert.True(DemoKnowledge.ThresholdOf(DemoTechnology.Smithing) > DemoKnowledge.ThresholdOf(DemoTechnology.Woodworking));
+
+        var config = DemoWeeklyTempConfig.LivingForagingSample;
+        var ledger = new DemoSettlementWeekLedger(1, 1, "測試", 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 5);
+        Assert.Equal(config.YieldPerWorkerPerWeek, ledger.YieldPerWorker(config));
+        Assert.Equal(config.YieldPerWorkerPerWeek * 125 / 100, (ledger with { ToolYieldPercent = 25 }).YieldPerWorker(config));
+    }
+
+    [Fact]
     public void ResearchGrowsWithAdults_AndIsCappedAtTheThreshold()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
