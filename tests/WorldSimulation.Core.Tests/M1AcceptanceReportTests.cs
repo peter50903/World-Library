@@ -255,7 +255,8 @@ public sealed class M1AcceptanceReportTests
     public void HarvestAboveLaborCapacityIsReportedByM1Famine()
     {
         // 反例：證據中的 TEMP 每人每週產量改成 0 → 任何採收都超過勞動力上限，必須被指出（Behavior Check → 警告）。
-        var run = LocalFamine42.Value;
+        // 第 06-1 章：需要第一個聚落以外有實際採收的種子（地圖改變後種子 42 可能全是未開墾草原）。
+        var run = M1RunCollector.Collect(TestSeeds.NormalWithWoodlandAfterFirst, M1Preset.LocalFamine, 10, TestCalendar.DaysPerYear);
         var zeroYield = run.Preset with { Config = run.Preset.Config with { YieldPerWorkerPerWeek = 0 } };
 
         var famine = Result(M1Evaluator.Evaluate(run with { Preset = zeroYield }, Checks.Value), "M1_FAMINE");

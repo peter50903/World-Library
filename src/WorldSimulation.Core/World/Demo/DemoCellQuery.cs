@@ -41,7 +41,7 @@ public static class DemoCellQuery
     public static string RoutesLine(DemoHexWorld map, DemoCellRef cell)
     {
         var exits = map.Routes.Exits(map, cell);
-        var ford = map.Routes.Ford == cell ? "｜此格為渡口" : "";
+        var ford = map.Routes.Ford == cell ? "｜此格為淺灘渡口（可涉水過河）" : "";
         return exits.Count == 0
             ? $"路線：無（不可通行）{ford}"
             : $"路線：{string.Join("、", exits.Select(e => $"{e.Direction} {DemoRouteNetwork.KindName(e.Segment.Kind)}（成本 {e.Segment.Cost}）"))}{ford}";
@@ -64,6 +64,15 @@ public static class DemoCellQuery
         _ => "未定義（TEMP）"
     };
 
+    /// <summary>第 06-1 章：依格子區分海洋（深水）、河流、河流淺灘。</summary>
+    public static string TerrainName(DemoHexCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        if (cell.Terrain != DemoTerrain.Water) return TerrainName(cell.Terrain);
+        if (cell.Sea) return "海洋（深水，TEMP）";
+        return cell.Shallow ? "河流淺灘（可涉水過河，TEMP）" : "河流（TEMP）";
+    }
+
     /// <summary>
     /// 只呼叫世界的唯讀成員組出點格投影。越界由 <see cref="DemoHexWorld.GetCell"/> 拋
     /// <see cref="ArgumentOutOfRangeException"/>。文字與順序照搬 C07 前 Godot `OnCellSelected`。
@@ -76,7 +85,7 @@ public static class DemoCellQuery
         {
             $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})",
             $"軸向座標 ({cell.AxialQ}, {cell.AxialR})",
-            $"核心地形：{TerrainName(cell.Terrain)}"
+            $"核心地形：{TerrainName(cell)}"
                 + (world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland ? "（未開墾，農田糧食 0）" : "")
                 + (cell.MainWaterway ? "（主水道，禁止定居" + (world.UsesSharedForaging ? "，鄰格漁撈）" : "）") : ""),
             // 第 06 章 a 節：出入口由路線段衍生（相鄰但沒有路線段＝不可通行）。

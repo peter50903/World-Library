@@ -32,7 +32,7 @@ public sealed class M1OfficialAcceptanceTests
     [Fact]
     public void StabilityThresholdCatchesExtinctionAndExplosion()
     {
-        var run = M1RunCollector.Collect(42, M1Preset.Normal, 3, TestCalendar.DaysPerYear);
+        var run = M1RunCollector.Collect(TestSeeds.NormalWithWoodlandAndGrassland, M1Preset.Normal, 3, TestCalendar.DaysPerYear);
         Assert.Equal(M1Verdict.Pass, Result(Evaluate(run), "M1_STABILITY").Verdict);
 
         var lastWeek = run.Weeks[^1].Week;
@@ -51,9 +51,9 @@ public sealed class M1OfficialAcceptanceTests
     [Fact]
     public void VarietyThresholdComparesResourceGroups()
     {
-        var run = M1RunCollector.Collect(42, M1Preset.Normal, 3, TestCalendar.DaysPerYear);
+        var run = M1RunCollector.Collect(TestSeeds.NormalWithWoodlandAndGrassland, M1Preset.Normal, 3, TestCalendar.DaysPerYear);
         var kinds = run.Settlements.Select(s => s.ResourceKinds).Distinct().Count();
-        Assert.True(kinds >= 2, "一般情境種子 42 應有至少兩種資源組合的聚落");
+        Assert.True(kinds >= 2, "選出的一般情境種子應有至少兩種資源組合的聚落");
         // 全部聚落期末人口相同 → 沒有差異（警告）。
         var same = run with { Settlements = run.Settlements.Select(s => s with { FinalPopulation = 5 }).ToList() };
         var flat = Result(Evaluate(same), "M1_VARIETY");

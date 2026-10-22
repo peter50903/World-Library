@@ -96,17 +96,17 @@ public partial class ObserverRoot
         var output = new List<string>
         {
             "—— 森林／河流採集生存（已擴充所有自然地形，人族 TEMP）——",
-            $"森林{settings.ForestWeeklySupply}／草原野採{settings.GrasslandForageWeeklySupply}／主河道{settings.MainRiverWeeklySupply}／一般水域{settings.OpenWaterWeeklySupply}（每來源格每週共享）；未開墾農田0",
+            $"森林{settings.ForestWeeklySupply}／草原野採{settings.GrasslandForageWeeklySupply}／主河道{settings.MainRiverWeeklySupply}／海洋{settings.OpenWaterWeeklySupply}（每來源格每週共享）；未開墾農田0",
             $"全圖森林來源 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.Forest)}；"
               + $"草原 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.GrasslandForage)}；"
               + $"主河道 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.MainRiver)}；"
-              + $"一般水域 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.OpenWater)}",
+              + $"海洋 {allSources.Count(x => x.Kind == DemoCatchmentSourceKind.OpenWater)}",
             "每塊未占用自然地形只產一份野採或漁獲；村莊格本身不再自然產糧，周圍來源可以供應。",
             "分配順序 TEMP：來源編號→聚落編號；有人的格才能實際採收。"
         };
         if (week is not null)
         {
-            output.Add($"第 {week.Week} 週：自然來源（森林／草原／主河道／一般水域）實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
+            output.Add($"第 {week.Week} 週：自然來源（森林／草原／主河道／海洋）實採合計 {allocation?.TotalHarvested ?? 0}（同源每週只計一次）");
             if (world.HumanPopulationSnapshot is not null)
                 output.Add($"人類本週出生 {week.Settlements.Sum(l => l.Births)}、自然死亡 {week.Settlements.Sum(l => l.NaturalDeaths)}、"
                     + $"餓死 {week.Settlements.Sum(l => l.StarvationDeaths)}；"
@@ -131,7 +131,7 @@ public partial class ObserverRoot
         output.Add($"可採集來源 {adjacentSources.Length} 格："
             + (adjacentSources.Length == 0 ? "沒有鄰近自然來源（即使草原有野採，也須有人採集）"
               : string.Join("、", adjacentSources.Select(x =>
-                  $"{(x.Kind switch { DemoCatchmentSourceKind.Forest => "森林", DemoCatchmentSourceKind.MainRiver => "主河道", DemoCatchmentSourceKind.GrasslandForage => "草原野採", _ => "一般水域" })}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
+                  $"{(x.Kind switch { DemoCatchmentSourceKind.Forest => "森林", DemoCatchmentSourceKind.MainRiver => "主河道", DemoCatchmentSourceKind.GrasslandForage => "草原野採", _ => "海洋" })}({x.Column},{x.Row}) 共用{x.FoodAvailable}"))));
         var ledger = week?.Settlements.FirstOrDefault(l => l.SettlementId == place.Id);
         if (ledger is null)
             output.Add("尚無週報：快轉至第7日，才能看到真實採收與人口缺糧。");

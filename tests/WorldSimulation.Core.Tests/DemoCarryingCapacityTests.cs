@@ -128,7 +128,7 @@ public sealed class DemoCarryingCapacityTests
     [Fact]
     public void StabilityDiagnosisListsPerSettlementCapacityEvidence()
     {
-        var run = M1RunCollector.Collect(42, M1Preset.Normal, 10, TestCalendar.DaysPerYear);
+        var run = M1RunCollector.Collect(TestSeeds.NormalWithWoodlandAndGrassland, M1Preset.Normal, 10, TestCalendar.DaysPerYear);
         Assert.NotNull(run.FinalCapacities);
         var path = M1CheckCatalog.FindDefaultPath();
         Assert.NotNull(path);

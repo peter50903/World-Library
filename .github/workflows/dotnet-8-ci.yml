@@ -1,11 +1,20 @@
 name: .NET 8 environment and project CI
 
 # CI does not call Claude. It only checks the .NET SDK and any future solution.
+# 2026-10-22：GitHub Actions 免費額度快用完——
+# ① 只在 PR 上跑（同一 head 已在 PR 驗過，合併到 main 不再重跑）；② 同一 PR 有新推送就取消舊的；
+# ③ 只改手冊／文件時不跑；④ 百年長測、M1 正式驗收與人口診斷只在手動執行或 PR 貼了「long-run」標籤時跑。
 on:
   pull_request:
-  push:
-    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
+
+concurrency:
+  group: dotnet-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,6 +24,8 @@ jobs:
     name: .NET 8 SDK and build verification
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      FULL: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'long-run') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,7 +56,8 @@ jobs:
             dotnet restore WorldSimulation.sln
             dotnet build WorldSimulation.sln --no-restore --configuration Release
             # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。第 08-2 章：人口變多、長跑變慢，只診斷種子 1。
-            for s in 1; do
+            # 2026-10-22：只在完整長測（FULL）時跑。
+            for s in $([ "$FULL" = true ] && echo 1); do
               dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
               grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
               # 註記上限約 4 KB：切成多段（每段約 40 行）。
@@ -118,9 +130,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":17,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":18,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 17 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 18 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -136,7 +148,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 17 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 18 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -176,6 +188,7 @@ jobs:
             test "$(grep -c '  MIGRATION_CONSERVATION 遷徙守恆 通過 100／100 次' /tmp/observer-longrun.log)" = 3
             test "$(grep -c '第 10 年底各聚落承載（TEMP 估計' /tmp/observer-longrun.log)" = 3
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun.log
+            if [ "$FULL" = true ]; then
             # 人類採集情境（出生、自然死亡、共享採集來源帳、家庭遷徙與建村）也跑 3 種子 × 100 年。
             living_rc=0
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 42,7,5 --years 100 --living > /tmp/observer-longrun-living.log || living_rc=$?
@@ -186,6 +199,7 @@ jobs:
             test "$living_rc" = 0
             grep -q '長測總結：3 種子 × 100 年全部通過（守恆錯誤 0、不變量 7 項全部通過）' /tmp/observer-longrun-living.log
             test "$(grep -c '  SOURCE_LEDGER 來源帳 通過 100／100 次' /tmp/observer-longrun-living.log)" = 3
+            fi
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seeds 1,x --years 2 > /tmp/observer-longrun-bad.log; then
               echo "--seeds with a bad value must be rejected"; exit 1
             fi
@@ -197,6 +211,8 @@ jobs:
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
             # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
+            # 2026-10-22：只在完整長測（FULL）時跑。
+            if [ "$FULL" = true ]; then
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
             # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
             summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '^  種子 [0-9]*｜人口 \|調查結果' /tmp/observer-m1.log)"
@@ -217,6 +233,9 @@ jobs:
             test -s /tmp/m1-report/M1驗收報告.txt
             # #82: --m1-check uses the same official year boundary as --demo --years.
             grep -q 'WORLD_DAYS_PER_YEAR＝365' /tmp/observer-m1.log
+            else
+              echo "::notice title=長測略過::百年長測、M1 正式驗收與人口診斷只在手動執行或 PR 貼「long-run」標籤時跑（節省 Actions 額度）。"
+            fi
             # Bad arguments must fail loudly in Chinese, not be swallowed.
             if dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 0 > /tmp/observer-m1-bad.log; then
               echo "--m1-check --years 0 should fail."; exit 1
@@ -302,14 +321,14 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_FAMINE_OK: HungerEvents=[1-9][0-9]* Deaths=[1-9][0-9]*' /tmp/godot-famine.log
-          # V0-06A: TEMP local famine — starving people leave settlement #1 on foot; the real
+          # V0-06A: TEMP local famine — starving people leave a settlement on foot (第 06-1 章起草原聚落也會缺糧，出發聚落不一定是 #1); the real
           # Godot map must show the migrant batch and the history the caused emigration event.
           WORLD_SIM_MIGRATION_SMOKE=1 timeout 45 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-migration.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-migration.log; then
             echo "Godot reported a runtime error in the migration scenario."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_MIGRATION_OK: Day=[0-9]+ Batches=[1-9][0-9]* People=[1-9][0-9]* From=1 To=[2-4]' /tmp/godot-migration.log
+          grep -Eq 'WORLD_SIM_MIGRATION_OK: Day=[0-9]+ Batches=[1-9][0-9]* People=[1-9][0-9]* From=[1-4] To=[1-4]' /tmp/godot-migration.log
           # V0-06B: TEMP frontier — migrants found a new settlement on an empty cell; the real Godot map
           # must show the new settlement, the history the caused founding event, and the cell panel its source.
           WORLD_SIM_SETTLE_SMOKE=1 timeout 60 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-settle.log
@@ -443,3 +462,8 @@ jobs:
           [ -n "$lines" ] || lines="$(tail -30 "$f" | cut -c1-240)"
           msg="$(printf '%s' "$lines" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
           echo "::error title=LAST $(basename "$f")::$msg"
+          # 單元測試失敗時另列全部失敗測試名稱（上面的關鍵行只有前 80 行）。
+          if [ -f /tmp/observer-tests.log ]; then
+            names="$(grep -E -A3 '^\s+Failed WorldSimulation' /tmp/observer-tests.log | grep -v 'Stack Trace' | sed 's/^ *//' | cut -c1-300 | head -80)"
+            [ -z "$names" ] || echo "::error title=FAILED TESTS::$(printf '%s' "$names" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+          fi

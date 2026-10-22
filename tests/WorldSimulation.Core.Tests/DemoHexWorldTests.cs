@@ -53,9 +53,9 @@ public sealed class DemoHexWorldTests
 
         foreach (var cell in map.Cells)
         {
-            var expectedTerrain = (DemoTerrain)(rng.NextUInt64(RngStreams.Geography) % 3UL);
-            // 第 06 章 a 節：主水道格之後被改成水域，其餘格就是抽到的地形。
-            Assert.Equal(cell.MainWaterway ? DemoTerrain.Water : expectedTerrain, cell.Terrain);
+            var expectedTerrain = (DemoTerrain)(rng.NextUInt64(RngStreams.Geography) % 2UL);
+            // 第 06-1 章：先抽陸地（草原／森林），海洋與主水道格之後改成水域，其餘格就是抽到的地形。
+            Assert.Equal(cell.MainWaterway || cell.Sea ? DemoTerrain.Water : expectedTerrain, cell.Terrain);
         }
 
         Assert.Equal(96UL, rng.GetDrawCounter(RngStreams.Geography));
