@@ -137,20 +137,26 @@ internal static class DemoHumanLifecycle
             }
         }
 
-        // 事件：每位新生兒、每位自然死亡者各一筆（第 07 章 b 節的對帳規則不變；群體版沒有個體編號）。
+        // 事件：第 04-2 章（使用者 2026-10-22：大多數人只是統計數字）每個聚落（或途中隊伍）每週的出生、自然死亡各合計一筆，
+        // 人數＝事件人數（週帳對帳規則改為「有出生就恰好一筆、人數相等」）。
         var events = report.Events.ToList();
         long eventId = events.Count == 0 ? firstNewEventId : checked(events[^1].EventId + 1);
-        foreach (var e in outcome.Events.Where(e => e.Kind is DemoTempDemographicKind.NaturalDeath or DemoTempDemographicKind.Birth)
-                     .OrderBy(e => e.Kind == DemoTempDemographicKind.Birth ? 1 : 0).ThenBy(e => e.BatchId).ThenBy(e => e.SettlementId).ThenByDescending(e => e.Age))
+        foreach (var g in outcome.Events.Where(e => e.Kind is DemoTempDemographicKind.NaturalDeath or DemoTempDemographicKind.Birth)
+                     .GroupBy(e => (Birth: e.Kind == DemoTempDemographicKind.Birth, e.BatchId, e.SettlementId))
+                     .OrderBy(g => g.Key.Birth ? 1 : 0).ThenBy(g => g.Key.BatchId).ThenBy(g => g.Key.SettlementId))
         {
-            var site = weekly.Sites.Settlements.Single(s => s.Id == e.SettlementId);
-            var travel = e.BatchId > 0 ? $"（遷徙隊伍 #{e.BatchId} 途中）" : "";
-            var (kind, cause) = e.Kind == DemoTempDemographicKind.Birth
+            var count = g.Sum(e => e.Count);
+            if (count == 0) continue;
+            var site = weekly.Sites.Settlements.Single(s => s.Id == g.Key.SettlementId);
+            var travel = g.Key.BatchId > 0 ? $"（遷徙隊伍 #{g.Key.BatchId} 途中）" : "";
+            var youngest = g.Min(e => e.Age);
+            var oldest = g.Max(e => e.Age);
+            var ages = youngest == oldest ? $"{youngest}" : $"{youngest}～{oldest}";
+            var (kind, cause) = g.Key.Birth
                 ? (DemoSettlementEventKind.Birth, $"TEMP人族：懷孕 {Rules.GestationWeeks} 週到期，新生兒出生{travel}")
-                : (DemoSettlementEventKind.NaturalDeath, $"TEMP人族：年齡 {e.Age}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險{travel}");
-            for (var i = 0; i < e.Count; i++)
-                events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
-                    kind, 1, cause, MigrationBatchId: e.BatchId, EventId: eventId++));
+                : (DemoSettlementEventKind.NaturalDeath, $"TEMP人族：年齡 {ages}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險{travel}");
+            events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
+                kind, count, cause, MigrationBatchId: g.Key.BatchId, EventId: eventId++));
         }
 
         var entityIds = entityAllocator.Capture();

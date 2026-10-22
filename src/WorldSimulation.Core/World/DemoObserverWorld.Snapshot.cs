@@ -158,25 +158,21 @@ public sealed partial class DemoObserverWorld
             candidate._demography = people;
         }
 
-        // 正式史庫：逐筆驗證（編號連續、時間不倒退、原因指向既有事件）；與聚落事件一一對應由不變量檢查。
-        var history = ReadArray<WorldEvent>(state, "History");
+        // 第 04-2 章：正式史庫不另存——由較早事件與近期週報經提交時同一個轉換器重建，並逐筆驗證
+        // （編號連續、時間不倒退、原因指向既有事件）。
+        var cells = state.GetProperty("EarlierEventCells").Deserialize<Dictionary<long, int[]>>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少較早事件的位置。");
+        if (cells.Any(kv => kv.Value is not { Length: 2 } || !map.Contains(kv.Value[0], kv.Value[1])
+                || earlierEvents.All(e => e.EventId != kv.Key)))
+            Reject("較早事件的位置不合法");
         try
         {
-            candidate._history = EventHistory.Rebuild(new[] { (IReadOnlyList<WorldEvent>)history });
+            candidate._history = RebuildHistory(earlierEvents, cells, reports, sites);
         }
         catch (InvalidOperationException ex)
         {
-            throw new InvalidDataException($"TEMP 存檔被拒絕：正式史庫不合法（{ex.Message}）。", ex);
+            throw new InvalidDataException($"TEMP 存檔被拒絕：正式史庫無法由事件重建（{ex.Message}）。", ex);
         }
-        var settlementEventIds = candidate.SettlementEvents().Select(e => e.EventId);
-        if (!settlementEventIds.SequenceEqual(candidate._history.Events.Select(e => e.EventId)))
-            Reject("聚落事件與正式史庫的事件編號不一致");
-        // 近期週報的事件經提交時同一個轉換器投影，必須與正式史庫逐筆相同。
-        var byId = candidate._history.Events.ToDictionary(e => e.EventId);
-        foreach (var report in reports)
-            foreach (var projected in DemoEventProjection.ToWorldEvents(report, sites, null))
-                if (!byId.TryGetValue(projected.EventId, out var stored) || stored.Fingerprint() != projected.Fingerprint())
-                    Reject($"第 {report.Week} 週的事件 #{projected.EventId} 與正式史庫不一致");
         // #88／#97：近期週報的事件與週帳雙向核對、直接原因合法（較早事件只建索引）。
         var causal = candidate.BuildCausalIndex();
         if (causal.Problems.Count > 0)
@@ -266,6 +262,24 @@ public sealed partial class DemoObserverWorld
         stocks.Clear();
         foreach (var source in report.Sources.Where(x => x.StockClosing > 0))
             stocks[source.SourceId] = source.StockClosing;
+    }
+
+    /// <summary>第 04-2 章：較早事件（依週次分批）＋近期週報 → 正式史庫（與提交時同一個轉換器）。</summary>
+    private static EventHistory RebuildHistory(IReadOnlyList<DemoSettlementEvent> earlier, IReadOnlyDictionary<long, int[]> cells,
+        IReadOnlyList<DemoWeekReport> reports, DemoWorldSites sites)
+    {
+        var batches = new List<IReadOnlyList<WorldEvent>>();
+        foreach (var week in earlier.GroupBy(e => e.Week).OrderBy(g => g.Key))
+        {
+            var first = week.First();
+            var pseudo = new DemoWeekReport(week.Key, first.WorldTime, Array.Empty<DemoSettlementWeekLedger>(), week.ToArray());
+            batches.Add(DemoEventProjection.ToWorldEvents(pseudo, sites, null)
+                .Select(e => cells.TryGetValue(e.EventId, out var at) ? e with { LocationColumn = at[0], LocationRow = at[1] } : e)
+                .ToArray());
+        }
+        foreach (var report in reports)
+            batches.Add(DemoEventProjection.ToWorldEvents(report, sites, null));
+        return EventHistory.Rebuild(batches);
     }
 
     private static List<DemoWeekReport> ReadWeekReports(JsonElement array)

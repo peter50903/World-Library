@@ -167,8 +167,8 @@ public sealed class DemoCausalIndex
                     && debtAfterDeaths == 0 && ledger.PopulationOpening - (ledger.Deaths - ledger.NaturalDeaths) > 0;
                 CheckCount(report, ledger, DemoSettlementEventKind.Hunger, survival > 0 ? 1 : 0);
                 CheckCount(report, ledger, DemoSettlementEventKind.StarvationDeath, ledger.Deaths > ledger.NaturalDeaths ? 1 : 0);
-                CheckCount(report, ledger, DemoSettlementEventKind.Birth, checked((int)ledger.Births));
-                CheckCount(report, ledger, DemoSettlementEventKind.NaturalDeath, checked((int)ledger.NaturalDeaths));
+                CheckCount(report, ledger, DemoSettlementEventKind.Birth, ledger.Births > 0 ? 1 : 0);
+                CheckCount(report, ledger, DemoSettlementEventKind.NaturalDeath, ledger.NaturalDeaths > 0 ? 1 : 0);
                 CheckCount(report, ledger, DemoSettlementEventKind.HungerRecovered, recovered ? 1 : 0);
                 // 第 07 章 c 節：空置滿 TEMP 週數的那一週恰好 1 筆成為遺跡（之前已成遺跡、或仍有隊伍正前往則 0 筆）。
                 var ruin = ledger.PopulationClosing == 0
@@ -227,7 +227,8 @@ public sealed class DemoCausalIndex
                     var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
                     budget = e.Kind == DemoSettlementEventKind.Birth ? ledger?.Births : ledger?.NaturalDeaths;
                 }
-                if (parent is not null || e.Count != 1 || budget is null || budget == 0
+                // 第 04-2 章：每個聚落（或隊伍）每週合計一筆，人數＝週帳人數。
+                if (parent is not null || budget is null || budget == 0 || e.Count != budget
                     || string.IsNullOrWhiteSpace(e.Cause))
                     return "自然出生／死亡需要本週人口帳、個體來源與自足的合法根因";
                 return null;
@@ -366,7 +367,7 @@ public sealed class DemoCausalIndex
                 foreach (var (kind, expected) in new[] { (DemoSettlementEventKind.Birth, ledger.Births), (DemoSettlementEventKind.NaturalDeath, ledger.NaturalDeaths) })
                 {
                     var n = report.Events.Count(e => e.Kind == kind && e.MigrationBatchId == ledger.BatchId);
-                    if (n != expected)
+                    if (n != (expected > 0 ? 1 : 0)) // 第 04-2 章：合計一筆
                         _problems.Add($"第 {report.Week} 週隊伍 #{ledger.BatchId} 週帳{KindText(kind)} {expected}，但有 {n} 筆事件");
                 }
             }
