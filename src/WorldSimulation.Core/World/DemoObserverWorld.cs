@@ -455,7 +455,7 @@ public sealed partial class DemoObserverWorld
     }
 
     private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoCohortDemography demography, int week)
-        => (settlementId, _, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode);
+        => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode, deaths);
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and

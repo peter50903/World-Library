@@ -35,12 +35,24 @@ internal static class DemoHumanLifecycle
         if (opening.LastWeek + 1 != report.Week)
             throw new InvalidOperationException("Cohort lifecycle must advance one committed week.");
         var day = report.Week * 7;
-        if (report.Settlements.Any(l => l.Births != 0 || l.NaturalDeaths != 0 || l.Deaths != 0)
-            || report.Migrations.Any(m => m.Births != 0 || m.NaturalDeaths != 0 || m.Deaths != 0))
-            throw new InvalidOperationException("Cohort lifecycle expects a pre-demography Hope-era ledger (no starvation deaths).");
+        if (report.Settlements.Any(l => l.Births != 0 || l.NaturalDeaths != 0)
+            || report.Migrations.Any(m => m.Births != 0 || m.NaturalDeaths != 0))
+            throw new InvalidOperationException("Cohort lifecycle expects a pre-demography ledger (no births or natural deaths yet).");
+
+        // ⓪ 第 08-6 章 b 節：開拓時代起的餓死（週帳已決定人數；這裡決定是哪些年齡群，先老幼、後成年、代表人物最後）。
+        var moved = opening;
+        var elderAge = DemoSurvivalTempSettings.Current.ElderAgeYears;
+        var starvedReps = new List<DemoRepresentative>();
+        var starvedSplit = new Dictionary<int, (long Children, long Elders)>();
+        foreach (var ledger in report.Settlements.Where(l => l.Deaths > 0))
+        {
+            var r = moved.Starve(ledger.SettlementId, 0, ledger.Deaths, day, Rules, elderAge);
+            moved = r.Population;
+            starvedReps.AddRange(r.StarvedRepresentatives);
+            starvedSplit[ledger.SettlementId] = (r.Children, r.Elders);
+        }
 
         // ① 出發：與結算時同一份規劃。② 抵達：隊伍的年齡群與懷孕併入目的聚落。
-        var moved = opening;
         foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
         {
             var plan = DemoCohortMigration.Plan(moved, leg.FromSettlementId, leg.PopulationOpening, ModeOf(leg), day, Rules);
@@ -48,6 +60,9 @@ internal static class DemoHumanLifecycle
                 throw new InvalidOperationException("Departing cohorts do not match the migration ledger.");
             moved = moved.Depart(leg.FromSettlementId, plan.Take, plan.Pregnancies, leg.BatchId);
         }
+        // 途中餓死（開拓時代起）：在抵達之前，從隊伍的年齡群移除。
+        foreach (var leg in report.Migrations.Where(m => !m.Departed && m.Deaths > 0).OrderBy(m => m.BatchId))
+            moved = moved.Starve(leg.FromSettlementId, leg.BatchId, leg.Deaths, day, Rules, elderAge).Population;
         foreach (var leg in report.Migrations.Where(m => m.Arrived).OrderBy(m => m.BatchId))
         {
             if (moved.MembersOf(leg.BatchId) != leg.PopulationClosing)
@@ -82,7 +97,7 @@ internal static class DemoHumanLifecycle
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
-            knowledge ?? DemoKnowledgeState.Initial);
+            knowledge ?? DemoKnowledgeState.Initial, starvedReps);
 
         long Sum(DemoTempDemographicKind kind, int settlement, int batch)
             => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
@@ -98,8 +113,11 @@ internal static class DemoHumanLifecycle
             if (closing < 0 || population.ResidentsOf(ledger.SettlementId) != closing)
                 throw new InvalidOperationException("Cohort births/deaths do not match world population.");
             var excessDebt = closing == 0 ? ledger.HungerDebtClosing : 0L;
+            var split = starvedSplit.GetValueOrDefault(ledger.SettlementId);
             var modified = ledger with
             {
+                ChildStarvationDeaths = split.Children,
+                ElderStarvationDeaths = split.Elders,
                 Births = births,
                 Deaths = checked(ledger.Deaths + natural),
                 NaturalDeaths = natural,
@@ -183,9 +201,10 @@ internal static class DemoHumanLifecycle
     /// </summary>
     private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
         Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
-            DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge)
+            DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge,
+            IReadOnlyList<DemoRepresentative> starved)
     {
-        var exits = new List<DemoRepresentativeExit>();
+        var exits = starved.Select(r => new DemoRepresentativeExit(r.Id, r.SettlementId, $"餓死（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）")).ToList();
         var current = new List<DemoRepresentative>();
         var diedIds = died.Select(r => r.Id).ToHashSet();
         foreach (var r in population.Representatives)
@@ -227,10 +246,14 @@ internal static class DemoHumanLifecycle
 
     /// <summary>結算時的外移人數規劃——與 <see cref="Apply"/> 同一份 <see cref="DemoCohortMigration.Plan"/>。</summary>
     public static long PlanEmigrants(DemoCohortDemography opening, int week, int settlementId, long limit,
-        DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
+        DemoEmigrationMode mode = DemoEmigrationMode.Shortage, long starvationDeaths = 0)
     {
         ArgumentNullException.ThrowIfNull(opening);
-        return DemoCohortMigration.Plan(opening, settlementId, limit, mode, week * 7, Rules).People;
+        // 第 08-6 章 b 節：本週有人餓死時，從餓死後的年齡群規劃（與生死套用同一順序）。
+        var survivors = starvationDeaths > 0
+            ? opening.Starve(settlementId, 0, starvationDeaths, week * 7, Rules, DemoSurvivalTempSettings.Current.ElderAgeYears).Population
+            : opening;
+        return DemoCohortMigration.Plan(survivors, settlementId, limit, mode, week * 7, Rules).People;
     }
 
     /// <summary>第 08-1 章：各聚落婚嫁市場（找不到伴侶的單身者性別、未配對育齡男女數）。</summary>

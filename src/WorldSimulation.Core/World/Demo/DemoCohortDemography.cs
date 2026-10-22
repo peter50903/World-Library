@@ -259,6 +259,61 @@ public sealed class DemoCohortDemography
     /// 出發：定居者依 <paramref name="take"/>（出生年、性別 → 人數）加入隊伍 <paramref name="batchId"/>，
     /// 另有 <paramref name="pregnancies"/> 個懷孕（最早到期者先）隨隊。
     /// </summary>
+    /// <summary>
+    /// 第 08-6 章 b 節【TEMP 規則】餓死（開拓時代起）：週帳已決定人數，這裡決定是哪些年齡群——
+    /// 先老人（年長者先），再兒童（年幼者先），再成年人（年長者先）；代表人物最後才輪到（同一年齡群依 ID）。
+    /// 定居者 <paramref name="batchId"/>＝0；途中隊伍為隊伍編號。不抽亂數。
+    /// </summary>
+    public (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> StarvedRepresentatives, long Children, long Elders) Starve(
+        int settlementId, int batchId, long deaths, int day, DemoTempDemographyRules rules, int elderAge)
+    {
+        ArgumentNullException.ThrowIfNull(rules);
+        if (deaths <= 0)
+            return (this, Array.Empty<DemoRepresentative>(), 0, 0);
+        var mine = _groups.Where(kv => kv.Key.Batch == batchId && (batchId > 0 || kv.Key.Settlement == settlementId))
+            .Select(kv => (kv.Key, kv.Value, Age: AgeAt(kv.Key.BirthYear, day))).ToList();
+        if (mine.Sum(g => g.Value) < deaths)
+            throw new InvalidOperationException("Starving more people than the cohorts hold.");
+        var ordered = mine.Where(g => g.Age >= elderAge).OrderBy(g => g.Key.BirthYear).ThenBy(g => g.Key.Sex)
+            .Concat(mine.Where(g => g.Age < rules.AdultAgeYears).OrderByDescending(g => g.Key.BirthYear).ThenBy(g => g.Key.Sex))
+            .Concat(mine.Where(g => g.Age >= rules.AdultAgeYears && g.Age < elderAge).OrderBy(g => g.Key.BirthYear).ThenBy(g => g.Key.Sex))
+            .ToList();
+        long RepsIn((int Settlement, int Batch, int BirthYear, DemoTempSex Sex) key)
+            => key.Batch == 0 ? RepresentativesIn(key.Settlement, key.BirthYear, key.Sex) : 0;
+        var take = new Dictionary<(int, int, int, DemoTempSex), long>();
+        var left = deaths;
+        foreach (var g in ordered)
+        {
+            if (left == 0) break;
+            var n = Math.Min(left, g.Value - RepsIn(g.Key));
+            if (n > 0) { take[g.Key] = n; left -= n; }
+        }
+        var starvedReps = new List<DemoRepresentative>();
+        foreach (var g in ordered)
+        {
+            if (left == 0) break;
+            foreach (var r in Representatives.Where(r => g.Key.Batch == 0 && r.SettlementId == g.Key.Settlement
+                         && r.BirthYear == g.Key.BirthYear && r.Sex == g.Key.Sex).OrderBy(r => r.Id))
+            {
+                if (left == 0) break;
+                take[g.Key] = take.GetValueOrDefault(g.Key) + 1;
+                starvedReps.Add(r);
+                left--;
+            }
+        }
+        var groups = _groups.ToBuilder();
+        long children = 0, elders = 0;
+        foreach (var (key, n) in take)
+        {
+            Set(groups, key, groups[key] - n);
+            var age = AgeAt(key.Item3, day);
+            if (age < rules.AdultAgeYears) children += n;
+            else if (age >= elderAge) elders += n;
+        }
+        var reps = Representatives.Where(r => starvedReps.All(x => x.Id != r.Id)).ToImmutableList();
+        return (new DemoCohortDemography(LastWeek, groups.ToImmutable(), _pregnancies, reps), starvedReps, children, elders);
+    }
+
     public DemoCohortDemography Depart(int settlementId, IReadOnlyDictionary<(int BirthYear, DemoTempSex Sex), long> take,
         long pregnancies, int batchId)
     {
