@@ -94,12 +94,15 @@ public sealed class DemoSaveLedgerTamperTests
     private static List<JsonNode> AllMigrations(JsonNode doc)
         => Weeks(doc).SelectMany(w => w!["Migrations"]!.AsArray()).Select(m => m!).ToList();
 
-    private static JsonNode WeekNode(JsonNode doc, int week) => Weeks(doc)[week - 1]!;
+    /// <summary>第 04-1 章：存檔只保留第 WeekBase＋1 週起的週報。</summary>
+    private static int WeekBase(JsonNode doc) => doc["State"]!["WeekBase"]!.GetValue<int>();
+
+    private static JsonNode WeekNode(JsonNode doc, int week) => Weeks(doc)[week - 1 - WeekBase(doc)]!;
 
     private static JsonNode SettlementLedger(JsonNode doc, int week, int settlementId)
         => WeekNode(doc, week)["Settlements"]!.AsArray().Single(l => I(l!, "SettlementId") == settlementId)!;
 
-    private static int LastWeek(JsonNode doc) => Weeks(doc).Count;
+    private static int LastWeek(JsonNode doc) => WeekBase(doc) + Weeks(doc).Count;
 
     /// <summary>最晚一筆符合條件者（存檔在第 735 日，最晚一筆通常落在第 2 年以後）。</summary>
     private static JsonNode? Latest(IEnumerable<JsonNode> items, Func<JsonNode, bool> match)
@@ -373,8 +376,11 @@ public sealed class DemoSaveLedgerTamperTests
     [Fact]
     public void CausalIndexFlagsMissingOrSplitSettlementEvents()
     {
-        var (_, _, json, _) = FindSave(UnreferencedHunger, "沒有後果的飢餓");
-        var world = DemoObserverWorld.ImportTempSave(json);
+        // 第 04-1 章：讀檔後只保留近期週報，這裡用不中斷的世界（週報從第 1 週起完整）。
+        var (preset, seed, _, _) = FindSave(UnreferencedHunger, "沒有後果的飢餓");
+        var world = new DemoObserverWorld(DemoScenario.Sample(seed), PresetOrder.Single(p => p.Name == preset).Config);
+        for (var day = 0; day < SaveDay; day++)
+            world.AdvanceOneDay();
         var weeks = world.WeekReports();
         Assert.Empty(DemoCausalIndex.Build(weeks).Problems);
 

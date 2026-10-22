@@ -204,7 +204,9 @@ public sealed class DemoSaveManifestTests
                      (DemoWeeklyTempConfig.CrowdedForagingSample, 2UL), (DemoWeeklyTempConfig.FamineSample, 1UL) })
         {
             var probe = Run(config, seed, 3 * 365);
-            var hit = probe.WeekReports().FirstOrDefault(w => w.Settlements.Any(l => l.StarvationDeaths > 0));
+            // 第 04-1 章：存檔只保留第 WeekBase＋1 週起的週報，只能在保留的週裡偽造。
+            var saved = JsonNode.Parse(probe.ExportTempSave())!["State"]!["WeekBase"]!.GetValue<int>();
+            var hit = probe.WeekReports().FirstOrDefault(w => w.Week > saved && w.Settlements.Any(l => l.StarvationDeaths > 0));
             if (hit is null) continue;
             world = probe;
             week = hit.Week;
@@ -212,7 +214,8 @@ public sealed class DemoSaveManifestTests
         }
         Assert.NotNull(world);
         var doc = JsonNode.Parse(world!.ExportTempSave())!;
-        var ledger = doc["State"]!["WeekReports"]![week - 1]!["Settlements"]!.AsArray()
+        var weekBase = doc["State"]!["WeekBase"]!.GetValue<int>();
+        var ledger = doc["State"]!["WeekReports"]![week - 1 - weekBase]!["Settlements"]!.AsArray()
             .First(l => l!["Deaths"]!.GetValue<long>() > l["NaturalDeaths"]!.GetValue<long>())!;
         ledger["Deaths"] = ledger["Deaths"]!.GetValue<long>() - 1;
         ledger["PopulationClosing"] = ledger["PopulationClosing"]!.GetValue<long>() + 1;

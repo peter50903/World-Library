@@ -2,7 +2,7 @@ namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>
 /// 第 08-3 章：聚落小史——建立至今幾年，以及依年份列出的里程碑（開局或開拓建立、人口第一次達到規模門檻、
-/// 分出開拓隊建立的新聚落、人口高峰、成為遺跡）。全部由已提交的週報與聚落資料推得，只讀、不改世界。
+/// 分出開拓隊建立的新聚落、人口高峰、成為遺跡）。由聚落小史（<see cref="DemoSettlementChronicle"/>，第 04-1 章）與聚落資料推得，只讀、不改世界。
 /// 年份＝世界日 ÷ 365（總綱第 4 節：365 日／年）。
 /// </summary>
 public static class DemoSettlementHistory
@@ -46,47 +46,21 @@ public static class DemoSettlementHistory
         else
             Add(1, "開局時已有人定居");
 
-        var next = 0;
-        long peak = 0;
-        var peakWeek = 0;
-        foreach (var report in world.WeekReports())
-        {
-            var ledger = report.Settlements.FirstOrDefault(l => l.SettlementId == settlementId);
-            if (ledger is null) continue;
-            var pop = ledger.PopulationClosing;
-            while (next < TempMilestones.Count && pop >= TempMilestones[next])
-            {
-                var label = TempMilestones[next] == TempVillagePopulation ? "，由聚落發展為村莊" : "";
-                Add(YearOfWeek(report.Week), $"人口首次達到 {TempMilestones[next]} 人{label}");
-                next++;
-            }
-            if (pop > peak)
-            {
-                peak = pop;
-                peakWeek = report.Week;
-            }
-        }
+        // 第 04-1 章：里程碑、人口高峰與代表人物由聚落自己的小史提供（每週提交時更新、隨存檔保存）。
+        var chronicle = world.ChronicleOf(settlementId);
+        foreach (var line in chronicle.Milestones)
+            Add(YearOfWeek(line.Week), line.Text);
 
         foreach (var child in world.Sites.Settlements.Where(s => s.IsFounded && s.FoundedFromSettlementId == settlementId)
                      .OrderBy(s => s.FoundedWeek).ThenBy(s => s.Id))
             Add(YearOfWeek(child.FoundedWeek), $"分出開拓隊，建立{child.Name}");
 
         // 第 07-1 章 b 節：代表人物的就任與卸任。
-        var known = new Dictionary<long, DemoRepresentative>();
-        foreach (var report in world.WeekReports())
-        {
-            foreach (var r in report.Appointments.Where(r => r.SettlementId == settlementId))
-            {
-                known[r.Id] = r;
-                Add(YearOfWeek(report.Week), $"{r.Name} 成為{DemoRepresentative.RoleName(r.Role)}");
-            }
-            foreach (var x in report.RepresentativeExits.Where(x => x.SettlementId == settlementId))
-                if (known.TryGetValue(x.Id, out var who))
-                    Add(YearOfWeek(report.Week), $"{DemoRepresentative.RoleName(who.Role)} {who.Name} 卸任：{x.Reason}");
-        }
+        foreach (var line in chronicle.Representatives)
+            Add(YearOfWeek(line.Week), line.Text);
 
-        if (peak > 0)
-            Add(YearOfWeek(peakWeek), $"人口高峰 {peak} 人");
+        if (chronicle.Peak > 0)
+            Add(YearOfWeek(chronicle.PeakWeek), $"人口高峰 {chronicle.Peak} 人");
         if (settlement.IsRuin)
             Add(YearOfWeek(settlement.RuinedWeek), "人口歸零，成為遺跡");
 

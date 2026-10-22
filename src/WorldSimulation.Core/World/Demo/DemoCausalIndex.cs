@@ -70,11 +70,34 @@ public sealed class DemoCausalIndex
 
     /// <summary>從週報建立索引並逐筆檢查因果證據。</summary>
     public static DemoCausalIndex Build(IEnumerable<DemoWeekReport> weeks)
+        => Build(Array.Empty<DemoSettlementEvent>(), weeks);
+
+    /// <summary>
+    /// 第 04-1 章：讀檔後的世界——<paramref name="earlier"/>＝存檔保存的較早事件（只建索引，不再逐筆對帳：
+    /// 存檔時已驗證、之前的週報已不保存），<paramref name="weeks"/>＝保留的近期週報（照常檢查）。
+    /// </summary>
+    public static DemoCausalIndex Build(IEnumerable<DemoSettlementEvent> earlier, IEnumerable<DemoWeekReport> weeks)
     {
+        ArgumentNullException.ThrowIfNull(earlier);
         ArgumentNullException.ThrowIfNull(weeks);
         var index = new DemoCausalIndex();
         var reports = weeks.ToList();
         long expected = 1;
+        foreach (var e in earlier)
+        {
+            if (e.EventId != expected)
+                index._problems.Add($"第 {e.Week} 週 {e.SettlementName} 的 {KindText(e.Kind)} 事件編號是 #{e.EventId}，應為 #{expected}");
+            expected = Math.Max(expected, e.EventId) + 1;
+            index._ordered.Add(e);
+            if (e.EventId > 0)
+                index._byId.TryAdd(e.EventId, e);
+            if (e.CauseEventId > 0 && index._byId.ContainsKey(e.CauseEventId))
+            {
+                if (!index._children.TryGetValue(e.CauseEventId, out var list))
+                    index._children[e.CauseEventId] = list = new List<DemoSettlementEvent>();
+                list.Add(e);
+            }
+        }
         foreach (var report in reports)
         {
             foreach (var e in report.Events)

@@ -40,27 +40,30 @@ public sealed partial class DemoObserverWorld
             if (!IsSupportedTempSaveVersion(version))
                 return Fail(null, "存檔版本不受支援");
             var (manifest, weekly, days, _) = CheckHeader(root, version);
-            var saved = ReadWeekReports(root.GetProperty("State").GetProperty("WeekReports"));
+            var savedState = root.GetProperty("State");
+            var saved = ReadWeekReports(savedState.GetProperty("WeekReports"));
+            // 第 04-1 章：存檔只保留第 WeekBase＋1 週起的週報；之前的週只重跑、不逐週比對。
+            var weekBase = savedState.GetProperty("WeekBase").GetInt32();
 
             var world = new DemoObserverWorld(manifest.Recipe, weekly);
             for (var day = 0; day < days; day++)
             {
                 var advance = world.AdvanceOneDay();
-                if (advance.SettledWeek is not { } week)
+                if (advance.SettledWeek is not { } week || week.Week <= weekBase)
                     continue;
-                if (week.Week > saved.Count)
+                if (week.Week - weekBase > saved.Count)
                     return Fail(week.Week, $"存檔缺少第 {week.Week} 週週報（重算有）");
-                if (FirstWeekDifference(saved[week.Week - 1], week) is { } difference)
+                if (FirstWeekDifference(saved[week.Week - weekBase - 1], week) is { } difference)
                     return Fail(week.Week, difference);
             }
-            if (saved.Count > world.WeekReports().Count)
-                return Fail(world.WeekReports().Count + 1, $"存檔多出第 {world.WeekReports().Count + 1} 週週報（重算沒有）");
+            if (weekBase + saved.Count > world.CommittedWeeks)
+                return Fail(world.CommittedWeeks + 1, $"存檔多出第 {world.CommittedWeeks + 1} 週週報（重算沒有）");
 
             var supplied = JsonNode.Parse(json);
             var replayed = JsonNode.Parse(world.ExportTempSave());
             return JsonNode.DeepEquals(supplied, replayed)
                 ? new DemoReplayVerification(true, null, null, clock.Elapsed)
-                : Fail(null, "週報全部相同，但週報以外的世界狀態（存量、名冊、隊伍、史庫或標頭）與重算不一致");
+                : Fail(null, "近期週報全部相同，但其他世界狀態（存量、人口、隊伍、年帳、較早事件、聚落小史、史庫或標頭）與重算不一致");
         }
         catch (InvalidDataException ex)
         {
