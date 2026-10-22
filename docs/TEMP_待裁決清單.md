@@ -349,7 +349,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 6 | D8；第 04-1 章分層存檔讀檔 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 7 | D8；第 04-1 章分層存檔讀檔 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 12 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 3 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
