@@ -87,8 +87,7 @@ public partial class ObserverRoot
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 8);
         _toolbarPanel.AddChild(row);
-        AddMapModeButtons(row); // 第 08-3 章：地圖模式併入同一條功能列。
-        row.AddChild(new VSeparator());
+        AddMapModeButtons(row); // 第 08-3 章：地圖模式併入同一條功能列。第 08-5 章：不畫分隔線（使用者 2026-10-23）。
 
         _toolScenario = ToolButton(ArtAssets.UiScenario, "情境", "情境與新世界（世界種子、歷史種子、TEMP 示範情境）");
         _toolScenario.Pressed += () => ToggleModal("scenario");

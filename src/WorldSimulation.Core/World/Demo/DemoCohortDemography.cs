@@ -12,17 +12,14 @@ public sealed record DemoCohortGroup(int SettlementId, int BatchId, int BirthYea
 /// <summary>第 07-1 章 a 節：某地在某週到期的懷孕數。</summary>
 public sealed record DemoPregnancyGroup(int SettlementId, int BatchId, int DueWeek, long Count);
 
-/// <summary>第 07-1 章 b 節：代表人物的身分（權力者與各產業代表）。</summary>
+/// <summary>
+/// 第 07-1 章 b 節：代表人物的身分。第 08-5 章（使用者 2026-10-23）：只有權力者（村長）與持有專業知識的人
+/// （木匠、鐵匠…，隨知識樹出現）才算代表人物；採集、漁撈不是專業知識，不再設代表。
+/// </summary>
 public enum DemoRepresentativeRole
 {
     /// <summary>村長（權力者）。</summary>
-    Leader = 0,
-
-    /// <summary>採集代表。</summary>
-    Gatherer = 1,
-
-    /// <summary>漁撈代表。</summary>
-    Fisher = 2
+    Leader = 0
 }
 
 /// <summary>
@@ -35,8 +32,6 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
     public static string RoleName(DemoRepresentativeRole role) => role switch
     {
         DemoRepresentativeRole.Leader => "村長",
-        DemoRepresentativeRole.Gatherer => "採集代表",
-        DemoRepresentativeRole.Fisher => "漁撈代表",
         _ => "代表"
     };
 }

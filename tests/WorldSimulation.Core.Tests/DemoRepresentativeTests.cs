@@ -5,7 +5,7 @@ using Xunit;
 namespace WorldSimulation.Core.Tests;
 
 /// <summary>
-/// 第 07-1 章 b 節：代表人物與命名。每個有人的聚落有村長與採集代表（有漁獲才有漁撈代表）；
+/// 第 07-1 章 b 節：代表人物與命名。每個有人的聚落有村長（第 08-5 章：採集、漁撈代表取消）；
 /// 代表人物算在年齡群人數裡、不外移；老死後由同規則補任；聚落與人物名字是西式奇幻音譯、不超過六個字、同種子同名。
 /// </summary>
 public sealed class DemoRepresentativeTests
@@ -42,7 +42,7 @@ public sealed class DemoRepresentativeTests
     }
 
     [Fact]
-    public void EveryInhabitedSettlementHasALeaderAndAGathererCountedInItsCohorts()
+    public void EveryInhabitedSettlementHasALeaderCountedInItsCohorts()
     {
         var world = Run(3, 3 * TestCalendar.DaysPerYear);
         var day = world.Snapshot().DaysElapsed;
@@ -50,8 +50,7 @@ public sealed class DemoRepresentativeTests
         foreach (var s in world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0))
         {
             var reps = world.RepresentativesOf(s.Id);
-            Assert.Contains(reps, r => r.Role == DemoRepresentativeRole.Leader);
-            Assert.Contains(reps, r => r.Role == DemoRepresentativeRole.Gatherer);
+            Assert.Single(reps, r => r.Role == DemoRepresentativeRole.Leader);
             Assert.All(reps, r =>
             {
                 Assert.InRange(DemoNames.Length(r.Name), 2, DemoNameTempSettings.Current.MaxLength);
@@ -65,14 +64,6 @@ public sealed class DemoRepresentativeTests
             var view = world.QueryCell(s.Column, s.Row);
             Assert.All(reps, r => Assert.Contains(view.Lines, l => l.Contains(r.Name, StringComparison.Ordinal)));
         }
-        // 漁撈代表只在有河流或海洋漁獲的聚落。
-        var fishers = world.WeekReports()[^1].Sources
-            .Where(x => x.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater)
-            .SelectMany(x => x.Shares).Where(x => x.Food > 0).Select(x => x.SettlementId).ToHashSet();
-        Assert.All(snapshot.Representatives.Where(r => r.Role == DemoRepresentativeRole.Fisher),
-            r => Assert.Contains(r.SettlementId, fishers.Concat(world.WeekReports().SelectMany(w => w.Sources)
-                .Where(x => x.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater)
-                .SelectMany(x => x.Shares).Where(x => x.Food > 0).Select(x => x.SettlementId))));
     }
 
     [Fact]
