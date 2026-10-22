@@ -92,7 +92,8 @@ public sealed class DemoRepresentativeTests
         // 存讀檔後代表人物相同（十年存檔；四十年的週帳存檔超過 TEMP 大小上限，另見第 07-1 章 c 節）。
         var young = Run(1, 10 * TestCalendar.DaysPerYear);
         var loaded = DemoObserverWorld.ImportTempSave(young.ExportTempSave());
-        Assert.Equal(young.HumanPopulationSnapshot!.Representatives, loaded.HumanPopulationSnapshot!.Representatives);
-        Assert.Equal(young.WeekReports().SelectMany(w => w.Appointments), loaded.WeekReports().SelectMany(w => w.Appointments));
+        // ImmutableArray 的 Equals 比的是參考，改比內容。
+        Assert.Equal(young.HumanPopulationSnapshot!.Representatives.ToList(), loaded.HumanPopulationSnapshot!.Representatives.ToList());
+        Assert.Equal(young.WeekReports().SelectMany(w => w.Appointments).ToList(), loaded.WeekReports().SelectMany(w => w.Appointments).ToList());
     }
 }
