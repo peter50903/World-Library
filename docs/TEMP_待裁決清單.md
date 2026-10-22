@@ -98,6 +98,7 @@
 | 目的地已佔用餘量 | 已在路上前往的人數 × 每人週食量，從目的地的來源餘量扣除 | 診斷：同一週多村同時湧入同一村（一年遷入 21 人）後長期缺糧 |
 | 遠方開拓 | 附近 6 格找不到空地時，改找 12 格（婚嫁範圍） | 缺糧村困在養不起的地方、只能等老死 |
 | 婚嫁目的地 | 已知來源餘量（扣掉在路上的人）至少養得起一人 | 婚嫁不把人送進缺糧村 |
+| 共用來源餘量 | 由可及的聚落平分（開拓選址：既有聚落與新來者平分） | 診斷：相鄰聚落各自把同一份餘量算成自己的，同時生育、接納遷入而超過來源 |
 
 #### D07-1c｜地圖大小（第 07-1 章 c 節，Claude 定案【TEMP】）
 
@@ -358,7 +359,7 @@
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 7 | D8；第 04-1 章分層存檔讀檔 |
-| `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 12 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧 |
+| `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 14 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 3 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 8 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |

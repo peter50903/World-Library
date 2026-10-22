@@ -38,19 +38,24 @@ public static class DemoCrowding
     /// 第 08-1 章：某一格可及範圍內全部來源的可持續餘量（每週供應 − 本週全部採收）。開拓選址用：
     /// 只選餘量養得起預計開拓隊的空地，並挑餘量最大者，避免新聚落擠在舊聚落旁搶同一批來源。
     /// </summary>
-    public static Dictionary<DemoCellRef, long> SpareMap(DemoHexWorld map, IReadOnlyList<DemoSourceWeekLedger> sources)
+    public static Dictionary<DemoCellRef, long> SpareMap(DemoHexWorld map, IReadOnlyList<DemoSourceWeekLedger> sources,
+        IEnumerable<DemoSettlement>? active = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sources);
+        var places = active?.Select(s => new DemoCellRef(s.Column, s.Row)).ToHashSet() ?? new HashSet<DemoCellRef>();
         var spare = new Dictionary<DemoCellRef, long>();
         foreach (var source in sources)
         {
             var add = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
-            foreach (var c in DemoHexFoodCatchment.EligibleCells(map,
-                         new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable)))
+            var cells = DemoHexFoodCatchment.EligibleCells(map,
+                new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
+            // 第 08-4 章【TEMP 規則】：共用來源的餘量由可及的既有聚落與新來者平分（不重複計給每一個鄰居）。
+            var sharers = active is null ? 0 : cells.Count(c => places.Contains(new DemoCellRef(c.Column, c.Row)));
+            foreach (var c in cells)
             {
                 var key = new DemoCellRef(c.Column, c.Row);
-                spare[key] = checked(spare.GetValueOrDefault(key) + add);
+                spare[key] = checked(spare.GetValueOrDefault(key) + add / (sharers + 1));
             }
         }
         return spare;
@@ -72,8 +77,11 @@ public static class DemoCrowding
             var spare = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
             var cells = DemoHexFoodCatchment.EligibleCells(map,
                 new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
-            foreach (var settlement in settlements.Where(s => cells.Any(c => c.Column == s.Column && c.Row == s.Row)))
-                result[settlement.Id] = checked(result[settlement.Id] + spare);
+            // 第 08-4 章【TEMP 規則】：共用來源的餘量由可及的聚落平分（原本每個鄰居都算到全部，
+            // 相鄰聚落同時依同一份餘量生育、接納遷入，人口超過來源後長期缺糧）。
+            var reaching = settlements.Where(s => cells.Any(c => c.Column == s.Column && c.Row == s.Row)).ToList();
+            foreach (var settlement in reaching)
+                result[settlement.Id] = checked(result[settlement.Id] + spare / reaching.Count);
         }
         return result;
     }

@@ -646,7 +646,7 @@ internal static class DemoWeeklySettlement
         var slackBySettlement = config.SharedCatchmentEnabled && map is not null
             ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
             : new Dictionary<int, long>();
-        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers)); // 第 08-1 章開拓選址
+        var spareMap = new Lazy<Dictionary<DemoCellRef, long>>(() => DemoCrowding.SpareMap(map!, sourceLedgers, sites.Settlements.Where(x => !x.IsRuin))); // 第 08-1 章開拓選址
         var harvestedBySettlement = sharedHarvest?.Harvests.GroupBy(x => x.SettlementId)
             .ToDictionary(g => g.Key, g => g.Sum(h => h.FoodHarvested));
         var nextReserves = reserves.ToBuilder();
