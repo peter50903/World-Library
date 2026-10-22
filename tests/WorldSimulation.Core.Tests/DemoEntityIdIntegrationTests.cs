@@ -168,7 +168,7 @@ public sealed class DemoEntityIdIntegrationTests
         for (var day = 1; day <= 10 * 365; day++)
         {
             world.AdvanceOneDay();
-            if (day % 7 == 0 && world.WeekReports().Where(w => w.Week >= world.SaveWindowStart())
+            if (day % 7 == 0 && day >= 14 && world.WeekReports().Where(w => w.Week >= world.SaveWindowStart())
                     .SelectMany(w => w.Migrations).Count(m => m.Departed) >= 2)
                 break;
         }

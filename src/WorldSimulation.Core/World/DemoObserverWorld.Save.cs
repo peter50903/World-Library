@@ -97,6 +97,7 @@ public sealed partial class DemoObserverWorld
             EarlierYears = YearSummaries().Take(YearsBeforeWeek(windowStart)).ToArray(),
             EarlierEvents = SettlementEvents().Where(e => e.Week < windowStart).ToArray(),
             Chronicle = _chronicle,
+            DebtSources = _debtSources,
             Reserves = _reserves,
             SettlementFood = _settlementFood,
             Population = _population,

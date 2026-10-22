@@ -129,6 +129,10 @@ public sealed partial class DemoObserverWorld
         candidate._frozenYears = earlierYears.ToImmutableList();
         candidate._earlierEvents = earlierEvents.ToImmutableList();
         candidate._chronicle = chronicle.ToImmutableSortedDictionary();
+        var debtSources = ReadBalances(state, "DebtSources");
+        if (debtSources.Keys.Any(id => sites.Settlements.All(s => s.Id != id)) || debtSources.Values.Any(v => v < 1))
+            Reject("飢餓債來源指向不存在的聚落或事件");
+        candidate._debtSources = debtSources.ToImmutableSortedDictionary();
         candidate._reserves = reserves.ToImmutableSortedDictionary();
         candidate._settlementFood = food.ToImmutableSortedDictionary();
         candidate._population = population.ToImmutableSortedDictionary();

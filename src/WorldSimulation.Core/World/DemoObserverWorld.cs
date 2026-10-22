@@ -75,6 +75,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableList<DemoYearSummary> _frozenYears = ImmutableList<DemoYearSummary>.Empty; // _weeks 之前完整年份的年帳
     private ImmutableList<DemoSettlementEvent> _earlierEvents = ImmutableList<DemoSettlementEvent>.Empty; // _weeks 之前的聚落事件
     private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle = ImmutableSortedDictionary<int, DemoSettlementChronicle>.Empty;
+    private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -320,7 +321,7 @@ public sealed partial class DemoObserverWorld
             week, TimeSpan.FromDays(7L * week), Map, _sites,
             _reserves, _settlementFood, _population, _hungerDebt,
             _migrations, _entityIds, publishedWeeks, _weekly, sourceStocks: _sourceStocks,
-            firstEventId: checked(_history.LastEventId + 1));
+            firstEventId: checked(_history.LastEventId + 1), debtSourceOf: DebtSourceOf);
     }
 
     /// <summary>第 06 章 c 節：共享採集各來源目前存量（未採累積；沒有＝0）。</summary>
@@ -396,7 +397,8 @@ public sealed partial class DemoObserverWorld
                 _land,
                 _demography is null ? null : DemoHumanLifecycle.MateMarkets(_demography, _sites, checked(CommittedWeeks + 1)),
                 _weekly.HopeEra ? FoundedNamer() : null,
-                firstEventId: checked(_history.LastEventId + 1)); // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
+                firstEventId: checked(_history.LastEventId + 1), // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
+                debtSourceOf: DebtSourceOf);
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -486,6 +488,7 @@ public sealed partial class DemoObserverWorld
         foreach (var year in YearSummaries().Take(YearsBeforeWeek(windowStart))) sb.Append(inv, $"year{year};");
         foreach (var e in SettlementEvents().Where(e => e.Week < windowStart)) sb.Append(inv, $"early{e};");
         foreach (var kv in _chronicle) sb.Append(inv, $"chronicle{kv.Key}={kv.Value.Fingerprint()};");
+        foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
@@ -508,9 +511,9 @@ public sealed partial class DemoObserverWorld
     internal const int TempSaveWindowWeeks = 52;
 
     /// <summary>
-    /// 第 04-1 章：存檔保留完整週報的第一週。至少最近 <see cref="TempSaveWindowWeeks"/> 週，
-    /// 再往前包含途中隊伍的出發週、有飢餓債聚落最近一筆債源事件的週（之後的結算會回頭查這些週報），
-    /// 最後對齊到所在年份的第一次週結算（之前的年份只存年帳）。隨時間只會往後移。
+    /// 第 04-1 章：存檔保留完整週報的第一週。至少最近 <see cref="TempSaveWindowWeeks"/> 週（遷徙消息、遺跡判定只往回看這麼多週），
+    /// 再往前包含途中隊伍的出發週（抵達時要找出發事件），最後對齊到所在年份的第一次週結算（之前的年份只存年帳）。
+    /// 飢餓債來源另存為狀態（<see cref="DebtSourceOf"/>），不需要舊週報。隨時間只會往後移。
     /// </summary>
     internal int SaveWindowStart()
     {
@@ -520,41 +523,25 @@ public sealed partial class DemoObserverWorld
         var start = last - TempSaveWindowWeeks + 1;
         foreach (var batch in _migrations)
             start = Math.Min(start, batch.DepartedWeek);
-        foreach (var (settlementId, debt) in _hungerDebt)
-        {
-            if (debt <= 0) continue;
-            var source = DemoCausalIndex.LatestDebtSourceId(_weeks, settlementId);
-            if (source == 0) continue;
-            var week = _weeks.FirstOrDefault(w => w.Events.Any(e => e.EventId == source));
-            if (week is not null)
-                start = Math.Min(start, week.Week);
-        }
         start = Math.Max(1, start);
-        // 保留範圍內每筆事件的直接原因也要在範圍內（讀檔後的因果索引、餓死原因核對都要找得到）。
-        var weekOfEvent = new Dictionary<long, int>();
-        foreach (var w in _weeks)
-            foreach (var e in w.Events)
-                weekOfEvent[e.EventId] = w.Week;
-        var aligned = FirstWeekOfYear(YearsBeforeWeek(start) + 1);
-        bool moved;
-        do
+        return Math.Max(FirstWeekOfYear(YearsBeforeWeek(start) + 1), FirstRetainedWeek);
+    }
+
+    /// <summary>第 04-1 章：聚落最近一筆帶來飢餓債的事件（飢餓，或帶著飢餓債抵達／建立）；沒有為 0。</summary>
+    internal long DebtSourceOf(int settlementId) => _debtSources.GetValueOrDefault(settlementId);
+
+    /// <summary>第 04-1 章：依本週週報更新各聚落最近一筆飢餓債來源（與 <see cref="DemoCausalIndex.LatestDebtSourceId"/> 同一規則）。</summary>
+    internal static ImmutableSortedDictionary<int, long> AdvanceDebtSources(ImmutableSortedDictionary<int, long> sources, DemoWeekReport report)
+    {
+        var builder = sources.ToBuilder();
+        foreach (var e in report.Events)
         {
-            moved = false;
-            foreach (var w in _weeks.Where(w => w.Week >= aligned))
-                foreach (var e in w.Events)
-                {
-                    // 成為遺跡的證據是之前連續空置的週帳，也要在範圍內。
-                    var need = e.Kind == DemoSettlementEventKind.SettlementRuined
-                        ? Math.Max(1, e.Week - DemoSettlementTempSettings.Current.RuinAfterEmptyWeeks + 1)
-                        : e.CauseEventId > 0 && weekOfEvent.TryGetValue(e.CauseEventId, out var causeWeek) ? causeWeek : int.MaxValue;
-                    if (need < aligned)
-                    {
-                        aligned = FirstWeekOfYear(YearsBeforeWeek(need) + 1);
-                        moved = true;
-                    }
-                }
-        } while (moved);
-        return Math.Max(aligned, FirstRetainedWeek);
+            if (e.Kind == DemoSettlementEventKind.Hunger
+                || (e.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded
+                    && report.Migrations.Any(m => m.BatchId == e.MigrationBatchId && m.Arrived && m.HungerDebtClosing > 0)))
+                builder[e.SettlementId] = e.EventId;
+        }
+        return builder.ToImmutable();
     }
 
     /// <summary>第 <paramref name="week"/> 週結算日之前已完整結束的年數（365 日一年）。</summary>

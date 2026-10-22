@@ -576,7 +576,8 @@ internal static class DemoWeeklySettlement
         DemoLandDevelopmentMap? land = null,
         IReadOnlyDictionary<int, DemoMateMarket>? mates = null,
         Func<DemoSettlement, ISet<string>, string>? namer = null,
-        long? firstEventId = null)
+        long? firstEventId = null,
+        Func<int, long>? debtSourceOf = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
@@ -877,7 +878,7 @@ internal static class DemoWeeklySettlement
             var debtSourceEventId = hungerEventId != 0
                 ? hungerEventId
                 : deaths > 0 || debtOpening > 0
-                ? DemoCausalIndex.LatestDebtSourceId(publishedWeeks, settlement.Id)
+                ? debtSourceOf?.Invoke(settlement.Id) ?? DemoCausalIndex.LatestDebtSourceId(publishedWeeks, settlement.Id) // 第 04-1 章：世界保存的債源
                 : 0;
 
             if (deaths > 0)

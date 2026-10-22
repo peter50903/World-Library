@@ -70,6 +70,7 @@ public sealed partial class DemoObserverWorld
         private DemoWeeklyOutcome? _outcome;
         private EventHistory _history;
         private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle; // 第 04-1 章：聚落小史
+        private ImmutableSortedDictionary<int, long> _debtSources; // 第 04-1 章：飢餓債來源
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
         internal DemoWorldCommit(DemoObserverWorld world, bool settleWeekly)
@@ -90,6 +91,7 @@ public sealed partial class DemoObserverWorld
             _demography = world._demography;
             _history = world._history;
             _chronicle = world._chronicle;
+            _debtSources = world._debtSources;
         }
 
         /// <summary>本日到期時間（<see cref="StageSchedule"/> 後才有）。</summary>
@@ -210,6 +212,7 @@ public sealed partial class DemoObserverWorld
             _history = _world._history.AppendCommitted(DemoEventProjection.ToWorldEvents(report, _sites, _participants));
             _chronicle = DemoSettlementChronicle.Advance(_world._chronicle, report,
                 _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>());
+            _debtSources = AdvanceDebtSources(_world._debtSources, report);
         }
 
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
@@ -242,6 +245,7 @@ public sealed partial class DemoObserverWorld
             world._demography = _demography;
             world._history = _history;
             world._chronicle = _chronicle;
+            world._debtSources = _debtSources;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }
 

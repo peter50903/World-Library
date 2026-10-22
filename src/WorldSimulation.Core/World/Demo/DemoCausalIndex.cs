@@ -21,6 +21,16 @@ public sealed class DemoCausalIndex
     private readonly Dictionary<long, List<DemoSettlementEvent>> _children = new();
     private readonly List<string> _problems = new();
 
+    // 第 04-1 章：讀檔後只保留近期週報；第一份保留週報的週次（新世界＝0，表示週報完整）。
+    private int _firstRetainedWeek;
+
+    /// <summary>此週次之前的週報已不保存（新世界為 false）。</summary>
+    private bool Truncated(int week) => _firstRetainedWeek > 1 && week < _firstRetainedWeek;
+
+    /// <summary>此報告之前保留的週數不足遺跡判定所需（讀檔後頭幾週無法核對空置證據）。</summary>
+    private bool RuinEvidenceTruncated(int reportIndex)
+        => _firstRetainedWeek > 1 && reportIndex < DemoSettlementTempSettings.Current.RuinAfterEmptyWeeks - 1;
+
     private DemoCausalIndex()
     {
     }
@@ -82,6 +92,7 @@ public sealed class DemoCausalIndex
         ArgumentNullException.ThrowIfNull(weeks);
         var index = new DemoCausalIndex();
         var reports = weeks.ToList();
+        index._firstRetainedWeek = reports.Count > 0 && reports[0].Week > 1 ? reports[0].Week : 0;
         long expected = 1;
         foreach (var e in earlier)
         {
@@ -144,8 +155,9 @@ public sealed class DemoCausalIndex
     private void CheckSettlementLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports, IEnumerable<int> ruinedEarlier)
     {
         var ruined = ruinedEarlier.ToHashSet(); // 第 04-1 章：讀檔前已成為遺跡的聚落
-        foreach (var report in reports)
+        for (var reportIndex = 0; reportIndex < reports.Count; reportIndex++)
         {
+            var report = reports[reportIndex];
             foreach (var ledger in report.Settlements)
             {
                 var survival = ledger.FoodShortage + ledger.WaterShortage; // 第 06 章 d 節：缺水併入生存短缺
@@ -163,6 +175,13 @@ public sealed class DemoCausalIndex
                     && !ruined.Contains(ledger.SettlementId)
                     && DemoSettlementTempSettings.Current.EmptyLongEnough(ledger.SettlementId, report.Week, 0, reports)
                     && !report.Migrations.Any(m => !m.Arrived && m.PopulationClosing > 0 && m.ToSettlementId == ledger.SettlementId);
+                if (RuinEvidenceTruncated(reportIndex))
+                {
+                    // 第 04-1 章：空置證據在未保存的週報裡，只記下已成遺跡的聚落。
+                    if (report.Events.Any(e => e.Kind == DemoSettlementEventKind.SettlementRuined && e.SettlementId == ledger.SettlementId))
+                        ruined.Add(ledger.SettlementId);
+                    continue;
+                }
                 CheckCount(report, ledger, DemoSettlementEventKind.SettlementRuined, ruin ? 1 : 0);
                 if (ruin) ruined.Add(ledger.SettlementId);
             }
@@ -269,13 +288,15 @@ public sealed class DemoCausalIndex
                         return "原因週次晚於此事件";
                 }
                 else if (!(parent.Kind is DemoSettlementEventKind.Arrival or DemoSettlementEventKind.SettlementFounded
-                    && parent.Week < e.Week && CarriedDebt(reports, parent)))
+                    && parent.Week < e.Week && (Truncated(parent.Week) || CarriedDebt(reports, parent))))
                 {
                     return "直接原因必須是同一聚落帶來飢餓債的事件（飢餓，或更早週次帶著飢餓債抵達／建立）";
                 }
 
                 // GPT 審 #91：必須精確指向「最近一筆」飢餓債來源，指到更早的舊事件也不合法。
                 var latest = ExpectedDebtSourceId(reports, reportIndex, e);
+                if (latest == 0 && Truncated(parent.Week))
+                    return null; // 第 04-1 章：債源在未保存的週報裡（保留範圍內沒有更新的債源）
                 if (latest == 0)
                     return "此聚落在此事件之前沒有任何帶來飢餓債的事件";
                 return e.CauseEventId == latest
@@ -289,7 +310,7 @@ public sealed class DemoCausalIndex
                 var rule = DemoSettlementTempSettings.Current;
                 var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
                 if (parent is not null || ledger is null || e.Count != rule.RuinAfterEmptyWeeks
-                    || !rule.EmptyLongEnough(e.SettlementId, report.Week, ledger.PopulationClosing, reports))
+                    || (!RuinEvidenceTruncated(reportIndex) && !rule.EmptyLongEnough(e.SettlementId, report.Week, ledger.PopulationClosing, reports)))
                     return "成為遺跡需要連續空置週數的週帳證據，且是根因";
                 if (reports.Take(reportIndex).Any(r => r.Events.Any(x => x.Kind == DemoSettlementEventKind.SettlementRuined
                     && x.SettlementId == e.SettlementId)))
