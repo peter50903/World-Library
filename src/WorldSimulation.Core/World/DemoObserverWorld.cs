@@ -542,11 +542,17 @@ public sealed partial class DemoObserverWorld
             moved = false;
             foreach (var w in _weeks.Where(w => w.Week >= aligned))
                 foreach (var e in w.Events)
-                    if (e.CauseEventId > 0 && weekOfEvent.TryGetValue(e.CauseEventId, out var causeWeek) && causeWeek < aligned)
+                {
+                    // 成為遺跡的證據是之前連續空置的週帳，也要在範圍內。
+                    var need = e.Kind == DemoSettlementEventKind.SettlementRuined
+                        ? Math.Max(1, e.Week - DemoSettlementTempSettings.Current.RuinAfterEmptyWeeks + 1)
+                        : e.CauseEventId > 0 && weekOfEvent.TryGetValue(e.CauseEventId, out var causeWeek) ? causeWeek : int.MaxValue;
+                    if (need < aligned)
                     {
-                        aligned = FirstWeekOfYear(YearsBeforeWeek(causeWeek) + 1);
+                        aligned = FirstWeekOfYear(YearsBeforeWeek(need) + 1);
                         moved = true;
                     }
+                }
         } while (moved);
         return Math.Max(aligned, FirstRetainedWeek);
     }

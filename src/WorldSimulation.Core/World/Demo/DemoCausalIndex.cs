@@ -129,7 +129,8 @@ public sealed class DemoCausalIndex
         }
 
         index.CheckTravelLedgersHaveEvents(reports);
-        index.CheckSettlementLedgersHaveEvents(reports);
+        index.CheckSettlementLedgersHaveEvents(reports,
+            index._ordered.Where(e => e.Kind == DemoSettlementEventKind.SettlementRuined && reports.All(r => r.Week != e.Week)).Select(e => e.SettlementId));
         return index;
     }
 
@@ -140,9 +141,9 @@ public sealed class DemoCausalIndex
     /// 恢復與死亡移除後飢餓債歸 0 且有人倖存 → 恰好 1 筆飢餓解除；其他情形 0 筆。
     /// 這可抓到「刪掉一筆沒有後果的飢餓或飢餓解除事件、再把後面的編號全部往前補」這類整段改寫。
     /// </summary>
-    private void CheckSettlementLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports)
+    private void CheckSettlementLedgersHaveEvents(IReadOnlyList<DemoWeekReport> reports, IEnumerable<int> ruinedEarlier)
     {
-        var ruined = new HashSet<int>();
+        var ruined = ruinedEarlier.ToHashSet(); // 第 04-1 章：讀檔前已成為遺跡的聚落
         foreach (var report in reports)
         {
             foreach (var ledger in report.Settlements)
