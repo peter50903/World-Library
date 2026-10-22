@@ -52,6 +52,8 @@ public static class LivingDiagnosis
             var starved = weeks.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths) + w.Migrations.Sum(m => m.Deaths));
             var natural = weeks.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths) + w.Migrations.Sum(m => m.NaturalDeaths));
             var emig = weeks.Sum(w => w.Settlements.Sum(l => l.Emigrants));
+            // 第 08-3 章：每 10 年一行彙整（註記長度有限，逐聚落明細只在最後一年列出）。
+            int shortVillages = 0, labourShort = 0, sourceShort = 0, fertileTotal = 0, couplesTotal = 0, pregnantTotal = 0, villages = 0;
             foreach (var s in world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0))
             {
                 var residents = people.Where(p => p.IsSettled && p.SettlementId == s.Id).ToList();
@@ -71,27 +73,26 @@ public static class LivingDiagnosis
                 var food = world.SettlementFood(s.Id);
                 var ample = weeks.Count(w => w.Settlements.Any(l => l.SettlementId == s.Id
                     && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, l.SourceSlack)));
+                villages++;
+                fertileTotal += fertileWomen;
+                couplesTotal += couples;
+                pregnantTotal += pregnant;
+                if (fed < ledgers.Count / 2)
+                {
+                    shortVillages++;
+                    if (labour < demand) labourShort++;
+                    if (supply < demand) sourceShort++;
+                }
+                if (year != years)
+                    continue;
                 var seeker = DemoFamilyMigration.MateSeeker(residents, day, rules);
                 var singleF = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Female, day, rules);
                 var singleM = DemoFamilyMigration.Unpaired(residents, DemoTempSex.Male, day, rules);
-                if (seeker is not null)
-                {
-                    // 婚嫁候選：與結算同一套條件（有未配對異性、目的地人口較多、陸路 TEMP 已知格數內）。
-                    var notes = new List<string>();
-                    foreach (var c in world.Sites.Settlements.Where(c => c.Id != s.Id && !c.IsRuin))
-                    {
-                        var theirs = people.Where(p => p.IsSettled && p.SettlementId == c.Id).ToList();
-                        var opposite = DemoFamilyMigration.Unpaired(theirs, seeker.Sex == DemoTempSex.Female ? DemoTempSex.Male : DemoTempSex.Female, day, rules);
-                        var route = DemoMigrationRoutes.FindRoute(world.Map, new DemoCellRef(s.Column, s.Row), new DemoCellRef(c.Column, c.Row));
-                        var steps = route.Length < 2 ? "無路" : $"{route.Length - 1}格";
-                        var bigger = world.SettlementPopulation(c.Id) > residents.Count || (world.SettlementPopulation(c.Id) == residents.Count && c.Id < s.Id);
-                        notes.Add($"#{c.Id}:{steps}/異{opposite}/{(bigger ? "大" : "小")}");
-                    }
-                    output.WriteLine($"    尋偶候選 {string.Join(" ", notes)}");
-                }
                 output.WriteLine($"  #{s.Id} 人 {residents.Count}（成 {adults}／伴 {couples}／孕 {pregnant}／單女 {singleF}／單男 {singleM}／尋偶 {(seeker is null ? "無" : seeker.Sex == DemoTempSex.Female ? "女" : "男")}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
                     + $"｜飽 {fed}、寬裕 {ample}／{ledgers.Count} 週");
             }
+            output.WriteLine($"  彙整：有人聚落 {villages}，過半週缺糧 {shortVillages}（勞力不足 {labourShort}、來源不足 {sourceShort}）"
+                + $"｜育齡婦女 {fertileTotal}、育齡伴侶 {couplesTotal}、懷孕 {pregnantTotal}");
         }
         return 0;
     }

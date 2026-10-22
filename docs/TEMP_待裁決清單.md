@@ -65,6 +65,19 @@
 | 河流 | 北緣往南流到海岸為止 | 河口接海 |
 | 淺灘渡口 | 兩岸都有陸地、不臨海的河流格 | 使用者：淺灘要兩端連結陸地才有價值 |
 
+#### D08-3｜觀察者介面與人口平衡（第 08-3 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 受孕預留口糧 | 已懷孕＋這一胎，每胎預留一份成人週食量（來源餘量與採集勞力都要夠） | 人口在上限附近停住，不衝過頭挨餓（使用者：中後期應幾乎只剩老死、維持溫飽） |
+| 孩子長大預留 | 每名孩子預留（成人份－兒童份）食量 | 孩子成年時食量加倍，未預留就集體缺糧（長期調查最後 20 年缺糧週 23～36%） |
+| 外移目的地餘量 | 希望時代缺糧外移只去已知來源餘量 ≥ 外移人數×週食量的聚落 | 缺糧者湧入別村造成連鎖缺糧外移（每年 200～300 人次） |
+| 共享來源分配 | 先只分本週需求、可及聚落少的來源先分；需求分完才補存糧 | 某村用共用來源補存糧、鄰村卻挨餓 |
+| 村莊門檻 | 人口 ≥ 10 稱村莊 | 聚落小史「由聚落發展為村莊」 |
+| 人口里程碑 | 10／25／50／100 | 聚落小史 |
+| 快轉每幀時間預算 | 10 毫秒（超過就不補跑剩下的日子，實際速度可能低於選定速度） | 使用者：3 倍速以上拖曳地圖卡頓 |
+| 面板刷新間隔 | 250 毫秒（地圖每幀照畫） | 同上 |
+
 #### D08-2｜希望時代（第 08-2 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -289,8 +302,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 12 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 8 | #112 森林／河流共享供糧的獨立 TEMP 模型 |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 54 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 55 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -300,26 +313,26 @@
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
-| `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 11 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50% |
+| `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 12 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧 |
+| `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 3 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 5 | D7；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
-| `src/WorldSimulation.ObserverCli/LivingDiagnosis.cs` | 1 | 第 08-1 章：普通世界人口診斷（只讀；婚嫁候選條件與結算同一套 TEMP 規則） |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
-| `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入 |
+| `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
-| `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 4 | #95 重大事件種類（TEMP，待裁決） |
+| `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
 | `godot/Scripts/DemoHexMap.cs` | 11 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
-| `godot/Scripts/HudLayout.cs` | 15 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列） |
+| `godot/Scripts/HudLayout.cs` | 11 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列）；第 08-3 章功能列置底、移除事件列 |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 5 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |

@@ -216,20 +216,20 @@ public partial class ObserverRoot : Control
         _hud.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         BuildTopBar();
 
-        // 右側「世界控制台」：原獨立視窗的全部內容，改為可收合的疊加面板。
-        var sidebar = new PanelContainer();
-        Skin(sidebar);
-        _consolePanel = sidebar;
-        _hud.AddChild(sidebar);
+        // 第 08-3 章：右側第二分頁改為「世界紀錄」（事件依時間列出，點一筆才顯示詳情）；
+        // 原「世界控制台」的開發用資訊移到功能列「開發」視窗（疊加 modal）。
+        _consolePanel = new PanelContainer();
+        Skin(_consolePanel);
+        _hud.AddChild(_consolePanel);
 
         // V0-07: the added save/load buttons must remain reachable on smaller windows.
-        // Scroll only the information sidebar; map wheel input stays within the map.
+        // Scroll only the information page; map wheel input stays within the map.
         var sidebarScroll = new ScrollContainer
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(600, 420) // TEMP：開發資訊視窗內容區
         };
-        sidebar.AddChild(sidebarScroll);
         var side = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         side.AddThemeConstantOverride("separation", 18);
         sidebarScroll.AddChild(side);
@@ -405,45 +405,33 @@ public partial class ObserverRoot : Control
         };
         side.AddChild(_notice);
 
-        var historyPanel = new PanelContainer(); // 第 05 章：底部事件列，大小由 HudLayout 決定。
-        Skin(historyPanel);
-        _hud.AddChild(historyPanel);
-        _feedPanel = historyPanel;
-        // 內容比事件列高時捲動，不把面板撐出視窗。
-        var feedScroll = new ScrollContainer();
-        historyPanel.AddChild(feedScroll);
-
-        var historyColumn = new VBoxContainer
-        {
-            SizeFlagsHorizontal = SizeFlags.ExpandFill,
-            SizeFlagsVertical = SizeFlags.ExpandFill
-        };
-        feedScroll.AddChild(historyColumn);
-
-        var historyTitle = new Label { Text = "世界紀錄｜最近週結算與聚落事件（飢餓／餓死／解除／外移／抵達／建立新聚落）" };
+        // 第 08-3 章：週結算摘要文字（開發用）放在開發資訊視窗底部。
+        var historyTitle = new Label { Text = "最近週結算與聚落事件（文字）" };
         historyTitle.AddThemeFontSizeOverride("font_size", 18);
-        historyColumn.AddChild(historyTitle);
-
+        side.AddChild(historyTitle);
         _history = new RichTextLabel
         {
             BbcodeEnabled = false,
             ScrollActive = true,
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 145)
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 240)
         };
-        // #89: text history on the left, clickable settlement events and their detail on the right.
-        var historyRow = new HBoxContainer { SizeFlagsVertical = SizeFlags.ExpandFill };
-        historyRow.AddThemeConstantOverride("separation", 12);
-        historyColumn.AddChild(historyRow);
-        _history.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        historyRow.AddChild(_history);
-        BuildEventDetailPanel(historyRow);
+        side.AddChild(_history);
+
+        // 第 08-3 章：右側「世界紀錄」分頁＝篩選＋事件清單（依時間，新的在上）＋點選後才出現的事件詳情。
+        var recordColumn = new VBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill
+        };
+        recordColumn.AddThemeConstantOverride("separation", 6);
+        _consolePanel.AddChild(recordColumn);
+        BuildEventDetailPanel(recordColumn);
 
         BuildOutliner();
         BuildDetailPanel();
         BuildTimeControls();
-        BuildMapModeBar();
-        BuildToolbar(scenarioBox, saveBox);
+        BuildToolbar(scenarioBox, saveBox, sidebarScroll);
         BuildAudio();
         _hud.Resized += ApplyHudLayout;
         ApplyHudLayout();

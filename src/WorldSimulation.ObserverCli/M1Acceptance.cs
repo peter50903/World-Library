@@ -1409,8 +1409,22 @@ public static class M1AcceptanceCli
         string Pct(long v) => run.MapCapacity <= 0 ? "—" : $"{v * 100 / run.MapCapacity}%";
         var capacity = run.MapCapacity <= 0 ? string.Empty
             : $"｜上限 {run.MapCapacity}｜峰值 {populations.Append(run.Initial.Population).Max()}（{Pct(populations.Append(run.Initial.Population).Max())}）"
-              + $"｜最後 20 年 {tail.Min()}～{tail.Max()}（{Pct(tail.Min())}～{Pct(tail.Max())}）";
+              + $"｜最後 20 年 {tail.Min()}～{tail.Max()}（{Pct(tail.Min())}～{Pct(tail.Max())}）"
+              + TailHunger(run);
         return $"種子 {run.Seed}｜人口 {run.Initial.Population}→{final}（最高 {populations.Append(run.Initial.Population).Max()}）｜出生 {births}｜新建聚落 {founded}｜{fate}｜Hard 失敗 {hard}{capacity}";
+    }
+
+    /// <summary>第 08-3 章：最後 20 年有人聚落週裡缺糧週的比例、餓死與老死人數（看人口是否平衡、維持溫飽）。</summary>
+    private static string TailHunger(M1RunData run)
+    {
+        var fromWeek = Math.Max(0, run.Years - 20) * run.DaysPerYear / 7;
+        var tail = run.Weeks.Where(w => w.Week > fromWeek).ToList();
+        var inhabited = tail.SelectMany(w => w.Settlements).Where(l => l.PopulationOpening > 0).ToList();
+        if (inhabited.Count == 0) return string.Empty;
+        var short_ = inhabited.Count(l => l.FoodShortage > 0);
+        var starved = tail.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths) + w.Migrations.Sum(m => m.Deaths));
+        var old = tail.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths) + w.Migrations.Sum(m => m.NaturalDeaths));
+        return $"｜最後 20 年缺糧週 {(short_ * 100.0 / inhabited.Count).ToString("0.0", CultureInfo.InvariantCulture)}%、餓死 {starved}、老死 {old}";
     }
 
     public static void WriteRun(M1RunReport report, TextWriter output)

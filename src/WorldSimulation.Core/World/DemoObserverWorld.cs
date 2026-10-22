@@ -212,7 +212,9 @@ public sealed partial class DemoObserverWorld
                 l => (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers), available,
             // 第 08-1 章：人類採集世界的要求量含補存糧（DemoCrowding.Claim，期初存糧＝帳上期初）。
             foodNeeded: week.Settlements.ToDictionary(l => l.SettlementId,
-                l => DemoCrowding.Claim(_weekly.HumanLifecycleEnabled, l.FoodConsumed + l.FoodShortage, l.FoodOpening)));
+                l => DemoCrowding.Claim(_weekly.HumanLifecycleEnabled, l.FoodConsumed + l.FoodShortage, l.FoodOpening)),
+            baseNeeds: _weekly.HumanLifecycleEnabled
+                ? week.Settlements.ToDictionary(l => l.SettlementId, l => l.FoodConsumed + l.FoodShortage) : null);
     }
 
     /// <summary>Current TEMP food stock of a demo settlement.</summary>

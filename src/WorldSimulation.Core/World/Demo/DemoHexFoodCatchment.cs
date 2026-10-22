@@ -101,7 +101,8 @@ public static class DemoHexFoodCatchment
         DemoHexWorld map,
         IEnumerable<DemoCatchmentFoodSource> sources,
         IEnumerable<DemoCatchmentFoodClaim> claims,
-        DemoCatchmentAllocation mode = DemoCatchmentAllocation.LabourProportional)
+        DemoCatchmentAllocation mode = DemoCatchmentAllocation.LabourProportional,
+        IReadOnlyDictionary<int, long>? baseNeeds = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sources);
@@ -134,34 +135,58 @@ public static class DemoHexFoodCatchment
 
         var needs = claimList.ToDictionary(c => c.SettlementId, c => c.FoodNeeded);
         var labour = claimList.ToDictionary(c => c.SettlementId, c => c.HarvestCapacity);
-        var remainingSources = new SortedDictionary<int, long>();
-        var harvest = new List<DemoCatchmentHarvest>();
-        foreach (var source in sourceList)
+        var remainingSources = sourceList.ToDictionary(s => s.Id, s => s.FoodAvailable);
+        var taken = new Dictionary<(int Source, int Settlement), long>();
+        var eligibleOf = sourceList.ToDictionary(s => s.Id, s =>
         {
-            var origin = map.GetCell(source.Column, source.Row);
-            var eligible = claimList.Where(claim => IsInReach(origin, map.GetCell(claim.Column, claim.Row),
-                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToArray();
-            var takes = mode == DemoCatchmentAllocation.Greedy
-                ? GreedyShares(source.FoodAvailable, eligible, needs, labour)
-                : ProportionalShares(source.FoodAvailable, eligible, needs, labour);
-            var remaining = source.FoodAvailable;
-            foreach (var claim in eligible)
+            var origin = map.GetCell(s.Column, s.Row);
+            return claimList.Where(claim => IsInReach(origin, map.GetCell(claim.Column, claim.Row),
+                s.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToArray();
+        });
+
+        void Pass(IEnumerable<DemoCatchmentFoodSource> order, Dictionary<int, long> want)
+        {
+            foreach (var source in order)
             {
-                var take = takes.GetValueOrDefault(claim.SettlementId);
-                if (take == 0) continue;
-                harvest.Add(new DemoCatchmentHarvest(source.Id, claim.SettlementId, take));
-                remaining -= take;
-                needs[claim.SettlementId] -= take;
-                labour[claim.SettlementId] -= take;
+                var eligible = eligibleOf[source.Id];
+                var takes = mode == DemoCatchmentAllocation.Greedy
+                    ? GreedyShares(remainingSources[source.Id], eligible, want, labour)
+                    : ProportionalShares(remainingSources[source.Id], eligible, want, labour);
+                foreach (var claim in eligible)
+                {
+                    var take = takes.GetValueOrDefault(claim.SettlementId);
+                    if (take == 0) continue;
+                    taken[(source.Id, claim.SettlementId)] = taken.GetValueOrDefault((source.Id, claim.SettlementId)) + take;
+                    remainingSources[source.Id] -= take;
+                    want[claim.SettlementId] -= take;
+                    if (!ReferenceEquals(want, needs)) needs[claim.SettlementId] -= take;
+                    labour[claim.SettlementId] -= take;
+                }
             }
-            remainingSources.Add(source.Id, remaining);
         }
+
+        if (baseNeeds is null)
+            Pass(sourceList, needs);
+        else
+        {
+            // 第 08-3 章【TEMP 規則】（人類採集世界）兩階段分配：先只分本週需求，而且先分「只有少數聚落可及」的來源
+            // （各聚落先用自己獨享的來源），共用來源留給沒有其他來源的聚落；需求都分完後，剩下的才給補存糧。
+            // 避免某聚落用共用來源補存糧、鄰村卻挨餓。
+            var first = claimList.ToDictionary(c => c.SettlementId, c => Math.Min(c.FoodNeeded, Math.Max(0, baseNeeds.GetValueOrDefault(c.SettlementId))));
+            // 只計真的要採的聚落（有需求、有勞力）；沒有勞力的聚落（例如本週剛建立）不影響順序。
+            Pass(sourceList.OrderBy(s => eligibleOf[s.Id].Count(c => c.HarvestCapacity > 0 && first[c.SettlementId] > 0)).ThenBy(s => s.Id), first);
+            Pass(sourceList, needs);
+        }
+
+        var harvest = taken.Where(kv => kv.Value > 0).OrderBy(kv => kv.Key.Source).ThenBy(kv => kv.Key.Settlement)
+            .Select(kv => new DemoCatchmentHarvest(kv.Key.Source, kv.Key.Settlement, kv.Value)).ToList();
+        var remainingSorted = new SortedDictionary<int, long>(remainingSources);
         // The source and claimant budgets are each conserved, with no invented provisions.
         if (sourceList.Any(s => harvest.Where(h => h.SourceId == s.Id).Sum(h => h.FoodHarvested) > s.FoodAvailable)
             || claimList.Any(c => harvest.Where(h => h.SettlementId == c.SettlementId)
                 .Sum(h => h.FoodHarvested) > Math.Min(c.FoodNeeded, c.HarvestCapacity)))
             throw new InvalidOperationException("TEMP food catchment resource conservation failed.");
-        return new DemoCatchmentFoodResult(harvest.AsReadOnly(), needs, remainingSources);
+        return new DemoCatchmentFoodResult(harvest.AsReadOnly(), needs, remainingSorted);
     }
 
     private static Dictionary<int, long> GreedyShares(long available, IReadOnlyList<DemoCatchmentFoodClaim> eligible,

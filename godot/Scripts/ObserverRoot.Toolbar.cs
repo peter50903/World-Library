@@ -3,7 +3,8 @@ using Godot;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// 第 05 章 b 節：事件列上方一列——左邊地圖模式（地形／糧食狀況）、置中底部工具列（情境、存讀檔、說明）。
+/// 第 05 章 b 節：地圖模式（地形／糧食狀況）與工具列（情境、存讀檔、說明）。
+/// 第 08-3 章：兩者併成左下一條功能列，與右下時間控制並排置底；另加「開發」視窗（原世界控制台的開發用資訊）。
 /// 工具列按鈕開置中的疊加視窗（modal，不是作業系統視窗）；Esc 或 ✕ 關閉。只改畫面，不改世界。
 /// 圖示是 GPT 交付素材（使用者選定保留圖上的英文字），按鈕提示是繁中；素材缺少時改顯示繁中文字。
 /// </summary>
@@ -11,7 +12,6 @@ public partial class ObserverRoot
 {
     private const int TempToolButtonSize = 64; // TEMP：工具列與地圖模式圖示按鈕邊長
 
-    private PanelContainer _mapModePanel = null!;
     private Button _mapTerrainButton = null!;
     private Button _mapFoodButton = null!;
     private RichTextLabel _foodLegend = null!;
@@ -19,6 +19,7 @@ public partial class ObserverRoot
     private Button _toolScenario = null!;
     private Button _toolSave = null!;
     private Button _toolHelp = null!;
+    private Button _toolDev = null!;
     private Control _modalBackdrop = null!;
     private PanelContainer _modalPanel = null!;
     private Label _modalTitle = null!;
@@ -42,14 +43,8 @@ public partial class ObserverRoot
         return button;
     }
 
-    private void BuildMapModeBar()
+    private void AddMapModeButtons(HBoxContainer row)
     {
-        _mapModePanel = new PanelContainer();
-        SkinBar(_mapModePanel);
-        _hud.AddChild(_mapModePanel);
-        var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
-        row.AddThemeConstantOverride("separation", 8);
-        _mapModePanel.AddChild(row);
 
         _mapTerrainButton = ToolButton(ArtAssets.UiMapTerrain, "地形", "地圖模式：地形（預設）");
         _mapTerrainButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Terrain);
@@ -84,7 +79,7 @@ public partial class ObserverRoot
             ApplyHudLayout();
     }
 
-    private void BuildToolbar(Control scenarioPage, Control savePage)
+    private void BuildToolbar(Control scenarioPage, Control savePage, Control devPage)
     {
         _toolbarPanel = new PanelContainer();
         SkinBar(_toolbarPanel);
@@ -92,6 +87,8 @@ public partial class ObserverRoot
         var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
         row.AddThemeConstantOverride("separation", 8);
         _toolbarPanel.AddChild(row);
+        AddMapModeButtons(row); // 第 08-3 章：地圖模式併入同一條功能列。
+        row.AddChild(new VSeparator());
 
         _toolScenario = ToolButton(ArtAssets.UiScenario, "情境", "情境與新世界（世界種子、歷史種子、TEMP 示範情境）");
         _toolScenario.Pressed += () => ToggleModal("scenario");
@@ -106,11 +103,16 @@ public partial class ObserverRoot
         _toolChart = ToolButton(ArtAssets.UiChart, "圖表", "年度圖表：人口、出生死亡、遷徙、糧食採收與缺口（點某年看該年事件）");
         _toolChart.Pressed += () => ToggleModal("chart");
         row.AddChild(_toolChart);
+        // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
+        _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
+        _toolDev.Pressed += () => ToggleModal("dev");
+        row.AddChild(_toolDev);
 
         BuildModalHost();
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
         AddModalPage("chart", "年度圖表", BuildYearChartPage());
+        AddModalPage("dev", "開發資訊", devPage);
         AddModalPage("help", "說明", new Label
         {
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
@@ -127,10 +129,10 @@ public partial class ObserverRoot
                 "左下地圖模式：地形（預設）、糧食狀況（綠＝充足、黃＝緊張、紅＝飢餓、灰＝尚未結算；依最近一週聚落帳）。",
                 "",
                 "【介面】",
-                "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「世界控制台」切換右側面板，再按一次收合。",
-                "右側聚落清單：依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。底部：世界紀錄，紅色＝重大事件，點事件看原因與後果並定位地圖。",
-                "底部工具列：情境與新世界、存讀檔、說明、年度圖表（點某年 →「看這一年的事件」→ 點事件定位地圖）。",
+                "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「世界紀錄」切換右側面板，再按一次收合。",
+                "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（含聚落小史）。",
+                "右側世界紀錄：事件依時間列出（新的在上），紅色＝重大事件；點一筆才顯示詳情、原因與後果，並定位地圖。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食）、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -221,13 +223,10 @@ public partial class ObserverRoot
     {
         if (_toolbarPanel is null)
             return;
-        Place(_mapModePanel, frame.MapModes, true);
         Place(_toolbarPanel, frame.Toolbar, true);
-        // 圖例放在地圖模式右邊、工具列左邊的空位；太窄就只靠按鈕提示。
-        var legendX = frame.MapModes.Right + HudLayout.TempMargin;
-        var legendW = frame.Toolbar.X - HudLayout.TempMargin - legendX;
-        var showLegend = _hexMap.MapMode == DemoHexMap.Mode.Food && legendW >= 240;
-        Place(_foodLegend, new HudRect(legendX, frame.MapModes.Y + frame.MapModes.Height / 2 - 14, Math.Max(legendW, 1), 28), showLegend);
+        // 圖例放在功能列正上方（糧食模式才顯示）。
+        var showLegend = _hexMap.MapMode == DemoHexMap.Mode.Food;
+        Place(_foodLegend, new HudRect(frame.Toolbar.X, Math.Max(0, frame.Toolbar.Y - 32), Math.Max(frame.Toolbar.Width, 1), 28), showLegend);
         SizeModal();
     }
 
@@ -256,7 +255,8 @@ public partial class ObserverRoot
         }
         // 情境視窗裡就是原本的情境選單與種子輸入；存讀檔視窗裡就是存檔槽。
         if (!_modalPages["scenario"].IsAncestorOf(_scenarioPicker) || !_modalPages["scenario"].IsAncestorOf(_worldSeedInput)
-            || !_modalPages["save"].IsAncestorOf(_slotLabels[1]))
+            || !_modalPages["save"].IsAncestorOf(_slotLabels[1]) || !_modalPages["dev"].IsAncestorOf(_status)
+            || !_modalPages["dev"].IsAncestorOf(_history) || !_toolbarPanel.IsAncestorOf(_mapFoodButton))
             fail("scenario/save controls are not inside their toolbar windows.");
 
         _mapFoodButton.EmitSignal(BaseButton.SignalName.Pressed);
@@ -270,8 +270,7 @@ public partial class ObserverRoot
             fail("terrain map mode did not come back.");
 
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
-            || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture
-            || _mapModePanel.GetThemeStylebox("panel") is not StyleBoxTexture)
+            || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
             fail("toolbar / map mode art was not applied.");
         return $"Toolbar=1 MapMode=2 Modal={modals}";
     }

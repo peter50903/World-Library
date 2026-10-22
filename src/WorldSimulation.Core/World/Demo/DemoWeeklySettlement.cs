@@ -602,6 +602,7 @@ internal static class DemoWeeklySettlement
         var water = new Dictionary<int, (long Adults, long Children, long Carriers, long WaterShortage)>();
         var foragingWorkers = new Dictionary<int, long>();
         var foodNeeded = new Dictionary<int, long>();
+        var baseNeeds = new Dictionary<int, long>();
         if (config.SharedCatchmentEnabled)
         {
             foreach (var settlement in sites.Settlements)
@@ -615,8 +616,8 @@ internal static class DemoWeeklySettlement
                     DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
                 foragingWorkers[settlement.Id] = adults - carriers;
                 // 第 08-1 章：人類採集世界向來源要求「需求＋補存糧」（DemoCrowding.Claim），消耗仍只算需求。
-                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled,
-                    survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek), settlementFood[settlement.Id]);
+                baseNeeds[settlement.Id] = survival.Demand(adults, people - adults, config.FoodPerPersonPerWeek);
+                foodNeeded[settlement.Id] = DemoCrowding.Claim(config.HumanLifecycleEnabled, baseNeeds[settlement.Id], settlementFood[settlement.Id]);
             }
         }
 
@@ -626,7 +627,8 @@ internal static class DemoWeeklySettlement
                 DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land),
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
-                plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded);
+                plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,
+                baseNeeds: config.HumanLifecycleEnabled ? baseNeeds : null); // 第 08-3 章兩階段分配
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
@@ -893,7 +895,9 @@ internal static class DemoWeeklySettlement
             var wantsToLeave = map is not null && config.MigrationEnabled && (shortage > 0 || crowded)
                 && survivors >= config.MinPopulationToEmigrate;
             var target = wantsToLeave && !crowded
-                ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config)
+                // 第 08-3 章：希望時代只搬去「已知來源餘量養得起這批人」的聚落，避免缺糧者湧入別村、別村再缺糧外移的連鎖。
+                ? ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config,
+                    config.HopeEra ? checked(survivors / config.EmigrationShareDivisor * config.FoodPerPersonPerWeek) : 0)
                 : null;
             if (wantsToLeave && target is null && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
@@ -1154,7 +1158,7 @@ internal static class DemoWeeklySettlement
     /// </summary>
     private static (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? ChooseDestination(
         DemoHexWorld map, DemoWorldSites sites, DemoSettlement source, int week,
-        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config)
+        IReadOnlyList<DemoWeekReport> publishedWeeks, DemoWeeklyTempConfig config, long minSlack = 0)
     {
         (DemoSettlement Settlement, ImmutableArray<DemoCellRef> Route, int NewsWeek)? best = null;
         foreach (var candidate in sites.Settlements.OrderBy(s => s.Id))
@@ -1170,6 +1174,8 @@ internal static class DemoWeeklySettlement
             var news = DemoMigrationNews.Received(publishedWeeks, week, candidate.Id, route.Length - 1,
                 config.NewsDelayWeeksPerCell);
             if (news is null || !DemoMigrationNews.SaysFed(news.Value.Ledger))
+                continue;
+            if (minSlack > 0 && news.Value.Ledger.SourceSlack < minSlack) // 第 08-3 章【TEMP 規則】
                 continue;
             if (best is null || route.Length < best.Value.Route.Length)
                 best = (candidate, route, news.Value.Week);

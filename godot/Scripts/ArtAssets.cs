@@ -42,6 +42,7 @@ public static class ArtAssets
     public const string UiMapTerrain = "res://assets/ui/ui_icon_mapmode_terrain.png";
     public const string UiMapFood = "res://assets/ui/ui_icon_mapmode_food.png";
     public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
+    public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（UI_ICON_DEV 待製作；缺少時按鈕顯示「開發」）
     public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（UI_ICON_CHART 待製作；缺少時按鈕顯示「圖表」）
 
     // 音訊
