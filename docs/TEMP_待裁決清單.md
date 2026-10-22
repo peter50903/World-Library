@@ -98,6 +98,7 @@
 | 農耕習得門檻 | 26000 研究點（每週＋成年人數；20 個成年人約 25 年） | 使用者：經歷一段時間自動學會、從業者越多越快 |
 | 遷入帶來的知識 | 每人帶來門檻的 25% | 使用者：知識透過婚嫁與遷徙傳播，比自行研究快 |
 | 農師 | 已習得農耕的聚落一位（人數最多的非老年成年年齡群） | 使用者：專業知識持有者才算代表人物 |
+| 希望時代飢餓債上限 | 致死門檻－1（超過的計為恢復）；開拓時代起恢復餓死 | 使用者：不餓死是希望時代的特性；進入開拓時代時不因多年累積的債一次餓死 |
 | 事件類型 | TEMP_EV_KNOWLEDGE_LEARNED、TEMP_EV_ERA_BEGAN；根因分類「知識」 | 24 表尚無對應 |
 
 #### D08-4｜希望時代收尾（第 08-4 章，Claude 定案【TEMP】）
@@ -359,7 +360,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 58 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 59 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |

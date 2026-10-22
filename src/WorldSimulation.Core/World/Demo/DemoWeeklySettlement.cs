@@ -583,8 +583,19 @@ internal static class DemoWeeklySettlement
         IReadOnlyDictionary<int, DemoMateMarket>? mates = null,
         Func<DemoSettlement, ISet<string>, string>? namer = null,
         long? firstEventId = null,
-        Func<int, long>? debtSourceOf = null)
+        Func<int, long>? debtSourceOf = null,
+        bool? hopeRules = null)
     {
+        // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
+        var hope = hopeRules ?? config.HopeEra;
+        // 【TEMP 規則】希望時代飢餓債上限＝致死門檻－1：超過的部分計為恢復（不致死、不跨時代累積）。
+        void CapHopeDebt(ref long debt, ref long recovered)
+        {
+            if (!hope || debt < config.HungerDebtPerStarvationDeath) return;
+            var excess = debt - (config.HungerDebtPerStarvationDeath - 1);
+            recovered = checked(recovered + excess);
+            debt -= excess;
+        }
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
         long PlanEmigrants(int settlementId, long deaths, long desired, DemoEmigrationMode mode = DemoEmigrationMode.Shortage)
@@ -695,8 +706,10 @@ internal static class DemoWeeklySettlement
                 debt -= recovered;
             }
 
-            // 第 08-2 章：希望時代飢餓不致死（飢餓債照記，只停止受孕、促成遷徙）。
-            var deaths = config.HopeEra ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
+            // 第 08-2 章：希望時代飢餓不致死。第 08-6 章 b 節：希望時代飢餓債不超過致死門檻（多出的計為恢復），
+            // 進入開拓時代時不會因為累積多年的債一次餓死。
+            CapHopeDebt(ref debt, ref recovered);
+            var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
             if (survivors == 0)
@@ -859,8 +872,9 @@ internal static class DemoWeeklySettlement
             }
 
             // ⑦ 健康後果：每累積 TEMP 門檻的飢餓債造成 1 人餓死，該部分債務隨死者移除。
-            // 第 08-2 章：希望時代飢餓不致死（飢餓債照記，只停止受孕、促成遷徙）。
-            var deaths = config.HopeEra ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
+            // 第 08-2 章：希望時代飢餓不致死（飢餓債照記，只停止受孕、促成遷徙）；第 08-6 章 b 節：債不超過致死門檻。
+            CapHopeDebt(ref debt, ref recovered);
+            var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
             if (survivors == 0)

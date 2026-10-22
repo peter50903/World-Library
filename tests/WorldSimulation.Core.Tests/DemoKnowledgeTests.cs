@@ -72,4 +72,18 @@ public sealed class DemoKnowledgeTests
             plain.AdvanceOneDay();
         Assert.Empty(plain.Knowledge.Records);
     }
+    [Fact]
+    public void HopeEraDebtStaysBelowTheLethalThreshold()
+    {
+        // 第 08-6 章 b 節：希望時代飢餓債不超過致死門檻－1，進入開拓時代時不會一次餓死。
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample);
+        var limit = DemoWeeklyTempConfig.LivingForagingSample.HungerDebtPerStarvationDeath;
+        for (var day = 0; day < 10 * 365; day++)
+        {
+            world.AdvanceOneDay();
+            if (world.Era != DemoEra.Hope) break;
+            if (day % 7 == 6)
+                Assert.All(world.Sites.Settlements, s => Assert.True(world.SettlementHungerDebt(s.Id) < limit));
+        }
+    }
 }
