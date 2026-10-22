@@ -91,6 +91,14 @@
 | 較早的資料 | 年帳、聚落事件、聚落小史、正式史庫 | 年度圖表、世界紀錄、聚落小史讀檔後仍完整 |
 | 存檔大小上限 | 256 MiB | 大地圖百年的正式史庫仍大，史庫分層見第 13 章 |
 
+#### D08-4｜希望時代收尾（第 08-4 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 目的地已佔用餘量 | 已在路上前往的人數 × 每人週食量，從目的地的來源餘量扣除 | 診斷：同一週多村同時湧入同一村（一年遷入 21 人）後長期缺糧 |
+| 遠方開拓 | 附近 6 格找不到空地時，改找 12 格（婚嫁範圍） | 缺糧村困在養不起的地方、只能等老死 |
+| 婚嫁目的地 | 已知來源餘量（扣掉在路上的人）至少養得起一人 | 婚嫁不把人送進缺糧村 |
+
 #### D07-1c｜地圖大小（第 07-1 章 c 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -340,7 +348,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 55 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 58 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
