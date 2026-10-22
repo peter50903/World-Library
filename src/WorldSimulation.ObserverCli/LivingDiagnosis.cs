@@ -101,6 +101,23 @@ public static class LivingDiagnosis
             output.WriteLine($"  彙整：有人聚落 {villages}，過半週缺糧 {shortVillages}（勞力不足 {labourShort}、來源不足 {sourceShort}）"
                 + $"｜育齡婦女 {fertileTotal}、育齡伴侶 {couplesTotal}、懷孕 {pregnantTotal}");
         }
+        SaveSizes(world, output);
         return 0;
+    }
+
+    /// <summary>第 07-1 章 c 節：存檔大小與各部分佔比（找出存檔變大的來源）。</summary>
+    private static void SaveSizes(DemoObserverWorld world, TextWriter output)
+    {
+        var json = world.ExportTempSave();
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var state = doc.RootElement.GetProperty("State");
+        long Bytes(System.Text.Json.JsonElement e) => System.Text.Encoding.UTF8.GetByteCount(e.GetRawText());
+        var parts = state.EnumerateObject().Select(p => (p.Name, Size: Bytes(p.Value))).OrderByDescending(p => p.Size).Take(6);
+        output.WriteLine($"  存檔：共 {System.Text.Encoding.UTF8.GetByteCount(json) / 1024} KB｜" + string.Join("、", parts.Select(p => $"{p.Name} {p.Size / 1024} KB")));
+        var fields = new Dictionary<string, long>();
+        foreach (var week in state.GetProperty("WeekReports").EnumerateArray())
+            foreach (var f in week.EnumerateObject())
+                fields[f.Name] = fields.GetValueOrDefault(f.Name) + Bytes(f.Value);
+        output.WriteLine("  週報欄位：" + string.Join("、", fields.OrderByDescending(kv => kv.Value).Take(6).Select(kv => $"{kv.Key} {kv.Value / 1024} KB")));
     }
 }
