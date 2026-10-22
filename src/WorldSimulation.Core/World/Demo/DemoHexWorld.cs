@@ -90,6 +90,11 @@ public sealed class DemoHexWorld
     private static int FordsFor(int rows) => Math.Max(1, rows / TempRowsPerFord);
 
     private readonly IReadOnlyList<DemoHexCell> _cells;
+    private readonly Dictionary<(int Q, int R), DemoHexCell> _byAxial;
+    private readonly HashSet<DemoCellRef> _waterAccess;
+
+    // 第 07-1 章 c 節：每個起點的陸路廣度優先樹（地圖不可變，算一次就能重複用；與逐次搜尋結果完全相同）。
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<DemoCellRef, IReadOnlyDictionary<DemoCellRef, DemoCellRef?>> _landTrees = new();
 
     private DemoHexWorld(ulong seed, DemoMapSize size, IReadOnlyList<DemoHexCell> cells, DemoRouteNetwork routes)
     {
@@ -98,6 +103,46 @@ public sealed class DemoHexWorld
         (Columns, Rows) = DemoMapSizes.Dimensions(size);
         _cells = cells;
         Routes = routes;
+        _byAxial = cells.ToDictionary(c => (c.AxialQ, c.AxialR));
+        _waterAccess = cells.Where(c => DemoRouteNetwork.Directions.Any(d => _byAxial.TryGetValue((c.AxialQ + d.Dq, c.AxialR + d.Dr), out var n) && n.Terrain == DemoTerrain.Water))
+            .Select(c => new DemoCellRef(c.Column, c.Row)).ToHashSet();
+    }
+
+    /// <summary>第 07-1 章 c 節：以軸向座標找格（地圖外回傳 null）。</summary>
+    public DemoHexCell? AtAxial(int q, int r) => _byAxial.GetValueOrDefault((q, r));
+
+    /// <summary>第 07-1 章 c 節：TEMP 水源（有水域鄰格；與原本逐次掃全圖的判斷相同），建圖時算好。</summary>
+    public bool HasWaterAccess(DemoCellRef cell) => _waterAccess.Contains(cell);
+
+    /// <summary>
+    /// 第 07-1 章 c 節：從 <paramref name="origin"/> 出發的陸路廣度優先樹（每格的上一格；起點為 null），
+    /// 鄰格依固定方向順序展開，與 <see cref="DemoMigrationRoutes.FindRoute"/> 原本逐次搜尋的結果相同。
+    /// </summary>
+    internal IReadOnlyDictionary<DemoCellRef, DemoCellRef?> LandTree(DemoCellRef origin)
+        => _landTrees.GetOrAdd(origin, o => BuildLandTree(o));
+
+    private IReadOnlyDictionary<DemoCellRef, DemoCellRef?> BuildLandTree(DemoCellRef origin)
+    {
+        var start = GetCell(origin.Column, origin.Row);
+        var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [origin] = null };
+        var queue = new Queue<DemoHexCell>();
+        queue.Enqueue(start);
+        while (queue.Count > 0)
+        {
+            var cell = queue.Dequeue();
+            var here = new DemoCellRef(cell.Column, cell.Row);
+            foreach (var (dq, dr) in DemoMigrationRoutes.AxialDirections)
+            {
+                if (!_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
+                    continue;
+                var key = new DemoCellRef(next.Column, next.Row);
+                if (previous.ContainsKey(key) || !Routes.IsLandPassable(here, key))
+                    continue;
+                previous[key] = here;
+                queue.Enqueue(next);
+            }
+        }
+        return previous;
     }
 
     public ulong Seed { get; }

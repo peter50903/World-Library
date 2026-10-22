@@ -144,27 +144,8 @@ public sealed class DemoSaveLedgerTamperTests
     /// </summary>
     internal static void RecomputeFingerprint(JsonNode doc)
     {
+        // 第 07-1 章 c 節：存檔只存世界指紋的雜湊（讀檔不比對指紋，內容另由重播驗證），只需補正校驗碼。
         var state = doc["State"]!;
-        var fingerprint = state["WorldFingerprint"]!.GetValue<string>();
-        var start = fingerprint.IndexOf(";week1@", StringComparison.Ordinal) + 1;
-        Assert.True(start > 0, "世界指紋找不到週報段");
-
-        var inv = CultureInfo.InvariantCulture;
-        var sb = new StringBuilder(fingerprint[..start]);
-        foreach (var week in Weeks(doc).Select(w => w!))
-        {
-            sb.Append(inv, $"week{WeekOf(week)}@{week["WorldTime"]!.Deserialize<TimeSpan>().Ticks}:ids{week["EntityIdNextOpening"]!.GetValue<long>()}-{week["EntityIdNextClosing"]!.GetValue<long>()};");
-            foreach (var c in week["RngCounters"]!.Deserialize<List<DemoRngCounter>>()!) sb.Append(inv, $"rngc{c.StreamId}={c.Before}-{c.After};");
-            foreach (var ledger in week["Settlements"]!.Deserialize<List<DemoSettlementWeekLedger>>()!) sb.Append(inv, $"{ledger};");
-            foreach (var e in week["Events"]!.Deserialize<List<DemoSettlementEvent>>()!) sb.Append(inv, $"{e};");
-            foreach (var m in week["Migrations"]!.Deserialize<List<DemoMigrationWeekLedger>>()!) sb.Append(inv, $"{m};");
-            foreach (var x in week["Sources"]!.Deserialize<List<DemoSourceWeekLedger>>()!) sb.Append(inv, $"{x};");
-        }
-        // 第 03 章 b 節：指紋尾段是正式史庫（沿用檔內史庫；史庫本身另由讀檔重建比對）。
-        foreach (var e in state["History"]!.Deserialize<List<WorldSimulation.Core.History.WorldEvent>>()!)
-            sb.Append(inv, $"{e.Fingerprint()};");
-
-        state["WorldFingerprint"] = sb.ToString();
         // 第 04 章 b 節：連標頭校驗碼一起補正，讓偽造檔不會只因校驗碼被擋下，仍需靠內容驗證拒絕。
         doc["Manifest"]!["StateChecksum"] = WorldSimulation.Core.World.DemoSaveHeader.Checksum(
             Encoding.UTF8.GetBytes(state.ToJsonString()));

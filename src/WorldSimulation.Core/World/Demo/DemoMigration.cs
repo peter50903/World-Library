@@ -167,6 +167,9 @@ public static class DemoMigrationRoutes
         (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     };
 
+    /// <summary>六個軸向方向（固定順序）。</summary>
+    internal static IReadOnlyList<(int Dq, int Dr)> AxialDirections => Directions;
+
     /// <summary>TEMP odd-r 偏移座標→軸向座標（與 DemoHexWorld 相同的換算）。</summary>
     public static (int Q, int R) ToAxial(DemoCellRef cell)
         => (cell.Column - (cell.Row - (cell.Row & 1)) / 2, cell.Row);
@@ -185,6 +188,9 @@ public static class DemoMigrationRoutes
     public static bool HasWaterAccess(DemoHexWorld map, DemoCellRef cell)
     {
         ArgumentNullException.ThrowIfNull(map);
+        // 第 07-1 章 c 節：建圖時預先算好（原本每次掃全圖）；地圖外的格一律沒有水源。
+        if (map.Contains(cell.Column, cell.Row))
+            return map.HasWaterAccess(cell);
         var (q, r) = ToAxial(cell);
         return map.Cells.Any(c => c.Terrain == DemoTerrain.Water && Directions.Contains((c.AxialQ - q, c.AxialR - r)));
     }
@@ -208,7 +214,6 @@ public static class DemoMigrationRoutes
         if (maxSteps < 1)
             throw new ArgumentOutOfRangeException(nameof(maxSteps));
         var start = map.GetCell(origin.Column, origin.Row);
-        var byAxial = map.Cells.ToDictionary(c => (c.AxialQ, c.AxialR));
         var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [origin] = null };
         var depth = new Dictionary<DemoCellRef, int> { [origin] = 0 };
         var queue = new Queue<DemoHexCell>();
@@ -243,7 +248,7 @@ public static class DemoMigrationRoutes
                 continue;
             foreach (var (dq, dr) in Directions)
             {
-                if (!byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
+                if (map.AtAxial(cell.AxialQ + dq, cell.AxialR + dr) is not { } next)
                     continue;
                 var key = new DemoCellRef(next.Column, next.Row);
                 // 第 06 章 a 節：只沿陸路路線段（野地／道路／橋／渡口）走；相鄰但沒有路線段＝不可通行。
@@ -265,36 +270,13 @@ public static class DemoMigrationRoutes
     public static ImmutableArray<DemoCellRef> FindRoute(DemoHexWorld map, DemoCellRef origin, DemoCellRef destination)
     {
         ArgumentNullException.ThrowIfNull(map);
-        var start = map.GetCell(origin.Column, origin.Row);
-        var goal = map.GetCell(destination.Column, destination.Row);
+        _ = map.GetCell(origin.Column, origin.Row);
+        _ = map.GetCell(destination.Column, destination.Row);
         if (origin == destination)
             return ImmutableArray.Create(origin);
 
-        var byAxial = map.Cells.ToDictionary(c => (c.AxialQ, c.AxialR));
-        var previous = new Dictionary<DemoCellRef, DemoCellRef?> { [origin] = null };
-        var queue = new Queue<DemoHexCell>();
-        queue.Enqueue(start);
-
-        while (queue.Count > 0)
-        {
-            var cell = queue.Dequeue();
-            if (ReferenceEquals(cell, goal))
-                break;
-
-            foreach (var (dq, dr) in Directions)
-            {
-                if (!byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
-                    continue;
-                var key = new DemoCellRef(next.Column, next.Row);
-                if (previous.ContainsKey(key))
-                    continue;
-                // 第 06 章 a 節：只沿陸路路線段走（過河只能經渡口）。
-                if (!map.Routes.IsLandPassable(new DemoCellRef(cell.Column, cell.Row), key))
-                    continue;
-                previous[key] = new DemoCellRef(cell.Column, cell.Row);
-                queue.Enqueue(next);
-            }
-        }
+        // 第 07-1 章 c 節：用地圖快取的起點廣度優先樹（與逐次搜尋同一棵樹：鄰格固定順序、先到先記）。
+        var previous = map.LandTree(origin);
 
         if (!previous.ContainsKey(destination))
             return ImmutableArray<DemoCellRef>.Empty;

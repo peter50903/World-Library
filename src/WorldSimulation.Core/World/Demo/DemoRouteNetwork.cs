@@ -118,7 +118,7 @@ public sealed class DemoRouteNetwork
         var result = new List<(string, DemoRouteSegment)>();
         foreach (var (dq, dr, name) in Directions)
         {
-            var next = map.Cells.FirstOrDefault(c => c.AxialQ == here.AxialQ + dq && c.AxialR == here.AxialR + dr);
+            var next = map.AtAxial(here.AxialQ + dq, here.AxialR + dr);
             if (next is not null && Between(cell, new DemoCellRef(next.Column, next.Row)) is { } segment)
                 result.Add((name, segment));
         }

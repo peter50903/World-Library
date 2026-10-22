@@ -39,10 +39,19 @@ public static class DemoForagingWorld
     /// <summary>第 07 章 c 節：<paramref name="cell"/> 可及至少一個未被佔用的自然來源（開拓選址條件）。</summary>
     public static bool ReachesFreeSource(DemoHexWorld map, IReadOnlyList<DemoCellRef> occupied, DemoCellRef cell)
     {
-        var occupiedPlusSite = occupied.Append(cell).ToArray();
-        return Sources(map, occupiedPlusSite).Any(source => source.FoodAvailable > 0
-            && DemoHexFoodCatchment.EligibleCells(map, source).Any(c => c.Column == cell.Column && c.Row == cell.Row));
+        // 第 07-1 章 c 節：佔用只會移除該格的來源，所以從全圖來源（每張地圖算一次）中排除被佔的格即可；
+        // 只有本格與鄰格的來源可能可及。結果與原本「每次重建全部來源」相同。
+        var blocked = occupied.Append(cell).ToHashSet();
+        var here = map.GetCell(cell.Column, cell.Row);
+        return AllSources.GetValue(map, m => Sources(m, Array.Empty<DemoCellRef>())).Any(source => source.FoodAvailable > 0
+            && Math.Abs(source.Row - cell.Row) <= 1 && Math.Abs(source.Column - cell.Column) <= 1
+            && !blocked.Contains(new DemoCellRef(source.Column, source.Row))
+            && DemoHexFoodCatchment.IsInReach(map.GetCell(source.Column, source.Row), here,
+                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)
+            && here.Terrain != DemoTerrain.Water);
     }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<DemoHexWorld, IReadOnlyList<DemoCatchmentFoodSource>> AllSources = new();
 
     /// <summary>
     /// Food harvest is a one-week, one-source budget. No local farm and no source-specific

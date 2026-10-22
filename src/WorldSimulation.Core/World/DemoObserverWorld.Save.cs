@@ -101,7 +101,7 @@ public sealed partial class DemoObserverWorld
             Settlements = _sites.Settlements,
             ResourcePoints = _sites.ResourcePoints,
             PopulationGroups = _sites.PopGroups,
-            WorldFingerprint = StateFingerprint(),
+            WorldFingerprint = DemoSaveHeader.Checksum(Encoding.UTF8.GetBytes(StateFingerprint())), // 第 07-1 章 c 節：只存雜湊（全文曾佔存檔三成以上）
             Demography = _demography?.Snapshot(),
             History = _history.Events.ToArray()
         };
