@@ -93,6 +93,19 @@ public static class LivingDiagnosis
                     if (labour < demand) labourShort++;
                     if (supply < demand) sourceShort++;
                 }
+                // 第 08-4 章：缺糧聚落的成因（每 10 年列出過半週缺糧的聚落，最多 6 個）。
+                if (fed < ledgers.Count / 2 && shortVillages <= 6)
+                {
+                    var cell = world.Map.GetCell(s.Column, s.Row);
+                    var reach = weeks.Count == 0 ? new List<DemoSourceWeekLedger>() : weeks[^1].Sources
+                        .Where(x => DemoHexFoodCatchment.IsInReach(world.Map.GetCell(x.Column, x.Row), cell,
+                            x.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToList();
+                    var rivals = reach.SelectMany(x => x.Shares ?? Array.Empty<DemoSourceShare>()).Select(x => x.SettlementId)
+                        .Where(id => id != s.Id).Distinct().Count();
+                    var own = reach.Sum(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Where(sh => sh.SettlementId == s.Id).Sum(sh => sh.Food));
+                    output.WriteLine($"    缺糧 #{s.Id}：人 {st.Total}（兒 {st.Total - adults}）｜本年 生 {ledgers.Sum(l => l.Births)} 遷入 {ledgers.Sum(l => l.Immigrants)} 遷出 {ledgers.Sum(l => l.Emigrants)}"
+                        + $"｜可及來源 {reach.Count}（可採 {reach.Sum(x => x.FoodAvailable)}、自取 {own}、共用聚落 {rivals}）｜餘量 {ledgers[^1].SourceSlack}｜存糧 {world.SettlementFood(s.Id)}｜債 {world.SettlementHungerDebt(s.Id)}");
+                }
                 if (year != years)
                     continue;
                 output.WriteLine($"  #{s.Id} 人 {st.Total}（成 {adults}／老 {st.Elders}／伴 {couples}／孕 {pregnant}／單女 {st.UnpairedWomen}／單男 {st.UnpairedMen}）｜採 {harvest}／需 {demand}／勞 {labour}｜可採 {supply}"
