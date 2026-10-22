@@ -39,9 +39,7 @@ public sealed record DemoWorldOverview(
         var years = DemoYearLedger.FromWeeks(world.WeekReports(), daysPerYear, day);
         var year = years.Count > 0 ? years[^1] : null;
         var active = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
-        var people = world.HumanPopulationSnapshot?.People ?? System.Collections.Immutable.ImmutableArray<DemoTempPerson>.Empty;
-        var rules = DemoTempDemographyRules.HumanFixture;
-        var elderAge = DemoSurvivalTempSettings.Current.ElderAgeYears;
+        var stats = world.WorldPopulationStats; // 第 07-1 章：群體人口統計
         var latest = world.LatestWeek;
         return new DemoWorldOverview(
             world.WeeklyConfig.EraName,
@@ -54,11 +52,11 @@ public sealed record DemoWorldOverview(
             active.Count(s => s.IsFounded),
             world.Sites.Settlements.Count(s => s.IsRuin),
             world.MapCapacity.People,
-            people.Count(p => !p.IsAdultAt(day, rules)),
-            people.Count(p => p.IsAdultAt(day, rules) && p.AgeYearsAt(day) < elderAge),
-            people.Count(p => p.AgeYearsAt(day) >= elderAge),
-            people.Count(p => p.PartnerId is not null) / 2,
-            people.Count(p => p.PregnancyDueWeek is not null),
+            stats?.Children ?? 0,
+            stats?.Adults ?? 0,
+            stats?.Elders ?? 0,
+            stats?.Couples ?? 0,
+            stats?.Pregnant ?? 0,
             world.Sites.Settlements.Sum(s => world.SettlementFood(s.Id)),
             world.FoodInTransit,
             latest?.Settlements.Count(l => l.FoodShortage > 0) ?? 0,
@@ -86,7 +84,7 @@ public sealed record DemoWorldOverview(
         if (Children + Adults + Elders > 0)
         {
             lines.Add(I($"兒童 {Children}｜成年 {Adults}｜老人 {Elders}"));
-            lines.Add(I($"夫婦 {Couples} 對｜懷孕中 {Pregnant}"));
+            lines.Add(I($"育齡伴侶約 {Couples} 對｜懷孕中 {Pregnant}"));
         }
         lines.Add(I($"存糧 {FoodStored}（途中攜帶 {FoodInTransit}）｜本週缺糧村莊 {ShortVillages}"));
         lines.Add(I($"今年：出生 {BirthsThisYear}｜老死 {OldAgeDeathsThisYear}｜餓死 {StarvationDeathsThisYear}｜外移 {EmigrantsThisYear}｜建村 {FoundedThisYear}"));

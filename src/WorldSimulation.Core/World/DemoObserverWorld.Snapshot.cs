@@ -124,25 +124,24 @@ public sealed partial class DemoObserverWorld
         candidate._migrations = batches.ToImmutableList();
         candidate._entityIds = entityIds;
         candidate._sites = sites;
-        IReadOnlyDictionary<long, IReadOnlyList<long>>? participants = null;
+        IReadOnlyDictionary<long, IReadOnlyList<long>>? participants = null; // 第 07-1 章：群體人口沒有個體當事人
         if (weekly.HumanLifecycleEnabled)
         {
             var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
-            var (replayed, replayedParticipants) = DemoHumanLifecycle.Replay(initial, reports, sites,
+            var replayed = DemoHumanLifecycle.Replay(initial, reports, sites,
                 new DemoPopulationDraws(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
-
-            participants = replayedParticipants;
-            var supplied = state.GetProperty("Demography").Deserialize<DemoTempDemographicSnapshot>()
-                ?? throw new InvalidDataException("Missing human pregnancy/age snapshot.");
+            var supplied = state.GetProperty("Demography").Deserialize<DemoCohortSnapshot>()
+                ?? throw new InvalidDataException("Missing human cohort snapshot.");
             var candidateSnapshot = replayed.Snapshot();
             if (supplied.LastWeek != candidateSnapshot.LastWeek
-                || supplied.NextId != candidateSnapshot.NextId
-                || !supplied.People.SequenceEqual(candidateSnapshot.People)
+                || supplied.Groups.IsDefault || supplied.Pregnancies.IsDefault
+                || !supplied.Groups.SequenceEqual(candidateSnapshot.Groups)
+                || !supplied.Pregnancies.SequenceEqual(candidateSnapshot.Pregnancies)
                 || sites.Settlements.Any(place => replayed.ResidentsOf(place.Id) != population[place.Id])
-                // 第 07 章 b 節：途中隊伍的人數＝攜帶的身分數；沒有不屬於任何現存隊伍的旅人。
+                // 第 07 章 b 節：途中隊伍的人數＝攜帶的人數；沒有不屬於任何現存隊伍的旅人。
                 || batches.Any(b => replayed.MembersOf(b.Id) != b.People)
-                || replayed.People.Any(p => p.BatchId is int id && batches.All(b => b.Id != id)))
-                Reject("出生／自然死亡人口身份、孕期或週帳遭篡改");
+                || replayed.Groups.Any(g => g.BatchId > 0 && batches.All(b => b.Id != g.BatchId)))
+                Reject("出生／自然死亡人口、孕期或週帳遭篡改");
             candidate._demography = replayed;
         }
 
@@ -159,8 +158,7 @@ public sealed partial class DemoObserverWorld
         }
 
         // C04（40C INV_ENTITY_ID）：現存全部實體 ID 互不重複，且都小於分配器下一號。
-        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id))
-            .Concat(candidate._demography?.People.Select(p => p.Id) ?? Enumerable.Empty<long>()).ToList();
+        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id)).ToList(); // 第 07-1 章：群體人口不配實體 ID
         if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
             Reject("實體 ID 重複或不小於分配器下一號");
 
@@ -303,8 +301,7 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>
     /// C04：本週配號區間 [Opening, Closing) 必須接續上週、且恰好被本週新實體填滿：
-    /// 每個新聚落 2 號（聚落＋資源點）、每支出發隊伍 1 號、每個新生兒 1 號；聚落與隊伍的號碼都落在區間內。
-    /// 新生兒的號碼另由 <see cref="DemoHumanLifecycle.Replay"/> 從區間尾端重算比對。
+    /// 每個新聚落 2 號（聚落＋資源點）、每支出發隊伍 1 號；聚落與隊伍的號碼都落在區間內（第 07-1 章起新生兒不配號）。
     /// </summary>
     private static long CheckEntityIdRange(DemoWeekReport report, DemoWorldSites sites, long expectedOpening)
     {
@@ -315,10 +312,9 @@ public sealed partial class DemoObserverWorld
         var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
         var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
             .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
-        // 第 08-2 章：途中隊伍的新生兒也在本週區間內配號（希望時代隊伍不再途中餓死後才顯出這個漏算）。
-        var births = report.Settlements.Sum(l => l.Births) + report.Migrations.Sum(m => m.Births);
+        // 第 07-1 章：群體人口的新生兒不配實體 ID。
         if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
-            || checked(newIds.Count + births) != closing - opening)
+            || newIds.Count != closing - opening)
             Reject($"第 {report.Week} 週新實體 ID 沒有恰好填滿配號區間");
         return closing;
     }

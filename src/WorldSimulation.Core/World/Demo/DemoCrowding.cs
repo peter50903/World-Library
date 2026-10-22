@@ -97,18 +97,21 @@ public static class DemoCrowding
     /// ① 可及來源的可持續餘量 ≥ 預留量；② 採集勞力（成人扣取水者）× 週採集量 ≥ 本週需求＋預留量。
     /// 人類採集世界才用（週採集量、食量讀 <see cref="DemoWeeklyTempConfig.LivingForagingSample"/>）。
     /// </summary>
-    public static bool RoomForChild(DemoSettlementWeekLedger ledger, int pregnant)
+    public static bool RoomForChild(DemoSettlementWeekLedger ledger, int pregnant) => ConceptionRoom(ledger, pregnant) >= 1;
+
+    /// <summary>第 07-1 章 a 節：本週最多還能受孕幾胎（同上規則；群體人口一次決定一個聚落的受孕數）。</summary>
+    public static long ConceptionRoom(DemoSettlementWeekLedger ledger, long pregnant)
     {
         ArgumentNullException.ThrowIfNull(ledger);
         var config = DemoWeeklyTempConfig.LivingForagingSample;
+        var food = config.FoodPerPersonPerWeek;
         // 第 08-3 章：現有孩子長大後食量從半份變全份，這部分也要預留（否則孩子成年時聚落集體缺糧）。
         var children = Math.Max(0, ledger.PopulationOpening - ledger.AdultWorkersOpening);
-        var childGrowth = checked(children * (config.FoodPerPersonPerWeek
-            - config.FoodPerPersonPerWeek * DemoSurvivalTempSettings.Current.ChildFoodPercent / 100));
-        var reserve = checked(config.FoodPerPersonPerWeek * (pregnant + 1L) + childGrowth);
+        var childGrowth = checked(children * (food - food * DemoSurvivalTempSettings.Current.ChildFoodPercent / 100));
         var workers = Math.Max(0, ledger.AdultWorkersOpening - ledger.WaterCarriers);
         var demand = checked(ledger.FoodConsumed + ledger.FoodShortage);
-        return ledger.SourceSlack >= reserve && checked(workers * config.YieldPerWorkerPerWeek) >= checked(demand + reserve);
+        var budget = Math.Min(ledger.SourceSlack, checked(workers * config.YieldPerWorkerPerWeek - demand)) - childGrowth;
+        return budget < 0 || food <= 0 ? 0 : Math.Max(0, budget / food - pregnant);
     }
 
     /// <summary>擁擠（在挨餓前分出一戶開拓）：沒缺糧、人口夠多，但來源餘量 ＜ 需求 × TEMP 百分比。</summary>

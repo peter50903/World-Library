@@ -80,7 +80,7 @@ public sealed class DemoCommitFaultMatrixTests
     private static Observed Observe(DemoObserverWorld world) => new(
         world.StateFingerprint(),
         world.WeekReports().Count,
-        world.HumanPopulationSnapshot is { } h ? $"{h.LastWeek}/{h.NextId}/{string.Join(",", h.People)}" : "none",
+        world.HumanPopulationSnapshot is { } h ? $"{h.LastWeek}/{string.Join(",", h.Groups)}/{string.Join(",", h.Pregnancies)}" : "none",
         string.Join(",", world.RngState()),
         world.EntityIdNextValue,
         world.Snapshot().DaysElapsed,

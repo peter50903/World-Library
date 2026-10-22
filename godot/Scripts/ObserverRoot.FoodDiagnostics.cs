@@ -110,7 +110,7 @@ public partial class ObserverRoot
             if (world.HumanPopulationSnapshot is not null)
                 output.Add($"人類本週出生 {week.Settlements.Sum(l => l.Births)}、自然死亡 {week.Settlements.Sum(l => l.NaturalDeaths)}、"
                     + $"餓死 {week.Settlements.Sum(l => l.StarvationDeaths)}；"
-                    + $"目前個體人口 {world.HumanPopulationSnapshot.People.Length}（未成年不採集）");
+                    + $"目前人口 {world.WorldPopulationStats?.Total ?? 0}（群體統計；未成年不採集）");
             output.Add($"世界聚落人口 {world.SettledPopulation}，本週共缺糧 {week.Settlements.Sum(l => l.FoodShortage)}，"
                 + $"聚落餓死 {week.Settlements.Sum(l => l.StarvationDeaths)}");
         }

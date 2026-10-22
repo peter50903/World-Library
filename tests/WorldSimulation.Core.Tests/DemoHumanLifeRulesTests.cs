@@ -14,21 +14,21 @@ public sealed class DemoHumanLifeRulesTests
     private static readonly ulong[] Seeds = { 42UL, 7UL, 20261021UL };
 
     [Fact]
-    public void MultiSeedCenturyHasBirthsAndOldAgeDeathsButNoStarvationOrParentChildPairs()
+    public void MultiSeedCenturyHasBirthsAndOldAgeDeathsButNoStarvation()
     {
         long starvation = 0, births = 0, natural = 0;
         var summaries = new List<string>();
-        var openings = new List<DemoTempPerson>();
+        var openings = new List<DemoCohortGroup>();
         foreach (var seed in Seeds)
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
-            var opening = world.HumanPopulationSnapshot!.People;
+            var opening = world.HumanPopulationSnapshot!.Groups;
             openings.AddRange(opening);
-            // 每個聚落至少有一對育齡建村夫婦。
-            Assert.All(opening.GroupBy(p => p.SettlementId), g =>
+            // 每個聚落至少有三對育齡建村夫婦（第 08-1 章；第 07-1 章起以群體人數記）。
+            Assert.All(world.Sites.Settlements, s =>
             {
-                Assert.Contains(g, p => p.Sex == DemoTempSex.Female && p.AgeYearsAt(0) is >= 18 and < 45);
-                Assert.Contains(g, p => p.Sex == DemoTempSex.Male && p.AgeYearsAt(0) is >= 18 and < 45);
+                var st = world.PopulationStats(s.Id)!;
+                Assert.True(st.FertileWomen >= 3 && st.FertileMen >= 3, $"種子 {seed} #{s.Id} 開局育齡男女 {st.FertileWomen}/{st.FertileMen}");
             });
 
             var trace = new System.Text.StringBuilder();
@@ -50,16 +50,9 @@ public sealed class DemoHumanLifeRulesTests
             summaries.Add(summary);
             starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths) + legs.Sum(m => m.Deaths);
 
-            var people = world.HumanPopulationSnapshot!.People.ToDictionary(p => p.Id);
-            foreach (var p in people.Values.Where(p => p.PartnerId is not null))
-            {
-                var partner = people[p.PartnerId!.Value];
-                Assert.Equal(p.Id, partner.PartnerId);
-                Assert.False(p.IsParentOrChildOf(partner), $"種子 {seed}：#{p.Id} 與 #{partner.Id} 是親子");
-            }
-            // 每次出生的雙親必須是當時的伴侶，事件原因列出雙親。
+            // 每次出生都來自到期的懷孕。
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.Birth),
-                e => Assert.Contains("雙親", e.Cause));
+                e => Assert.Contains("懷孕", e.Cause));
             // 第 08-2 章：希望時代只有老死——每一筆自然死亡的年齡都達 TEMP 老年起算年齡。
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath),
                 e => Assert.True(int.Parse(System.Text.RegularExpressions.Regex.Match(e.Cause, @"年齡 (\d+)").Groups[1].Value)
@@ -70,8 +63,8 @@ public sealed class DemoHumanLifeRulesTests
         Assert.True(natural > 0, $"多種子百年都沒有自然死亡｜{all}");
         Assert.True(starvation == 0, $"希望時代不應有人餓死｜{all}");
         // 混齡：三個種子的開局合計有兒童，也有 45 歲以上的人。
-        Assert.Contains(openings, p => !p.IsAdultAt(0, DemoTempDemographyRules.HumanFixture));
-        Assert.Contains(openings, p => p.AgeYearsAt(0) >= 45);
+        Assert.Contains(openings, g => DemoCohortDemography.AgeAt(g.BirthYear, 0) < DemoTempDemographyRules.HumanFixture.AdultAgeYears);
+        Assert.Contains(openings, g => DemoCohortDemography.AgeAt(g.BirthYear, 0) >= 45);
     }
 
     [Fact]
@@ -86,13 +79,15 @@ public sealed class DemoHumanLifeRulesTests
         }
         var a = Run();
         var b = Run();
-        Assert.Equal(a.HumanPopulationSnapshot!.People.ToArray(), b.HumanPopulationSnapshot!.People.ToArray());
+        Assert.Equal(a.HumanPopulationSnapshot!.Groups.ToArray(), b.HumanPopulationSnapshot!.Groups.ToArray());
+        Assert.Equal(a.HumanPopulationSnapshot.Pregnancies.ToArray(), b.HumanPopulationSnapshot!.Pregnancies.ToArray());
         Assert.Equal(a.StateFingerprint(), b.StateFingerprint());
-        Assert.Contains(a.HumanPopulationSnapshot.People, p => p.MotherId is not null && p.BirthFatherId is not null);
+        // 開局之後出生的年齡群存在（第 07-1 章：群體人口）。
+        Assert.Contains(a.HumanPopulationSnapshot.Groups, g => g.BirthYear >= 0);
 
-        // 存檔→讀檔後名冊（父母、伴侶）與世界指紋相同。
+        // 存檔→讀檔後群體人口與世界指紋相同。
         var loaded = DemoObserverWorld.ImportTempSave(a.ExportTempSave());
-        Assert.Equal(a.HumanPopulationSnapshot.People.ToArray(), loaded.HumanPopulationSnapshot!.People.ToArray());
+        Assert.Equal(a.HumanPopulationSnapshot.Groups.ToArray(), loaded.HumanPopulationSnapshot!.Groups.ToArray());
         Assert.Equal(a.StateFingerprint(), loaded.StateFingerprint());
     }
 }

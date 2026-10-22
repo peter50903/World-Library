@@ -16,7 +16,7 @@ public partial class ObserverRoot
         long childWorkers = 0;
         for (var day = 0; day < 3 * 365; day++)
         {
-            var before = world.HumanPopulationSnapshot;
+            var before = world.HumanPopulationSnapshot; // 第 07-1 章：群體人口快照
             var weeksBefore = world.WeekReports().Count;
             world.AdvanceOneDay();
             var reports = world.WeekReports();
@@ -24,8 +24,9 @@ public partial class ObserverRoot
                 continue;
             foreach (var ledger in reports[reports.Count - 1].Settlements)
             {
-                var adults = before.People.Count(p => p.SettlementId == ledger.SettlementId
-                    && p.IsAdultAt(before.LastWeek * 7, DemoTempDemographyRules.HumanFixture));
+                var adults = before.Groups.Where(g => g.SettlementId == ledger.SettlementId && g.BatchId == 0
+                    && DemoCohortDemography.AgeAt(g.BirthYear, before.LastWeek * 7) >= DemoTempDemographyRules.HumanFixture.AdultAgeYears)
+                    .Sum(g => g.Count);
                 childWorkers += Math.Max(0L, ledger.AdultWorkersOpening - adults);
             }
         }
@@ -34,8 +35,7 @@ public partial class ObserverRoot
         var births = world.WeekReports().Sum(w => w.Settlements.Sum(l => l.Births));
         if (births <= 0 || world.HumanPopulationSnapshot is null)
             throw new InvalidOperationException("Human birth mode did not produce a real newborn.");
-        var people = world.HumanPopulationSnapshot.People;
-        var children = people.Count(p => !p.IsAdultAt(3 * 365, DemoTempDemographyRules.HumanFixture));
+        var children = world.WorldPopulationStats?.Children ?? 0;
         if (children <= 0)
             throw new InvalidOperationException("No dependent children were born.");
         if (world.WeekReports().Any(w => w.Settlements.Any(l => !l.IsBalanced)))

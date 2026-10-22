@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
@@ -6,7 +7,7 @@ namespace WorldSimulation.Core.Tests;
 
 /// <summary>
 /// 第 08-2 章：希望時代（普通世界＝人類採集）。開局有 4 週存糧、開局聚落彼此不共用來源、開局不挨餓；
-/// 飢餓不致死、只有老死；外移一定留下一對育齡夫婦；世界總覽與世界狀態一致。
+/// 飢餓不致死、只有老死；外移一定留下育齡女性與可配對男性；世界總覽與世界狀態一致。
 /// </summary>
 public sealed class DemoHopeEraTests
 {
@@ -80,26 +81,61 @@ public sealed class DemoHopeEraTests
         Assert.True(Rules.AnnualNaturalDeathChance(30) > 0);
     }
 
-    private static DemoTempPerson Adult(long id, DemoTempSex sex, int age, long? partner = null)
-        => new(id, 1, sex, -age * 365, PartnerId: partner);
+    private static DemoCohortDemography Village(params (int Age, DemoTempSex Sex)[] people)
+        => DemoCohortDemography.Restore(new DemoCohortSnapshot(0,
+            people.Select(p => new DemoCohortGroup(1, 0, -p.Age, p.Sex, 1)).ToImmutableArray(),
+            ImmutableArray<DemoPregnancyGroup>.Empty));
 
     [Fact]
-    public void EmigrationAlwaysLeavesTheYoungestFertileCoupleBehind()
+    public void EmigrationAlwaysLeavesAFertileWomanAndAPartnerBehind()
     {
-        var residents = new[]
-        {
-            Adult(1, DemoTempSex.Female, 24, 2), Adult(2, DemoTempSex.Male, 25, 1),
-            Adult(3, DemoTempSex.Female, 30, 4), Adult(4, DemoTempSex.Male, 31, 3),
-            Adult(5, DemoTempSex.Female, 50, 6), Adult(6, DemoTempSex.Male, 52, 5)
-        };
-        // 沒有保留時最年輕的夫婦先走；保留時他們留下。
-        Assert.Equal(new long[] { 1, 2 }, DemoFamilyMigration.Choose(residents, 2, 0, Rules));
-        Assert.Equal(new long[] { 3, 4 }, DemoFamilyMigration.Choose(residents, 2, 0, Rules, keepCouple: true));
-        Assert.Equal(new long[] { 3, 4, 5, 6 }, DemoFamilyMigration.Choose(residents, 10, 0, Rules, keepCouple: true));
-        // 開拓需要兩對伴侶：保留一對後只剩兩對（其中一對過了育齡也算伴侶）→ 仍可出發。
-        Assert.Equal(new long[] { 3, 4, 5, 6 }, DemoFamilyMigration.Choose(residents, 10, 0, Rules, requireCouple: true, keepCouple: true));
-        // 只有兩對伴侶時開拓不出發（否則原聚落沒有育齡夫婦）。
-        Assert.Empty(DemoFamilyMigration.Choose(residents.Take(4), 10, 0, Rules, requireCouple: true, keepCouple: true));
+        // 第 07-1 章：群體人口版的「留下一對育齡夫婦」。
+        var two = Village((24, DemoTempSex.Female), (30, DemoTempSex.Female), (50, DemoTempSex.Female),
+            (25, DemoTempSex.Male), (31, DemoTempSex.Male), (52, DemoTempSex.Male));
+        // 只有兩名育齡女性：開拓要帶走兩名、還要留一名 → 不出發。
+        Assert.Equal(0, DemoCohortMigration.Plan(two, 1, 10, DemoEmigrationMode.Founding, 0, Rules).People);
+        // 缺糧外移依比例，但一定留下育齡女性與可配對男性。
+        var all = DemoCohortMigration.Plan(two, 1, 6, DemoEmigrationMode.Shortage, 0, Rules);
+        Assert.Equal(4, all.People);
+        var left = two.Depart(1, all.Take, all.Pregnancies, 9).StatsOf(1, 0, 0, Rules);
+        Assert.True(left.FertileWomen >= 1 && left.PartnerMen >= 1);
+
+        var three = Village((20, DemoTempSex.Female), (24, DemoTempSex.Female), (30, DemoTempSex.Female),
+            (25, DemoTempSex.Male), (31, DemoTempSex.Male), (52, DemoTempSex.Male));
+        var founding = DemoCohortMigration.Plan(three, 1, 4, DemoEmigrationMode.Founding, 0, Rules);
+        Assert.Equal(4, founding.People);
+        // 最年輕的兩名育齡女性與兩名可配對男性出發。
+        Assert.Equal(1, founding.Take[(-20, DemoTempSex.Female)]);
+        Assert.Equal(1, founding.Take[(-24, DemoTempSex.Female)]);
+        Assert.Equal(1, founding.Take[(-25, DemoTempSex.Male)]);
+        Assert.Equal(1, founding.Take[(-31, DemoTempSex.Male)]);
+        // 男女人數相當：沒有找不到伴侶的人，不會婚嫁遷移。
+        Assert.Equal(0, DemoCohortMigration.Plan(three, 1, 1, DemoEmigrationMode.Mate, 0, Rules).People);
+        // 只剩女性：一名最年輕的育齡女性去婚嫁。
+        var women = Village((22, DemoTempSex.Female), (28, DemoTempSex.Female));
+        var mate = DemoCohortMigration.Plan(women, 1, 1, DemoEmigrationMode.Mate, 0, Rules);
+        Assert.Equal(1, mate.Take[(-22, DemoTempSex.Female)]);
+    }
+
+    [Fact]
+    public void CohortPopulationConservesPeopleAndIsReproducible()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(2), Hope);
+        for (var d = 0; d < 10 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        var snapshot = world.HumanPopulationSnapshot!;
+        Assert.Equal(world.WorldPopulation, snapshot.Groups.Sum(g => g.Count));
+        Assert.All(world.Sites.Settlements, s => Assert.Equal(world.SettlementPopulation(s.Id),
+            snapshot.Groups.Where(g => g.SettlementId == s.Id && g.BatchId == 0).Sum(g => g.Count)));
+        var again = new DemoObserverWorld(DemoScenario.Sample(2), Hope);
+        for (var d = 0; d < 10 * TestCalendar.DaysPerYear; d++)
+            again.AdvanceOneDay();
+        Assert.Equal(world.StateFingerprint(), again.StateFingerprint());
+        // 二項分布抽樣：機率 0／1 與人數 0 的邊界。
+        Assert.Equal(0, DemoBinomial.Draw(10, 0, 12345));
+        Assert.Equal(10, DemoBinomial.Draw(10, 1, 12345));
+        Assert.Equal(0, DemoBinomial.Draw(0, 0.5, 12345));
+        Assert.InRange(DemoBinomial.Draw(100000, 0.5, ulong.MaxValue / 2), 49000, 51000);
     }
 
     [Fact]

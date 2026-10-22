@@ -30,13 +30,12 @@ public sealed class DemoLivingForagingTests
             Assert.Equal(0, l.FoodFromFarming);
         }));
         Assert.Contains(reports.SelectMany(w => w.Events), e =>
-            e.Kind == DemoSettlementEventKind.Birth && e.Cause.Contains("雙親"));
-        Assert.True(world.HumanPopulationSnapshot!.People.Any(p =>
-            !p.IsAdultAt(world.Snapshot().DaysElapsed, DemoTempDemographyRules.HumanFixture)));
+            e.Kind == DemoSettlementEventKind.Birth && e.Cause.Contains("懷孕"));
+        Assert.True(world.WorldPopulationStats!.Children > 0);
         Assert.True(reports.Last().Settlements.Any(l => l.AdultWorkersOpening < l.PopulationOpening));
-        // 第 07 章 b 節：途中隊伍的人數就是它攜帶的身分數。
+        // 第 07 章 b 節：途中隊伍的人數就是隊伍裡的群體人數。
         Assert.All(world.MigrationsInTransit(), b =>
-            Assert.Equal(b.People, world.HumanPopulationSnapshot!.People.Count(p => p.BatchId == b.Id)));
+            Assert.Equal(b.People, world.HumanPopulationSnapshot!.Groups.Where(g => g.BatchId == b.Id).Sum(g => g.Count)));
     }
 
     [Fact]
@@ -66,7 +65,7 @@ public sealed class DemoLivingForagingTests
         var raw = world.ExportTempSave();
         var tampered = System.Text.Json.Nodes.JsonNode.Parse(raw)!;
         var state = tampered["State"]!;
-        state["Demography"]!["NextId"] = 99999999;
+        state["Demography"]!["Groups"]!.AsArray()[0]!["Count"] = 999;
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(tampered.ToJsonString()));
 
         var badLedger = System.Text.Json.Nodes.JsonNode.Parse(raw)!;

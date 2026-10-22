@@ -66,7 +66,7 @@ public sealed partial class DemoObserverWorld
         private ImmutableList<DemoMigrationBatch> _migrations;
         private EntityIdAllocatorSnapshot _entityIds;
         private DemoWorldSites _sites;
-        private DemoTempDemography? _demography;
+        private DemoCohortDemography? _demography;
         private DemoWeeklyOutcome? _outcome;
         private EventHistory _history;
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
@@ -162,7 +162,7 @@ public sealed partial class DemoObserverWorld
         /// ④ 生死：有人類繁衍時以生死後的結果取代週結算結果並暫存新的人口名冊；
         /// 未啟用生死的情境傳 null（步驟仍要走，確保順序固定）。
         /// </summary>
-        public void StagePopulation(DemoWeeklyOutcome? outcomeAfterLifecycle, DemoTempDemography? demography,
+        public void StagePopulation(DemoWeeklyOutcome? outcomeAfterLifecycle, DemoCohortDemography? demography,
             IReadOnlyDictionary<long, IReadOnlyList<long>>? participants = null)
         {
             RequireWeekly(nameof(StagePopulation));
