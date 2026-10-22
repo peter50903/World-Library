@@ -57,9 +57,16 @@ public static class DemoCohortMigration
             return n;
         }
 
-        // 原聚落要留的育齡女性與可配對男性。
+        // 原聚落要留的育齡女性與可配對男性：先從最年長的育齡女性、可配對男性年齡群各保留一人，不進入分配。
+        // （先保留、後分配，規劃結果的人數一定等於 min(名額, 可出發人數)；以這個人數重新規劃得到同樣人數，
+        // 結算規劃與生死套用才會一致。）
         var keepWomen = stats.FertileWomen > 0 ? 1 : 0;
         var keepMen = stats.PartnerMen > 0 ? 1 : 0;
+        void Reserve(Func<DemoCohortGroup, bool> match)
+        {
+            var g = groups.Where(match).OrderBy(g => g.BirthYear).FirstOrDefault();
+            if (g is not null) room[(g.BirthYear, g.Sex)] -= 1;
+        }
 
         if (mode == DemoEmigrationMode.Mate)
         {
@@ -70,6 +77,9 @@ public static class DemoCohortMigration
             var left = TakeYoungest(g => g.Sex == sex && Age(g) >= rules.AdultAgeYears && Age(g) < rules.FertileAgeMaxYears, 1);
             return left == 0 ? new DemoCohortDeparture(take, 0) : DemoCohortDeparture.None;
         }
+
+        if (keepWomen > 0) Reserve(FertileWoman);
+        if (keepMen > 0) Reserve(PartnerMan);
 
         if (mode == DemoEmigrationMode.Founding)
         {
@@ -99,24 +109,6 @@ public static class DemoCohortMigration
                 extra--;
             }
         }
-
-        // 原聚落至少留一名育齡女性、一名可配對男性：多帶走的退回（最年長的先退）。
-        void KeepAtLeast(Func<DemoCohortGroup, bool> match, long keep)
-        {
-            var remaining = groups.Where(match).Sum(g => room[(g.BirthYear, g.Sex)]);
-            foreach (var g in groups.Where(match).OrderBy(g => g.BirthYear))
-            {
-                if (remaining >= keep) break;
-                var key = (g.BirthYear, g.Sex);
-                var back = Math.Min(take.GetValueOrDefault(key), keep - remaining);
-                if (back <= 0) continue;
-                take[key] -= back;
-                room[key] += back;
-                remaining += back;
-            }
-        }
-        KeepAtLeast(FertileWoman, keepWomen);
-        KeepAtLeast(PartnerMan, keepMen);
 
         var clean = take.Where(kv => kv.Value > 0).ToDictionary(kv => kv.Key, kv => kv.Value);
         if (mode == DemoEmigrationMode.Founding)

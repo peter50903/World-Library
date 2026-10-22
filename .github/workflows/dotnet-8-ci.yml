@@ -58,7 +58,10 @@ jobs:
             # 第 08-1 章：普通世界人口診斷（只報告，以註記列出）。第 08-2 章：人口變多、長跑變慢，只診斷種子 1。
             # 2026-10-22：只在完整長測（FULL）時跑。
             for s in $([ "$FULL" = true ] && echo 1); do
-              dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt"
+              if ! dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed "$s" --years 60 > "/tmp/diag-$s.txt" 2>&1; then
+                echo "::error title=人口診斷失敗 種子 $s::$(tail -30 "/tmp/diag-$s.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+                exit 1
+              fi
               grep -q '=== 普通世界人口診斷｜種子' "/tmp/diag-$s.txt"
               # 註記上限約 4 KB：切成多段（每段約 40 行）。
               split -l 40 -d "/tmp/diag-$s.txt" "/tmp/diag-$s-part-"
