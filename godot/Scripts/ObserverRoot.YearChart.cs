@@ -80,7 +80,9 @@ public partial class ObserverRoot
 
         _chartRows = _calendar is null
             ? Array.Empty<DemoYearSummary>()
-            : DemoYearLedger.FromWeeks(_world.WeekReports(), _calendar.DaysPerYear, _world.Snapshot().DaysElapsed);
+            : _calendar.DaysPerYear == DemoSettlementHistory.DaysPerYear
+                ? _world.YearSummaries() // 第 04-1 章：讀檔後較早年份的年帳由存檔提供
+                : DemoYearLedger.FromWeeks(_world.WeekReports(), _calendar.DaysPerYear, _world.Snapshot().DaysElapsed);
         _yearChart.Rows = _chartRows;
         _yearChart.Capacity = _world.MapCapacity.People; // 第 08-1 章：理論上限線（只有自然採集世界有值）
         if (_calendar is null)

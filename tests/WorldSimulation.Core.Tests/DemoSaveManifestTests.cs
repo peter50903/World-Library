@@ -203,16 +203,23 @@ public sealed class DemoSaveManifestTests
         foreach (var (config, seed) in new[] { (DemoWeeklyTempConfig.CrowdedForagingSample, 1UL), (DemoWeeklyTempConfig.LivingForagingSample, 42UL),
                      (DemoWeeklyTempConfig.CrowdedForagingSample, 2UL), (DemoWeeklyTempConfig.FamineSample, 1UL) })
         {
-            var probe = Run(config, seed, 3 * 365);
-            var hit = probe.WeekReports().FirstOrDefault(w => w.Settlements.Any(l => l.StarvationDeaths > 0));
+            // 第 04-1 章：存檔只保留近期週報——停在第一次餓死的下一週存檔（一定在保留範圍內）。
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), config);
+            DemoWeekReport? hit = null;
+            for (var day = 0; day < 3 * 365 && hit is null; day++)
+                if (probe.AdvanceOneDay().SettledWeek is { } settled && settled.Settlements.Any(l => l.StarvationDeaths > 0))
+                    hit = settled;
             if (hit is null) continue;
+            for (var day = 0; day < 7; day++)
+                probe.AdvanceOneDay();
             world = probe;
             week = hit.Week;
             break;
         }
         Assert.NotNull(world);
         var doc = JsonNode.Parse(world!.ExportTempSave())!;
-        var ledger = doc["State"]!["WeekReports"]![week - 1]!["Settlements"]!.AsArray()
+        var weekBase = doc["State"]!["WeekBase"]!.GetValue<int>();
+        var ledger = doc["State"]!["WeekReports"]![week - 1 - weekBase]!["Settlements"]!.AsArray()
             .First(l => l!["Deaths"]!.GetValue<long>() > l["NaturalDeaths"]!.GetValue<long>())!;
         ledger["Deaths"] = ledger["Deaths"]!.GetValue<long>() - 1;
         ledger["PopulationClosing"] = ledger["PopulationClosing"]!.GetValue<long>() + 1;

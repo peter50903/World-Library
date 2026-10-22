@@ -9,7 +9,7 @@ using Xunit;
 namespace WorldSimulation.Core.Tests;
 
 /// <summary>
-/// #97：TEMP 存檔週帳「全鏈」防竄改。存檔點在第 735 日（跨過兩個 365 日年界），
+/// #97：TEMP 存檔週帳「全鏈」防竄改。存檔點在第 400 日（跨過第 365 日年界），
 /// 竄改目標優先取最晚一週（第 2 年以後）。每一種竄改都是「整段改寫」：
 /// 刪除或插入事件後把後面所有事件編號與直接原因編號一起補正，並重算存檔裡的世界指紋，
 /// 讓檔案不會只因為編號跳號或指紋不符而被擋下——必須靠週帳、隊伍帳、事件與因果的跨表核對抓到。
@@ -19,7 +19,8 @@ namespace WorldSimulation.Core.Tests;
 /// </summary>
 public sealed class DemoSaveLedgerTamperTests
 {
-    private const int SaveDay = 735; // 第 3 年第 5 日：已跨過第 365、730 日兩個年界。
+    // 第 04-1 章：存檔只保留近期週報；第 400 日的存檔仍保留第 1 週起全部週報（跨過第 365 日年界）。
+    private const int SaveDay = 400;
     private const int FirstWeekOfYear2 = 53; // 第 371 日的週結算。
 
     private static readonly (string Name, DemoWeeklyTempConfig Config)[] PresetOrder =
@@ -51,7 +52,7 @@ public sealed class DemoSaveLedgerTamperTests
     }
 
     /// <summary>
-    /// 依情境與種子順序找含有竄改目標的第 735 日存檔：先找目標落在第 2 年以後（第 53 週起）的存檔，
+    /// 依情境與種子順序找含有竄改目標的第 400 日存檔：先找目標落在第 2 年以後（第 53 週起）的存檔，
     /// 都沒有才退而接受第 1 年的目標（存檔本身仍跨過兩個年界，讀檔時整條週帳鏈都要核對）。
     /// </summary>
     private static (string Preset, ulong Seed, string Json, int TargetWeek) FindSave(Func<JsonNode, JsonNode?> target, string what)
@@ -94,14 +95,17 @@ public sealed class DemoSaveLedgerTamperTests
     private static List<JsonNode> AllMigrations(JsonNode doc)
         => Weeks(doc).SelectMany(w => w!["Migrations"]!.AsArray()).Select(m => m!).ToList();
 
-    private static JsonNode WeekNode(JsonNode doc, int week) => Weeks(doc)[week - 1]!;
+    /// <summary>第 04-1 章：存檔只保留第 WeekBase＋1 週起的週報。</summary>
+    private static int WeekBase(JsonNode doc) => doc["State"]!["WeekBase"]!.GetValue<int>();
+
+    private static JsonNode WeekNode(JsonNode doc, int week) => Weeks(doc)[week - 1 - WeekBase(doc)]!;
 
     private static JsonNode SettlementLedger(JsonNode doc, int week, int settlementId)
         => WeekNode(doc, week)["Settlements"]!.AsArray().Single(l => I(l!, "SettlementId") == settlementId)!;
 
-    private static int LastWeek(JsonNode doc) => Weeks(doc).Count;
+    private static int LastWeek(JsonNode doc) => WeekBase(doc) + Weeks(doc).Count;
 
-    /// <summary>最晚一筆符合條件者（存檔在第 735 日，最晚一筆通常落在第 2 年以後）。</summary>
+    /// <summary>最晚一筆符合條件者（存檔在第 400 日，最晚一筆通常落在第 2 年以後）。</summary>
     private static JsonNode? Latest(IEnumerable<JsonNode> items, Func<JsonNode, bool> match)
         => items.Where(match).OrderBy(WeekOf).LastOrDefault();
 
@@ -373,8 +377,11 @@ public sealed class DemoSaveLedgerTamperTests
     [Fact]
     public void CausalIndexFlagsMissingOrSplitSettlementEvents()
     {
-        var (_, _, json, _) = FindSave(UnreferencedHunger, "沒有後果的飢餓");
-        var world = DemoObserverWorld.ImportTempSave(json);
+        // 第 04-1 章：讀檔後只保留近期週報，這裡用不中斷的世界（週報從第 1 週起完整）。
+        var (preset, seed, _, _) = FindSave(UnreferencedHunger, "沒有後果的飢餓");
+        var world = new DemoObserverWorld(DemoScenario.Sample(seed), PresetOrder.Single(p => p.Name == preset).Config);
+        for (var day = 0; day < SaveDay; day++)
+            world.AdvanceOneDay();
         var weeks = world.WeekReports();
         Assert.Empty(DemoCausalIndex.Build(weeks).Problems);
 

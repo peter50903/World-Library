@@ -69,6 +69,8 @@ public sealed partial class DemoObserverWorld
         private DemoCohortDemography? _demography;
         private DemoWeeklyOutcome? _outcome;
         private EventHistory _history;
+        private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle; // 第 04-1 章：聚落小史
+        private ImmutableSortedDictionary<int, long> _debtSources; // 第 04-1 章：飢餓債來源
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
         internal DemoWorldCommit(DemoObserverWorld world, bool settleWeekly)
@@ -88,6 +90,8 @@ public sealed partial class DemoObserverWorld
             _sites = world._sites;
             _demography = world._demography;
             _history = world._history;
+            _chronicle = world._chronicle;
+            _debtSources = world._debtSources;
         }
 
         /// <summary>本日到期時間（<see cref="StageSchedule"/> 後才有）。</summary>
@@ -198,13 +202,17 @@ public sealed partial class DemoObserverWorld
             ArgumentNullException.ThrowIfNull(report);
             RequireWeekly(nameof(StageHistory));
             Advance(Step.Population, Step.History, nameof(StageHistory));
-            if (report.Week != _baseWeeks.Count + 1)
-                throw new InvalidOperationException($"週報第 {report.Week} 週不是下一週（應為第 {_baseWeeks.Count + 1} 週）。");
+            var expectedWeek = _world.CommittedWeeks + 1; // 第 04-1 章：讀檔後的週報不從第 1 週開始
+            if (report.Week != expectedWeek)
+                throw new InvalidOperationException($"週報第 {report.Week} 週不是下一週（應為第 {expectedWeek} 週）。");
             var before = _baseRng.Capture().Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
             var after = _proposedRng!.Streams.ToDictionary(x => x.StreamId, x => x.DrawCounter);
             var counters = RngStreams.All.Select(id => new DemoRngCounter(id, before[id], after[id])).ToArray();
             _weeks = _baseWeeks.Add(report with { RngCounters = Array.AsReadOnly(counters) });
             _history = _world._history.AppendCommitted(DemoEventProjection.ToWorldEvents(report, _sites, _participants));
+            _chronicle = DemoSettlementChronicle.Advance(_world._chronicle, report,
+                _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>());
+            _debtSources = AdvanceDebtSources(_world._debtSources, report);
         }
 
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
@@ -236,6 +244,8 @@ public sealed partial class DemoObserverWorld
             world._sites = _sites;
             world._demography = _demography;
             world._history = _history;
+            world._chronicle = _chronicle;
+            world._debtSources = _debtSources;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }
 

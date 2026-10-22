@@ -26,11 +26,11 @@ public sealed class DemoDirectSnapshotTests
     }
 
     [Fact]
-    public void NewSaves_AreVersion20()
+    public void NewSaves_AreVersion21()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
         world.AdvanceOneDay();
-        Assert.Equal(20, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
+        Assert.Equal(21, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
     }
 
     [Theory]
@@ -106,9 +106,10 @@ public sealed class DemoDirectSnapshotTests
     [InlineData(17)]
     [InlineData(18)]
     [InlineData(19)]
+    [InlineData(20)]
     public void OlderSaveVersions_AreRejectedAsTooOld(int version)
     {
-        // C04／C05：比目前第 20 版舊的存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
+        // C04／C05：比目前第 21 版舊的存檔一律明確拒讀（使用者 2026-10-14 裁決），不重播、不轉換。
         var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.FrontierSample);
         for (var i = 0; i < 30; i++)
             world.AdvanceOneDay();

@@ -89,7 +89,7 @@ public partial class ObserverRoot
                 ResetHistoryFilter(); // #96：換世界（切換情境、讀檔）時篩選回到預設。
                 _filterSettlementCount = -1;
             }
-            _causal = DemoCausalIndex.Build(weeks);
+            _causal = _world.BuildCausalIndex(); // 第 04-1 章：含讀檔前保存的較早事件
             _causalWorld = _world;
             _causalWeeks = weeks.Count;
         }

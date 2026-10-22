@@ -32,9 +32,9 @@ public sealed partial class DemoObserverWorld
     /// <summary>The actual TEMP seed of this world; may differ after loading another save.</summary>
     public ulong TempWorldSeed => _recipe.WorldSeed;
 
-    internal const int TempSaveVersion = 20; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼；第 04 章 c 節第 9 版週報加共享採集來源帳；第 06 章 c 節第 10 版加來源存量；第 06 章 d 節第 11 版週帳加腐敗、缺水、取水者與老幼餓死；第 07 章 a 節第 12 版名冊加父母與伴侶、混齡開局；第 07 章 b 節第 13 版名冊加所屬隊伍、隊伍帳加途中出生與自然死亡；第 07 章 c 節第 14 版聚落加遺跡週次；第 08 章 a 節第 15 版舊自動農田退場、加土地開發狀態；第 08-1 章第 16 版人口規則修正（宜居開局、開拓需伴侶、擇偶依年齡）；第 08-2 章第 17 版希望時代（不餓死、只有老死、開局存糧與分散）；第 06-1 章第 18 版海洋與河流分開、淺灘渡口；第 07-1 章第 19 版群體人口（不再存個體名冊）、第 20 版代表人物與命名。比目前舊的一律「版本太舊」。
+    internal const int TempSaveVersion = 21; // C04 第 3 版加入實體 ID 分配器；C05 第 4 版退役每日糧食線、加入週亂數計數器；第 02 章 a 節第 5 版以世界配方取代 Scenario；第 03 章 b 節第 6 版加入正式史庫；第 04 章 a 節第 7 版人口改走 POP 流、名冊快照刪除自製種子；第 04 章 b 節第 8 版加標頭（Manifest）與校驗碼；第 04 章 c 節第 9 版週報加共享採集來源帳；第 06 章 c 節第 10 版加來源存量；第 06 章 d 節第 11 版週帳加腐敗、缺水、取水者與老幼餓死；第 07 章 a 節第 12 版名冊加父母與伴侶、混齡開局；第 07 章 b 節第 13 版名冊加所屬隊伍、隊伍帳加途中出生與自然死亡；第 07 章 c 節第 14 版聚落加遺跡週次；第 08 章 a 節第 15 版舊自動農田退場、加土地開發狀態；第 08-1 章第 16 版人口規則修正（宜居開局、開拓需伴侶、擇偶依年齡）；第 08-2 章第 17 版希望時代（不餓死、只有老死、開局存糧與分散）；第 06-1 章第 18 版海洋與河流分開、淺灘渡口；第 07-1 章第 19 版群體人口（不再存個體名冊）、第 20 版代表人物與命名；第 04-1 章第 21 版分層存檔（只存目前狀態＋近期週報，之前的只存年帳、事件與聚落小史）。比目前舊的一律「版本太舊」。
     internal const int TempMaxSaveDays = 100 * 365; // TEMP（#90）：100 個正式 365 日年＝36500 日（01 表 WORLD_DAYS_PER_YEAR），避免讀檔無上限重播。
-    private const int TempMaxSaveBytes = 64 * 1024 * 1024;
+    private const int TempMaxSaveBytes = 256 * 1024 * 1024; // 【TEMP】第 04-1 章：大地圖百年的正式史庫仍大，史庫分層見第 13 章
     internal const long TempMaxSaveFileBytes = TempMaxSaveBytes;
 
     /// <summary>C04：可讀的存檔版本只有目前版本；其他一律拒絕。</summary>
@@ -83,13 +83,21 @@ public sealed partial class DemoObserverWorld
     /// <summary>Deterministic, complete TEMP JSON checkpoint (not a formal save protocol).</summary>
     public string ExportTempSave()
     {
+        // 第 04-1 章（使用者 2026-10-22：存檔只要能回到存檔當下的狀態，過程不需要逐週保存）：
+        // 只存近期週報（SaveWindowStart 起）；之前的年份存年帳，之前的聚落事件另存，聚落小史隨聚落保存。
+        var windowStart = SaveWindowStart();
         var state = new
         {
             WorldTimeTicks = _clock.Now.Ticks,
             SchedulerNextSequence = _scheduler.NextSequence,
             ScheduledWork = _scheduler.PendingInOrder().ToArray(),
             Random = _rng.Capture(),
-            WeekReports = _weeks.ToArray(),
+            WeekBase = windowStart - 1,
+            WeekReports = _weeks.Where(w => w.Week >= windowStart).ToArray(),
+            EarlierYears = YearSummaries().Take(YearsBeforeWeek(windowStart)).ToArray(),
+            EarlierEvents = SettlementEvents().Where(e => e.Week < windowStart).ToArray(),
+            Chronicle = _chronicle,
+            DebtSources = _debtSources,
             Reserves = _reserves,
             SettlementFood = _settlementFood,
             Population = _population,

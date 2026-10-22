@@ -575,7 +575,9 @@ internal static class DemoWeeklySettlement
         Func<int, long, long, DemoEmigrationMode, long>? emigrantPlanner = null,
         DemoLandDevelopmentMap? land = null,
         IReadOnlyDictionary<int, DemoMateMarket>? mates = null,
-        Func<DemoSettlement, ISet<string>, string>? namer = null)
+        Func<DemoSettlement, ISet<string>, string>? namer = null,
+        long? firstEventId = null,
+        Func<int, long>? debtSourceOf = null)
     {
         // 第 07 章 b 節：emigrantPlanner（聚落 ID, 本週餓死人數, 想外移人數上限）→ 實際整戶外移人數（≤上限）；
         // 人類繁衍世界由名冊依家庭決定，其他世界沒有名冊時直接用上限。
@@ -655,7 +657,8 @@ internal static class DemoWeeklySettlement
         var events = new List<DemoSettlementEvent>();
 
         // #88：事件編號接續已發布的最後一筆（只遞增、不重用）；每筆同時記下 43F 直接原因編號。
-        var nextEventId = DemoCausalIndex.NextEventId(publishedWeeks);
+        // 第 04-1 章：世界傳入正式史庫的下一號（讀檔後的週報不含早期事件）；未傳時由週報推得。
+        var nextEventId = firstEventId ?? DemoCausalIndex.NextEventId(publishedWeeks);
         DemoSettlementEvent Stamp(DemoSettlementEvent e, long causeEventId)
         {
             var stamped = e with { EventId = nextEventId, CauseEventId = causeEventId };
@@ -875,7 +878,7 @@ internal static class DemoWeeklySettlement
             var debtSourceEventId = hungerEventId != 0
                 ? hungerEventId
                 : deaths > 0 || debtOpening > 0
-                ? DemoCausalIndex.LatestDebtSourceId(publishedWeeks, settlement.Id)
+                ? debtSourceOf?.Invoke(settlement.Id) ?? DemoCausalIndex.LatestDebtSourceId(publishedWeeks, settlement.Id) // 第 04-1 章：世界保存的債源
                 : 0;
 
             if (deaths > 0)

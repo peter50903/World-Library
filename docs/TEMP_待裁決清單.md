@@ -83,6 +83,14 @@
 | 卸任與補任 | 老死或聚落無人即卸任；下週結算依同規則補任 | 代表人物也會老死 |
 | 命名詞素 | config/demo/names-temp.json（人名「名·姓」、地名前綴＋地形後綴、新村可沿用母村名加方位字） | 使用者：西式奇幻音譯、不超過六字 |
 
+#### D04-1｜分層存檔（第 04-1 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 存檔保留完整週報 | 最近 52 週起，往前包含途中隊伍出發週，再對齊到該年第一次週結算（飢餓債來源另存為狀態） | 使用者：存檔只要能回到存檔當下，過程不需逐週保存；之後的結算只往回看幾週 |
+| 較早的資料 | 年帳、聚落事件、聚落小史、正式史庫 | 年度圖表、世界紀錄、聚落小史讀檔後仍完整 |
+| 存檔大小上限 | 256 MiB | 大地圖百年的正式史庫仍大，史庫分層見第 13 章 |
+
 #### D07-1c｜地圖大小（第 07-1 章 c 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -200,7 +208,7 @@
 |---|---|---|
 | 存檔槽數 | 3 | `DemoSaveSlots.cs:42` |
 | 可讀世界日數上限 | 36500 日（#90：100 個正式 365 日年，365×100；第 100 年末第 36500 日可存讀，第 36501 日起明確拒絕；是否保留上限待裁決） | `DemoObserverWorld.Save.cs:24` |
-| 存檔大小上限 | 64 MiB | `DemoObserverWorld.Save.cs:25` |
+| 存檔大小上限 | 256 MiB（第 04-1 章；原 64 MiB） | `DemoObserverWorld.Save.cs` |
 | 存檔格式 | JSON 第 15 版（標頭＋校驗碼＋直接快照＋實體 ID 分配器＋世界配方＋正式史庫＋來源帳與來源存量＋生存帳＋名冊父母與伴侶＋隊伍成員與途中生死＋遺跡＋土地開發狀態；第 08 章 a 節），第 1～14 版一律「版本太舊，請建立新世界」 | `DemoObserverWorld.Save.cs:23`、`DemoObserverWorld.Snapshot.cs:24` |
 
 - 選項：**A** 保留 3 槽；**B** 改為不限數量的命名存檔；**C** 與正式存檔規格一起決定。
@@ -334,18 +342,18 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
 | `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 55 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 23 | D8、第 3 節 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 22 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 18 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；#88 舊版無事件編號存檔拒絕讀取；第 03 章 b 節史庫重建失敗訊息 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 6 | D8；第 04-1 章分層存檔讀檔 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 12 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 3 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100 |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 7 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 8 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 16 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |

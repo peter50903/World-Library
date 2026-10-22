@@ -36,7 +36,10 @@ public sealed record DemoWorldOverview(
     {
         ArgumentNullException.ThrowIfNull(world);
         var day = world.Snapshot().DaysElapsed;
-        var years = DemoYearLedger.FromWeeks(world.WeekReports(), daysPerYear, day);
+        // 第 04-1 章：365 日年用世界保存的年帳（讀檔後也完整）；其他曆法（測試用）由保留的週報彙整。
+        var years = daysPerYear == DemoSettlementHistory.DaysPerYear
+            ? world.YearSummaries()
+            : DemoYearLedger.FromWeeks(world.WeekReports(), daysPerYear, day);
         var year = years.Count > 0 ? years[^1] : null;
         var active = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
         var stats = world.WorldPopulationStats; // 第 07-1 章：群體人口統計

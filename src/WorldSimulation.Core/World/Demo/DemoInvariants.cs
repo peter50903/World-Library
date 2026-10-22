@@ -74,13 +74,16 @@ public static class DemoInvariants
         var weeks = world.WeekReports();
         if (c.Previous is { } p && day < p.Day)
             yield return $"世界日倒退：上次第 {p.Day} 日，現在第 {day} 日";
-        if (weeks.Count != day / DemoCenturyRun.DaysPerWeeklySettlement)
-            yield return $"第 {day} 日應有 {day / DemoCenturyRun.DaysPerWeeklySettlement} 份週報，實際 {weeks.Count} 份";
+        // 第 04-1 章：讀檔後的世界只保留近期週報（第 FirstRetainedWeek 週起）。
+        var first = world.FirstRetainedWeek;
+        if (world.CommittedWeeks != day / DemoCenturyRun.DaysPerWeeklySettlement || first + weeks.Count - 1 != world.CommittedWeeks)
+            yield return $"第 {day} 日應有 {day / DemoCenturyRun.DaysPerWeeklySettlement} 次週結算，實際 {world.CommittedWeeks} 次（保留 {weeks.Count} 份）";
         for (var i = c.FirstWeekIndex; i < weeks.Count; i++)
         {
             var r = weeks[i];
-            if (r.Week != i + 1 || r.WorldTime != TimeSpan.FromDays((long)DemoCenturyRun.DaysPerWeeklySettlement * (i + 1)))
-                yield return $"第 {i + 1} 份週報標示第 {r.Week} 週、世界時間 {r.WorldTime.TotalDays} 日";
+            var expectedWeek = first + i;
+            if (r.Week != expectedWeek || r.WorldTime != TimeSpan.FromDays((long)DemoCenturyRun.DaysPerWeeklySettlement * expectedWeek))
+                yield return $"第 {expectedWeek} 週的週報標示第 {r.Week} 週、世界時間 {r.WorldTime.TotalDays} 日";
             if (r.Settlements.Any(l => l.Week != r.Week) || r.Events.Any(e => e.Week != r.Week || e.WorldTime != r.WorldTime)
                 || r.Migrations.Any(m => m.Week != r.Week))
                 yield return $"第 {r.Week} 週週報內的帳或事件標示了別的週次或時間";
@@ -171,7 +174,7 @@ public static class DemoInvariants
             }
         }
 
-        var settlementEvents = weeks.Sum(w => (long)w.Events.Count);
+        var settlementEvents = (long)world.SettlementEvents().Count; // 第 04-1 章：含讀檔前保存的較早事件
         if (settlementEvents != events.Count)
             yield return $"週報事件 {settlementEvents} 筆，正式史庫 {events.Count} 筆（必須一一對應）";
     }
@@ -271,6 +274,8 @@ public static class DemoInvariants
                 continue;
             }
             var previous = Before(weeks, i)?.Sources.ToDictionary(s => s.SourceId, s => s.StockClosing) ?? new Dictionary<int, long>();
+            // 第 04-1 章：讀檔後保留的第一週沒有上週帳可對照，期初存量不比對。
+            var chained = i > 0 || world.FirstRetainedWeek == 1;
             foreach (var s in r.Sources)
             {
                 var shares = s.Shares ?? Array.Empty<DemoSourceShare>();
@@ -278,7 +283,7 @@ public static class DemoInvariants
                     || s.Unharvested < 0 || s.Regenerated < 0 || shares.Any(x => x.Food < 0)
                     || shares.Select(x => x.SettlementId).Distinct().Count() != shares.Count)
                     yield return $"第 {r.Week} 週來源 #{s.SourceId}：{s}";
-                if (s.StockOpening != previous.GetValueOrDefault(s.SourceId))
+                if (chained && s.StockOpening != previous.GetValueOrDefault(s.SourceId))
                     yield return $"第 {r.Week} 週來源 #{s.SourceId} 期初存量 {s.StockOpening}≠上週期末 {previous.GetValueOrDefault(s.SourceId)}";
             }
             // 上週還有存量的來源本週必須續帳；唯一例外是該格在本週前已被聚落佔用（建村佔格，來源依佔格重算）。
@@ -318,6 +323,8 @@ public static class DemoInvariants
             var r = weeks[i];
             var travelling = Before(weeks, i)?.Migrations.Where(m => !m.Arrived && m.PopulationClosing > 0)
                 .ToDictionary(m => m.BatchId) ?? new Dictionary<int, DemoMigrationWeekLedger>();
+            // 第 04-1 章：讀檔後保留的第一週沒有上週帳，途中隊伍不比對銜接。
+            var chained = i > 0 || world.FirstRetainedWeek == 1;
             foreach (var m in r.Migrations)
             {
                 if (!m.NoTeleport)
@@ -328,6 +335,8 @@ public static class DemoInvariants
                         yield return $"第 {r.Week} 週遷徙隊伍 #{m.BatchId} 重複出發";
                     continue;
                 }
+                if (!chained)
+                    continue;
                 if (!travelling.Remove(m.BatchId, out var b))
                     yield return $"第 {r.Week} 週遷徙隊伍 #{m.BatchId} 沒有上週紀錄（憑空出現）";
                 else if (b.PopulationClosing != m.PopulationOpening || b.FoodClosing != m.FoodOpening || b.CellAfter != m.CellBefore)

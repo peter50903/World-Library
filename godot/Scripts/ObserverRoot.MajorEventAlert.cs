@@ -49,17 +49,7 @@ public partial class ObserverRoot
     }
 
     /// <summary>世界中最後一筆聚落事件的編號（沒有事件為 0）。</summary>
-    private long LatestEventId()
-    {
-        var weeks = _world.WeekReports();
-        for (var i = weeks.Count - 1; i >= 0; i--)
-        {
-            if (weeks[i].Events.Count > 0)
-                return weeks[i].Events[^1].EventId;
-        }
-
-        return 0;
-    }
+    private long LatestEventId() => _world.EventHistory.LastEventId; // 第 04-1 章：正式史庫與聚落事件一一對應
 
     /// <summary>手動推進或換世界後：目前已有的事件都算「看過」，不會之後才補提示。</summary>
     private void SyncAlertWatermark() => _alertWatermark = LatestEventId();

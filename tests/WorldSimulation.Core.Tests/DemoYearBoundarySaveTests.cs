@@ -56,14 +56,14 @@ public sealed class DemoYearBoundarySaveTests
         // 一路直接跑（從未存讀），記下每個存檔點的存檔與每個終點的完整狀態。
         var direct = new DemoObserverWorld(DemoScenario.Sample(42), config);
         var saves = new Dictionary<int, string>();
-        var expected = new Dictionary<int, (string Json, IReadOnlyList<DemoWeekReport> Weeks)>();
+        var expected = new Dictionary<int, (string Json, IReadOnlyList<DemoWeekReport> Weeks, IReadOnlyList<DemoYearSummary> Years)>();
         for (var day = 1; day <= lastDay; day++)
         {
             direct.AdvanceOneDay();
             if (YearBoundaryDays.Contains(day))
                 saves[day] = direct.ExportTempSave();
             if (ends.Contains(day))
-                expected[day] = (direct.ExportTempSave(), direct.WeekReports());
+                expected[day] = (direct.ExportTempSave(), direct.WeekReports(), direct.YearSummaries());
         }
 
         foreach (var saveDay in YearBoundaryDays)
@@ -79,7 +79,11 @@ public sealed class DemoYearBoundarySaveTests
 
                 Assert.True(expected[end].Json == loaded.ExportTempSave(),
                     $"{preset}｜第 {saveDay} 日存檔（第 {version} 版）續跑到第 {end} 日後與直接跑不同");
-                Assert.Equal(YearAttribution(expected[end].Weeks, daysPerYear), YearAttribution(loaded.WeekReports(), daysPerYear));
+                // 第 04-1 章：讀檔後只保留近期週報；保留的週歸屬相同，年帳（含之前的年份）完全相同。
+                var first = loaded.FirstRetainedWeek;
+                Assert.Equal(YearAttribution(expected[end].Weeks.Where(w => w.Week >= first).ToList(), daysPerYear),
+                    YearAttribution(loaded.WeekReports(), daysPerYear));
+                Assert.Equal(expected[end].Years, loaded.YearSummaries());
             }
         }
 

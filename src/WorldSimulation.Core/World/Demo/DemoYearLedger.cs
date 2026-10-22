@@ -16,7 +16,16 @@ public static class DemoYearLedger
     /// <paramref name="daysElapsed"/> 為 0 或沒有任何週報時回傳空清單。
     /// </summary>
     public static IReadOnlyList<DemoYearSummary> FromWeeks(IReadOnlyList<DemoWeekReport> weeks, int daysPerYear, int daysElapsed)
+        => FromWeeks(weeks, daysPerYear, daysElapsed, firstYear: 1);
+
+    /// <summary>
+    /// 第 04-1 章：從第 <paramref name="firstYear"/> 年起彙整（讀檔後只保留近期週報，較早的年帳另存）。
+    /// <paramref name="weeks"/> 必須從該年第一次週結算開始；期初＝第一份週報的期初。
+    /// </summary>
+    public static IReadOnlyList<DemoYearSummary> FromWeeks(IReadOnlyList<DemoWeekReport> weeks, int daysPerYear, int daysElapsed, int firstYear)
     {
+        if (firstYear < 1)
+            throw new ArgumentOutOfRangeException(nameof(firstYear));
         ArgumentNullException.ThrowIfNull(weeks);
         if (daysPerYear < 1)
             throw new ArgumentOutOfRangeException(nameof(daysPerYear), "Days per year must be positive.");
@@ -31,9 +40,9 @@ public static class DemoYearLedger
             0, 0, first.Settlements.Count(l => l.PopulationOpening > 0), first.Settlements.Count);
 
         var years = (daysElapsed - 1) / daysPerYear + 1;
-        var result = new List<DemoYearSummary>(years);
+        var result = new List<DemoYearSummary>(Math.Max(0, years - firstYear + 1));
         var index = 0;
-        for (var year = 1; year <= years; year++)
+        for (var year = firstYear; year <= years; year++)
         {
             var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = Math.Min(checked(year * daysPerYear), daysElapsed);

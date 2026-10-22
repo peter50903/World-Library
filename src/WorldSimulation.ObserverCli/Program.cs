@@ -245,7 +245,9 @@ while (true)
             Console.WriteLine($"無法讀取正式曆法：{ex.Message}");
             continue;
         }
-        var yearRows = DemoYearLedger.FromWeeks(world.WeekReports(), yearCalendar.DaysPerYear, world.Snapshot().DaysElapsed);
+        var yearRows = yearCalendar.DaysPerYear == DemoSettlementHistory.DaysPerYear
+            ? world.YearSummaries() // 第 04-1 章：讀檔後較早年份的年帳由存檔提供
+            : DemoYearLedger.FromWeeks(world.WeekReports(), yearCalendar.DaysPerYear, world.Snapshot().DaysElapsed);
         Console.WriteLine($"年報（共 {yearRows.Count} 年，資料＝已提交週報彙整）：");
         foreach (var y in yearRows)
             Console.WriteLine($"  {y.Describe()}{(DemoYearLedger.IsComplete(y, yearCalendar.DaysPerYear) ? "" : "（進行中）")}");
