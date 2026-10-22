@@ -24,8 +24,9 @@ internal static class DemoHumanLifecycle
 
     /// <returns>生死後的週結算與群體人口（第 07-1 章起沒有個體當事人；事件只記聚落與人數）。</returns>
     public static (DemoWeeklyOutcome Outcome, DemoCohortDemography Population) Apply(
-        DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, long firstNewEventId = 1)
+        DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, DemoNames names, long firstNewEventId = 1)
     {
+        ArgumentNullException.ThrowIfNull(names);
         ArgumentNullException.ThrowIfNull(weekly);
         ArgumentNullException.ThrowIfNull(opening);
         ArgumentNullException.ThrowIfNull(draws);
@@ -58,6 +59,14 @@ internal static class DemoHumanLifecycle
                 throw new InvalidOperationException("Travelling migrants do not match the migration ledger.");
         }
 
+        // 第 07-1 章 b 節：代表人物本人的老死（以本人的實體 ID 抽 POP 流局部亂數），所屬年齡群至少死這麼多人。
+        var repDeaths = moved.Representatives
+            .Where(r => draws.Hit(r.Id, report.Week, DemoPopulationAction.NaturalDeath,
+                Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day))))
+            .ToList();
+        var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))
+            .ToDictionary(g => g.Key, g => (long)g.Count());
+
         // ③ 生死：受孕只在本週真實糧帳寬裕的聚落，數量不超過可預留的口糧（第 08-3 章）。
         var outcome = moved.AdvanceWeek(report.Week, id =>
         {
@@ -67,7 +76,11 @@ internal static class DemoHumanLifecycle
                 return 0;
             return report.Sources.Count == 0 ? long.MaxValue
                 : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);
-        }, Rules, draws);
+        }, Rules, draws, minimumDeaths);
+
+        // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
+        var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
+        var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names);
 
         long Sum(DemoTempDemographicKind kind, int settlement, int batch)
             => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
@@ -80,7 +93,7 @@ internal static class DemoHumanLifecycle
             var births = Sum(DemoTempDemographicKind.Birth, ledger.SettlementId, 0);
             var natural = Sum(DemoTempDemographicKind.NaturalDeath, ledger.SettlementId, 0);
             var closing = checked(ledger.PopulationClosing + births - natural);
-            if (closing < 0 || outcome.Population.ResidentsOf(ledger.SettlementId) != closing)
+            if (closing < 0 || population.ResidentsOf(ledger.SettlementId) != closing)
                 throw new InvalidOperationException("Cohort births/deaths do not match world population.");
             var excessDebt = closing == 0 ? ledger.HungerDebtClosing : 0L;
             var modified = ledger with
@@ -107,7 +120,7 @@ internal static class DemoHumanLifecycle
             var natural = Sum(DemoTempDemographicKind.NaturalDeath, leg.FromSettlementId, leg.BatchId);
             if (births == 0 && natural == 0) { legs.Add(leg); continue; }
             var closing = checked(leg.PopulationClosing + births - natural);
-            if (closing < 0 || outcome.Population.MembersOf(leg.BatchId) != closing)
+            if (closing < 0 || population.MembersOf(leg.BatchId) != closing)
                 throw new InvalidOperationException("Travel birth/death cohorts do not match the migration ledger.");
             var excessDebt = closing == 0 ? leg.HungerDebtClosing : 0L;
             var revisedLeg = leg with
@@ -140,16 +153,70 @@ internal static class DemoHumanLifecycle
                     kind, 1, cause, MigrationBatchId: e.BatchId, EventId: eventId++));
         }
 
+        var entityIds = entityAllocator.Capture();
         var revised = report with
         {
-            Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(), Migrations = legs.AsReadOnly()
+            Settlements = ledgers.AsReadOnly(), Events = events.AsReadOnly(), Migrations = legs.AsReadOnly(),
+            Appointments = appointments, RepresentativeExits = exits,
+            EntityIdNextClosing = DemoEntityIds.NextValue(entityIds)
         };
         DemoWeeklySettlement.Verify(revised);
         return (weekly with
         {
             Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),
-            Migrations = batches.ToImmutable()
-        }, outcome.Population);
+            Migrations = batches.ToImmutable(), EntityIds = entityIds
+        }, population);
+    }
+
+    /// <summary>
+    /// 第 07-1 章 b 節【TEMP 規則】代表人物：每個有人的聚落一位村長（最年長的成年人）、一位採集代表（人數最多的壯年年齡群，同數取年長），
+    /// 本週有從河流或海洋採到食物的聚落再一位漁撈代表。老死或聚落無人就卸任，下週結算由同規則補任。
+    /// 補任者從年齡群中具名化（不是出生、不改人數），實體 ID 由世界唯一分配器依聚落、職位順序發號，名字依 ID 抽。
+    /// </summary>
+    private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
+        Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
+            DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names)
+    {
+        var exits = new List<DemoRepresentativeExit>();
+        var current = new List<DemoRepresentative>();
+        var diedIds = died.Select(r => r.Id).ToHashSet();
+        foreach (var r in population.Representatives)
+        {
+            if (diedIds.Contains(r.Id))
+                exits.Add(new DemoRepresentativeExit(r.Id, r.SettlementId, $"老死（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）"));
+            else if (population.ResidentsOf(r.SettlementId) == 0)
+                exits.Add(new DemoRepresentativeExit(r.Id, r.SettlementId, "聚落無人"));
+            else
+                current.Add(r);
+        }
+
+        var elder = DemoSurvivalTempSettings.Current.ElderAgeYears;
+        var fishers = report.Sources.Where(x => x.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater)
+            .SelectMany(x => x.Shares ?? Array.Empty<DemoSourceShare>()).Where(sh => sh.Food > 0).Select(sh => sh.SettlementId).ToHashSet();
+        var appointments = new List<DemoRepresentative>();
+        foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin && population.ResidentsOf(s.Id) > 0).OrderBy(s => s.Id))
+        {
+            long Free(DemoCohortGroup g) => g.Count - current.Count(r => r.SettlementId == settlement.Id && r.BirthYear == g.BirthYear && r.Sex == g.Sex);
+            var adults = population.GroupsAt(settlement.Id, 0)
+                .Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) >= Rules.AdultAgeYears).ToList();
+            foreach (var role in new[] { DemoRepresentativeRole.Leader, DemoRepresentativeRole.Gatherer, DemoRepresentativeRole.Fisher })
+            {
+                if (current.Any(r => r.SettlementId == settlement.Id && r.Role == role)) continue;
+                if (role == DemoRepresentativeRole.Fisher && !fishers.Contains(settlement.Id)) continue;
+                var candidates = adults.Where(g => Free(g) > 0).ToList();
+                if (role != DemoRepresentativeRole.Leader)
+                    candidates = candidates.Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) < elder).ToList();
+                var pick = role == DemoRepresentativeRole.Leader
+                    ? candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault()
+                    : candidates.OrderByDescending(Free).ThenBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
+                if (pick is null) continue;
+                var id = DemoEntityIds.NextLong(ids);
+                var person = new DemoRepresentative(id, settlement.Id, role, names.Person(id, pick.Sex), pick.Sex, pick.BirthYear, report.Week);
+                current.Add(person);
+                appointments.Add(person);
+            }
+        }
+        return (population.WithRepresentatives(current), appointments, exits);
     }
 
     /// <summary>結算時的外移人數規劃——與 <see cref="Apply"/> 同一份 <see cref="DemoCohortMigration.Plan"/>。</summary>
@@ -177,7 +244,7 @@ internal static class DemoHumanLifecycle
 
     /// <summary>讀檔：由開局群體與已驗證的週帳鏈逐週重播生死，任何出生／自然死亡帳或事件被竄改都拒絕。</summary>
     public static DemoCohortDemography Replay(DemoCohortDemography opening, IReadOnlyList<DemoWeekReport> reports,
-        DemoWorldSites sites, DemoPopulationDraws draws)
+        DemoWorldSites sites, DemoPopulationDraws draws, DemoNames names)
     {
         ArgumentNullException.ThrowIfNull(draws);
         var current = opening;
@@ -188,6 +255,9 @@ internal static class DemoHumanLifecycle
                 throw new InvalidDataException("TEMP adult workers differ from the cohort ages.");
             var stripped = stored with
             {
+                Appointments = Array.Empty<DemoRepresentative>(),
+                RepresentativeExits = Array.Empty<DemoRepresentativeExit>(),
+                EntityIdNextClosing = checked(stored.EntityIdNextClosing - stored.Appointments.Count),
                 Migrations = stored.Migrations.Select(m => m with
                 {
                     Births = 0,
@@ -216,8 +286,11 @@ internal static class DemoHumanLifecycle
                 ImmutableList<DemoMigrationBatch>.Empty,
                 new EntityIdAllocatorSnapshot(EntityIdAllocatorSnapshot.CurrentVersion,
                     checked((ulong)stripped.EntityIdNextClosing), false), sites);
-            var trial = Apply(temp, current, draws, nextEventId);
+            var trial = Apply(temp, current, draws, names, nextEventId);
             if (!trial.Outcome.Report.Settlements.SequenceEqual(stored.Settlements)
+                || !trial.Outcome.Report.Appointments.SequenceEqual(stored.Appointments)
+                || !trial.Outcome.Report.RepresentativeExits.SequenceEqual(stored.RepresentativeExits)
+                || trial.Outcome.Report.EntityIdNextClosing != stored.EntityIdNextClosing
                 || !trial.Outcome.Report.Migrations.SequenceEqual(stored.Migrations)
                 || !trial.Outcome.Report.Events.SequenceEqual(stored.Events))
                 throw new InvalidDataException("TEMP birth/death events do not match the reconstructed cohorts.");

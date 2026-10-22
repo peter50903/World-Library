@@ -12,8 +12,43 @@ public sealed record DemoCohortGroup(int SettlementId, int BatchId, int BirthYea
 /// <summary>第 07-1 章 a 節：某地在某週到期的懷孕數。</summary>
 public sealed record DemoPregnancyGroup(int SettlementId, int BatchId, int DueWeek, long Count);
 
-/// <summary>第 07-1 章 a 節：群體人口快照（存檔與讀檔比對用）。</summary>
-public sealed record DemoCohortSnapshot(int LastWeek, ImmutableArray<DemoCohortGroup> Groups, ImmutableArray<DemoPregnancyGroup> Pregnancies);
+/// <summary>第 07-1 章 b 節：代表人物的身分（權力者與各產業代表）。</summary>
+public enum DemoRepresentativeRole
+{
+    /// <summary>村長（權力者）。</summary>
+    Leader = 0,
+
+    /// <summary>採集代表。</summary>
+    Gatherer = 1,
+
+    /// <summary>漁撈代表。</summary>
+    Fisher = 2
+}
+
+/// <summary>
+/// 第 07-1 章 b 節：有名有姓的代表人物（使用者 2026-10-22：只需要知道村子重要的人）。
+/// 他本人也算在所屬年齡群的人數裡（具名化不是出生）；實體 ID 由世界唯一分配器發號。
+/// </summary>
+public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresentativeRole Role, string Name, DemoTempSex Sex,
+    int BirthYear, int AppointedWeek)
+{
+    public static string RoleName(DemoRepresentativeRole role) => role switch
+    {
+        DemoRepresentativeRole.Leader => "村長",
+        DemoRepresentativeRole.Gatherer => "採集代表",
+        DemoRepresentativeRole.Fisher => "漁撈代表",
+        _ => "代表"
+    };
+}
+
+/// <summary>第 07-1 章 b 節：代表人物卸任（老死、聚落無人）。</summary>
+public sealed record DemoRepresentativeExit(long Id, int SettlementId, string Reason);
+
+/// <summary>第 07-1 章 a 節：群體人口快照（存檔與讀檔比對用）；b 節加在任的代表人物。</summary>
+public sealed record DemoCohortSnapshot(int LastWeek, ImmutableArray<DemoCohortGroup> Groups, ImmutableArray<DemoPregnancyGroup> Pregnancies)
+{
+    public ImmutableArray<DemoRepresentative> Representatives { get; init; } = ImmutableArray<DemoRepresentative>.Empty;
+}
 
 /// <summary>第 07-1 章 a 節：某地的人口結構統計。</summary>
 public sealed record DemoCohortStats(long Total, long Children, long Adults, long Elders, long FertileWomen, long FertileMen,
@@ -43,14 +78,38 @@ public sealed class DemoCohortDemography
 
     public int LastWeek { get; }
 
+    /// <summary>第 07-1 章 b 節：在任的代表人物（依 ID）。</summary>
+    public ImmutableList<DemoRepresentative> Representatives { get; }
+
     private DemoCohortDemography(int lastWeek,
         ImmutableSortedDictionary<(int, int, int, DemoTempSex), long> groups,
-        ImmutableSortedDictionary<(int, int, int), long> pregnancies)
+        ImmutableSortedDictionary<(int, int, int), long> pregnancies,
+        ImmutableList<DemoRepresentative>? representatives = null)
     {
         LastWeek = lastWeek;
         _groups = groups;
         _pregnancies = pregnancies;
+        Representatives = representatives ?? ImmutableList<DemoRepresentative>.Empty;
     }
+
+    /// <summary>換上新的代表人物名單（依 ID 排序）；每位都必須在所屬聚落有對應的年齡群人數。</summary>
+    public DemoCohortDemography WithRepresentatives(IEnumerable<DemoRepresentative> representatives)
+    {
+        var list = representatives.OrderBy(r => r.Id).ToImmutableList();
+        foreach (var g in list.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex)))
+        {
+            if (_groups.GetValueOrDefault(g.Key) < g.Count())
+                throw new InvalidOperationException("A representative is not counted in a settled cohort.");
+        }
+        if (list.Select(r => r.Id).Distinct().Count() != list.Count
+            || list.GroupBy(r => (r.SettlementId, r.Role)).Any(g => g.Count() > 1))
+            throw new InvalidOperationException("Duplicate representative identity or role.");
+        return new DemoCohortDemography(LastWeek, _groups, _pregnancies, list);
+    }
+
+    /// <summary>某年齡群裡已是代表人物的人數（外移時不帶走他們）。</summary>
+    public long RepresentativesIn(int settlementId, int birthYear, DemoTempSex sex)
+        => Representatives.Count(r => r.SettlementId == settlementId && r.BirthYear == birthYear && r.Sex == sex);
 
     public static int YearOfDay(int day) => (int)Math.Floor(day / (double)DaysPerYear);
 
@@ -65,7 +124,10 @@ public sealed class DemoCohortDemography
     public IEnumerable<DemoPregnancyGroup> Pregnancies
         => _pregnancies.Select(kv => new DemoPregnancyGroup(kv.Key.Settlement, kv.Key.Batch, kv.Key.DueWeek, kv.Value));
 
-    public DemoCohortSnapshot Snapshot() => new(LastWeek, Groups.ToImmutableArray(), Pregnancies.ToImmutableArray());
+    public DemoCohortSnapshot Snapshot() => new(LastWeek, Groups.ToImmutableArray(), Pregnancies.ToImmutableArray())
+    {
+        Representatives = Representatives.ToImmutableArray()
+    };
 
     /// <summary>從快照還原；拒絕非正數、重複、懷孕不在育齡女性所在地或已到期等不合法內容。</summary>
     public static DemoCohortDemography Restore(DemoCohortSnapshot snapshot)
@@ -87,7 +149,8 @@ public sealed class DemoCohortDemography
                 || !pregnancies.TryAdd((p.SettlementId, p.BatchId, p.DueWeek), p.Count))
                 throw new InvalidOperationException("Invalid pregnancy group.");
         }
-        return new DemoCohortDemography(snapshot.LastWeek, groups.ToImmutable(), pregnancies.ToImmutable());
+        var restored = new DemoCohortDemography(snapshot.LastWeek, groups.ToImmutable(), pregnancies.ToImmutable());
+        return snapshot.Representatives.IsDefaultOrEmpty ? restored : restored.WithRepresentatives(snapshot.Representatives);
     }
 
     /// <summary>
@@ -226,7 +289,7 @@ public sealed class DemoCohortDemography
             left -= move;
         }
         if (left != 0) throw new InvalidOperationException("Departing more pregnancies than the settlement has.");
-        return new DemoCohortDemography(LastWeek, groups.ToImmutable(), preg.ToImmutable());
+        return new DemoCohortDemography(LastWeek, groups.ToImmutable(), preg.ToImmutable(), Representatives);
     }
 
     /// <summary>隊伍全體（含懷孕）抵達並定居 <paramref name="settlementId"/>。</summary>
@@ -248,7 +311,7 @@ public sealed class DemoCohortDemography
             var to = (settlementId, 0, key.DueWeek);
             preg[to] = preg.GetValueOrDefault(to) + n;
         }
-        return new DemoCohortDemography(LastWeek, groups.ToImmutable(), preg.ToImmutable());
+        return new DemoCohortDemography(LastWeek, groups.ToImmutable(), preg.ToImmutable(), Representatives);
     }
 
     private static void Set<TKey>(ImmutableSortedDictionary<TKey, long>.Builder b, TKey key, long value) where TKey : notnull
@@ -262,7 +325,8 @@ public sealed class DemoCohortDemography
     /// → ③ 流產 → ④ 受孕（只在定居聚落；可受孕伴侶＝伴侶數－已懷孕，數量不超過 <paramref name="conceptionRoom"/>）。
     /// 每一項都以地點與年齡群為鍵向 POP 流的局部亂數抽一次（與處理順序無關、可重現）。
     /// </summary>
-    public DemoCohortOutcome AdvanceWeek(int week, Func<int, long> conceptionRoom, DemoTempDemographyRules rules, DemoPopulationDraws draws)
+    public DemoCohortOutcome AdvanceWeek(int week, Func<int, long> conceptionRoom, DemoTempDemographyRules rules, DemoPopulationDraws draws,
+        IReadOnlyDictionary<(int Settlement, int Batch, int BirthYear, DemoTempSex Sex), long>? minimumDeaths = null)
     {
         ArgumentNullException.ThrowIfNull(conceptionRoom);
         ArgumentNullException.ThrowIfNull(rules);
@@ -282,6 +346,8 @@ public sealed class DemoCohortDemography
             var chance = rules.WeeklyNaturalDeathChance(age);
             if (chance <= 0) continue;
             var dead = DemoBinomial.Draw(n, chance, draws.Raw(CohortKey(key.Settlement, key.Batch, key.BirthYear, key.Sex), week, DemoPopulationAction.NaturalDeath));
+            // 第 07-1 章 b 節：代表人物本人老死時，所屬年齡群至少死這麼多人（他就是其中之一）。
+            dead = Math.Min(n, Math.Max(dead, minimumDeaths?.GetValueOrDefault(key) ?? 0));
             if (dead == 0) continue;
             Set(groups, key, n - dead);
             events.Add(new DemoCohortEvent(DemoTempDemographicKind.NaturalDeath, key.Settlement, key.Batch, dead, age));
@@ -312,7 +378,7 @@ public sealed class DemoCohortDemography
         }
 
         // ④ 受孕：只在定居聚落（途中不受孕【TEMP】），依本週死亡、分娩之後的人口結構。
-        var after = new DemoCohortDemography(week, groups.ToImmutable(), preg.ToImmutable());
+        var after = new DemoCohortDemography(week, groups.ToImmutable(), preg.ToImmutable(), Representatives);
         foreach (var settlement in groups.Keys.Where(k => k.Batch == 0).Select(k => k.Settlement).Distinct().ToList())
         {
             var stats = after.StatsOf(settlement, 0, day, rules);
@@ -328,7 +394,7 @@ public sealed class DemoCohortDemography
             events.Add(new DemoCohortEvent(DemoTempDemographicKind.Conception, settlement, 0, conceived, 0));
         }
 
-        var result = new DemoCohortDemography(week, groups.ToImmutable(), preg.ToImmutable());
+        var result = new DemoCohortDemography(week, groups.ToImmutable(), preg.ToImmutable(), Representatives);
         var births = events.Where(e => e.Kind == DemoTempDemographicKind.Birth).Sum(e => e.Count);
         var deaths = events.Where(e => e.Kind == DemoTempDemographicKind.NaturalDeath).Sum(e => e.Count);
         if (result.Total != Total + births - deaths)

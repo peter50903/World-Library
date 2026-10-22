@@ -39,7 +39,8 @@ public static class DemoCohortMigration
         int Age(DemoCohortGroup g) => DemoCohortDemography.AgeAt(g.BirthYear, day);
 
         var take = new Dictionary<(int, DemoTempSex), long>();
-        var room = groups.ToDictionary(g => (g.BirthYear, g.Sex), g => g.Count);
+        // 第 07-1 章 b 節：代表人物留在聚落，不列入可出發名額。
+        var room = groups.ToDictionary(g => (g.BirthYear, g.Sex), g => g.Count - population.RepresentativesIn(settlementId, g.BirthYear, g.Sex));
         void Take((int, DemoTempSex) key, long n)
         {
             take[key] = take.GetValueOrDefault(key) + n;
@@ -65,7 +66,7 @@ public static class DemoCohortMigration
         void Reserve(Func<DemoCohortGroup, bool> match)
         {
             var g = groups.Where(match).OrderBy(g => g.BirthYear).FirstOrDefault();
-            if (g is not null) room[(g.BirthYear, g.Sex)] -= 1;
+            if (g is not null && room[(g.BirthYear, g.Sex)] > 0) room[(g.BirthYear, g.Sex)] -= 1;
         }
 
         if (mode == DemoEmigrationMode.Mate)

@@ -110,6 +110,7 @@ public static class DemoInvariants
 
         var live = world.Sites.EntityIds()
             .Concat(world.MigrationsInTransit().Select(b => (long)b.Id))
+            .Concat(world.HumanPopulationSnapshot?.Representatives.Select(r => r.Id) ?? Enumerable.Empty<long>()) // 第 07-1 章 b 節
             .ToList();
         var duplicate = live.GroupBy(x => x).FirstOrDefault(g => g.Count() > 1);
         if (duplicate is not null)

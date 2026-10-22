@@ -129,7 +129,7 @@ public sealed partial class DemoObserverWorld
         {
             var initial = initialDemography ?? throw new InvalidDataException("Missing opening human cohort.");
             var replayed = DemoHumanLifecycle.Replay(initial, reports, sites,
-                new DemoPopulationDraws(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
+                new DemoPopulationDraws(candidate._rng), new DemoNames(candidate._rng)); // 第 04 章 a 節：候選世界恢復的亂數
             var supplied = state.GetProperty("Demography").Deserialize<DemoCohortSnapshot>()
                 ?? throw new InvalidDataException("Missing human cohort snapshot.");
             var candidateSnapshot = replayed.Snapshot();
@@ -137,6 +137,7 @@ public sealed partial class DemoObserverWorld
                 || supplied.Groups.IsDefault || supplied.Pregnancies.IsDefault
                 || !supplied.Groups.SequenceEqual(candidateSnapshot.Groups)
                 || !supplied.Pregnancies.SequenceEqual(candidateSnapshot.Pregnancies)
+                || !supplied.Representatives.SequenceEqual(candidateSnapshot.Representatives)
                 || sites.Settlements.Any(place => replayed.ResidentsOf(place.Id) != population[place.Id])
                 // 第 07 章 b 節：途中隊伍的人數＝攜帶的人數；沒有不屬於任何現存隊伍的旅人。
                 || batches.Any(b => replayed.MembersOf(b.Id) != b.People)
@@ -158,7 +159,8 @@ public sealed partial class DemoObserverWorld
         }
 
         // C04（40C INV_ENTITY_ID）：現存全部實體 ID 互不重複，且都小於分配器下一號。
-        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id)).ToList(); // 第 07-1 章：群體人口不配實體 ID
+        var liveIds = sites.EntityIds().Concat(batches.Select(b => (long)b.Id))
+            .Concat(candidate._demography?.Representatives.Select(r => r.Id) ?? Enumerable.Empty<long>()).ToList(); // 第 07-1 章：只有代表人物配實體 ID
         if (liveIds.Count != liveIds.Distinct().Count() || liveIds.Any(id => id < 1 || id >= entityNext))
             Reject("實體 ID 重複或不小於分配器下一號");
 
@@ -311,7 +313,8 @@ public sealed partial class DemoObserverWorld
             Reject($"第 {report.Week} 週實體 ID 配號區間與上週不銜接");
         var founded = sites.Settlements.Where(s => s.FoundedWeek == report.Week).ToList();
         var newIds = founded.SelectMany(s => sites.ResourcePointsOf(s.Id).Select(p => (long)p.Id).Prepend(s.Id))
-            .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId)).ToList();
+            .Concat(report.Migrations.Where(m => m.Departed).Select(m => (long)m.BatchId))
+            .Concat(report.Appointments.Select(a => a.Id)).ToList(); // 第 07-1 章 b 節：本週新任代表人物
         // 第 07-1 章：群體人口的新生兒不配實體 ID。
         if (newIds.Any(id => id < opening || id >= closing) || newIds.Count != newIds.Distinct().Count()
             || newIds.Count != closing - opening)
