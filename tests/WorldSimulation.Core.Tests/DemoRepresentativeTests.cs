@@ -94,6 +94,9 @@ public sealed class DemoRepresentativeTests
         var loaded = DemoObserverWorld.ImportTempSave(young.ExportTempSave());
         // ImmutableArray 的 Equals 比的是參考，改比內容。
         Assert.Equal(young.HumanPopulationSnapshot!.Representatives.ToList(), loaded.HumanPopulationSnapshot!.Representatives.ToList());
-        Assert.Equal(young.WeekReports().SelectMany(w => w.Appointments).ToList(), loaded.WeekReports().SelectMany(w => w.Appointments).ToList());
+        // 第 04-1 章：讀檔後只保留近期週報（就任紀錄另存在聚落小史）。
+        Assert.Equal(young.WeekReports().Where(w => w.Week >= loaded.FirstRetainedWeek).SelectMany(w => w.Appointments).ToList(),
+            loaded.WeekReports().SelectMany(w => w.Appointments).ToList());
+        Assert.All(young.Sites.Settlements, s => Assert.Equal(young.ChronicleOf(s.Id), loaded.ChronicleOf(s.Id)));
     }
 }

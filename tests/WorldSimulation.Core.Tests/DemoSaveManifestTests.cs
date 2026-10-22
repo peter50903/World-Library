@@ -203,11 +203,15 @@ public sealed class DemoSaveManifestTests
         foreach (var (config, seed) in new[] { (DemoWeeklyTempConfig.CrowdedForagingSample, 1UL), (DemoWeeklyTempConfig.LivingForagingSample, 42UL),
                      (DemoWeeklyTempConfig.CrowdedForagingSample, 2UL), (DemoWeeklyTempConfig.FamineSample, 1UL) })
         {
-            var probe = Run(config, seed, 3 * 365);
-            // 第 04-1 章：存檔只保留第 WeekBase＋1 週起的週報，只能在保留的週裡偽造。
-            var saved = JsonNode.Parse(probe.ExportTempSave())!["State"]!["WeekBase"]!.GetValue<int>();
-            var hit = probe.WeekReports().FirstOrDefault(w => w.Week > saved && w.Settlements.Any(l => l.StarvationDeaths > 0));
+            // 第 04-1 章：存檔只保留近期週報——停在第一次餓死的下一週存檔（一定在保留範圍內）。
+            var probe = new DemoObserverWorld(DemoScenario.Sample(seed), config);
+            DemoWeekReport? hit = null;
+            for (var day = 0; day < 3 * 365 && hit is null; day++)
+                if (probe.AdvanceOneDay().SettledWeek is { } settled && settled.Settlements.Any(l => l.StarvationDeaths > 0))
+                    hit = settled;
             if (hit is null) continue;
+            for (var day = 0; day < 7; day++)
+                probe.AdvanceOneDay();
             world = probe;
             week = hit.Week;
             break;

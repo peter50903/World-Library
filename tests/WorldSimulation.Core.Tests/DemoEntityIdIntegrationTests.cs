@@ -163,7 +163,15 @@ public sealed class DemoEntityIdIntegrationTests
     public void TamperedEntityIds_AreRejected_AndCallerWorldIsUnchanged(string tamper)
     {
         var (seed, _) = FrontierSaveBeforeLaterAllocation();
-        var world = Run(seed, DemoWeeklyTempConfig.FrontierSample, 10 * 365);
+        // 第 04-1 章：存檔只保留近期週報；停在「保留的週報裡有兩支以上隊伍出發」的那一天（最多十年）。
+        var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.FrontierSample);
+        for (var day = 1; day <= 10 * 365; day++)
+        {
+            world.AdvanceOneDay();
+            if (day % 7 == 0 && world.WeekReports().Where(w => w.Week >= world.SaveWindowStart())
+                    .SelectMany(w => w.Migrations).Count(m => m.Departed) >= 2)
+                break;
+        }
         var doc = JsonNode.Parse(world.ExportTempSave())!;
         var state = doc["State"]!;
         var weeks = state["WeekReports"]!.AsArray();
