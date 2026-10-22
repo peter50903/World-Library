@@ -14,7 +14,7 @@ public static class ArtAssets
     public const string TileForest = "res://assets/tiles/forest.png";
     public const string TileWater = "res://assets/tiles/water.png";
     public const string TileRiver = "res://assets/tiles/river.png";
-    // 第 06-1 章：河流淺灘（渡口，TILE_RIVER_SHALLOW 待製作；缺少時用河流圖塊調淡＋踏石）。water.png 改作海洋（TILE_WATER 需重做成深海）。
+    // 第 06-1 章：河流淺灘（渡口）；缺少時用河流圖塊調淡＋踏石。water.png 是海洋（深海圖塊）。
     public const string TileRiverShallow = "res://assets/tiles/river_shallow.png";
     public const string TileFarmland = "res://assets/tiles/farmland.png"; // 第 08 章 a 節
     public const string TileFarmlandClearing = "res://assets/tiles/farmland_clearing.png";
@@ -42,8 +42,8 @@ public static class ArtAssets
     public const string UiMapTerrain = "res://assets/ui/ui_icon_mapmode_terrain.png";
     public const string UiMapFood = "res://assets/ui/ui_icon_mapmode_food.png";
     public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
-    public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（UI_ICON_DEV 待製作；缺少時按鈕顯示「開發」）
-    public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（UI_ICON_CHART 待製作；缺少時按鈕顯示「圖表」）
+    public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（缺少時按鈕顯示「開發」）
+    public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（缺少時按鈕顯示「圖表」）
 
     // 音訊
     public const string SfxClick = "res://assets/audio/sfx_click.ogg";
@@ -53,10 +53,10 @@ public static class ArtAssets
     /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
     public static readonly string[] Used =
     {
-        TileGrassland, TileForest, TileWater, TileRiver, TileFarmland, TileFarmlandClearing,
+        TileGrassland, TileForest, TileWater, TileRiver, TileRiverShallow, TileFarmland, TileFarmlandClearing,
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
-        UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame,
+        UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
