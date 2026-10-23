@@ -165,9 +165,10 @@ public static class DemoCellQuery
             var day = world.Snapshot().DaysElapsed;
             foreach (var r in world.RepresentativesOf(settlement.Id))
                 lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
-            // 第 08-6 章：知識樹（已習得的技術；未習得的列研究進度）。
+            // 第 08-6 章：知識樹（已習得的技術；未習得的列研究進度）。第 08-9 章 A1：只列有進度的技術（依知識樹順序）。
             if (world.HumanPopulationSnapshot is not null)
-                foreach (var technology in Enum.GetValues<DemoTechnology>())
+                foreach (var technology in world.Knowledge.Records.Where(r => r.SettlementId == settlement.Id)
+                             .Select(r => r.Technology).OrderBy(t => DemoTechTree.Of(t).Index))
                 {
                     var record = world.Knowledge.Of(settlement.Id, technology);
                     lines.Add(record is { Learned: true }

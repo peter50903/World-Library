@@ -75,7 +75,7 @@ public sealed record DemoSettlementChronicle(
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
             {
-                DemoSettlementEventKind.KnowledgeLearned => $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}",
+                DemoSettlementEventKind.KnowledgeLearned => $"學會{(DemoTechTree.ByIndex(e.Count) is { } t ? DemoKnowledge.Name(t) : "新技術")}",
                 DemoSettlementEventKind.FarmlandCleared => "開墾一塊農田",
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };

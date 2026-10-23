@@ -210,7 +210,7 @@ public enum DemoSettlementEventKind
     /// 根因事件，證據是週帳連續的期末人口 0。Count＝空置週數。
     /// </summary>
     SettlementRuined = 9,
-    /// <summary>第 08-6 章：聚落習得一項技術（根因：長年經驗累積或遷入者帶來）。Count＝技術（<see cref="DemoTechnology"/>）。</summary>
+    /// <summary>第 08-6 章：聚落習得一項技術（根因：長年經驗累積或遷入者帶來）。Count＝知識樹技術編號（<see cref="DemoTechNode.Index"/>，第 08-9 章 A1）。</summary>
     KnowledgeLearned = 10,
     /// <summary>第 08-6 章：世界進入新時代；直接原因＝同週同聚落的習得技術事件。Count＝時代（<see cref="DemoEra"/>）。</summary>
     EraBegan = 11,

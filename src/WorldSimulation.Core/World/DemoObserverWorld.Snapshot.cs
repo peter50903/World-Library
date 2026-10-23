@@ -142,10 +142,14 @@ public sealed partial class DemoObserverWorld
         var knowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>()
             ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
         if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
-            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
+            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || r.Technology.Id is null || !DemoTechTree.Contains(r.Technology)
                 || r.Progress < 0 || r.Progress > DemoKnowledge.ThresholdOf(r.Technology) || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
                 || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
+            // 第 08-9 章 A1：有進度的技術，前置都已在更早的週次習得。
+            || knowledge.Records.Any(r => DemoTechTree.Of(r.Technology).Parents.Any(p =>
+                knowledge.Records.FirstOrDefault(x => x.SettlementId == r.SettlementId && x.Technology == p) is not { Learned: true } parent
+                || (r.Learned && parent.LearnedWeek >= r.LearnedWeek)))
             || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");

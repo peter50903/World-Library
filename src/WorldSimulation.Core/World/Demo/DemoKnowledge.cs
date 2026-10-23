@@ -12,19 +12,6 @@ public enum DemoEra
     Pioneer = 1
 }
 
-/// <summary>第 08-6 章：知識樹上的技術（農耕、木工；鍛造、石工隨後各節加入）。</summary>
-public enum DemoTechnology
-{
-    /// <summary>農耕：草原可開墾成農田，提高食物上限。</summary>
-    Farming = 0,
-
-    /// <summary>第 08-6 章 d 節：木工：有木匠；聚落升為村莊的條件。</summary>
-    Woodworking = 1,
-
-    /// <summary>第 08-6 章 e 節：鍛造：有鐵匠；工具提高採集效率。前置：木工。</summary>
-    Smithing = 2
-}
-
 /// <summary>某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。</summary>
 public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Technology, long Progress, int LearnedWeek)
 {
@@ -59,31 +46,19 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
 /// 第 08-6 章 a 節【TEMP 規則】知識的累積與傳播（使用者 2026-10-23：經歷一段時間自動學會，該產業的人越多、學者越多越快；
 /// 知識透過婚嫁與遷徙帶到別的聚落）。純函式、不抽亂數。
 /// <list type="bullet">
-/// <item>每週研究進度＋＝該產業從業者人數×1（農耕：聚落的成年人，都在採集植物；木工：可及森林的聚落的成年人）；學者尚未出現。</item>
-/// <item>進度達門檻（<see cref="ThresholdOf"/>）就習得；第一個習得任何技術的聚落讓世界進入開拓時代。</item>
+/// <item>第 08-9 章 A1：技術與前置讀正式設定 10B～10N（<see cref="DemoTechTree"/>）；前置全部已習得才累積。</item>
+/// <item>每週研究進度＋＝該產業從業者人數×1（<see cref="Practitioners"/>；目前只有作物栽培：成年人、基礎木工：可及森林的成年人，其餘領域待 A2）；學者尚未出現。</item>
+/// <item>進度達門檻（<see cref="ThresholdOf"/>＝研究時間×325）就習得；第一個習得任何技術的聚落讓世界進入開拓時代。</item>
 /// <item>從已習得的聚落抵達的人，每人帶來門檻的 <see cref="TempCarryPercent"/>% 進度（比自行研究快）。</item>
 /// </list>
 /// </summary>
 public static class DemoKnowledge
 {
-    /// <summary>【TEMP】農耕習得門檻（研究點）：20 個成年人約 25 年。</summary>
-    public const long TempThreshold = 26_000;
-
-    /// <summary>【TEMP】第 08-6 章 d 節：木工習得門檻：農耕的 1.5 倍。</summary>
-    public const long TempWoodworkingThreshold = 39_000;
-
-    /// <summary>【TEMP】第 08-6 章 e 節：鍛造習得門檻：農耕的 2 倍（只有已習得木工的聚落累積）。</summary>
-    public const long TempSmithingThreshold = 52_000;
-
-    /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比。</summary>
+    /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比（第 08-9 章 A4 改為工具階梯）。</summary>
     public const long TempToolYieldPercent = 25;
 
-    public static long ThresholdOf(DemoTechnology technology) => technology switch
-    {
-        DemoTechnology.Woodworking => TempWoodworkingThreshold,
-        DemoTechnology.Smithing => TempSmithingThreshold,
-        _ => TempThreshold
-    };
+    /// <summary>第 08-9 章 A1：門檻＝正式設定的研究時間 × 325（<see cref="DemoTechTree.ThresholdOf"/>）。</summary>
+    public static long ThresholdOf(DemoTechnology technology) => DemoTechTree.ThresholdOf(technology);
 
     /// <summary>第 08-6 章 e 節：<paramref name="week"/> 結算時的工具加成（該週以前已習得鍛造）。</summary>
     public static long ToolYieldPercent(DemoKnowledgeState state, int settlementId, int week)
@@ -92,13 +67,22 @@ public static class DemoKnowledge
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
     public const long TempCarryPercent = 25;
 
-    public static string Name(DemoTechnology technology) => technology switch
+    /// <summary>技術中文名稱（正式設定的「中文名稱」）。</summary>
+    public static string Name(DemoTechnology technology)
+        => DemoTechTree.Contains(technology) ? DemoTechTree.Of(technology).Name : technology.Id;
+
+    /// <summary>
+    /// 第 08-9 章 A1：每週的從業者人數。08-7b 第 3 節的其他領域在 A2 接上；這裡沒列的技術目前不會自行累積
+    /// （仍可由遷入者帶來）。
+    /// </summary>
+    public static long Practitioners(DemoTechnology technology, DemoSettlement settlement, DemoCohortDemography population, DemoHexWorld? map)
     {
-        DemoTechnology.Farming => "農耕",
-        DemoTechnology.Woodworking => "木工",
-        DemoTechnology.Smithing => "鍛造",
-        _ => technology.ToString()
-    };
+        if (technology == DemoTechnology.Farming)
+            return population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules);
+        if (technology == DemoTechnology.Woodworking)
+            return map is not null && NearForest(map, settlement) ? population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules) : 0;
+        return 0;
+    }
 
     public static string EraName(DemoEra era) => era switch
     {
@@ -123,23 +107,26 @@ public static class DemoKnowledge
         var events = new List<DemoSettlementEvent>();
         var era = state.Era;
         var eraWeek = state.EraWeek;
-        var rules = DemoHumanLifecycle.Rules;
+        var arrivals = report.Migrations.Where(m => m.Arrived && m.PopulationClosing > 0).ToList();
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
         {
-            foreach (var technology in Enum.GetValues<DemoTechnology>())
+            var incoming = arrivals.Where(m => m.ToSettlementId == settlement.Id).ToList();
+            foreach (var node in DemoTechTree.All)
             {
+                var technology = node.Technology;
                 var key = (settlement.Id, technology);
                 var current = records.GetValueOrDefault(key) ?? new DemoKnowledgeRecord(settlement.Id, technology, 0, 0);
                 if (current.Learned)
                     continue;
-                // 第 08-6 章 e 節：鍛造的前置是木工（燃料與工具柄）。
-                var practitioners = (technology == DemoTechnology.Woodworking && (map is null || !NearForest(map, settlement)))
-                    || (technology == DemoTechnology.Smithing && !state.Knows(settlement.Id, DemoTechnology.Woodworking))
-                    ? 0 : population.AdultsIn(settlement.Id, rules);
+                // 第 08-9 章 A1：前置（ParentTechIDs）全部已習得才累積（08-7a 第 2 節第一道閘門）。
+                if (node.Parents.Any(p => !state.Knows(settlement.Id, p)))
+                    continue;
+                var practitioners = Practitioners(technology, settlement, population, map);
+                var carried = incoming.Count == 0 ? 0
+                    : incoming.Where(m => state.Knows(m.FromSettlementId, technology)).Sum(m => m.PopulationClosing);
+                if (practitioners == 0 && carried == 0)
+                    continue;
                 var threshold = ThresholdOf(technology);
-                var carried = report.Migrations
-                    .Where(m => m.Arrived && m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
-                    .Sum(m => m.PopulationClosing);
                 var gain = checked(practitioners + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
@@ -150,14 +137,11 @@ public static class DemoKnowledge
                     continue;
                 var cause = carried > 0
                     ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
-                    : technology switch
-                    {
-                        DemoTechnology.Woodworking => $"{practitioners} 名成年人長年在森林取木的經驗累積",
-                        DemoTechnology.Smithing => $"{practitioners} 名成年人長年用火與製作工具的經驗累積",
-                        _ => $"{practitioners} 名成年人長年採集植物的經驗累積"
-                    };
+                    : technology == DemoTechnology.Woodworking
+                        ? $"{practitioners} 名成年人長年在森林取木的經驗累積"
+                        : $"{practitioners} 名成年人長年採集植物的經驗累積";
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
-                    DemoSettlementEventKind.KnowledgeLearned, (long)technology, $"學會{Name(technology)}：{cause}【TEMP】",
+                    DemoSettlementEventKind.KnowledgeLearned, node.Index, $"學會{Name(technology)}：{cause}【TEMP】",
                     EventId: nextEventId++);
                 events.Add(learnedEvent);
                 if (era == DemoEra.Hope)
