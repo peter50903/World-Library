@@ -30,7 +30,8 @@ public sealed record DemoWorldOverview(
     long OldAgeDeathsThisYear,
     long StarvationDeathsThisYear,
     long EmigrantsThisYear,
-    int FoundedThisYear)
+    int FoundedThisYear,
+    int Cultures = 0)
 {
     public static DemoWorldOverview Of(DemoObserverWorld world, int daysPerYear)
     {
@@ -68,7 +69,8 @@ public sealed record DemoWorldOverview(
             year?.NaturalDeaths ?? 0,
             year?.StarvationDeaths ?? 0,
             year?.Emigrants ?? 0,
-            year?.SettlementsFounded ?? 0);
+            year?.SettlementsFounded ?? 0,
+            world.Culture.Cultures.Count); // 第 08-9 章 B1
     }
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
@@ -84,7 +86,9 @@ public sealed record DemoWorldOverview(
             ? I($"世界人口 {Population}／理論上限 {Capacity}（{CapacityPercent}%）")
             : I($"世界人口 {Population}"));
         lines.Add(I($"定居 {Settled}｜遷徙途中 {InTransit}（{Batches} 支隊伍）"));
-        lines.Add(I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}"));
+        lines.Add(Cultures > 0
+            ? I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}｜文化 {Cultures} 個")
+            : I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}"));
         if (Children + Adults + Elders > 0)
         {
             lines.Add(I($"兒童 {Children}｜成年 {Adults}｜老人 {Elders}"));

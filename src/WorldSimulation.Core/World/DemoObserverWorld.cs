@@ -77,6 +77,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle = ImmutableSortedDictionary<int, DemoSettlementChronicle>.Empty;
     private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
+    private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-9 章 B1：文化
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -143,6 +144,8 @@ public sealed partial class DemoObserverWorld
             }
             _sites = _sites.WithSettlementNames(chosen);
         }
+        if (weekly.HumanLifecycleEnabled)
+            _culture = DemoCultures.Opening(Map, _sites, _rng); // 第 08-9 章 B1：開局文化（世界種子局部亂數，不推進計數器）
         if (weekly.HumanLifecycleEnabled)
             _demography = DemoCohortDemography.Open(
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules,
@@ -222,6 +225,9 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
+
+    /// <summary>第 08-9 章 B1：文化（文化清單、聚落背景人口比例、代表人物的文化）。</summary>
+    public DemoCultureState Culture => _culture;
 
     /// <summary>第 04-1 章：聚落自己記得的小史（沒有紀錄＝空）。</summary>
     public DemoSettlementChronicle ChronicleOf(int settlementId)
@@ -435,7 +441,9 @@ public sealed partial class DemoObserverWorld
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
-                commit.StageKnowledge(knowledge, land);
+                // 第 08-9 章 B1：背景人口的文化比例與代表人物的文化。
+                var culture = DemoCultures.Advance(_culture, withKnowledge.Report, withKnowledge.Migrations.Select(b => b.Id).ToHashSet(), _rng);
+                commit.StageKnowledge(knowledge, land, culture);
             }
             else
             {
@@ -518,6 +526,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _chronicle) sb.Append(inv, $"chronicle{kv.Key}={kv.Value.Fingerprint()};");
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
+        sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-9 章 B1
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

@@ -73,6 +73,7 @@ public sealed partial class DemoObserverWorld
         private ImmutableSortedDictionary<int, long> _debtSources; // 第 04-1 章：飢餓債來源
         private DemoKnowledgeState _knowledge; // 第 08-6 章：知識樹與時代
         private DemoLandDevelopmentMap _land; // 第 08-6 章 c 節：開墾
+        private DemoCultureState _culture; // 第 08-9 章 B1：文化
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
         internal DemoWorldCommit(DemoObserverWorld world, bool settleWeekly)
@@ -96,6 +97,7 @@ public sealed partial class DemoObserverWorld
             _debtSources = world._debtSources;
             _knowledge = world._knowledge;
             _land = world._land;
+            _culture = world._culture;
         }
 
         /// <summary>本日到期時間（<see cref="StageSchedule"/> 後才有）。</summary>
@@ -220,15 +222,17 @@ public sealed partial class DemoObserverWorld
         }
 
         /// <summary>第 08-6 章：生死之後的知識樹與時代（只在結算週、歷史步驟之前）。</summary>
-        public void StageKnowledge(DemoKnowledgeState knowledge, DemoLandDevelopmentMap land)
+        public void StageKnowledge(DemoKnowledgeState knowledge, DemoLandDevelopmentMap land, DemoCultureState culture)
         {
             ArgumentNullException.ThrowIfNull(knowledge);
             ArgumentNullException.ThrowIfNull(land);
+            ArgumentNullException.ThrowIfNull(culture);
             RequireWeekly(nameof(StageKnowledge));
             if (_step != Step.Population)
                 throw new InvalidOperationException($"提交順序錯誤：{nameof(StageKnowledge)} 必須在生死之後、歷史之前呼叫（目前 {_step}）。");
             _knowledge = knowledge;
             _land = land;
+            _culture = culture;
         }
 
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
@@ -264,6 +268,7 @@ public sealed partial class DemoObserverWorld
             world._debtSources = _debtSources;
             world._knowledge = _knowledge;
             world._land = _land;
+            world._culture = _culture;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }
 

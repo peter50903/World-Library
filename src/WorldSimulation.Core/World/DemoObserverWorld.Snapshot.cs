@@ -207,6 +207,32 @@ public sealed partial class DemoObserverWorld
             candidate._demography = people;
         }
 
+        // 第 08-9 章 B1：文化（結構檢查：編號連續、特性都在 P02、比例合計 1000、指向存在的聚落／途中隊伍／在任代表人物）。
+        var culture = state.GetProperty("Culture").Deserialize<DemoCultureState>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少文化。");
+        if (culture.Cultures is null || culture.Settlements is null || culture.Batches is null || culture.Representatives is null)
+            Reject("文化狀態缺漏");
+        var cultureIds = culture.Cultures.Select(c => c.Id).ToHashSet();
+        bool SharesOk(ImmutableList<DemoCultureShare> list) => list is not null && list.Count > 0 && list.Sum(x => x.Permille) == 1000
+            && list.All(x => x.Permille > 0 && cultureIds.Contains(x.CultureId)) && list.Select(x => x.CultureId).Distinct().Count() == list.Count;
+        var inOffice = candidate._demography?.Representatives.Select(r => r.Id).ToHashSet() ?? new HashSet<long>();
+        if (culture.Cultures.Where((c, i) => c is null || c.Id != i + 1 || string.IsNullOrWhiteSpace(c.Name) || c.Traits is null
+                || c.Traits.Any(t => !DemoCultures.IsKnownTrait(t)) || sites.Settlements.All(x => x.Id != c.OriginSettlementId)
+                || c.FoundedWeek < 0 || c.FoundedWeek > weekCount || (c.ParentId != 0 && (c.ParentId < 1 || c.ParentId >= c.Id))).Any()
+            || culture.Settlements.Any(kv => sites.Settlements.All(x => x.Id != kv.Key) || !SharesOk(kv.Value))
+            || culture.Batches.Any(kv => batches.All(b => b.Id != kv.Key) || !SharesOk(kv.Value))
+            || culture.Representatives.Any(kv => !inOffice.Contains(kv.Key) || !cultureIds.Contains(kv.Value))
+            || (weekly.HumanLifecycleEnabled && culture.Cultures.IsEmpty)
+            || (!weekly.HumanLifecycleEnabled && !culture.Cultures.IsEmpty))
+            Reject("文化狀態不合法");
+        candidate._culture = culture with
+        {
+            Cultures = culture.Cultures.ToImmutableList(),
+            Settlements = culture.Settlements.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
+            Batches = culture.Batches.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
+            Representatives = culture.Representatives.ToImmutableSortedDictionary()
+        };
+
         // 第 04-2 章：正式史庫不另存——由較早事件與近期週報經提交時同一個轉換器重建，並逐筆驗證
         // （編號連續、時間不倒退、原因指向既有事件）。
         var cells = state.GetProperty("EarlierEventCells").Deserialize<Dictionary<long, int[]>>()
