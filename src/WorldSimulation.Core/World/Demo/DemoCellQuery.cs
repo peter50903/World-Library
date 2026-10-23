@@ -169,10 +169,15 @@ public static class DemoCellQuery
                 lines.Add(DemoCultures.SharesLine(world.Culture, settlement.Id));
                 if (world.Culture.MainCultureOf(settlement.Id) is { } main)
                     lines.Add(DemoCultures.TraitsLine(main));
+                // 第 08-9 章 B3：信仰比例（含無信仰）與主要信仰的信條。
+                lines.Add(DemoFaiths.SharesLine(world.Faith, settlement.Id));
+                if (world.Faith.MainFaithOf(settlement.Id) is { } belief)
+                    lines.Add(DemoFaiths.TenetsLine(belief));
             }
             foreach (var r in world.RepresentativesOf(settlement.Id))
                 lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲"
-                    + (world.Culture.CultureOfRepresentative(r.Id) is { } c ? $"，{c.Name}" : "") + "）");
+                    + (world.Culture.CultureOfRepresentative(r.Id) is { } c ? $"，{c.Name}" : "")
+                    + (world.Culture.Cultures.Count > 0 ? (world.Faith.FaithOfRepresentative(r.Id) is { } f ? $"，信{f.Name}" : "，無信仰") : "") + "）");
             // 第 08-6 章：知識樹（已習得的技術；未習得的列研究進度）。第 08-9 章 A1：只列有進度的技術（依知識樹順序）。
             if (world.HumanPopulationSnapshot is not null)
                 lines.Add($"開局知識：{string.Join("、", DemoTechTree.All.Where(n => DemoTechTree.IsInitial(n.Technology)).Select(n => n.Name))}");

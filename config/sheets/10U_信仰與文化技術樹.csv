@@ -1,0 +1,8 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_ANCESTOR_RITES,祖靈祭祀,Ancestor Rites,1,祭祀,,100,,為長者舉行葬禮,研究時間-20%,,,,faith_founding,,第 08-8 章：創立第一個信仰，或接觸勢力範圍內的既有信仰,TRUE
+TECH_ORAL_TRADITION,口述傳統,Oral Tradition,1,口傳,,100,,代代傳述聚落的故事,研究時間-20%,,,,culture_custom_slot,,文化可多抽一個習俗特性（文化開局就有）,TRUE
+TECH_SHAMANISM,巫祝,Shamanism,2,祭祀,"TECH_ANCESTOR_RITES,TECH_HERBALISM",160,RES_MED_HERB:5,以草藥與儀式照護病人,研究時間-15%,,,,shaman_role,,巫祝（專家，兼醫者）,TRUE
+TECH_FESTIVAL_CALENDAR,節慶與曆法,Festival Calendar,2,口傳,"TECH_ORAL_TRADITION,TECH_CROP_CULTIVATION",160,,依季節舉行收穫祭,研究時間-15%,,,,festival_events,,節慶事件；農事實踐加速（日後生效）,TRUE
+TECH_ORGANIZED_RELIGION,組織宗教,Organized Religion,3,祭祀,"TECH_SHAMANISM,TECH_WRITING_MATERIALS",260,,多個聚落共同祭祀,研究時間-15%,,,,"priest_role,faith_schism",,祭司；信仰可分化另立教派（第 11 章）,TRUE
+TECH_THEOLOGY,神學,Theology,4,祭祀,"TECH_ORGANIZED_RELIGION,TECH_FORMAL_SCHOOLING",380,,整理教義爭論,研究時間-15%,,,,doctrine_codified,,教義成文、宗教分裂的條件,TRUE
+TECH_SCRIPTURE_CANON,聖典編纂,Scripture Canon,5,祭祀,"TECH_THEOLOGY,TECH_BOOK_REPRODUCTION",600,,抄寫並校訂聖典,研究時間-15%,,,,faith_book_spread,,宗教知識可由書籍傳播,TRUE

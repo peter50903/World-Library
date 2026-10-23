@@ -59,10 +59,6 @@ public sealed record DemoCultureState(
     public override int GetHashCode() => HashCode.Combine(Cultures.Count, Settlements.Count, Representatives.Count);
 }
 
-/// <summary>正式設定 P02 的一列（文化特性池）。</summary>
-public sealed record DemoCulturePoolEntry(string PoolId, string TraitId, string Name, long Weight, int DrawMin, int DrawMax,
-    IReadOnlyList<string> Required, IReadOnlyList<string> Forbidden, string ExclusiveGroup);
-
 /// <summary>
 /// 第 08-9 章 B1【TEMP 規則】文化的生成與背景人口比例（08-8 第 3～4 節）。純函式；抽選用以文化／代表人物編號為鍵的
 /// 局部亂數（不推進任何亂數流的計數器）。
@@ -82,10 +78,10 @@ public static class DemoCultures
     public const string TraitSheet = "04_文化特性定義.csv";
     private const string Namespace = "TEMP-CULTURE-v1";
 
-    private static readonly Lazy<(IReadOnlyList<DemoCulturePoolEntry> Pool, IReadOnlyDictionary<string, string> Names)> Loaded = new(Load);
+    private static readonly Lazy<(IReadOnlyList<DemoPoolEntry> Pool, IReadOnlyDictionary<string, string> Names)> Loaded = new(Load);
 
     /// <summary>P02 全部啟用的列（依設定檔順序）。</summary>
-    public static IReadOnlyList<DemoCulturePoolEntry> Pool => Loaded.Value.Pool;
+    public static IReadOnlyList<DemoPoolEntry> Pool => Loaded.Value.Pool;
 
     /// <summary>文化特性中文名稱（04）。</summary>
     public static string TraitName(string traitId) => Loaded.Value.Names.TryGetValue(traitId, out var name) ? name : traitId;
@@ -141,30 +137,7 @@ public static class DemoCultures
     /// RequiredConditions 全部成立、ForbiddenConditions 都不成立的列才可抽。
     /// </summary>
     public static ImmutableList<string> DrawTraits(IReadOnlySet<string> conditions, Func<ulong, ulong> draw)
-    {
-        var result = ImmutableList.CreateBuilder<string>();
-        var taken = new HashSet<string>();
-        ulong index = 0;
-        foreach (var pool in Pool.GroupBy(e => e.PoolId))
-        {
-            var entries = pool.ToList();
-            var (min, max) = (entries.Min(e => e.DrawMin), entries.Max(e => e.DrawMax));
-            var count = min + (int)(draw(index++) % (ulong)(max - min + 1));
-            var eligible = entries.Where(e => e.Weight > 0 && e.Required.All(conditions.Contains) && !e.Forbidden.Any(conditions.Contains)
-                && (e.ExclusiveGroup.Length == 0 || !taken.Contains(e.ExclusiveGroup))).ToList();
-            for (var i = 0; i < count && eligible.Count > 0; i++)
-            {
-                var total = eligible.Sum(e => e.Weight);
-                var pick = (long)(draw(index++) % (ulong)total);
-                var chosen = eligible.First(e => (pick -= e.Weight) < 0);
-                result.Add(chosen.TraitId);
-                if (chosen.ExclusiveGroup.Length > 0)
-                    taken.Add(chosen.ExclusiveGroup);
-                eligible = eligible.Where(e => e != chosen && (e.ExclusiveGroup.Length == 0 || !taken.Contains(e.ExclusiveGroup))).ToList();
-            }
-        }
-        return result.ToImmutable();
-    }
+        => DemoTraitPools.Draw(Pool, conditions, draw);
 
     /// <summary>
     /// 每週提交時更新背景人口比例與代表人物文化：出發隊伍記出發地比例；抵達依人數加權併入；建立聚落沿用隊伍比例；
@@ -280,36 +253,17 @@ public static class DemoCultures
     public static string TraitsLine(DemoCulture culture)
         => $"{culture.Name}的特性：{string.Join("、", culture.Traits.Select(TraitName))}";
 
-    private static (IReadOnlyList<DemoCulturePoolEntry>, IReadOnlyDictionary<string, string>) Load()
+    private static (IReadOnlyList<DemoPoolEntry>, IReadOnlyDictionary<string, string>) Load()
         => Build(OfficialConfig.ReadSheetText(PoolSheet), OfficialConfig.ReadSheetText(TraitSheet));
 
-    internal static (IReadOnlyList<DemoCulturePoolEntry> Pool, IReadOnlyDictionary<string, string> Names) Build(string poolText, string traitText)
+    internal static (IReadOnlyList<DemoPoolEntry> Pool, IReadOnlyDictionary<string, string> Names) Build(string poolText, string traitText)
     {
         var traitRows = ParameterSheet.ParseCsv(traitText);
         var th = traitRows[0].Select(h => h.Trim()).ToList();
         var (tid, tname) = (th.IndexOf("CultureTraitID"), th.IndexOf("中文名稱"));
         var names = traitRows.Skip(1).Where(r => r.Count > tname && r[tid].Trim().Length > 0)
             .ToDictionary(r => r[tid].Trim(), r => r[tname].Trim());
-        var rows = ParameterSheet.ParseCsv(poolText);
-        var h = rows[0].Select(x => x.Trim()).ToList();
-        int C(string name) => h.IndexOf(name) is var i && i >= 0 ? i : throw new InvalidOperationException($"文化特性池缺少欄位「{name}」。");
-        var (pool, entry, entryName, weight, min, max, req, forb, excl, enabled) = (C("PoolID"), C("EntryID"), C("EntryName"), C("Weight"),
-            C("PoolDrawMin"), C("PoolDrawMax"), C("RequiredConditions"), C("ForbiddenConditions"), C("ExclusiveGroup"), C("Enabled"));
-        var list = new List<DemoCulturePoolEntry>();
-        foreach (var r in rows.Skip(1))
-        {
-            string Cell(int i) => i < r.Count ? r[i].Trim() : string.Empty;
-            if (Cell(entry).Length == 0 || !string.Equals(Cell(enabled), "TRUE", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (!names.ContainsKey(Cell(entry)))
-                throw new InvalidOperationException($"文化特性池的 {Cell(entry)} 不在 04_文化特性定義。");
-            static IReadOnlyList<string> Split(string text) => text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (!long.TryParse(Cell(weight), NumberStyles.None, CultureInfo.InvariantCulture, out var w)
-                || !int.TryParse(Cell(min), NumberStyles.None, CultureInfo.InvariantCulture, out var lo)
-                || !int.TryParse(Cell(max), NumberStyles.None, CultureInfo.InvariantCulture, out var hi) || hi < lo)
-                throw new InvalidOperationException($"文化特性池的 {Cell(entry)}：權重與抽取上下限須為整數且上限不小於下限。");
-            list.Add(new DemoCulturePoolEntry(Cell(pool), Cell(entry), Cell(entryName), w, lo, hi, Split(Cell(req)), Split(Cell(forb)), Cell(excl)));
-        }
+        var list = DemoTraitPools.Parse(poolText, PoolSheet, names.ContainsKey);
         return (list, names);
     }
 }

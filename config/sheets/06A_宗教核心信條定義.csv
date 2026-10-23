@@ -29,3 +29,7 @@ DOC_HOLY_CRAFT,神聖工藝,Sacred Craft,工藝,religious_craft_patronage,1.3,,,
 DOC_ORACLE,神諭傳統,Oracular Tradition,啟示,revelation_activity_weight,1.3,,,,,0.5,重視神諭與啟示神蹟；不讓角色直接讀世界真相,TRUE
 DOC_MARTYR,殉道榮耀,Martyr Tradition,價值觀,sacrifice_for_faith_weight,1.3,,,DOC_PEACE,,0.4,提高為信仰承擔重大風險的行為權重，不強制自殺或死亡,TRUE
 DOC_GUARDIAN,守護聖地,Sacred Guardianship,宗教/軍事,holy_site_defense_weight,1.3,,,,DOC_HONOR,0.6,鼓勵保護聖地、信徒與宗教資產，不自動產生戰爭,TRUE
+DOC_ARMED_PILGRIMAGE,武裝朝聖,Armed Pilgrimage,儀式,armed_pilgrimage,1.3,DOC_PILGRIMAGE,,DOC_PEACE,,1,【TEMP】第 08-8 章：朝聖隊伍可武裝、沿途可戰（第 10 章前只記錄）,TRUE
+DOC_CANNIBALISM,食人儀式,Ritual Cannibalism,儀式,famine_dead_as_food,1,,,"DOC_MERCY,DOC_RITUAL_FEAST",,1,【TEMP】饑荒中的死者可被食用；其他信仰態度大幅變差,TRUE
+DOC_SPIRIT_MEDIUM,通靈者,Spirit Mediums,儀式,shaman_research,1.25,DOC_ANCESTOR|DOC_DEATH,,,,1,【TEMP】巫祝研究＋25%；巫祝兼任預言者,TRUE
+DOC_SACRED_GROVE,聖樹崇拜,Sacred Grove,儀式,sacred_forest_untouched,1,DOC_NATURE,,,,1,【TEMP】一格森林永不開墾（伐木章節生效）,TRUE

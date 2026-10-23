@@ -331,6 +331,13 @@ public sealed class DemoCausalIndex
                 return parent is { Kind: DemoSettlementEventKind.SettlementRuined } && parent.Week == e.Week
                     && parent.SettlementId == e.SettlementId && DemoTechTree.ByIndex(e.Count) is not null
                     ? null : "知識失傳的直接原因必須是同週同聚落成為遺跡，人數欄必須是知識樹上的技術編號";
+            case DemoSettlementEventKind.FaithFounded:
+                // 第 08-9 章 B3：直接原因是同週同聚落習得祖靈祭祀。
+                return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week && parent.SettlementId == e.SettlementId
+                    && DemoTechTree.ByIndex(parent.Count) == DemoFaiths.AncestorRites && e.Count > 0
+                    ? null : "創立信仰的直接原因必須是同週同聚落習得祖靈祭祀";
+            case DemoSettlementEventKind.FaithExtinct:
+                return parent is null && e.Count > 0 ? null : "信仰滅絕是根因，人數欄必須是信仰編號";
             case DemoSettlementEventKind.FarmlandCleared:
                 // 第 08-6 章 c 節：根因（開墾進度另存於土地開發狀態）。
                 return parent is null && e.Count > 0 ? null : "開墾農田是根因，事件人數欄必須是格編號";

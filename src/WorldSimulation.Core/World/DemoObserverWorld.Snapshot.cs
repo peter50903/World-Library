@@ -242,6 +242,32 @@ public sealed partial class DemoObserverWorld
             Representatives = culture.Representatives.ToImmutableSortedDictionary()
         };
 
+        // 第 08-9 章 B3：信仰（結構檢查：編號連續、信條與教義都在池中、創立週與滅絕週合理、比例合計 1000（0＝無信仰）、
+        // 指向存在的聚落／途中隊伍／在任代表人物；未滅絕的信仰都有信徒或在任信者）。
+        var faith = state.GetProperty("Faith").Deserialize<DemoFaithState>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少信仰。");
+        if (faith.Faiths is null || faith.Settlements is null || faith.Batches is null || faith.Representatives is null)
+            Reject("信仰狀態缺漏");
+        var faithIds = faith.Faiths.Select(f => f.Id).ToHashSet();
+        bool FaithSharesOk(ImmutableList<DemoFaithShare> list) => list is not null && list.Count > 0 && list.Sum(x => x.Permille) == 1000
+            && list.All(x => x.Permille > 0 && (x.FaithId == 0 || faithIds.Contains(x.FaithId))) && list.Select(x => x.FaithId).Distinct().Count() == list.Count;
+        if (faith.Faiths.Where((f, i) => f is null || f.Id != i + 1 || string.IsNullOrWhiteSpace(f.Name) || f.Tenets is null || f.Doctrines is null
+                || f.Tenets.Count is < 2 or > 4 || f.Tenets.Any(t => !DemoFaiths.IsKnownTenet(t)) || f.Doctrines.Any(d => !DemoFaiths.IsKnownDoctrine(d))
+                || sites.Settlements.All(x => x.Id != f.OriginSettlementId) || f.FoundedWeek < 1 || f.FoundedWeek > weekCount
+                || f.ExtinctWeek < 0 || f.ExtinctWeek > weekCount || (f.ExtinctWeek > 0 && f.ExtinctWeek < f.FoundedWeek)).Any()
+            || faith.Settlements.Any(kv => sites.Settlements.All(x => x.Id != kv.Key) || !FaithSharesOk(kv.Value))
+            || faith.Batches.Any(kv => batches.All(b => b.Id != kv.Key) || !FaithSharesOk(kv.Value))
+            || faith.Representatives.Any(kv => !inOffice.Contains(kv.Key) || (kv.Value != 0 && !faithIds.Contains(kv.Value)))
+            || (!weekly.HumanLifecycleEnabled && (faith.Faiths.Count > 0 || faith.Settlements.Count > 0)))
+            Reject("信仰狀態不合法");
+        candidate._faith = faith with
+        {
+            Faiths = faith.Faiths.ToImmutableList(),
+            Settlements = faith.Settlements.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
+            Batches = faith.Batches.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
+            Representatives = faith.Representatives.ToImmutableSortedDictionary()
+        };
+
         // 第 04-2 章：正式史庫不另存——由較早事件與近期週報經提交時同一個轉換器重建，並逐筆驗證
         // （編號連續、時間不倒退、原因指向既有事件）。
         var cells = state.GetProperty("EarlierEventCells").Deserialize<Dictionary<long, int[]>>()

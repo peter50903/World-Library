@@ -102,6 +102,17 @@
 | 餓死的人 | 先老人（最年長起）、再兒童（最年幼起）、最後成年人（最年長起）；代表人物在同年齡群中最後才餓死 | 老幼最脆弱；代表人物不隨機消失，事件可追 |
 | 事件類型 | TEMP_EV_KNOWLEDGE_LEARNED、TEMP_EV_ERA_BEGAN；根因分類「知識」 | 24 表尚無對應 |
 
+#### D08-9c｜信仰（第 08-9 章 B3，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 創立 | 聚落習得祖靈祭祀（10U 新分頁）時，3 格內沒有信徒的信仰才由村長創立；有則接觸既有信仰 | 08-8 第 3 節 |
+| 抽選 | 核心信條 P04A 三池合計 2～4 條（新增武裝朝聖、食人儀式、通靈者、聖樹崇拜；條件可參照已抽到的信條）；制度教義 P04B～P04J 必抽池各一、選抽池 0～1；主要文化讓相關信條、教義權重加倍 | 使用者：創立時從特性池抽，像十字軍之王3 |
+| 擴散 | 創立聚落每週 2% 無信仰者改信（剛創立或仍有信徒時）；3 格內有信徒的鄰近聚落每週 0.5%；積極傳教加倍、封閉信仰減半 | 08-8 第 4 節 |
+| 名稱 | 創立聚落名＋信仰 | 暫定 |
+| 滅絕 | 非遺跡聚落、途中隊伍、在任代表人物都沒有信徒時記滅絕（不刪除） | 48A |
+| 食人儀式的饑荒糧食 | 待 B3b（需週帳欄位） | 守恆：糧食要有真實來源事件 |
+
 #### D08-9b｜文化（第 08-9 章 B1，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -425,7 +436,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 20 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-9 章 B2 生計傳統開拓時代起生效 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-9 章 B1 文化狀態 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 10 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-9 章 B1 文化狀態；B3 信仰狀態 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 14 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 4 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
@@ -457,8 +468,9 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTechTree.cs` | 1 | 第 08-9 章 A1 門檻＝研究時間×325 |
 | `src/WorldSimulation.Core/World/Demo/DemoResourceCategories.cs` | 1 | 第 08-9 章 A6 原料大類取得條件（08-7c） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 7 | 第 08-9 章 B1 文化生成與背景人口比例、B2 文化效果（D08-9b） |
+| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 8 | 第 08-9 章 B3 信仰創立、擴散、滅絕（D08-9c） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 18 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 20 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳、創立信仰、信仰滅絕 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
