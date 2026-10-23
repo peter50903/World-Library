@@ -31,7 +31,10 @@ public enum DemoRepresentativeRole
     Smith = 3,
 
     /// <summary>第 08-9 章 A2：學者（抄寫法起；所有研究加速）。</summary>
-    Scholar = 4
+    Scholar = 4,
+
+    /// <summary>第 08-9 章 B3：巫祝（巫祝技術；兼醫者）。</summary>
+    Shaman = 5
 }
 
 /// <summary>
@@ -48,6 +51,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Carpenter => "木匠",
         DemoRepresentativeRole.Smith => "鐵匠",
         DemoRepresentativeRole.Scholar => "學者",
+        DemoRepresentativeRole.Shaman => "巫祝",
         _ => "代表"
     };
 
@@ -58,6 +62,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Carpenter => DemoTechnology.Woodworking,
         DemoRepresentativeRole.Smith => DemoTechnology.Smithing,
         DemoRepresentativeRole.Scholar => new DemoTechnology("TECH_SCRIBAL_METHOD"),
+        DemoRepresentativeRole.Shaman => new DemoTechnology("TECH_SHAMANISM"),
         _ => null
     };
 }

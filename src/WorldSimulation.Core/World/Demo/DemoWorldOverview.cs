@@ -31,7 +31,9 @@ public sealed record DemoWorldOverview(
     long StarvationDeathsThisYear,
     long EmigrantsThisYear,
     int FoundedThisYear,
-    int Cultures = 0)
+    int Cultures = 0,
+    int Faiths = 0,
+    long Believers = 0)
 {
     public static DemoWorldOverview Of(DemoObserverWorld world, int daysPerYear)
     {
@@ -70,7 +72,9 @@ public sealed record DemoWorldOverview(
             year?.StarvationDeaths ?? 0,
             year?.Emigrants ?? 0,
             year?.SettlementsFounded ?? 0,
-            world.Culture.Cultures.Count); // 第 08-9 章 B1
+            world.Culture.Cultures.Count, // 第 08-9 章 B1
+            world.Faith.Faiths.Count(f => !f.Extinct), // 第 08-9 章 B3：存續的信仰與估計信徒
+            world.Sites.Settlements.Where(s => !s.IsRuin).Sum(s => world.SettlementPopulation(s.Id) * (1000 - world.Faith.PermilleOf(s.Id, 0)) / 1000));
     }
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
@@ -87,7 +91,7 @@ public sealed record DemoWorldOverview(
             : I($"世界人口 {Population}"));
         lines.Add(I($"定居 {Settled}｜遷徙途中 {InTransit}（{Batches} 支隊伍）"));
         lines.Add(Cultures > 0
-            ? I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}｜文化 {Cultures} 個")
+            ? I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}｜文化 {Cultures} 個｜信仰 {Faiths} 個（信徒約 {Believers} 人）")
             : I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}"));
         if (Children + Adults + Elders > 0)
         {

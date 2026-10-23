@@ -78,6 +78,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
     private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-9 章 B1：文化
+    private DemoFaithState _faith = DemoFaithState.Empty; // 第 08-9 章 B3：信仰（開局人人無信仰）
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -228,6 +229,12 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 08-9 章 B1：文化（文化清單、聚落背景人口比例、代表人物的文化）。</summary>
     public DemoCultureState Culture => _culture;
+
+    /// <summary>第 08-9 章 B3：信仰（信仰清單、聚落信仰比例含無信仰、代表人物的信仰）。</summary>
+    public DemoFaithState Faith => _faith;
+
+    /// <summary>測試用：世界的亂數註冊表（局部亂數只讀種子，不推進計數器）。</summary>
+    internal RngRegistry RngRegistryForTests() => _rng;
 
     /// <summary>第 04-1 章：聚落自己記得的小史（沒有紀錄＝空）。</summary>
     public DemoSettlementChronicle ChronicleOf(int settlementId)
@@ -441,13 +448,17 @@ public sealed partial class DemoObserverWorld
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
                     lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
-                var added = learned.Concat(cleared).ToArray();
+                // 第 08-9 章 B3：習得祖靈祭祀時創立或接觸信仰、改信擴散、零信徒滅絕（事件接在開墾事件之後）。
+                var transit = lifecycle.Outcome.Migrations.Select(b => b.Id).ToHashSet();
+                var (faith, faithEvents) = DemoFaiths.Advance(_faith, report, learned, lifecycle.Outcome.Sites, Map, _culture,
+                    lifecycle.Population.Representatives, transit, _rng, checked(landNextId + cleared.Count));
+                var added = learned.Concat(cleared).Concat(faithEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 // 第 08-9 章 B1：背景人口的文化比例與代表人物的文化。
-                var culture = DemoCultures.Advance(_culture, withKnowledge.Report, withKnowledge.Migrations.Select(b => b.Id).ToHashSet(), _rng);
-                commit.StageKnowledge(knowledge, land, culture);
+                var culture = DemoCultures.Advance(_culture, withKnowledge.Report, transit, _rng);
+                commit.StageKnowledge(knowledge, land, culture, faith);
             }
             else
             {
@@ -531,6 +542,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-9 章 B1
+        sb.Append(inv, $"{_faith.Fingerprint()}"); // 第 08-9 章 B3
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
