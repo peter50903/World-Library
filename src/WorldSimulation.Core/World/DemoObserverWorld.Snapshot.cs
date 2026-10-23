@@ -231,6 +231,8 @@ public sealed partial class DemoObserverWorld
             || culture.Settlements.Any(kv => sites.Settlements.All(x => x.Id != kv.Key) || !SharesOk(kv.Value))
             || culture.Batches.Any(kv => batches.All(b => b.Id != kv.Key) || !SharesOk(kv.Value))
             || culture.Representatives.Any(kv => !inOffice.Contains(kv.Key) || !cultureIds.Contains(kv.Value))
+            || culture.SeparatedSince is null
+            || culture.SeparatedSince.Any(kv => sites.Settlements.All(x => x.Id != kv.Key) || kv.Value < 1 || kv.Value > weekCount)
             || (weekly.HumanLifecycleEnabled && culture.Cultures.IsEmpty)
             || (!weekly.HumanLifecycleEnabled && !culture.Cultures.IsEmpty))
             Reject("文化狀態不合法");
@@ -239,7 +241,8 @@ public sealed partial class DemoObserverWorld
             Cultures = culture.Cultures.ToImmutableList(),
             Settlements = culture.Settlements.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
             Batches = culture.Batches.ToImmutableSortedDictionary(kv => kv.Key, kv => kv.Value.ToImmutableList()),
-            Representatives = culture.Representatives.ToImmutableSortedDictionary()
+            Representatives = culture.Representatives.ToImmutableSortedDictionary(),
+            SeparatedSince = culture.SeparatedSince.ToImmutableSortedDictionary()
         };
 
         // 第 08-9 章 B3：信仰（結構檢查：編號連續、信條與教義都在池中、創立週與滅絕週合理、比例合計 1000（0＝無信仰）、

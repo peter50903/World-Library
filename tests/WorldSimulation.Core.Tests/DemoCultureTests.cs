@@ -133,6 +133,50 @@ public sealed class DemoCultureTests
     }
 
     [Fact]
+    public void MinoritiesAssimilateYearly_AndSeparatedGroupsSplitAfterFiftyYears()
+    {
+        // 第 08-9 章 B4：每年少數文化 2%（至少千分之 1）轉為主要文化；與本群分開（婚嫁範圍外）滿 50 年分化出子文化。
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1, null, DemoMapSize.Large), DemoWeeklyTempConfig.LivingForagingSample);
+        var settlements = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
+        var (home, far) = settlements.SelectMany(a => settlements.Where(b => DemoKnowledge.HexDistance(world.Map, a, b) > DemoCultures.TempClusterRange)
+            .Select(b => (a, b))).First();
+        var shares = ImmutableSortedDictionary.CreateRange(new[]
+        {
+            KeyValuePair.Create(home.Id, ImmutableList.Create(new DemoCultureShare(1, 900), new DemoCultureShare(2, 100))),
+            KeyValuePair.Create(far.Id, ImmutableList.Create(new DemoCultureShare(1, 1000)))
+        });
+        var state = DemoCultureState.Empty with
+        {
+            Cultures = ImmutableList.Create(
+                new DemoCulture(1, "甲文化", 0, home.Id, ImmutableList.Create("CT_FAMILY_NUCLEAR", "CT_MARTIAL", "CT_HONOR")),
+                new DemoCulture(2, "乙文化", 0, far.Id, ImmutableList.Create("CT_FAMILY_EXTENDED"))),
+            Settlements = shares
+        };
+        var assimilated = DemoCultures.Assimilate(state, world.Sites);
+        Assert.Equal(new[] { new DemoCultureShare(1, 902), new DemoCultureShare(2, 98) }, assimilated.SharesOf(home.Id));
+
+        var week = 52 * 60;
+        var report = world.LatestWeek ?? new DemoWeekReport(week, TimeSpan.FromDays(week * 7), Array.Empty<DemoSettlementWeekLedger>(), Array.Empty<DemoSettlementEvent>(),
+            Array.Empty<DemoMigrationWeekLedger>());
+        report = report with { Week = week };
+        // 第一年記分開起始週，還不分化；滿 50 年才分化。
+        var (first, none) = DemoCultures.Advance(state, report, new HashSet<int>(), world.RngRegistryForTests(), world.Sites, world.Map, 500);
+        Assert.Empty(none);
+        Assert.Equal(week, first.SeparatedSince[far.Id]);
+        var (later, split) = DemoCultures.Advance(first, report with { Week = week + DemoCultures.TempSplitWeeks }, new HashSet<int>(),
+            world.RngRegistryForTests(), world.Sites, world.Map, 500);
+        var e = Assert.Single(split);
+        Assert.Equal(DemoSettlementEventKind.CultureSplit, e.Kind);
+        var child = later.Of((int)e.Count)!;
+        Assert.Equal(1, child.ParentId);
+        Assert.Equal(3, child.Traits.Count);
+        Assert.Single(child.Traits.Except(state.Cultures[0].Traits));
+        Assert.Equal(child.Id, later.MainCultureOf(far.Id)!.Id);
+        Assert.Equal(1, later.MainCultureOf(home.Id)!.Id);
+        Assert.False(later.SeparatedSince.ContainsKey(far.Id));
+    }
+
+    [Fact]
     public void WorldsWithoutHumanLifecycleHaveNoCultures()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1));
