@@ -217,6 +217,28 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void EverySettlementStartsWithTheFiveDecidedKnowledges()
+    {
+        // 第 08-9 章 A4（使用者 2026-10-23）：採集、漁撈、用火、打製石器、基礎烹調；不必研究、沒有紀錄，新聚落也知道。
+        var expected = new[] { "TECH_FORAGING", "TECH_FISHING", "TECH_FIRE", "TECH_STONE_TOOLS", "TECH_BASIC_COOKING" }
+            .Select(id => new DemoTechnology(id)).ToHashSet();
+        Assert.True(expected.SetEquals(DemoTechTree.Initial));
+        Assert.All(expected, t => Assert.True(DemoKnowledgeState.Initial.Knows(12345, t)));
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var day = 0; day < 365; day++)
+            world.AdvanceOneDay();
+        Assert.DoesNotContain(world.Knowledge.Records, r => DemoTechTree.IsInitial(r.Technology));
+        // 石器改良的前置是開局知識，第一年就有進度；狩獵要等野生動物。
+        Assert.Contains(world.Knowledge.Records, r => r.Technology == new DemoTechnology("TECH_IMPROVED_STONE_TOOLS") && r.Progress > 0);
+        Assert.DoesNotContain(world.Knowledge.Records, r => r.Technology == new DemoTechnology("TECH_HUNTING"));
+        var s = world.Sites.Settlements.First(x => !x.IsRuin);
+        Assert.Contains(world.QueryCell(s.Column, s.Row).Lines, l => l.StartsWith("開局知識：採集、漁撈、用火、打製石器", StringComparison.Ordinal)
+            || l.StartsWith("開局知識：", StringComparison.Ordinal) && l.Contains("基礎烹調", StringComparison.Ordinal));
+        var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.Knowledge, loaded.Knowledge);
+    }
+
+    [Fact]
     public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
     {
         Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
@@ -231,15 +253,18 @@ public sealed class DemoKnowledgeTests
     [Fact]
     public void SmithingToolsRaiseYieldFromTheWeekAfterLearning()
     {
-        // 第 08-6 章 e 節：習得鍛造後下一週起每名勞力可採量＋25%。第 08-9 章 A1：鍛造前置改照 10C（探礦→高溫冶煉）。
+        // 第 08-9 章 A4：工具階梯——石器改良＋10%、基礎鍛造再＋15%，各在習得的下一週起生效。
+        var stone = new DemoTechnology("TECH_IMPROVED_STONE_TOOLS");
         var state = DemoKnowledgeState.Initial with
         {
             Records = System.Collections.Immutable.ImmutableList.Create(
+                new DemoKnowledgeRecord(1, stone, DemoKnowledge.ThresholdOf(stone), 4),
                 new DemoKnowledgeRecord(1, DemoTechnology.Smithing, DemoKnowledge.ThresholdOf(DemoTechnology.Smithing), 10)),
-            Era = DemoEra.Pioneer, EraWeek = 5
+            Era = DemoEra.Pioneer, EraWeek = 4
         };
-        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 1, 10));
-        Assert.Equal(DemoKnowledge.TempToolYieldPercent, DemoKnowledge.ToolYieldPercent(state, 1, 11));
+        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 1, 4));
+        Assert.Equal(10, DemoKnowledge.ToolYieldPercent(state, 1, 10));
+        Assert.Equal(25, DemoKnowledge.ToolYieldPercent(state, 1, 11));
         Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 2, 11));
         Assert.Equal(DemoRepresentativeRole.Smith, Enum.GetValues<DemoRepresentativeRole>().Single(r => DemoRepresentative.TechnologyOf(r) == DemoTechnology.Smithing));
         Assert.True(DemoKnowledge.ThresholdOf(DemoTechnology.Smithing) > DemoKnowledge.ThresholdOf(DemoTechnology.Woodworking));

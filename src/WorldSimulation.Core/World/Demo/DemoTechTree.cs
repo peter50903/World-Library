@@ -70,8 +70,33 @@ public static class DemoTechTree
         "10B_農業畜牧技術樹.csv", "10C_採礦冶金技術樹.csv", "10D_建築工程技術樹.csv", "10E_木工造船技術樹.csv",
         "10F_紡織皮革技術樹.csv", "10G_食品保存技術樹.csv", "10H_醫療藥學技術樹.csv", "10I_軍事工程技術樹.csv",
         "10J_書寫教育技術樹.csv", "10K_魔法工藝技術樹.csv", "10L_陶瓷玻璃技術樹.csv", "10M_珠寶精工技術樹.csv",
-        "10N_運輸車輛技術樹.csv"
+        "10N_運輸車輛技術樹.csv", "10R_狩獵與求生技術樹.csv"
     };
+
+    /// <summary>第 08-9 章 A4：開局知識分頁（08-7b 第 1 節，使用者 2026-10-23 裁決）。</summary>
+    public const string InitialSheet = "10S_開局知識.csv";
+
+    private static readonly Lazy<IReadOnlySet<DemoTechnology>> InitialSet = new(() => ReadInitial(OfficialConfig.ReadSheetText(InitialSheet)));
+
+    /// <summary>第 08-9 章 A4：開局每個聚落都已知的技術（不必研究、沒有紀錄、新建聚落也知道）。</summary>
+    public static IReadOnlySet<DemoTechnology> Initial => InitialSet.Value;
+
+    public static bool IsInitial(DemoTechnology technology) => Initial.Contains(technology);
+
+    internal static IReadOnlySet<DemoTechnology> ReadInitial(string text)
+    {
+        var rows = ParameterSheet.ParseCsv(text);
+        var header = rows[0].Select(h => h.Trim()).ToList();
+        var (id, enabled) = (header.IndexOf("TechID"), header.IndexOf("Enabled"));
+        if (id < 0 || enabled < 0)
+            throw new InvalidOperationException("開局知識分頁缺少 TechID 或 Enabled 欄。");
+        var set = rows.Skip(1).Where(r => r.Count > enabled && string.Equals(r[enabled].Trim(), "TRUE", StringComparison.OrdinalIgnoreCase))
+            .Select(r => new DemoTechnology(r[id].Trim())).ToHashSet();
+        var missing = set.Where(t => !Loaded.Value.ById.ContainsKey(t)).ToList();
+        if (missing.Count > 0)
+            throw new InvalidOperationException($"開局知識不在知識樹上：{string.Join("、", missing)}");
+        return set;
+    }
 
     private static readonly Lazy<(IReadOnlyList<DemoTechNode> All, Dictionary<DemoTechnology, DemoTechNode> ById)> Loaded =
         new(() => Build(Sheets.Select(name => (name, OfficialConfig.ReadSheetText(name)))));
@@ -117,9 +142,10 @@ public static class DemoTechTree
                 string Cell(int i) => i < row.Count ? row[i].Trim() : string.Empty;
                 if (!string.Equals(Cell(enabled), "TRUE", StringComparison.OrdinalIgnoreCase))
                     continue;
-                if (!int.TryParse(Cell(tier), NumberStyles.None, CultureInfo.InvariantCulture, out var t) || t is < 1 or > 5
+                // 第 08-9 章 A4：第 0 階＝開局知識（不研究）。
+                if (!int.TryParse(Cell(tier), NumberStyles.None, CultureInfo.InvariantCulture, out var t) || t is < 0 or > 5
                     || !long.TryParse(Cell(time), NumberStyles.None, CultureInfo.InvariantCulture, out var baseTime) || baseTime <= 0)
-                    throw new InvalidOperationException($"知識樹 {name} 的 {Cell(id)}：階級須為 1～5、研究時間須為正整數。");
+                    throw new InvalidOperationException($"知識樹 {name} 的 {Cell(id)}：階級須為 0～5、研究時間須為正整數。");
                 nodes.Add(new DemoTechNode(new DemoTechnology(Cell(id)), nodes.Count + 1, Cell(cn), name, t, Cell(branch),
                     Array.Empty<DemoTechnology>(), baseTime, Cell(boost)) {
                     ResearchCost = ParseCost(cost < 0 ? string.Empty : Cell(cost), name, Cell(id)),
