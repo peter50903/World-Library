@@ -150,6 +150,12 @@ public sealed partial class DemoObserverWorld
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");
         candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };
+        // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得鍛造。
+        foreach (var report in reports)
+            foreach (var ledger in report.Settlements)
+                if (ledger.ToolYieldPercent != DemoKnowledge.ToolYieldPercent(knowledge, ledger.SettlementId, report.Week)
+                    && weekly.SharedCatchmentEnabled)
+                    Reject($"第 {report.Week} 週聚落 #{ledger.SettlementId} 的工具加成與知識樹不符");
         // 第 08-6 章 c 節：土地開發狀態（開墾只在開拓時代發生；開墾中是每週進度的倍數、農田一律 100%；只有草原、非聚落格）。
         var parcels = ReadArray<DemoLandParcel>(state, "Land");
         if (parcels.Count > 0 && knowledge.Era == DemoEra.Hope)
@@ -276,7 +282,7 @@ public sealed partial class DemoObserverWorld
             var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
             var need = DemoCrowding.Claim(weekly.HumanLifecycleEnabled, checked(ledger.FoodConsumed + ledger.FoodShortage), ledger.FoodOpening);
             var workers = (ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening) - ledger.WaterCarriers;
-            var labour = checked(workers * weekly.YieldPerWorkerPerWeek);
+            var labour = checked(workers * ledger.YieldPerWorker(weekly)); // 第 08-6 章 e 節：工具加成另依知識樹驗證
             if (total > need || total > labour)
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的採集合計 {total} 超過需求 {need} 或勞力上限 {labour}");
         }
