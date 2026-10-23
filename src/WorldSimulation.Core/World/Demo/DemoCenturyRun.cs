@@ -213,7 +213,7 @@ public static class DemoCenturyRun
                     consumed = checked(consumed + l.FoodConsumed);
                     shortage = checked(shortage + l.FoodShortage);
                     spoiled = checked(spoiled + l.FoodSpoiled);
-                    other = checked(other + l.FoodFromDead);
+                    other = checked(other + l.FoodFromDead + l.FoodFromHunting);
                     regenerated = checked(regenerated + l.Regenerated);
                     harvested = checked(harvested + l.Harvested);
                     emigrants = checked(emigrants + l.Emigrants);
