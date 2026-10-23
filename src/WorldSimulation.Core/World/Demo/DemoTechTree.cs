@@ -51,6 +51,9 @@ public sealed record DemoTechNode(
 {
     /// <summary>第 08-9 章 A2：研究所需原料（ResearchResourceCost，例：RES_WOOD:10）。</summary>
     public IReadOnlyList<(string Resource, long Amount)> ResearchCost { get; init; } = Array.Empty<(string, long)>();
+
+    /// <summary>第 08-9 章 A3：實踐加速（PracticeBoostEffect「研究時間-20%」→ 20）。</summary>
+    public long PracticeBoostPercent { get; init; }
 }
 
 /// <summary>
@@ -108,6 +111,7 @@ public static class DemoTechTree
             var (id, cn, tier, branch, parents, time, boost, enabled) = (Column("TechID"), Column("中文名稱"), Column("Tier"),
                 Column("Branch"), Column("ParentTechIDs"), Column("ResearchTimeBase"), Column("PracticeBoostCondition"), Column("Enabled"));
             var cost = header.IndexOf("ResearchResourceCost");
+            var effect = header.IndexOf("PracticeBoostEffect");
             foreach (var row in rows.Skip(1).Where(r => r.Count > id && !string.IsNullOrWhiteSpace(r[id])))
             {
                 string Cell(int i) => i < row.Count ? row[i].Trim() : string.Empty;
@@ -117,7 +121,10 @@ public static class DemoTechTree
                     || !long.TryParse(Cell(time), NumberStyles.None, CultureInfo.InvariantCulture, out var baseTime) || baseTime <= 0)
                     throw new InvalidOperationException($"知識樹 {name} 的 {Cell(id)}：階級須為 1～5、研究時間須為正整數。");
                 nodes.Add(new DemoTechNode(new DemoTechnology(Cell(id)), nodes.Count + 1, Cell(cn), name, t, Cell(branch),
-                    Array.Empty<DemoTechnology>(), baseTime, Cell(boost)) { ResearchCost = ParseCost(cost < 0 ? string.Empty : Cell(cost), name, Cell(id)) });
+                    Array.Empty<DemoTechnology>(), baseTime, Cell(boost)) {
+                    ResearchCost = ParseCost(cost < 0 ? string.Empty : Cell(cost), name, Cell(id)),
+                    PracticeBoostPercent = ParseBoost(effect < 0 ? string.Empty : Cell(effect))
+                });
                 parentText.Add(Cell(parents));
             }
         }
@@ -134,6 +141,13 @@ public static class DemoTechTree
             nodes[i] = nodes[i] with { Parents = parents };
         }
         return (nodes, nodes.ToDictionary(n => n.Technology));
+    }
+
+    /// <summary>「研究時間-20%」→ 20；空白或其他格式→ 0（沒有實踐加速）。</summary>
+    private static long ParseBoost(string text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text, @"研究時間-(\d+)%");
+        return match.Success ? long.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture) : 0;
     }
 
     private static IReadOnlyList<(string Resource, long Amount)> ParseCost(string text, string sheet, string id)
