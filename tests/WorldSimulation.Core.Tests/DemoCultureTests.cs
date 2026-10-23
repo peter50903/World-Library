@@ -97,6 +97,42 @@ public sealed class DemoCultureTests
     }
 
     [Fact]
+    public void CultureTraitsChangeYieldResearchAndLeadership()
+    {
+        // 第 08-9 章 B2：生計傳統（地形成立）每項採集＋10%、最多＋20%；重學研究＋10%；尚武／草原子民狩獵＋25%；海之民造船＋25%；
+        // 守舊鄰近傳播減半、開放加倍；強人統治改變村長人選。
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        var place = world.Sites.Settlements.First(s => DemoKnowledge.NearForest(world.Map, s));
+        DemoCultureState With(params string[] traits) => DemoCultureState.Empty with
+        {
+            Cultures = ImmutableList.Create(new DemoCulture(1, "測試文化", 0, place.Id, traits.ToImmutableList())),
+            Settlements = ImmutableSortedDictionary.CreateRange(new[] { KeyValuePair.Create(place.Id, ImmutableList.Create(new DemoCultureShare(1, 1000))) })
+        };
+        Assert.Equal(10, DemoCultures.LivelihoodYieldPercent(With("CT_FOREST_FOLK"), world.Map, place));
+        Assert.Equal(0, DemoCultures.LivelihoodYieldPercent(With("CT_MARTIAL"), world.Map, place));
+        Assert.True(DemoCultures.LivelihoodYieldPercent(With("CT_FOREST_FOLK", "CT_RIVER_FOLK", "CT_GRASSLAND_FOLK"), world.Map, place) <= DemoCultures.TempLivelihoodYieldMax);
+        DemoTechNode Node(string id) => DemoTechTree.Of(new DemoTechnology(id));
+        Assert.Equal(110, DemoCultures.ResearchPercent(new HashSet<string> { "CT_SCHOLARLY" }, Node("TECH_CROP_CULTIVATION")));
+        Assert.Equal(125, DemoCultures.ResearchPercent(new HashSet<string> { "CT_MARTIAL" }, Node("TECH_HUNTING")));
+        Assert.Equal(100, DemoCultures.ResearchPercent(new HashSet<string> { "CT_MARTIAL" }, Node("TECH_CROP_CULTIVATION")));
+        Assert.Equal(125, DemoCultures.ResearchPercent(new HashSet<string> { "CT_SEA_FOLK" }, Node("TECH_BASIC_BOATBUILDING")));
+        Assert.Equal(50, DemoCultures.DiffusionPercent(new HashSet<string> { "CT_TRADITIONAL" }));
+        Assert.Equal(200, DemoCultures.DiffusionPercent(new HashSet<string> { "CT_OPEN" }));
+        Assert.True(DemoCultures.StrongmanRule(With("CT_STRONGMAN"), place.Id));
+        Assert.False(DemoCultures.StrongmanRule(With("CT_ELDER_COUNCIL"), place.Id));
+
+        // 長跑：週帳的工具加成＝工具階梯＋生計傳統（讀檔驗證同一規則）。
+        for (var day = 0; day < 2 * 365; day++)
+            world.AdvanceOneDay();
+        Assert.All(world.LatestWeek!.Settlements.Where(l => !world.Sites.Settlements.Single(s => s.Id == l.SettlementId).IsRuin), l =>
+            Assert.Contains(l.ToolYieldPercent - DemoKnowledge.ToolYieldPercent(world.Knowledge, l.SettlementId, l.Week), new long[] { 0, 10, 20 }));
+        // 生計傳統在開拓時代才生效：希望時代的工具加成只有工具階梯（第 08-9 章 B2）。
+        if (world.Era == DemoEra.Hope)
+            Assert.All(world.WeekReports().SelectMany(w => w.Settlements), l => Assert.Equal(DemoKnowledge.ToolYieldPercent(world.Knowledge, l.SettlementId, l.Week), l.ToolYieldPercent));
+        Assert.Equal(world.ExportTempSave(), DemoObserverWorld.ImportTempSave(world.ExportTempSave()).ExportTempSave());
+    }
+
+    [Fact]
     public void WorldsWithoutHumanLifecycleHaveNoCultures()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1));

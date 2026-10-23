@@ -223,6 +223,54 @@ public static class DemoCultures
             .Where(x => x.Permille > 0).ToImmutableList();
     }
 
+    /// <summary>【TEMP】第 08-9 章 B2：生計傳統的採集加成（地形成立時每項＋10%）。</summary>
+    public const long TempLivelihoodYieldPercent = 10;
+
+    /// <summary>生計傳統最多兩項（P02 生計池上限 2），所以採集加成最多＋20%。</summary>
+    public const long TempLivelihoodYieldMax = 20;
+
+    /// <summary>聚落主要文化的特性（沒有文化回傳空集合）。</summary>
+    public static IReadOnlySet<string> MainTraits(DemoCultureState state, int settlementId)
+        => state.MainCultureOf(settlementId)?.Traits.ToHashSet() ?? new HashSet<string>();
+
+    /// <summary>
+    /// 第 08-9 章 B2【TEMP 規則】主要文化的生計傳統：林地子民（可及森林）、河岸子民（鄰河）、海之民（鄰海）、草原子民（可及草原），
+    /// 地形成立時每名勞力採集量各＋10%（與工具加成相加，記在週帳 ToolYieldPercent）。
+    /// </summary>
+    public static long LivelihoodYieldPercent(DemoCultureState state, DemoHexWorld map, DemoSettlement settlement)
+    {
+        var traits = MainTraits(state, settlement.Id);
+        if (traits.Count == 0)
+            return 0;
+        var conditions = ConditionsOf(map, settlement).ToHashSet();
+        var bonus = 0L;
+        foreach (var (trait, condition) in new[] { ("CT_FOREST_FOLK", "NEAR_FOREST"), ("CT_RIVER_FOLK", "NEAR_RIVER"),
+                     ("CT_SEA_FOLK", "NEAR_SEA"), ("CT_GRASSLAND_FOLK", "NEAR_GRASSLAND") })
+            if (traits.Contains(trait) && conditions.Contains(condition))
+                bonus += TempLivelihoodYieldPercent;
+        return Math.Min(bonus, TempLivelihoodYieldMax);
+    }
+
+    /// <summary>
+    /// 第 08-9 章 B2【TEMP 規則】主要文化對研究的影響（百分比，100＝不變）：重學＋10%（所有技術）；
+    /// 尚武、草原子民：狩獵分支＋25%；海之民：造船分支＋25%。
+    /// </summary>
+    public static long ResearchPercent(IReadOnlySet<string> traits, DemoTechNode node)
+    {
+        var percent = 100L;
+        if (traits.Contains("CT_SCHOLARLY")) percent += 10;
+        if (node.Branch == "狩獵" && (traits.Contains("CT_MARTIAL") || traits.Contains("CT_GRASSLAND_FOLK"))) percent += 25;
+        if (node.Branch == "造船" && traits.Contains("CT_SEA_FOLK")) percent += 25;
+        return percent;
+    }
+
+    /// <summary>第 08-9 章 B2【TEMP】鄰近傳播倍率（百分比）：守舊減半、開放加倍。</summary>
+    public static long DiffusionPercent(IReadOnlySet<string> traits)
+        => traits.Contains("CT_TRADITIONAL") ? 50 : traits.Contains("CT_OPEN") ? 200 : 100;
+
+    /// <summary>第 08-9 章 B2：強人統治的聚落，村長改由最壯年者（未滿老年的最年長成年人）擔任。</summary>
+    public static bool StrongmanRule(DemoCultureState state, int settlementId) => MainTraits(state, settlementId).Contains("CT_STRONGMAN");
+
     /// <summary>點格詳情用：「文化：甲文化 70%、乙文化 30%」。</summary>
     public static string SharesLine(DemoCultureState state, int settlementId)
         => "文化：" + string.Join("、", state.SharesOf(settlementId).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId)

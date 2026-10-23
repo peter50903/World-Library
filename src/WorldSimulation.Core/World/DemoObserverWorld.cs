@@ -420,7 +420,10 @@ public sealed partial class DemoObserverWorld
                 firstEventId: checked(_history.LastEventId + 1), // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
                 debtSourceOf: DebtSourceOf,
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
-                toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1))); // e 節：工具
+                // e 節：工具；第 08-9 章 B2【TEMP】：開拓時代起加上主要文化的生計傳統（希望時代維持原本的糧食平衡）。
+                toolYieldPercent: id => checked(DemoKnowledge.ToolYieldPercent(_knowledge, id, CommittedWeeks + 1)
+                    + (_knowledge.Era != DemoEra.Hope && _sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place
+                        ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -428,11 +431,12 @@ public sealed partial class DemoObserverWorld
             {
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
-                    checked(_history.LastEventId + 1), _knowledge);
+                    checked(_history.LastEventId + 1), _knowledge, id => DemoCultures.StrongmanRule(_culture, id));
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
-                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier, WeekAt);
+                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier, WeekAt,
+                    id => DemoCultures.MainTraits(_culture, id));
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
