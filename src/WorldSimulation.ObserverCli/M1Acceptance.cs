@@ -413,7 +413,7 @@ public static class M1Evaluator
             var report = run.Weeks[i];
             if (report.Week != i + 1)
                 problems.Add($"週報編號不連續：第 {i + 1} 筆是第 {report.Week} 週");
-            long wProduced = 0, wConsumed = 0, wRegen = 0, wHarvested = 0, wSpoiled = 0;
+            long wProduced = 0, wConsumed = 0, wRegen = 0, wHarvested = 0, wSpoiled = 0, wFromDead = 0;
             foreach (var l in report.Settlements)
             {
                 ledgers++;
@@ -429,6 +429,7 @@ public static class M1Evaluator
                 if (!l.NonNegative)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 出現負值");
                 wProduced += l.FoodProduced;
+                wFromDead += l.FoodFromDead; // 第 08-9 章 B3b：食人儀式（死者化為糧食，有餓死事件為證）
                 wConsumed += l.FoodConsumed;
                 wRegen += l.Regenerated;
                 wHarvested += l.Harvested;
@@ -453,7 +454,7 @@ public static class M1Evaluator
             }
             else
             {
-                if (previous.Food + wProduced - wConsumed - wSpoiled != after.Food)
+                if (previous.Food + wProduced + wFromDead - wConsumed - wSpoiled != after.Food)
                     problems.Add($"{At(run, report.Week)} 世界糧食：{previous.Food}＋生產 {wProduced}－消耗 {wConsumed}－腐敗 {wSpoiled}≠世界狀態 {after.Food}");
                 if (previous.Reserve + wRegen - wHarvested != after.Reserve)
                     problems.Add($"{At(run, report.Week)} 世界資源點存量：{previous.Reserve}＋再生 {wRegen}－採收 {wHarvested}≠世界狀態 {after.Reserve}");

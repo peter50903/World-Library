@@ -323,7 +323,8 @@ public sealed record DemoSettlementWeekLedger(
     long ChildStarvationDeaths = 0,
     long ElderStarvationDeaths = 0,
     long SourceSlack = 0,
-    long ToolYieldPercent = 0)
+    long ToolYieldPercent = 0,
+    long FoodFromDead = 0)
 {
     /// <summary>第 08-6 章 e 節：本週每名勞力可採量（工具加成後）。</summary>
     public long YieldPerWorker(DemoWeeklyTempConfig config)
@@ -339,7 +340,7 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>糧食帳：期初＋生產＋帶入－消耗－帶出－腐敗（第 06 章 d 節）＝期末。</summary>
     public bool FoodBalanced
-        => FoodOpening + FoodProduced + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing;
+        => FoodOpening + FoodProduced + FoodCarriedIn + FoodFromDead - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing; // 第 08-9 章 B3b：食人儀式
 
     /// <summary>
     /// M1_NO_MAGIC_FOOD：糧食只能來自資源點的實際採收，且每一單位都歸屬合法來源（農牧／採集）。
@@ -357,7 +358,7 @@ public sealed record DemoSettlementWeekLedger(
     /// M1_RES：聚落總資源（資源點存量＋糧食）只因再生與遷徙隊伍帶入增加、只因消耗與帶出減少。
     /// </summary>
     public bool TotalResourceBalanced
-        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled
+        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn + FoodFromDead - FoodConsumed - FoodCarriedOut - FoodSpoiled
             == ReserveClosing + FoodClosing;
 
     /// <summary>M1_POP 的人口帳部分。</summary>
@@ -376,7 +377,9 @@ public sealed record DemoSettlementWeekLedger(
         && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening)
         && FoodSpoiled >= 0 && WaterShortage >= 0 && WaterCarriers >= 0
         && ChildStarvationDeaths >= 0 && ElderStarvationDeaths >= 0
-        && ChildStarvationDeaths + ElderStarvationDeaths <= Deaths - NaturalDeaths;
+        && ChildStarvationDeaths + ElderStarvationDeaths <= Deaths - NaturalDeaths
+        // 第 08-9 章 B3b：死者的糧食只來自本週餓死的人。
+        && FoodFromDead >= 0 && FoodFromDead <= checked((Deaths - NaturalDeaths) * DemoFaiths.TempFoodPerDead);
 
     public bool IsBalanced
         => ReserveBalanced && FoodBalanced && NoMagicFood && TotalResourceBalanced && PopulationBalanced
@@ -608,7 +611,8 @@ internal static class DemoWeeklySettlement
         long? firstEventId = null,
         Func<int, long>? debtSourceOf = null,
         bool? hopeRules = null,
-        Func<int, long>? toolYieldPercent = null)
+        Func<int, long>? toolYieldPercent = null,
+        Func<int, int>? cannibalPermille = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -741,6 +745,9 @@ internal static class DemoWeeklySettlement
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
+            // 第 08-9 章 B3b【TEMP 規則】食人儀式：信奉此信條的人口比例決定有多少死者被食用（每人 TempFoodPerDead 糧食，週末併入存糧）。
+            var fromDead = deaths == 0 || survivors == 0 ? 0
+                : checked(deaths * DemoFaiths.TempFoodPerDead * (cannibalPermille?.Invoke(settlement.Id) ?? 0) / 1000);
             if (survivors == 0)
                 removedByDeath = debt;
             debt -= removedByDeath;
@@ -935,7 +942,8 @@ internal static class DemoWeeklySettlement
             {
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.StarvationDeath, deaths,
-                    $"飢餓：飢餓債累積達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}），連續缺糧"),
+                    $"飢餓：飢餓債累積達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}），連續缺糧"
+                    + (fromDead > 0 ? $"；依食人儀式，死者化為糧食 {fromDead}" : "")),
                     debtSourceEventId));
             }
 
@@ -1109,7 +1117,7 @@ internal static class DemoWeeklySettlement
 
             arrivals.TryGetValue(settlement.Id, out var arrived);
             var populationClosing = checked(survivors - emigrants + arrived.People);
-            var foodFinal = checked(foodClosing - foodOut + arrived.Food);
+            var foodFinal = checked(foodClosing - foodOut + arrived.Food + fromDead);
             var debtFinal = checked(debt - debtOut + arrived.Debt);
 
             // ⑨ 人口帳。
@@ -1131,7 +1139,8 @@ internal static class DemoWeeklySettlement
                 AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
                 FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
                 SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id),
-                ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0));
+                ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0,
+                FoodFromDead: fromDead));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))

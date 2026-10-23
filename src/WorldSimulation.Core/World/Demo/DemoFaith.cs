@@ -86,6 +86,17 @@ public static class DemoFaiths
 {
     public static readonly DemoTechnology AncestorRites = new("TECH_ANCESTOR_RITES");
 
+    /// <summary>【TEMP】第 08-9 章 B3b：食人儀式下每名被食用的餓死者化為的糧食（約兩週口糧）。</summary>
+    public const long TempFoodPerDead = 8;
+
+    /// <summary>第 08-9 章 B3b：聚落裡信奉「食人儀式」的人口千分比。</summary>
+    public static int CannibalPermille(DemoFaithState state, int settlementId)
+        => state.SharesOf(settlementId).Where(s => s.FaithId != 0 && state.Of(s.FaithId)?.Tenets.Contains("DOC_CANNIBALISM") == true).Sum(s => s.Permille);
+
+    /// <summary>主要信仰的核心信條（影響研究等；沒有信仰回傳空集合）。</summary>
+    public static IEnumerable<string> MainTenets(DemoFaithState state, int settlementId)
+        => state.MainFaithOf(settlementId)?.Tenets ?? Enumerable.Empty<string>();
+
     /// <summary>【TEMP】接觸與鄰近擴散的範圍（格）。</summary>
     public const int TempContactRange = 3;
 

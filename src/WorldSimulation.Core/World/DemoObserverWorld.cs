@@ -428,6 +428,7 @@ public sealed partial class DemoObserverWorld
                 debtSourceOf: DebtSourceOf,
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
                 // e 節：工具；第 08-9 章 B2【TEMP】：開拓時代起加上主要文化的生計傳統（希望時代維持原本的糧食平衡）。
+                cannibalPermille: id => DemoFaiths.CannibalPermille(_faith, id), // 第 08-9 章 B3b：食人儀式
                 toolYieldPercent: id => checked(DemoKnowledge.ToolYieldPercent(_knowledge, id, CommittedWeeks + 1)
                     + (_knowledge.Era != DemoEra.Hope && _sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place
                         ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
@@ -443,7 +444,7 @@ public sealed partial class DemoObserverWorld
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
                 var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier, WeekAt,
-                    id => DemoCultures.MainTraits(_culture, id));
+                    id => DemoCultures.MainTraits(_culture, id).Concat(DemoFaiths.MainTenets(_faith, id)).ToHashSet()); // B3b：主要信仰的信條
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,

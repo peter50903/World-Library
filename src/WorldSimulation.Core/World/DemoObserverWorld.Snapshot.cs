@@ -263,6 +263,9 @@ public sealed partial class DemoObserverWorld
             || faith.Representatives.Any(kv => !inOffice.Contains(kv.Key) || (kv.Value != 0 && !faithIds.Contains(kv.Value)))
             || (!weekly.HumanLifecycleEnabled && (faith.Faiths.Count > 0 || faith.Settlements.Count > 0)))
             Reject("信仰狀態不合法");
+        // 第 08-9 章 B3b：死者化為糧食只在有「食人儀式」信條的世界出現（數量上限由週帳 NonNegative 檢查）。
+        if (reports.Any(r => r.Settlements.Any(l => l.FoodFromDead > 0)) && !faith.Faiths.Any(f => f.Tenets.Contains("DOC_CANNIBALISM")))
+            Reject("週帳有死者化為的糧食，但沒有信奉食人儀式的信仰");
         candidate._faith = faith with
         {
             Faiths = faith.Faiths.ToImmutableList(),

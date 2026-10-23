@@ -111,7 +111,8 @@
 | 擴散 | 創立聚落每週 2% 無信仰者改信（剛創立或仍有信徒時）；3 格內有信徒的鄰近聚落每週 0.5%；積極傳教加倍、封閉信仰減半 | 08-8 第 4 節 |
 | 名稱 | 創立聚落名＋信仰 | 暫定 |
 | 滅絕 | 非遺跡聚落、途中隊伍、在任代表人物都沒有信徒時記滅絕（不刪除） | 48A |
-| 食人儀式的饑荒糧食 | 待 B3b（需週帳欄位） | 守恆：糧食要有真實來源事件 |
+| 食人儀式的饑荒糧食（B3b） | 本週餓死者×每人 8 糧食×聚落信奉食人儀式的千分比，週末併入存糧；週帳新欄位「死者化為的糧食」，餓死事件註明；糧食帳、總資源帳與 M1 世界糧食對帳都計入 | 守恆：糧食要有真實來源事件（餓死） |
+| 通靈者（B3b） | 主要信仰有通靈者的聚落，祭祀分支研究＋25% | 08-8 第 2 節 |
 
 #### D08-9b｜文化（第 08-9 章 B1，Claude 定案【TEMP】）
 
@@ -428,7 +429,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 59 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 60 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 08-9 章 B3b 食人儀式 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -469,7 +470,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTechTree.cs` | 1 | 第 08-9 章 A1 門檻＝研究時間×325 |
 | `src/WorldSimulation.Core/World/Demo/DemoResourceCategories.cs` | 1 | 第 08-9 章 A6 原料大類取得條件（08-7c） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 10 | 第 08-9 章 B1 文化生成與背景人口比例、B2 文化效果、B4 同化與分化（D08-9b） |
-| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 8 | 第 08-9 章 B3 信仰創立、擴散、滅絕（D08-9c） |
+| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 9 | 第 08-9 章 B3 信仰創立、擴散、滅絕、B3b 食人儀式糧食（D08-9c） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 21 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳、創立信仰、信仰滅絕、文化分化 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
