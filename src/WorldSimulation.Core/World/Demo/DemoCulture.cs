@@ -34,6 +34,9 @@ public sealed record DemoCultureState(
         ImmutableSortedDictionary<int, ImmutableList<DemoCultureShare>>.Empty,
         ImmutableSortedDictionary<long, int>.Empty);
 
+    /// <summary>第 08-9 章 B4：聚落與同文化本群分開的起始週（分化計時；重新相連就移除）。</summary>
+    public ImmutableSortedDictionary<int, int> SeparatedSince { get; init; } = ImmutableSortedDictionary<int, int>.Empty;
+
     public DemoCulture? Of(int cultureId) => Cultures.FirstOrDefault(c => c.Id == cultureId);
 
     public IReadOnlyList<DemoCultureShare> SharesOf(int settlementId)
@@ -50,7 +53,8 @@ public sealed record DemoCultureState(
         => string.Concat(Cultures.Select(c => $"cul{c.Id}:{c.Name}@{c.FoundedWeek}/{c.OriginSettlementId}<{c.ParentId}[{string.Join(",", c.Traits)}];"))
         + string.Concat(Settlements.Select(kv => $"cs{kv.Key}={Shares(kv.Value)};"))
         + string.Concat(Batches.Select(kv => $"cb{kv.Key}={Shares(kv.Value)};"))
-        + string.Concat(Representatives.Select(kv => $"cr{kv.Key}={kv.Value};"));
+        + string.Concat(Representatives.Select(kv => $"cr{kv.Key}={kv.Value};"))
+        + string.Concat(SeparatedSince.Select(kv => $"csep{kv.Key}@{kv.Value};"));
 
     private static string Shares(IEnumerable<DemoCultureShare> shares) => string.Join(",", shares.Select(s => $"{s.CultureId}:{s.Permille}"));
 
@@ -144,6 +148,27 @@ public static class DemoCultures
     /// 就任的代表人物依聚落比例抽文化、卸任移除；已不在途中的隊伍移除。
     /// </summary>
     public static DemoCultureState Advance(DemoCultureState state, DemoWeekReport report, IReadOnlyCollection<int> batchesInTransit, RngRegistry rng)
+        => Advance(state, report, batchesInTransit, rng, null, null).State;
+
+    /// <summary>【TEMP】第 08-9 章 B4：每年少數文化有 2%（至少千分之 1）轉為聚落主要文化（48C：不瞬間同化）。</summary>
+    public const int TempAssimilationPercentPerYear = 2;
+
+    /// <summary>【TEMP】第 08-9 章 B4：與同文化本群分開（婚嫁範圍外）滿 50 年就分化出子文化。</summary>
+    public const int TempSplitWeeks = 50 * 52;
+
+    /// <summary>
+    /// 同上，另做 B4 的每年同化與分化（<paramref name="sites"/>、<paramref name="map"/> 為 null 時略過）；分化事件編號從 <paramref name="nextEventId"/> 起。
+    /// </summary>
+    public static (DemoCultureState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(DemoCultureState state, DemoWeekReport report,
+        IReadOnlyCollection<int> batchesInTransit, RngRegistry rng, DemoWorldSites? sites, DemoHexWorld? map, long nextEventId = 0)
+    {
+        var moved = Move(state, report, batchesInTransit, rng);
+        if (sites is null || map is null || moved.Cultures.IsEmpty || report.Week % 52 != 0)
+            return (moved, Array.Empty<DemoSettlementEvent>());
+        return Yearly(Assimilate(moved, sites), report, sites, map, rng, nextEventId);
+    }
+
+    private static DemoCultureState Move(DemoCultureState state, DemoWeekReport report, IReadOnlyCollection<int> batchesInTransit, RngRegistry rng)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -181,6 +206,108 @@ public static class DemoCultures
             reps[r.Id] = chosen.CultureId;
         }
         return state with { Settlements = settlements.ToImmutable(), Batches = batches.ToImmutable(), Representatives = reps.ToImmutable() };
+    }
+
+    /// <summary>每年：有人聚落裡的少數文化各有 2%（至少千分之 1）轉為主要文化。</summary>
+    public static DemoCultureState Assimilate(DemoCultureState state, DemoWorldSites sites)
+    {
+        var settlements = state.Settlements.ToBuilder();
+        foreach (var (id, shares) in state.Settlements)
+        {
+            if (shares.Count < 2 || sites.Settlements.FirstOrDefault(s => s.Id == id) is not { IsRuin: false })
+                continue;
+            var main = shares.OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).First();
+            var gained = 0;
+            var next = new List<DemoCultureShare>();
+            foreach (var s in shares.Where(s => s.CultureId != main.CultureId))
+            {
+                var loss = Math.Min(s.Permille, Math.Max(1, s.Permille * TempAssimilationPercentPerYear / 100));
+                gained += loss;
+                if (s.Permille - loss > 0)
+                    next.Add(s with { Permille = s.Permille - loss });
+            }
+            next.Add(main with { Permille = main.Permille + gained });
+            settlements[id] = next.OrderBy(s => s.CultureId).ToImmutableList();
+        }
+        return state with { Settlements = settlements.ToImmutable() };
+    }
+
+    /// <summary>
+    /// 每年：以婚嫁範圍連通的同文化聚落（主要文化相同的有人聚落）為一群；不含發源聚落的群記分開起始週，滿 50 年分化出子文化
+    /// （沿用上層文化的特性，換掉一個：同一池重抽），該群的這個文化比例改為子文化。
+    /// </summary>
+    private static (DemoCultureState, IReadOnlyList<DemoSettlementEvent>) Yearly(DemoCultureState state, DemoWeekReport report,
+        DemoWorldSites sites, DemoHexWorld map, RngRegistry rng, long nextEventId)
+    {
+        var cultures = state.Cultures.ToBuilder();
+        var settlements = state.Settlements.ToBuilder();
+        var separated = state.SeparatedSince.ToBuilder();
+        var events = new List<DemoSettlementEvent>();
+        var inhabited = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        foreach (var culture in state.Cultures)
+        {
+            var members = inhabited.Where(s => state.MainCultureOf(s.Id)?.Id == culture.Id).ToList();
+            if (members.Count == 0)
+                continue;
+            var groups = new List<List<DemoSettlement>>();
+            var left = members.ToList();
+            while (left.Count > 0)
+            {
+                var group = new List<DemoSettlement> { left[0] };
+                left.RemoveAt(0);
+                for (var i = 0; i < group.Count; i++)
+                {
+                    var near = left.Where(o => DemoKnowledge.HexDistance(map, group[i], o) <= TempClusterRange).ToList();
+                    group.AddRange(near);
+                    left.RemoveAll(near.Contains);
+                }
+                groups.Add(group);
+            }
+            var home = groups.FirstOrDefault(g => g.Any(s => s.Id == culture.OriginSettlementId)) ?? groups.OrderBy(g => g.Min(s => s.Id)).First();
+            foreach (var s in home)
+                separated.Remove(s.Id);
+            foreach (var group in groups.Where(g => g != home))
+            {
+                foreach (var s in group)
+                    if (!separated.ContainsKey(s.Id))
+                        separated[s.Id] = report.Week;
+                if (group.Any(s => report.Week - separated[s.Id] < TempSplitWeeks))
+                    continue;
+                var id = cultures.Count + 1;
+                var origin = group.OrderBy(s => s.Id).First();
+                var traits = Mutate(culture.Traits, index => EntityLocalRandom.Create(rng, EntityId.From((ulong)id), RngStreams.Character, Namespace).GetUInt64(index));
+                var child = new DemoCulture(id, $"{origin.Name}文化", report.Week, origin.Id, traits, culture.Id);
+                cultures.Add(child);
+                foreach (var s in group)
+                {
+                    separated.Remove(s.Id);
+                    settlements[s.Id] = settlements[s.Id].Select(x => x.CultureId == culture.Id ? x with { CultureId = id } : x).ToImmutableList();
+                }
+                events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, origin.Id, origin.Name, DemoSettlementEventKind.CultureSplit, id,
+                    $"與{culture.Name}的本群分開 50 年，分化出「{child.Name}」【TEMP】", EventId: nextEventId++));
+            }
+        }
+        // 已成遺跡或不再屬於任何分開群的聚落不計時。
+        foreach (var id in separated.Keys.Where(id => inhabited.All(s => s.Id != id)).ToList())
+            separated.Remove(id);
+        return (state with { Cultures = cultures.ToImmutable(), Settlements = settlements.ToImmutable(), SeparatedSince = separated.ToImmutable() }, events);
+    }
+
+    /// <summary>子文化：換掉上層文化的一個特性（同一池、不重複、守互斥組）；該池沒有可換的就沿用。</summary>
+    public static ImmutableList<string> Mutate(ImmutableList<string> traits, Func<ulong, ulong> draw)
+    {
+        if (traits.IsEmpty)
+            return traits;
+        var index = (int)(draw(0) % (ulong)traits.Count);
+        var removed = Pool.First(e => e.TraitId == traits[index]);
+        var keep = traits.RemoveAt(index);
+        var taken = keep.Select(t => Pool.First(e => e.TraitId == t).ExclusiveGroup).Where(g => g.Length > 0).ToHashSet();
+        var candidates = Pool.Where(e => e.PoolId == removed.PoolId && e.TraitId != removed.TraitId && !keep.Contains(e.TraitId) && e.Weight > 0
+            && (e.ExclusiveGroup.Length == 0 || !taken.Contains(e.ExclusiveGroup))).ToList();
+        if (candidates.Count == 0)
+            return traits;
+        var pick = (long)(draw(1) % (ulong)candidates.Sum(e => e.Weight));
+        return keep.Insert(index, candidates.First(e => (pick -= e.Weight) < 0).TraitId);
     }
 
     /// <summary>依人數加權合併兩組比例，取整後以最大餘數法補足 1000（同餘數取文化編號小者）。</summary>

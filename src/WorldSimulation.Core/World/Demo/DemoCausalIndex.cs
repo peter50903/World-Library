@@ -336,6 +336,8 @@ public sealed class DemoCausalIndex
                 return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week && parent.SettlementId == e.SettlementId
                     && DemoTechTree.ByIndex(parent.Count) == DemoFaiths.AncestorRites && e.Count > 0
                     ? null : "創立信仰的直接原因必須是同週同聚落習得祖靈祭祀";
+            case DemoSettlementEventKind.CultureSplit:
+                return parent is null && e.Count > 0 ? null : "文化分化是根因，人數欄必須是文化編號";
             case DemoSettlementEventKind.FaithExtinct:
                 return parent is null && e.Count > 0 ? null : "信仰滅絕是根因，人數欄必須是信仰編號";
             case DemoSettlementEventKind.FarmlandCleared:

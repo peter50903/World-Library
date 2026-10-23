@@ -452,12 +452,13 @@ public sealed partial class DemoObserverWorld
                 var transit = lifecycle.Outcome.Migrations.Select(b => b.Id).ToHashSet();
                 var (faith, faithEvents) = DemoFaiths.Advance(_faith, report, learned, lifecycle.Outcome.Sites, Map, _culture,
                     lifecycle.Population.Representatives, transit, _rng, checked(landNextId + cleared.Count));
-                var added = learned.Concat(cleared).Concat(faithEvents).ToArray();
+                // 第 08-9 章 B4：每年文化同化與分化（事件接在信仰事件之後）。
+                var (culture, split) = DemoCultures.Advance(_culture, report, transit, _rng,
+                    lifecycle.Outcome.Sites, Map, checked(landNextId + cleared.Count + faithEvents.Count));
+                var added = learned.Concat(cleared).Concat(faithEvents).Concat(split).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
-                // 第 08-9 章 B1：背景人口的文化比例與代表人物的文化。
-                var culture = DemoCultures.Advance(_culture, withKnowledge.Report, transit, _rng);
                 commit.StageKnowledge(knowledge, land, culture, faith);
             }
             else

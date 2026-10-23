@@ -224,7 +224,9 @@ public enum DemoSettlementEventKind
     /// <summary>第 08-9 章 B3：聚落創立新信仰；直接原因＝同週同聚落習得祖靈祭祀。Count＝信仰編號。</summary>
     FaithFounded = 14,
     /// <summary>第 08-9 章 B3：信仰零信徒而滅絕（48A：不刪除，可同編號復興）。根因。Count＝信仰編號。</summary>
-    FaithExtinct = 15
+    FaithExtinct = 15,
+    /// <summary>第 08-9 章 B4：一群聚落與同文化本群分開滿 50 年，分化出子文化（根因）。Count＝新文化編號。</summary>
+    CultureSplit = 16
 }
 
 /// <summary>
@@ -268,6 +270,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.KnowledgeLost => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FaithFounded => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FaithExtinct => $"第 {day} 天  |  {Cause}",
+            DemoSettlementEventKind.CultureSplit => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
