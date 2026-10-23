@@ -125,28 +125,10 @@ public static class DemoKnowledge
         => node.Tier == 1 || (node.Tier == 2 && tier >= DemoSettlementTier.Village); // 第 0 階＝開局知識，不研究
 
     /// <summary>
-    /// 第 08-9 章 A2【TEMP 規則】（08-7a 第三道閘門：地區）研究原料在聚落可取得才累積——
-    /// 糧食（RES_GRAIN）以存糧支付、蔬果隨採集；木材要可及森林；纖維要可及草原；草藥要可及森林或草原；
-    /// 水、黏土、沙要可取水；鹽要鄰海；布要已會織造。獸肉、獸皮（野獸出現後）、石材、礦、羊皮紙、寶石、魔晶目前都取不到。
-    /// 原料暫不扣除（物品倉儲在第 09 章）。
+    /// 第 08-9 章 A2（08-7a 第三道閘門：地區）研究原料在聚落可取得才累積。A6 起改依原料大類（<see cref="DemoResourceCategories"/>，08-7c）。
     /// </summary>
     public static bool ResourceAvailable(string resource, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state)
-    {
-        bool Near(DemoTerrain terrain) => map is not null && NearTerrain(map, settlement, terrain);
-        var cell = new DemoCellRef(settlement.Column, settlement.Row);
-        return resource switch
-        {
-            "RES_GRAIN" => food > 0,
-            "RES_VEGETABLE" => true,
-            "RES_WOOD" => Near(DemoTerrain.Forest),
-            "RES_FIBER" => Near(DemoTerrain.Grassland),
-            "RES_MED_HERB" => Near(DemoTerrain.Forest) || Near(DemoTerrain.Grassland),
-            "RES_WATER" or "RES_CLAY" or "RES_SAND" => map is not null && map.HasWaterAccess(cell),
-            "RES_SALT" => map is not null && NearSea(map, settlement),
-            "RES_CLOTH" => state.Knows(settlement.Id, new DemoTechnology("TECH_WEAVING")),
-            _ => false
-        };
-    }
+        => DemoResourceCategories.Available(resource, settlement, map, food, state);
 
     /// <summary>
     /// 第 08-9 章 A2：每週的從業者人數＝成年人（研究原料都取得到時）；畜牧要等野生動物與牧群（第 08-9 章 C1）。
