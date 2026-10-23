@@ -102,6 +102,16 @@
 | 餓死的人 | 先老人（最年長起）、再兒童（最年幼起）、最後成年人（最年長起）；代表人物在同年齡群中最後才餓死 | 老幼最脆弱；代表人物不隨機消失，事件可追 |
 | 事件類型 | TEMP_EV_KNOWLEDGE_LEARNED、TEMP_EV_ERA_BEGAN；根因分類「知識」 | 24 表尚無對應 |
 
+#### D08-9d｜野生動物與狩獵（第 08-9 章 C1，Claude 定案【TEMP】；12a 第 1～2 節）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 野地 | 森林、草原格中不在任何現存聚落生活圈（本格與六鄰格）的格 | 使用者：野獸只在生活圈外 |
+| 出現 | 進入開拓時代那週，每格野地草食獸放到承載（森林 6、草原 8），掠食獸＝承載的五分之一（至少 1） | 12a；MON_POP 真實族群 |
+| 繁殖 | 每年：野地草食＋20%（至少 1）到承載；掠食承載＝本格與鄰格草食的五分之一，未滿＋10%、超過的死亡 | MON_REPRO、MON_CARRY |
+| 狩獵 | 會狩獵的聚落每週以每 5 名成年人 1 頭，從 2 格內獵草食獸，每頭 20 糧食；週帳新欄位「獵得的糧食」，糧食帳與 M1 世界對帳計入 | MON_PRED：消耗真實獵物 |
+| 獸產、畜牧 | 2 格內有草食獸時，獸產大類取得得到，狩獵與畜牧分支有從業者 | 08-7c |
+
 #### D08-9c｜信仰（第 08-9 章 B3，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -438,14 +448,14 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 20 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-9 章 B2 生計傳統開拓時代起生效 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 10 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-9 章 B1 文化狀態；B3 信仰狀態 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 11 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-9 章 B1 文化狀態；B3 信仰狀態；C1 野生動物 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 14 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 4 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 8 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
-| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 18 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中 |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 08-9 章 C1 野生動物 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
@@ -471,6 +481,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoResourceCategories.cs` | 1 | 第 08-9 章 A6 原料大類取得條件（08-7c） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 10 | 第 08-9 章 B1 文化生成與背景人口比例、B2 文化效果、B4 同化與分化（D08-9b） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 9 | 第 08-9 章 B3 信仰創立、擴散、滅絕、B3b 食人儀式糧食（D08-9c） |
+| `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 1 | 第 08-9 章 C1 野生動物與狩獵（D08-9d） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 21 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳、創立信仰、信仰滅絕、文化分化 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |

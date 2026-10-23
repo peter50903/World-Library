@@ -324,7 +324,8 @@ public sealed record DemoSettlementWeekLedger(
     long ElderStarvationDeaths = 0,
     long SourceSlack = 0,
     long ToolYieldPercent = 0,
-    long FoodFromDead = 0)
+    long FoodFromDead = 0,
+    long FoodFromHunting = 0)
 {
     /// <summary>第 08-6 章 e 節：本週每名勞力可採量（工具加成後）。</summary>
     public long YieldPerWorker(DemoWeeklyTempConfig config)
@@ -340,7 +341,7 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>糧食帳：期初＋生產＋帶入－消耗－帶出－腐敗（第 06 章 d 節）＝期末。</summary>
     public bool FoodBalanced
-        => FoodOpening + FoodProduced + FoodCarriedIn + FoodFromDead - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing; // 第 08-9 章 B3b：食人儀式
+        => FoodOpening + FoodProduced + FoodCarriedIn + FoodFromDead + FoodFromHunting - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing; // 第 08-9 章 B3b 食人儀式、C1 狩獵
 
     /// <summary>
     /// M1_NO_MAGIC_FOOD：糧食只能來自資源點的實際採收，且每一單位都歸屬合法來源（農牧／採集）。
@@ -358,7 +359,7 @@ public sealed record DemoSettlementWeekLedger(
     /// M1_RES：聚落總資源（資源點存量＋糧食）只因再生與遷徙隊伍帶入增加、只因消耗與帶出減少。
     /// </summary>
     public bool TotalResourceBalanced
-        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn + FoodFromDead - FoodConsumed - FoodCarriedOut - FoodSpoiled
+        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn + FoodFromDead + FoodFromHunting - FoodConsumed - FoodCarriedOut - FoodSpoiled
             == ReserveClosing + FoodClosing;
 
     /// <summary>M1_POP 的人口帳部分。</summary>
@@ -379,7 +380,9 @@ public sealed record DemoSettlementWeekLedger(
         && ChildStarvationDeaths >= 0 && ElderStarvationDeaths >= 0
         && ChildStarvationDeaths + ElderStarvationDeaths <= Deaths - NaturalDeaths
         // 第 08-9 章 B3b：死者的糧食只來自本週餓死的人。
-        && FoodFromDead >= 0 && FoodFromDead <= checked((Deaths - NaturalDeaths) * DemoFaiths.TempFoodPerDead);
+        && FoodFromDead >= 0 && FoodFromDead <= checked((Deaths - NaturalDeaths) * DemoFaiths.TempFoodPerDead)
+        // 第 08-9 章 C1：獵得的糧食是整頭獸的倍數。
+        && FoodFromHunting >= 0 && FoodFromHunting % DemoWildlife.TempFoodPerGrazer == 0;
 
     public bool IsBalanced
         => ReserveBalanced && FoodBalanced && NoMagicFood && TotalResourceBalanced && PopulationBalanced
@@ -612,7 +615,8 @@ internal static class DemoWeeklySettlement
         Func<int, long>? debtSourceOf = null,
         bool? hopeRules = null,
         Func<int, long>? toolYieldPercent = null,
-        Func<int, int>? cannibalPermille = null)
+        Func<int, int>? cannibalPermille = null,
+        IReadOnlyDictionary<int, long>? huntedFood = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -1117,7 +1121,8 @@ internal static class DemoWeeklySettlement
 
             arrivals.TryGetValue(settlement.Id, out var arrived);
             var populationClosing = checked(survivors - emigrants + arrived.People);
-            var foodFinal = checked(foodClosing - foodOut + arrived.Food + fromDead);
+            var fromHunting = huntedFood?.GetValueOrDefault(settlement.Id) ?? 0; // 第 08-9 章 C1：本週獵得的草食獸
+            var foodFinal = checked(foodClosing - foodOut + arrived.Food + fromDead + fromHunting);
             var debtFinal = checked(debt - debtOut + arrived.Debt);
 
             // ⑨ 人口帳。
@@ -1140,7 +1145,7 @@ internal static class DemoWeeklySettlement
                 FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
                 SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id),
                 ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0,
-                FoodFromDead: fromDead));
+                FoodFromDead: fromDead, FoodFromHunting: fromHunting));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))

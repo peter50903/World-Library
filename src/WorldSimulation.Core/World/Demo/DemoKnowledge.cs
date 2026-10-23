@@ -127,18 +127,19 @@ public static class DemoKnowledge
     /// <summary>
     /// 第 08-9 章 A2（08-7a 第三道閘門：地區）研究原料在聚落可取得才累積。A6 起改依原料大類（<see cref="DemoResourceCategories"/>，08-7c）。
     /// </summary>
-    public static bool ResourceAvailable(string resource, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state)
-        => DemoResourceCategories.Available(resource, settlement, map, food, state);
+    public static bool ResourceAvailable(string resource, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state,
+        bool animalsNear = false)
+        => DemoResourceCategories.Available(resource, settlement, map, food, state, animalsNear);
 
     /// <summary>
     /// 第 08-9 章 A2：每週的從業者人數＝成年人（研究原料都取得到時）；畜牧要等野生動物與牧群（第 08-9 章 C1）。
     /// </summary>
     public static long Practitioners(DemoTechNode node, DemoSettlement settlement, DemoCohortDemography population, DemoHexWorld? map,
-        long food, DemoKnowledgeState state)
+        long food, DemoKnowledgeState state, bool animalsNear = false)
     {
-        if (node.Branch is "畜牧" or "狩獵") // 第 08-9 章 A4：狩獵也要等野生動物（C1）
+        if (node.Branch is "畜牧" or "狩獵" && !animalsNear) // 第 08-9 章 C1：2 格內有獸群才有狩獵、畜牧的從業者
             return 0;
-        if (node.ResearchCost.Any(c => !ResourceAvailable(c.Resource, settlement, map, food, state)))
+        if (node.ResearchCost.Any(c => !ResourceAvailable(c.Resource, settlement, map, food, state, animalsNear)))
             return 0;
         return population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules);
     }
@@ -157,7 +158,7 @@ public static class DemoKnowledge
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, Func<int, DemoWeekReport?>? weekAt = null,
-        Func<int, IReadOnlySet<string>>? cultureTraitsOf = null)
+        Func<int, IReadOnlySet<string>>? cultureTraitsOf = null, Func<DemoSettlement, bool>? animalsNear = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -197,6 +198,7 @@ public static class DemoKnowledge
             var reps = population.Representatives.Where(r => r.SettlementId == settlement.Id).ToList();
             var scholars = reps.Count(r => r.Role == DemoRepresentativeRole.Scholar);
             var traits = cultureTraitsOf?.Invoke(settlement.Id) ?? new HashSet<string>(); // 第 08-9 章 B2：主要文化
+            var animals = animalsNear?.Invoke(settlement) ?? false; // 第 08-9 章 C1：每聚落每週算一次
             // 第 08-9 章 A3：勢力範圍內（TEMP 3 格）的其他有人聚落，鄰近傳播用。
             var neighbours = map is null ? new List<DemoSettlement>() : sites.Settlements
                 .Where(o => o.Id != settlement.Id && !o.IsRuin && HexDistance(map, settlement, o) <= TempDiffusionRange).ToList();
@@ -213,7 +215,7 @@ public static class DemoKnowledge
                 // 第 08-9 章 A2：等級閘門（第 2 階要村莊）。
                 if (!TierAllows(node, tier))
                     continue;
-                var practitioners = Practitioners(node, settlement, population, map, food, state);
+                var practitioners = Practitioners(node, settlement, population, map, food, state, animals);
                 var carried = incoming.Count == 0 ? 0
                     : incoming.Where(m => state.Knows(m.FromSettlementId, technology)).Sum(m => m.PopulationClosing);
                 if (practitioners == 0 && carried == 0)

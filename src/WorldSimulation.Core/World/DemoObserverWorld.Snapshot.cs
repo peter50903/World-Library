@@ -263,6 +263,20 @@ public sealed partial class DemoObserverWorld
             || faith.Representatives.Any(kv => !inOffice.Contains(kv.Key) || (kv.Value != 0 && !faithIds.Contains(kv.Value)))
             || (!weekly.HumanLifecycleEnabled && (faith.Faiths.Count > 0 || faith.Settlements.Count > 0)))
             Reject("信仰狀態不合法");
+        // 第 08-9 章 C1：野生動物（格在地圖內、是森林或草原、頭數不為負且不超過承載；希望時代沒有）。
+        var wildlife = state.GetProperty("Wildlife").Deserialize<DemoWildlifeState>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少野生動物。");
+        if (wildlife.Cells is null || wildlife.AppearedWeek < 0 || wildlife.AppearedWeek > weekCount
+            || (wildlife.AppearedWeek == 0 && !wildlife.Cells.IsEmpty)
+            || (knowledge.Era == DemoEra.Hope && wildlife.AppearedWeek != 0)
+            || wildlife.Cells.Any(kv => kv.Key < 1 || kv.Key > (long)map.Columns * map.Rows || kv.Value is null
+                || kv.Value.Grazers < 0 || kv.Value.Predators < 0 || (kv.Value.Grazers == 0 && kv.Value.Predators == 0)
+                || DemoWildlife.CellOf(map, kv.Key).Terrain is not (DemoTerrain.Forest or DemoTerrain.Grassland)
+                || kv.Value.Grazers > DemoWildlife.GrazerCapacity(DemoWildlife.CellOf(map, kv.Key))))
+            Reject("野生動物狀態不合法");
+        candidate._wildlife = wildlife with { Cells = wildlife.Cells.ToImmutableSortedDictionary() };
+        if (reports.Any(r => r.Settlements.Any(l => l.FoodFromHunting > 0)) && wildlife.AppearedWeek == 0)
+            Reject("週帳有獵得的糧食，但世界還沒有野生動物");
         // 第 08-9 章 B3b：死者化為糧食只在有「食人儀式」信條的世界出現（數量上限由週帳 NonNegative 檢查）。
         if (reports.Any(r => r.Settlements.Any(l => l.FoodFromDead > 0)) && !faith.Faiths.Any(f => f.Tenets.Contains("DOC_CANNIBALISM")))
             Reject("週帳有死者化為的糧食，但沒有信奉食人儀式的信仰");

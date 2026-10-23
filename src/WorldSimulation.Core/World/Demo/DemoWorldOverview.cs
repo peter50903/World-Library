@@ -33,7 +33,9 @@ public sealed record DemoWorldOverview(
     int FoundedThisYear,
     int Cultures = 0,
     int Faiths = 0,
-    long Believers = 0)
+    long Believers = 0,
+    long Grazers = 0,
+    long Predators = 0)
 {
     public static DemoWorldOverview Of(DemoObserverWorld world, int daysPerYear)
     {
@@ -74,7 +76,8 @@ public sealed record DemoWorldOverview(
             year?.SettlementsFounded ?? 0,
             world.Culture.Cultures.Count, // 第 08-9 章 B1
             world.Faith.Faiths.Count(f => !f.Extinct), // 第 08-9 章 B3：存續的信仰與估計信徒
-            world.Sites.Settlements.Where(s => !s.IsRuin).Sum(s => world.SettlementPopulation(s.Id) * (1000 - world.Faith.PermilleOf(s.Id, 0)) / 1000));
+            world.Sites.Settlements.Where(s => !s.IsRuin).Sum(s => world.SettlementPopulation(s.Id) * (1000 - world.Faith.PermilleOf(s.Id, 0)) / 1000),
+            world.Wildlife.TotalGrazers, world.Wildlife.TotalPredators); // 第 08-9 章 C1
     }
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
@@ -98,6 +101,8 @@ public sealed record DemoWorldOverview(
             lines.Add(I($"兒童 {Children}｜成年 {Adults}｜老人 {Elders}"));
             lines.Add(I($"育齡伴侶約 {Couples} 對｜懷孕中 {Pregnant}"));
         }
+        if (Grazers + Predators > 0)
+            lines.Add(I($"野生動物：草食獸 {Grazers} 頭｜掠食獸 {Predators} 頭"));
         lines.Add(I($"存糧 {FoodStored}（途中攜帶 {FoodInTransit}）｜本週缺糧村莊 {ShortVillages}"));
         lines.Add(I($"今年：出生 {BirthsThisYear}｜老死 {OldAgeDeathsThisYear}｜餓死 {StarvationDeathsThisYear}｜外移 {EmigrantsThisYear}｜建村 {FoundedThisYear}"));
         return lines;
