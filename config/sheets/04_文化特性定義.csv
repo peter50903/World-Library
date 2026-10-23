@@ -13,3 +13,14 @@ CT_RELIGIOUS,虔敬社會,Devout,religious_activity,1.3,,,宗教,1,提高祈禱�
 CT_SCHOLARLY,重學,Scholarly,education_demand,1.3,,,教育,0.8,提高識字、教育與研究投入傾向,TRUE
 CT_TRADITIONAL,守舊,Traditional,culture_change_resistance,1.25,,,鄉村,1,文化特性變動較慢,TRUE
 CT_OPEN,開放,Open,foreign_culture_acceptance,1.25,,,貿易,0.9,對外來文化與移民接受度較高,TRUE
+CT_FOREST_FOLK,林地子民,Forest Folk,forest_source_yield,1.1,,,生計,1,【TEMP】第 08-8 章：森林來源採集量＋10%,TRUE
+CT_RIVER_FOLK,河岸子民,River Folk,river_source_yield,1.1,,,生計,1,【TEMP】河流來源採集量＋10%,TRUE
+CT_SEA_FOLK,海之民,Sea Folk,sea_source_yield,1.1,,,生計,1,【TEMP】海洋來源採集量＋10%；造船研究＋25%,TRUE
+CT_GRASSLAND_FOLK,草原子民,Grassland Folk,grassland_source_yield,1.1,,,生計,1,【TEMP】草原野採＋10%；狩獵研究＋25%,TRUE
+CT_WANDERERS,遷徙之民,Wanderers,migration_ration_use,0.8,,CT_ROOTED,生計,1,【TEMP】遷徙路糧消耗－20%,TRUE
+CT_ROOTED,守土,Rooted,emigration_tendency,0.8,,CT_WANDERERS,生計,1,【TEMP】外移意願降低,TRUE
+CT_ELDER_COUNCIL,長老議事,Elder Council,leader_by_age,1,,CT_STRONGMAN,習俗,1,村長由最年長者擔任（現行規則）,TRUE
+CT_STRONGMAN,強人統治,Strongman Rule,leader_by_prime_age,1,,CT_ELDER_COUNCIL,習俗,1,【TEMP】村長改由最壯年者擔任,TRUE
+CT_EPIC_TRADITION,口傳史詩,Oral Epics,oral_history_retention,1.2,,,習俗,1,【TEMP】聚落小史與知識較不易失傳（日後生效）,TRUE
+CT_FACE_MARKING,紋面,Face Marking,cultural_identity_strength,1.2,,,習俗,1,【TEMP】同化較慢（日後生效）,TRUE
+CT_ANCESTRAL_GRAVES,祖墳守護,Ancestral Graves,emigration_tendency,0.9,,,習俗,1,【TEMP】不輕易離開祖地（日後生效）,TRUE

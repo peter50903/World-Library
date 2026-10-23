@@ -163,8 +163,16 @@ public static class DemoCellQuery
             if (world.PopulationStats(settlement.Id) is { } st && st.Total > 0)
                 lines.Add($"人口結構：兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}｜育齡伴侶約 {st.Couples} 對｜懷孕中 {st.Pregnant}");
             var day = world.Snapshot().DaysElapsed;
+            // 第 08-9 章 B1：文化比例與主要文化的特性。
+            if (world.Culture.SharesOf(settlement.Id).Count > 0)
+            {
+                lines.Add(DemoCultures.SharesLine(world.Culture, settlement.Id));
+                if (world.Culture.MainCultureOf(settlement.Id) is { } main)
+                    lines.Add(DemoCultures.TraitsLine(main));
+            }
             foreach (var r in world.RepresentativesOf(settlement.Id))
-                lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
+                lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲"
+                    + (world.Culture.CultureOfRepresentative(r.Id) is { } c ? $"，{c.Name}" : "") + "）");
             // 第 08-6 章：知識樹（已習得的技術；未習得的列研究進度）。第 08-9 章 A1：只列有進度的技術（依知識樹順序）。
             if (world.HumanPopulationSnapshot is not null)
                 lines.Add($"開局知識：{string.Join("、", DemoTechTree.All.Where(n => DemoTechTree.IsInitial(n.Technology)).Select(n => n.Name))}");
