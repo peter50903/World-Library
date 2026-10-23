@@ -175,8 +175,8 @@ internal static class DemoHumanLifecycle
     }
 
     /// <summary>
-    /// 第 07-1 章 b 節【TEMP 規則】代表人物：每個有人的聚落一位村長（最年長的成年人）、一位採集代表（人數最多的壯年年齡群，同數取年長），
-    /// 本週有從河流或海洋採到食物的聚落再一位漁撈代表。老死或聚落無人就卸任，下週結算由同規則補任。
+    /// 第 07-1 章 b 節【TEMP 規則】代表人物：每個有人的聚落一位村長（最年長的成年人）。第 08-5 章：採集、漁撈代表取消
+    /// （使用者：只有權力者與持有專業知識的人才算）。老死或聚落無人就卸任，下週結算由同規則補任。
     /// 補任者從年齡群中具名化（不是出生、不改人數），實體 ID 由世界唯一分配器依聚落、職位順序發號，名字依 ID 抽。
     /// </summary>
     private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
@@ -196,25 +196,17 @@ internal static class DemoHumanLifecycle
                 current.Add(r);
         }
 
-        var elder = DemoSurvivalTempSettings.Current.ElderAgeYears;
-        var fishers = report.Sources.Where(x => x.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater)
-            .SelectMany(x => x.Shares ?? Array.Empty<DemoSourceShare>()).Where(sh => sh.Food > 0).Select(sh => sh.SettlementId).ToHashSet();
         var appointments = new List<DemoRepresentative>();
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin && population.ResidentsOf(s.Id) > 0).OrderBy(s => s.Id))
         {
             long Free(DemoCohortGroup g) => g.Count - current.Count(r => r.SettlementId == settlement.Id && r.BirthYear == g.BirthYear && r.Sex == g.Sex);
             var adults = population.GroupsAt(settlement.Id, 0)
                 .Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) >= Rules.AdultAgeYears).ToList();
-            foreach (var role in new[] { DemoRepresentativeRole.Leader, DemoRepresentativeRole.Gatherer, DemoRepresentativeRole.Fisher })
+            foreach (var role in new[] { DemoRepresentativeRole.Leader })
             {
                 if (current.Any(r => r.SettlementId == settlement.Id && r.Role == role)) continue;
-                if (role == DemoRepresentativeRole.Fisher && !fishers.Contains(settlement.Id)) continue;
                 var candidates = adults.Where(g => Free(g) > 0).ToList();
-                if (role != DemoRepresentativeRole.Leader)
-                    candidates = candidates.Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) < elder).ToList();
-                var pick = role == DemoRepresentativeRole.Leader
-                    ? candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault()
-                    : candidates.OrderByDescending(Free).ThenBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
+                var pick = candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
                 if (pick is null) continue;
                 var id = DemoEntityIds.NextLong(ids);
                 var person = new DemoRepresentative(id, settlement.Id, role, names.Person(id, pick.Sex), pick.Sex, pick.BirthYear, report.Week);

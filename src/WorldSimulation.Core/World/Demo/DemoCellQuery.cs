@@ -64,6 +64,22 @@ public static class DemoCellQuery
         _ => "未定義（TEMP）"
     };
 
+    /// <summary>
+    /// 第 08-5 章（使用者 2026-10-23）：滑鼠提示用的一句話——有聚落時是聚落名與規模（遺跡另標），
+    /// 否則是地形（森林、草原、大海、河流、淺灘）。
+    /// </summary>
+    public static string ShortName(DemoHexWorld map, DemoWorldSites? sites, DemoHexCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(cell);
+        if (sites?.SettlementAt(cell.Column, cell.Row) is { } place)
+            return place.IsRuin ? $"{place.Name}（遺跡）" : place.Name;
+        if (cell.Terrain == DemoTerrain.Forest) return "森林";
+        if (cell.Terrain == DemoTerrain.Grassland) return "草原";
+        if (cell.Sea) return "大海";
+        return cell.Shallow ? "淺灘（可涉水過河）" : "河流";
+    }
+
     /// <summary>第 06-1 章：依格子區分海洋（深水）、河流、河流淺灘。</summary>
     public static string TerrainName(DemoHexCell cell)
     {

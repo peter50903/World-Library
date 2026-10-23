@@ -46,6 +46,7 @@ public partial class ObserverRoot
     private static readonly Color TempInk = new(0.22f, 0.15f, 0.08f);
     private static readonly Color TempParchmentText = new(0.95f, 0.89f, 0.74f);
     private const float TempMusicVolumeDb = -16f; // TEMP：背景音樂音量
+    private const float TempClickVolumeDb = -20f; // TEMP：按鍵音量（第 08-5 章：使用者 2026-10-23 嫌太大聲，原 -6 dB）
 
     // TEMP 顯示配色：參考視覺稿 observer_hud 的深色木框與金屬邊（不是正式美術）。
     private static readonly Color TempPanelBg = new(0.10f, 0.085f, 0.065f, 0.93f);
@@ -76,6 +77,16 @@ public partial class ObserverRoot
         theme.SetColor("font_color", "CheckBox", TempInk);
         theme.SetColor("font_hover_color", "CheckBox", TempInk);
         theme.SetColor("font_pressed_color", "CheckBox", TempInk);
+        // 第 08-5 章：滑鼠提示是深色底，不能沿用羊皮紙的深色字（使用者 2026-10-23：功能列提示看不清楚）。
+        theme.SetColor("font_color", "TooltipLabel", TempParchmentText);
+        theme.SetStylebox("panel", "TooltipPanel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.10f, 0.08f, 0.06f, 0.95f),
+            BorderColor = new Color(0.55f, 0.45f, 0.30f),
+            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3,
+            ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 4, ContentMarginBottom = 4
+        });
         _hud.Theme = theme;
     }
 
@@ -176,7 +187,7 @@ public partial class ObserverRoot
 
     private void BuildAudio()
     {
-        _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxClick), VolumeDb = -6f };
+        _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxClick), VolumeDb = TempClickVolumeDb };
         _alertPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxEventAlert), VolumeDb = -4f };
         var music = ArtAssets.Audio(ArtAssets.MusicObserverLoop);
         if (music is AudioStreamOggVorbis ogg)
@@ -315,6 +326,8 @@ public partial class ObserverRoot
     private void HideDetail()
     {
         _detailOpen = false;
+        if (_hexMap is not null)
+            _hexMap.Highlight = null; // 第 08-5 章：關閉詳情時一併取消地圖上的框
         ApplyHudLayout();
     }
 

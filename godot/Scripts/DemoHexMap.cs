@@ -87,7 +87,7 @@ public partial class DemoHexMap : Control
         SizeFlagsVertical = SizeFlags.ExpandFill;
         MouseFilter = MouseFilterEnum.Stop;
         ClipContents = true;
-        TooltipText = "滾輪縮放、中鍵拖曳、左鍵點格；地形與聚落資料來自模擬核心（TEMP）。";
+        TooltipText = " "; // 第 08-5 章：提示文字依滑鼠所在格（_GetTooltip）
     }
 
     public override void _Ready()
@@ -364,20 +364,36 @@ public partial class DemoHexMap : Control
         if (!button.Pressed || button.ButtonIndex != MouseButton.Left || _middleDragging)
             return;
 
+        if (CellAt(button.Position) is { } hit)
+        {
+            // 第 08-5 章（使用者 2026-10-23）：點格查看詳情時，地圖上的這一格以框標示。
+            Highlight = (hit.Column, hit.Row);
+            QueueRedraw();
+            CellSelected?.Invoke(hit);
+            AcceptEvent();
+        }
+    }
+
+    /// <summary>畫面位置所在的格（格與格之間的縫隙不算）；不在任何格上回傳 null。</summary>
+    private DemoHexCell? CellAt(Vector2 position)
+    {
+        if (World is null)
+            return null;
         var (start, radius) = ViewLayout();
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            // The visible gap must not select an invisible cell.
-            if (!Geometry2D.IsPointInPolygon(
-                    button.Position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
-                continue;
-
-            CellSelected?.Invoke(cell);
-            AcceptEvent();
-            return;
+            if (Geometry2D.IsPointInPolygon(position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
+                return cell;
         }
+        return null;
     }
+
+    /// <summary>
+    /// 第 08-5 章（使用者 2026-10-23）：滑鼠停在格上只說明這一格是什麼（森林、大海、某某村莊…）。
+    /// </summary>
+    public override string _GetTooltip(Vector2 atPosition)
+        => World is not null && CellAt(atPosition) is { } cell ? DemoCellQuery.ShortName(World, Sites, cell) : "";
 
     /// <summary>
     /// #89：把指定格移到地圖中央並標示外框（只改顯示用的平移，不改縮放、不改世界狀態）。
