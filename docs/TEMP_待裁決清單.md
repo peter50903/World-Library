@@ -102,6 +102,16 @@
 | 餓死的人 | 先老人（最年長起）、再兒童（最年幼起）、最後成年人（最年長起）；代表人物在同年齡群中最後才餓死 | 老幼最脆弱；代表人物不隨機消失，事件可追 |
 | 事件類型 | TEMP_EV_KNOWLEDGE_LEARNED、TEMP_EV_ERA_BEGAN；根因分類「知識」 | 24 表尚無對應 |
 
+#### D08-9a｜研究閘門與從業者（第 08-9 章 A2，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 等級閘門 | 第 1 階任何聚落、第 2 階村莊、第 3 階以上要城邦以上（尚無） | 08-7a：世紀帝國的升時代閘門 |
+| 原料可取得 | 糧食＝有存糧、蔬果＝採集、木材＝可及森林、纖維＝可及草原、草藥＝可及森林或草原、水黏土沙＝可取水、鹽＝鄰海、布＝已會織造；其餘（獸肉、獸皮、石材、礦、羊皮紙…）目前取不到；暫不扣除 | 08-7a 地區條件；物品倉儲在第 09 章 |
+| 從業者 | 原料都取得到時＝成年人；畜牧等牧群出現 | 十字軍之王的地區條件 |
+| 專家、學者權重 | 同領域專家每人每週＋5、學者每人每週＋10（只在有人從業時） | 使用者：專家與學者越多越快 |
+| 學者 | 習得抄寫法的聚落補任一位 | 08-7b 第 3 節 |
+
 #### D08-6c｜農田開墾（第 08-6 章 c 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -426,7 +436,7 @@
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 4 | 第 08-6 章知識樹傳播（D08-6a）、工具加成（D08-6e）；門檻改由 DemoTechTree（第 08-9 章 A1） |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 7 | 第 08-6 章知識樹傳播（D08-6a）、工具加成（D08-6e）；門檻改由 DemoTechTree（第 08-9 章 A1）；A2 專家與學者權重、原料可取得規則（D08-9a） |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTree.cs` | 1 | 第 08-9 章 A1 門檻＝研究時間×325 |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 17 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田 |

@@ -71,17 +71,54 @@ public static class DemoKnowledge
     public static string Name(DemoTechnology technology)
         => DemoTechTree.Contains(technology) ? DemoTechTree.Of(technology).Name : technology.Id;
 
+    /// <summary>【TEMP】第 08-9 章 A2：每位同領域專家（代表人物）每週加的研究進度。</summary>
+    public const long TempSpecialistWeight = 5;
+
+    /// <summary>【TEMP】第 08-9 章 A2：每位學者每週加的研究進度（所有技術）。</summary>
+    public const long TempScholarWeight = 10;
+
     /// <summary>
-    /// 第 08-9 章 A1：每週的從業者人數。08-7b 第 3 節的其他領域在 A2 接上；這裡沒列的技術目前不會自行累積
-    /// （仍可由遷入者帶來）。
+    /// 第 08-9 章 A2（08-7a 第 2 節第二道閘門）：技術階級要求的聚落等級——第 1 階任何聚落、第 2 階村莊；
+    /// 第 3 階以上要城邦以上（尚未有），所以目前不會累積。
     /// </summary>
-    public static long Practitioners(DemoTechnology technology, DemoSettlement settlement, DemoCohortDemography population, DemoHexWorld? map)
+    public static bool TierAllows(DemoTechNode node, DemoSettlementTier tier)
+        => node.Tier <= 1 || (node.Tier == 2 && tier >= DemoSettlementTier.Village);
+
+    /// <summary>
+    /// 第 08-9 章 A2【TEMP 規則】（08-7a 第三道閘門：地區）研究原料在聚落可取得才累積——
+    /// 糧食（RES_GRAIN）以存糧支付、蔬果隨採集；木材要可及森林；纖維要可及草原；草藥要可及森林或草原；
+    /// 水、黏土、沙要可取水；鹽要鄰海；布要已會織造。獸肉、獸皮（野獸出現後）、石材、礦、羊皮紙、寶石、魔晶目前都取不到。
+    /// 原料暫不扣除（物品倉儲在第 09 章）。
+    /// </summary>
+    public static bool ResourceAvailable(string resource, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state)
     {
-        if (technology == DemoTechnology.Farming)
-            return population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules);
-        if (technology == DemoTechnology.Woodworking)
-            return map is not null && NearForest(map, settlement) ? population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules) : 0;
-        return 0;
+        bool Near(DemoTerrain terrain) => map is not null && NearTerrain(map, settlement, terrain);
+        var cell = new DemoCellRef(settlement.Column, settlement.Row);
+        return resource switch
+        {
+            "RES_GRAIN" => food > 0,
+            "RES_VEGETABLE" => true,
+            "RES_WOOD" => Near(DemoTerrain.Forest),
+            "RES_FIBER" => Near(DemoTerrain.Grassland),
+            "RES_MED_HERB" => Near(DemoTerrain.Forest) || Near(DemoTerrain.Grassland),
+            "RES_WATER" or "RES_CLAY" or "RES_SAND" => map is not null && map.HasWaterAccess(cell),
+            "RES_SALT" => map is not null && NearSea(map, settlement),
+            "RES_CLOTH" => state.Knows(settlement.Id, new DemoTechnology("TECH_WEAVING")),
+            _ => false
+        };
+    }
+
+    /// <summary>
+    /// 第 08-9 章 A2：每週的從業者人數＝成年人（研究原料都取得到時）；畜牧要等野生動物與牧群（第 08-9 章 C1）。
+    /// </summary>
+    public static long Practitioners(DemoTechNode node, DemoSettlement settlement, DemoCohortDemography population, DemoHexWorld? map,
+        long food, DemoKnowledgeState state)
+    {
+        if (node.Branch == "畜牧")
+            return 0;
+        if (node.ResearchCost.Any(c => !ResourceAvailable(c.Resource, settlement, map, food, state)))
+            return 0;
+        return population.AdultsIn(settlement.Id, DemoHumanLifecycle.Rules);
     }
 
     public static string EraName(DemoEra era) => era switch
@@ -97,7 +134,7 @@ public static class DemoKnowledge
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
-        DemoHexWorld? map = null)
+        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -111,6 +148,10 @@ public static class DemoKnowledge
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
         {
             var incoming = arrivals.Where(m => m.ToSettlementId == settlement.Id).ToList();
+            var food = report.Settlements.FirstOrDefault(l => l.SettlementId == settlement.Id)?.FoodClosing ?? 0;
+            var tier = tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Settlement;
+            var reps = population.Representatives.Where(r => r.SettlementId == settlement.Id).ToList();
+            var scholars = reps.Count(r => r.Role == DemoRepresentativeRole.Scholar);
             foreach (var node in DemoTechTree.All)
             {
                 var technology = node.Technology;
@@ -121,13 +162,20 @@ public static class DemoKnowledge
                 // 第 08-9 章 A1：前置（ParentTechIDs）全部已習得才累積（08-7a 第 2 節第一道閘門）。
                 if (node.Parents.Any(p => !state.Knows(settlement.Id, p)))
                     continue;
-                var practitioners = Practitioners(technology, settlement, population, map);
+                // 第 08-9 章 A2：等級閘門（第 2 階要村莊）。
+                if (!TierAllows(node, tier))
+                    continue;
+                var practitioners = Practitioners(node, settlement, population, map, food, state);
                 var carried = incoming.Count == 0 ? 0
                     : incoming.Where(m => state.Knows(m.FromSettlementId, technology)).Sum(m => m.PopulationClosing);
                 if (practitioners == 0 && carried == 0)
                     continue;
+                // 專家（同領域的代表人物）與學者只在有人從業時加速。
+                var specialists = practitioners == 0 ? 0 : reps.Count(r => DemoRepresentative.TechnologyOf(r.Role) is { } held
+                    && DemoTechTree.Contains(held) && DemoTechTree.Of(held).Sheet == node.Sheet);
+                var experts = practitioners == 0 ? 0 : checked(specialists * TempSpecialistWeight + scholars * TempScholarWeight);
                 var threshold = ThresholdOf(technology);
-                var gain = checked(practitioners + carried * threshold * TempCarryPercent / 100);
+                var gain = checked(practitioners + experts + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
@@ -139,7 +187,9 @@ public static class DemoKnowledge
                     ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
                     : technology == DemoTechnology.Woodworking
                         ? $"{practitioners} 名成年人長年在森林取木的經驗累積"
-                        : $"{practitioners} 名成年人長年採集植物的經驗累積";
+                        : technology == DemoTechnology.Farming
+                            ? $"{practitioners} 名成年人長年採集植物的經驗累積"
+                            : $"{practitioners} 名成年人長年{node.Branch}的經驗累積" + (experts > 0 ? $"（專家與學者協助）" : "");
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.KnowledgeLearned, node.Index, $"學會{Name(technology)}：{cause}【TEMP】",
                     EventId: nextEventId++);
@@ -162,11 +212,20 @@ public static class DemoKnowledge
     }
 
     /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>
-    public static bool NearForest(DemoHexWorld map, DemoSettlement settlement)
+    public static bool NearForest(DemoHexWorld map, DemoSettlement settlement) => NearTerrain(map, settlement, DemoTerrain.Forest);
+
+    /// <summary>第 08-9 章 A2：聚落本格或六鄰格有該地形。</summary>
+    public static bool NearTerrain(DemoHexWorld map, DemoSettlement settlement, DemoTerrain terrain)
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        return origin.Terrain == DemoTerrain.Forest || DemoRouteNetwork.Directions
-            .Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
-            .Any(c => c is { Terrain: DemoTerrain.Forest });
+        return origin.Terrain == terrain || Neighbours(map, origin).Any(c => c.Terrain == terrain);
     }
+
+    /// <summary>第 08-9 章 A2：六鄰格有海。</summary>
+    public static bool NearSea(DemoHexWorld map, DemoSettlement settlement)
+        => Neighbours(map, map.GetCell(settlement.Column, settlement.Row)).Any(c => c.Sea);
+
+    private static IEnumerable<DemoHexCell> Neighbours(DemoHexWorld map, DemoHexCell origin)
+        => DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
+            .Where(c => c is not null).Select(c => c!);
 }

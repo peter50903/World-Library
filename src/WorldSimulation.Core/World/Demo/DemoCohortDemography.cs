@@ -28,7 +28,10 @@ public enum DemoRepresentativeRole
     Carpenter = 2,
 
     /// <summary>第 08-6 章 e 節：鐵匠（鍛造知識持有者）。</summary>
-    Smith = 3
+    Smith = 3,
+
+    /// <summary>第 08-9 章 A2：學者（抄寫法起；所有研究加速）。</summary>
+    Scholar = 4
 }
 
 /// <summary>
@@ -44,6 +47,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Farmer => "農師",
         DemoRepresentativeRole.Carpenter => "木匠",
         DemoRepresentativeRole.Smith => "鐵匠",
+        DemoRepresentativeRole.Scholar => "學者",
         _ => "代表"
     };
 
@@ -53,6 +57,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Farmer => DemoTechnology.Farming,
         DemoRepresentativeRole.Carpenter => DemoTechnology.Woodworking,
         DemoRepresentativeRole.Smith => DemoTechnology.Smithing,
+        DemoRepresentativeRole.Scholar => new DemoTechnology("TECH_SCRIBAL_METHOD"),
         _ => null
     };
 }
