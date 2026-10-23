@@ -118,7 +118,7 @@ public static class DemoCrowding
         var childGrowth = checked(children * (food - food * DemoSurvivalTempSettings.Current.ChildFoodPercent / 100));
         var workers = Math.Max(0, ledger.AdultWorkersOpening - ledger.WaterCarriers);
         var demand = checked(ledger.FoodConsumed + ledger.FoodShortage);
-        var budget = Math.Min(ledger.SourceSlack, checked(workers * config.YieldPerWorkerPerWeek - demand)) - childGrowth;
+        var budget = Math.Min(ledger.SourceSlack, checked(workers * ledger.YieldPerWorker(config) - demand)) - childGrowth;
         return budget < 0 || food <= 0 ? 0 : Math.Max(0, budget / food - pregnant);
     }
 

@@ -122,6 +122,14 @@
 | 村莊 | 有木匠且人口 ≥ 10 | 使用者：聚落→村莊要有木匠 |
 | 降級 | 失去木匠，或人口降到 8 以下（升級門檻 10，降級門檻較低以免來回） | 使用者：人口或必要職位消失時降一級 |
 
+#### D08-6e｜鍛造、鐵匠與工具（第 08-6 章 e 節，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 鍛造習得門檻 | 52000 研究點（農耕的 2 倍）；每週＋成年人數，只有已習得木工的聚落累積 | 知識樹的前置：燃料與工具柄來自木工 |
+| 鐵匠 | 已習得鍛造的聚落一位（人數最多的非老年成年年齡群） | 使用者：專業知識持有者是代表人物 |
+| 工具加成 | 習得後的下一週起，每名勞力每週可採量＋25%（週帳記 ToolYieldPercent） | 使用者：鍛造產出工具，提高採集效率 |
+
 #### D08-4｜希望時代收尾（第 08-4 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -418,7 +426,7 @@
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 5 | 第 08-6 章知識樹門檻與傳播（D08-6a）、木工門檻（D08-6d） |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 7 | 第 08-6 章知識樹門檻與傳播（D08-6a）、木工門檻（D08-6d）、鍛造門檻與工具加成（D08-6e） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 17 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |

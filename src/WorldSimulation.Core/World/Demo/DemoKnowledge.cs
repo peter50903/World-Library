@@ -19,7 +19,10 @@ public enum DemoTechnology
     Farming = 0,
 
     /// <summary>第 08-6 章 d 節：木工：有木匠；聚落升為村莊的條件。</summary>
-    Woodworking = 1
+    Woodworking = 1,
+
+    /// <summary>第 08-6 章 e 節：鍛造：有鐵匠；工具提高採集效率。前置：木工。</summary>
+    Smithing = 2
 }
 
 /// <summary>某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。</summary>
@@ -69,8 +72,22 @@ public static class DemoKnowledge
     /// <summary>【TEMP】第 08-6 章 d 節：木工習得門檻：農耕的 1.5 倍。</summary>
     public const long TempWoodworkingThreshold = 39_000;
 
-    public static long ThresholdOf(DemoTechnology technology)
-        => technology == DemoTechnology.Woodworking ? TempWoodworkingThreshold : TempThreshold;
+    /// <summary>【TEMP】第 08-6 章 e 節：鍛造習得門檻：農耕的 2 倍（只有已習得木工的聚落累積）。</summary>
+    public const long TempSmithingThreshold = 52_000;
+
+    /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比。</summary>
+    public const long TempToolYieldPercent = 25;
+
+    public static long ThresholdOf(DemoTechnology technology) => technology switch
+    {
+        DemoTechnology.Woodworking => TempWoodworkingThreshold,
+        DemoTechnology.Smithing => TempSmithingThreshold,
+        _ => TempThreshold
+    };
+
+    /// <summary>第 08-6 章 e 節：<paramref name="week"/> 結算時的工具加成（該週以前已習得鍛造）。</summary>
+    public static long ToolYieldPercent(DemoKnowledgeState state, int settlementId, int week)
+        => state.Of(settlementId, DemoTechnology.Smithing) is { Learned: true } r && r.LearnedWeek < week ? TempToolYieldPercent : 0;
 
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
     public const long TempCarryPercent = 25;
@@ -79,6 +96,7 @@ public static class DemoKnowledge
     {
         DemoTechnology.Farming => "農耕",
         DemoTechnology.Woodworking => "木工",
+        DemoTechnology.Smithing => "鍛造",
         _ => technology.ToString()
     };
 
@@ -114,7 +132,9 @@ public static class DemoKnowledge
                 var current = records.GetValueOrDefault(key) ?? new DemoKnowledgeRecord(settlement.Id, technology, 0, 0);
                 if (current.Learned)
                     continue;
-                var practitioners = technology == DemoTechnology.Woodworking && (map is null || !NearForest(map, settlement))
+                // 第 08-6 章 e 節：鍛造的前置是木工（燃料與工具柄）。
+                var practitioners = (technology == DemoTechnology.Woodworking && (map is null || !NearForest(map, settlement)))
+                    || (technology == DemoTechnology.Smithing && !state.Knows(settlement.Id, DemoTechnology.Woodworking))
                     ? 0 : population.AdultsIn(settlement.Id, rules);
                 var threshold = ThresholdOf(technology);
                 var carried = report.Migrations
@@ -130,9 +150,12 @@ public static class DemoKnowledge
                     continue;
                 var cause = carried > 0
                     ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
-                    : technology == DemoTechnology.Woodworking
-                        ? $"{practitioners} 名成年人長年在森林取木的經驗累積"
-                        : $"{practitioners} 名成年人長年採集植物的經驗累積";
+                    : technology switch
+                    {
+                        DemoTechnology.Woodworking => $"{practitioners} 名成年人長年在森林取木的經驗累積",
+                        DemoTechnology.Smithing => $"{practitioners} 名成年人長年用火與製作工具的經驗累積",
+                        _ => $"{practitioners} 名成年人長年採集植物的經驗累積"
+                    };
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.KnowledgeLearned, (long)technology, $"學會{Name(technology)}：{cause}【TEMP】",
                     EventId: nextEventId++);
