@@ -20,16 +20,20 @@ public sealed record DemoSettlementChronicle(
     public static DemoSettlementChronicle Empty { get; } = new(0, 0, 0,
         ImmutableList<DemoChronicleLine>.Empty, ImmutableList<DemoChronicleLine>.Empty);
 
+    /// <summary>第 08-6 章 d 節：聚落目前的等級（每週結算後依人口與必要職位更新；升降都記一筆）。</summary>
+    public DemoSettlementTier Tier { get; init; }
+
     /// <summary>值比較（清單逐項比）。</summary>
     public bool Equals(DemoSettlementChronicle? other)
         => other is not null && NextMilestone == other.NextMilestone && Peak == other.Peak && PeakWeek == other.PeakWeek
+        && Tier == other.Tier
         && Milestones.SequenceEqual(other.Milestones) && Representatives.SequenceEqual(other.Representatives);
 
-    public override int GetHashCode() => HashCode.Combine(NextMilestone, Peak, PeakWeek, Milestones.Count, Representatives.Count);
+    public override int GetHashCode() => HashCode.Combine(NextMilestone, Peak, PeakWeek, Tier, Milestones.Count, Representatives.Count);
 
     /// <summary>指紋用的一行文字。</summary>
     public string Fingerprint()
-        => $"{NextMilestone}/{Peak}@{PeakWeek}|{string.Join("|", Milestones.Select(l => $"{l.Week}:{l.Text}"))}|{string.Join("|", Representatives.Select(l => $"{l.Week}:{l.Text}"))}";
+        => $"{NextMilestone}/{Peak}@{PeakWeek}/t{(int)Tier}|{string.Join("|", Milestones.Select(l => $"{l.Week}:{l.Text}"))}|{string.Join("|", Representatives.Select(l => $"{l.Week}:{l.Text}"))}";
 
     /// <summary>
     /// 依本週週報更新全部聚落的小史。<paramref name="inOffice"/>＝本週開始時在任的代表人物（卸任的人從這裡找名字）。
@@ -52,8 +56,8 @@ public sealed record DemoSettlementChronicle(
             var lines = c.Milestones;
             while (next < milestones.Count && pop >= milestones[next])
             {
-                var label = milestones[next] == DemoSettlementHistory.TempVillagePopulation ? "，由聚落發展為村莊" : "";
-                lines = lines.Add(new DemoChronicleLine(report.Week, $"人口首次達到 {milestones[next]} 人{label}"));
+                // 第 08-6 章 d 節：村莊改由木匠與人口共同決定（見下方等級），里程碑只記人數。
+                lines = lines.Add(new DemoChronicleLine(report.Week, $"人口首次達到 {milestones[next]} 人"));
                 next++;
             }
             var updated = c with { NextMilestone = next, Milestones = lines };
@@ -64,12 +68,17 @@ public sealed record DemoSettlementChronicle(
         }
 
         // 第 08-6 章：習得技術、本聚落率先讓世界進入新時代。
-        foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan))
+        // 第 08-6 章 c 節：開墾完成農田。
+        foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan
+            or DemoSettlementEventKind.FarmlandCleared))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
-            var text = e.Kind == DemoSettlementEventKind.KnowledgeLearned
-                ? $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}"
-                : $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}";
+            var text = e.Kind switch
+            {
+                DemoSettlementEventKind.KnowledgeLearned => $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}",
+                DemoSettlementEventKind.FarmlandCleared => "開墾一塊農田",
+                _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
+            };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };
         }
 
@@ -92,6 +101,21 @@ public sealed record DemoSettlementChronicle(
                 Representatives = c.Representatives.Add(new DemoChronicleLine(report.Week,
                     $"{DemoRepresentative.RoleName(who.Role)} {who.Name} 卸任：{x.Reason}"))
             };
+        }
+        // 第 08-6 章 d 節【TEMP 規則】聚落等級：有木匠且人口達門檻＝村莊；任一條件消失就降一級（記入小史）。
+        var exited = report.RepresentativeExits.Select(x => x.Id).ToHashSet();
+        var office = inOffice.Where(r => !exited.Contains(r.Id)).Concat(report.Appointments).ToList();
+        foreach (var ledger in report.Settlements)
+        {
+            var c = builder.GetValueOrDefault(ledger.SettlementId) ?? Empty;
+            var carpenter = office.Any(r => r.SettlementId == ledger.SettlementId && r.Role == DemoRepresentativeRole.Carpenter);
+            var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, carpenter, c.Tier);
+            if (tier == c.Tier)
+                continue;
+            var text = tier > c.Tier
+                ? $"有木匠、人口 {ledger.PopulationClosing} 人，由{DemoSettlementHistory.TierName(c.Tier)}發展為{DemoSettlementHistory.TierName(tier)}"
+                : $"{(carpenter ? $"人口降到 {ledger.PopulationClosing} 人" : "失去木匠")}，降為{DemoSettlementHistory.TierName(tier)}";
+            builder[ledger.SettlementId] = c with { Tier = tier, Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };
         }
         return builder.ToImmutable();
     }

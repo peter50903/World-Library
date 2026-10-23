@@ -326,6 +326,9 @@ public sealed class DemoCausalIndex
                 return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week
                     && parent.SettlementId == e.SettlementId && Enum.IsDefined((DemoEra)e.Count)
                     ? null : "時代開始的直接原因必須是同週同聚落的習得技術事件";
+            case DemoSettlementEventKind.FarmlandCleared:
+                // 第 08-6 章 c 節：根因（開墾進度另存於土地開發狀態）。
+                return parent is null && e.Count > 0 ? null : "開墾農田是根因，事件人數欄必須是格編號";
 
             default:
                 return "未知的事件種類";

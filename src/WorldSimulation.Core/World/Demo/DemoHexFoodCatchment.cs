@@ -11,7 +11,18 @@ public enum DemoCatchmentSourceKind
     Forest = 1,
     MainRiver = 2,
     GrasslandForage = 3,
-    OpenWater = 4
+    OpenWater = 4,
+
+    /// <summary>第 08-6 章 c 節：開墾完成的農田（草原格；供應見 <see cref="DemoLandClearing.TempFarmlandWeeklySupply"/>）。</summary>
+    Farmland = 5
+}
+
+/// <summary>第 08-6 章 c 節：來源種類的可及規則。</summary>
+public static class DemoCatchmentSourceKinds
+{
+    /// <summary>陸地來源（森林、草原野採、農田）可餵本格與六鄰格；水域來源只餵相鄰陸地。</summary>
+    public static bool IncludesOrigin(DemoCatchmentSourceKind kind)
+        => kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage or DemoCatchmentSourceKind.Farmland;
 }
 
 /// <param name="FoodAvailable">The source's one shared, already-evidenced weekly harvest budget,
@@ -91,7 +102,7 @@ public static class DemoHexFoodCatchment
         return Array.AsReadOnly(nearby.Where(c =>
             c.Terrain != DemoTerrain.Water
             && IsInReach(origin, c,
-                source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage))
+                DemoCatchmentSourceKinds.IncludesOrigin(source.Kind)))
             .OrderBy(c => c.Row).ThenBy(c => c.Column).ToArray());
     }
 
@@ -144,7 +155,7 @@ public static class DemoHexFoodCatchment
         {
             var origin = map.GetCell(s.Column, s.Row);
             return claimList.Where(claim => IsInReach(origin, map.GetCell(claim.Column, claim.Row),
-                s.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)).ToArray();
+                DemoCatchmentSourceKinds.IncludesOrigin(s.Kind))).ToArray();
         });
 
         void Pass(IEnumerable<DemoCatchmentFoodSource> order, Dictionary<int, long> want)
@@ -258,7 +269,7 @@ public static class DemoHexFoodCatchment
         if (source.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater
             && tile.Terrain != DemoTerrain.Water)
             throw new InvalidOperationException("Water food requires a water cell.");
-        if (source.Kind == DemoCatchmentSourceKind.GrasslandForage && tile.Terrain != DemoTerrain.Grassland)
-            throw new InvalidOperationException("Grassland foraging must be on undeveloped grassland.");
+        if (source.Kind is DemoCatchmentSourceKind.GrasslandForage or DemoCatchmentSourceKind.Farmland && tile.Terrain != DemoTerrain.Grassland)
+            throw new InvalidOperationException("Grassland foraging and farmland must be on grassland.");
     }
 }

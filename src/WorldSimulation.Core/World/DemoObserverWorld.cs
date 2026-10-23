@@ -405,7 +405,8 @@ public sealed partial class DemoObserverWorld
                 _demography is null ? null : DemoHumanLifecycle.MateMarkets(_demography, _sites, checked(CommittedWeeks + 1)),
                 _weekly.HopeEra ? FoundedNamer() : null,
                 firstEventId: checked(_history.LastEventId + 1), // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
-                debtSourceOf: DebtSourceOf);
+                debtSourceOf: DebtSourceOf,
+                hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope); // 第 08-6 章 b 節：開拓時代恢復餓死
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -417,11 +418,16 @@ public sealed partial class DemoObserverWorld
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
-                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId);
-                var withKnowledge = learned.Count == 0 ? lifecycle.Outcome
-                    : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(learned).ToArray() } };
+                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map);
+                // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
+                var landNextId = checked(nextId + learned.Count);
+                var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
+                    lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
+                var added = learned.Concat(cleared).ToArray();
+                var withKnowledge = added.Length == 0 ? lifecycle.Outcome
+                    : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
-                commit.StageKnowledge(knowledge);
+                commit.StageKnowledge(knowledge, land);
             }
             else
             {
@@ -454,7 +460,7 @@ public sealed partial class DemoObserverWorld
     }
 
     private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoCohortDemography demography, int week)
-        => (settlementId, _, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode);
+        => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode, deaths);
 
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and

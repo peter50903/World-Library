@@ -48,7 +48,9 @@ public sealed class M1HumanLifecycleCoverageTests
         var run = LivingRun.Value;
         Assert.True(run.Weeks.Sum(w => w.Settlements.Sum(l => l.Births)) > 0, "人類繁衍情境應有出生。");
         // 第 08-2 章：希望時代沒有餓死，自然死亡（老死）是真實長跑量得到的。
-        Assert.Equal(0, run.Weeks.Sum(w => w.Settlements.Sum(l => l.StarvationDeaths)));
+        // 第 08-6 章 b 節：進入開拓時代（時代開始事件那週）之後恢復餓死。
+        var pioneer = run.Weeks.FirstOrDefault(w => w.Events.Any(e => e.Kind == DemoSettlementEventKind.EraBegan))?.Week ?? int.MaxValue;
+        Assert.Equal(0, run.Weeks.Where(w => w.Week <= pioneer).Sum(w => w.Settlements.Sum(l => l.StarvationDeaths)));
         Assert.True(run.Weeks.Sum(w => w.Settlements.Sum(l => l.NaturalDeaths)) > 0, "希望時代 45 年應有老死。");
 
         var pop = Pop(run);

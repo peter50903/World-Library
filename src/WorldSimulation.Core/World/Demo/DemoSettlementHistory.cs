@@ -1,5 +1,12 @@
 namespace WorldSimulation.Core.World.Demo;
 
+/// <summary>第 08-6 章：聚落等級（使用者 2026-10-23：聚落→村莊→城邦→城市→首都；目前只有前兩級）。</summary>
+public enum DemoSettlementTier
+{
+    Settlement = 0,
+    Village = 1
+}
+
 /// <summary>
 /// 第 08-3 章：聚落小史——建立至今幾年，以及依年份列出的里程碑（開局或開拓建立、人口第一次達到規模門檻、
 /// 分出開拓隊建立的新聚落、人口高峰、成為遺跡）。由聚落小史（<see cref="DemoSettlementChronicle"/>，第 04-1 章）與聚落資料推得，只讀、不改世界。
@@ -7,11 +14,27 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoSettlementHistory
 {
-    /// <summary>【TEMP】人口第一次達到這些規模時記一筆；10 人起稱為「村莊」，未滿稱「聚落」。</summary>
+    /// <summary>【TEMP】人口第一次達到這些規模時記一筆。</summary>
     public static readonly IReadOnlyList<long> TempMilestones = new long[] { 10, 25, 50, 100 };
 
-    /// <summary>【TEMP】人口 ≥ 這個數稱為村莊。</summary>
+    /// <summary>【TEMP】第 08-6 章 d 節：有木匠且人口 ≥ 這個數稱為村莊（使用者 2026-10-23：村莊要有木匠）。</summary>
     public const long TempVillagePopulation = 10;
+
+    /// <summary>【TEMP】已是村莊的聚落，人口降到這個數以下才降級（避免人口在門檻上下來回時反覆升降）。</summary>
+    public const long TempVillageKeepPopulation = 8;
+
+    /// <summary>第 08-6 章 d 節：依人口與必要職位決定等級（<paramref name="current"/>＝目前等級，降級門檻較低）。</summary>
+    public static DemoSettlementTier TierFor(long population, bool hasCarpenter, DemoSettlementTier current = DemoSettlementTier.Settlement)
+    {
+        var needed = current == DemoSettlementTier.Village ? TempVillageKeepPopulation : TempVillagePopulation;
+        return hasCarpenter && population >= needed ? DemoSettlementTier.Village : DemoSettlementTier.Settlement;
+    }
+
+    public static string TierName(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Village => "村莊",
+        _ => "聚落"
+    };
 
     public const int DaysPerYear = 365;
 
@@ -19,9 +42,9 @@ public static class DemoSettlementHistory
 
     private static int YearOfWeek(int week) => YearOfDay(checked(week * 7));
 
-    /// <summary>規模名稱（遺跡／村莊／聚落）。</summary>
-    public static string TierName(DemoSettlement settlement, long population)
-        => settlement.IsRuin ? "遺跡" : population >= TempVillagePopulation ? "村莊" : "聚落";
+    /// <summary>規模名稱（遺跡／村莊／聚落；第 08-6 章 d 節起依聚落小史記的等級）。</summary>
+    public static string TierName(DemoSettlement settlement, DemoSettlementTier tier)
+        => settlement.IsRuin ? "遺跡" : TierName(tier);
 
     /// <summary>點格詳情用的各行：第一行是規模與建立年數，其後每行一筆里程碑（依時間）。</summary>
     public static IReadOnlyList<string> Lines(DemoObserverWorld world, int settlementId)
@@ -34,7 +57,7 @@ public static class DemoSettlementHistory
         var population = world.SettlementPopulation(settlementId);
         var head = new[]
         {
-            $"規模：{TierName(settlement, population)}｜建立至今 {age} 年（TEMP：{TempVillagePopulation} 人以上稱村莊）",
+            $"規模：{TierName(settlement, world.ChronicleOf(settlementId).Tier)}｜人口 {population}｜建立至今 {age} 年（TEMP：有木匠且 {TempVillagePopulation} 人以上稱村莊）",
             "聚落小史："
         };
         var events = new List<(int Year, string Text)>();

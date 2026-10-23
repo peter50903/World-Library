@@ -48,7 +48,10 @@ public sealed class DemoHumanLifeRulesTests
             births += ledgers.Sum(l => l.Births) + legs.Sum(m => m.Births);
             natural += ledgers.Sum(l => l.NaturalDeaths) + legs.Sum(m => m.NaturalDeaths);
             summaries.Add(summary);
-            starvation += ledgers.Sum(l => l.Deaths - l.NaturalDeaths) + legs.Sum(m => m.Deaths);
+            // 第 08-6 章 b 節：開拓時代恢復餓死；只驗收希望時代（時代開始週以前）沒有餓死。
+            var hopeUntil = world.Era == DemoEra.Hope ? int.MaxValue : world.Knowledge.EraWeek;
+            starvation += ledgers.Where(l => l.Week < hopeUntil).Sum(l => l.Deaths - l.NaturalDeaths)
+                + legs.Where(m => m.Week < hopeUntil).Sum(m => m.Deaths);
 
             // 每次出生都來自到期的懷孕。
             Assert.All(world.WeekReports().SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.Birth),

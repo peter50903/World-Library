@@ -30,6 +30,7 @@ public sealed record DemoCatchmentTempSettings(
         DemoCatchmentSourceKind.GrasslandForage => GrasslandForageWeeklySupply,
         DemoCatchmentSourceKind.MainRiver => MainRiverWeeklySupply,
         DemoCatchmentSourceKind.OpenWater => OpenWaterWeeklySupply,
+        DemoCatchmentSourceKind.Farmland => DemoLandClearing.TempFarmlandWeeklySupply, // 第 08-6 章 c 節
         _ => 0
     };
 

@@ -74,8 +74,16 @@ public sealed partial class DemoObserverWorld
         // 存量從保留的第一週期初起逐週銜接。
         var stocks = reports.Count == 0 ? new Dictionary<int, long>()
             : reports[0].Sources.Where(x => x.StockOpening > 0).ToDictionary(x => x.SourceId, x => x.StockOpening);
+        // 第 08-6 章 c 節：開墾完成的格（每格只能開墾完成一次）。
+        var clearedEvents = earlierEvents.Concat(reports.SelectMany(r => r.Events))
+            .Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
+        if (clearedEvents.Any(e => e.Count < 1 || e.Count > (long)map.Columns * map.Rows)
+            || clearedEvents.Select(e => e.Count).Distinct().Count() != clearedEvents.Count)
+            Reject("開墾完成事件的格編號不合法或重複");
+        IReadOnlyCollection<DemoCellRef> FarmlandBefore(int week)
+            => clearedEvents.Where(e => e.Week < week).Select(e => DemoLandClearing.CellOf(map, e.Count)).ToArray();
         foreach (var report in reports)
-            CheckSourceLedgers(report, map, sites, weekly, stocks);
+            CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore);
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -101,9 +109,6 @@ public sealed partial class DemoObserverWorld
             || new[] { reserves, food, population, debt, sourceStocks }.Any(d => d.Values.Any(v => v < 0))
             || sourceStocks.Values.Any(v => v == 0))
             Reject("目前存量與聚落不對應或出現負值");
-        // 第 08 章 a 節：目前沒有任何合法的開墾行動，土地開發狀態必須全部未開發。
-        if (ReadArray<DemoLandParcel>(state, "Land").Count != 0)
-            Reject("土地開發狀態沒有合法來源（尚無開墾行動）");
         var entityIds = state.GetProperty("EntityIds").Deserialize<EntityIdAllocatorSnapshot>()
             ?? throw new InvalidDataException("TEMP 存檔缺少實體 ID 分配器狀態。");
         if (entityIds.Version != EntityIdAllocatorSnapshot.CurrentVersion || entityIds.Exhausted)
@@ -138,13 +143,33 @@ public sealed partial class DemoObserverWorld
             ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
         if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
             || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
-                || r.Progress < 0 || r.Progress > DemoKnowledge.TempThreshold || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
-                || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.TempThreshold))
+                || r.Progress < 0 || r.Progress > DemoKnowledge.ThresholdOf(r.Technology) || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
+                || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
             || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");
         candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };
+        // 第 08-6 章 c 節：土地開發狀態（開墾只在開拓時代發生；開墾中是每週進度的倍數、農田一律 100%；只有草原、非聚落格）。
+        var parcels = ReadArray<DemoLandParcel>(state, "Land");
+        if (parcels.Count > 0 && knowledge.Era == DemoEra.Hope)
+            Reject("希望時代不會有開墾的土地");
+        var land = DemoLandDevelopmentMap.Empty;
+        foreach (var parcel in parcels)
+        {
+            if (parcel is null || parcel.State == DemoLandDevelopment.Undeveloped || land.ParcelAt(parcel.Cell) is not null
+                || (parcel.State == DemoLandDevelopment.Farmland && parcel.DevelopmentPercent != 100)
+                || (parcel.State == DemoLandDevelopment.Clearing && parcel.DevelopmentPercent % DemoLandClearing.TempPercentPerWeek != 0))
+                Reject("土地開發狀態不合法");
+            try { land = land.With(map, sites, parcel!); }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentOutOfRangeException)
+            {
+                Reject($"土地開發狀態不合法：{ex.Message}");
+            }
+        }
+        if (!land.FarmlandCells().ToHashSet().SetEquals(FarmlandBefore(int.MaxValue)))
+            Reject("農田與開墾完成事件不一致");
+        candidate._land = land;
         candidate._reserves = reserves.ToImmutableSortedDictionary();
         candidate._settlementFood = food.ToImmutableSortedDictionary();
         candidate._population = population.ToImmutableSortedDictionary();
@@ -206,7 +231,7 @@ public sealed partial class DemoObserverWorld
     /// 第 07 章 c 節起共享採集情境也會建村與成為遺跡：來源清單依當週開始時的人造佔格重算。
     /// </summary>
     private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly,
-        Dictionary<int, long> stocks)
+        Dictionary<int, long> stocks, Func<int, IReadOnlyCollection<DemoCellRef>> farmlandBefore)
     {
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
@@ -224,7 +249,8 @@ public sealed partial class DemoObserverWorld
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的來源餘量與地圖重算不符");
         }
         // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
-        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites.OccupiedCellsAtWeek(w)), stocks,
+        // 第 08-6 章 c 節：本週的農田＝更早週次開墾完成的格（由事件重建）。
+        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites.OccupiedCellsAtWeek(w), farmlandBefore(w)), stocks,
             DemoForagingWorld.Settings.SourceStockCapWeeks);
         if (report.Sources.Count != expected.Count)
             Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Count} 不符");
@@ -237,7 +263,7 @@ public sealed partial class DemoObserverWorld
                 || source.StockOpening != opening || source.Regenerated != regenerated)
                 Reject($"第 {w} 週來源 #{source.SourceId} 的種類、位置、存量或再生與地圖及上週帳重算不符");
             var origin = map.GetCell(source.Column, source.Row);
-            var includeOrigin = source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
+            var includeOrigin = DemoCatchmentSourceKinds.IncludesOrigin(source.Kind);
             foreach (var share in source.Shares)
             {
                 var place = sites.Settlements.FirstOrDefault(s => s.Id == share.SettlementId);
