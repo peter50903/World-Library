@@ -174,7 +174,8 @@ public static class DemoKnowledge
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
-        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, Func<int, DemoWeekReport?>? weekAt = null)
+        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, Func<int, DemoWeekReport?>? weekAt = null,
+        Func<int, IReadOnlySet<string>>? cultureTraitsOf = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -213,6 +214,7 @@ public static class DemoKnowledge
             var tier = tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Settlement;
             var reps = population.Representatives.Where(r => r.SettlementId == settlement.Id).ToList();
             var scholars = reps.Count(r => r.Role == DemoRepresentativeRole.Scholar);
+            var traits = cultureTraitsOf?.Invoke(settlement.Id) ?? new HashSet<string>(); // 第 08-9 章 B2：主要文化
             // 第 08-9 章 A3：勢力範圍內（TEMP 3 格）的其他有人聚落，鄰近傳播用。
             var neighbours = map is null ? new List<DemoSettlement>() : sites.Settlements
                 .Where(o => o.Id != settlement.Id && !o.IsRuin && HexDistance(map, settlement, o) <= TempDiffusionRange).ToList();
@@ -241,11 +243,12 @@ public static class DemoKnowledge
                 var threshold = ThresholdOf(technology);
                 // 第 08-9 章 A3：鄰近傳播（十字軍之王：鄰近已知者越多越快）與實踐加速，都只在有人從業時。
                 var knowers = practitioners == 0 ? 0 : Math.Min(TempDiffusionMaxNeighbours, neighbours.Count(o => state.Knows(o.Id, technology)));
-                var diffusion = checked(knowers * threshold * TempDiffusionPerTenThousand / 10_000);
+                var diffusion = checked(knowers * threshold * TempDiffusionPerTenThousand / 10_000 * DemoCultures.DiffusionPercent(traits) / 100);
                 var boost = practitioners > 0 && !current.Boosted && node.PracticeBoostPercent > 0
                     && PracticeHappened(technology, settlement.Id, report, weekAt)
                     ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
-                var gain = checked(practitioners + experts + diffusion + boost + carried * threshold * TempCarryPercent / 100);
+                var own = checked((practitioners + experts) * DemoCultures.ResearchPercent(traits, node) / 100); // 第 08-9 章 B2：文化影響研究
+                var gain = checked(own + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));

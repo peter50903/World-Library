@@ -156,12 +156,21 @@ public sealed partial class DemoObserverWorld
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");
         candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };
-        // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得鍛造。
+        // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得的工具階梯（第 08-9 章 B2：另加生計傳統 0～20%，每級 10%）。
+        // 第 08-9 章 A5：遺跡的知識已移除，不再比對。
         foreach (var report in reports)
             foreach (var ledger in report.Settlements)
-                if (ledger.ToolYieldPercent != DemoKnowledge.ToolYieldPercent(knowledge, ledger.SettlementId, report.Week)
-                    && weekly.SharedCatchmentEnabled)
+            {
+                if (!weekly.SharedCatchmentEnabled || sites.Settlements.First(x => x.Id == ledger.SettlementId).IsRuin)
+                {
+                    if (!weekly.SharedCatchmentEnabled && ledger.ToolYieldPercent != 0)
+                        Reject($"第 {report.Week} 週聚落 #{ledger.SettlementId} 不該有工具加成");
+                    continue;
+                }
+                var culturePart = ledger.ToolYieldPercent - DemoKnowledge.ToolYieldPercent(knowledge, ledger.SettlementId, report.Week);
+                if (culturePart < 0 || culturePart > DemoCultures.TempLivelihoodYieldMax || culturePart % DemoCultures.TempLivelihoodYieldPercent != 0)
                     Reject($"第 {report.Week} 週聚落 #{ledger.SettlementId} 的工具加成與知識樹不符");
+            }
         // 第 08-6 章 c 節：土地開發狀態（開墾只在開拓時代發生；開墾中是每週進度的倍數、農田一律 100%；只有草原、非聚落格）。
         var parcels = ReadArray<DemoLandParcel>(state, "Land");
         if (parcels.Count > 0 && knowledge.Era == DemoEra.Hope)

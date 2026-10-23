@@ -111,6 +111,7 @@
 | 背景人口比例 | 千分比整數；出生死亡不改；隊伍帶出發地比例、抵達依人數加權（最大餘數法補足 1000）；新建聚落沿用隊伍 | 使用者：背景人口只要大致比例 |
 | 代表人物文化 | 就任時依聚落比例抽一個（代表人物編號為鍵的局部亂數） | 使用者：只有重要人物逐人記 |
 | 新特性數值 | 04 新列說明欄標【TEMP】；效果在 B2 才生效 | 08-8 第 5 節 |
+| 文化效果（B2） | 生計傳統地形成立每項採集＋10%、最多＋20%（記在週帳工具加成）；重學研究＋10%；尚武、草原子民狩獵＋25%；海之民造船＋25%；守舊鄰近傳播減半、開放加倍；強人統治的村長＝未滿老年的最年長成年人。遷徙路糧、守土、口傳史詩等待對應系統 | 08-8 第 5 節 |
 
 #### D08-9a｜研究閘門與從業者（第 08-9 章 A2，Claude 定案【TEMP】）
 
@@ -453,7 +454,7 @@
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 11 | 第 08-6 章知識樹傳播（D08-6a）、工具加成（D08-6e）；門檻改由 DemoTechTree（第 08-9 章 A1）；A2 專家與學者權重、原料可取得規則、A3 鄰近傳播與實踐加速、A5 知識失傳（D08-9a） |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTree.cs` | 1 | 第 08-9 章 A1 門檻＝研究時間×325 |
-| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 3 | 第 08-9 章 B1 文化生成與背景人口比例（D08-9b） |
+| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 7 | 第 08-9 章 B1 文化生成與背景人口比例、B2 文化效果（D08-9b） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 18 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
