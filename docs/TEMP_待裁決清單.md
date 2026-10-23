@@ -114,6 +114,7 @@
 | 鄰近傳播 | 3 格內每個已會的聚落每週＋門檻萬分之 5，最多 5 個（只在有人從業時） | 十字軍之王：鄰近已知者越多越快 |
 | 工具階梯 | 石器改良＋10% → 基礎鍛造再＋15% → 熱處理再＋10%，習得的下一週起生效（取代 D08-6e 鍛造＋25%） | 08-7b：世紀帝國的同產業升級 |
 | 開局知識、狩獵與求生 | 正式設定新分頁 10S（五項）、10R（9 項；狩獵分支等野生動物）；研究時間、效果標【TEMP】 | 使用者 2026-10-23 裁決開局五項 |
+| 知識失傳 | 聚落成為遺跡時紀錄移除；3 格內沒有其他已會的聚落才記「知識失傳」（直接原因＝成為遺跡，TEMP_EV_KNOWLEDGE_LOST）；時代不倒退 | 08-7a、10P 失傳規則；遺跡古書線索在第 13 章 |
 | 實踐加速 | 正式設定的 PracticeBoostEffect（研究時間－N%＝進度＋門檻 N%），每聚落每技術一次；目前接上輪作（農田連續耕作滿一年）、灌溉（有農田且缺水） | 文明帝國的靈光一現；其他條件隨對應系統加入 |
 
 #### D08-6c｜農田開墾（第 08-6 章 c 節，Claude 定案【TEMP】）
@@ -440,10 +441,10 @@
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 10 | 第 08-6 章知識樹傳播（D08-6a）、工具加成（D08-6e）；門檻改由 DemoTechTree（第 08-9 章 A1）；A2 專家與學者權重、原料可取得規則、A3 鄰近傳播與實踐加速（D08-9a） |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 11 | 第 08-6 章知識樹傳播（D08-6a）、工具加成（D08-6e）；門檻改由 DemoTechTree（第 08-9 章 A1）；A2 專家與學者權重、原料可取得規則、A3 鄰近傳播與實踐加速、A5 知識失傳（D08-9a） |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTree.cs` | 1 | 第 08-9 章 A1 門檻＝研究時間×325 |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 17 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 18 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

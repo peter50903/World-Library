@@ -151,7 +151,8 @@ public sealed partial class DemoObserverWorld
             || knowledge.Records.Any(r => DemoTechTree.Of(r.Technology).Parents.Where(p => !DemoTechTree.IsInitial(p)).Any(p =>
                 knowledge.Records.FirstOrDefault(x => x.SettlementId == r.SettlementId && x.Technology == p) is not { Learned: true } parent
                 || (r.Learned && parent.LearnedWeek >= r.LearnedWeek)))
-            || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)
+            // 第 08-9 章 A5：知識可失傳，所以開拓時代不一定還有已習得的紀錄；希望時代一定沒有。
+            || (knowledge.Era == DemoEra.Hope && knowledge.Records.Any(r => r.Learned))
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");
         candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };

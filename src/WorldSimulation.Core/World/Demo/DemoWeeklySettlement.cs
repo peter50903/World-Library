@@ -215,7 +215,12 @@ public enum DemoSettlementEventKind
     /// <summary>第 08-6 章：世界進入新時代；直接原因＝同週同聚落的習得技術事件。Count＝時代（<see cref="DemoEra"/>）。</summary>
     EraBegan = 11,
     /// <summary>第 08-6 章 c 節：聚落開墾完成一塊農田（根因）。Count＝格編號（列×欄數＋欄＋1）。</summary>
-    FarmlandCleared = 12
+    FarmlandCleared = 12,
+    /// <summary>
+    /// 第 08-9 章 A5：聚落成為遺跡、勢力範圍內又沒有其他持有者，這項知識在此地失傳。
+    /// 直接原因＝同週同聚落的成為遺跡事件。Count＝知識樹技術編號。
+    /// </summary>
+    KnowledgeLost = 13
 }
 
 /// <summary>
@@ -256,6 +261,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.KnowledgeLearned => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.KnowledgeLost => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
