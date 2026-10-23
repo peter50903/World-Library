@@ -85,6 +85,28 @@ public sealed class DemoFaithTests
     }
 
     [Fact]
+    public void CannibalismTurnsStarvedDeadIntoFood_AndSpiritMediumsSpeedRites()
+    {
+        // 第 08-9 章 B3b：食人儀式的信徒比例決定死者化為的糧食（每人 TempFoodPerDead），只能來自本週餓死的人；週帳仍平衡。
+        var faith = new DemoFaith(1, "測試信仰", 1, 1, 0, ImmutableList.Create("DOC_CANNIBALISM", "DOC_DEATH"), ImmutableList<string>.Empty);
+        var state = DemoFaithState.Empty with
+        {
+            Faiths = ImmutableList.Create(faith),
+            Settlements = ImmutableSortedDictionary.CreateRange(new[] { KeyValuePair.Create(1, ImmutableList.Create(new DemoFaithShare(0, 400), new DemoFaithShare(1, 600))) })
+        };
+        Assert.Equal(600, DemoFaiths.CannibalPermille(state, 1));
+        Assert.Equal(0, DemoFaiths.CannibalPermille(state, 2));
+        var ledger = new DemoSettlementWeekLedger(10, 1, "測試", 0, 0, 0, 0, 0, 0, 0, 16, 5, 5, 0, 2, 3,
+            HungerDebtOpening: 30, HungerDebtRemovedByDeath: 24, HungerDebtClosing: 6, FoodFromDead: 16);
+        Assert.True(ledger.FoodBalanced);
+        Assert.True(ledger.NonNegative);
+        Assert.False((ledger with { FoodFromDead = 2 * DemoFaiths.TempFoodPerDead + 1, FoodClosing = 17 }).NonNegative); // 超過死者人數
+        DemoTechNode Node(string id) => DemoTechTree.Of(new DemoTechnology(id));
+        Assert.Equal(125, DemoCultures.ResearchPercent(new HashSet<string> { "DOC_SPIRIT_MEDIUM" }, Node("TECH_SHAMANISM")));
+        Assert.Equal(100, DemoCultures.ResearchPercent(new HashSet<string> { "DOC_SPIRIT_MEDIUM" }, Node("TECH_CROP_CULTIVATION")));
+    }
+
+    [Fact]
     public void EveryoneStartsWithoutFaith_AndTheFirstFaithIsSavedAndShown()
     {
         DemoObserverWorld? world = null;

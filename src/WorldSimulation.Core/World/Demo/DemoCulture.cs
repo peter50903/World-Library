@@ -361,6 +361,7 @@ public static class DemoCultures
         if (traits.Contains("CT_SCHOLARLY")) percent += 10;
         if (node.Branch == "狩獵" && (traits.Contains("CT_MARTIAL") || traits.Contains("CT_GRASSLAND_FOLK"))) percent += 25;
         if (node.Branch == "造船" && traits.Contains("CT_SEA_FOLK")) percent += 25;
+        if (node.Branch == "祭祀" && traits.Contains("DOC_SPIRIT_MEDIUM")) percent += 25; // 第 08-9 章 B3b：信條「通靈者」
         return percent;
     }
 

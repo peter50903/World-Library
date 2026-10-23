@@ -46,7 +46,8 @@ public sealed record DemoYearSummary(
     long NaturalDeaths = 0,
     long BirthEvents = 0,
     long NaturalDeathEvents = 0,
-    long FoodSpoiled = 0)
+    long FoodSpoiled = 0,
+    long FoodFromOther = 0)
 {
     /// <summary>本年餓死人數（聚落＋途中）＝全部死亡－自然死亡。</summary>
     public long StarvationDeaths => Deaths - NaturalDeaths;
@@ -73,8 +74,9 @@ public sealed record DemoYearSummary(
             problems.Add($"第 {Year} 年週結算次數 {Weeks}，第 {FirstDay}～{LastDay} 日應為 {ExpectedWeeks}");
         if (PopulationOpening + Births - Deaths != PopulationClosing)
             problems.Add($"第 {Year} 年人口帳不平衡：{PopulationOpening}＋{Births}－{Deaths}≠{PopulationClosing}");
-        if (FoodOpening + FoodProduced - FoodConsumed - FoodSpoiled != FoodClosing)
-            problems.Add($"第 {Year} 年糧食帳不平衡：{FoodOpening}＋{FoodProduced}－{FoodConsumed}－腐敗 {FoodSpoiled}≠{FoodClosing}");
+        // 第 08-9 章 B3b、C1：死者化為的糧食與獵得的糧食（都有真實事件為證）。
+        if (FoodOpening + FoodProduced + FoodFromOther - FoodConsumed - FoodSpoiled != FoodClosing)
+            problems.Add($"第 {Year} 年糧食帳不平衡：{FoodOpening}＋{FoodProduced}＋其他 {FoodFromOther}－{FoodConsumed}－腐敗 {FoodSpoiled}≠{FoodClosing}");
         if (ReserveOpening + Regenerated - Harvested != ReserveClosing)
             problems.Add($"第 {Year} 年資源存量帳不平衡：{ReserveOpening}＋{Regenerated}－{Harvested}≠{ReserveClosing}");
         if (FoodProduced != Harvested)
@@ -186,7 +188,7 @@ public static class DemoCenturyRun
             long emigrants = 0, immigrants = 0;
             long births = 0, deaths = 0, produced = 0, consumed = 0, shortage = 0;
             long regenerated = 0, harvested = 0, deathsInEvents = 0;
-            long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0, spoiled = 0;
+            long naturalDeaths = 0, birthsInEvents = 0, naturalDeathsInEvents = 0, spoiled = 0, other = 0;
             var firstDay = checked((year - 1) * daysPerYear + 1);
             var lastDay = 0;
 
@@ -211,6 +213,7 @@ public static class DemoCenturyRun
                     consumed = checked(consumed + l.FoodConsumed);
                     shortage = checked(shortage + l.FoodShortage);
                     spoiled = checked(spoiled + l.FoodSpoiled);
+                    other = checked(other + l.FoodFromDead);
                     regenerated = checked(regenerated + l.Regenerated);
                     harvested = checked(harvested + l.Harvested);
                     emigrants = checked(emigrants + l.Emigrants);
@@ -278,7 +281,7 @@ public static class DemoCenturyRun
                 emigrants, immigrants, world.PopulationInTransit,
                 emigrationEvents, arrivalEvents, foundedEvents, world.Sites.Settlements.Count,
                 firstDay,
-                naturalDeaths, birthsInEvents, naturalDeathsInEvents, spoiled);
+                naturalDeaths, birthsInEvents, naturalDeathsInEvents, spoiled, other);
             errors.AddRange(summary.Problems());
             foreach (var result in DemoInvariants.Check(world, checkpoint))
             {
