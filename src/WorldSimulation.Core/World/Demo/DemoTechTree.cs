@@ -47,7 +47,11 @@ public sealed record DemoTechNode(
     string Branch,
     IReadOnlyList<DemoTechnology> Parents,
     long ResearchTimeBase,
-    string PracticeBoostCondition);
+    string PracticeBoostCondition)
+{
+    /// <summary>第 08-9 章 A2：研究所需原料（ResearchResourceCost，例：RES_WOOD:10）。</summary>
+    public IReadOnlyList<(string Resource, long Amount)> ResearchCost { get; init; } = Array.Empty<(string, long)>();
+}
 
 /// <summary>
 /// 第 08-9 章 A1：知識樹＝正式設定 10B～10N 全部啟用的節點（08-7a）。門檻＝ResearchTimeBase × <see cref="TempThresholdPerTimeBase"/>。
@@ -103,6 +107,7 @@ public static class DemoTechTree
             }
             var (id, cn, tier, branch, parents, time, boost, enabled) = (Column("TechID"), Column("中文名稱"), Column("Tier"),
                 Column("Branch"), Column("ParentTechIDs"), Column("ResearchTimeBase"), Column("PracticeBoostCondition"), Column("Enabled"));
+            var cost = header.IndexOf("ResearchResourceCost");
             foreach (var row in rows.Skip(1).Where(r => r.Count > id && !string.IsNullOrWhiteSpace(r[id])))
             {
                 string Cell(int i) => i < row.Count ? row[i].Trim() : string.Empty;
@@ -112,7 +117,7 @@ public static class DemoTechTree
                     || !long.TryParse(Cell(time), NumberStyles.None, CultureInfo.InvariantCulture, out var baseTime) || baseTime <= 0)
                     throw new InvalidOperationException($"知識樹 {name} 的 {Cell(id)}：階級須為 1～5、研究時間須為正整數。");
                 nodes.Add(new DemoTechNode(new DemoTechnology(Cell(id)), nodes.Count + 1, Cell(cn), name, t, Cell(branch),
-                    Array.Empty<DemoTechnology>(), baseTime, Cell(boost)));
+                    Array.Empty<DemoTechnology>(), baseTime, Cell(boost)) { ResearchCost = ParseCost(cost < 0 ? string.Empty : Cell(cost), name, Cell(id)) });
                 parentText.Add(Cell(parents));
             }
         }
@@ -130,4 +135,14 @@ public static class DemoTechTree
         }
         return (nodes, nodes.ToDictionary(n => n.Technology));
     }
+
+    private static IReadOnlyList<(string Resource, long Amount)> ParseCost(string text, string sheet, string id)
+        => text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(part =>
+        {
+            var pieces = part.Split(':');
+            return pieces.Length == 2 && pieces[0].StartsWith("RES_", StringComparison.Ordinal)
+                && long.TryParse(pieces[1], NumberStyles.None, CultureInfo.InvariantCulture, out var amount) && amount > 0
+                ? (pieces[0], amount)
+                : throw new InvalidOperationException($"知識樹 {sheet} 的 {id}：研究原料格式應為 RES_X:數量（{part}）。");
+        }).ToArray();
 }

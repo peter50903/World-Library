@@ -29,19 +29,21 @@ public sealed class DemoKnowledgeTests
         var era = Assert.Single(events, e => e.Kind == DemoSettlementEventKind.EraBegan);
         var learned = events.Single(e => e.EventId == era.CauseEventId);
         Assert.Equal(DemoSettlementEventKind.KnowledgeLearned, learned.Kind);
-        Assert.Equal(DemoTechnology.Farming, DemoTechTree.ByIndex(learned.Count));
-        Assert.True(world.Knowledge.Knows(learned.SettlementId, DemoTechnology.Farming));
+        // 第 08-9 章 A2：任一項技術都能開啟開拓時代（作物栽培、纖維處理…看誰先到）。
+        var first = DemoTechTree.ByIndex(learned.Count)!.Value;
+        Assert.True(world.Knowledge.Knows(learned.SettlementId, first));
         Assert.Equal(era.Week, world.Knowledge.EraWeek);
         Assert.Equal("TEMP_EV_ERA_BEGAN", world.EventHistory.Find(era.EventId)!.EventTypeId);
         Assert.Contains("開拓時代", DemoWorldOverview.Of(world, 365).Lines()[0], StringComparison.Ordinal);
-        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains("學會基礎作物栽培", StringComparison.Ordinal));
+        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains($"學會{DemoKnowledge.Name(first)}", StringComparison.Ordinal));
         Assert.Contains(world.QueryCell(world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Column,
-            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith("知識：基礎作物栽培（第", StringComparison.Ordinal));
+            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith($"知識：{DemoKnowledge.Name(first)}（第", StringComparison.Ordinal));
 
         // 下一週補任農師（專業知識持有者）。
         for (var day = 0; day < 7; day++)
             world.AdvanceOneDay();
-        Assert.Contains(world.RepresentativesOf(learned.SettlementId), r => r.Role == DemoRepresentativeRole.Farmer);
+        if (first == DemoTechnology.Farming && world.SettlementPopulation(learned.SettlementId) > 0)
+            Assert.Contains(world.RepresentativesOf(learned.SettlementId), r => r.Role == DemoRepresentativeRole.Farmer);
         Assert.Empty(world.BuildCausalIndex().Problems);
 
         // 存讀檔後知識樹與時代相同，續跑一致。
@@ -146,6 +148,44 @@ public sealed class DemoKnowledgeTests
         // 正式設定錯誤會被擋下：前置不存在。
         Assert.Throws<InvalidOperationException>(() => DemoTechTree.Build(new[] { ("10X.csv",
             "TechID,中文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,PracticeBoostCondition,Enabled\nTECH_A,甲,1,b,TECH_NOPE,10,,TRUE\n") }));
+    }
+
+    [Fact]
+    public void ResearchNeedsReachableMaterials_AndTheRightSettlementTier()
+    {
+        // 第 08-9 章 A2：研究原料取得得到才累積；第 2 階要村莊、第 3 階以上目前不累積；畜牧要等牧群。
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var day = 0; day < 14; day++)
+            world.AdvanceOneDay();
+        var population = DemoCohortDemography.Restore(world.HumanPopulationSnapshot!);
+        var state = world.Knowledge;
+        DemoTechNode Node(string id) => DemoTechTree.Of(new DemoTechnology(id));
+        foreach (var s in world.Sites.Settlements.Where(x => !x.IsRuin && world.SettlementPopulation(x.Id) > 0))
+        {
+            var food = world.SettlementFood(s.Id);
+            var adults = population.AdultsIn(s.Id, DemoHumanLifecycle.Rules);
+            // 石材、礦、羊皮紙目前都取不到。
+            Assert.Equal(0, DemoKnowledge.Practitioners(Node("TECH_PROSPECTING"), s, population, world.Map, food, state));
+            Assert.Equal(0, DemoKnowledge.Practitioners(Node("TECH_BASIC_CONSTRUCTION"), s, population, world.Map, food, state));
+            Assert.Equal(0, DemoKnowledge.Practitioners(Node("TECH_WRITING_MATERIALS"), s, population, world.Map, food, state));
+            Assert.Equal(0, DemoKnowledge.Practitioners(Node("TECH_ANIMAL_DOMESTICATION"), s, population, world.Map, food, state));
+            // 木工要可及森林；纖維要可及草原。
+            Assert.Equal(DemoKnowledge.NearForest(world.Map, s) ? adults : 0,
+                DemoKnowledge.Practitioners(Node("TECH_BASIC_CARPENTRY"), s, population, world.Map, food, state));
+            Assert.Equal(DemoKnowledge.NearTerrain(world.Map, s, DemoTerrain.Grassland) ? adults : 0,
+                DemoKnowledge.Practitioners(Node("TECH_FIBER_PROCESSING"), s, population, world.Map, food, state));
+        }
+        Assert.True(DemoKnowledge.TierAllows(Node("TECH_CROP_CULTIVATION"), DemoSettlementTier.Settlement));
+        Assert.False(DemoKnowledge.TierAllows(Node("TECH_CROP_ROTATION"), DemoSettlementTier.Settlement));
+        Assert.True(DemoKnowledge.TierAllows(Node("TECH_CROP_ROTATION"), DemoSettlementTier.Village));
+        Assert.False(DemoKnowledge.TierAllows(Node("TECH_SOIL_MANAGEMENT"), DemoSettlementTier.Village));
+        Assert.Equal(new DemoTechnology("TECH_SCRIBAL_METHOD"), DemoRepresentative.TechnologyOf(DemoRepresentativeRole.Scholar));
+        Assert.Contains(("RES_WOOD", 10L), Node("TECH_BASIC_CARPENTRY").ResearchCost);
+        // 一年內進度只出現在第 1 階、原料取得得到的技術。
+        for (var day = 0; day < 365; day++)
+            world.AdvanceOneDay();
+        Assert.All(world.Knowledge.Records, r => Assert.Equal(1, DemoTechTree.Of(r.Technology).Tier));
+        Assert.DoesNotContain(world.Knowledge.Records, r => DemoTechTree.Of(r.Technology).Branch == "畜牧");
     }
 
     [Fact]
