@@ -429,7 +429,7 @@ public static class M1Evaluator
                 if (!l.NonNegative)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 出現負值");
                 wProduced += l.FoodProduced;
-                wFromDead += l.FoodFromDead; // 第 08-9 章 B3b：食人儀式（死者化為糧食，有餓死事件為證）
+                wFromDead += l.FoodFromDead + l.FoodFromHunting; // 第 08-9 章 B3b 食人儀式（有餓死事件為證）、C1 狩獵（獸群減少為證）
                 wConsumed += l.FoodConsumed;
                 wRegen += l.Regenerated;
                 wHarvested += l.Harvested;

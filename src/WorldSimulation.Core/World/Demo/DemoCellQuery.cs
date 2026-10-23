@@ -108,6 +108,9 @@ public static class DemoCellQuery
             // 第 06 章 a 節：出入口由路線段衍生（相鄰但沒有路線段＝不可通行）。
             RoutesLine(world.Map, new DemoCellRef(cell.Column, cell.Row))
         };
+        // 第 08-9 章 C1：野地的獸群。
+        if (world.Wildlife.At(DemoWildlife.CellId(world.Map, cell)) is { } herd)
+            lines.Add($"野生動物：草食獸 {herd.Grazers} 頭｜掠食獸 {herd.Predators} 頭（TEMP）");
         // 第 08 章 a 節：土地開發狀態（與地形分離；未開發不另列）。
         if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
             lines.Add(parcel.State == DemoLandDevelopment.Farmland

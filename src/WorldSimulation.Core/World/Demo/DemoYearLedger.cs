@@ -117,7 +117,7 @@ public static class DemoYearLedger
                 Consumed = checked(Consumed + l.FoodConsumed);
                 Shortage = checked(Shortage + l.FoodShortage);
                 Spoiled = checked(Spoiled + l.FoodSpoiled);
-                Other = checked(Other + l.FoodFromDead); // 第 08-9 章 B3b
+                Other = checked(Other + l.FoodFromDead + l.FoodFromHunting); // 第 08-9 章 B3b、C1
                 Regenerated = checked(Regenerated + l.Regenerated);
                 Harvested = checked(Harvested + l.Harvested);
                 Emigrants = checked(Emigrants + l.Emigrants);

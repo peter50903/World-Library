@@ -48,7 +48,7 @@ public static class DemoResourceCategories
     };
 
     /// <summary>聚落是否取得得到這個大類（目前的地形與存糧條件）。</summary>
-    public static bool CategoryAvailable(DemoResourceCategory category, DemoSettlement settlement, DemoHexWorld? map, long food)
+    public static bool CategoryAvailable(DemoResourceCategory category, DemoSettlement settlement, DemoHexWorld? map, long food, bool animalsNear = false)
     {
         bool Near(DemoTerrain terrain) => map is not null && DemoKnowledge.NearTerrain(map, settlement, terrain);
         return category switch
@@ -58,15 +58,17 @@ public static class DemoResourceCategories
             DemoResourceCategory.Plant => Near(DemoTerrain.Forest) || Near(DemoTerrain.Grassland)
                 || (map is not null && map.HasWaterAccess(new DemoCellRef(settlement.Column, settlement.Row))),
             DemoResourceCategory.Metal => CategoryAvailable(DemoResourceCategory.Ore, settlement, map, food),
-            _ => false // 石材、礦石、獸產、魔法原料目前取不到
+            DemoResourceCategory.Animal => animalsNear, // 第 08-9 章 C1：2 格內有獸群
+            _ => false // 石材、礦石、魔法原料目前取不到
         };
     }
 
     /// <summary>細項原料：所屬大類取得得到，且已會加工需要的技術。</summary>
-    public static bool Available(string resourceId, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state)
+    public static bool Available(string resourceId, DemoSettlement settlement, DemoHexWorld? map, long food, DemoKnowledgeState state,
+        bool animalsNear = false)
     {
         var entry = Of(resourceId);
-        return CategoryAvailable(entry.Category, settlement, map, food)
+        return CategoryAvailable(entry.Category, settlement, map, food, animalsNear)
             && (entry.RequiredTech is not { } tech || state.Knows(settlement.Id, tech));
     }
 

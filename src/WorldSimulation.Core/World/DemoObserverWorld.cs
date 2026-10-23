@@ -79,6 +79,7 @@ public sealed partial class DemoObserverWorld
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
     private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-9 章 B1：文化
     private DemoFaithState _faith = DemoFaithState.Empty; // 第 08-9 章 B3：信仰（開局人人無信仰）
+    private DemoWildlifeState _wildlife = DemoWildlifeState.Empty; // 第 08-9 章 C1：野生動物（開拓時代起）
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -232,6 +233,9 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 08-9 章 B3：信仰（信仰清單、聚落信仰比例含無信仰、代表人物的信仰）。</summary>
     public DemoFaithState Faith => _faith;
+
+    /// <summary>第 08-9 章 C1：野生動物（野地各格的草食、掠食獸群）。</summary>
+    public DemoWildlifeState Wildlife => _wildlife;
 
     /// <summary>測試用：世界的亂數註冊表（局部亂數只讀種子，不推進計數器）。</summary>
     internal RngRegistry RngRegistryForTests() => _rng;
@@ -412,6 +416,9 @@ public sealed partial class DemoObserverWorld
 
         if (commit.SettlesWeek)
         {
+            // 第 08-9 章 C1：結算前的狩獵（期初人口與知識）；獵得的糧食併入週帳。
+            var (hunted, huntedFood) = _demography is null ? (_wildlife, new Dictionary<int, long>())
+                : DemoWildlife.Hunt(_wildlife, Map, _sites, _demography, _knowledge);
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
@@ -429,6 +436,7 @@ public sealed partial class DemoObserverWorld
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
                 // e 節：工具；第 08-9 章 B2【TEMP】：開拓時代起加上主要文化的生計傳統（希望時代維持原本的糧食平衡）。
                 cannibalPermille: id => DemoFaiths.CannibalPermille(_faith, id), // 第 08-9 章 B3b：食人儀式
+                huntedFood: huntedFood, // 第 08-9 章 C1
                 toolYieldPercent: id => checked(DemoKnowledge.ToolYieldPercent(_knowledge, id, CommittedWeeks + 1)
                     + (_knowledge.Era != DemoEra.Hope && _sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place
                         ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
@@ -444,7 +452,8 @@ public sealed partial class DemoObserverWorld
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
                 var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier, WeekAt,
-                    id => DemoCultures.MainTraits(_culture, id).Concat(DemoFaiths.MainTenets(_faith, id)).ToHashSet()); // B3b：主要信仰的信條
+                    id => DemoCultures.MainTraits(_culture, id).Concat(DemoFaiths.MainTenets(_faith, id)).ToHashSet(), // B3b：主要信仰的信條
+                    s => DemoWildlife.AnimalsNear(hunted, Map, s)); // C1：2 格內有獸群
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
@@ -460,7 +469,9 @@ public sealed partial class DemoObserverWorld
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
-                commit.StageKnowledge(knowledge, land, culture, faith);
+                // 第 08-9 章 C1：進入開拓時代那週放入獸群；每年繁殖與承載。
+                var wildlife = DemoWildlife.Advance(hunted, Map, lifecycle.Outcome.Sites, knowledge.Era, report.Week);
+                commit.StageKnowledge(knowledge, land, culture, faith, wildlife);
             }
             else
             {
@@ -545,6 +556,7 @@ public sealed partial class DemoObserverWorld
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-9 章 B1
         sb.Append(inv, $"{_faith.Fingerprint()}"); // 第 08-9 章 B3
+        sb.Append(inv, $"{_wildlife.Fingerprint()}"); // 第 08-9 章 C1
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
