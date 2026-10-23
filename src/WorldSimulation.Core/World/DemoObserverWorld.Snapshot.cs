@@ -147,7 +147,8 @@ public sealed partial class DemoObserverWorld
                 || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
             // 第 08-9 章 A1：有進度的技術，前置都已在更早的週次習得。
-            || knowledge.Records.Any(r => DemoTechTree.Of(r.Technology).Parents.Any(p =>
+            || knowledge.Records.Any(r => DemoTechTree.IsInitial(r.Technology)) // 第 08-9 章 A4：開局知識沒有紀錄
+            || knowledge.Records.Any(r => DemoTechTree.Of(r.Technology).Parents.Where(p => !DemoTechTree.IsInitial(p)).Any(p =>
                 knowledge.Records.FirstOrDefault(x => x.SettlementId == r.SettlementId && x.Technology == p) is not { Learned: true } parent
                 || (r.Learned && parent.LearnedWeek >= r.LearnedWeek)))
             || (knowledge.Era == DemoEra.Hope) != knowledge.Records.All(r => !r.Learned)

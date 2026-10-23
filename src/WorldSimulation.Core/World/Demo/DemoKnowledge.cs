@@ -31,7 +31,9 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
     public DemoKnowledgeRecord? Of(int settlementId, DemoTechnology technology)
         => Records.FirstOrDefault(r => r.SettlementId == settlementId && r.Technology == technology);
 
-    public bool Knows(int settlementId, DemoTechnology technology) => Of(settlementId, technology)?.Learned == true;
+    /// <summary>第 08-9 章 A4：開局知識每個聚落都知道（沒有紀錄）。</summary>
+    public bool Knows(int settlementId, DemoTechnology technology)
+        => DemoTechTree.IsInitial(technology) || Of(settlementId, technology)?.Learned == true;
 
     public IReadOnlyList<DemoTechnology> KnownBy(int settlementId)
         => Records.Where(r => r.SettlementId == settlementId && r.Learned).Select(r => r.Technology).ToList();
@@ -57,15 +59,23 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
 /// </summary>
 public static class DemoKnowledge
 {
-    /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比（第 08-9 章 A4 改為工具階梯）。</summary>
-    public const long TempToolYieldPercent = 25;
+    /// <summary>
+    /// 【TEMP】第 08-9 章 A4：工具階梯（世紀帝國的同產業升級）——石器改良＋10%、基礎鍛造再＋15%、熱處理再＋10%。
+    /// 每一級在習得週的下一週起生效。
+    /// </summary>
+    public static readonly IReadOnlyList<(DemoTechnology Technology, long Percent)> TempToolLadder = new[]
+    {
+        (new DemoTechnology("TECH_IMPROVED_STONE_TOOLS"), 10L),
+        (DemoTechnology.Smithing, 15L),
+        (new DemoTechnology("TECH_HEAT_TREATMENT"), 10L)
+    };
 
     /// <summary>第 08-9 章 A1：門檻＝正式設定的研究時間 × 325（<see cref="DemoTechTree.ThresholdOf"/>）。</summary>
     public static long ThresholdOf(DemoTechnology technology) => DemoTechTree.ThresholdOf(technology);
 
-    /// <summary>第 08-6 章 e 節：<paramref name="week"/> 結算時的工具加成（該週以前已習得鍛造）。</summary>
+    /// <summary>第 08-6 章 e 節、第 08-9 章 A4：<paramref name="week"/> 結算時的工具加成（工具階梯中該週以前已習得的各級合計）。</summary>
     public static long ToolYieldPercent(DemoKnowledgeState state, int settlementId, int week)
-        => state.Of(settlementId, DemoTechnology.Smithing) is { Learned: true } r && r.LearnedWeek < week ? TempToolYieldPercent : 0;
+        => TempToolLadder.Where(step => state.Of(settlementId, step.Technology) is { Learned: true } r && r.LearnedWeek < week).Sum(step => step.Percent);
 
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
     public const long TempCarryPercent = 25;
@@ -112,7 +122,7 @@ public static class DemoKnowledge
     /// 第 3 階以上要城邦以上（尚未有），所以目前不會累積。
     /// </summary>
     public static bool TierAllows(DemoTechNode node, DemoSettlementTier tier)
-        => node.Tier <= 1 || (node.Tier == 2 && tier >= DemoSettlementTier.Village);
+        => node.Tier == 1 || (node.Tier == 2 && tier >= DemoSettlementTier.Village); // 第 0 階＝開局知識，不研究
 
     /// <summary>
     /// 第 08-9 章 A2【TEMP 規則】（08-7a 第三道閘門：地區）研究原料在聚落可取得才累積——
@@ -144,7 +154,7 @@ public static class DemoKnowledge
     public static long Practitioners(DemoTechNode node, DemoSettlement settlement, DemoCohortDemography population, DemoHexWorld? map,
         long food, DemoKnowledgeState state)
     {
-        if (node.Branch == "畜牧")
+        if (node.Branch is "畜牧" or "狩獵") // 第 08-9 章 A4：狩獵也要等野生動物（C1）
             return 0;
         if (node.ResearchCost.Any(c => !ResourceAvailable(c.Resource, settlement, map, food, state)))
             return 0;
@@ -190,7 +200,7 @@ public static class DemoKnowledge
                 var technology = node.Technology;
                 var key = (settlement.Id, technology);
                 var current = records.GetValueOrDefault(key) ?? new DemoKnowledgeRecord(settlement.Id, technology, 0, 0);
-                if (current.Learned)
+                if (current.Learned || DemoTechTree.IsInitial(technology))
                     continue;
                 // 第 08-9 章 A1：前置（ParentTechIDs）全部已習得才累積（08-7a 第 2 節第一道閘門）。
                 if (node.Parents.Any(p => !state.Knows(settlement.Id, p)))
