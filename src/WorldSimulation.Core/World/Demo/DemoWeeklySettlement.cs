@@ -745,9 +745,6 @@ internal static class DemoWeeklySettlement
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
-            // 第 08-9 章 B3b【TEMP 規則】食人儀式：信奉此信條的人口比例決定有多少死者被食用（每人 TempFoodPerDead 糧食，週末併入存糧）。
-            var fromDead = deaths == 0 || survivors == 0 ? 0
-                : checked(deaths * DemoFaiths.TempFoodPerDead * (cannibalPermille?.Invoke(settlement.Id) ?? 0) / 1000);
             if (survivors == 0)
                 removedByDeath = debt;
             debt -= removedByDeath;
@@ -914,6 +911,9 @@ internal static class DemoWeeklySettlement
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             var survivors = people - deaths;
+            // 第 08-9 章 B3b【TEMP 規則】食人儀式：信奉此信條的人口比例決定有多少死者被食用（每人 TempFoodPerDead 糧食，週末併入存糧）。
+            var fromDead = deaths == 0 || survivors == 0 ? 0
+                : checked(deaths * DemoFaiths.TempFoodPerDead * (cannibalPermille?.Invoke(settlement.Id) ?? 0) / 1000);
             if (survivors == 0)
                 removedByDeath = debt; // 聚落無人倖存：剩餘飢餓債沒有承擔者。
             debt -= removedByDeath;
