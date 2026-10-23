@@ -420,9 +420,10 @@ public sealed partial class DemoObserverWorld
                 firstEventId: checked(_history.LastEventId + 1), // 第 04-1 章：事件編號接續正式史庫（讀檔後沒有舊週報）
                 debtSourceOf: DebtSourceOf,
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
-                // e 節：工具；第 08-9 章 B2：加上主要文化的生計傳統。
+                // e 節：工具；第 08-9 章 B2【TEMP】：開拓時代起加上主要文化的生計傳統（希望時代維持原本的糧食平衡）。
                 toolYieldPercent: id => checked(DemoKnowledge.ToolYieldPercent(_knowledge, id, CommittedWeeks + 1)
-                    + (_sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
+                    + (_knowledge.Era != DemoEra.Hope && _sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place
+                        ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 

@@ -126,7 +126,9 @@ public sealed class DemoCultureTests
             world.AdvanceOneDay();
         Assert.All(world.LatestWeek!.Settlements.Where(l => !world.Sites.Settlements.Single(s => s.Id == l.SettlementId).IsRuin), l =>
             Assert.Contains(l.ToolYieldPercent - DemoKnowledge.ToolYieldPercent(world.Knowledge, l.SettlementId, l.Week), new long[] { 0, 10, 20 }));
-        Assert.Contains(world.WeekReports().SelectMany(w => w.Settlements), l => l.ToolYieldPercent > 0); // 生計傳統從開局就生效
+        // 生計傳統在開拓時代才生效：希望時代的工具加成只有工具階梯（第 08-9 章 B2）。
+        if (world.Era == DemoEra.Hope)
+            Assert.All(world.WeekReports().SelectMany(w => w.Settlements), l => Assert.Equal(DemoKnowledge.ToolYieldPercent(world.Knowledge, l.SettlementId, l.Week), l.ToolYieldPercent));
         Assert.Equal(world.ExportTempSave(), DemoObserverWorld.ImportTempSave(world.ExportTempSave()).ExportTempSave());
     }
 
