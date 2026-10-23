@@ -135,7 +135,7 @@ public sealed class DemoSaveSlotTests : IDisposable
 
     [Theory]
     [InlineData(0)]
-    [InlineData(25)]
+    [InlineData(26)]
     [InlineData(99)]
     [InlineData(-2)]
     public void UnknownVersion_IsRejected(int version)
