@@ -89,8 +89,9 @@ public static class DemoForagingWorld
         var claims = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).Select(s => // 第 07 章 c 節：遺跡不採集
             new DemoCatchmentFoodClaim(s.Id, s.Column, s.Row,
                 foodNeeded?.GetValueOrDefault(s.Id) ?? checked(openingPopulation[s.Id] * weekly.FoodPerPersonPerWeek),
-                checked((adultWorkers?.GetValueOrDefault(s.Id) ?? openingPopulation[s.Id]) * weekly.YieldPerWorkerPerWeek
-                    * (100 + (yieldPercent?.Invoke(s.Id) ?? 0)) / 100)));
+                // 第 08-9 章 A4：每名勞力的可採量先取整（與週帳 YieldPerWorker、讀檔與 M1 檢查同一算法）。
+                checked((adultWorkers?.GetValueOrDefault(s.Id) ?? openingPopulation[s.Id])
+                    * (weekly.YieldPerWorkerPerWeek * (100 + (yieldPercent?.Invoke(s.Id) ?? 0)) / 100))));
         // 第 06 章 c 節：availableSources＝本週可採（期初存量＋再生）；不給時用每週供應（只供舊測試與診斷）。
         return DemoHexFoodCatchment.Allocate(map, availableSources ?? Sources(map, sites), claims, mode, baseNeeds);
     }
