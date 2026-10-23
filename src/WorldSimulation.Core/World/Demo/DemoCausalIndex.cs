@@ -321,7 +321,7 @@ public sealed class DemoCausalIndex
 
             case DemoSettlementEventKind.KnowledgeLearned:
                 // 第 08-6 章：根因（經驗累積或遷入者帶來；進度另存於知識狀態）。
-                return parent is null && Enum.IsDefined((DemoTechnology)e.Count) ? null : "習得技術是根因，事件人數欄必須是已登錄的技術";
+                return parent is null && DemoTechTree.ByIndex(e.Count) is not null ? null : "習得技術是根因，事件人數欄必須是知識樹上的技術編號";
             case DemoSettlementEventKind.EraBegan:
                 return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week
                     && parent.SettlementId == e.SettlementId && Enum.IsDefined((DemoEra)e.Count)

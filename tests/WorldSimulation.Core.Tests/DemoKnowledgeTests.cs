@@ -29,14 +29,14 @@ public sealed class DemoKnowledgeTests
         var era = Assert.Single(events, e => e.Kind == DemoSettlementEventKind.EraBegan);
         var learned = events.Single(e => e.EventId == era.CauseEventId);
         Assert.Equal(DemoSettlementEventKind.KnowledgeLearned, learned.Kind);
-        Assert.Equal(DemoTechnology.Farming, (DemoTechnology)learned.Count);
+        Assert.Equal(DemoTechnology.Farming, DemoTechTree.ByIndex(learned.Count));
         Assert.True(world.Knowledge.Knows(learned.SettlementId, DemoTechnology.Farming));
         Assert.Equal(era.Week, world.Knowledge.EraWeek);
         Assert.Equal("TEMP_EV_ERA_BEGAN", world.EventHistory.Find(era.EventId)!.EventTypeId);
         Assert.Contains("開拓時代", DemoWorldOverview.Of(world, 365).Lines()[0], StringComparison.Ordinal);
-        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains("學會農耕", StringComparison.Ordinal));
+        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains("學會基礎作物栽培", StringComparison.Ordinal));
         Assert.Contains(world.QueryCell(world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Column,
-            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith("知識：農耕（第", StringComparison.Ordinal));
+            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith("知識：基礎作物栽培（第", StringComparison.Ordinal));
 
         // 下一週補任農師（專業知識持有者）。
         for (var day = 0; day < 7; day++)
@@ -110,7 +110,7 @@ public sealed class DemoKnowledgeTests
             for (var day = 0; day < 80 * 365 && !world.Knowledge.Records.Any(r => r.Technology == DemoTechnology.Woodworking && r.Learned); day++)
                 world.AdvanceOneDay();
             learned = world.LatestWeek?.Events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.KnowledgeLearned
-                && (DemoTechnology)e.Count == DemoTechnology.Woodworking);
+                && DemoTechTree.ByIndex(e.Count) == DemoTechnology.Woodworking);
             if (learned is not null) break;
         }
         Assert.NotNull(learned);
@@ -130,6 +130,25 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void TechTreeComesFromTheOfficialSheets()
+    {
+        // 第 08-9 章 A1：10B～10N 全部啟用的節點；門檻＝研究時間×325；前置都在樹上；編號從 1 連續。
+        Assert.True(DemoTechTree.All.Count >= 100, $"知識樹只有 {DemoTechTree.All.Count} 項");
+        Assert.Equal(26_000, DemoKnowledge.ThresholdOf(DemoTechnology.Farming));
+        Assert.Equal(32_500, DemoKnowledge.ThresholdOf(DemoTechnology.Woodworking));
+        Assert.Equal(58_500, DemoKnowledge.ThresholdOf(DemoTechnology.Smithing));
+        Assert.Equal("基礎作物栽培", DemoKnowledge.Name(DemoTechnology.Farming));
+        Assert.Equal(Enumerable.Range(1, DemoTechTree.All.Count), DemoTechTree.All.Select(n => n.Index));
+        Assert.All(DemoTechTree.All, n => Assert.All(n.Parents, p => Assert.True(DemoTechTree.Contains(p))));
+        Assert.All(DemoTechTree.All, n => Assert.Equal(n.Technology, DemoTechTree.ByIndex(n.Index)));
+        Assert.Null(DemoTechTree.ByIndex(0));
+        Assert.Empty(DemoTechTree.Of(DemoTechnology.Farming).Parents);
+        // 正式設定錯誤會被擋下：前置不存在。
+        Assert.Throws<InvalidOperationException>(() => DemoTechTree.Build(new[] { ("10X.csv",
+            "TechID,中文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,PracticeBoostCondition,Enabled\nTECH_A,甲,1,b,TECH_NOPE,10,,TRUE\n") }));
+    }
+
+    [Fact]
     public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
     {
         Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
@@ -144,11 +163,11 @@ public sealed class DemoKnowledgeTests
     [Fact]
     public void SmithingToolsRaiseYieldFromTheWeekAfterLearning()
     {
-        // 第 08-6 章 e 節：鍛造在木工之後；習得後下一週起每名勞力可採量＋25%。
+        // 第 08-6 章 e 節：習得鍛造後下一週起每名勞力可採量＋25%。第 08-9 章 A1：鍛造前置改照 10C（探礦→高溫冶煉）。
         var state = DemoKnowledgeState.Initial with
         {
             Records = System.Collections.Immutable.ImmutableList.Create(
-                new DemoKnowledgeRecord(1, DemoTechnology.Smithing, DemoKnowledge.TempSmithingThreshold, 10)),
+                new DemoKnowledgeRecord(1, DemoTechnology.Smithing, DemoKnowledge.ThresholdOf(DemoTechnology.Smithing), 10)),
             Era = DemoEra.Pioneer, EraWeek = 5
         };
         Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 1, 10));
@@ -156,6 +175,7 @@ public sealed class DemoKnowledgeTests
         Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 2, 11));
         Assert.Equal(DemoRepresentativeRole.Smith, Enum.GetValues<DemoRepresentativeRole>().Single(r => DemoRepresentative.TechnologyOf(r) == DemoTechnology.Smithing));
         Assert.True(DemoKnowledge.ThresholdOf(DemoTechnology.Smithing) > DemoKnowledge.ThresholdOf(DemoTechnology.Woodworking));
+        Assert.Contains(new DemoTechnology("TECH_CHARCOAL_SMELTING"), DemoTechTree.Of(DemoTechnology.Smithing).Parents);
 
         var config = DemoWeeklyTempConfig.LivingForagingSample;
         var ledger = new DemoSettlementWeekLedger(1, 1, "測試", 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 5);
