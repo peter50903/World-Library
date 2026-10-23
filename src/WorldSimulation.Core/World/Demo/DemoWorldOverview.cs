@@ -45,7 +45,8 @@ public sealed record DemoWorldOverview(
         var stats = world.WorldPopulationStats; // 第 07-1 章：群體人口統計
         var latest = world.LatestWeek;
         return new DemoWorldOverview(
-            world.WeeklyConfig.EraName,
+            // 第 08-6 章：人類繁衍世界的時代來自知識樹（希望時代→開拓時代）。
+            world.WeeklyConfig.EraName is null ? null : DemoKnowledge.EraName(world.Era),
             year?.Year ?? 1,
             world.WorldPopulation,
             world.SettledPopulation,

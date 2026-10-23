@@ -24,7 +24,8 @@ internal static class DemoHumanLifecycle
 
     /// <returns>生死後的週結算與群體人口（第 07-1 章起沒有個體當事人；事件只記聚落與人數）。</returns>
     public static (DemoWeeklyOutcome Outcome, DemoCohortDemography Population) Apply(
-        DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, DemoNames names, long firstNewEventId = 1)
+        DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, DemoNames names, long firstNewEventId = 1,
+        DemoKnowledgeState? knowledge = null)
     {
         ArgumentNullException.ThrowIfNull(names);
         ArgumentNullException.ThrowIfNull(weekly);
@@ -80,7 +81,8 @@ internal static class DemoHumanLifecycle
 
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
-        var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names);
+        var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
+            knowledge ?? DemoKnowledgeState.Initial);
 
         long Sum(DemoTempDemographicKind kind, int settlement, int batch)
             => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
@@ -181,7 +183,7 @@ internal static class DemoHumanLifecycle
     /// </summary>
     private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
         Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
-            DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names)
+            DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge)
     {
         var exits = new List<DemoRepresentativeExit>();
         var current = new List<DemoRepresentative>();
@@ -202,11 +204,17 @@ internal static class DemoHumanLifecycle
             long Free(DemoCohortGroup g) => g.Count - current.Count(r => r.SettlementId == settlement.Id && r.BirthYear == g.BirthYear && r.Sex == g.Sex);
             var adults = population.GroupsAt(settlement.Id, 0)
                 .Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) >= Rules.AdultAgeYears).ToList();
-            foreach (var role in new[] { DemoRepresentativeRole.Leader })
+            foreach (var role in new[] { DemoRepresentativeRole.Leader, DemoRepresentativeRole.Farmer })
             {
                 if (current.Any(r => r.SettlementId == settlement.Id && r.Role == role)) continue;
+                // 第 08-6 章：專業知識持有者只在已習得該技術的聚落（農師＝農耕）。
+                if (role == DemoRepresentativeRole.Farmer && !knowledge.Knows(settlement.Id, DemoTechnology.Farming)) continue;
                 var candidates = adults.Where(g => Free(g) > 0).ToList();
-                var pick = candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
+                if (role != DemoRepresentativeRole.Leader)
+                    candidates = candidates.Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) < DemoSurvivalTempSettings.Current.ElderAgeYears).ToList();
+                var pick = role == DemoRepresentativeRole.Leader
+                    ? candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault()
+                    : candidates.OrderByDescending(Free).ThenBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
                 if (pick is null) continue;
                 var id = DemoEntityIds.NextLong(ids);
                 var person = new DemoRepresentative(id, settlement.Id, role, names.Person(id, pick.Sex), pick.Sex, pick.BirthYear, report.Week);

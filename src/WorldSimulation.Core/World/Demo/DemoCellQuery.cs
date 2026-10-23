@@ -162,6 +162,15 @@ public static class DemoCellQuery
             var day = world.Snapshot().DaysElapsed;
             foreach (var r in world.RepresentativesOf(settlement.Id))
                 lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
+            // 第 08-6 章：知識樹（已習得的技術；未習得的列研究進度）。
+            if (world.HumanPopulationSnapshot is not null)
+                foreach (var technology in Enum.GetValues<DemoTechnology>())
+                {
+                    var record = world.Knowledge.Of(settlement.Id, technology);
+                    lines.Add(record is { Learned: true }
+                        ? $"知識：{DemoKnowledge.Name(technology)}（第 {DemoSettlementHistory.YearOfDay(record.LearnedWeek * 7)} 年習得）"
+                        : $"知識：{DemoKnowledge.Name(technology)}研究中 {(record?.Progress ?? 0) * 100 / DemoKnowledge.TempThreshold}%");
+                }
             lines.AddRange(DemoSettlementHistory.Lines(world, settlement.Id)); // 第 08-3 章：建立年數與聚落小史
         }
 

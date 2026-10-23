@@ -209,7 +209,11 @@ public enum DemoSettlementEventKind
     /// 第 07 章 c 節：聚落人口連續為 0 滿 TEMP 週數，成為遺跡（45F SETTLE_FAIL 留下遺跡）；該格恢復自然來源。
     /// 根因事件，證據是週帳連續的期末人口 0。Count＝空置週數。
     /// </summary>
-    SettlementRuined = 9
+    SettlementRuined = 9,
+    /// <summary>第 08-6 章：聚落習得一項技術（根因：長年經驗累積或遷入者帶來）。Count＝技術（<see cref="DemoTechnology"/>）。</summary>
+    KnowledgeLearned = 10,
+    /// <summary>第 08-6 章：世界進入新時代；直接原因＝同週同聚落的習得技術事件。Count＝時代（<see cref="DemoEra"/>）。</summary>
+    EraBegan = 11
 }
 
 /// <summary>
@@ -247,6 +251,8 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.Birth => $"第 {day} 天  |  {SettlementName} 出生 {Count} 人（{Cause}）",
             DemoSettlementEventKind.NaturalDeath => $"第 {day} 天  |  {SettlementName} 自然死亡 {Count} 人（{Cause}）",
             DemoSettlementEventKind.SettlementRuined => $"第 {day} 天  |  {SettlementName} 成為遺跡（{Cause}）",
+            DemoSettlementEventKind.KnowledgeLearned => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
