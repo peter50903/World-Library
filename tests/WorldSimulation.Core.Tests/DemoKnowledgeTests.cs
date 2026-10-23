@@ -172,7 +172,8 @@ public sealed class DemoKnowledgeTests
             // 木工要可及森林；纖維要可及草原。
             Assert.Equal(DemoKnowledge.NearForest(world.Map, s) ? adults : 0,
                 DemoKnowledge.Practitioners(Node("TECH_BASIC_CARPENTRY"), s, population, world.Map, food, state));
-            Assert.Equal(DemoKnowledge.NearTerrain(world.Map, s, DemoTerrain.Grassland) ? adults : 0,
+            // 第 08-9 章 A6：纖維屬植物材料（可及森林或草原，或可取水）。
+            Assert.Equal(DemoResourceCategories.CategoryAvailable(DemoResourceCategory.Plant, s, world.Map, food) ? adults : 0,
                 DemoKnowledge.Practitioners(Node("TECH_FIBER_PROCESSING"), s, population, world.Map, food, state));
         }
         Assert.True(DemoKnowledge.TierAllows(Node("TECH_CROP_CULTIVATION"), DemoSettlementTier.Settlement));
@@ -271,6 +272,29 @@ public sealed class DemoKnowledgeTests
         Assert.DoesNotContain(heldNearby.Events, e => e.Kind == DemoSettlementEventKind.KnowledgeLost);
         Assert.DoesNotContain(heldNearby.State.Records, r => r.SettlementId == s.Id);
         Assert.Equal("TEMP_EV_KNOWLEDGE_LOST", DemoEventTypes.Of(DemoSettlementEventKind.KnowledgeLost).TypeId);
+    }
+
+    [Fact]
+    public void ResearchMaterialsAreCheckedByCategory_ProcessedGoodsNeedTheirTechnique()
+    {
+        // 第 08-9 章 A6（08-7c）：知識樹用到的原料都在 10T；細項依大類判定，加工品另要技術。
+        Assert.All(DemoTechTree.All.SelectMany(n => n.ResearchCost), c => Assert.True(DemoResourceCategories.All.ContainsKey(c.Resource)));
+        Assert.Equal(DemoResourceCategory.Animal, DemoResourceCategories.Of("RES_PARCHMENT").Category);
+        Assert.Equal(new DemoTechnology("TECH_TANNING"), DemoResourceCategories.Of("RES_PARCHMENT").RequiredTech);
+        Assert.Equal(DemoResourceCategory.Ore, DemoResourceCategories.Of("RES_SALT").Category);
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        var forest = world.Sites.Settlements.First(s => DemoKnowledge.NearForest(world.Map, s));
+        var none = DemoKnowledgeState.Initial;
+        var weaving = none with { Records = System.Collections.Immutable.ImmutableList.Create(
+            new DemoKnowledgeRecord(forest.Id, new DemoTechnology("TECH_WEAVING"), DemoKnowledge.ThresholdOf(new DemoTechnology("TECH_WEAVING")), 1)), Era = DemoEra.Pioneer, EraWeek = 1 };
+        Assert.True(DemoResourceCategories.Available("RES_WOOD", forest, world.Map, 10, none));
+        Assert.True(DemoResourceCategories.Available("RES_FIBER", forest, world.Map, 10, none));
+        Assert.False(DemoResourceCategories.Available("RES_CLOTH", forest, world.Map, 10, none)); // 布要會織造
+        Assert.True(DemoResourceCategories.Available("RES_CLOTH", forest, world.Map, 10, weaving));
+        Assert.False(DemoResourceCategories.Available("RES_GRAIN", forest, world.Map, 0, none)); // 沒存糧
+        foreach (var blocked in new[] { "RES_STONE", "RES_IRON_ORE", "RES_IRON_INGOT", "RES_HIDE", "RES_PARCHMENT", "RES_MANA_CRYSTAL" })
+            Assert.False(DemoResourceCategories.Available(blocked, forest, world.Map, 10, weaving));
+        Assert.Throws<InvalidOperationException>(() => DemoResourceCategories.Build("ResourceID,中文名稱,CategoryID,RequiredTechID,Enabled\nRES_X,甲,CAT_NOPE,,TRUE\n"));
     }
 
     [Fact]
