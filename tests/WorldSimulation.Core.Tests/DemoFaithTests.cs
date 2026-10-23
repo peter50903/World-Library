@@ -72,9 +72,12 @@ public sealed class DemoFaithTests
 
         // 只有無信仰者的世界：信仰全部滅絕。
         var emptied = first with { Settlements = ImmutableSortedDictionary<int, ImmutableList<DemoFaithShare>>.Empty,
+            Batches = ImmutableSortedDictionary<int, ImmutableList<DemoFaithShare>>.Empty,
             Representatives = ImmutableSortedDictionary<long, int>.Empty };
         var noReps = Array.Empty<DemoRepresentative>();
-        var quietReport = report with { Appointments = Array.Empty<DemoRepresentative>() };
+        // 之後的一週、沒有遷徙與就任：創立聚落已無信徒，不會自己復燃。
+        var quietReport = report with { Week = report.Week + 1, Appointments = Array.Empty<DemoRepresentative>(),
+            Migrations = Array.Empty<DemoMigrationWeekLedger>() };
         var (gone, extinct) = DemoFaiths.Advance(emptied, quietReport, Array.Empty<DemoSettlementEvent>(), world.Sites, world.Map, world.Culture,
             noReps, transit, world.RngRegistryForTests(), 1000);
         Assert.True(gone.Faiths[0].Extinct);
