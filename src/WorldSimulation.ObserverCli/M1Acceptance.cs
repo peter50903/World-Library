@@ -697,7 +697,8 @@ public static class M1Evaluator
             return new M1Finding(M1Raw.NotObserved, $"本情境 {run.Years} 年內沒有缺糧，無法觀察危機傳導（不是通過）");
 
         // 生產力是量測值，不是由人口前後推斷：每週採收不得超過「期初人口×TEMP 每人每週產量」的勞動力上限。
-        var yieldPerWorker = run.Preset.Config.YieldPerWorkerPerWeek;
+        // 第 08-9 章 A4：每名勞力可採量含工具加成（週帳記 ToolYieldPercent）。
+        long Yield(DemoSettlementWeekLedger l) => l.YieldPerWorker(run.Preset.Config);
         // 勞動力＝期初可工作者：共享採集情境（人類採集）＝成人扣掉取水者（DemoWeeklySettlement 共享分配同一算法）；
         // 自有資源點情境＝全部期初人口（每人 TEMP 產量）。
         var shared = run.Preset.Config.SharedCatchmentEnabled;
@@ -709,10 +710,10 @@ public static class M1Evaluator
         {
             foreach (var l in report.Settlements)
             {
-                var cap = Workers(l) * yieldPerWorker;
+                var cap = Workers(l) * Yield(l);
                 if (l.FoodProduced > cap)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 採收 {l.FoodProduced} 超過勞動力上限 {cap}"
-                        + $"（期初勞動力 {Workers(l)} 人×TEMP 每人每週產量 {yieldPerWorker}）");
+                        + $"（期初勞動力 {Workers(l)} 人×TEMP 每人每週產量 {Yield(l)}）");
             }
         }
 
@@ -745,8 +746,8 @@ public static class M1Evaluator
                 continue;
             }
 
-            var capBefore = Workers(during) * yieldPerWorker;
-            var capAfter = Workers(next) * yieldPerWorker;
+            var capBefore = Workers(during) * Yield(during);
+            var capAfter = Workers(next) * Yield(next);
             // 共享採集情境的採收也受本週需求限制：採收要等於勞動力上限且低於需求，才確定是勞力（不是需求）在限制。
             bool LaborBound(DemoSettlementWeekLedger l, long cap)
                 => l.FoodProduced == cap && ResourceLeft(l)
@@ -763,7 +764,7 @@ public static class M1Evaluator
             }
 
             chain = $"{head} → 下週勞動力 {Workers(during)}→{Workers(next)} 人，"
-                + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {yieldPerWorker}），"
+                + $"勞動力上限 {capBefore}→{capAfter}（TEMP 每人每週產量 {Yield(during)}），"
                 + $"實際採收 {during.FoodProduced}＝前週舊上限 → {next.FoodProduced}＝新上限"
                 + $"（{Left(during)}→{Left(next)}，前後兩週產量受勞力限制）";
             break;
