@@ -16,6 +16,9 @@ public enum DemoEra
 public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Technology, long Progress, int LearnedWeek)
 {
     public bool Learned => LearnedWeek > 0;
+
+    /// <summary>第 08-9 章 A3：這個聚落已因實踐加速推進過這項技術（每聚落每技術一次）。</summary>
+    public bool Boosted { get; init; }
 }
 
 /// <summary>
@@ -39,7 +42,7 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
     public override int GetHashCode() => HashCode.Combine(Era, EraWeek, Records.Count);
 
     public string Fingerprint()
-        => $"era={Era}@{EraWeek};" + string.Concat(Records.Select(r => $"know{r.SettlementId}/{r.Technology}={r.Progress}@{r.LearnedWeek};"));
+        => $"era={Era}@{EraWeek};" + string.Concat(Records.Select(r => $"know{r.SettlementId}/{r.Technology}={r.Progress}@{r.LearnedWeek}{(r.Boosted ? "+" : "")};"));
 }
 
 /// <summary>
@@ -70,6 +73,33 @@ public static class DemoKnowledge
     /// <summary>技術中文名稱（正式設定的「中文名稱」）。</summary>
     public static string Name(DemoTechnology technology)
         => DemoTechTree.Contains(technology) ? DemoTechTree.Of(technology).Name : technology.Id;
+
+    /// <summary>【TEMP】第 08-9 章 A3：鄰近傳播的範圍（格）；勢力範圍內已習得的聚落。</summary>
+    public const int TempDiffusionRange = 3;
+
+    /// <summary>【TEMP】第 08-9 章 A3：每個已習得的鄰近聚落每週帶來門檻的萬分之 5，最多 5 個聚落。</summary>
+    public const long TempDiffusionPerTenThousand = 5;
+
+    public const int TempDiffusionMaxNeighbours = 5;
+
+    /// <summary>
+    /// 第 08-9 章 A3（文明帝國的靈光一現）：PracticeBoostCondition 在聚落真的發生時，該技術立刻推進門檻的 PracticeBoostEffect%。
+    /// 目前接得到的條件：輪作＝農田連續耕作滿一年（本週與 52 週前都有農糧）；灌溉＝有農田且缺水。
+    /// 其他條件在對應系統出現時加入（狩獵、傷口、倉儲…）。
+    /// </summary>
+    public static bool PracticeHappened(DemoTechnology technology, int settlementId, DemoWeekReport report, Func<int, DemoWeekReport?>? weekAt)
+    {
+        var ledger = report.Settlements.FirstOrDefault(l => l.SettlementId == settlementId);
+        if (ledger is null)
+            return false;
+        return technology.Id switch
+        {
+            "TECH_CROP_ROTATION" => ledger.FoodFromFarming > 0 && weekAt?.Invoke(report.Week - 52)?.Settlements
+                .FirstOrDefault(l => l.SettlementId == settlementId) is { FoodFromFarming: > 0 },
+            "TECH_IRRIGATION" => ledger.FoodFromFarming > 0 && ledger.WaterShortage > 0,
+            _ => false
+        };
+    }
 
     /// <summary>【TEMP】第 08-9 章 A2：每位同領域專家（代表人物）每週加的研究進度。</summary>
     public const long TempSpecialistWeight = 5;
@@ -134,7 +164,7 @@ public static class DemoKnowledge
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
-        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null)
+        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, Func<int, DemoWeekReport?>? weekAt = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -152,6 +182,9 @@ public static class DemoKnowledge
             var tier = tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Settlement;
             var reps = population.Representatives.Where(r => r.SettlementId == settlement.Id).ToList();
             var scholars = reps.Count(r => r.Role == DemoRepresentativeRole.Scholar);
+            // 第 08-9 章 A3：勢力範圍內（TEMP 3 格）的其他有人聚落，鄰近傳播用。
+            var neighbours = map is null ? new List<DemoSettlement>() : sites.Settlements
+                .Where(o => o.Id != settlement.Id && !o.IsRuin && HexDistance(map, settlement, o) <= TempDiffusionRange).ToList();
             foreach (var node in DemoTechTree.All)
             {
                 var technology = node.Technology;
@@ -175,12 +208,18 @@ public static class DemoKnowledge
                     && DemoTechTree.Contains(held) && DemoTechTree.Of(held).Sheet == node.Sheet);
                 var experts = practitioners == 0 ? 0 : checked(specialists * TempSpecialistWeight + scholars * TempScholarWeight);
                 var threshold = ThresholdOf(technology);
-                var gain = checked(practitioners + experts + carried * threshold * TempCarryPercent / 100);
+                // 第 08-9 章 A3：鄰近傳播（十字軍之王：鄰近已知者越多越快）與實踐加速，都只在有人從業時。
+                var knowers = practitioners == 0 ? 0 : Math.Min(TempDiffusionMaxNeighbours, neighbours.Count(o => state.Knows(o.Id, technology)));
+                var diffusion = checked(knowers * threshold * TempDiffusionPerTenThousand / 10_000);
+                var boost = practitioners > 0 && !current.Boosted && node.PracticeBoostPercent > 0
+                    && PracticeHappened(technology, settlement.Id, report, weekAt)
+                    ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
+                var gain = checked(practitioners + experts + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
-                records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0 };
+                records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boost > 0 };
                 if (!learned)
                     continue;
                 var cause = carried > 0
@@ -189,7 +228,8 @@ public static class DemoKnowledge
                         ? $"{practitioners} 名成年人長年在森林取木的經驗累積"
                         : technology == DemoTechnology.Farming
                             ? $"{practitioners} 名成年人長年採集植物的經驗累積"
-                            : $"{practitioners} 名成年人長年{node.Branch}的經驗累積" + (experts > 0 ? $"（專家與學者協助）" : "");
+                            : $"{practitioners} 名成年人長年{node.Branch}的經驗累積" + (experts > 0 ? "（專家與學者協助）" : "")
+                                + (knowers > 0 ? $"（鄰近 {knowers} 個聚落已會）" : "");
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.KnowledgeLearned, node.Index, $"學會{Name(technology)}：{cause}【TEMP】",
                     EventId: nextEventId++);
@@ -219,6 +259,16 @@ public static class DemoKnowledge
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);
         return origin.Terrain == terrain || Neighbours(map, origin).Any(c => c.Terrain == terrain);
+    }
+
+    /// <summary>六角格距離（軸向座標）。</summary>
+    public static int HexDistance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
+    {
+        var x = map.GetCell(a.Column, a.Row);
+        var y = map.GetCell(b.Column, b.Row);
+        var dq = x.AxialQ - y.AxialQ;
+        var dr = x.AxialR - y.AxialR;
+        return Math.Max(Math.Abs(dq), Math.Max(Math.Abs(dr), Math.Abs(dq + dr)));
     }
 
     /// <summary>第 08-9 章 A2：六鄰格有海。</summary>

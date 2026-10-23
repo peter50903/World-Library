@@ -202,6 +202,13 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 04-1 章：<see cref="WeekReports"/> 第一份的週次（新世界＝1）。</summary>
     public int FirstRetainedWeek => _weekBase + 1;
 
+    /// <summary>第 08-9 章 A3：保留範圍內第 <paramref name="week"/> 週的週報（範圍外回傳 null）。</summary>
+    public DemoWeekReport? WeekAt(int week)
+    {
+        var index = week - _weekBase - 1;
+        return index >= 0 && index < _weeks.Count ? _weeks[index] : null;
+    }
+
     /// <summary>第 04-1 章：年帳（第 1 年起到目前；讀檔前的年份由存檔提供）。一年 365 日。</summary>
     public IReadOnlyList<DemoYearSummary> YearSummaries()
         => _frozenYears.Concat(DemoYearLedger.FromWeeks(_weeks, DemoSettlementHistory.DaysPerYear, Snapshot().DaysElapsed,
@@ -419,7 +426,7 @@ public sealed partial class DemoObserverWorld
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
-                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier);
+                var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map, id => ChronicleOf(id).Tier, WeekAt);
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,

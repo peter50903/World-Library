@@ -189,6 +189,34 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void KnowingNeighboursSpeedUpResearch_AndPracticeBoostsComeFromTheSheets()
+    {
+        // 第 08-9 章 A3：勢力範圍內（3 格）每個已會的聚落每週＋門檻萬分之 5；實踐加速的百分比讀正式設定。
+        Assert.Equal(20, DemoTechTree.Of(DemoTechnology.Farming).PracticeBoostPercent);
+        Assert.Equal(15, DemoTechTree.Of(new DemoTechnology("TECH_CROP_ROTATION")).PracticeBoostPercent);
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var day = 0; day < 14; day++)
+            world.AdvanceOneDay();
+        var population = DemoCohortDemography.Restore(world.HumanPopulationSnapshot!);
+        var report = world.LatestWeek!;
+        var (s, o) = world.Sites.Settlements.Where(x => !x.IsRuin && world.SettlementPopulation(x.Id) > 0 && world.SettlementFood(x.Id) > 0)
+            .SelectMany(x => world.Sites.Settlements.Where(y => y.Id != x.Id && !y.IsRuin
+                && DemoKnowledge.HexDistance(world.Map, x, y) <= DemoKnowledge.TempDiffusionRange).Select(y => (x, y)))
+            .First();
+        var threshold = DemoKnowledge.ThresholdOf(DemoTechnology.Farming);
+        var alone = DemoKnowledgeState.Initial;
+        var withNeighbour = alone with
+        {
+            Records = System.Collections.Immutable.ImmutableList.Create(new DemoKnowledgeRecord(o.Id, DemoTechnology.Farming, threshold, 1)),
+            Era = DemoEra.Pioneer, EraWeek = 1
+        };
+        long Progress(DemoKnowledgeState state) => DemoKnowledge.Advance(state, report, population, world.Sites, 1, world.Map)
+            .State.Of(s.Id, DemoTechnology.Farming)?.Progress ?? 0;
+        Assert.True(Progress(alone) > 0);
+        Assert.Equal(threshold * DemoKnowledge.TempDiffusionPerTenThousand / 10_000, Progress(withNeighbour) - Progress(alone));
+    }
+
+    [Fact]
     public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
     {
         Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
