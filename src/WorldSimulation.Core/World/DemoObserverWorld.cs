@@ -419,6 +419,8 @@ public sealed partial class DemoObserverWorld
             // 第 08-9 章 C1：結算前的狩獵（期初人口與知識）；獵得的糧食併入週帳。
             var (hunted, huntedFood) = _demography is null ? (_wildlife, new Dictionary<int, long>())
                 : DemoWildlife.Hunt(_wildlife, Map, _sites, _demography, _knowledge);
+            // 第 08-9 章 C2：生活圈外的途中隊伍遭野獸襲擊（結算前決定人數）。
+            var beastAttacks = DemoWildlife.Attacks(hunted, Map, _sites, _migrations, _knowledge, checked(CommittedWeeks + 1), _rng);
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
@@ -437,6 +439,7 @@ public sealed partial class DemoObserverWorld
                 // e 節：工具；第 08-9 章 B2【TEMP】：開拓時代起加上主要文化的生計傳統（希望時代維持原本的糧食平衡）。
                 cannibalPermille: id => DemoFaiths.CannibalPermille(_faith, id), // 第 08-9 章 B3b：食人儀式
                 huntedFood: huntedFood, // 第 08-9 章 C1
+                beastAttacks: beastAttacks, // 第 08-9 章 C2
                 toolYieldPercent: id => checked(DemoKnowledge.ToolYieldPercent(_knowledge, id, CommittedWeeks + 1)
                     + (_knowledge.Era != DemoEra.Hope && _sites.Settlements.FirstOrDefault(s => s.Id == id) is { } place
                         ? DemoCultures.LivelihoodYieldPercent(_culture, Map, place) : 0)));
@@ -601,7 +604,7 @@ public sealed partial class DemoObserverWorld
     internal SortedDictionary<long, int[]> EarlierEventCells(int windowStart)
     {
         var result = new SortedDictionary<long, int[]>();
-        foreach (var e in SettlementEvents().Where(e => e.Week < windowStart && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath))
+        foreach (var e in SettlementEvents().Where(e => e.Week < windowStart && e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts))
         {
             var formal = _history.Find(e.EventId);
             var place = _sites.Settlements.Single(s => s.Id == e.SettlementId);

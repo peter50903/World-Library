@@ -268,11 +268,12 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.Arrival:
             case DemoSettlementEventKind.SettlementFounded:
             case DemoSettlementEventKind.MigrantStarvationDeath:
+            case DemoSettlementEventKind.MigrantKilledByBeasts:
             {
                 if (parent is null || parent.Kind != DemoSettlementEventKind.Emigration
                     || parent.MigrationBatchId != e.MigrationBatchId || parent.Week >= e.Week)
                     return $"直接原因必須是隊伍 #{e.MigrationBatchId} 在更早週次的外移事件";
-                if (e.Kind == DemoSettlementEventKind.MigrantStarvationDeath && parent.SettlementId != e.SettlementId)
+                if (e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts && parent.SettlementId != e.SettlementId)
                     return "途中餓死事件的聚落必須是隊伍的出發聚落";
                 // GPT 審 #91：事件本身也要有當週隊伍帳為證據，偽造的抵達／建立／途中餓死不能只靠父事件過關。
                 return TravelLedgerProblem(report, e);
@@ -364,8 +365,11 @@ public sealed class DemoCausalIndex
                 || ledger.ToSettlementId != e.SettlementId || ledger.PopulationClosing != e.Count
                 => $"週帳沒有開拓隊 #{e.MigrationBatchId} 建立此聚落的紀錄（事件人數 {e.Count}，週帳抵達 {(ledger.Arrived ? ledger.PopulationClosing : 0)}）",
             DemoSettlementEventKind.MigrantStarvationDeath when ledger.FromSettlementId != e.SettlementId
-                || ledger.Deaths <= 0 || ledger.Deaths != e.Count
-                => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 途中死亡（事件死亡 {e.Count}，週帳死亡 {ledger.Deaths}）",
+                || ledger.StarvationDeaths <= 0 || ledger.StarvationDeaths != e.Count
+                => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 途中死亡（事件死亡 {e.Count}，週帳餓死 {ledger.StarvationDeaths}）",
+            DemoSettlementEventKind.MigrantKilledByBeasts when ledger.FromSettlementId != e.SettlementId
+                || ledger.BeastDeaths <= 0 || ledger.BeastDeaths != e.Count
+                => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 遭襲死亡（事件 {e.Count}，週帳 {ledger.BeastDeaths}）",
             _ => null
         };
     }

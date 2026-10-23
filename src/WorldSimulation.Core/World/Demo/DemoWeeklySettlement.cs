@@ -226,7 +226,12 @@ public enum DemoSettlementEventKind
     /// <summary>第 08-9 章 B3：信仰零信徒而滅絕（48A：不刪除，可同編號復興）。根因。Count＝信仰編號。</summary>
     FaithExtinct = 15,
     /// <summary>第 08-9 章 B4：一群聚落與同文化本群分開滿 50 年，分化出子文化（根因）。Count＝新文化編號。</summary>
-    CultureSplit = 16
+    CultureSplit = 16,
+    /// <summary>
+    /// 第 08-9 章 C2：途中隊伍在生活圈外遭野獸襲擊而死（12a 第 3 節）；直接原因＝隊伍出發的外移事件。
+    /// SettlementId＝出發聚落；Count＝死亡人數。
+    /// </summary>
+    MigrantKilledByBeasts = 17
 }
 
 /// <summary>
@@ -271,6 +276,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.FaithFounded => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FaithExtinct => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.CultureSplit => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.MigrantKilledByBeasts => $"第 {day} 天  |  自{SettlementName}出發的隊伍 {Count} 人遭野獸襲擊身亡（{Cause}）",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -616,7 +622,8 @@ internal static class DemoWeeklySettlement
         bool? hopeRules = null,
         Func<int, long>? toolYieldPercent = null,
         Func<int, int>? cannibalPermille = null,
-        IReadOnlyDictionary<int, long>? huntedFood = null)
+        IReadOnlyDictionary<int, long>? huntedFood = null,
+        IReadOnlyDictionary<int, long>? beastAttacks = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -752,15 +759,32 @@ internal static class DemoWeeklySettlement
             if (survivors == 0)
                 removedByDeath = debt;
             debt -= removedByDeath;
+            // 第 08-9 章 C2：生活圈外遭野獸襲擊（襲擊與人數在結算前由世界依掠食獸與局部亂數決定）。
+            var killed = Math.Min(survivors, beastAttacks?.GetValueOrDefault(batch.Id) ?? 0);
+            var starved = deaths;
+            if (killed > 0)
+            {
+                survivors -= killed;
+                deaths += killed;
+                if (survivors == 0)
+                {
+                    removedByDeath += debt;
+                    debt = 0;
+                }
+            }
 
             // 不瞬移：每週最多前進一格（TEMP 速度），全數死亡的隊伍停在原地。
             var step = survivors > 0 ? batch.StepIndex + 1 : batch.StepIndex;
             var arrived = survivors > 0 && step == batch.Path.Length - 1;
 
-            if (deaths > 0)
+            if (killed > 0)
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
+                    DemoSettlementEventKind.MigrantKilledByBeasts, killed,
+                    $"前往{batch.ToName}途中，在生活圈外遇上掠食獸群【TEMP】", batch.Id), emigrationEventId));
+            if (starved > 0)
             {
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
-                    DemoSettlementEventKind.MigrantStarvationDeath, deaths,
+                    DemoSettlementEventKind.MigrantStarvationDeath, starved,
                     survivors == 0 && batch.Founding
                         ? $"開拓隊前往{batch.ToName}途中攜帶的糧食耗盡，全數死亡，開拓失敗、沒有建立聚落"
                         : survivors == 0
@@ -818,7 +842,7 @@ internal static class DemoWeeklySettlement
                 batch.Cell, batch.Path[step], Departed: false, Arrived: arrived,
                 people, deaths, survivors,
                 batch.Food, consumed, foodClosing, shortage,
-                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding));
+                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding, BeastDeaths: killed));
         }
 
         foreach (var settlement in weekSites.Settlements.OrderBy(s => s.Id))
@@ -1340,9 +1364,10 @@ internal static class DemoWeeklySettlement
                     $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 帳目不平衡或瞬移（M1_MIG）。");
 
             var migrantDeaths = report.Events
-                .Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath)
+                .Where(e => e.MigrationBatchId == m.BatchId && e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts)
                 .ToList();
-            if (migrantDeaths.Sum(e => e.Count) != m.Deaths || migrantDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
+            if (migrantDeaths.Sum(e => e.Count) != m.Deaths || migrantDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause))
+                || migrantDeaths.Where(e => e.Kind == DemoSettlementEventKind.MigrantKilledByBeasts).Sum(e => e.Count) != m.BeastDeaths)
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 途中死亡沒有對應的帶原因事件（death without cause）。");
             var travelBirths = report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);

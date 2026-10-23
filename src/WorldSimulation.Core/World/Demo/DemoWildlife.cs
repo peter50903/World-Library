@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -47,6 +49,49 @@ public static class DemoWildlife
     public const int TempHuntRange = 2;
 
     public static readonly DemoTechnology Hunting = new("TECH_HUNTING");
+    public static readonly DemoTechnology Archery = new("TECH_ARCHERY");
+    public static readonly DemoTechnology WatchAndHunt = new("TECH_WATCH_AND_HUNT");
+
+    /// <summary>【TEMP】第 08-9 章 C2：每 10 頭附近的掠食獸，途中隊伍每週被襲機率＋5%，最多 30%。</summary>
+    public const int TempAttackPercentPer10Predators = 5;
+
+    public const int TempMaxAttackPercent = 30;
+
+    /// <summary>
+    /// 第 08-9 章 C2（12a 第 3 節，使用者 2026-10-23：只攻擊生活圈外的人）【TEMP 規則】結算前決定本週途中隊伍遭野獸襲擊的死亡人數。
+    /// 隊伍所在格不在任何生活圈內時，依本格與鄰格的掠食獸數決定機率；被襲死 1～2 人；出發聚落會弓箭→損失減半（無條件進位），
+    /// 會巡守與圍獵→機率減半。局部亂數以隊伍編號為鍵、週次為下標（不推進計數器）。
+    /// </summary>
+    public static IReadOnlyDictionary<int, long> Attacks(DemoWildlifeState state, DemoHexWorld map, DemoWorldSites sites,
+        IEnumerable<DemoMigrationBatch> batches, DemoKnowledgeState knowledge, int week, RngRegistry rng)
+    {
+        var result = new Dictionary<int, long>();
+        if (state.Cells.IsEmpty)
+            return result;
+        var wild = WildCells(map, sites).Select(c => CellId(map, c)).ToHashSet();
+        foreach (var batch in batches.Where(b => b.People > 0).OrderBy(b => b.Id))
+        {
+            var cell = map.GetCell(batch.Cell.Column, batch.Cell.Row);
+            if (!wild.Contains(CellId(map, cell)))
+                continue; // 生活圈內（或水域）安全
+            var predators = (state.At(CellId(map, cell))?.Predators ?? 0) + DemoRouteNetwork.Directions
+                .Select(d => map.AtAxial(cell.AxialQ + d.Dq, cell.AxialR + d.Dr)).Where(n => n is not null)
+                .Sum(n => state.At(CellId(map, n!))?.Predators ?? 0);
+            var chance = Math.Min(TempMaxAttackPercent, predators / 10 * TempAttackPercentPer10Predators);
+            if (knowledge.Knows(batch.FromSettlementId, WatchAndHunt))
+                chance /= 2;
+            if (chance <= 0)
+                continue;
+            var random = EntityLocalRandom.Create(rng, EntityId.From((ulong)batch.Id), RngStreams.Event, "TEMP-BEAST-v1");
+            if ((long)(random.GetUInt64((ulong)week * 2) % 100UL) >= chance)
+                continue;
+            var killed = 1 + (long)(random.GetUInt64((ulong)week * 2 + 1) % 2UL);
+            if (knowledge.Knows(batch.FromSettlementId, Archery))
+                killed = (killed + 1) / 2;
+            result[batch.Id] = killed;
+        }
+        return result;
+    }
 
     public static long CellId(DemoHexWorld map, DemoHexCell cell) => checked((long)cell.Row * map.Columns + cell.Column + 1);
 

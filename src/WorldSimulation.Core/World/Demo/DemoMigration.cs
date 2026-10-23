@@ -80,8 +80,12 @@ public sealed record DemoMigrationWeekLedger(
     long Births = 0,
     long NaturalDeaths = 0,
     long HungerDebtRemovedByNaturalDeath = 0,
-    bool MateSeeking = false)
+    bool MateSeeking = false,
+    long BeastDeaths = 0)
 {
+    /// <summary>第 08-9 章 C2：途中餓死人數（Deaths＝餓死＋遭野獸襲擊）。</summary>
+    public long StarvationDeaths => Deaths - BeastDeaths;
+
     /// <summary>第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。</summary>
     public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths == PopulationClosing;
 
@@ -90,7 +94,7 @@ public sealed record DemoMigrationWeekLedger(
     public bool HungerDebtBalanced
         => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath
             - HungerDebtRemovedByNaturalDeath == HungerDebtClosing
-        && (Deaths == 0 || HungerDebtRemovedByDeath > 0)
+        && (Deaths - BeastDeaths == 0 || HungerDebtRemovedByDeath > 0)
         && (PopulationClosing > 0 || HungerDebtClosing == 0);
 
     /// <summary>M1_MIG：不瞬移——原地或相鄰格；出發週必須停在原地；全數死亡的隊伍不再移動也不會抵達。</summary>
@@ -104,6 +108,7 @@ public sealed record DemoMigrationWeekLedger(
         && FoodOpening >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
         && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0 && HungerDebtRemovedByDeath >= 0
         && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0
+        && BeastDeaths >= 0 && BeastDeaths <= Deaths
         && (Arrived ? Births == 0 && NaturalDeaths == 0 : true); // 抵達週的成員已併入目的聚落，生死記在聚落帳
 
     public bool IsBalanced

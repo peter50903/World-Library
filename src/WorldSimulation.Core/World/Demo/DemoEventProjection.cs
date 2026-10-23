@@ -29,7 +29,7 @@ public static class DemoEventProjection
             var settlement = sites.Settlements.SingleOrDefault(s => s.Id == e.SettlementId)
                 ?? throw new InvalidOperationException($"事件 #{e.EventId} 的聚落 #{e.SettlementId} 不存在。");
             var (column, row) = (settlement.Column, settlement.Row);
-            if (e.Kind == DemoSettlementEventKind.MigrantStarvationDeath
+            if (e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts
                 && report.Migrations.FirstOrDefault(m => m.BatchId == e.MigrationBatchId) is { } leg)
                 (column, row) = (leg.CellAfter.Column, leg.CellAfter.Row);
 

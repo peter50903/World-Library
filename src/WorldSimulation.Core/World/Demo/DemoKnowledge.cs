@@ -107,6 +107,8 @@ public static class DemoKnowledge
             "TECH_CROP_ROTATION" => ledger.FoodFromFarming > 0 && weekAt?.Invoke(report.Week - 52)?.Settlements
                 .FirstOrDefault(l => l.SettlementId == settlementId) is { FoodFromFarming: > 0 },
             "TECH_IRRIGATION" => ledger.FoodFromFarming > 0 && ledger.WaterShortage > 0,
+            // 第 08-9 章 C2：本聚落出發的隊伍遭野獸襲擊、仍有倖存者（照護實際傷者）。
+            "TECH_WOUND_CARE" => report.Migrations.Any(m => m.FromSettlementId == settlementId && m.BeastDeaths > 0 && m.PopulationClosing > 0),
             _ => false
         };
     }
