@@ -66,7 +66,7 @@ public static class DemoYearLedger
                 a.EmigrationEvents, a.ArrivalEvents, a.Founded, state.Settlements,
                 firstDay,
                 a.NaturalDeaths, a.BirthEvents, a.NaturalDeathEvents,
-                a.Spoiled));
+                a.Spoiled, a.Other));
         }
 
         return result.AsReadOnly();
@@ -102,7 +102,7 @@ public static class DemoYearLedger
     private sealed class Accumulator
     {
         public int Weeks, HungerEvents, StarvationEvents, RecoveryEvents, EmigrationEvents, ArrivalEvents, Founded;
-        public long Births, Deaths, NaturalDeaths, Produced, Consumed, Shortage, Spoiled, Regenerated, Harvested;
+        public long Births, Deaths, NaturalDeaths, Produced, Consumed, Shortage, Spoiled, Other, Regenerated, Harvested;
         public long Emigrants, Immigrants, DeathsInEvents, BirthEvents, NaturalDeathEvents;
 
         public void Add(DemoWeekReport report)
@@ -117,6 +117,7 @@ public static class DemoYearLedger
                 Consumed = checked(Consumed + l.FoodConsumed);
                 Shortage = checked(Shortage + l.FoodShortage);
                 Spoiled = checked(Spoiled + l.FoodSpoiled);
+                Other = checked(Other + l.FoodFromDead); // 第 08-9 章 B3b
                 Regenerated = checked(Regenerated + l.Regenerated);
                 Harvested = checked(Harvested + l.Harvested);
                 Emigrants = checked(Emigrants + l.Emigrants);
