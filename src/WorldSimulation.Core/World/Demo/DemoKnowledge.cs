@@ -184,6 +184,27 @@ public static class DemoKnowledge
         var events = new List<DemoSettlementEvent>();
         var era = state.Era;
         var eraWeek = state.EraWeek;
+        // 第 08-9 章 A5（08-7a 失傳）：本週成為遺跡的聚落，知識隨人消失；勢力範圍內沒有其他持有者時記「知識失傳」。
+        foreach (var ruined in report.Events.Where(e => e.Kind == DemoSettlementEventKind.SettlementRuined).OrderBy(e => e.EventId))
+        {
+            var place = sites.Settlements.FirstOrDefault(s => s.Id == ruined.SettlementId);
+            foreach (var record in records.Values.Where(r => r.SettlementId == ruined.SettlementId).OrderBy(r => DemoTechTree.Of(r.Technology).Index).ToList())
+            {
+                records.Remove((record.SettlementId, record.Technology));
+                if (!record.Learned || place is null)
+                    continue;
+                var heldNearby = sites.Settlements.Any(o => o.Id != place.Id && !o.IsRuin
+                    && (map is null || HexDistance(map, place, o) <= TempDiffusionRange)
+                    && records.TryGetValue((o.Id, record.Technology), out var other) && other.Learned);
+                if (heldNearby)
+                    continue;
+                events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, place.Id, place.Name,
+                    DemoSettlementEventKind.KnowledgeLost, DemoTechTree.Of(record.Technology).Index,
+                    $"{DemoKnowledge.Name(record.Technology)}失傳：最後的持有者隨聚落消失，附近沒有其他聚落會【TEMP】",
+                    EventId: nextEventId++, CauseEventId: ruined.EventId));
+            }
+        }
+
         var arrivals = report.Migrations.Where(m => m.Arrived && m.PopulationClosing > 0).ToList();
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
         {

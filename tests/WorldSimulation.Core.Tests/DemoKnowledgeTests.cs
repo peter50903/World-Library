@@ -239,6 +239,41 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
+    public void KnowledgeIsLostWhenTheLastNearbyHolderBecomesARuin()
+    {
+        // 第 08-9 章 A5：成為遺跡的聚落紀錄移除；附近（3 格）沒有其他持有者才記「知識失傳」，直接原因是成為遺跡。
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var day = 0; day < 14; day++)
+            world.AdvanceOneDay();
+        var population = DemoCohortDemography.Restore(world.HumanPopulationSnapshot!);
+        var report = world.LatestWeek!;
+        var (s, o) = world.Sites.Settlements.Where(x => !x.IsRuin)
+            .SelectMany(x => world.Sites.Settlements.Where(y => y.Id != x.Id && !y.IsRuin
+                && DemoKnowledge.HexDistance(world.Map, x, y) <= DemoKnowledge.TempDiffusionRange).Select(y => (x, y)))
+            .First();
+        var sites = world.Sites.WithRuin(s.Id, report.Week);
+        var ruinEvent = new DemoSettlementEvent(report.Week, report.WorldTime, s.Id, s.Name, DemoSettlementEventKind.SettlementRuined, 4, "測試", EventId: 900);
+        var ruinedWeek = report with { Events = report.Events.Append(ruinEvent).ToArray() };
+        var farming = DemoTechnology.Farming;
+        var threshold = DemoKnowledge.ThresholdOf(farming);
+        DemoKnowledgeState With(params DemoKnowledgeRecord[] records) => DemoKnowledgeState.Initial with
+        {
+            Records = System.Collections.Immutable.ImmutableList.Create(records), Era = DemoEra.Pioneer, EraWeek = 1
+        };
+        var onlyHere = DemoKnowledge.Advance(With(new DemoKnowledgeRecord(s.Id, farming, threshold, 1)), ruinedWeek, population, sites, 901, world.Map);
+        var lost = Assert.Single(onlyHere.Events, e => e.Kind == DemoSettlementEventKind.KnowledgeLost);
+        Assert.Equal(900, lost.CauseEventId);
+        Assert.Equal(farming, DemoTechTree.ByIndex(lost.Count));
+        Assert.DoesNotContain(onlyHere.State.Records, r => r.SettlementId == s.Id);
+        Assert.Equal(DemoEra.Pioneer, onlyHere.State.Era); // 時代不倒退
+        var heldNearby = DemoKnowledge.Advance(With(new DemoKnowledgeRecord(s.Id, farming, threshold, 1),
+            new DemoKnowledgeRecord(o.Id, farming, threshold, 1)), ruinedWeek, population, sites, 901, world.Map);
+        Assert.DoesNotContain(heldNearby.Events, e => e.Kind == DemoSettlementEventKind.KnowledgeLost);
+        Assert.DoesNotContain(heldNearby.State.Records, r => r.SettlementId == s.Id);
+        Assert.Equal("TEMP_EV_KNOWLEDGE_LOST", DemoEventTypes.Of(DemoSettlementEventKind.KnowledgeLost).TypeId);
+    }
+
+    [Fact]
     public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
     {
         Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
