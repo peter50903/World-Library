@@ -28,7 +28,16 @@ public enum DemoRepresentativeRole
     Carpenter = 2,
 
     /// <summary>第 08-6 章 e 節：鐵匠（鍛造知識持有者）。</summary>
-    Smith = 3
+    Smith = 3,
+
+    /// <summary>第 08-9 章 A2（08-7b）：獵人（弓箭）。</summary>
+    Hunter = 4,
+
+    /// <summary>第 08-9 章 A2（08-7b）：巫祝（巫祝；專家，兼醫者）。</summary>
+    Shaman = 5,
+
+    /// <summary>第 08-9 章 A2（08-7b 第 3 節）：學者（抄寫法起補任；所有領域研究加速）。</summary>
+    Scholar = 6
 }
 
 /// <summary>
@@ -44,6 +53,9 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Farmer => "農師",
         DemoRepresentativeRole.Carpenter => "木匠",
         DemoRepresentativeRole.Smith => "鐵匠",
+        DemoRepresentativeRole.Hunter => "獵人",
+        DemoRepresentativeRole.Shaman => "巫祝",
+        DemoRepresentativeRole.Scholar => "學者",
         _ => "代表"
     };
 
@@ -53,6 +65,9 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Farmer => DemoTechnology.CropCultivation,
         DemoRepresentativeRole.Carpenter => DemoTechnology.BasicCarpentry,
         DemoRepresentativeRole.Smith => DemoTechnology.BasicForging,
+        DemoRepresentativeRole.Hunter => DemoTechnology.Of("TECH_ARCHERY"),
+        DemoRepresentativeRole.Shaman => DemoTechnology.Of("TECH_SHAMANISM"),
+        DemoRepresentativeRole.Scholar => DemoTechnology.Of("TECH_SCRIBAL_METHOD"),
         _ => null
     };
 }

@@ -20,7 +20,8 @@ public sealed record DemoTechNode(
     ImmutableArray<string> Parents,
     long ResearchTimeBase,
     int PracticeBoostPercent,
-    ImmutableArray<string> Facilities)
+    ImmutableArray<string> Facilities,
+    string PracticeCondition = "")
 {
     /// <summary>第 0 階＝開局知識（08-7b 第 1 節）。</summary>
     public bool IsOpening => Tier == 0;
@@ -83,7 +84,8 @@ public static class DemoTechCatalog
                     ? int.Parse(boost["研究時間-".Length..^1], CultureInfo.InvariantCulture) : 0;
                 nodes.Add(new DemoTechNode(nodes.Count, Cell(r, "TechID"), Cell(r, "中文名稱"),
                     int.Parse(Cell(r, "Tier"), CultureInfo.InvariantCulture), domain, branch, List(Cell(r, "ParentTechIDs")),
-                    long.Parse(Cell(r, "ResearchTimeBase"), CultureInfo.InvariantCulture), percent, List(Cell(r, "ApplicationFacilityIDs"))));
+                    long.Parse(Cell(r, "ResearchTimeBase"), CultureInfo.InvariantCulture), percent, List(Cell(r, "ApplicationFacilityIDs")),
+                    Cell(r, "PracticeBoostCondition")));
             }
         }
 

@@ -59,11 +59,14 @@ public sealed class DemoKnowledgeTests
     public void FarmingVillagesClearGrassland_IntoFarmlandThatFeedsThem()
     {
         // 第 08-6 章 c 節：學會農耕的聚落開墾相鄰草原（每週＋2%），完成後成為農田來源、採收記為農糧。
+        // 第 08-9 章 A2：開拓時代可能由其他技術開啟（例：祖靈祭祀得到實踐加速），先等第一個聚落學會基礎作物栽培。
         var world = UntilPioneer();
+        for (var day = 0; day < 30 * 365 && !world.Knowledge.Records.Any(r => r.Learned && r.Technology == DemoTechnology.CropCultivation); day++)
+            world.AdvanceOneDay();
         for (var day = 0; day < 8 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
             world.AdvanceOneDay();
         var cleared = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
-        Assert.True(cleared.Count > 0, $"開拓時代 8 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
+        Assert.True(cleared.Count > 0, $"學會作物栽培後 8 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
         var cell = DemoLandClearing.CellOf(world.Map, cleared[0].Count);
         Assert.Equal(DemoLandDevelopment.Farmland, world.Land.StateOf(cell));
         Assert.Equal(DemoTerrain.Grassland, world.Map.GetCell(cell.Column, cell.Row).Terrain);
