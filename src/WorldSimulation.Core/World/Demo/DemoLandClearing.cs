@@ -13,8 +13,11 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoLandClearing
 {
-    /// <summary>【TEMP】農田每週供應（糧食單位／格）；草原野採是 8。</summary>
-    public const long TempFarmlandWeeklySupply = 24;
+    /// <summary>
+    /// 【TEMP】農田每週供應（糧食單位／格）；草原野採是 8。第 08-12 章 24→40：農耕養得起的人要明顯多於採集
+    /// （一圈農田約 240／週＝60 人，聚落才長得到城鎮）。
+    /// </summary>
+    public const long TempFarmlandWeeklySupply = 40;
 
     /// <summary>【TEMP】每週開墾進度（%）：約一年開好一塊。</summary>
     public const int TempPercentPerWeek = 2;

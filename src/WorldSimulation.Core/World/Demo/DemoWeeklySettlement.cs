@@ -971,7 +971,18 @@ internal static class DemoWeeklySettlement
                     config.HopeEra ? checked(survivors / config.EmigrationShareDivisor * config.FoodPerPersonPerWeek) : 0,
                     config.HopeEra ? CommittedTo : null)
                 : null;
-            if (wantsToLeave && target is null && config.FoundingEnabled
+            // 第 08-12 章【TEMP 規則】聚集：擁擠分家時，先找已知、走得到、來源餘量至少是這批人需求
+            // TempJoinSlackFactor 倍的聚落搬進去（人往養得起的地方聚），沒有才去開拓新聚落。
+            var joining = false;
+            if (wantsToLeave && crowded && config.HumanLifecycleEnabled
+                && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
+            {
+                var party = survivors / DemoCrowding.TempCrowdingShareDivisor;
+                target = party <= 0 ? null : ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config,
+                    checked(party * config.FoodPerPersonPerWeek * DemoCrowding.TempJoinSlackFactor), CommittedTo);
+                joining = target is not null;
+            }
+            if (wantsToLeave && target is null && !joining && config.FoundingEnabled
                 && !nextMigrations.Any(b => b.Founding && b.FromSettlementId == settlement.Id)
                 && (crowded || AllReachableNewsArrived(map!, weekSites, settlement, week, publishedWeeks, config)))
             {
@@ -1030,7 +1041,8 @@ internal static class DemoWeeklySettlement
             }
             else if (target is { } chosen)
             {
-                emigrants = PlanEmigrants(settlement.Id, deaths, survivors / config.EmigrationShareDivisor);
+                emigrants = PlanEmigrants(settlement.Id, deaths,
+                    joining ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor);
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -1044,10 +1056,13 @@ internal static class DemoWeeklySettlement
 
                     events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.Emigration, emigrants,
-                        $"本週缺糧 {shortage}；依第 {chosen.NewsWeek} 週傳來的消息前往有糧的{chosen.Settlement.Name}"
+                        (joining
+                            ? $"人口接近附近來源上限：本週取用來源只剩 {slack}（＜需求 {demand} 的 TEMP {DemoCrowding.TempCrowdingSlackPercent}%），"
+                              + $"依第 {chosen.NewsWeek} 週傳來的消息，搬到還養得起人的{chosen.Settlement.Name}"
+                            : $"本週缺糧 {shortage}；依第 {chosen.NewsWeek} 週傳來的消息前往有糧的{chosen.Settlement.Name}")
                         + $"（消息沿路傳 {chosen.Route.Length - 1} 格，TEMP 每格 {config.NewsDelayWeeksPerCell} 週），"
                         + $"路線 {chosen.Route.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
-                        batch.Id), hungerEventId));
+                        batch.Id), joining ? 0 : hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, chosen.Settlement.Id,
                         batch.Cell, batch.Cell, Departed: true, Arrived: false,
