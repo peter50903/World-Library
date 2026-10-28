@@ -1,4 +1,5 @@
 using Godot;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.GodotClient;
 
@@ -14,6 +15,7 @@ public partial class ObserverRoot
 
     private Button _mapTerrainButton = null!;
     private Button _mapFoodButton = null!;
+    private Button _mapLineageButton = null!; // 第 08-10a 章 V2
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -53,6 +55,11 @@ public partial class ObserverRoot
             $"地圖模式：糧食狀況（依最近一週聚落帳；綠＝充足、黃＝緊張：存糧不足 {MapFoodStatus.TempTightWeeks} 週〔TEMP〕、紅＝飢餓、灰＝尚未結算）");
         _mapFoodButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Food);
         row.AddChild(_mapFoodButton);
+        // 第 08-10a 章 V2：家系模式（圖示素材 UI_ICON_MAPMODE_LINEAGE 未到前顯示文字）。
+        _mapLineageButton = ToolButton(ArtAssets.UiMapLineage, "家系",
+            "地圖模式：家系（聚落與採集範圍依源自哪個開局聚落著色；同一家系連成一片，家系之間畫邊界）");
+        _mapLineageButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Lineage);
+        row.AddChild(_mapLineageButton);
 
         _foodLegend = new RichTextLabel
         {
@@ -75,6 +82,8 @@ public partial class ObserverRoot
         // 目前模式全亮，另一顆變暗（扁平圖示按鈕沒有按下底色）。
         _mapTerrainButton.SelfModulate = mode == DemoHexMap.Mode.Terrain ? Colors.White : new Color(1, 1, 1, 0.5f);
         _mapFoodButton.SelfModulate = mode == DemoHexMap.Mode.Food ? Colors.White : new Color(1, 1, 1, 0.5f);
+        if (_mapLineageButton is not null)
+            _mapLineageButton.SelfModulate = mode == DemoHexMap.Mode.Lineage ? Colors.White : new Color(1, 1, 1, 0.5f);
         if (_foodLegend is not null)
             ApplyHudLayout();
     }
@@ -132,7 +141,7 @@ public partial class ObserverRoot
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（含聚落小史）。",
                 "右側世界紀錄：事件依時間列出（新的在上），紅色＝重大事件；點一筆才顯示詳情、原因與後果，並定位地圖。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食）、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色）、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -265,6 +274,14 @@ public partial class ObserverRoot
             || _hexMap.FoodStatuses.Count != week.Settlements.Count
             || week.Settlements.Any(l => _hexMap.FoodStatuses[l.SettlementId] != MapFoodStatus.Classify(l)))
             fail("food map mode does not show Core's latest weekly ledger.");
+        // 第 08-10a 章 V2：家系模式＝Core 家系地圖（每個未成遺跡的聚落本格都有歸屬，家系依開局聚落）。
+        _mapLineageButton.EmitSignal(BaseButton.SignalName.Pressed);
+        var lineage = DemoLineageMap.Compute(_world.Map, _world.Sites);
+        if (_hexMap.MapMode != DemoHexMap.Mode.Lineage || _hexMap.Lineage.Count != lineage.Count
+            || lineage.Any(kv => !_hexMap.Lineage.TryGetValue(kv.Key, out var shown) || shown != kv.Value)
+            || !_hexMap.LineageRoots.SequenceEqual(DemoLineageMap.Roots(_world.Sites))
+            || _world.Sites.Settlements.Any(s => !s.IsRuin && !_hexMap.Lineage.ContainsKey(new DemoCellRef(s.Column, s.Row))))
+            fail("lineage map mode does not show Core's lineage map.");
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
@@ -272,6 +289,6 @@ public partial class ObserverRoot
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
             fail("toolbar / map mode art was not applied.");
-        return $"Toolbar=1 MapMode=2 Modal={modals}";
+        return $"Toolbar=1 MapMode=3 Modal={modals}";
     }
 }

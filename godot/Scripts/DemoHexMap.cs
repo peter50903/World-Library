@@ -37,7 +37,8 @@ public partial class DemoHexMap : Control
     public enum Mode
     {
         Terrain,
-        Food
+        Food,
+        Lineage // 第 08-10a 章 V2：家系
     }
 
     private Mode _mode = Mode.Terrain;
@@ -50,6 +51,40 @@ public partial class DemoHexMap : Control
             _mode = value;
             QueueRedraw();
         }
+    }
+
+    /// <summary>第 08-10a 章 V2：每一格的家系歸屬（Core <see cref="DemoLineageMap.Compute"/>，ObserverRoot 刷新時注入）。</summary>
+    public IReadOnlyDictionary<DemoCellRef, DemoLineageCell> Lineage { get; set; } = new Dictionary<DemoCellRef, DemoLineageCell>();
+
+    /// <summary>第 08-10a 章 V2：家系的固定順序（開局聚落編號），決定配色。</summary>
+    public IReadOnlyList<int> LineageRoots { get; set; } = Array.Empty<int>();
+
+    /// <summary>第 08-10a 章 V2：聚落人口與是否為村莊（決定圖示大小）。</summary>
+    public IReadOnlyDictionary<int, (long Population, bool Village)> SettlementScale { get; set; } = new Dictionary<int, (long, bool)>();
+
+    // TEMP 顯示配色：家系（低飽和、羊皮紙地圖風格，12 色循環）。
+    private static readonly Color[] TempLineagePalette =
+    {
+        new(0.78f, 0.33f, 0.27f), new(0.27f, 0.47f, 0.70f), new(0.85f, 0.65f, 0.24f), new(0.42f, 0.62f, 0.33f),
+        new(0.58f, 0.38f, 0.65f), new(0.25f, 0.62f, 0.62f), new(0.80f, 0.48f, 0.62f), new(0.55f, 0.45f, 0.30f),
+        new(0.40f, 0.40f, 0.75f), new(0.70f, 0.70f, 0.35f), new(0.50f, 0.25f, 0.25f), new(0.30f, 0.50f, 0.45f)
+    };
+
+    /// <summary>第 08-10a 章 V2：某家系的顏色（依開局聚落順序；同一世界不變）。</summary>
+    public Color LineageColor(int rootId)
+    {
+        var index = 0;
+        for (var i = 0; i < LineageRoots.Count; i++)
+            if (LineageRoots[i] == rootId) index = i;
+        return TempLineagePalette[index % TempLineagePalette.Length];
+    }
+
+    /// <summary>第 08-10a 章 V2【TEMP】聚落圖示大小：村莊較大、未滿 10 人的小聚落較小。</summary>
+    private float IconSize(DemoSettlement settlement, float radius)
+    {
+        if (settlement.IsRuin || !SettlementScale.TryGetValue(settlement.Id, out var scale))
+            return radius * 1.4f;
+        return radius * (scale.Village ? 1.75f : scale.Population < 10 ? 1.15f : 1.4f);
     }
 
     /// <summary>聚落 ID → 糧食狀況（ObserverRoot 每次刷新從 Core 週帳算好注入）。</summary>
@@ -121,8 +156,8 @@ public partial class DemoHexMap : Control
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
                 DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
-                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed)
-                    DrawMarker(SettlementIcon(placed), center, radius * 1.4f);
+                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed && _mode != Mode.Lineage)
+                    DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
             var terrainColor = cell.Terrain switch
@@ -184,7 +219,7 @@ public partial class DemoHexMap : Control
                     var color = FoodStatusColor(status);
                     DrawColoredPolygon(hex, new Color(color, 0.55f));
                     DrawPolyline(Closed(hex), color, 3.5f);
-                    DrawMarker(SettlementIcon(site), center, radius * 1.4f);
+                    DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
                 }
                 else
                 {
@@ -192,6 +227,10 @@ public partial class DemoHexMap : Control
                 }
             }
         }
+
+        // 第 08-10a 章 V2：家系模式——地形壓暗，聚落與採集範圍塗家系色，家系之間畫合併後的邊界（參考 WorldBox／CK3 分布圖層）。
+        if (_mode == Mode.Lineage && Sites is not null)
+            DrawLineage(start, radius);
 
         // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
 
@@ -227,6 +266,40 @@ public partial class DemoHexMap : Control
             var labelPos = center + new Vector2(radius * 0.05f, radius * 0.38f);
             DrawCircle(labelPos + new Vector2(size * 0.3f, -size * 0.35f), size * 0.62f, new Color(0.12f, 0.08f, 0.05f, 0.85f));
             DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
+        }
+    }
+
+    private void DrawLineage(Vector2 start, float radius)
+    {
+        foreach (var cell in World!.Cells)
+        {
+            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            var hex = HexCoordinates.Polygon(center, radius);
+            if (!Lineage.TryGetValue(new DemoCellRef(cell.Column, cell.Row), out var owner))
+            {
+                DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                continue;
+            }
+            var color = LineageColor(owner.LineageRootId);
+            DrawColoredPolygon(hex, new Color(color, 0.55f));
+            // 邊界：相鄰格不同家系（或沒有歸屬、在地圖外）時才畫這一條邊，同家系之間不畫線，看起來是一整片。
+            foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
+            {
+                var neighbour = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
+                var same = neighbour is not null && Lineage.TryGetValue(new DemoCellRef(neighbour.Column, neighbour.Row), out var other)
+                    && other.LineageRootId == owner.LineageRootId;
+                if (same)
+                    continue;
+                var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
+                DrawLine(hex[edge], hex[(edge + 1) % 6], color.Darkened(0.35f), 3f);
+            }
+        }
+        foreach (var site in Sites!.Settlements)
+        {
+            var cell = World.GetCell(site.Column, site.Row);
+            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
         }
     }
 

@@ -56,21 +56,7 @@ public sealed class DemoChangeTracker
     public int? PioneerEraYear { get; private set; }
 
     /// <summary>某聚落的家系源頭：沿「由哪個聚落的開拓隊建立」往上追到開局聚落。</summary>
-    public static int LineageRoot(DemoWorldSites sites, int settlementId)
-    {
-        ArgumentNullException.ThrowIfNull(sites);
-        var byId = sites.Settlements.ToDictionary(s => s.Id);
-        var id = settlementId;
-        var guard = 0;
-        while (guard++ <= byId.Count
-               && byId.TryGetValue(id, out var current)
-               && current.IsFounded
-               && byId.ContainsKey(current.FoundedFromSettlementId))
-        {
-            id = current.FoundedFromSettlementId;
-        }
-        return id;
-    }
+    public static int LineageRoot(DemoWorldSites sites, int settlementId) => DemoLineageMap.LineageRoot(sites, settlementId);
 
     /// <summary>每年年底呼叫一次（year 從 1 起連續）。</summary>
     public void ObserveYearEnd(DemoObserverWorld world, int year)
