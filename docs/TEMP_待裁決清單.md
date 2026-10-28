@@ -93,6 +93,15 @@
 | 工具階梯 | 石器改良＋10%、基礎鍛造＋15%、熱處理＋10%（可疊加） | 08-7b；取代原本鍛造＋25% |
 | 知識模式配色 | 依習得數分五段：0、1～4、5～9、10～14、15 以上 | 技術從 3 項變成上百項 |
 
+#### D08-7a-A2｜專家、學者與實踐加速（第 08-9 章 A2，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 專家加速 | 每位相關專家每週＋5 研究點；學者每週＋10（所有領域） | 08-7a 原訂 ×5、×10 |
+| 專家與領域 | 村長→社會；農師→10B、10G；木匠→10D、10E、10N；鐵匠→10C、10M；獵人→狩獵、10F；巫祝→信仰、10H | 依各職位的日常工作；CK3 文化領袖的學識加速 |
+| 新專家 | 獵人（弓箭）、巫祝（巫祝）、學者（抄寫法） | 08-7b；守衛、市長等要第 3 階以上，等城邦等級 |
+| 實踐加速條件 | 灌溉、輪作＝已有農田；基礎建築、道路工程＝曾派開拓隊建村；祖靈祭祀＝本週有人老死；以物易物＝本週有其他聚落的人遷入 | 只接世界裡真的會發生的事；其他條件等對應系統出現 |
+
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -454,7 +463,7 @@
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 10 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1） |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 14 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
