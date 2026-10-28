@@ -145,6 +145,9 @@ public static class DemoYearLedger
                         StarvationEvents++;
                         DeathsInEvents = checked(DeathsInEvents + e.Count);
                         break;
+                    case DemoSettlementEventKind.MigrantKilledByBeasts: // 第 08-9 章 C2
+                        DeathsInEvents = checked(DeathsInEvents + e.Count);
+                        break;
                     case DemoSettlementEventKind.HungerRecovered:
                         RecoveryEvents++;
                         break;

@@ -559,7 +559,7 @@ public static class M1Evaluator
                         problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 期初 {m.PopulationOpening} 人，上週期末 {(before is null ? "無紀錄" : before.Arrived ? "已抵達" : before.PopulationClosing.ToString(CultureInfo.InvariantCulture) + " 人")}");
                 }
                 var causedDeaths = report.Events
-                    .Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath)
+                    .Where(e => e.MigrationBatchId == m.BatchId && e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts)
                     .ToList();
                 if (causedDeaths.Sum(e => e.Count) != m.Deaths || causedDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 途中死亡 {m.Deaths} 人，帶原因事件 {causedDeaths.Sum(e => e.Count)} 人");
@@ -899,7 +899,7 @@ public static class M1Evaluator
             {
                 failed++;
                 if (!report.Events.Any(e => e.MigrationBatchId == m.BatchId
-                        && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath && !string.IsNullOrWhiteSpace(e.Cause)))
+                        && e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.MigrantKilledByBeasts && !string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} 開拓隊 #{m.BatchId} 全數死亡，但沒有回寫帶原因的失敗事件");
             }
 

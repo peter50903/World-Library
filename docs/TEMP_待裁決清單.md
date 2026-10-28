@@ -110,6 +110,7 @@
 | 出現 | 進入開拓時代那週，每格野地草食獸放到承載（森林 6、草原 8），掠食獸＝承載的五分之一（至少 1） | 12a；MON_POP 真實族群 |
 | 繁殖 | 每年：野地草食＋20%（至少 1）到承載；掠食承載＝本格與鄰格草食的五分之一，未滿＋10%、超過的死亡 | MON_REPRO、MON_CARRY |
 | 狩獵 | 會狩獵的聚落每週以每 5 名成年人 1 頭，從 2 格內獵草食獸，每頭 20 糧食；週帳新欄位「獵得的糧食」，糧食帳與 M1 世界對帳計入 | MON_PRED：消耗真實獵物 |
+| 野獸襲擊（C2） | 只襲擊生活圈外的途中隊伍：本格與鄰格每 10 頭掠食獸每週＋5%、最多 30%；死 1～2 人；出發聚落會弓箭損失減半（進位）、會巡守與圍獵機率減半；局部亂數以隊伍編號為鍵；記「遭野獸襲擊」事件（直接原因＝外移），遷徙帳新欄位遭襲死亡（含在途中死亡內）；傷口照護以此為實踐加速 | 使用者 2026-10-23：只攻擊生活圈外的人 |
 | 獸產、畜牧 | 2 格內有草食獸時，獸產大類取得得到，狩獵與畜牧分支有從業者 | 08-7c |
 
 #### D08-9c｜信仰（第 08-9 章 B3，Claude 定案【TEMP】）
@@ -439,7 +440,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 60 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 08-9 章 B3b 食人儀式 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 61 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 08-9 章 B3b 食人儀式；C2 野獸襲擊 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -481,7 +482,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoResourceCategories.cs` | 1 | 第 08-9 章 A6 原料大類取得條件（08-7c） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 10 | 第 08-9 章 B1 文化生成與背景人口比例、B2 文化效果、B4 同化與分化（D08-9b） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 9 | 第 08-9 章 B3 信仰創立、擴散、滅絕、B3b 食人儀式糧食（D08-9c） |
-| `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 1 | 第 08-9 章 C1 野生動物與狩獵（D08-9d） |
+| `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 4 | 第 08-9 章 C1 野生動物與狩獵、C2 野獸襲擊（D08-9d） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 21 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-9 章知識失傳、創立信仰、信仰滅絕、文化分化 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |

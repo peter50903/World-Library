@@ -64,6 +64,42 @@ public sealed class DemoWildlifeTests
     }
 
     [Fact]
+    public void PredatorsAttackOnlyTravellersOutsideTheLivingArea_AndArcheryHalvesTheLosses()
+    {
+        // 第 08-9 章 C2（使用者 2026-10-23：只攻擊生活圈外的人）：掠食獸越多越可能被襲（每 10 頭 5%，最多 30%），死 1～2 人；
+        // 弓箭損失減半、巡守與圍獵機率減半；生活圈內安全。
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        var wild = DemoWildlife.WildCells(world.Map, world.Sites);
+        var cell = wild.First();
+        var here = new DemoCellRef(cell.Column, cell.Row);
+        var swarm = DemoWildlifeState.Empty with
+        {
+            Cells = ImmutableSortedDictionary.CreateRange(new[] { KeyValuePair.Create(DemoWildlife.CellId(world.Map, cell), new DemoHerd(0, 1000)) }),
+            AppearedWeek = 1
+        };
+        var origin = world.Sites.Settlements.First();
+        var safeCell = new DemoCellRef(origin.Column, origin.Row);
+        DemoMigrationBatch Batch(int id, DemoCellRef at) => new(id, origin.Id, origin.Name, 0, "某處", ImmutableArray.Create(at, at), 0, 5, 10, 0, 1);
+        var batches = Enumerable.Range(1, 200).Select(i => Batch(i, here)).Append(Batch(999, safeCell)).ToList();
+        var attacks = DemoWildlife.Attacks(swarm, world.Map, world.Sites, batches, DemoKnowledgeState.Initial, 30, world.RngRegistryForTests());
+        Assert.DoesNotContain(999, attacks.Keys); // 生活圈內安全
+        Assert.InRange(attacks.Count, 30, 90); // 約 30%
+        Assert.All(attacks.Values, k => Assert.InRange(k, 1, 2));
+        Assert.Equal(attacks, DemoWildlife.Attacks(swarm, world.Map, world.Sites, batches, DemoKnowledgeState.Initial, 30, world.RngRegistryForTests())); // 可重現
+        var archers = DemoKnowledgeState.Initial with
+        {
+            Records = ImmutableList.Create(new DemoKnowledgeRecord(origin.Id, DemoWildlife.Archery, DemoKnowledge.ThresholdOf(DemoWildlife.Archery), 2)),
+            Era = DemoEra.Pioneer, EraWeek = 2
+        };
+        Assert.All(DemoWildlife.Attacks(swarm, world.Map, world.Sites, batches, archers, 30, world.RngRegistryForTests()).Values, k => Assert.Equal(1, k));
+        Assert.Empty(DemoWildlife.Attacks(DemoWildlifeState.Empty, world.Map, world.Sites, batches, DemoKnowledgeState.Initial, 30, world.RngRegistryForTests()));
+        // 週帳：遭襲死亡是途中死亡的一部分，不算餓死，不需要飢餓債。
+        var leg = new DemoMigrationWeekLedger(30, 1, origin.Id, 0, here, here, false, false, 5, 2, 3, 10, 5, 5, 0, 0, 0, 0, 0, BeastDeaths: 2);
+        Assert.True(leg.IsBalanced);
+        Assert.Equal(0, leg.StarvationDeaths);
+    }
+
+    [Fact]
     public void WildlifeIsSavedAndShownAfterThePioneerEraBegins()
     {
         DemoObserverWorld? world = null;

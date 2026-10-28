@@ -248,6 +248,9 @@ public static class DemoCenturyRun
                             starvationEvents++;
                             deathsInEvents = checked(deathsInEvents + e.Count);
                             break;
+                        case DemoSettlementEventKind.MigrantKilledByBeasts: // 第 08-9 章 C2：非自然死亡，一起對帳
+                            deathsInEvents = checked(deathsInEvents + e.Count);
+                            break;
                         case DemoSettlementEventKind.Emigration:
                             emigrationEvents++;
                             break;
