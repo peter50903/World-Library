@@ -65,6 +65,15 @@
 | 河流 | 北緣往南流到海岸為止 | 河口接海 |
 | 淺灘渡口 | 兩岸都有陸地、不臨海的河流格 | 使用者：淺灘要兩端連結陸地才有價值 |
 
+#### D06-2｜地形成片與多條河流（第 06-2 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 陸地平滑 | 多數決 2 輪（本格＋相鄰格，平手不變） | 使用者 2026-10-28：六角格像拼圖；參考 WorldBox／FMS 成片的生態區 |
+| 河流數 | 每 12 欄一條（小 1、中 2、大 4）；第 k 條從北緣第 k 段起流，碰到海或其他河就停 | 使用者裁決：多條河流；小地圖不變以保留既有測試 |
+| 格線 | 預設不畫，可切換 | 使用者裁決 |
+| 遷徙圖示 | 依本週已過幾成在本格與下一格之間內插 | 移動看起來連續（只影響顯示） |
+
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -403,7 +412,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 4 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 8 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 10 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2） |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 18 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
@@ -413,7 +422,7 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 12 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小 |
+| `godot/Scripts/DemoHexMap.cs` | 13 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |

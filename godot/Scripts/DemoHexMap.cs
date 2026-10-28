@@ -104,6 +104,22 @@ public partial class DemoHexMap : Control
 
     private static readonly Color[] White6 = Enumerable.Repeat(Colors.White, 6).ToArray();
 
+    /// <summary>第 06-2 章：是否畫六角格線（預設不畫，地形看起來連成一片；功能列「格線」可切換）。只影響顯示。</summary>
+    public bool ShowGrid
+    {
+        get => _showGrid;
+        set
+        {
+            _showGrid = value;
+            QueueRedraw();
+        }
+    }
+
+    private bool _showGrid;
+
+    /// <summary>第 06-2 章：本週已過幾成（0～1）；遷徙隊伍圖示沿路線在本格與下一格之間平滑移動。只影響顯示。</summary>
+    public float WeekFraction { get; set; }
+
     /// <summary>#89：事件詳情選到的聚落格（偏移座標），畫亮色外框；null＝不標示。只影響顯示。</summary>
     public (int Column, int Row)? Highlight { get; set; }
 
@@ -155,7 +171,8 @@ public partial class DemoHexMap : Control
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
-                DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
+                if (_showGrid)
+                    DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
                 if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed && _mode != Mode.Lineage)
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
@@ -183,7 +200,8 @@ public partial class DemoHexMap : Control
             for (var i = 0; i < 6; i++)
                 outline[i] = vertices[i];
             outline[6] = vertices[0];
-            DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
+            if (_showGrid)
+                DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
 
             if (Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } ruin)
             {
@@ -254,8 +272,7 @@ public partial class DemoHexMap : Control
         var font = ThemeDB.FallbackFont;
         foreach (var batch in Migrants)
         {
-            var cell = World.GetCell(batch.Cell.Column, batch.Cell.Row);
-            var center = MigrantMarkerCenter(start, radius, cell);
+            var center = MigrantPosition(start, radius, batch);
             if (!DrawMarker(ArtAssets.IconMigrants, center, radius * 0.95f))
             {
                 DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
@@ -328,6 +345,17 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-2 章：遷徙隊伍圖示的中心＝所在六角格的中心（冒煙測試核對）。</summary>
     private static Vector2 MigrantMarkerCenter(Vector2 start, float radius, DemoHexCell cell)
         => start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+
+    /// <summary>第 06-2 章【TEMP 顯示】：依本週已過幾成，在本格與路線下一格之間內插（抵達前一格或週初就停在本格）。</summary>
+    private Vector2 MigrantPosition(Vector2 start, float radius, DemoMigrationBatch batch)
+    {
+        var here = MigrantMarkerCenter(start, radius, World!.GetCell(batch.Cell.Column, batch.Cell.Row));
+        if (batch.StepIndex + 1 >= batch.Path.Length || WeekFraction <= 0f)
+            return here;
+        var next = batch.Path[batch.StepIndex + 1];
+        var there = MigrantMarkerCenter(start, radius, World.GetCell(next.Column, next.Row));
+        return here.Lerp(there, Mathf.Clamp(WeekFraction, 0f, 1f));
+    }
 
     /// <summary>冒煙測試用：某一格遷徙圖示的畫面中心（應等於 <see cref="CellCenter"/>）。</summary>
     public Vector2 MigrantCenter(DemoHexCell cell)

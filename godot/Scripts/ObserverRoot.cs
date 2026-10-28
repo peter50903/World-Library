@@ -1378,6 +1378,7 @@ public partial class ObserverRoot : Control
         RefreshHud(); // 第 05 章：頂部資訊列與時間控制。
         _ledger.Text = LedgerText(_world.LatestWeek);
         _hexMap.Migrants = _world.MigrationsInTransit();
+        _hexMap.WeekFraction = (snapshot.DaysElapsed % 7) / 7f; // 第 06-2 章：遷徙隊伍平滑移動
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
         _hexMap.Land = _world.Land;
         _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。

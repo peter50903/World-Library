@@ -84,10 +84,56 @@ public sealed class DemoHexWorld
     public static int GeographyDrawsFor(DemoMapSize size)
     {
         var (columns, rows) = DemoMapSizes.Dimensions(size);
-        return columns * rows + columns + rows + FordsFor(rows);
+        return columns * rows + columns + RiversFor(columns) * (rows + FordsFor(rows));
     }
 
     private static int FordsFor(int rows) => Math.Max(1, rows / TempRowsPerFord);
+
+    /// <summary>【TEMP】第 06-2 章：每 12 欄一條河（小地圖 1 條、中 2 條、大 4 條）。</summary>
+    public const int TempColumnsPerRiver = 12;
+
+    /// <summary>第 06-2 章：某寬度地圖的河流數。</summary>
+    public static int RiversFor(int columns) => Math.Max(1, columns / TempColumnsPerRiver);
+
+    /// <summary>【TEMP】第 06-2 章：陸地地形的多數決平滑次數（讓森林與草原成片，不再每格各擲一次硬幣）。</summary>
+    public const int TempSmoothingPasses = 2;
+
+    /// <summary>
+    /// 第 06-2 章：陸地地形平滑（參考 WorldBox／FMS 成片的生態區）。每一輪每格看自己與相鄰格（含水域前的原始地形）
+    /// 的多數：森林多就是森林、草原多就是草原、平手不變。純函式、不抽亂數。
+    /// </summary>
+    public static DemoTerrain[] SmoothLand(IReadOnlyList<DemoTerrain> raw, int columns, int rows, int passes = TempSmoothingPasses)
+    {
+        ArgumentNullException.ThrowIfNull(raw);
+        var current = raw.ToArray();
+        for (var pass = 0; pass < passes; pass++)
+        {
+            var next = new DemoTerrain[current.Length];
+            for (var row = 0; row < rows; row++)
+            {
+                for (var col = 0; col < columns; col++)
+                {
+                    var q = col - (row - (row & 1)) / 2;
+                    int forest = 0, total = 0;
+                    void Count(int cq, int cr)
+                    {
+                        var c = cq + (cr - (cr & 1)) / 2;
+                        if (cr < 0 || cr >= rows || c < 0 || c >= columns) return;
+                        total++;
+                        if (current[cr * columns + c] == DemoTerrain.Forest) forest++;
+                    }
+                    Count(q, row);
+                    foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
+                        Count(q + dq, row + dr);
+                    var own = current[row * columns + col];
+                    next[row * columns + col] = forest * 2 > total ? DemoTerrain.Forest
+                        : forest * 2 < total ? DemoTerrain.Grassland : own;
+                }
+            }
+            current = next;
+        }
+        return current;
+    }
 
     private readonly IReadOnlyList<DemoHexCell> _cells;
     private readonly Dictionary<(int Q, int R), DemoHexCell> _byAxial;
@@ -204,6 +250,11 @@ public sealed class DemoHexWorld
             }
         }
 
+        // ①b 第 06-2 章：陸地多數決平滑，森林與草原成片（不另抽亂數）。
+        var smoothed = SmoothLand(cells.Select(c => c.Terrain).ToArray(), Columns, Rows);
+        for (var i = 0; i < cells.Length; i++)
+            cells[i] = cells[i] with { Terrain = smoothed[i] };
+
         // ② 南緣海洋：每欄深度 1～2 列（TEMP），海洋只有深水。
         for (var col = 0; col < Columns; col++)
         {
@@ -212,55 +263,62 @@ public sealed class DemoHexWorld
                 cells[row * Columns + col] = cells[row * Columns + col] with { Terrain = DemoTerrain.Water, Sea = true };
         }
 
-        // ③ 主水道——北緣隨機起點，每往南一列走到兩個下方鄰格之一（odd-r：偶數列往 c-1／c，奇數列往 c／c+1），
-        // 不出界；碰到海就停（抽樣次數固定，停下後的抽樣不使用）。
-        var column = (int)(rng.NextUInt64(RngStreams.Geography) % (ulong)Columns);
-        var waterway = new List<(int Column, int Row)> { (column, 0) };
-        var reachedSea = false;
-        for (var row = 1; row < Rows; row++)
+        // ③ 河流——第 06-2 章：每 12 欄一條（小地圖 1 條，與之前相同）；第 k 條從北緣第 k 段欄位中隨機起點，
+        // 每往南一列走到兩個下方鄰格之一（odd-r：偶數列往 c-1／c，奇數列往 c／c+1），不出界；碰到海就停（河口接海），
+        // 碰到已有的河就停（成為支流匯入）。抽樣次數固定，停下後的抽樣不使用。
+        // ④ 淺灘（渡口）：每條河每 8 列一段各抽一次，從抽到的位置往南找第一個兩岸（畫面左右）都有陸地鄰格、
+        // 而且不臨海的河流格——涉水過河才有意義；都沒有就沒有渡口。
+        var rivers = RiversFor(Columns);
+        var band = Columns / rivers;
+        for (var k = 0; k < rivers; k++)
         {
-            var options = ((row - 1) & 1) == 0 ? new[] { column - 1, column } : new[] { column, column + 1 };
-            var inside = options.Where(c => c >= 0 && c < Columns).ToArray();
-            column = inside[(int)(rng.NextUInt64(RngStreams.Geography) % (ulong)inside.Length)];
-            if (reachedSea || cells[row * Columns + column].Sea)
+            var column = k * band + (int)(rng.NextUInt64(RngStreams.Geography) % (ulong)band);
+            var waterway = new List<(int Column, int Row)>();
+            var stopped = cells[column].MainWaterway;
+            if (!stopped)
+                waterway.Add((column, 0));
+            for (var row = 1; row < Rows; row++)
             {
-                reachedSea = true;
-                continue;
+                var options = ((row - 1) & 1) == 0 ? new[] { column - 1, column } : new[] { column, column + 1 };
+                var inside = options.Where(c => c >= 0 && c < Columns).ToArray();
+                column = inside[(int)(rng.NextUInt64(RngStreams.Geography) % (ulong)inside.Length)];
+                if (stopped || cells[row * Columns + column].Sea || cells[row * Columns + column].MainWaterway)
+                {
+                    stopped = true;
+                    continue;
+                }
+                waterway.Add((column, row));
             }
-            waterway.Add((column, row));
-        }
-        foreach (var (c, r) in waterway)
-            cells[r * Columns + c] = cells[r * Columns + c] with { Terrain = DemoTerrain.Water, MainWaterway = true };
+            foreach (var (c, r) in waterway)
+                cells[r * Columns + c] = cells[r * Columns + c] with { Terrain = DemoTerrain.Water, MainWaterway = true };
 
-        // ④ 淺灘（渡口）：從抽到的位置往南找第一個兩岸（畫面左右）都有陸地鄰格、而且不臨海的河流格——
-        // 涉水過河才有意義；都沒有就沒有渡口。第 07-1 章 c 節：每 8 列一段河道各抽一次（小地圖只有一段、一次，與之前相同）。
-        var byAxial = cells.ToDictionary(c => (c.AxialQ, c.AxialR));
-        var fords = FordsFor(Rows);
-        for (var part = 0; part < fords; part++)
-        {
-            var segment = waterway.Where(w => fords == 1 || w.Row * fords / Rows == part).ToList();
-            var fordStart = segment.Count == 0 ? 0 : (int)(rng.NextUInt64(RngStreams.Geography) % (ulong)segment.Count);
-            if (segment.Count == 0) { rng.NextUInt64(RngStreams.Geography); continue; }
-            FindFord(segment, fordStart);
-        }
-
-        void FindFord(List<(int Column, int Row)> segment, int fordStart)
-        {
-        DemoCellRef? ford = null;
-        for (var k = 0; k < segment.Count && ford is null; k++)
-        {
-            var (c, r) = segment[(fordStart + k) % segment.Count];
-            var here = cells[r * Columns + c];
-            var neighbours = DemoRouteNetwork.Directions
-                .Select(d => byAxial.TryGetValue((here.AxialQ + d.Dq, here.AxialR + d.Dr), out var n) ? n : null)
-                .Where(n => n is not null).Select(n => n!).ToList();
-            var land = neighbours.Where(n => n.Terrain != DemoTerrain.Water).ToList();
-            if (!neighbours.Any(n => n.Sea) && land.Any(n => n.ScreenX < here.ScreenX) && land.Any(n => n.ScreenX > here.ScreenX))
+            var byAxial = cells.ToDictionary(c => (c.AxialQ, c.AxialR));
+            var fords = FordsFor(Rows);
+            for (var part = 0; part < fords; part++)
             {
-                ford = new DemoCellRef(c, r);
-                cells[r * Columns + c] = here with { Shallow = true };
+                var segment = waterway.Where(w => fords == 1 || w.Row * fords / Rows == part).ToList();
+                var fordStart = segment.Count == 0 ? 0 : (int)(rng.NextUInt64(RngStreams.Geography) % (ulong)segment.Count);
+                if (segment.Count == 0) { rng.NextUInt64(RngStreams.Geography); continue; }
+                FindFord(segment, fordStart, byAxial);
             }
         }
+
+        void FindFord(List<(int Column, int Row)> segment, int fordStart, Dictionary<(int, int), DemoHexCell> byAxial)
+        {
+            for (var k = 0; k < segment.Count; k++)
+            {
+                var (c, r) = segment[(fordStart + k) % segment.Count];
+                var here = cells[r * Columns + c];
+                var neighbours = DemoRouteNetwork.Directions
+                    .Select(d => byAxial.TryGetValue((here.AxialQ + d.Dq, here.AxialR + d.Dr), out var n) ? n : null)
+                    .Where(n => n is not null).Select(n => n!).ToList();
+                var land = neighbours.Where(n => n.Terrain != DemoTerrain.Water).ToList();
+                if (!neighbours.Any(n => n.Sea) && land.Any(n => n.ScreenX < here.ScreenX) && land.Any(n => n.ScreenX > here.ScreenX))
+                {
+                    cells[r * Columns + c] = here with { Shallow = true };
+                    return;
+                }
+            }
         }
 
         var readOnly = Array.AsReadOnly(cells);

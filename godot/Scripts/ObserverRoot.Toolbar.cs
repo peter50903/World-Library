@@ -16,6 +16,7 @@ public partial class ObserverRoot
     private Button _mapTerrainButton = null!;
     private Button _mapFoodButton = null!;
     private Button _mapLineageButton = null!; // 第 08-10a 章 V2
+    private Button _gridToggle = null!; // 第 06-2 章
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -60,6 +61,10 @@ public partial class ObserverRoot
             "地圖模式：家系（聚落與採集範圍依源自哪個開局聚落著色；同一家系連成一片，家系之間畫邊界）");
         _mapLineageButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Lineage);
         row.AddChild(_mapLineageButton);
+        // 第 06-2 章：六角格線預設不畫，可切換。
+        _gridToggle = new Button { Text = "格線", ToggleMode = true, TooltipText = "顯示／隱藏六角格線（預設隱藏，地形連成一片）" };
+        _gridToggle.Toggled += on => _hexMap.ShowGrid = on;
+        row.AddChild(_gridToggle);
 
         _foodLegend = new RichTextLabel
         {
@@ -141,7 +146,7 @@ public partial class ObserverRoot
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（含聚落小史）。",
                 "右側世界紀錄：事件依時間列出（新的在上），紅色＝重大事件；點一筆才顯示詳情、原因與後果，並定位地圖。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色）、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -285,6 +290,13 @@ public partial class ObserverRoot
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
+        // 第 06-2 章：格線預設隱藏，按鈕切換。
+        if (_hexMap.ShowGrid)
+            fail("grid lines should be hidden by default.");
+        _gridToggle.ButtonPressed = true;
+        if (!_hexMap.ShowGrid)
+            fail("grid toggle did not show the grid.");
+        _gridToggle.ButtonPressed = false;
 
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
