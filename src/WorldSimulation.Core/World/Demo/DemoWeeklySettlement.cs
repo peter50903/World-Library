@@ -100,15 +100,13 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig LocalFamineSample { get; } = Sample with { TempFamineSettlementId = 1 };
 
     /// <summary>
-    /// TEST／CI 用 TEMP 勞力饑荒情境（第 06-2 章）：資源點存量充足（600、上限 600），但每名勞力每週只採 3（少於每人食量 4），
-    /// 缺糧是因為人手不夠、不是因為沒東西可採。用來在任何地圖上都量測得到「缺糧→死亡或外移→勞力下降→採收下降」
-    /// 的傳導（M1_FAMINE）。不是正式數值。
+    /// TEST／CI 用 TEMP 勞力饑荒情境（第 06-2 章）：人類採集世界，但每名成年勞力每週只採 5（普通世界 16）。
+    /// 成人要養孩子，採收受人手限制而低於需求、可及來源仍有剩——缺糧是人手不夠，不是沒東西可採；
+    /// 外移或孩子長大後又能恢復。用來在任何地圖上都量測得到 M1_FAMINE 的傳導。不是正式數值。
     /// </summary>
-    public static DemoWeeklyTempConfig LaborFamineSample { get; } = Sample with
+    public static DemoWeeklyTempConfig LaborFamineSample { get; } = LivingForagingSample with
     {
-        InitialReservePerPoint = 600,
-        ReserveCapPerPoint = 600,
-        YieldPerWorkerPerWeek = 3
+        YieldPerWorkerPerWeek = 5
     };
 
     /// <summary>
