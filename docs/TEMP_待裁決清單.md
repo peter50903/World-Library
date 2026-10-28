@@ -116,6 +116,10 @@
 | 等級閘門 | 第 3 階技術要城鎮、第 4 階城市、第 5 階首都；場所閘門暫由等級代替 | 08-7a 原訂城邦，改五級名稱 |
 | 組織宗教從業者 | 巫祝人數 | 08-7b |
 | 等級圖示大小 | 營地 1.15～1.4、村莊 1.65、城鎮 1.85、城市以上 2.0（格半徑倍數） | 只影響顯示；各等級另有圖示（美術清單） |
+| 遺跡消失 | 從未發展為村莊的遺跡，荒廢 5 年後從地圖與聚落清單消失（只影響呈現；歷史保留） | 使用者 2026-10-28：不重要的遺跡還原成原本的土地 |
+| 格線 | 最後一層畫、不透明度 0.7、線寬＝格半徑 4%（至少 1.2 像素） | 使用者 2026-10-28：原本開了看不出差異 |
+| 功能列寬 | 760（十顆 64 圖示按鈕） | 原 600 放不下，兩側按鈕壓到邊框 |
+| 技術小圖示 | 52 像素、每列 4 個；底色依領域，第 3 階以上金框；研究中底部進度條 | 只影響顯示；領域圖示素材交付前畫領域字 |
 
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
@@ -452,6 +456,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 8 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 14 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分 |
+| `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
@@ -465,14 +470,14 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 15 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色 |
+| `godot/Scripts/DemoHexMap.cs` | 16 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 11 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列）；第 08-3 章功能列置底、移除事件列 |
-| `godot/Scripts/ObserverRoot.Hud.cs` | 6 | 第 05 章面板配色、速度檔位說明、背景音樂音量 |
+| `godot/Scripts/ObserverRoot.Hud.cs` | 9 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色 |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |

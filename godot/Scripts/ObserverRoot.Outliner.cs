@@ -73,6 +73,7 @@ public partial class ObserverRoot
     /// </summary>
     private IReadOnlyList<(int Id, string Name, long Population, FoodStatus Food)> OutlinerEntries()
         => _world.Sites.Settlements
+            .Where(s => !_hexMap.FadedRuins.Contains(s.Id)) // 第 08-11 章：已消失的遺跡不列
             .Select(s => (s.Id, s.Name, _world.SettlementPopulation(s.Id),
                 _hexMap.FoodStatuses.TryGetValue(s.Id, out var food) ? food : FoodStatus.Unsettled, s.IsRuin))
             .OrderBy(e => e.IsRuin)
@@ -205,7 +206,7 @@ public partial class ObserverRoot
         if (_overviewText.Text != OverviewText() || !_overviewText.Text.Contains("世界人口", StringComparison.Ordinal))
             fail("world overview does not show Core's overview lines.");
         var expected = OutlinerEntries();
-        if (_outlinerButtons.Count != _world.Sites.Settlements.Count
+        if (_outlinerButtons.Count != _world.Sites.Settlements.Count(s => !_hexMap.FadedRuins.Contains(s.Id))
             || !_outlinerButtons.Select(b => b.SettlementId).SequenceEqual(expected.Select(e => e.Id))
             || expected.Zip(expected.Skip(1)).Any(p => p.First.Population < p.Second.Population))
             fail("outliner rows are not Core's settlements sorted by population.");

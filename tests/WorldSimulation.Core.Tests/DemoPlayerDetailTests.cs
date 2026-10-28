@@ -37,6 +37,41 @@ public sealed class DemoPlayerDetailTests
     }
 
     [Fact]
+    public void TechTabsCarrySkillBadgesWithDomainAndTier()
+    {
+        var world = World.Value;
+        foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin))
+        {
+            var detail = world.PlayerDetail(s.Column, s.Row);
+            var known = detail.Tabs[2].Badges;
+            Assert.Equal(DemoTechnology.All.Count(DemoKnowledge.IsOpening) + world.Knowledge.KnownBy(s.Id).Count, known.Count);
+            Assert.All(known, b => Assert.Equal(100, b.Percent));
+            Assert.All(known.Where(b => b.Tier > 0), b => Assert.NotNull(b.LearnedYear));
+            Assert.All(detail.Tabs[3].Badges, b => Assert.InRange(b.Percent, 0, 99));
+            Assert.All(known.Concat(detail.Tabs[3].Badges), b => Assert.NotEqual("？", b.Glyph));
+        }
+    }
+
+    [Fact]
+    public void UnimportantRuinsFadeBackToLand_ImportantOnesStay()
+    {
+        var world = World.Value;
+        var day = world.Snapshot().DaysElapsed;
+        var faded = DemoRuins.Faded(world);
+        foreach (var s in world.Sites.Settlements)
+        {
+            var expected = s.IsRuin && !DemoRuins.IsImportant(world, s)
+                && day / 7 - s.RuinedWeek >= DemoRuins.TempFadeYears * DemoSettlementHistory.DaysPerYear / 7;
+            Assert.Equal(expected, faded.Contains(s.Id));
+            if (!expected) continue;
+            var detail = world.PlayerDetail(s.Column, s.Row);
+            Assert.Null(detail.SettlementId);
+            Assert.Contains(detail.Tabs[0].Lines, l => l.StartsWith($"舊址：{s.Name}", StringComparison.Ordinal));
+        }
+        Assert.All(world.Sites.Settlements.Where(s => !s.IsRuin), s => Assert.DoesNotContain(s.Id, faded));
+    }
+
+    [Fact]
     public void OtherCellsOnlyNameThePlace()
     {
         var world = World.Value;
