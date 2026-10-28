@@ -713,7 +713,7 @@ public static class M1Evaluator
             foreach (var l in report.Settlements)
             {
                 // 第 08-6 章 e 節：學會鍛造後每人產量含工具加成（週帳記錄）；上限照該週實際每人產量算。
-                var cap = Workers(l) * l.YieldPerWorker(run.Preset.Config);
+                var cap = l.LabourCap(Workers(l), run.Preset.Config);
                 if (l.FoodProduced > cap)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 採收 {l.FoodProduced} 超過勞動力上限 {cap}"
                         + $"（期初勞動力 {Workers(l)} 人×每人每週產量 {l.YieldPerWorker(run.Preset.Config)}，TEMP 基準 {yieldPerWorker}＋工具加成）");
@@ -749,8 +749,8 @@ public static class M1Evaluator
                 continue;
             }
 
-            var capBefore = Workers(during) * during.YieldPerWorker(run.Preset.Config);
-            var capAfter = Workers(next) * next.YieldPerWorker(run.Preset.Config);
+            var capBefore = during.LabourCap(Workers(during), run.Preset.Config);
+            var capAfter = next.LabourCap(Workers(next), run.Preset.Config);
             // 共享採集情境的採收也受本週需求限制：採收要等於勞動力上限且低於需求，才確定是勞力（不是需求）在限制。
             bool LaborBound(DemoSettlementWeekLedger l, long cap)
                 => l.FoodProduced == cap && ResourceLeft(l)

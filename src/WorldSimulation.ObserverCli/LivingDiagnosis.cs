@@ -77,7 +77,7 @@ public static class LivingDiagnosis
                 var waterShort = ledgers.Count(l => l.WaterShortage > 0);
                 var harvest = ledgers.Sum(l => l.FoodProduced) / n;
                 var demand = ledgers.Sum(l => l.FoodConsumed + l.FoodShortage) / n;
-                var labour = ledgers.Sum(l => Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers) * l.YieldPerWorker(world.WeeklyConfig)) / n;
+                var labour = ledgers.Sum(l => l.LabourCap(Math.Max(0, (l.AdultWorkersOpening < 0 ? l.PopulationOpening : l.AdultWorkersOpening) - l.WaterCarriers), world.WeeklyConfig)) / n;
                 var carriers = ledgers.Sum(l => l.WaterCarriers) / (double)n;
                 var supply = weeks.Count == 0 ? 0 : weeks[^1].Sources.Where(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Any(sh => sh.SettlementId == s.Id)).Sum(x => x.FoodAvailable);
                 var food = world.SettlementFood(s.Id);

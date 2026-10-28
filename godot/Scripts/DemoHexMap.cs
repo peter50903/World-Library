@@ -63,13 +63,18 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-10a 章 V4：聚落已習得的技術數（知識模式著色）。</summary>
     public IReadOnlyDictionary<int, int> KnowledgeCounts { get; set; } = new Dictionary<int, int>();
 
-    // TEMP 顯示配色：知識（未習得灰褐，越多越亮：1 項淡金、2 項橙、3 項以上赭紅）。
-    public static Color KnowledgeColor(int count) => count switch
+    // TEMP 顯示配色：知識（第 08-7a 章 A1 起技術變多，改依習得數分五段：0 灰褐、1～4 淡金、5～9 橙、10～14 赭紅、15 以上深紅）。
+    public static readonly int[] KnowledgeBandStarts = { 0, 1, 5, 10, 15 }; // TEMP 分段
+
+    public static int KnowledgeBand(int count) => Array.FindLastIndex(KnowledgeBandStarts, start => count >= start) is var i and >= 0 ? i : 0;
+
+    public static Color KnowledgeColor(int count) => KnowledgeBand(count) switch
     {
-        <= 0 => new Color(0.45f, 0.42f, 0.38f),
+        0 => new Color(0.45f, 0.42f, 0.38f),
         1 => new Color(0.92f, 0.82f, 0.45f),
         2 => new Color(0.90f, 0.58f, 0.22f),
-        _ => new Color(0.72f, 0.28f, 0.16f)
+        3 => new Color(0.72f, 0.28f, 0.16f),
+        _ => new Color(0.50f, 0.12f, 0.14f)
     };
 
     /// <summary>第 08-10a 章 V2：聚落人口與是否為村莊（決定圖示大小）。</summary>
@@ -265,7 +270,7 @@ public partial class DemoHexMap : Control
         // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
         if (_mode == Mode.Knowledge && Sites is not null)
             DrawTerritory(start, radius, owner => KnowledgeColor(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)),
-                owner => KnowledgeCounts.GetValueOrDefault(owner.SettlementId));
+                owner => KnowledgeBand(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)));
 
         // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
 

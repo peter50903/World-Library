@@ -12,19 +12,6 @@ public enum DemoEra
     Pioneer = 1
 }
 
-/// <summary>第 08-6 章：知識樹上的技術（農耕、木工；鍛造、石工隨後各節加入）。</summary>
-public enum DemoTechnology
-{
-    /// <summary>農耕：草原可開墾成農田，提高食物上限。</summary>
-    Farming = 0,
-
-    /// <summary>第 08-6 章 d 節：木工：有木匠；聚落升為村莊的條件。</summary>
-    Woodworking = 1,
-
-    /// <summary>第 08-6 章 e 節：鍛造：有鐵匠；工具提高採集效率。前置：木工。</summary>
-    Smithing = 2
-}
-
 /// <summary>某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。</summary>
 public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Technology, long Progress, int LearnedWeek)
 {
@@ -33,16 +20,39 @@ public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Techno
 
 /// <summary>
 /// 第 08-6 章 a 節：知識樹的世界狀態——各聚落各技術的研究進度與習得週、目前時代與開始週。不可變。
+/// 第 08-7a 章 A1：開局知識（第 0 階）每個聚落都已知，不另存紀錄。
 /// </summary>
 public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Records, DemoEra Era, int EraWeek)
 {
     public static DemoKnowledgeState Initial { get; } = new(ImmutableList<DemoKnowledgeRecord>.Empty, DemoEra.Hope, 0);
 
+    // 查詢索引：依 Records 的參照建立（with 換掉 Records 時自動重建）；整個物件一次替換，多執行緒讀取也不會讀到一半。
+    private sealed record IndexCache(ImmutableList<DemoKnowledgeRecord> Source, Dictionary<(int, int), DemoKnowledgeRecord> Map);
+
+    private IndexCache? _index;
+
+    private Dictionary<(int, int), DemoKnowledgeRecord> Index
+    {
+        get
+        {
+            var cached = _index;
+            if (cached is not null && ReferenceEquals(cached.Source, Records))
+                return cached.Map;
+            var map = new Dictionary<(int, int), DemoKnowledgeRecord>();
+            foreach (var r in Records)
+                map[(r.SettlementId, r.Technology.Index)] = r;
+            _index = new IndexCache(Records, map);
+            return map;
+        }
+    }
+
     public DemoKnowledgeRecord? Of(int settlementId, DemoTechnology technology)
-        => Records.FirstOrDefault(r => r.SettlementId == settlementId && r.Technology == technology);
+        => Index.GetValueOrDefault((settlementId, technology.Index));
 
-    public bool Knows(int settlementId, DemoTechnology technology) => Of(settlementId, technology)?.Learned == true;
+    public bool Knows(int settlementId, DemoTechnology technology)
+        => technology.Node.IsOpening || Of(settlementId, technology)?.Learned == true;
 
+    /// <summary>研究習得的技術（不含開局知識）。</summary>
     public IReadOnlyList<DemoTechnology> KnownBy(int settlementId)
         => Records.Where(r => r.SettlementId == settlementId && r.Learned).Select(r => r.Technology).ToList();
 
@@ -56,12 +66,13 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
 }
 
 /// <summary>
-/// 第 08-6 章 a 節【TEMP 規則】知識的累積與傳播（使用者 2026-10-23：經歷一段時間自動學會，該產業的人越多、學者越多越快；
-/// 知識透過婚嫁與遷徙帶到別的聚落）。純函式、不抽亂數。
+/// 第 08-6 章 a 節、第 08-7a 章 A1【TEMP 規則】知識的累積與傳播（自動累積、不選題、不抽亂數）。
 /// <list type="bullet">
-/// <item>每週研究進度＋＝該產業從業者人數×1（農耕：聚落的成年人，都在採集植物；木工：可及森林的聚落的成年人）；學者尚未出現。</item>
-/// <item>進度達門檻（<see cref="ThresholdOf"/>）就習得；第一個習得任何技術的聚落讓世界進入開拓時代。</item>
-/// <item>從已習得的聚落抵達的人，每人帶來門檻的 <see cref="TempCarryPercent"/>% 進度（比自行研究快）。</item>
+/// <item>節點讀正式設定 10B～10N 與 10R（<see cref="DemoTechCatalog"/>）；門檻＝ResearchTimeBase × <see cref="TempResearchScale"/>。</item>
+/// <item>四道閘門全部成立才累積：前置已習得、聚落等級夠（<see cref="TierAllows"/>）、地區有從業者（<see cref="Practitioners"/>）、
+/// 應用場所（第 3 階以上且列了建築者；建築系統出現前第 1～2 階不要求）。</item>
+/// <item>每週進度＋＝從業者人數×1＋鄰近傳播＋遷入者帶來的經驗。</item>
+/// <item>第一個習得開局知識以外技術的聚落讓世界進入開拓時代。</item>
 /// </list>
 /// </summary>
 public static class DemoKnowledge
@@ -72,24 +83,6 @@ public static class DemoKnowledge
     /// </summary>
     public const long TempResearchScale = 110;
 
-    /// <summary>正式設定 10B TECH_CROP_CULTIVATION（基礎作物栽培）的 ResearchTimeBase。A1 改讀設定檔後移除。</summary>
-    public const long CropCultivationTimeBase = 80;
-
-    /// <summary>正式設定 10E TECH_BASIC_CARPENTRY（基礎木工）的 ResearchTimeBase。</summary>
-    public const long BasicCarpentryTimeBase = 100;
-
-    /// <summary>正式設定 10C TECH_BASIC_FORGING（基礎鍛造）的 ResearchTimeBase。</summary>
-    public const long BasicForgingTimeBase = 180;
-
-    /// <summary>農耕習得門檻（研究點）＝80×110。</summary>
-    public const long TempThreshold = CropCultivationTimeBase * TempResearchScale;
-
-    /// <summary>木工習得門檻＝100×110。</summary>
-    public const long TempWoodworkingThreshold = BasicCarpentryTimeBase * TempResearchScale;
-
-    /// <summary>鍛造習得門檻＝180×110（只有已習得木工的聚落累積）。</summary>
-    public const long TempSmithingThreshold = BasicForgingTimeBase * TempResearchScale;
-
     /// <summary>
     /// 【TEMP】第 08-10a 章 V4（08-7a 鄰近傳播，參考 CK3 革新傳播）：範圍內每有一個已習得的聚落，每週＋門檻的萬分之 5（0.05%），
     /// 最多算 <see cref="TempDiffusionMaxNeighbours"/> 個（0.25%）。
@@ -99,8 +92,20 @@ public static class DemoKnowledge
     /// <summary>【TEMP】鄰近傳播最多計入的已習得聚落數。</summary>
     public const int TempDiffusionMaxNeighbours = 5;
 
-    /// <summary>【TEMP】鄰近傳播的範圍（六角格距離；與開拓選址的 6 格相同，勢力範圍出現前的暫代）。</summary>
+    /// <summary>【TEMP】鄰近傳播的範圍（六角格距離；與開拓選址的 6 格相同，勢力範圍出現前的暫代）。以物易物的「有往來」也用它。</summary>
     public const int TempDiffusionRange = 6;
+
+    /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
+    public const long TempCarryPercent = 25;
+
+    /// <summary>08-7b 第 1 節（使用者 2026-10-23 裁決）：開局五項知識裡不在 10R 第 0 階的那一項（10G 第 1 階）。</summary>
+    public const string OpeningCookingId = "TECH_BASIC_COOKING";
+
+    /// <summary>
+    /// 【TEMP】08-7b 工具階梯（世紀帝國同產業升級）：石器改良＋10% → 基礎鍛造再＋15% → 熱處理再＋10%。
+    /// </summary>
+    public static readonly ImmutableArray<(string TechId, long Percent)> TempToolLadder = ImmutableArray.Create(
+        ("TECH_IMPROVED_STONE_TOOLS", 10L), ("TECH_BASIC_FORGING", 15L), ("TECH_HEAT_TREATMENT", 10L));
 
     /// <summary>兩個聚落的六角格距離（軸向座標）。</summary>
     public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
@@ -113,30 +118,17 @@ public static class DemoKnowledge
         return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
     }
 
-    /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比。</summary>
-    public const long TempToolYieldPercent = 25;
+    public static long ThresholdOf(DemoTechnology technology) => checked(technology.Node.ResearchTimeBase * TempResearchScale);
 
-    public static long ThresholdOf(DemoTechnology technology) => technology switch
-    {
-        DemoTechnology.Woodworking => TempWoodworkingThreshold,
-        DemoTechnology.Smithing => TempSmithingThreshold,
-        _ => TempThreshold
-    };
+    /// <summary>開局知識：10R 第 0 階＋基礎烹調。</summary>
+    public static bool IsOpening(DemoTechnology technology) => technology.Node.IsOpening || technology.Id == OpeningCookingId;
 
-    /// <summary>第 08-6 章 e 節：<paramref name="week"/> 結算時的工具加成（該週以前已習得鍛造）。</summary>
+    /// <summary>第 08-6 章 e 節、08-7b 工具階梯：<paramref name="week"/> 結算時的工具加成（該週以前已習得的各級合計）。</summary>
     public static long ToolYieldPercent(DemoKnowledgeState state, int settlementId, int week)
-        => state.Of(settlementId, DemoTechnology.Smithing) is { Learned: true } r && r.LearnedWeek < week ? TempToolYieldPercent : 0;
+        => TempToolLadder.Where(t => state.Of(settlementId, DemoTechnology.Of(t.TechId)) is { Learned: true } r && r.LearnedWeek < week)
+            .Sum(t => t.Percent);
 
-    /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
-    public const long TempCarryPercent = 25;
-
-    public static string Name(DemoTechnology technology) => technology switch
-    {
-        DemoTechnology.Farming => "農耕",
-        DemoTechnology.Woodworking => "木工",
-        DemoTechnology.Smithing => "鍛造",
-        _ => technology.ToString()
-    };
+    public static string Name(DemoTechnology technology) => technology.Node.Name;
 
     public static string EraName(DemoEra era) => era switch
     {
@@ -146,63 +138,164 @@ public static class DemoKnowledge
     };
 
     /// <summary>
+    /// 【TEMP】08-7a 等級閘門：第 1 階任何聚落；第 2 階村莊；第 3 階城邦、第 4 階城市、第 5 階首都（這些等級尚未出現，暫不可研究）。
+    /// </summary>
+    public static bool TierAllows(DemoTechNode node, DemoSettlementTier tier) => node.Tier switch
+    {
+        <= 1 => true,
+        2 => tier >= DemoSettlementTier.Village,
+        _ => false
+    };
+
+    /// <summary>08-7a 場所閘門：第 3 階以上且列了應用場所時，要有該建築（建築系統尚未出現＝不成立）。</summary>
+    public static bool FacilityAllows(DemoTechNode node) => node.Tier <= 2 || node.Facilities.IsEmpty;
+
+    /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。</summary>
+    public sealed record Context(
+        DemoSettlementTier Tier,
+        long Adults,
+        long Elders,
+        bool HasLeader,
+        long Specialists,
+        bool NearForest,
+        bool NearGrassland,
+        bool NearWater,
+        bool NearSea,
+        bool HasFarmland,
+        bool HasNeighbour);
+
+    /// <summary>
+    /// 【TEMP】08-7b 第 2、3 節：每項技術的從業者人數（地理條件不成立＝0，不累積）。
+    /// 礦脈、牧群、石材、守衛、魔法尚未出現的領域一律 0。
+    /// </summary>
+    public static long Practitioners(DemoTechNode node, Context c, Func<string, bool> knows)
+    {
+        long If(bool condition, long n) => condition ? n : 0;
+        return node.Domain switch
+        {
+            "10B" => If(node.Branch == "作物", c.Adults),                      // 畜牧要野獸或牧群（尚無）
+            "10C" => 0,                                                         // 要有礦脈（尚無）
+            "10D" => If(node.Branch != "石造", c.Adults),                      // 石造要石材地形（尚無）
+            "10E" => node.Branch == "造船" ? If(c.NearForest && c.NearWater, c.Adults) : If(c.NearForest, c.Adults),
+            "10F" => node.Branch is "紡織" or "服裝" ? If(c.NearGrassland, c.Adults) : If(knows("TECH_HUNTING"), c.Adults),
+            "10G" => node.Id switch
+            {
+                "TECH_MILLING" => If(c.HasFarmland, c.Adults),
+                "TECH_SALTING" => If(c.NearSea, c.Adults),
+                _ => c.Adults
+            },
+            "10H" => node.Branch is "藥學" or "疾病" ? If(c.NearForest || c.NearGrassland, c.Adults) : c.Adults,
+            "10I" => 0,                                                         // 要有守衛（尚無）
+            "10J" => If(c.Tier >= DemoSettlementTier.Village && c.HasLeader, c.Adults), // 學者另見 A2
+            "10K" => 0,                                                         // 魔法法則章節開工前不出現
+            "10L" => If(c.NearWater && knows("TECH_FIRE"), c.Adults),
+            "10M" => 0,                                                         // 要有礦脈或寶石（尚無）
+            "10N" => If(knows("TECH_BASIC_CARPENTRY"), c.Adults),
+            "HUNT" => node.Id switch
+            {
+                "TECH_IMPROVED_STONE_TOOLS" => c.Adults,
+                "TECH_HUNTING" or "TECH_ARCHERY" => If(c.NearForest || c.NearGrassland, c.Adults),
+                "TECH_NET_FISHING" => If(c.NearWater, c.Adults),
+                _ => 0                                                          // 巡守與圍獵：獵人（A2）
+            },
+            "SOCIETY" => node.Id switch
+            {
+                "TECH_ORAL_LAW" => c.Elders + (c.HasLeader ? 1 : 0),
+                "TECH_BARTER" or "TECH_CURRENCY" => If(c.HasNeighbour, c.Adults),
+                "TECH_CODIFIED_LAW" => c.HasLeader ? 1 : 0,
+                // 行會：另需任一工藝第 2 階（10P 跨領域先修）；從業者＝各工藝專家。
+                "TECH_CRAFT_GUILDS" => If(DemoTechCatalog.All.Any(n => n.Tier == 2 && n.Domain.StartsWith("10", StringComparison.Ordinal) && knows(n.Id)),
+                    c.Specialists),
+                _ => 0
+            },
+            "FAITH" => node.Id switch
+            {
+                "TECH_ANCESTOR_RITES" or "TECH_SHAMANISM" => c.Elders,
+                "TECH_ORAL_TRADITION" or "TECH_FESTIVAL_CALENDAR" => c.Adults,
+                _ => 0
+            },
+            _ => 0
+        };
+    }
+
+    /// <summary>
     /// 依本週週報（生死與遷徙之後）與群體人口更新研究進度；回傳新狀態與要追加的事件（習得技術、時代開始），
     /// 事件編號從 <paramref name="nextEventId"/> 起。只有人類繁衍世界有知識。
+    /// <paramref name="tierOf"/>、<paramref name="land"/> 省略時視為聚落等級、沒有農田。
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
-        DemoHexWorld? map = null)
+        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(population);
         ArgumentNullException.ThrowIfNull(sites);
-        var records = state.Records.ToDictionary(r => (r.SettlementId, r.Technology));
+        var records = state.Records.ToDictionary(r => (r.SettlementId, r.Technology.Index));
         var events = new List<DemoSettlementEvent>();
         var era = state.Era;
         var eraWeek = state.EraWeek;
         var rules = DemoHumanLifecycle.Rules;
+        var day = checked(population.LastWeek * 7);
         var living = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        var farmland = land?.FarmlandCells().ToHashSet() ?? new HashSet<DemoCellRef>();
+        var catalog = DemoTechCatalog.All;
+        var arrivals = report.Migrations.Where(m => m.Arrived).ToList();
+
         foreach (var settlement in living)
         {
-            foreach (var technology in Enum.GetValues<DemoTechnology>())
+            var neighbours = map is null ? new List<DemoSettlement>()
+                : living.Where(o => o.Id != settlement.Id && Distance(map, o, settlement) <= TempDiffusionRange).ToList();
+            var stats = population.StatsOf(settlement.Id, 0, day, rules);
+            var near = map is null ? new HashSet<DemoTerrain>() : Around(map, settlement).Select(c => c.Terrain).ToHashSet();
+            var context = new Context(
+                tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Settlement,
+                population.AdultsIn(settlement.Id, rules),
+                stats.Elders,
+                population.Representatives.Any(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Leader),
+                population.Representatives.Count(r => r.SettlementId == settlement.Id && DemoRepresentative.TechnologyOf(r.Role) is not null),
+                near.Contains(DemoTerrain.Forest),
+                near.Contains(DemoTerrain.Grassland),
+                near.Contains(DemoTerrain.Water),
+                map is not null && Around(map, settlement).Any(c => c.Sea),
+                map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
+                neighbours.Count > 0);
+            bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
+
+            foreach (var node in catalog)
             {
-                var key = (settlement.Id, technology);
+                var technology = new DemoTechnology(node.Index);
+                if (IsOpening(technology))
+                    continue;
+                var key = (settlement.Id, node.Index);
                 var current = records.GetValueOrDefault(key) ?? new DemoKnowledgeRecord(settlement.Id, technology, 0, 0);
                 if (current.Learned)
                     continue;
-                // 第 08-6 章 e 節：鍛造的前置是木工（燃料與工具柄）。
-                var practitioners = (technology == DemoTechnology.Woodworking && (map is null || !NearForest(map, settlement)))
-                    || (technology == DemoTechnology.Smithing && !state.Knows(settlement.Id, DemoTechnology.Woodworking))
-                    ? 0 : population.AdultsIn(settlement.Id, rules);
-                var threshold = ThresholdOf(technology);
-                var carried = report.Migrations
-                    .Where(m => m.Arrived && m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
-                    .Sum(m => m.PopulationClosing);
-                // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落（有從業條件才傳得進來）。
-                var neighbours = map is null || practitioners == 0 ? 0
-                    : living.Count(o => o.Id != settlement.Id && state.Knows(o.Id, technology) && Distance(map, o, settlement) <= TempDiffusionRange);
-                var diffusion = checked(threshold * Math.Min(neighbours, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000);
-                var gain = checked(practitioners + diffusion + carried * threshold * TempCarryPercent / 100);
-                if (gain == 0)
+                // 08-7a 四道閘門：前置、等級、場所、地區（從業者）。
+                if (!node.Parents.All(KnowsHere) || !TierAllows(node, context.Tier) || !FacilityAllows(node))
                     continue;
+                var practitioners = Practitioners(node, context, KnowsHere);
+                if (practitioners == 0)
+                    continue;
+                var threshold = ThresholdOf(technology);
+                var carried = arrivals.Where(m => m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
+                    .Sum(m => m.PopulationClosing);
+                // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
+                var known = neighbours.Count(o => state.Knows(o.Id, technology));
+                var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000);
+                var gain = checked(practitioners + diffusion + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0 };
                 if (!learned)
                     continue;
                 var cause = carried > 0
-                    ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
-                    : neighbours > 0
-                    ? $"鄰近 {neighbours} 個已習得{Name(technology)}的聚落傳來做法，加上 {practitioners} 名成年人的經驗"
-                    : technology switch
-                    {
-                        DemoTechnology.Woodworking => $"{practitioners} 名成年人長年在森林取木的經驗累積",
-                        DemoTechnology.Smithing => $"{practitioners} 名成年人長年用火與製作工具的經驗累積",
-                        _ => $"{practitioners} 名成年人長年採集植物的經驗累積"
-                    };
+                    ? $"已習得的聚落有 {carried} 人遷入，帶來{node.Name}的經驗"
+                    : known > 0
+                    ? $"鄰近 {known} 個已習得{node.Name}的聚落傳來做法，加上 {practitioners} 人的經驗"
+                    : $"{practitioners} 人長年累積的經驗";
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
-                    DemoSettlementEventKind.KnowledgeLearned, (long)technology, $"學會{Name(technology)}：{cause}【TEMP】",
+                    DemoSettlementEventKind.KnowledgeLearned, node.Index, $"學會{node.Name}：{cause}【TEMP】",
                     EventId: nextEventId++);
                 events.Add(learnedEvent);
                 if (era == DemoEra.Hope)
@@ -211,7 +304,7 @@ public static class DemoKnowledge
                     eraWeek = report.Week;
                     events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                         DemoSettlementEventKind.EraBegan, (long)DemoEra.Pioneer,
-                        $"{settlement.Name}學會{Name(technology)}，世界進入{EraName(DemoEra.Pioneer)}",
+                        $"{settlement.Name}學會{node.Name}，世界進入{EraName(DemoEra.Pioneer)}",
                         EventId: nextEventId++, CauseEventId: learnedEvent.EventId));
                 }
             }
@@ -222,12 +315,17 @@ public static class DemoKnowledge
         return (next, events);
     }
 
-    /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>
-    public static bool NearForest(DemoHexWorld map, DemoSettlement settlement)
+    /// <summary>聚落本格與六鄰格（地圖內）。</summary>
+    private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement settlement)
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        return origin.Terrain == DemoTerrain.Forest || DemoRouteNetwork.Directions
-            .Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
-            .Any(c => c is { Terrain: DemoTerrain.Forest });
+        yield return origin;
+        foreach (var d in DemoRouteNetwork.Directions)
+            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } cell)
+                yield return cell;
     }
+
+    /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>
+    public static bool NearForest(DemoHexWorld map, DemoSettlement settlement)
+        => Around(map, settlement).Any(c => c.Terrain == DemoTerrain.Forest);
 }

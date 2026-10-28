@@ -1,0 +1,26 @@
+TechID,中文名稱,英文名稱,Tier,Branch,ParentTechIDs,ResearchTimeBase,ResearchResourceCost,PracticeBoostCondition,PracticeBoostEffect,RelatedSkillIDs,UnlockRecipeIDs,UnlockBuildingIDs,UnlockEffectKeys,ApplicationFacilityIDs,說明,Enabled
+TECH_FORAGING,採集,Foraging,0,開局,,0,,,,,,,,,開局知識（08-7b 第 1 節）：希望時代的生計,TRUE
+TECH_FISHING,漁撈,Fishing,0,開局,,0,,,,,,,,,開局知識：鄰水聚落的生計,TRUE
+TECH_FIRE,用火,Fire Making,0,開局,,0,,,,,,,,,開局知識：烹調、取暖、窯爐與冶煉的共同前置,TRUE
+TECH_STONE_TOOLS,打製石器,Knapped Stone Tools,0,開局,,0,,,,,,,,,開局知識：工具階梯的起點,TRUE
+TECH_IMPROVED_STONE_TOOLS,石器改良,Improved Stone Tools,1,狩獵,TECH_STONE_TOOLS,80,,長期製作並使用石器,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；工具第一級：採集量＋10%；從業者＝成年人,TRUE
+TECH_HUNTING,狩獵,Hunting,1,狩獵,TECH_STONE_TOOLS,100,,成功圍捕野獸,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；獸肉來源、獸皮處理的從業條件；從業者＝可及森林或草原的成年人,TRUE
+TECH_ARCHERY,弓箭,Archery,2,狩獵,"TECH_HUNTING,TECH_BASIC_CARPENTRY",140,,以弓箭獵得野獸,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；獵人（專家）；野獸攻擊損失下降,TRUE
+TECH_NET_FISHING,結網漁撈,Net Fishing,2,狩獵,"TECH_FISHING,TECH_FIBER_PROCESSING",120,,以網捕得多批漁獲,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；水域來源採集量＋10%；從業者＝鄰水聚落的成年人,TRUE
+TECH_WATCH_AND_HUNT,巡守與圍獵,Watch and Battue,3,狩獵,"TECH_ARCHERY,TECH_ORAL_LAW",220,,擊退來犯野獸,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；守衛（專家）；聚落外圍野獸攻擊減少；從業者＝獵人,TRUE
+TECH_ORAL_LAW,習慣法,Customary Law,1,社會,,100,,調解聚落內糾紛,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；糾紛與繼承的基礎；從業者＝村長＋老人,TRUE
+TECH_BARTER,以物易物,Barter,1,社會,,80,,與其他聚落交換物品,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；聚落間交換（第 09 章市場前置）；從業者＝有往來聚落的成年人,TRUE
+TECH_CODIFIED_LAW,成文法,Codified Law,2,社會,"TECH_ORAL_LAW,TECH_WRITING_MATERIALS",160,,記錄並援引判例,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；市長（城邦條件）；從業者＝村長,TRUE
+TECH_CURRENCY,貨幣與市集,Currency and Markets,2,社會,TECH_BARTER,160,,定期舉行市集,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；商會（城邦條件）；從業者同以物易物,TRUE
+TECH_CRAFT_GUILDS,行會,Craft Guilds,2,社會,TECH_BARTER,180,,多名工匠共同訂定規矩,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；另需任一工藝第 2 階；公會（城邦條件）；從業者＝各工藝專家,TRUE
+TECH_TAXATION,稅制,Taxation,3,社會,"TECH_CURRENCY,TECH_ACCOUNTING",240,,定期徵收公共物資,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；公庫（第 10 章財政前置）；從業者＝市長,TRUE
+TECH_HEREDITARY_NOBILITY,世襲貴族,Hereditary Nobility,3,社會,"TECH_CODIFIED_LAW,TECH_ARCHIVES",260,,職位依血緣繼承,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；貴族（城市條件）；從業者＝市長,TRUE
+TECH_KINGSHIP,王權,Kingship,4,社會,"TECH_HEREDITARY_NOBILITY,TECH_TAXATION",380,,多個聚落共奉一主,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；王族、可建立王國（征服時代）；從業者＝貴族,TRUE
+TECH_IMPERIAL_ADMINISTRATION,帝國行政,Imperial Administration,5,社會,"TECH_KINGSHIP,TECH_ADVANCED_ACADEMIA",600,,統治多個王國,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；帝國（第 10 章）；從業者＝王族,TRUE
+TECH_ANCESTOR_RITES,祖靈祭祀,Ancestor Rites,1,信仰,,100,,為逝者舉行祭祀,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；創立或接觸信仰（08-8）；從業者＝老人,TRUE
+TECH_ORAL_TRADITION,口述傳統,Oral Tradition,1,信仰,,80,,向下一代傳述往事,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；文化可多抽一個習俗特性（08-8）；從業者＝成年人,TRUE
+TECH_SHAMANISM,巫祝,Shamanism,2,信仰,"TECH_ANCESTOR_RITES,TECH_HERBALISM",160,,以草藥與儀式照護病人,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；巫祝（專家，兼醫者）；從業者＝老人,TRUE
+TECH_FESTIVAL_CALENDAR,節慶與曆法,Festival Calendar,2,信仰,"TECH_ORAL_TRADITION,TECH_CROP_CULTIVATION",140,,依季節舉行節慶,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；節慶事件；農事實踐加速；從業者＝成年人,TRUE
+TECH_ORGANIZED_RELIGION,組織宗教,Organized Religion,3,信仰,"TECH_SHAMANISM,TECH_WRITING_MATERIALS",240,,建立固定祭祀人員,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；祭司；信仰可分化另立教派；從業者＝巫祝,TRUE
+TECH_THEOLOGY,神學,Theology,4,信仰,"TECH_ORGANIZED_RELIGION,TECH_FORMAL_SCHOOLING",360,,辯論並記錄教義,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；教義成文、宗教分裂的條件；從業者＝祭司,TRUE
+TECH_SCRIPTURE_CANON,聖典編纂,Scripture Canon,5,信仰,"TECH_THEOLOGY,TECH_BOOK_REPRODUCTION",520,,編定並抄傳聖典,研究時間-20%,,,,,,【TEMP】研究時間由 Claude 暫定（08-7b 第 2 節）；宗教知識可由書籍傳播；從業者＝祭司＋學者,TRUE

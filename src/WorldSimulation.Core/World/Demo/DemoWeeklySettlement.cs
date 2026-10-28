@@ -324,6 +324,10 @@ public sealed record DemoSettlementWeekLedger(
     public long YieldPerWorker(DemoWeeklyTempConfig config)
         => checked(config.YieldPerWorkerPerWeek * (100 + ToolYieldPercent) / 100);
 
+    /// <summary>第 08-9 章 A1：<paramref name="workers"/> 名勞力本週可採總量——與採集分配同一算法（加成套在總量上再取整，不是每人先取整）。</summary>
+    public long LabourCap(long workers, DemoWeeklyTempConfig config)
+        => checked(workers * config.YieldPerWorkerPerWeek * (100 + ToolYieldPercent) / 100);
+
     /// <summary>
     /// 本週聚落餓死人數＝全部死亡－自然死亡（Notion 02 §E：死亡按原因分類）。
     /// 下游（Godot 診斷、M1 驗收、百年長測）一律用此屬性，不各自相減。

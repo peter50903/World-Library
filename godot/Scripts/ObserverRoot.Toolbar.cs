@@ -91,8 +91,10 @@ public partial class ObserverRoot
 
     private static string KnowledgeLegend()
     {
-        var legend = string.Join("  ", Enumerable.Range(0, 4)
-            .Select(n => $"[color=#{DemoHexMap.KnowledgeColor(n).ToHtml(false)}]■[/color] {(n == 0 ? "尚無技術" : n == 3 ? "3 項以上" : $"{n} 項")}"));
+        var starts = DemoHexMap.KnowledgeBandStarts;
+        var legend = string.Join("  ", starts.Select((start, i) =>
+            $"[color=#{DemoHexMap.KnowledgeColor(start).ToHtml(false)}]■[/color] "
+            + (start == 0 ? "尚無技術" : i == starts.Length - 1 ? $"{start} 項以上" : $"{start}～{starts[i + 1] - 1} 項")));
         return $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
     }
 

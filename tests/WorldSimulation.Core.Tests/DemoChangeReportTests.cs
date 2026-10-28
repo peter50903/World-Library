@@ -35,7 +35,7 @@ public sealed class DemoChangeReportTests
         Assert.Equal(world.Era, last.Era);
         Assert.InRange(last.LargestLineage, last.LivingSettlements == 0 ? 0 : 1, last.LivingSettlements);
         Assert.InRange(last.Lineages, 0, last.LivingSettlements);
-        Assert.InRange(tracker.Decades.Sum(d => d.FirstLearned), 0, Enum.GetValues<DemoTechnology>().Length);
+        Assert.InRange(tracker.Decades.Sum(d => d.FirstLearned), 0, DemoTechCatalog.All.Length);
         Assert.Equal(tracker.Decades.Sum(d => d.EraChanges) > 0, tracker.PioneerEraYear is not null);
         Assert.All(tracker.Decades, d => Assert.Equal(
             d.Founded + d.Ruined + d.TierUps + d.TierDowns + d.FirstLearned + d.Farmland + d.EraChanges, d.Major));

@@ -142,7 +142,7 @@ public sealed partial class DemoObserverWorld
         var knowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>()
             ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
         if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
-            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
+            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || DemoKnowledge.IsOpening(r.Technology)
                 || r.Progress < 0 || r.Progress > DemoKnowledge.ThresholdOf(r.Technology) || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
                 || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
@@ -282,7 +282,7 @@ public sealed partial class DemoObserverWorld
             var total = report.Sources.SelectMany(x => x.Shares).Where(x => x.SettlementId == ledger.SettlementId).Sum(x => x.Food);
             var need = DemoCrowding.Claim(weekly.HumanLifecycleEnabled, checked(ledger.FoodConsumed + ledger.FoodShortage), ledger.FoodOpening);
             var workers = (ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening) - ledger.WaterCarriers;
-            var labour = checked(workers * ledger.YieldPerWorker(weekly)); // 第 08-6 章 e 節：工具加成另依知識樹驗證
+            var labour = ledger.LabourCap(workers, weekly); // 第 08-6 章 e 節：工具加成另依知識樹驗證
             if (total > need || total > labour)
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的採集合計 {total} 超過需求 {need} 或勞力上限 {labour}");
         }
