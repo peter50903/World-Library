@@ -100,6 +100,18 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig LocalFamineSample { get; } = Sample with { TempFamineSettlementId = 1 };
 
     /// <summary>
+    /// TEST／CI 用 TEMP 勞力饑荒情境（第 06-2 章）：資源點存量充足（600、上限 600），但每名勞力每週只採 3（少於每人食量 4），
+    /// 缺糧是因為人手不夠、不是因為沒東西可採。用來在任何地圖上都量測得到「缺糧→死亡或外移→勞力下降→採收下降」
+    /// 的傳導（M1_FAMINE）。不是正式數值。
+    /// </summary>
+    public static DemoWeeklyTempConfig LaborFamineSample { get; } = Sample with
+    {
+        InitialReservePerPoint = 600,
+        ReserveCapPerPoint = 600,
+        YieldPerWorkerPerWeek = 3
+    };
+
+    /// <summary>
     /// TEST／CI 用 TEMP 開拓情境（V0-06B）：開局的每個聚落都沒有存量、再生與初始糧食（舊土地耗竭），
     /// 遷徙隊伍建立的新聚落則照 <see cref="Sample"/> 的再生（新資源點存量從 0 開始，只靠再生）；開啟開拓。
     /// 用來重現「附近沒有已知有糧聚落 → 缺糧人口出發到空格建立新聚落」。不是正式數值。

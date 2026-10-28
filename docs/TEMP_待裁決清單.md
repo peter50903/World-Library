@@ -73,6 +73,7 @@
 | 河流數 | 每 12 欄一條（小 1、中 2、大 4）；第 k 條從北緣第 k 段起流，碰到海或其他河就停 | 使用者裁決：多條河流；小地圖不變以保留既有測試 |
 | 格線 | 預設不畫，可切換 | 使用者裁決 |
 | 遷徙圖示 | 依本週已過幾成在本格與下一格之間內插 | 移動看起來連續（只影響顯示） |
+| 勞力饑荒情境（CI） | 資源點存量 600、每名勞力每週採 3（少於食量 4） | M1_FAMINE 要量測「缺糧→死亡或外移→勞力↓→採收↓」；原四個情境的缺糧都是存量耗盡，只靠運氣碰到 |
 
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
@@ -398,7 +399,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 59 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 60 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2） |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |

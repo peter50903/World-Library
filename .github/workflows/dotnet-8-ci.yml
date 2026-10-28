@@ -225,7 +225,7 @@ jobs:
             grep -q '守恆錯誤 0，' /tmp/observer-frontier.log
             # V0-08A (#74): table 45G M1 acceptance report — 3 TEMP seeds x 3 TEMP presets x 100 years.
             # A Hard failure exits 1 and fails this step (set -e + pipefail).
-            # 第 08 章 d 節：正式驗收——3 種子 × 4 情境（加人類採集＝普通世界）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
+            # 第 08 章 d 節：正式驗收——3 種子 × 5 情境（加人類採集＝普通世界、第 06-2 章勞力饑荒）＋普通世界種子 1～20 長期生存調查；報告寫檔供 artifact。
             # 2026-10-22：只在完整長測（FULL）時跑。
             if [ "$FULL" = true ]; then
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --m1-check --years 100 --report /tmp/m1-report/M1驗收報告.txt | tee /tmp/observer-m1.log
@@ -240,7 +240,7 @@ jobs:
             for id in $expected_ids; do grep -q "  $id｜" /tmp/observer-m1.log; done
             summary_ids="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log | grep -o '^  M1_[A-Z_]*' | tr -d ' ')"
             test "$summary_ids" = "$expected_ids"
-            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 12
+            test "$(grep -c '^--- 種子 ' /tmp/observer-m1.log)" = 15
             grep -q '沒有 Hard 項目失敗' /tmp/observer-m1.log
             test "$(grep -c '^  種子 [0-9]*｜人口 ' /tmp/observer-m1.log)" = 20
             grep -q '  調查結果：20 個種子中 [0-9]* 個活過 100 年' /tmp/observer-m1.log
