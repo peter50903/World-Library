@@ -15,7 +15,8 @@ public partial class ObserverRoot
     {
         None,
         Outliner,
-        Console
+        Console,
+        Chronicle // 第 08-10b 章：編年史
     }
 
     private RightView _rightView = RightView.Outliner;
@@ -167,6 +168,7 @@ public partial class ObserverRoot
     {
         _rightView = _rightView == view ? RightView.None : view;
         ApplyHudLayout();
+        RefreshChronicle(); // 第 08-10b 章：切到編年史時立刻依目前世界重算。
     }
 
     /// <summary>第 05 章 b2 冒煙：清單預設開、排序與 Core 一致、點列＝地圖置中＋Core 點格查詢，分頁切換與收合。</summary>

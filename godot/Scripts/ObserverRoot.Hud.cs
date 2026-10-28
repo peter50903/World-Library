@@ -163,6 +163,10 @@ public partial class ObserverRoot
         _consoleToggle = new Button { Text = "世界紀錄", ToggleMode = true, TooltipText = "右側世界紀錄：事件依時間列出，點一筆看詳情、原因與後果並定位地圖（再按一次收合）" };
         _consoleToggle.Pressed += () => SetRightView(RightView.Console);
         row.AddChild(_consoleToggle);
+        // 第 08-10b 章：右側第三分頁「編年史」。
+        _chronicleToggle = new Button { Text = "編年史", ToggleMode = true, TooltipText = "右側編年史：依年份列出世界的重大事件，點聚落名稱定位地圖（再按一次收合）" };
+        _chronicleToggle.Pressed += () => SetRightView(RightView.Chronicle);
+        row.AddChild(_chronicleToggle);
     }
 
     private static Label AddStat(HBoxContainer row, string iconPath, string tooltip)
@@ -341,10 +345,13 @@ public partial class ObserverRoot
         Place(_consolePanel, frame.Console, _rightView == RightView.Console);
         if (_outlinerPanel is not null)
             Place(_outlinerPanel, frame.Console, _rightView == RightView.Outliner);
+        if (_chroniclePanel is not null)
+            Place(_chroniclePanel, frame.Console, _rightView == RightView.Chronicle);
         Place(_timePanel, frame.Time, true);
         PlaceToolbarRow(frame);
         _consoleToggle.SetPressedNoSignal(_rightView == RightView.Console);
         _outlinerToggle.SetPressedNoSignal(_rightView == RightView.Outliner);
+        _chronicleToggle?.SetPressedNoSignal(_rightView == RightView.Chronicle);
     }
 
     private static void Place(Control control, HudRect rect, bool visible)

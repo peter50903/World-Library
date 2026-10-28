@@ -465,6 +465,13 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_CHART_OK: Years=3 Complete=2 CliEqual=1 Series=4 ClickYear=[1-3] Events=[1-9][0-9]* Focus=1 CoreUnchanged=1' /tmp/godot-chart.log
+          # 第 08-10b 章：編年史——45 年人類採集世界；分頁切換、與 Core 逐年相同、十年折疊與展開、一般事件與類型開關、點名稱定位、不改世界。
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_CHRONICLE_SMOKE=1 timeout 180 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-chronicle.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-chronicle.log; then
+            echo "Godot reported a runtime error in the chronicle smoke."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_CHRONICLE_OK: Years=45 Major=[0-9]+ Folded=3 Expand=1 Normal=1 Category=[0-9]+ Link=1 Stats=1 CoreUnchanged=1' /tmp/godot-chronicle.log
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUMAN_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-human.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-human.log; then
             echo "Godot human demography smoke failed."

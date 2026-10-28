@@ -39,6 +39,26 @@ public sealed record DemoSettlementChronicle(
     /// 依本週週報更新全部聚落的小史。<paramref name="inOffice"/>＝本週開始時在任的代表人物（卸任的人從這裡找名字）。
     /// 純函式；與第 08-3 章「逐週掃描週報」的結果相同。
     /// </summary>
+    /// <summary>第 08-10b 章：等級升級小史的關鍵字（與下方 <see cref="Advance"/> 的文字同一處維護）。</summary>
+    public const string TierUpMarker = "發展為";
+
+    /// <summary>第 08-10b 章：等級降級小史的關鍵字。</summary>
+    public const string TierDownMarker = "，降為";
+
+    /// <summary>第 08-10b 章：這一筆小史是不是等級升降（世界編年史列為重大）。</summary>
+    public static bool IsTierChange(DemoChronicleLine line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        return line.Text.Contains(TierUpMarker, StringComparison.Ordinal) || line.Text.Contains(TierDownMarker, StringComparison.Ordinal);
+    }
+
+    /// <summary>第 08-10b 章：這一筆小史是不是人口里程碑。</summary>
+    public static bool IsPopulationMilestone(DemoChronicleLine line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        return line.Text.StartsWith("人口首次達到", StringComparison.Ordinal);
+    }
+
     public static ImmutableSortedDictionary<int, DemoSettlementChronicle> Advance(
         ImmutableSortedDictionary<int, DemoSettlementChronicle> chronicles, DemoWeekReport report,
         IReadOnlyList<DemoRepresentative> inOffice)
@@ -113,8 +133,8 @@ public sealed record DemoSettlementChronicle(
             if (tier == c.Tier)
                 continue;
             var text = tier > c.Tier
-                ? $"有木匠、人口 {ledger.PopulationClosing} 人，由{DemoSettlementHistory.TierName(c.Tier)}發展為{DemoSettlementHistory.TierName(tier)}"
-                : $"{(carpenter ? $"人口降到 {ledger.PopulationClosing} 人" : "失去木匠")}，降為{DemoSettlementHistory.TierName(tier)}";
+                ? $"有木匠、人口 {ledger.PopulationClosing} 人，由{DemoSettlementHistory.TierName(c.Tier)}{TierUpMarker}{DemoSettlementHistory.TierName(tier)}"
+                : $"{(carpenter ? $"人口降到 {ledger.PopulationClosing} 人" : "失去木匠")}{TierDownMarker}{DemoSettlementHistory.TierName(tier)}";
             builder[ledger.SettlementId] = c with { Tier = tier, Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };
         }
         return builder.ToImmutable();
