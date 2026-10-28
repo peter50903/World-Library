@@ -46,10 +46,10 @@ public sealed class M1AcceptanceReportTests
     }
 
     [Fact]
-    public void ThreeSeedsTimesFourPresetsReportEveryCheckInOrderWithNoHardFailure()
+    public void ThreeSeedsTimesFivePresetsReportEveryCheckInOrderWithNoHardFailure()
     {
         var expectedOrder = Checks.Value.Select(c => c.Id).ToList();
-        Assert.Equal(12, Matrix.Value.Count);
+        Assert.Equal(15, Matrix.Value.Count); // 第 06-2 章：加勞力饑荒情境
         foreach (var report in Matrix.Value)
         {
             Assert.Equal(expectedOrder, report.Results.Select(r => r.Check.Id).ToList());
@@ -160,6 +160,18 @@ public sealed class M1AcceptanceReportTests
         var report = M1Evaluator.Evaluate(run, Checks.Value);
         Assert.Equal(M1Verdict.Warn, Result(report, "M1_MIG").Verdict);
         Assert.Contains("沒有遷徙", Result(report, "M1_MIG").Diagnosis);
+    }
+
+    /// <summary>第 06-2 章：勞力饑荒情境（存量充足、人手不夠）每個預設種子都量測得到危機傳導，正式驗收不再靠運氣。</summary>
+    [Fact]
+    public void LaborFamineMeasuresTheCrisisChainOnEveryDefaultSeed()
+    {
+        var famine = Matrix.Value.Where(r => r.Run.Preset == M1Preset.LaborFamine).ToList();
+        Assert.Equal(M1AcceptanceCli.DefaultSeeds.Count, famine.Count);
+        var notPassed = famine.Select(r => (r.Run.Seed, Result: Result(r, "M1_FAMINE")))
+            .Where(x => x.Result.Verdict != M1Verdict.Pass)
+            .Select(x => $"FAMINE種子{x.Seed}：{x.Result.Diagnosis}").ToList();
+        Assert.True(notPassed.Count == 0, string.Join(" ／ ", notPassed));
     }
 
     [Fact]

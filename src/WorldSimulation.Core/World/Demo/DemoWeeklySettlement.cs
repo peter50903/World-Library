@@ -100,6 +100,16 @@ public sealed record DemoWeeklyTempConfig(
     public static DemoWeeklyTempConfig LocalFamineSample { get; } = Sample with { TempFamineSettlementId = 1 };
 
     /// <summary>
+    /// TEST／CI 用 TEMP 勞力饑荒情境（第 06-2 章）：人類採集世界，但每名成年勞力每週只採 5（普通世界 16）。
+    /// 成人要養孩子，採收受人手限制而低於需求、可及來源仍有剩——缺糧是人手不夠，不是沒東西可採；
+    /// 外移或孩子長大後又能恢復。用來在任何地圖上都量測得到 M1_FAMINE 的傳導。不是正式數值。
+    /// </summary>
+    public static DemoWeeklyTempConfig LaborFamineSample { get; } = LivingForagingSample with
+    {
+        YieldPerWorkerPerWeek = 5
+    };
+
+    /// <summary>
     /// TEST／CI 用 TEMP 開拓情境（V0-06B）：開局的每個聚落都沒有存量、再生與初始糧食（舊土地耗竭），
     /// 遷徙隊伍建立的新聚落則照 <see cref="Sample"/> 的再生（新資源點存量從 0 開始，只靠再生）；開啟開拓。
     /// 用來重現「附近沒有已知有糧聚落 → 缺糧人口出發到空格建立新聚落」。不是正式數值。

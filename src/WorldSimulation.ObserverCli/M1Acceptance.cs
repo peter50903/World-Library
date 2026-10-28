@@ -192,10 +192,13 @@ public sealed record M1Preset(string Key, string Name, DemoWeeklyTempConfig Conf
     /// <summary>第 08 章 d 節：普通世界＝Godot 預設的人類採集情境（出生、孕期、自然死亡、共享採集、家庭遷徙與建村）。</summary>
     public static M1Preset Living { get; } = new("living", "人類採集（普通世界）", DemoWeeklyTempConfig.LivingForagingSample);
 
-    public static IReadOnlyList<M1Preset> All { get; } = new[] { Normal, LocalFamine, Frontier, Famine, Living };
+    /// <summary>第 06-2 章：勞力饑荒（存量充足、人手不夠）——危機傳導在任何地圖上都量測得到。</summary>
+    public static M1Preset LaborFamine { get; } = new("labor-famine", "勞力饑荒", DemoWeeklyTempConfig.LaborFamineSample);
 
-    /// <summary>預設矩陣：一般／局部饑荒（遷徙）／開拓（新聚落）／人類採集（普通世界，第 08 章 d 節）。</summary>
-    public static IReadOnlyList<M1Preset> Default { get; } = new[] { Normal, LocalFamine, Frontier, Living };
+    public static IReadOnlyList<M1Preset> All { get; } = new[] { Normal, LocalFamine, Frontier, Famine, Living, LaborFamine };
+
+    /// <summary>預設矩陣：一般／局部饑荒（遷徙）／開拓（新聚落）／人類採集（普通世界，第 08 章 d 節）／勞力饑荒（危機傳導，第 06-2 章）。</summary>
+    public static IReadOnlyList<M1Preset> Default { get; } = new[] { Normal, LocalFamine, Frontier, Living, LaborFamine };
 
     public static M1Preset? Find(string key) => All.FirstOrDefault(p => p.Key == key);
 }

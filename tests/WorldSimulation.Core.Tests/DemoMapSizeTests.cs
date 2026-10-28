@@ -29,7 +29,8 @@ public sealed class DemoMapSizeTests
         }
         Assert.NotEmpty(map.MainWaterway);
         Assert.Equal(0, map.MainWaterway[0].Row);
-        Assert.InRange(map.Routes.Fords.Count, 1, Math.Max(1, rows / DemoHexWorld.TempRowsPerFord));
+        // 第 06-2 章：每 12 欄一條河（小 1、中 2、大 4），每條每 8 列一個渡口。
+        Assert.InRange(map.Routes.Fords.Count, 1, DemoHexWorld.RiversFor(columns) * Math.Max(1, rows / DemoHexWorld.TempRowsPerFord));
         Assert.All(map.Routes.Fords, f => Assert.True(map.GetCell(f.Column, f.Row) is { Shallow: true, MainWaterway: true }));
         Assert.Equal(map.Routes.Fords[0], map.Routes.Ford);
     }
