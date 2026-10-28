@@ -958,6 +958,16 @@ public static class M1Evaluator
     /// <summary>【TEMP】M1_STABILITY 爆量門檻：期末世界人口超過期初的這個倍數＝無限爆人口（第 08 章 d 節 Claude 定案，D1）。</summary>
     public const long TempStabilityExplosionFactor = 10;
 
+    /// <summary>
+    /// 【TEMP】第 08-11 章：有地圖承載估計時，爆量另以「超過承載上限的這個倍數」判斷（取兩者較寬者）。
+    /// 小聚落不再因取水餓死後，期初 15 人長到 160 人（仍在承載上限內）是正常成長，不是爆量。
+    /// </summary>
+    public const long TempStabilityCapacityFactor = 2;
+
+    /// <summary>爆量門檻：期初×10 與承載上限×2 取較大者。</summary>
+    public static long ExplosionLimit(M1RunData run)
+        => Math.Max(run.Initial.Population * TempStabilityExplosionFactor, run.MapCapacity * TempStabilityCapacityFactor);
+
     /// <summary>【TEMP】M1_VARIETY 差異門檻：不同資源組合的聚落群，期末平均人口相差至少這個倍數（或一群有人、另一群無人）（D2）。</summary>
     public const long TempVarietyRatio = 2;
 
@@ -971,14 +981,14 @@ public static class M1Evaluator
         var births = run.Weeks.Sum(w => w.Settlements.Sum(l => l.Births) + w.Migrations.Sum(m => m.Births));
         var data = $"人口 期初 {run.Initial.Population} → 期末 {final.Population}（{run.Years} 年內最低 {populations.Min()}、最高 {populations.Max()}、出生 {births}）；"
             + $"期末有人聚落 {inhabited}／{settlements}；{CapacityEvidence(run)}";
-        var rule = $"【TEMP 門檻 D1】期末仍有人、且期末人口不超過期初 {TempStabilityExplosionFactor} 倍才算穩定（45G：不是所有種子都全滅或無限爆人口；矩陣任一長跑通過即通過）";
+        var rule = $"【TEMP 門檻 D1】期末仍有人、且期末人口不超過 {ExplosionLimit(run)}（期初 {TempStabilityExplosionFactor} 倍與承載上限 {TempStabilityCapacityFactor} 倍的較大者）才算穩定（45G：不是所有種子都全滅或無限爆人口；矩陣任一長跑通過即通過）";
         if (final.Population == 0)
         {
             var extinct = run.TotalsAfterWeek.Where(kv => kv.Value.Population == 0).Select(kv => kv.Key).DefaultIfEmpty(0).Min();
             return new M1Finding(M1Raw.Violation, $"本長跑在 {At(run, extinct)} 全滅；{data}{rule}");
         }
-        if (final.Population > run.Initial.Population * TempStabilityExplosionFactor)
-            return new M1Finding(M1Raw.Violation, $"本長跑人口爆量（期末超過期初 {TempStabilityExplosionFactor} 倍）；{data}{rule}");
+        if (final.Population > ExplosionLimit(run))
+            return new M1Finding(M1Raw.Violation, $"本長跑人口爆量（期末超過 {ExplosionLimit(run)}）；{data}{rule}");
         return new M1Finding(M1Raw.Ok, $"{run.Years} 年後仍有 {final.Population} 人、{inhabited} 個有人聚落，未爆量；{data}{rule}");
     }
 
