@@ -329,6 +329,9 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.FarmlandCleared:
                 // 第 08-6 章 c 節：根因（開墾進度另存於土地開發狀態）。
                 return parent is null && e.Count > 0 ? null : "開墾農田是根因，事件人數欄必須是格編號";
+            case DemoSettlementEventKind.FarmlandAbandoned:
+                // 第 08-11 章：根因（附近已無人耕作；開發度另存於土地開發狀態）。
+                return parent is null && e.Count > 0 ? null : "農田荒廢是根因，事件人數欄必須是格編號";
 
             default:
                 return "未知的事件種類";

@@ -47,6 +47,28 @@ public sealed class DemoChangeTracker
     private int _lastYear;
     private int _founded, _ruined, _ups, _downs, _first, _spread, _farmland, _eras;
 
+    // 第 08-11 章：遺跡成因——每個聚落每年的人口流動，聚落成為遺跡時回看最後 10 年。
+    private sealed class YearFlow
+    {
+        public long Opening = -1, Births, NaturalDeaths, StarvationDeaths, Immigrants, Mate, Crowding, Shortage, Founding, OtherOut;
+        public int ShortageWeeks, WaterShortageWeeks;
+    }
+
+    private readonly Dictionary<int, SortedDictionary<int, YearFlow>> _flows = new();
+    private readonly List<string> _ruinCauses = new();
+
+    /// <summary>第 08-11 章：每個成為遺跡的聚落一行（最後 10 年的出生、死亡、遷出原因與缺糧週數）。</summary>
+    public IReadOnlyList<string> RuinCauses => _ruinCauses;
+
+    private YearFlow Flow(int settlementId, int year)
+    {
+        if (!_flows.TryGetValue(settlementId, out var years))
+            _flows[settlementId] = years = new SortedDictionary<int, YearFlow>();
+        if (!years.TryGetValue(year, out var flow))
+            years[year] = flow = new YearFlow();
+        return flow;
+    }
+
     public IReadOnlyList<DemoChangeDecade> Decades => _decades;
 
     /// <summary>第一項技術在世界上首次習得的年份；尚未出現＝null。</summary>
@@ -68,8 +90,30 @@ public sealed class DemoChangeTracker
 
         foreach (var week in world.WeekReports().Where(w => w.Week > _lastWeek))
         {
+            foreach (var l in week.Settlements)
+            {
+                var f = Flow(l.SettlementId, year);
+                if (f.Opening < 0) f.Opening = l.PopulationOpening;
+                f.Births += l.Births;
+                f.NaturalDeaths += l.NaturalDeaths;
+                f.StarvationDeaths += Math.Max(0, l.Deaths - l.NaturalDeaths);
+                f.Immigrants += l.Immigrants;
+                if (l.FoodShortage > 0) f.ShortageWeeks++;
+                if (l.WaterShortage > 0) f.WaterShortageWeeks++;
+            }
             foreach (var e in week.Events)
             {
+                if (e.Kind == DemoSettlementEventKind.Emigration)
+                {
+                    var f = Flow(e.SettlementId, year);
+                    if (e.Cause.StartsWith("婚嫁", StringComparison.Ordinal)) f.Mate += e.Count;
+                    else if (e.Cause.StartsWith("人口接近", StringComparison.Ordinal)) f.Crowding += e.Count;
+                    else if (e.Cause.Contains("缺糧", StringComparison.Ordinal)) f.Shortage += e.Count;
+                    else if (e.Cause.Contains("開拓", StringComparison.Ordinal)) f.Founding += e.Count;
+                    else f.OtherOut += e.Count;
+                }
+                if (e.Kind == DemoSettlementEventKind.SettlementRuined)
+                    _ruinCauses.Add(DescribeRuin(world, e.SettlementId, year));
                 switch (e.Kind)
                 {
                     case DemoSettlementEventKind.SettlementFounded: _founded++; break;
@@ -128,6 +172,21 @@ public sealed class DemoChangeTracker
             lineages.Count, lineages.Count == 0 ? 0 : lineages.Max(), world.Era));
         _fromYear = toYear + 1;
         _founded = _ruined = _ups = _downs = _first = _spread = _farmland = _eras = 0;
+    }
+
+    private string DescribeRuin(DemoObserverWorld world, int settlementId, int year)
+    {
+        var site = world.Sites.Settlements.First(s => s.Id == settlementId);
+        var years = _flows.GetValueOrDefault(settlementId)?.Where(kv => kv.Key > year - 10).Select(kv => kv.Value).ToList() ?? new List<YearFlow>();
+        long Sum(Func<YearFlow, long> f) => years.Sum(f);
+        var founded = site.IsFounded ? DemoSettlementHistory.YearOfDay(checked(site.FoundedWeek * 7)) : 0;
+        var cell = world.Map.GetCell(site.Column, site.Row);
+        var water = DemoMigrationRoutes.HasWaterAccess(world.Map, new DemoCellRef(site.Column, site.Row)) ? "鄰水" : "不鄰水";
+        return $"遺跡 {site.Name}（#{site.Id}，第 {year} 年；{(site.IsFounded ? $"第 {founded} 年由 #{site.FoundedFromSettlementId} 開拓" : "開局聚落")}；{cell.Terrain}、{water}）"
+               + $"｜最後 10 年期初 {years.FirstOrDefault(y => y.Opening >= 0)?.Opening ?? 0} 人"
+               + $"｜出生 {Sum(y => y.Births)}、老死 {Sum(y => y.NaturalDeaths)}、餓死 {Sum(y => y.StarvationDeaths)}、遷入 {Sum(y => y.Immigrants)}"
+               + $"｜遷出 婚嫁 {Sum(y => y.Mate)}、擁擠 {Sum(y => y.Crowding)}、缺糧 {Sum(y => y.Shortage)}、開拓 {Sum(y => y.Founding)}、其他 {Sum(y => y.OtherOut)}"
+               + $"｜缺糧週 {years.Sum(y => y.ShortageWeeks)}、缺水週 {years.Sum(y => y.WaterShortageWeeks)}";
     }
 
     /// <summary>總結：第一項技術與開拓時代的年份、每段重大事件的平均與最少。</summary>

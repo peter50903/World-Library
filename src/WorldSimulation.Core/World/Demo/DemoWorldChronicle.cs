@@ -109,6 +109,10 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Farmland, e.EventId,
                         Name(e.SettlementId), T(" 開墾一塊農田"));
                     break;
+                case DemoSettlementEventKind.FarmlandAbandoned:
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Farmland, e.EventId,
+                        Name(e.SettlementId), T(" 附近的一塊農田無人耕作，開始荒廢"));
+                    break;
             }
         }
 

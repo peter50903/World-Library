@@ -16,14 +16,14 @@ public sealed class DemoSurvivalTests
     }
 
     [Fact]
-    public void ForagingWorldsOpenOnlyBesideWater_AndDehydrationDebtFormulaHolds()
+    public void ForagingWorldsOpenWithinTwoCellsOfWater_AndDehydrationDebtFormulaHolds()
     {
-        // 第 08-1 章【TEMP 規則】宜居開局：自然採集世界的開局聚落一律相鄰水域（不再有開局第一週就缺水的聚落）。
+        // 第 08-1 章【TEMP 規則】宜居開局；第 08-11 章改為離水 2 格內（不鄰水的要挑水）。
         foreach (ulong seed in Enumerable.Range(1, 200).Select(i => (ulong)i))
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.ForagingSample);
             Assert.All(world.Sites.Settlements, s =>
-                Assert.True(DemoMigrationRoutes.HasWaterAccess(world.Map, new DemoCellRef(s.Column, s.Row)), $"種子 {seed} 的 {s.Name} 不靠水"));
+                Assert.True(DemoMigrationRoutes.Habitable(world.Map, new DemoCellRef(s.Column, s.Row)), $"種子 {seed} 的 {s.Name} 離水太遠"));
         }
         // 缺水生存債規則本身不變：未取到水的人數 × 每人週食量 × 缺水倍率。
         var food = DemoWeeklyTempConfig.ForagingSample.FoodPerPersonPerWeek;
@@ -42,10 +42,17 @@ public sealed class DemoSurvivalTests
         foreach (var ledger in world.LatestWeek!.Settlements)
         {
             var place = world.Sites.Settlements.Single(s => s.Id == ledger.SettlementId);
-            if (!DemoMigrationRoutes.HasWaterAccess(world.Map, new DemoCellRef(place.Column, place.Row)))
+            var cell = new DemoCellRef(place.Column, place.Row);
+            if (!world.Map.IsNearWater(cell))
                 continue;
-            Assert.Equal(Math.Min(ledger.PopulationOpening, survival.CarriersNeeded(ledger.PopulationOpening)), ledger.WaterCarriers);
-            Assert.Equal(0, ledger.WaterShortage);
+            // 第 08-11 章：鄰水每 10 人一名取水者；離水 1 格要挑水，每 5 人一名。人手夠就不缺水。
+            var per = DemoMigrationRoutes.HasWaterAccess(world.Map, cell) ? survival.PeoplePerWaterCarrier
+                : survival.PeoplePerWaterCarrier / DemoMigrationRoutes.TempCarryWaterDivisor;
+            var needed = ledger.PopulationOpening / per; // 不滿一份負擔量的零頭由大家順手取水
+            var adults = ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening;
+            Assert.Equal(Math.Min(adults, needed), ledger.WaterCarriers);
+            if (adults >= needed)
+                Assert.Equal(0, ledger.WaterShortage);
         }
     }
 

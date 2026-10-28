@@ -174,7 +174,8 @@ public sealed class DemoWorldSites
         // 否則開局第一週就因缺水累積生存債；抽樣次數與順序不變，舊情境的位置完全不變。可取水格不夠時才退回全部陸地。
         if (foragingOnly)
         {
-            var habitable = land.Where(c => DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(c.Column, c.Row))).ToList();
+            // 第 08-11 章：離水 2 格內都可住（不鄰水的要挑水）。
+            var habitable = land.Where(c => DemoMigrationRoutes.Habitable(map, new DemoCellRef(c.Column, c.Row))).ToList();
             if (habitable.Count >= count)
                 land = habitable;
         }

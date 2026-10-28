@@ -139,7 +139,7 @@ public static class DemoKnowledge
     /// 【TEMP】08-7a 實踐加速（文明帝國的靈光一現）：PracticeBoostCondition 在聚落真實發生時（目前世界裡做得到的幾項），
     /// 進度一次＋門檻的 PracticeBoostEffect。
     /// </summary>
-    public sealed record Practice(bool HasFarmland, bool FoundedAVillage, bool HadNaturalDeath, bool HadVisitors);
+    public sealed record Practice(bool HasFarmland, bool FoundedAVillage, bool HadNaturalDeath, bool HadVisitors, bool CarriesWater = false);
 
     public static bool PracticeHappened(DemoTechNode node, Practice p) => node.Id switch
     {
@@ -147,6 +147,7 @@ public static class DemoKnowledge
         "TECH_BASIC_CONSTRUCTION" or "TECH_ROAD_ENGINEERING" => p.FoundedAVillage, // 曾派開拓隊建村
         "TECH_ANCESTOR_RITES" => p.HadNaturalDeath,                             // 為逝者舉行祭祀
         "TECH_BARTER" => p.HadVisitors,                                          // 與其他聚落往來
+        "TECH_WELL_DIGGING" => p.CarriesWater,                                   // 第 08-11 章：不鄰水、要挑水
         _ => false
     };
 
@@ -172,6 +173,24 @@ public static class DemoKnowledge
             .Sum(t => t.Percent);
 
     public static string Name(DemoTechnology technology) => technology.Node.Name;
+
+    /// <summary>第 08-11 章：掘井（10D）。</summary>
+    public const string WellDiggingId = "TECH_WELL_DIGGING";
+
+    /// <summary>
+    /// 第 08-11 章：<paramref name="week"/> 結算時聚落會不會掘井——本聚落在該週以前習得，或它是開拓建立、
+    /// 建立前來源聚落已會（開拓隊帶著做法）。
+    /// </summary>
+    public static bool Wells(DemoKnowledgeState state, IEnumerable<DemoSettlement> settlements, int settlementId, int week)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(settlements);
+        bool Before(int id, int w) => state.Of(id, DemoTechnology.Of(WellDiggingId)) is { Learned: true } r && r.LearnedWeek < w;
+        if (Before(settlementId, week))
+            return true;
+        var site = settlements.FirstOrDefault(s => s.Id == settlementId);
+        return site is { IsFounded: true } && Before(site.FoundedFromSettlementId, site.FoundedWeek);
+    }
 
     public static string EraName(DemoEra era) => era switch
     {
@@ -308,7 +327,8 @@ public static class DemoKnowledge
                 context.HasFarmland,
                 sites.Settlements.Any(s => s.IsFounded && s.FoundedFromSettlementId == settlement.Id),
                 report.Events.Any(e => e.SettlementId == settlement.Id && e.Kind == DemoSettlementEventKind.NaturalDeath),
-                arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0));
+                arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
+                map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
 
             foreach (var node in catalog)

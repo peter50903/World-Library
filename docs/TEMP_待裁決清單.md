@@ -102,6 +102,16 @@
 | 新專家 | 獵人（弓箭）、巫祝（巫祝）、學者（抄寫法） | 08-7b；守衛、市長等要第 3 階以上，等城邦等級 |
 | 實踐加速條件 | 灌溉、輪作＝已有農田；基礎建築、道路工程＝曾派開拓隊建村；祖靈祭祀＝本週有人老死；以物易物＝本週有其他聚落的人遷入 | 只接世界裡真的會發生的事；其他條件等對應系統出現 |
 
+#### D08-11｜試玩回饋一（第 08-11 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 可住範圍 | 離水 2 格內；會掘井（本聚落或建立時的來源聚落）則任何陸地 | 使用者 2026-10-28 裁決：先挑水，再掘井 |
+| 挑水 | 離水 1 格的聚落取水者加倍（每 5 人一名）；離水更遠又沒有井＝取不到水 | 挑水距離遠、人力多 |
+| 取水零頭 | 每滿一份負擔量（10 人；挑水 5 人）才需要一名專職取水者，不滿的零頭大家順手取水 | 遺跡成因：原本無條件進位，2 人的新聚落一半勞力取水、剩 1 人時無人採集而餓死 |
+| 掘井 | 10D 第 1 階，前置基礎建築，研究時間 100；實踐條件＝不鄰水、要挑水 | 內陸聚落學得較快 |
+| 農田荒廢 | 相鄰沒有有人的聚落時每週開發度－2%，降到 0 變回草原；開始荒廢記一筆事件 | 與開墾速度相同，約一年 |
+
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -431,7 +441,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
-| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 11 | D5、D6、D7 |
+| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 15 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
@@ -467,8 +477,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 14 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 17 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田 |
+| `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 18 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

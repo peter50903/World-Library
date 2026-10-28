@@ -138,6 +138,7 @@ public sealed class DemoHexWorld
     private readonly IReadOnlyList<DemoHexCell> _cells;
     private readonly Dictionary<(int Q, int R), DemoHexCell> _byAxial;
     private readonly HashSet<DemoCellRef> _waterAccess;
+    private readonly HashSet<DemoCellRef> _nearWater; // 第 08-11 章：離水 2 格內（可挑水）
 
     // 第 07-1 章 c 節：每個起點的陸路廣度優先樹（地圖不可變，算一次就能重複用；與逐次搜尋結果完全相同）。
     private readonly System.Collections.Concurrent.ConcurrentDictionary<DemoCellRef, IReadOnlyDictionary<DemoCellRef, DemoCellRef?>> _landTrees = new();
@@ -152,7 +153,15 @@ public sealed class DemoHexWorld
         _byAxial = cells.ToDictionary(c => (c.AxialQ, c.AxialR));
         _waterAccess = cells.Where(c => DemoRouteNetwork.Directions.Any(d => _byAxial.TryGetValue((c.AxialQ + d.Dq, c.AxialR + d.Dr), out var n) && n.Terrain == DemoTerrain.Water))
             .Select(c => new DemoCellRef(c.Column, c.Row)).ToHashSet();
+        _nearWater = cells.Where(c => c.Terrain != DemoTerrain.Water
+                && (_waterAccess.Contains(new DemoCellRef(c.Column, c.Row))
+                    || DemoRouteNetwork.Directions.Any(d => _byAxial.TryGetValue((c.AxialQ + d.Dq, c.AxialR + d.Dr), out var n)
+                        && _waterAccess.Contains(new DemoCellRef(n.Column, n.Row)))))
+            .Select(c => new DemoCellRef(c.Column, c.Row)).ToHashSet();
     }
+
+    /// <summary>第 08-11 章：離水 2 格內的陸地（相鄰有水，或相鄰格相鄰有水）——不掘井也能挑水度日。</summary>
+    public bool IsNearWater(DemoCellRef cell) => _nearWater.Contains(cell);
 
     /// <summary>第 07-1 章 c 節：以軸向座標找格（地圖外回傳 null）。</summary>
     public DemoHexCell? AtAxial(int q, int r) => _byAxial.GetValueOrDefault((q, r));
