@@ -130,7 +130,8 @@ public sealed class DemoSourceStockTests
         for (var week = 1; week <= cap + 3; week++)
         {
             var plan = DemoSourceWeekLedger.Plan(new[] { source }, stocks, cap);
-            var (s, opening, regenerated) = Assert.Single(plan);
+            var (s, opening, regenerated, supply) = Assert.Single(plan);
+            Assert.Equal(20, supply);
             Assert.Equal(Math.Min(20L * week, 20L * cap), s.FoodAvailable);
             Assert.Equal(opening + regenerated, s.FoodAvailable);
             stocks[7] = s.FoodAvailable; // 沒有人採

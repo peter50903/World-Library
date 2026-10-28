@@ -89,7 +89,8 @@ public sealed partial class DemoObserverWorld
         var waterKnowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>() ?? DemoKnowledgeState.Initial;
         bool WellsAt(int settlementId, int week) => waterKnowledge.Records is not null && DemoKnowledge.Wells(waterKnowledge, sites.Settlements, settlementId, week);
         foreach (var report in reports)
-            CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt);
+            CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
+                (s, week) => waterKnowledge.Records is null ? 0 : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week));
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -243,7 +244,8 @@ public sealed partial class DemoObserverWorld
     /// 第 07 章 c 節起共享採集情境也會建村與成為遺跡：來源清單依當週開始時的人造佔格重算。
     /// </summary>
     private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly,
-        Dictionary<int, long> stocks, Func<int, IReadOnlyCollection<DemoCellRef>> farmlandBefore, Func<int, int, bool> wellsAt)
+        Dictionary<int, long> stocks, Func<int, IReadOnlyCollection<DemoCellRef>> farmlandBefore, Func<int, int, bool> wellsAt,
+        Func<DemoCatchmentFoodSource, int, long> sourcePercent)
     {
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
@@ -262,17 +264,19 @@ public sealed partial class DemoObserverWorld
         }
         // 第 06 章 c 節：期初存量＝上週期末、再生＝min(每週供應, 上限－期初)，由帳鏈重算後逐項比對。
         // 第 08-6 章 c 節：本週的農田＝更早週次開墾完成的格（由事件重建）。
-        var expected = DemoSourceWeekLedger.Plan(DemoForagingWorld.Sources(map, sites.OccupiedCellsAtWeek(w), farmlandBefore(w)), stocks,
-            DemoForagingWorld.Settings.SourceStockCapWeeks);
+        var expected = DemoSourceWeekLedger.Plan(
+            DemoForagingWorld.WithPercent(DemoForagingWorld.Sources(map, sites.OccupiedCellsAtWeek(w), farmlandBefore(w)),
+                s => sourcePercent(s, w)), // 第 08-12 章：技術加成
+            stocks, DemoForagingWorld.Settings.SourceStockCapWeeks);
         if (report.Sources.Count != expected.Count)
             Reject($"第 {w} 週來源帳筆數 {report.Sources.Count} 與地圖重算 {expected.Count} 不符");
         for (var i = 0; i < expected.Count; i++)
         {
             var source = report.Sources[i];
-            var (truth, opening, regenerated) = expected[i];
+            var (truth, opening, regenerated, supply) = expected[i];
             if (source.SourceId != truth.Id || source.Kind != truth.Kind || source.Column != truth.Column
                 || source.Row != truth.Row || source.FoodAvailable != truth.FoodAvailable
-                || source.StockOpening != opening || source.Regenerated != regenerated)
+                || source.StockOpening != opening || source.Regenerated != regenerated || source.WeeklySupply != supply)
                 Reject($"第 {w} 週來源 #{source.SourceId} 的種類、位置、存量或再生與地圖及上週帳重算不符");
             var origin = map.GetCell(source.Column, source.Row);
             var includeOrigin = DemoCatchmentSourceKinds.IncludesOrigin(source.Kind);
