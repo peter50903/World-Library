@@ -68,14 +68,20 @@ public partial class ObserverRoot
         scroll.AddChild(_outlinerRows);
     }
 
-    /// <summary>聚落依人口由多到少（同人口依 ID）；每次刷新只在內容有變時重建列。</summary>
+    /// <summary>
+    /// 聚落依人口由多到少（同人口依 ID）；第 08-11 章：有人的聚落在前、遺跡另成一段在後。每次刷新只在內容有變時重建列。
+    /// </summary>
     private IReadOnlyList<(int Id, string Name, long Population, FoodStatus Food)> OutlinerEntries()
         => _world.Sites.Settlements
             .Select(s => (s.Id, s.Name, _world.SettlementPopulation(s.Id),
-                _hexMap.FoodStatuses.TryGetValue(s.Id, out var food) ? food : FoodStatus.Unsettled))
-            .OrderByDescending(e => e.Item3)
+                _hexMap.FoodStatuses.TryGetValue(s.Id, out var food) ? food : FoodStatus.Unsettled, s.IsRuin))
+            .OrderBy(e => e.IsRuin)
+            .ThenByDescending(e => e.Item3)
             .ThenBy(e => e.Id)
+            .Select(e => (e.Id, e.Name, e.Item3, e.Item4))
             .ToList();
+
+    private readonly List<Control> _outlinerExtras = new();
 
     private void RefreshOutliner()
     {
@@ -87,8 +93,14 @@ public partial class ObserverRoot
         if (signature == _outlinerSignature)
             return;
         _outlinerSignature = signature;
-        _outlinerTitle.Text = string.Create(CultureInfo.InvariantCulture,
-            $"聚落清單（{entries.Count(e => !IsRuin(e.Id))} 村莊）");
+        var living = entries.Count(e => !IsRuin(e.Id));
+        _outlinerTitle.Text = string.Create(CultureInfo.InvariantCulture, $"有人的聚落（{living}）");
+        foreach (var extra in _outlinerExtras)
+        {
+            _outlinerRows.RemoveChild(extra);
+            extra.QueueFree();
+        }
+        _outlinerExtras.Clear();
 
         foreach (var (_, _, line) in _outlinerButtons)
         {
@@ -98,6 +110,17 @@ public partial class ObserverRoot
         _outlinerButtons.Clear();
         foreach (var entry in entries)
         {
+            var ruin = IsRuin(entry.Id);
+            if (ruin && !_outlinerExtras.Any())
+            {
+                // 第 08-11 章：遺跡另成一段（試玩回饋 4）。
+                _outlinerRows.AddChild(new HSeparator());
+                var heading = new Label { Text = string.Create(CultureInfo.InvariantCulture, $"遺跡（{entries.Count - living}）") };
+                heading.AddThemeFontSizeOverride("font_size", 18);
+                _outlinerRows.AddChild(heading);
+                _outlinerExtras.Add((Control)_outlinerRows.GetChild(_outlinerRows.GetChildCount() - 2));
+                _outlinerExtras.Add(heading);
+            }
             var line = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             line.AddThemeConstantOverride("separation", 6);
             // 糧食狀況色塊（與地圖糧食模式同一組配色）。
@@ -111,7 +134,7 @@ public partial class ObserverRoot
             var row = new Button
             {
                 Flat = true,
-                Text = string.Create(CultureInfo.InvariantCulture,
+                Text = ruin ? entry.Name : string.Create(CultureInfo.InvariantCulture,
                     $"{entry.Name}　人口 {entry.Population}　糧食 {MapFoodStatus.Label(entry.Food)}"),
                 Alignment = HorizontalAlignment.Left,
                 TooltipText = $"聚落 #{entry.Id}：點一下地圖置中並開詳情",
@@ -125,6 +148,8 @@ public partial class ObserverRoot
                 foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
                     row.AddThemeColorOverride(state, ink);
             }
+            if (ruin)
+                line.Modulate = new Color(1, 1, 1, 0.6f);
             var id = entry.Id;
             row.Pressed += () => FocusSettlement(id);
             row.Pressed += PlayClick;
@@ -188,7 +213,7 @@ public partial class ObserverRoot
         var (topId, topRow, _) = _outlinerButtons[0];
         topRow.EmitSignal(BaseButton.SignalName.Pressed);
         var top = _world.Sites.Settlements.First(s => s.Id == topId);
-        if (!_detailPanel.Visible || _detailText.Text != _world.QueryCell(top.Column, top.Row).Text
+        if (!_detailPanel.Visible || _detailShown != _world.PlayerDetail(top.Column, top.Row).Text
             || _hexMap.Highlight != (top.Column, top.Row))
             fail("clicking an outliner row did not focus the map and open Core's cell query.");
         HideDetail();

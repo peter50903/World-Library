@@ -318,6 +318,16 @@ public partial class ObserverRoot : Control
         };
         side.AddChild(_ledger);
 
+        // 第 08-11 章：座標、路線、供應量等數值只給開發者看（詳情多一頁「除錯」）。
+        var debugToggle = new CheckBox { Text = "詳情顯示除錯資訊（座標、路線、糧食供應）", ButtonPressed = _showDebugInfo };
+        debugToggle.Toggled += on =>
+        {
+            _showDebugInfo = on;
+            if (_detailOpen && _detailCell is { } c)
+                ShowDetailAt(c.Column, c.Row);
+        };
+        side.AddChild(debugToggle);
+
         _cellInfo = new Label
         {
             Text = "TEMP 六角格：請點選地圖中的一格或金色聚落查看其資料。",
@@ -1188,7 +1198,7 @@ public partial class ObserverRoot : Control
         _hexMap.FoodReachCells = view.FoodReachCells;
         SelectFoodSettlement(view.SettlementId ?? 0); // #104
         _hexMap.QueueRedraw();
-        ShowDetail(view.Text); // 第 05 章：左側詳情面板顯示同一份 Core 點格查詢文字。
+        ShowDetailAt(cell.Column, cell.Row); // 第 08-11 章：左側詳情改為玩家用分頁（數值資訊只在開發資訊開啟時）。
     }
 
     private static string ResourceName(DemoResourceKind kind) => DemoCellQuery.ResourceName(kind);
@@ -1363,6 +1373,13 @@ public partial class ObserverRoot : Control
     private void Refresh()
     {
         var snapshot = _world.Snapshot();
+        // 第 08-11 章：詳情開著時每週結算後更新一次（不在每幀重建分頁）。
+        if (_detailOpen && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows
+            && _world.LatestWeek?.Week is { } week && week != _detailWeek)
+        {
+            _detailWeek = week;
+            ShowDetailAt(open.Column, open.Row);
+        }
         _status.Text =
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +

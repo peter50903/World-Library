@@ -310,6 +310,9 @@ public sealed partial class DemoObserverWorld
     /// </summary>
     public DemoCellView QueryCell(int column, int row) => DemoCellQuery.Build(this, column, row);
 
+    /// <summary>第 08-11 章：給玩家看的分頁詳情（不含座標、路線、供應量等數值）。</summary>
+    public DemoPlayerDetail PlayerDetail(int column, int row) => DemoPlayerDetail.Of(this, column, row);
+
     /// <summary>V0-06A: migrant batches currently travelling between settlements (detached copy).</summary>
     public IReadOnlyList<DemoMigrationBatch> MigrationsInTransit()
         => Array.AsReadOnly(_migrations.ToArray());

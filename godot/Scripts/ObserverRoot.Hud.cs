@@ -28,7 +28,12 @@ public partial class ObserverRoot
     private Label _topDate = null!;
     private Button _consoleToggle = null!;
     private PanelContainer _detailPanel = null!;
-    private Label _detailText = null!;
+    private Label _detailTitle = null!;
+    private TabContainer _detailTabs = null!;
+    private string _detailShown = string.Empty; // 第 08-11 章：目前詳情的全文（冒煙測試比對用）
+    private bool _showDebugInfo; // 第 08-11 章：開發資訊頁開啟時才顯示座標、路線、供應量等數值
+    private (int Column, int Row)? _detailCell;
+    private int _detailWeek = -1;
     private PanelContainer _timePanel = null!;
     private Button _timePlay = null!;
     private Button _timeStep = null!;
@@ -248,24 +253,47 @@ public partial class ObserverRoot
         _detailPanel.AddChild(column);
         var header = new HBoxContainer();
         column.AddChild(header);
-        var title = new Label { Text = "詳情", SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        title.AddThemeFontSizeOverride("font_size", 18);
-        header.AddChild(title);
+        _detailTitle = new Label { Text = "詳情", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
+        _detailTitle.AddThemeFontSizeOverride("font_size", 18);
+        header.AddChild(_detailTitle);
         var close = new Button { Text = "✕", TooltipText = "關閉（Esc）" };
         close.Pressed += HideDetail;
         header.AddChild(close);
-        var scroll = new ScrollContainer
+        // 第 08-11 章：分頁籤（現況｜代表人物｜技術｜研究｜歷史；開發資訊開啟時多一頁「除錯」）。
+        _detailTabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        column.AddChild(_detailTabs);
+    }
+
+    private void ShowDetailAt(int column, int row)
+    {
+        _detailCell = (column, row);
+        var detail = _world.PlayerDetail(column, row);
+        var keep = _detailTabs.CurrentTab;
+        foreach (var child in _detailTabs.GetChildren())
         {
-            SizeFlagsVertical = SizeFlags.ExpandFill,
-            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
-        };
-        column.AddChild(scroll);
-        _detailText = new Label
+            _detailTabs.RemoveChild(child);
+            child.QueueFree();
+        }
+        var tabs = detail.Tabs.ToList();
+        if (_showDebugInfo)
+            tabs.Add(new DemoDetailTab("除錯", _world.QueryCell(column, row).Lines));
+        foreach (var tab in tabs)
         {
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        scroll.AddChild(_detailText);
+            var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            scroll.AddChild(new Label
+            {
+                Text = string.Join("\n", tab.Lines),
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill
+            });
+            _detailTabs.AddChild(scroll);
+        }
+        if (keep >= 0 && keep < tabs.Count)
+            _detailTabs.CurrentTab = keep;
+        _detailTitle.Text = detail.Title;
+        _detailShown = detail.Text;
+        _detailOpen = true;
+        ApplyHudLayout();
     }
 
     private void BuildTimeControls()
@@ -320,12 +348,6 @@ public partial class ObserverRoot
         RefreshHud();
     }
 
-    private void ShowDetail(string text)
-    {
-        _detailText.Text = text;
-        _detailOpen = true;
-        ApplyHudLayout();
-    }
 
     private void HideDetail()
     {
@@ -460,7 +482,7 @@ public partial class ObserverRoot
             Pressed = true,
             Position = _hexMap.CellCenter(_world.Map.GetCell(settlement.Column, settlement.Row))
         });
-        if (!_detailPanel.Visible || _detailText.Text != _world.QueryCell(settlement.Column, settlement.Row).Text)
+        if (!_detailPanel.Visible || _detailShown != _world.PlayerDetail(settlement.Column, settlement.Row).Text)
             Fail("detail panel did not open with Core's cell query text.");
         PressKey(Godot.Key.Escape);
         if (_detailPanel.Visible)
