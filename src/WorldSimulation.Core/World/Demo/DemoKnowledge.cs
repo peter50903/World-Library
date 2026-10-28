@@ -12,8 +12,11 @@ public enum DemoEra
     Pioneer = 1
 }
 
-/// <summary>某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。</summary>
-public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Technology, long Progress, int LearnedWeek)
+/// <summary>
+/// 某聚落對某技術的研究進度；<see cref="LearnedWeek"/>＞0＝已習得（第幾週）。
+/// 第 08-9 章 A2：<see cref="Boosted"/>＝已得到實踐加速（每聚落每技術一次）。
+/// </summary>
+public sealed record DemoKnowledgeRecord(int SettlementId, DemoTechnology Technology, long Progress, int LearnedWeek, bool Boosted = false)
 {
     public bool Learned => LearnedWeek > 0;
 }
@@ -62,7 +65,7 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
     public override int GetHashCode() => HashCode.Combine(Era, EraWeek, Records.Count);
 
     public string Fingerprint()
-        => $"era={Era}@{EraWeek};" + string.Concat(Records.Select(r => $"know{r.SettlementId}/{r.Technology}={r.Progress}@{r.LearnedWeek};"));
+        => $"era={Era}@{EraWeek};" + string.Concat(Records.Select(r => $"know{r.SettlementId}/{r.Technology}={r.Progress}@{r.LearnedWeek}{(r.Boosted ? "+" : "")};"));
 }
 
 /// <summary>
@@ -106,6 +109,46 @@ public static class DemoKnowledge
     /// </summary>
     public static readonly ImmutableArray<(string TechId, long Percent)> TempToolLadder = ImmutableArray.Create(
         ("TECH_IMPROVED_STONE_TOOLS", 10L), ("TECH_BASIC_FORGING", 15L), ("TECH_HEAT_TREATMENT", 10L));
+
+    /// <summary>【TEMP】08-7a：每位相關專家（代表人物）每週加的研究進度。</summary>
+    public const long TempExpertResearch = 5;
+
+    /// <summary>【TEMP】08-7a：每位學者每週加的研究進度（所有領域）。</summary>
+    public const long TempScholarResearch = 10;
+
+    /// <summary>
+    /// 【TEMP】08-7a 專家加速：哪一種專家加速哪些領域（十字軍之王文化領袖的學識加速）。村長加速社會制度。
+    /// </summary>
+    public static IReadOnlyList<string> ExpertDomains(DemoRepresentativeRole role) => role switch
+    {
+        DemoRepresentativeRole.Leader => new[] { "SOCIETY" },
+        DemoRepresentativeRole.Farmer => new[] { "10B", "10G" },
+        DemoRepresentativeRole.Carpenter => new[] { "10D", "10E", "10N" },
+        DemoRepresentativeRole.Smith => new[] { "10C", "10M" },
+        DemoRepresentativeRole.Hunter => new[] { "HUNT", "10F" },
+        DemoRepresentativeRole.Shaman => new[] { "FAITH", "10H" },
+        _ => Array.Empty<string>()
+    };
+
+    /// <summary>某聚落本週對某技術的專家與學者加速（每週研究點）。</summary>
+    public static long ExpertResearch(DemoTechNode node, IEnumerable<DemoRepresentativeRole> roles)
+        => roles.Sum(role => role == DemoRepresentativeRole.Scholar ? TempScholarResearch
+            : ExpertDomains(role).Contains(node.Domain) ? TempExpertResearch : 0);
+
+    /// <summary>
+    /// 【TEMP】08-7a 實踐加速（文明帝國的靈光一現）：PracticeBoostCondition 在聚落真實發生時（目前世界裡做得到的幾項），
+    /// 進度一次＋門檻的 PracticeBoostEffect。
+    /// </summary>
+    public sealed record Practice(bool HasFarmland, bool FoundedAVillage, bool HadNaturalDeath, bool HadVisitors);
+
+    public static bool PracticeHappened(DemoTechNode node, Practice p) => node.Id switch
+    {
+        "TECH_IRRIGATION" or "TECH_CROP_ROTATION" => p.HasFarmland,             // 已有自己開墾的農田
+        "TECH_BASIC_CONSTRUCTION" or "TECH_ROAD_ENGINEERING" => p.FoundedAVillage, // 曾派開拓隊建村
+        "TECH_ANCESTOR_RITES" => p.HadNaturalDeath,                             // 為逝者舉行祭祀
+        "TECH_BARTER" => p.HadVisitors,                                          // 與其他聚落往來
+        _ => false
+    };
 
     /// <summary>兩個聚落的六角格距離（軸向座標）。</summary>
     public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
@@ -260,6 +303,12 @@ public static class DemoKnowledge
                 map is not null && Around(map, settlement).Any(c => c.Sea),
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0);
+            var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
+            var practice = new Practice(
+                context.HasFarmland,
+                sites.Settlements.Any(s => s.IsFounded && s.FoundedFromSettlementId == settlement.Id),
+                report.Events.Any(e => e.SettlementId == settlement.Id && e.Kind == DemoSettlementEventKind.NaturalDeath),
+                arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
 
             foreach (var node in catalog)
@@ -283,10 +332,14 @@ public static class DemoKnowledge
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
                 var known = neighbours.Count(o => state.Knows(o.Id, technology));
                 var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000);
-                var gain = checked(practitioners + diffusion + carried * threshold * TempCarryPercent / 100);
+                // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
+                var experts = ExpertResearch(node, roles);
+                var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
+                var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
+                var gain = checked(practitioners + experts + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
-                records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0 };
+                records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boostNow };
                 if (!learned)
                     continue;
                 var cause = carried > 0
@@ -294,6 +347,10 @@ public static class DemoKnowledge
                     : known > 0
                     ? $"鄰近 {known} 個已習得{node.Name}的聚落傳來做法，加上 {practitioners} 人的經驗"
                     : $"{practitioners} 人長年累積的經驗";
+                if (experts > 0)
+                    cause += $"，{string.Join("、", roles.Where(r => ExpertResearch(node, new[] { r }) > 0).Select(DemoRepresentative.RoleName).Distinct())}帶領研究";
+                if (current.Boosted || boostNow)
+                    cause += $"；曾{node.PracticeCondition}，學得更快";
                 var learnedEvent = new DemoSettlementEvent(report.Week, report.WorldTime, settlement.Id, settlement.Name,
                     DemoSettlementEventKind.KnowledgeLearned, node.Index, $"學會{node.Name}：{cause}【TEMP】",
                     EventId: nextEventId++);
