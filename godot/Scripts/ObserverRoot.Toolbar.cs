@@ -69,8 +69,14 @@ public partial class ObserverRoot
         _mapKnowledgeButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Knowledge);
         row.AddChild(_mapKnowledgeButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
-        _gridToggle = new Button { Text = "格線", ToggleMode = true, TooltipText = "顯示／隱藏六角格線（預設隱藏，地形連成一片）" };
-        _gridToggle.Toggled += on => _hexMap.ShowGrid = on;
+        _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
+        _gridToggle.ToggleMode = true;
+        _gridToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 關閉時變暗（扁平圖示按鈕沒有按下底色）
+        _gridToggle.Toggled += on =>
+        {
+            _hexMap.ShowGrid = on;
+            _gridToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
+        };
         row.AddChild(_gridToggle);
 
         _foodLegend = new RichTextLabel
