@@ -1385,6 +1385,7 @@ public partial class ObserverRoot : Control
         // 第 08-10a 章 V2：家系地圖與聚落圖示大小（人口、是否為村莊）。
         _hexMap.Lineage = DemoLineageMap.Compute(_world.Map, _world.Sites);
         _hexMap.LineageRoots = DemoLineageMap.Roots(_world.Sites);
+        _hexMap.KnowledgeCounts = _world.Sites.Settlements.ToDictionary(s => s.Id, s => _world.Knowledge.KnownBy(s.Id).Count); // 第 08-10a 章 V4
         _hexMap.SettlementScale = _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier == DemoSettlementTier.Village));
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。

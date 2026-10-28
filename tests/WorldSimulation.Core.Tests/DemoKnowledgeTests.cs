@@ -75,8 +75,12 @@ public sealed class DemoKnowledgeTests
             world.AdvanceOneDay();
         var source = Assert.Single(world.LatestWeek!.Sources, x => x.Column == cell.Column && x.Row == cell.Row);
         Assert.Equal(DemoCatchmentSourceKind.Farmland, source.Kind);
-        Assert.True(world.LatestWeek!.Settlements.Sum(l => l.FoodFromFarming) > 0);
         Assert.All(world.LatestWeek!.Settlements, l => Assert.True(l.NoMagicFood));
+        // 第 08-7c 章：開拓時代提早、人口較少時，自然來源夠吃的週不一定動用農田；兩年內至少有一週採收到農糧。
+        var firstWeek = world.LatestWeek!.Week;
+        for (var day = 0; day < 2 * 365 && !world.WeekReports().Any(w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0); day++)
+            world.AdvanceOneDay();
+        Assert.Contains(world.WeekReports(), w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0);
         Assert.Empty(world.BuildCausalIndex().Problems);
 
         // 存讀檔後土地相同，續跑一致；竄改農田（沒有開墾事件）會被拒讀。
@@ -193,5 +197,31 @@ public sealed class DemoKnowledgeTests
             if (day % 7 == 6)
                 Assert.All(world.Sites.Settlements, s => Assert.True(world.SettlementHungerDebt(s.Id) < limit));
         }
+    }
+
+    /// <summary>第 08-10a 章 V4：希望時代是序章——預設種子 25 年內進入開拓時代（V0 量到原門檻要 36～53 年）。</summary>
+    [Fact]
+    public void HopeEraIsAPrologue_EndingWithinTwentyFiveYears()
+    {
+        foreach (var seed in new ulong[] { 1, 2, 3 })
+        {
+            var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
+            for (var day = 0; day < 25 * TestCalendar.DaysPerYear && world.Era == DemoEra.Hope; day++)
+                world.AdvanceOneDay();
+            Assert.True(world.Era == DemoEra.Pioneer, $"種子 {seed} 25 年內沒有進入開拓時代");
+        }
+        Assert.Equal(80 * DemoKnowledge.TempResearchScale, DemoKnowledge.ThresholdOf(DemoTechnology.Farming));
+    }
+
+    /// <summary>第 08-10a 章 V4：鄰近傳播的距離是六角格距離。</summary>
+    [Fact]
+    public void DistanceIsTheHexDistanceBetweenSettlementCells()
+    {
+        var map = DemoHexWorld.Generate(1);
+        var a = new DemoSettlement(1, "甲", 2, 2);
+        Assert.Equal(0, DemoKnowledge.Distance(map, a, a));
+        Assert.Equal(1, DemoKnowledge.Distance(map, a, new DemoSettlement(2, "乙", 3, 2)));
+        Assert.Equal(3, DemoKnowledge.Distance(map, a, new DemoSettlement(3, "丙", 5, 2)));
+        Assert.Equal(2, DemoKnowledge.Distance(map, a, new DemoSettlement(4, "丁", 2, 4)));
     }
 }

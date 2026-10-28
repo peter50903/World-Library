@@ -17,6 +17,8 @@ public partial class ObserverRoot
     private Button _mapFoodButton = null!;
     private Button _mapLineageButton = null!; // 第 08-10a 章 V2
     private Button _gridToggle = null!; // 第 06-2 章
+    private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
+    private string _foodLegendText = string.Empty;
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -61,6 +63,11 @@ public partial class ObserverRoot
             "地圖模式：家系（聚落與採集範圍依源自哪個開局聚落著色；同一家系連成一片，家系之間畫邊界）");
         _mapLineageButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Lineage);
         row.AddChild(_mapLineageButton);
+        // 第 08-10a 章 V4：知識模式（圖示素材 UI_ICON_MAPMODE_KNOWLEDGE 未到前顯示文字）。
+        _mapKnowledgeButton = ToolButton(ArtAssets.UiMapKnowledge, "知識",
+            "地圖模式：知識（聚落與採集範圍依已習得的技術數著色；看得出技術從哪裡傳開）");
+        _mapKnowledgeButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Knowledge);
+        row.AddChild(_mapKnowledgeButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = new Button { Text = "格線", ToggleMode = true, TooltipText = "顯示／隱藏六角格線（預設隱藏，地形連成一片）" };
         _gridToggle.Toggled += on => _hexMap.ShowGrid = on;
@@ -76,9 +83,17 @@ public partial class ObserverRoot
         };
         var legend = string.Join("  ", new[] { FoodStatus.Ample, FoodStatus.Tight, FoodStatus.Starving, FoodStatus.Unsettled }
             .Select(s => $"[color=#{DemoHexMap.FoodStatusColor(s).ToHtml(false)}]■[/color] {MapFoodStatus.Label(s)}"));
-        _foodLegend.Text = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
+        _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
+        _foodLegend.Text = _foodLegendText;
         _hud.AddChild(_foodLegend);
         SetMapMode(DemoHexMap.Mode.Terrain);
+    }
+
+    private static string KnowledgeLegend()
+    {
+        var legend = string.Join("  ", Enumerable.Range(0, 4)
+            .Select(n => $"[color=#{DemoHexMap.KnowledgeColor(n).ToHtml(false)}]■[/color] {(n == 0 ? "尚無技術" : n == 3 ? "3 項以上" : $"{n} 項")}"));
+        return $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
     }
 
     private void SetMapMode(DemoHexMap.Mode mode)
@@ -89,6 +104,11 @@ public partial class ObserverRoot
         _mapFoodButton.SelfModulate = mode == DemoHexMap.Mode.Food ? Colors.White : new Color(1, 1, 1, 0.5f);
         if (_mapLineageButton is not null)
             _mapLineageButton.SelfModulate = mode == DemoHexMap.Mode.Lineage ? Colors.White : new Color(1, 1, 1, 0.5f);
+        if (_mapKnowledgeButton is not null)
+            _mapKnowledgeButton.SelfModulate = mode == DemoHexMap.Mode.Knowledge ? Colors.White : new Color(1, 1, 1, 0.5f);
+        // 第 08-10a 章 V4：圖例跟著模式換（糧食狀況／知識）。
+        if (_foodLegend is not null)
+            _foodLegend.Text = mode == DemoHexMap.Mode.Knowledge ? KnowledgeLegend() : _foodLegendText;
         if (_foodLegend is not null)
             ApplyHudLayout();
     }
@@ -146,7 +166,7 @@ public partial class ObserverRoot
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（含聚落小史）。",
                 "右側世界紀錄：事件依時間列出（新的在上），紅色＝重大事件；點一筆才顯示詳情、原因與後果，並定位地圖。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -239,7 +259,7 @@ public partial class ObserverRoot
             return;
         Place(_toolbarPanel, frame.Toolbar, true);
         // 圖例放在功能列正上方（糧食模式才顯示）。
-        var showLegend = _hexMap.MapMode == DemoHexMap.Mode.Food;
+        var showLegend = _hexMap.MapMode is DemoHexMap.Mode.Food or DemoHexMap.Mode.Knowledge;
         Place(_foodLegend, new HudRect(frame.Toolbar.X, Math.Max(0, frame.Toolbar.Y - 32), Math.Max(frame.Toolbar.Width, 1), 28), showLegend);
         SizeModal();
     }
@@ -287,6 +307,12 @@ public partial class ObserverRoot
             || !_hexMap.LineageRoots.SequenceEqual(DemoLineageMap.Roots(_world.Sites))
             || _world.Sites.Settlements.Any(s => !s.IsRuin && !_hexMap.Lineage.ContainsKey(new DemoCellRef(s.Column, s.Row))))
             fail("lineage map mode does not show Core's lineage map.");
+        // 第 08-10a 章 V4：知識模式＝Core 各聚落已習得的技術數，圖例換成知識。
+        _mapKnowledgeButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_hexMap.MapMode != DemoHexMap.Mode.Knowledge
+            || _world.Sites.Settlements.Any(s => _hexMap.KnowledgeCounts.GetValueOrDefault(s.Id) != _world.Knowledge.KnownBy(s.Id).Count)
+            || !_foodLegend.Text.Contains("尚無技術", StringComparison.Ordinal))
+            fail("knowledge map mode does not show Core's knowledge.");
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
@@ -301,6 +327,6 @@ public partial class ObserverRoot
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
             fail("toolbar / map mode art was not applied.");
-        return $"Toolbar=1 MapMode=3 Modal={modals}";
+        return $"Toolbar=1 MapMode=4 Modal={modals}";
     }
 }

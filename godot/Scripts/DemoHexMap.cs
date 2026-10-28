@@ -38,7 +38,8 @@ public partial class DemoHexMap : Control
     {
         Terrain,
         Food,
-        Lineage // 第 08-10a 章 V2：家系
+        Lineage, // 第 08-10a 章 V2：家系
+        Knowledge // 第 08-10a 章 V4：知識（已習得幾項技術）
     }
 
     private Mode _mode = Mode.Terrain;
@@ -58,6 +59,18 @@ public partial class DemoHexMap : Control
 
     /// <summary>第 08-10a 章 V2：家系的固定順序（開局聚落編號），決定配色。</summary>
     public IReadOnlyList<int> LineageRoots { get; set; } = Array.Empty<int>();
+
+    /// <summary>第 08-10a 章 V4：聚落已習得的技術數（知識模式著色）。</summary>
+    public IReadOnlyDictionary<int, int> KnowledgeCounts { get; set; } = new Dictionary<int, int>();
+
+    // TEMP 顯示配色：知識（未習得灰褐，越多越亮：1 項淡金、2 項橙、3 項以上赭紅）。
+    public static Color KnowledgeColor(int count) => count switch
+    {
+        <= 0 => new Color(0.45f, 0.42f, 0.38f),
+        1 => new Color(0.92f, 0.82f, 0.45f),
+        2 => new Color(0.90f, 0.58f, 0.22f),
+        _ => new Color(0.72f, 0.28f, 0.16f)
+    };
 
     /// <summary>第 08-10a 章 V2：聚落人口與是否為村莊（決定圖示大小）。</summary>
     public IReadOnlyDictionary<int, (long Population, bool Village)> SettlementScale { get; set; } = new Dictionary<int, (long, bool)>();
@@ -173,7 +186,7 @@ public partial class DemoHexMap : Control
                     DrawStones(center, radius);
                 if (_showGrid)
                     DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
-                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed && _mode != Mode.Lineage)
+                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge))
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
@@ -248,7 +261,11 @@ public partial class DemoHexMap : Control
 
         // 第 08-10a 章 V2：家系模式——地形壓暗，聚落與採集範圍塗家系色，家系之間畫合併後的邊界（參考 WorldBox／CK3 分布圖層）。
         if (_mode == Mode.Lineage && Sites is not null)
-            DrawLineage(start, radius);
+            DrawTerritory(start, radius, owner => LineageColor(owner.LineageRootId), owner => owner.LineageRootId);
+        // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
+        if (_mode == Mode.Knowledge && Sites is not null)
+            DrawTerritory(start, radius, owner => KnowledgeColor(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)),
+                owner => KnowledgeCounts.GetValueOrDefault(owner.SettlementId));
 
         // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
 
@@ -286,7 +303,11 @@ public partial class DemoHexMap : Control
         }
     }
 
-    private void DrawLineage(Vector2 start, float radius)
+    /// <summary>
+    /// 第 08-10a 章：領域著色——地形壓暗，聚落與採集範圍（Core <see cref="DemoLineageMap"/>）依 <paramref name="color"/> 上色；
+    /// 相鄰格 <paramref name="group"/> 不同（或沒有歸屬、在地圖外）時才畫邊界，同組連成一片。
+    /// </summary>
+    private void DrawTerritory(Vector2 start, float radius, Func<DemoLineageCell, Color> color, Func<DemoLineageCell, int> group)
     {
         foreach (var cell in World!.Cells)
         {
@@ -297,19 +318,19 @@ public partial class DemoHexMap : Control
                 DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
                 continue;
             }
-            var color = LineageColor(owner.LineageRootId);
-            DrawColoredPolygon(hex, new Color(color, 0.55f));
+            var fill = color(owner);
+            DrawColoredPolygon(hex, new Color(fill, 0.55f));
             // 邊界：相鄰格不同家系（或沒有歸屬、在地圖外）時才畫這一條邊，同家系之間不畫線，看起來是一整片。
             foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
             {
                 var neighbour = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
                 var same = neighbour is not null && Lineage.TryGetValue(new DemoCellRef(neighbour.Column, neighbour.Row), out var other)
-                    && other.LineageRootId == owner.LineageRootId;
+                    && group(other) == group(owner);
                 if (same)
                     continue;
                 var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                DrawLine(hex[edge], hex[(edge + 1) % 6], color.Darkened(0.35f), 3f);
+                DrawLine(hex[edge], hex[(edge + 1) % 6], fill.Darkened(0.35f), 3f);
             }
         }
         foreach (var site in Sites!.Settlements)
