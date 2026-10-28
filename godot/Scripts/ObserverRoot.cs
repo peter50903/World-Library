@@ -1404,7 +1404,7 @@ public partial class ObserverRoot : Control
         _hexMap.LineageRoots = DemoLineageMap.Roots(_world.Sites);
         _hexMap.KnowledgeCounts = _world.Sites.Settlements.ToDictionary(s => s.Id, s => _world.Knowledge.KnownBy(s.Id).Count); // 第 08-10a 章 V4
         _hexMap.SettlementScale = _world.Sites.Settlements.ToDictionary(s => s.Id,
-            s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier == DemoSettlementTier.Village));
+            s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier)); // 第 08-11 章：五級
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。

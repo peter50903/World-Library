@@ -49,7 +49,7 @@ public sealed class DemoTechCatalogTests
     [Fact]
     public void GatesFollowTierRegionAndPractitioners()
     {
-        static DemoKnowledge.Context Ctx(DemoSettlementTier tier = DemoSettlementTier.Settlement, bool forest = false, bool grass = false,
+        static DemoKnowledge.Context Ctx(DemoSettlementTier tier = DemoSettlementTier.Camp, bool forest = false, bool grass = false,
             bool water = false, bool sea = false, bool farmland = false, bool neighbour = false, bool leader = false)
             => new(tier, 20, 4, leader, 0, forest, grass, water, sea, farmland, neighbour);
         static bool None(string _) => false;
@@ -57,11 +57,11 @@ public sealed class DemoTechCatalogTests
             => DemoKnowledge.Practitioners(DemoTechCatalog.Get(id), c, knows ?? None);
 
         // 等級：第 1 階任何聚落、第 2 階村莊、第 3 階以上暫不可研究。
-        Assert.True(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_CROP_CULTIVATION"), DemoSettlementTier.Settlement));
-        Assert.False(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_IRRIGATION"), DemoSettlementTier.Settlement));
+        Assert.True(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_CROP_CULTIVATION"), DemoSettlementTier.Camp));
+        Assert.False(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_IRRIGATION"), DemoSettlementTier.Camp));
         Assert.True(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_IRRIGATION"), DemoSettlementTier.Village));
         Assert.False(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_SOIL_MANAGEMENT"), DemoSettlementTier.Village));
-        Assert.False(DemoKnowledge.FacilityAllows(DemoTechCatalog.Get("TECH_SOIL_MANAGEMENT")));
+        Assert.True(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_SOIL_MANAGEMENT"), DemoSettlementTier.Town));
 
         // 地區：木工要森林、造船要森林加水、紡織要草原、鹽漬要鄰海、磨粉要農田；礦脈、牧群、魔法尚無＝0。
         Assert.Equal(0, P("TECH_BASIC_CARPENTRY", Ctx()));
@@ -99,7 +99,7 @@ public sealed class DemoTechCatalogTests
         Assert.True(learned.Select(r => r.Technology).Distinct().Count() >= 5, $"40 年只學會 {learned.Select(r => r.Technology).Distinct().Count()} 種技術");
         Assert.All(learned, r =>
         {
-            Assert.InRange(r.Technology.Node.Tier, 1, 2);
+            Assert.InRange(r.Technology.Node.Tier, 1, 3); // 第 08-11 章：城鎮可研究第 3 階
             Assert.DoesNotContain(r.Technology.Node.Domain, new[] { "10C", "10I", "10K", "10M" });
             Assert.All(r.Technology.Node.Parents, p => Assert.True(world.Knowledge.Knows(r.SettlementId, DemoTechnology.Of(p))));
         });

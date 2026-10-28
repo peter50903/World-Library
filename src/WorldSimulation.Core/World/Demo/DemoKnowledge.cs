@@ -200,17 +200,21 @@ public static class DemoKnowledge
     };
 
     /// <summary>
-    /// 【TEMP】08-7a 等級閘門：第 1 階任何聚落；第 2 階村莊；第 3 階城邦、第 4 階城市、第 5 階首都（這些等級尚未出現，暫不可研究）。
+    /// 【TEMP】08-7a 等級閘門（第 08-11 章五級）：第 1 階任何聚落；第 2 階村莊；第 3 階城鎮；第 4 階城市；第 5 階首都。
     /// </summary>
     public static bool TierAllows(DemoTechNode node, DemoSettlementTier tier) => node.Tier switch
     {
         <= 1 => true,
         2 => tier >= DemoSettlementTier.Village,
-        _ => false
+        3 => tier >= DemoSettlementTier.Town,
+        4 => tier >= DemoSettlementTier.City,
+        _ => tier >= DemoSettlementTier.Capital
     };
 
-    /// <summary>08-7a 場所閘門：第 3 階以上且列了應用場所時，要有該建築（建築系統尚未出現＝不成立）。</summary>
-    public static bool FacilityAllows(DemoTechNode node) => node.Tier <= 2 || node.Facilities.IsEmpty;
+    /// <summary>
+    /// 08-7a 場所閘門：列了應用場所時要有該建築。建築系統出現前（第 08-11 章）：場所以等級設施代替，等級閘門成立即視為有。
+    /// </summary>
+    public static bool FacilityAllows(DemoTechNode node) => true;
 
     /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。</summary>
     public sealed record Context(
@@ -224,7 +228,8 @@ public static class DemoKnowledge
         bool NearWater,
         bool NearSea,
         bool HasFarmland,
-        bool HasNeighbour);
+        bool HasNeighbour,
+        long Shamans = 0);
 
     /// <summary>
     /// 【TEMP】08-7b 第 2、3 節：每項技術的從業者人數（地理條件不成立＝0，不累積）。
@@ -274,6 +279,7 @@ public static class DemoKnowledge
             {
                 "TECH_ANCESTOR_RITES" or "TECH_SHAMANISM" => c.Elders,
                 "TECH_ORAL_TRADITION" or "TECH_FESTIVAL_CALENDAR" => c.Adults,
+                "TECH_ORGANIZED_RELIGION" => c.Shamans,                         // 第 08-11 章：城鎮的神殿；從業者＝巫祝
                 _ => 0
             },
             _ => 0
@@ -311,7 +317,7 @@ public static class DemoKnowledge
             var stats = population.StatsOf(settlement.Id, 0, day, rules);
             var near = map is null ? new HashSet<DemoTerrain>() : Around(map, settlement).Select(c => c.Terrain).ToHashSet();
             var context = new Context(
-                tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Settlement,
+                tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Camp,
                 population.AdultsIn(settlement.Id, rules),
                 stats.Elders,
                 population.Representatives.Any(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Leader),
@@ -321,7 +327,8 @@ public static class DemoKnowledge
                 near.Contains(DemoTerrain.Water),
                 map is not null && Around(map, settlement).Any(c => c.Sea),
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
-                neighbours.Count > 0);
+                neighbours.Count > 0,
+                population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman));
             var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,

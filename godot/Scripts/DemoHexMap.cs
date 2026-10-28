@@ -78,7 +78,7 @@ public partial class DemoHexMap : Control
     };
 
     /// <summary>第 08-10a 章 V2：聚落人口與是否為村莊（決定圖示大小）。</summary>
-    public IReadOnlyDictionary<int, (long Population, bool Village)> SettlementScale { get; set; } = new Dictionary<int, (long, bool)>();
+    public IReadOnlyDictionary<int, (long Population, DemoSettlementTier Tier)> SettlementScale { get; set; } = new Dictionary<int, (long, DemoSettlementTier)>();
 
     // TEMP 顯示配色：家系（低飽和、羊皮紙地圖風格，12 色循環）。
     private static readonly Color[] TempLineagePalette =
@@ -97,12 +97,18 @@ public partial class DemoHexMap : Control
         return TempLineagePalette[index % TempLineagePalette.Length];
     }
 
-    /// <summary>第 08-10a 章 V2【TEMP】聚落圖示大小：村莊較大、未滿 10 人的小聚落較小。</summary>
+    /// <summary>第 08-10a 章 V2、第 08-11 章【TEMP】聚落圖示大小：營地依人口 1.15～1.4，村莊起每升一級大一些（TEMP）。</summary>
     private float IconSize(DemoSettlement settlement, float radius)
     {
         if (settlement.IsRuin || !SettlementScale.TryGetValue(settlement.Id, out var scale))
             return radius * 1.4f;
-        return radius * (scale.Village ? 1.75f : scale.Population < 10 ? 1.15f : 1.4f);
+        return radius * (scale.Tier switch
+        {
+            DemoSettlementTier.Camp => scale.Population < 10 ? 1.15f : 1.4f,
+            DemoSettlementTier.Village => 1.65f,
+            DemoSettlementTier.Town => 1.85f,
+            _ => 2.0f
+        });
     }
 
     /// <summary>聚落 ID → 糧食狀況（ObserverRoot 每次刷新從 Core 週帳算好注入）。</summary>
@@ -430,9 +436,20 @@ public partial class DemoHexMap : Control
     }
 
     /// <summary>在中心畫一個正方形圖示；素材不存在回傳 false（呼叫端改畫圓點）。</summary>
-    /// <summary>第 07 章 c 節：遺跡／新聚落／村莊圖示。</summary>
-    private static string SettlementIcon(DemoSettlement settlement)
-        => settlement.IsRuin ? ArtAssets.IconRuin : settlement.IsFounded ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage;
+    /// <summary>
+    /// 第 07 章 c 節：遺跡圖示；第 08-11 章：依居住地等級換圖（營地、村莊、城鎮、城市、首都）。
+    /// 該等級的圖還沒交付時退回舊圖（營地＝新聚落圖、村莊以上＝村莊圖）。
+    /// </summary>
+    private string SettlementIcon(DemoSettlement settlement)
+    {
+        if (settlement.IsRuin)
+            return ArtAssets.IconRuin;
+        var tier = SettlementScale.TryGetValue(settlement.Id, out var scale) ? scale.Tier : DemoSettlementTier.Camp;
+        var path = ArtAssets.SettlementTierIcon(tier);
+        if (ArtAssets.Texture(path) is not null)
+            return path;
+        return tier == DemoSettlementTier.Camp ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage;
+    }
 
     private bool DrawMarker(string path, Vector2 center, float size)
     {

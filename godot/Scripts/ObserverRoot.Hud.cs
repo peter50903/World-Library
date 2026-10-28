@@ -396,7 +396,7 @@ public partial class ObserverRoot
         _topWorld.Text = $"【TEMP 示範】{_world.TempScenarioDisplayName}";
         var food = _world.Sites.Settlements.Sum(s => _world.SettlementFood(s.Id));
         _topStats.Text = string.Create(CultureInfo.InvariantCulture,
-            $"人口 {_world.WorldPopulation}｜村莊 {_world.Sites.Settlements.Count(x => !x.IsRuin)}｜遷徙途中 {_world.PopulationInTransit}");
+            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count(x => !x.IsRuin)}｜遷徙途中 {_world.PopulationInTransit}");
         _topFood.Text = string.Create(CultureInfo.InvariantCulture, $"糧食 {food}");
         _topBirths.Text = string.Create(CultureInfo.InvariantCulture, $"出生 {births}");
         _topDeaths.Text = string.Create(CultureInfo.InvariantCulture, $"死亡 {deaths}");

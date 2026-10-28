@@ -30,7 +30,8 @@ public static class DemoYearChanges
             bool Alive(DemoSettlement s)
                 => (!s.IsFounded || YearOf(s.FoundedWeek) <= year) && (!s.IsRuin || YearOf(s.RuinedWeek) > year);
             var alive = settlements.Where(Alive).ToList();
-            var villages = alive.Count(s => tierLines[s.Id].LastOrDefault(l => l.Year <= year) is { Year: > 0 } last && last.Up);
+            // 第 08-11 章：五級——年底等級＝升級次數－降級次數；村莊以上都算。
+            var villages = alive.Count(s => tierLines[s.Id].Where(l => l.Year <= year).Sum(l => l.Up ? 1 : -1) >= (int)DemoSettlementTier.Village);
             result[year] = new DemoYearChange(year, alive.Count, villages, learned.Count(y => y <= year));
         }
         return result;

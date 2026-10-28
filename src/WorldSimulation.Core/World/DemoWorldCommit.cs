@@ -215,7 +215,8 @@ public sealed partial class DemoObserverWorld
             _weeks = _baseWeeks.Add(report with { RngCounters = Array.AsReadOnly(counters) });
             _history = _world._history.AppendCommitted(DemoEventProjection.ToWorldEvents(report, _sites, _participants));
             _chronicle = DemoSettlementChronicle.Advance(_world._chronicle, report,
-                _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>());
+                _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>(),
+                _knowledge); // 第 08-11 章：等級設施看知識
             _debtSources = AdvanceDebtSources(_world._debtSources, report);
         }
 

@@ -68,8 +68,15 @@ public sealed record DemoWorldOverview(
             year?.NaturalDeaths ?? 0,
             year?.StarvationDeaths ?? 0,
             year?.Emigrants ?? 0,
-            year?.SettlementsFounded ?? 0);
+            year?.SettlementsFounded ?? 0)
+        {
+            // 第 08-11 章：各等級的有人聚落數（營地、村莊、城鎮、城市、首都）。
+            Tiers = Enum.GetValues<DemoSettlementTier>().Select(t => active.Count(s => world.ChronicleOf(s.Id).Tier == t)).ToArray()
+        };
     }
+
+    /// <summary>第 08-11 章：各等級的有人聚落數，依 <see cref="DemoSettlementTier"/> 順序。</summary>
+    public IReadOnlyList<int> Tiers { get; init; } = Array.Empty<int>();
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
     public long? CapacityPercent => Capacity > 0 ? Population * 100 / Capacity : null;
@@ -84,13 +91,17 @@ public sealed record DemoWorldOverview(
             ? I($"世界人口 {Population}／理論上限 {Capacity}（{CapacityPercent}%）")
             : I($"世界人口 {Population}"));
         lines.Add(I($"定居 {Settled}｜遷徙途中 {InTransit}（{Batches} 支隊伍）"));
-        lines.Add(I($"村莊 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}"));
+        lines.Add(I($"有人的聚落 {Villages}（其中新建 {FoundedVillages}）｜遺跡 {Ruins}"));
+        if (Tiers.Count > 0)
+            lines.Add(string.Join("｜", Enum.GetValues<DemoSettlementTier>()
+                .Where(t => (int)t <= (int)DemoSettlementTier.Village || Tiers[(int)t] > 0)
+                .Select(t => I($"{DemoSettlementHistory.TierName(t)} {Tiers[(int)t]}"))));
         if (Children + Adults + Elders > 0)
         {
             lines.Add(I($"兒童 {Children}｜成年 {Adults}｜老人 {Elders}"));
             lines.Add(I($"育齡伴侶約 {Couples} 對｜懷孕中 {Pregnant}"));
         }
-        lines.Add(I($"存糧 {FoodStored}（途中攜帶 {FoodInTransit}）｜本週缺糧村莊 {ShortVillages}"));
+        lines.Add(I($"存糧 {FoodStored}（途中攜帶 {FoodInTransit}）｜本週缺糧聚落 {ShortVillages}"));
         lines.Add(I($"今年：出生 {BirthsThisYear}｜老死 {OldAgeDeathsThisYear}｜餓死 {StarvationDeathsThisYear}｜外移 {EmigrantsThisYear}｜建村 {FoundedThisYear}"));
         return lines;
     }

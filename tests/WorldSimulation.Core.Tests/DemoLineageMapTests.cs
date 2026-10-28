@@ -25,7 +25,7 @@ public sealed class DemoLineageMapTests
         Assert.Equal(Enumerable.Range(1, 25), changes.Keys.OrderBy(y => y));
         var last = changes[25];
         Assert.Equal(world.Sites.Settlements.Count(s => !s.IsRuin), last.Settlements);
-        Assert.Equal(world.Sites.Settlements.Count(s => !s.IsRuin && world.ChronicleOf(s.Id).Tier == DemoSettlementTier.Village), last.Villages);
+        Assert.Equal(world.Sites.Settlements.Count(s => !s.IsRuin && world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Village), last.Villages);
         Assert.Equal(world.Knowledge.Records.Count(r => r.Learned), last.KnowledgeLearned);
         // 開局聚落第 1 年就在；技術累計不會減少。
         Assert.True(changes[1].Settlements >= world.Sites.Settlements.Count(s => !s.IsFounded && !s.IsRuin));
