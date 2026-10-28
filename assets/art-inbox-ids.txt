@@ -1,0 +1,13 @@
+# 美術收件匣匯入（.github/workflows/art-inbox.yml）：推送到 claude/art-inbox* 時下載這些雲端硬碟檔案 ID（每行一個）。
+# 空白或沒有這個檔＝下載整個收件匣資料夾（一次最多 50 個檔）。
+1DdzksLb11k1gELsSH1D2QhtvqpUX3kJu
+1UQW3p9sEooRKDJlKYGfdzUBD1IITxwBK
+1E9nOo9ssGmmmF03dW3vZ72carW2p1o-g
+1PR3cTtMHzpjkx80gT5BOfG3bYv7IG3MS
+1x3mDHxkpPqWIdPsKwL5caowB4tFlFZcO
+1Whr3v2lgnquvFm_e0j_2l_Qczu6g6TUq
+1wgPV-rVZalRLVFJcWE7A4LVWm7oxzm7Z
+1lji6kCLKtjz7EbWKJkR-8sHUSRQFOKYu
+1Cn6H-IgzhYaPe1A22B3jOs1F1W5c1jv6
+1El6gOHhXVkpSxX9Ae2gaso3LAgUwDqHu
+1f3E-4RY407y_DwN0m03eH8ZuPSSTYlWY

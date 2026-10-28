@@ -43,7 +43,15 @@ jobs:
           url="${{ github.event.inputs.folder }}"
           [ -z "$url" ] && url="$DEFAULT_FOLDER"
           mkdir -p /tmp/inbox
-          gdown --folder "$url" -O /tmp/inbox --remaining-ok
+          ids=$(grep -v '^#' assets/art-inbox-ids.txt 2>/dev/null | tr -d '\r' | grep . || true)
+          if [ -n "$ids" ] && [ -z "${{ github.event.inputs.folder }}" ]; then
+            # 指定檔案 ID：資料夾超過 50 個檔時 gdown 會截斷，改逐檔下載（保留雲端檔名）。
+            cd /tmp/inbox
+            for id in $ids; do gdown "$id"; done
+            cd -
+          else
+            gdown --folder "$url" -O /tmp/inbox --remaining-ok
+          fi
           find /tmp/inbox -type f | sed 's|^/tmp/inbox/||'
       - name: 匯入
         run: python3 tools/art_inbox.py /tmp/inbox | tee /tmp/art-inbox.log
@@ -68,4 +76,4 @@ jobs:
           else
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
-          echo "::notice title=美術收件匣匯入::$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' /tmp/art-inbox.log)"
+          echo "::notice title=美術收件匣匯入::$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' /tmp/art-inbox.log)" || true
