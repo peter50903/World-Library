@@ -114,7 +114,6 @@ public sealed class DemoChangeTracker
                 }
                 if (e.Kind == DemoSettlementEventKind.SettlementRuined)
                     _ruinCauses.Add(DescribeRuin(world, e.SettlementId, year));
-            }
                 switch (e.Kind)
                 {
                     case DemoSettlementEventKind.SettlementFounded: _founded++; break;
