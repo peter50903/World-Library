@@ -975,7 +975,7 @@ internal static class DemoWeeklySettlement
             // TempJoinSlackFactor 倍的聚落搬進去（人往養得起的地方聚），沒有才去開拓新聚落。
             var joining = false;
             if (wantsToLeave && crowded && config.HumanLifecycleEnabled
-                && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id && b.DepartedWeek == week))
+                && !nextMigrations.Any(b => b.FromSettlementId == settlement.Id)) // 同時最多一支隊伍在路上（與開拓相同）
             {
                 var party = survivors / DemoCrowding.TempCrowdingShareDivisor;
                 target = party <= 0 ? null : ChooseDestination(map!, weekSites, settlement, week, publishedWeeks, config,

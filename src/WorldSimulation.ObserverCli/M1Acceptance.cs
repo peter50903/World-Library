@@ -226,7 +226,8 @@ public sealed record M1RunData(
     IReadOnlyList<M1SettlementInfo> Settlements,
     string? AbortReason = null,
     IReadOnlyList<DemoSettlementCapacity>? FinalCapacities = null,
-    long MapCapacity = 0);
+    long MapCapacity = 0,
+    long FarmlandCapacity = 0);
 
 /// <summary>跑一個種子 × 情境 × 年數，收集證據。不改 Core 任何規則。</summary>
 public static class M1RunCollector
@@ -275,7 +276,10 @@ public static class M1RunCollector
                 s.IsFounded, world.SettlementPopulation(s.Id)))
             .ToList();
         return new M1RunData(seed, preset, years, daysPerYear, initial, initialIds, world.WeekReports(), totals, cells, infos, abort,
-            world.SettlementCapacities(), world.MapCapacity.People);
+            world.SettlementCapacities(), world.MapCapacity.People,
+            // 第 08-12 章：期末農田養得起的人（承載上限只算自然來源，農田是開墾出來的）。
+            preset.Config.FoodPerPersonPerWeek <= 0 ? 0
+                : world.Land.FarmlandCells().Count * DemoLandClearing.TempFarmlandWeeklySupply / preset.Config.FoodPerPersonPerWeek);
     }
 
     private static M1WorldTotals Totals(DemoObserverWorld world)
@@ -966,7 +970,8 @@ public static class M1Evaluator
 
     /// <summary>爆量門檻：期初×10 與承載上限×2 取較大者。</summary>
     public static long ExplosionLimit(M1RunData run)
-        => Math.Max(run.Initial.Population * TempStabilityExplosionFactor, run.MapCapacity * TempStabilityCapacityFactor);
+        => Math.Max(run.Initial.Population * TempStabilityExplosionFactor,
+            (run.MapCapacity + run.FarmlandCapacity) * TempStabilityCapacityFactor); // 第 08-12 章：承載上限加上期末農田
 
     /// <summary>【TEMP】M1_VARIETY 差異門檻：不同資源組合的聚落群，期末平均人口相差至少這個倍數（或一群有人、另一群無人）（D2）。</summary>
     public const long TempVarietyRatio = 2;
