@@ -22,6 +22,12 @@ public sealed class DemoWaterAndFarmlandTests
         Assert.Equal(normal, DemoMigrationRoutes.PeoplePerCarrier(map, Ref(beside), false, normal));
         Assert.True(DemoMigrationRoutes.Habitable(map, Ref(beside)));
         Assert.Equal((2L, 20L), DemoMigrationRoutes.WaterPlan(map, Ref(beside), false, 20, 15));
+        // 不滿 10 人不需要專職取水者（大家順手取水）；只剩 1 人也能採集。
+        Assert.Equal((0L, 2L), DemoMigrationRoutes.WaterPlan(map, Ref(beside), false, 2, 2));
+        Assert.Equal((0L, 1L), DemoMigrationRoutes.WaterPlan(map, Ref(beside), false, 1, 1));
+        Assert.Equal((1L, 19L), DemoMigrationRoutes.WaterPlan(map, Ref(beside), false, 19, 10));
+        // 人手不夠：20 人只有 1 名成年人 → 只取到 10 人份。
+        Assert.Equal((1L, 10L), DemoMigrationRoutes.WaterPlan(map, Ref(beside), false, 20, 1));
         if (carry is not null)
         {
             Assert.True(DemoMigrationRoutes.Habitable(map, Ref(carry)));

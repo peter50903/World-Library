@@ -198,14 +198,19 @@ public static class DemoMigrationRoutes
     public static long PeoplePerCarrier(DemoHexWorld map, DemoCellRef cell, bool wells, long normal)
         => HasWaterAccess(map, cell) || wells ? normal : map.IsNearWater(cell) ? Math.Max(1, normal / TempCarryWaterDivisor) : 0;
 
-    /// <summary>第 08-11 章：本週取水者人數與取到水的人數（週結算與讀檔驗證共用）。</summary>
+    /// <summary>
+    /// 第 08-11 章：本週取水者人數與取到水的人數（週結算與讀檔驗證共用）。
+    /// 【TEMP】每滿一份負擔量（<see cref="PeoplePerCarrier"/>）才需要一名專職取水者（不採集）；不滿一份的零頭由大家順手取水。
+    /// 遺跡成因資料：原本無條件進位，2 人的新聚落一半勞力去取水、只剩 1 人時沒有人採集而餓死。
+    /// </summary>
     public static (long Carriers, long Served) WaterPlan(DemoHexWorld map, DemoCellRef cell, bool wells, long people, long adults)
     {
         var per = PeoplePerCarrier(map, cell, wells, DemoSurvivalTempSettings.Current.PeoplePerWaterCarrier);
         if (per <= 0 || people <= 0)
             return (0, 0);
-        var carriers = Math.Min(adults, (people + per - 1) / per);
-        return (carriers, Math.Min(people, checked(carriers * per)));
+        var needed = people / per;
+        var carriers = Math.Min(adults, needed);
+        return (carriers, carriers == needed ? people : Math.Min(people, checked(carriers * per)));
     }
 
     /// <summary>【TEMP】挑水時取水者要加倍（每名取水者供應的人數÷2）。</summary>

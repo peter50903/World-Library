@@ -108,6 +108,7 @@
 |---|---|---|
 | 可住範圍 | 離水 2 格內；會掘井（本聚落或建立時的來源聚落）則任何陸地 | 使用者 2026-10-28 裁決：先挑水，再掘井 |
 | 挑水 | 離水 1 格的聚落取水者加倍（每 5 人一名）；離水更遠又沒有井＝取不到水 | 挑水距離遠、人力多 |
+| 取水零頭 | 每滿一份負擔量（10 人；挑水 5 人）才需要一名專職取水者，不滿的零頭大家順手取水 | 遺跡成因：原本無條件進位，2 人的新聚落一半勞力取水、剩 1 人時無人採集而餓死 |
 | 掘井 | 10D 第 1 階，前置基礎建築，研究時間 100；實踐條件＝不鄰水、要挑水 | 內陸聚落學得較快 |
 | 農田荒廢 | 相鄰沒有有人的聚落時每週開發度－2%，降到 0 變回草原；開始荒廢記一筆事件 | 與開墾速度相同，約一年 |
 
@@ -440,7 +441,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
-| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 14 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 15 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |

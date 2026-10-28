@@ -48,7 +48,7 @@ public sealed class DemoSurvivalTests
             // 第 08-11 章：鄰水每 10 人一名取水者；離水 1 格要挑水，每 5 人一名。人手夠就不缺水。
             var per = DemoMigrationRoutes.HasWaterAccess(world.Map, cell) ? survival.PeoplePerWaterCarrier
                 : survival.PeoplePerWaterCarrier / DemoMigrationRoutes.TempCarryWaterDivisor;
-            var needed = (ledger.PopulationOpening + per - 1) / per;
+            var needed = ledger.PopulationOpening / per; // 不滿一份負擔量的零頭由大家順手取水
             var adults = ledger.AdultWorkersOpening < 0 ? ledger.PopulationOpening : ledger.AdultWorkersOpening;
             Assert.Equal(Math.Min(adults, needed), ledger.WaterCarriers);
             if (adults >= needed)
