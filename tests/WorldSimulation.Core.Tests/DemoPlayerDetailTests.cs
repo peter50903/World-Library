@@ -46,7 +46,8 @@ public sealed class DemoPlayerDetailTests
             var known = detail.Tabs[2].Badges;
             Assert.Equal(DemoTechnology.All.Count(DemoKnowledge.IsOpening) + world.Knowledge.KnownBy(s.Id).Count, known.Count);
             Assert.All(known, b => Assert.Equal(100, b.Percent));
-            Assert.All(known.Where(b => b.Tier > 0), b => Assert.NotNull(b.LearnedYear));
+            Assert.All(known.Where(b => !b.Opening), b => Assert.NotNull(b.LearnedYear));
+            Assert.Equal(DemoTechnology.All.Count(DemoKnowledge.IsOpening), known.Count(b => b.Opening));
             Assert.All(detail.Tabs[3].Badges, b => Assert.InRange(b.Percent, 0, 99));
             Assert.All(known.Concat(detail.Tabs[3].Badges), b => Assert.NotEqual("？", b.Glyph));
         }

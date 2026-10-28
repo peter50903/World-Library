@@ -13,7 +13,8 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
 /// 第 08-11 章（使用者 2026-10-28：技術用 RPG 技能那樣的方形小圖示，不同圖案與數字代表領域與等級）。
 /// <see cref="LearnedYear"/>＝習得年份（研究中為 null）；<see cref="Percent"/>＝研究進度（已習得 100）。
 /// </summary>
-public sealed record DemoTechBadge(string Id, string Name, string Domain, string DomainName, string Glyph, int Tier, int? LearnedYear, long Percent);
+public sealed record DemoTechBadge(string Id, string Name, string Domain, string DomainName, string Glyph, int Tier, int? LearnedYear, long Percent,
+    bool Opening = false);
 
 /// <summary>
 /// 第 08-11 章（使用者 2026-10-28 試玩回饋 6、8）：給玩家看的詳情——聚落分成「現況｜代表人物｜技術｜研究｜歷史」五個分頁籤；
@@ -58,7 +59,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
     };
 
     private static DemoTechBadge Badge(DemoTechnology t, int? year, long percent)
-        => new(t.Id, DemoKnowledge.Name(t), t.Node.Domain, DomainName(t.Node.Domain), DomainGlyph(t.Node.Domain), t.Node.Tier, year, percent);
+        => new(t.Id, DemoKnowledge.Name(t), t.Node.Domain, DomainName(t.Node.Domain), DomainGlyph(t.Node.Domain), t.Node.Tier, year, percent,
+            DemoKnowledge.IsOpening(t));
 
     /// <summary>研究分頁最多列幾項（進度高的在前）。</summary>
     public const int MaxResearchLines = 10;

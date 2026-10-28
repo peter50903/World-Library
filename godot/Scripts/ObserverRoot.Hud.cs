@@ -388,7 +388,7 @@ public partial class ObserverRoot
     {
         var learned = b.Percent >= 100;
         var tooltip = $"{b.Name}（{b.DomainName}{(b.Tier > 0 ? $"，第 {b.Tier} 階" : "")}）\n"
-            + (b.Tier == 0 ? "開局知識" : learned ? $"第 {b.LearnedYear} 年習得" : $"研究中 {b.Percent}%");
+            + (b.Opening ? "開局知識" : learned ? $"第 {b.LearnedYear} 年習得" : $"研究中 {b.Percent}%");
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(TempBadgeSize, TempBadgeSize), TooltipText = tooltip };
         var color = DomainColor(b.Domain);
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
