@@ -169,6 +169,7 @@ public partial class ObserverRoot
         _consoleToggle = new Button { Text = "世界紀錄", ToggleMode = true, TooltipText = "右側世界紀錄：事件依時間列出，點一筆看詳情、原因與後果並定位地圖（再按一次收合）" };
         _consoleToggle.Pressed += () => SetRightView(RightView.Console);
         row.AddChild(_consoleToggle);
+        _consoleToggle.Visible = false; // 第 08-11 章（使用者 2026-10-28）：編年史已取代世界紀錄，按鈕不再顯示（事件清單仍保留給冒煙測試與除錯）
         // 第 08-10b 章：右側第三分頁「編年史」。
         _chronicleToggle = new Button { Text = "編年史", ToggleMode = true, TooltipText = "右側編年史：依年份列出世界的重大事件，點聚落名稱定位地圖（再按一次收合）" };
         _chronicleToggle.Pressed += () => SetRightView(RightView.Chronicle);
@@ -281,12 +282,15 @@ public partial class ObserverRoot
         foreach (var tab in tabs)
         {
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-            scroll.AddChild(new Label
-            {
-                Text = string.Join("\n", tab.Lines),
-                AutowrapMode = TextServer.AutowrapMode.WordSmart,
-                SizeFlagsHorizontal = SizeFlags.ExpandFill
-            });
+            if (tab.Badges.Count > 0)
+                scroll.AddChild(TechBadgeGrid(tab)); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
+            else
+                scroll.AddChild(new Label
+                {
+                    Text = string.Join("\n", tab.Lines),
+                    AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                    SizeFlagsHorizontal = SizeFlags.ExpandFill
+                });
             _detailTabs.AddChild(scroll);
         }
         if (keep >= 0 && keep < tabs.Count)
@@ -349,6 +353,93 @@ public partial class ObserverRoot
         RefreshHud();
     }
 
+
+    // ── 第 08-11 章：技術小圖示（使用者 2026-10-28：像 RPG 技能，不同圖案代表領域、數字代表等級）──
+    private const int TempBadgeSize = 52;   // TEMP：圖示邊長
+    private const int TempBadgeColumns = 4; // TEMP：每列幾個
+
+    private static readonly string[] TierNumerals = { "", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ" };
+
+    /// <summary>TEMP 顯示配色：各領域的底色（素材交付前用）。</summary>
+    private static Color DomainColor(string domain) => domain switch
+    {
+        "10B" => new Color(0.42f, 0.55f, 0.22f), "10C" => new Color(0.45f, 0.40f, 0.36f), "10D" => new Color(0.55f, 0.45f, 0.30f),
+        "10E" => new Color(0.48f, 0.33f, 0.18f), "10F" => new Color(0.55f, 0.30f, 0.42f), "10G" => new Color(0.70f, 0.48f, 0.20f),
+        "10H" => new Color(0.25f, 0.55f, 0.45f), "10I" => new Color(0.50f, 0.20f, 0.18f), "10J" => new Color(0.25f, 0.35f, 0.58f),
+        "10K" => new Color(0.42f, 0.25f, 0.60f), "10L" => new Color(0.62f, 0.38f, 0.28f), "10M" => new Color(0.65f, 0.55f, 0.20f),
+        "10N" => new Color(0.40f, 0.35f, 0.25f), "HUNT" => new Color(0.30f, 0.45f, 0.25f), "SOCIETY" => new Color(0.35f, 0.30f, 0.50f),
+        "FAITH" => new Color(0.60f, 0.52f, 0.35f), "OPENING" => new Color(0.65f, 0.32f, 0.15f),
+        _ => new Color(0.4f, 0.4f, 0.4f)
+    };
+
+    private Control TechBadgeGrid(DemoDetailTab tab)
+    {
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var grid = new GridContainer { Columns = TempBadgeColumns };
+        grid.AddThemeConstantOverride("h_separation", 6);
+        grid.AddThemeConstantOverride("v_separation", 6);
+        foreach (var badge in tab.Badges)
+            grid.AddChild(TechBadge(badge));
+        column.AddChild(grid);
+        return column;
+    }
+
+    private static Control TechBadge(DemoTechBadge b)
+    {
+        var learned = b.Percent >= 100;
+        var tooltip = $"{b.Name}（{b.DomainName}{(b.Tier > 0 ? $"，第 {b.Tier} 階" : "")}）\n"
+            + (b.Opening ? "開局知識" : learned ? $"第 {b.LearnedYear} 年習得" : $"研究中 {b.Percent}%");
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(TempBadgeSize, TempBadgeSize), TooltipText = tooltip };
+        var color = DomainColor(b.Domain);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = learned ? color : color.Darkened(0.45f),
+            BorderColor = b.Tier >= 3 ? new Color(0.95f, 0.80f, 0.35f) : new Color(0.10f, 0.08f, 0.06f),
+            BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
+            CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4
+        });
+        var root = new Control { MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(TempBadgeSize - 4, TempBadgeSize - 4) };
+        panel.AddChild(root);
+        // 有領域圖示素材就貼圖，沒有就畫領域字。
+        if (ArtAssets.Texture(ArtAssets.TechDomainIcon(b.Domain)) is { } icon)
+        {
+            var art = new TextureRect { Texture = icon, ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, MouseFilter = MouseFilterEnum.Ignore,
+                Modulate = learned ? Colors.White : new Color(1, 1, 1, 0.55f) };
+            art.SetAnchorsPreset(LayoutPreset.FullRect);
+            root.AddChild(art);
+        }
+        else
+        {
+            var glyph = new Label { Text = b.Glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
+                MouseFilter = MouseFilterEnum.Ignore };
+            glyph.AddThemeFontSizeOverride("font_size", 24);
+            glyph.AddThemeColorOverride("font_outline_color", Colors.Black);
+            glyph.AddThemeConstantOverride("outline_size", 4);
+            glyph.SetAnchorsPreset(LayoutPreset.FullRect);
+            root.AddChild(glyph);
+        }
+        if (b.Tier > 0)
+        {
+            var tier = new Label { Text = TierNumerals[Math.Clamp(b.Tier, 0, 5)], MouseFilter = MouseFilterEnum.Ignore,
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom };
+            tier.AddThemeFontSizeOverride("font_size", 13);
+            tier.AddThemeColorOverride("font_outline_color", Colors.Black);
+            tier.AddThemeConstantOverride("outline_size", 3);
+            tier.SetAnchorsPreset(LayoutPreset.FullRect);
+            tier.OffsetRight = -2;
+            root.AddChild(tier);
+        }
+        if (!learned)
+        {
+            // 研究進度：底部一條亮條。
+            var bar = new ColorRect { Color = new Color(0.98f, 0.85f, 0.40f), MouseFilter = MouseFilterEnum.Ignore };
+            bar.AnchorLeft = 0; bar.AnchorTop = 1; bar.AnchorBottom = 1; bar.AnchorRight = Math.Clamp(b.Percent, 0, 100) / 100f;
+            bar.OffsetTop = -4;
+            root.AddChild(bar);
+        }
+        return panel;
+    }
 
     private void HideDetail()
     {

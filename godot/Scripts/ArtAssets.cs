@@ -29,6 +29,9 @@ public static class ArtAssets
     public const string IconFood = "res://assets/icons/icon_food.png";
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
 
+    /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
+    public static string TechDomainIcon(string domain) => $"res://assets/icons/tech_{domain.ToLowerInvariant()}.png";
+
     /// <summary>第 08-11 章：居住地五級的地圖圖示（村莊沿用 icon_settlement_village.png）。</summary>
     public static string SettlementTierIcon(DemoSettlementTier tier) => tier switch
     {

@@ -141,6 +141,17 @@ public partial class DemoHexMap : Control
 
     private bool _showGrid;
 
+    /// <summary>第 08-11 章：已消失的遺跡（不重要的遺跡荒廢數年後還原成原本的土地，地圖不再畫）。</summary>
+    public IReadOnlySet<int> FadedRuins { get; set; } = new HashSet<int>();
+
+    /// <summary>畫面上看得到的聚落（已消失的遺跡＝null）。</summary>
+    private DemoSettlement? VisibleSite(DemoHexCell cell)
+        => Sites?.SettlementAt(cell.Column, cell.Row) is { } s && !FadedRuins.Contains(s.Id) ? s : null;
+
+    /// <summary>【TEMP】第 08-11 章格線：不透明度與線寬（格半徑的比例，至少 1.2 像素）。</summary>
+    private const float TempGridAlpha = 0.7f;
+    private const float TempGridWidthPerRadius = 0.04f;
+
     /// <summary>第 06-2 章：本週已過幾成（0～1）；遷徙隊伍圖示沿路線在本格與下一格之間平滑移動。只影響顯示。</summary>
     public float WeekFraction { get; set; }
 
@@ -195,9 +206,7 @@ public partial class DemoHexMap : Control
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
-                if (_showGrid)
-                    DrawPolyline(Closed(full), new Color(0.07f, 0.06f, 0.04f, 0.35f), 1f);
-                if (Sites?.SettlementAt(cell.Column, cell.Row) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge))
+                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge))
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
@@ -224,16 +233,14 @@ public partial class DemoHexMap : Control
             for (var i = 0; i < 6; i++)
                 outline[i] = vertices[i];
             outline[6] = vertices[0];
-            if (_showGrid)
-                DrawPolyline(outline, new Color(0.07f, 0.15f, 0.18f), 1.2f);
 
-            if (Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } ruin)
+            if (VisibleSite(cell) is { IsRuin: true } ruin)
             {
                 // 第 07 章 c 節：遺跡（沒有圖塊時的後備）：灰色小點。
                 if (!DrawMarker(ArtAssets.IconRuin, center, radius * 1.4f))
                     DrawCircle(center, radius * 0.17f, new Color(0.45f, 0.43f, 0.40f));
             }
-            else if (Sites?.SettlementAt(cell.Column, cell.Row) is { } settlement)
+            else if (VisibleSite(cell) is { } settlement)
             {
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
@@ -250,12 +257,12 @@ public partial class DemoHexMap : Control
             {
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var hex = HexCoordinates.Polygon(center, radius - 1.4f);
-                if (Sites.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } ruinSite)
+                if (VisibleSite(cell) is { IsRuin: true } ruinSite)
                 {
                     DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
                     DrawMarker(SettlementIcon(ruinSite), center, radius * 1.4f);
                 }
-                else if (Sites.SettlementAt(cell.Column, cell.Row) is { } site)
+                else if (VisibleSite(cell) is { } site)
                 {
                     var status = FoodStatuses.TryGetValue(site.Id, out var known) ? known : FoodStatus.Unsettled;
                     var color = FoodStatusColor(status);
@@ -282,6 +289,15 @@ public partial class DemoHexMap : Control
 
         // 第 08-2 章：不再畫選取來源的供應範圍外框（使用者 2026-10-21：不需要用圈和線標示共用食物範圍）；
         // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
+
+        // 第 08-11 章：格線最後畫（原本畫在每格圖塊之後，被鄰格圖塊與地圖模式疊層蓋掉，開了也看不出來）。
+        if (_showGrid)
+        {
+            var gridColor = new Color(0.05f, 0.04f, 0.03f, TempGridAlpha);
+            foreach (var cell in World.Cells)
+                DrawPolyline(Closed(HexCoordinates.Polygon(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius)),
+                    gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+        }
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
         if (Highlight is { } focus && World.Contains(focus.Column, focus.Row))
@@ -537,7 +553,7 @@ public partial class DemoHexMap : Control
     /// 第 08-5 章（使用者 2026-10-23）：滑鼠停在格上只說明這一格是什麼（森林、大海、某某村莊…）。
     /// </summary>
     public override string _GetTooltip(Vector2 atPosition)
-        => World is not null && CellAt(atPosition) is { } cell ? DemoCellQuery.ShortName(World, Sites, cell) : "";
+        => World is not null && CellAt(atPosition) is { } cell ? DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell) : "";
 
     /// <summary>
     /// #89：把指定格移到地圖中央並標示外框（只改顯示用的平移，不改縮放、不改世界狀態）。

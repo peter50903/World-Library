@@ -1,7 +1,20 @@
 namespace WorldSimulation.Core.World.Demo;
 
-/// <summary>第 08-11 章：詳情的一個分頁籤。</summary>
-public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines);
+/// <summary>
+/// 第 08-11 章：詳情的一個分頁籤。<see cref="Badges"/> 不為空時，介面把技術畫成 RPG 技能那樣的方形小圖示
+/// （<see cref="Lines"/> 仍是同內容的文字版，給 CLI 與測試）。
+/// </summary>
+public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
+{
+    public IReadOnlyList<DemoTechBadge> Badges { get; init; } = Array.Empty<DemoTechBadge>();
+}
+
+/// <summary>
+/// 第 08-11 章（使用者 2026-10-28：技術用 RPG 技能那樣的方形小圖示，不同圖案與數字代表領域與等級）。
+/// <see cref="LearnedYear"/>＝習得年份（研究中為 null）；<see cref="Percent"/>＝研究進度（已習得 100）。
+/// </summary>
+public sealed record DemoTechBadge(string Id, string Name, string Domain, string DomainName, string Glyph, int Tier, int? LearnedYear, long Percent,
+    bool Opening = false);
 
 /// <summary>
 /// 第 08-11 章（使用者 2026-10-28 試玩回饋 6、8）：給玩家看的詳情——聚落分成「現況｜代表人物｜技術｜研究｜歷史」五個分頁籤；
@@ -36,6 +49,19 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         _ => domain
     };
 
+    /// <summary>領域的圖示字（技能圖示素材交付前，方形小圖示上畫這個字）。</summary>
+    public static string DomainGlyph(string domain) => domain switch
+    {
+        "10B" => "農", "10C" => "礦", "10D" => "建", "10E" => "木", "10F" => "織", "10G" => "食", "10H" => "醫",
+        "10I" => "軍", "10J" => "書", "10K" => "魔", "10L" => "陶", "10M" => "珠", "10N" => "車",
+        "HUNT" => "獵", "SOCIETY" => "法", "FAITH" => "祭", "OPENING" => "火",
+        _ => "？"
+    };
+
+    private static DemoTechBadge Badge(DemoTechnology t, int? year, long percent)
+        => new(t.Id, DemoKnowledge.Name(t), t.Node.Domain, DomainName(t.Node.Domain), DomainGlyph(t.Node.Domain), t.Node.Tier, year, percent,
+            DemoKnowledge.IsOpening(t));
+
     /// <summary>研究分頁最多列幾項（進度高的在前）。</summary>
     public const int MaxResearchLines = 10;
 
@@ -49,12 +75,20 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         ArgumentNullException.ThrowIfNull(world);
         var cell = world.Map.GetCell(column, row);
         var settlement = world.Sites.SettlementAt(column, row);
+        if (settlement is not null && DemoRuins.IsFaded(world, settlement))
+        {
+            // 第 08-11 章：消失的遺跡只顯示原本的地形，另記一行舊址。
+            var place = Place(world, cell, ignoreSettlement: true);
+            var year = DemoSettlementHistory.YearOfDay(checked(settlement.RuinedWeek * 7));
+            var lines = place.Tabs[0].Lines.Append($"舊址：{settlement.Name}（第 {year} 年荒廢）").ToList();
+            return place with { Tabs = new[] { new DemoDetailTab("地點", lines) } };
+        }
         return settlement is null ? Place(world, cell) : Settlement(world, settlement);
     }
 
-    private static DemoPlayerDetail Place(DemoObserverWorld world, DemoHexCell cell)
+    private static DemoPlayerDetail Place(DemoObserverWorld world, DemoHexCell cell, bool ignoreSettlement = false)
     {
-        var lines = new List<string> { DemoCellQuery.ShortName(world.Map, world.Sites, cell) };
+        var lines = new List<string> { DemoCellQuery.ShortName(world.Map, ignoreSettlement ? null : world.Sites, cell) };
         if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
             lines.Add(parcel.State == DemoLandDevelopment.Farmland ? "農田" : $"開墾中（{parcel.DevelopmentPercent}%）");
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
@@ -111,11 +145,17 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         if (known.Count == 0)
             techs.Add("尚未研究出新技術");
 
+        var knownBadges = DemoTechnology.All.Where(DemoKnowledge.IsOpening).Select(t => Badge(t, null, 100))
+            .Concat(known.Select(r => Badge(r.Technology, YearOfWeek(r.LearnedWeek), 100))).ToList();
+
         // 研究
-        var research = records.Where(r => !r.Learned && r.Progress > 0)
+        var researching = records.Where(r => !r.Learned && r.Progress > 0)
             .Select(r => (Record: r, Percent: r.Progress * 100 / DemoKnowledge.ThresholdOf(r.Technology)))
             .OrderByDescending(x => x.Percent).ThenBy(x => x.Record.Technology)
             .Take(MaxResearchLines)
+            .ToList();
+        var researchBadges = researching.Select(x => Badge(x.Record.Technology, null, x.Percent)).ToList();
+        var research = researching
             .Select(x => $"{DemoKnowledge.Name(x.Record.Technology)}　{x.Percent}%（{DomainName(x.Record.Technology.Node.Domain)}）")
             .ToList();
         if (research.Count == 0)
@@ -131,8 +171,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         {
             new DemoDetailTab("現況", now),
             new DemoDetailTab("代表人物", people),
-            new DemoDetailTab("技術", techs),
-            new DemoDetailTab("研究", research),
+            new DemoDetailTab("技術", techs) { Badges = knownBadges },
+            new DemoDetailTab("研究", research) { Badges = researchBadges },
             new DemoDetailTab("歷史", history)
         }, settlement.Id);
     }
