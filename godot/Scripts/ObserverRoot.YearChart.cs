@@ -48,7 +48,8 @@ public partial class ObserverRoot
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            MouseFilter = MouseFilterEnum.Stop
+            MouseFilter = MouseFilterEnum.Stop,
+            TooltipText = " " // 第 08-10a 章 V2：提示文字依滑鼠所在年份（數值與較前一年差量）
         };
         _yearChart.YearSelected += OnChartYearSelected;
         frame.AddChild(_yearChart);
@@ -83,6 +84,7 @@ public partial class ObserverRoot
             : _calendar.DaysPerYear == DemoSettlementHistory.DaysPerYear
                 ? _world.YearSummaries() // 第 04-1 章：讀檔後較早年份的年帳由存檔提供
                 : DemoYearLedger.FromWeeks(_world.WeekReports(), _calendar.DaysPerYear, _world.Snapshot().DaysElapsed);
+        _yearChart.Changes = DemoYearChanges.Of(_world); // 第 08-10a 章 V2：聚落變化系列。
         _yearChart.Rows = _chartRows;
         _yearChart.Capacity = _world.MapCapacity.People; // 第 08-1 章：理論上限線（只有自然採集世界有值）
         if (_calendar is null)
@@ -159,11 +161,18 @@ public partial class ObserverRoot
         {
             _chartSeries.Select(s);
             _chartSeries.EmitSignal(OptionButton.SignalName.ItemSelected, s);
-            var expected = rows.Select(r => YearChart.AllSeries[s].Bars.Select(b => b.Value(r)).ToArray()).ToList();
+            var changes = DemoYearChanges.Of(_world);
+            var expected = rows.Select(r => YearChart.AllSeries[s].Bars.Select(b => b.Value(r, changes[r.Year])).ToArray()).ToList();
             var shown = _yearChart.Values();
             if (_yearChart.SeriesIndex != s || shown.Count != expected.Count || shown.Zip(expected).Any(p => !p.First.SequenceEqual(p.Second)))
                 Fail($"series {YearChart.AllSeries[s].Name} does not show the ledger values");
         }
+        // 第 08-10a 章 V2：差量提示＝本年減前一年。
+        var lastBar = YearChart.AllSeries[^1].Bars[0];
+        var change = DemoYearChanges.Of(_world);
+        var deltaExpected = lastBar.Value(rows[1], change[rows[1].Year]) - lastBar.Value(rows[0], change[rows[0].Year]);
+        if (!_yearChart.DeltaText(rows[1].Year).Contains($"較前一年 {(deltaExpected >= 0 ? "+" : "")}{deltaExpected}", StringComparison.Ordinal))
+            Fail("the year-over-year delta tooltip is wrong.");
 
         // 選一個有事件的年份，用真的滑鼠事件點它的長條。冒煙在 _Ready 內同步執行、容器尚未排版，先給圖表 TEMP 尺寸。
         _yearChart.Size = new Vector2(560, 260);

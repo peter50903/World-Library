@@ -11,30 +11,37 @@ namespace WorldSimulation.GodotClient;
 public partial class YearChart : Control
 {
     /// <summary>一組圖表系列：名稱與各條長條（名稱、顏色、取值）。</summary>
-    public sealed record Series(string Name, IReadOnlyList<(string Label, Color Color, Func<DemoYearSummary, long> Value)> Bars);
+    public sealed record Series(string Name, IReadOnlyList<(string Label, Color Color, Func<DemoYearSummary, DemoYearChange, long> Value)> Bars);
 
     /// <summary>四組系列（人口；出生與死亡；遷徙；糧食採收與缺口）。顏色為 TEMP。</summary>
     public static readonly IReadOnlyList<Series> AllSeries = new[]
     {
-        new Series("人口", new (string, Color, Func<DemoYearSummary, long>)[]
+        new Series("人口", new (string, Color, Func<DemoYearSummary, DemoYearChange, long>)[]
         {
-            ("年末人口", new Color(0.24f, 0.42f, 0.62f), y => y.PopulationClosing)
+            ("年末人口", new Color(0.24f, 0.42f, 0.62f), (y, _) => y.PopulationClosing)
         }),
-        new Series("出生與死亡", new (string, Color, Func<DemoYearSummary, long>)[]
+        new Series("出生與死亡", new (string, Color, Func<DemoYearSummary, DemoYearChange, long>)[]
         {
-            ("出生", new Color(0.30f, 0.58f, 0.30f), y => y.Births),
-            ("餓死", new Color(0.72f, 0.22f, 0.18f), y => y.StarvationDeaths),
-            ("自然死亡", new Color(0.45f, 0.40f, 0.35f), y => y.NaturalDeaths)
+            ("出生", new Color(0.30f, 0.58f, 0.30f), (y, _) => y.Births),
+            ("餓死", new Color(0.72f, 0.22f, 0.18f), (y, _) => y.StarvationDeaths),
+            ("自然死亡", new Color(0.45f, 0.40f, 0.35f), (y, _) => y.NaturalDeaths)
         }),
-        new Series("遷徙", new (string, Color, Func<DemoYearSummary, long>)[]
+        new Series("遷徙", new (string, Color, Func<DemoYearSummary, DemoYearChange, long>)[]
         {
-            ("遷出", new Color(0.78f, 0.52f, 0.16f), y => y.Emigrants),
-            ("遷入", new Color(0.30f, 0.50f, 0.70f), y => y.Immigrants)
+            ("遷出", new Color(0.78f, 0.52f, 0.16f), (y, _) => y.Emigrants),
+            ("遷入", new Color(0.30f, 0.50f, 0.70f), (y, _) => y.Immigrants)
         }),
-        new Series("糧食", new (string, Color, Func<DemoYearSummary, long>)[]
+        new Series("糧食", new (string, Color, Func<DemoYearSummary, DemoYearChange, long>)[]
         {
-            ("採收", new Color(0.40f, 0.60f, 0.25f), y => y.Harvested),
-            ("缺口", new Color(0.72f, 0.22f, 0.18f), y => y.FoodShortage)
+            ("採收", new Color(0.40f, 0.60f, 0.25f), (y, _) => y.Harvested),
+            ("缺口", new Color(0.72f, 0.22f, 0.18f), (y, _) => y.FoodShortage)
+        }),
+        // 第 08-10a 章 V2：聚落與技術的規模（參考 WorldBox 統計比較）；滑鼠停在某一年顯示與前一年的差量。
+        new Series("聚落變化", new (string, Color, Func<DemoYearSummary, DemoYearChange, long>)[]
+        {
+            ("有人聚落", new Color(0.55f, 0.40f, 0.22f), (_, c) => c.Settlements),
+            ("村莊", new Color(0.78f, 0.55f, 0.20f), (_, c) => c.Villages),
+            ("技術習得累計", new Color(0.35f, 0.45f, 0.70f), (_, c) => c.KnowledgeLearned)
         })
     };
 
@@ -85,9 +92,37 @@ public partial class YearChart : Control
         }
     }
 
+    /// <summary>第 08-10a 章 V2：每一年年底的聚落與技術規模（Core <see cref="DemoYearChanges"/>）。</summary>
+    public IReadOnlyDictionary<int, DemoYearChange> Changes { get; set; } = new Dictionary<int, DemoYearChange>();
+
+    private DemoYearChange ChangeOf(int year) => Changes.TryGetValue(year, out var c) ? c : DemoYearChange.Empty(year);
+
     /// <summary>目前系列每一年每一條長條的數值（與畫面一致；冒煙用來和年帳比對）。</summary>
     public IReadOnlyList<long[]> Values()
-        => _rows.Select(r => AllSeries[_series].Bars.Select(b => b.Value(r)).ToArray()).ToList();
+        => _rows.Select(r => AllSeries[_series].Bars.Select(b => b.Value(r, ChangeOf(r.Year))).ToArray()).ToList();
+
+    /// <summary>第 08-10a 章 V2：某一年各長條的數值與較前一年的差量（滑鼠提示）。</summary>
+    public string DeltaText(int year)
+    {
+        var index = _rows.ToList().FindIndex(r => r.Year == year);
+        if (index < 0)
+            return string.Empty;
+        var bars = AllSeries[_series].Bars;
+        var now = _rows[index];
+        var parts = bars.Select(b =>
+        {
+            var value = b.Value(now, ChangeOf(now.Year));
+            if (index == 0)
+                return $"{b.Label} {value}";
+            var before = b.Value(_rows[index - 1], ChangeOf(_rows[index - 1].Year));
+            var delta = value - before;
+            return $"{b.Label} {value}（較前一年 {(delta >= 0 ? "+" : "")}{delta}）";
+        });
+        return $"第 {year} 年：" + string.Join("、", parts);
+    }
+
+    public override string _GetTooltip(Vector2 atPosition)
+        => YearAt(atPosition) is var year and > 0 ? DeltaText(year) : string.Empty;
 
     public void SelectYear(int year)
     {
