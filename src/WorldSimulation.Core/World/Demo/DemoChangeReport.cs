@@ -21,7 +21,9 @@ public sealed record DemoChangeDecade(
     int Villages,
     int Lineages,
     int LargestLineage,
-    DemoEra Era)
+    DemoEra Era,
+    int Towns = 0,
+    long LargestPopulation = 0)
 {
     /// <summary>這一段的重大事件數（08-10b 的重大級）。</summary>
     public int Major => Founded + Ruined + TierUps + TierDowns + FirstLearned + Farmland + EraChanges;
@@ -29,7 +31,7 @@ public sealed record DemoChangeDecade(
     public string Describe()
         => $"第 {FromYear}～{ToYear} 年｜重大 {Major}（建村 {Founded}、遺跡 {Ruined}、升村莊 {TierUps}、降級 {TierDowns}、"
            + $"技術首創 {FirstLearned}、開墾 {Farmland}、時代 {EraChanges}）｜傳入 {SpreadLearned}"
-           + $"｜期末 人口 {Population}、有人聚落 {LivingSettlements}、村莊 {Villages}、家系 {Lineages}（最大 {LargestLineage} 聚落）"
+           + $"｜期末 人口 {Population}、有人聚落 {LivingSettlements}、村莊 {Villages}（城鎮以上 {Towns}、最大聚落 {LargestPopulation} 人）、家系 {Lineages}（最大 {LargestLineage} 聚落）"
            + $"｜{DemoKnowledge.EraName(Era)}";
 }
 
@@ -169,7 +171,9 @@ public sealed class DemoChangeTracker
             _fromYear, toYear, _founded, _ruined, _ups, _downs, _first, _spread, _farmland, _eras,
             world.WorldPopulation, living.Count,
             living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Village),
-            lineages.Count, lineages.Count == 0 ? 0 : lineages.Max(), world.Era));
+            lineages.Count, lineages.Count == 0 ? 0 : lineages.Max(), world.Era,
+            living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Town),
+            living.Count == 0 ? 0 : living.Max(s => world.SettlementPopulation(s.Id))));
         _fromYear = toYear + 1;
         _founded = _ruined = _ups = _downs = _first = _spread = _farmland = _eras = 0;
     }

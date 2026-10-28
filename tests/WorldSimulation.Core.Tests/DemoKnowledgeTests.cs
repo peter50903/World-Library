@@ -63,10 +63,27 @@ public sealed class DemoKnowledgeTests
         var world = UntilPioneer();
         for (var day = 0; day < 30 * 365 && !world.Knowledge.Records.Any(r => r.Learned && r.Technology == DemoTechnology.CropCultivation); day++)
             world.AdvanceOneDay();
-        for (var day = 0; day < 8 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
+        // 第一個學會的聚落不一定有相鄰草原可開墾（第 08-12 章診斷：#1 沒有草原、後來學會的聚落照常開墾），等到任一塊農田完成。
+        for (var day = 0; day < 20 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
             world.AdvanceOneDay();
         var cleared = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
-        Assert.True(cleared.Count > 0, $"學會作物栽培後 8 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
+        string Diagnose()
+        {
+            // 每塊開墾地的進度與相鄰聚落（人口、成年人、會不會作物栽培）。
+            var parts = world.Land.Parcels.Select(p =>
+            {
+                var origin = world.Map.GetCell(p.Column, p.Row);
+                var near = DemoRouteNetwork.Directions.Select(d => world.Map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
+                    .Where(c => c is not null).Select(c => world.Sites.SettlementAt(c!.Column, c.Row)).Where(x => x is not null)
+                    .Select(x => $"{x!.Name}#{x.Id}{(x.IsRuin ? "遺跡" : "")} 人口{world.SettlementPopulation(x.Id)} 成年{world.PopulationStats(x.Id)?.Adults ?? 0}"
+                        + $"{(world.Knowledge.Knows(x.Id, DemoTechnology.CropCultivation) ? " 會農" : "")}");
+                return $"({p.Column},{p.Row}) {p.State} {p.DevelopmentPercent}%：{string.Join("、", near)}";
+            });
+            var learners = world.Knowledge.Records.Where(r => r.Learned && r.Technology == DemoTechnology.CropCultivation)
+                .Select(r => $"#{r.SettlementId}@第{r.LearnedWeek}週");
+            return $"第 {world.LatestWeek?.Week} 週；會農：{string.Join("、", learners)}；開墾地：{string.Join("｜", parts)}";
+        }
+        Assert.True(cleared.Count > 0, $"學會作物栽培後 20 年內沒有開墾完成的農田；{Diagnose()}");
         var cell = DemoLandClearing.CellOf(world.Map, cleared[0].Count);
         Assert.Equal(DemoLandDevelopment.Farmland, world.Land.StateOf(cell));
         Assert.Equal(DemoTerrain.Grassland, world.Map.GetCell(cell.Column, cell.Row).Terrain);

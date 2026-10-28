@@ -64,6 +64,9 @@ public static class DemoCrowding
     /// <summary>【TEMP】擁擠分家分出的人數上限＝倖存人口 ÷ 這個除數（缺糧外移仍是一半）。</summary>
     public const long TempCrowdingShareDivisor = 3;
 
+    /// <summary>【TEMP】第 08-12 章聚集：擁擠分家時，目的聚落的來源餘量至少是這批人每週需求的這個倍數才搬進去。</summary>
+    public const long TempJoinSlackFactor = 2;
+
     /// <summary>同上，指定本週開始時存在且不是遺跡的聚落（讀檔重算用）。</summary>
     public static Dictionary<int, long> SlackInReach(DemoHexWorld map, IEnumerable<DemoSettlement> active, IReadOnlyList<DemoSourceWeekLedger> sources)
     {

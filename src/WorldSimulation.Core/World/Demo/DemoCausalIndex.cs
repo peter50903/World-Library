@@ -254,8 +254,9 @@ public sealed class DemoCausalIndex
                     var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
                     // 婚嫁遷移也是根因：一人、非開拓、隊伍帳標明婚嫁（名冊重播另外核對出發者確實找不到伴侶）。
                     var mate = departed is not null && departed.MateSeeking && !departed.Founding && departed.PopulationOpening == 1;
-                    if (!mate && (ledger is null || departed is null || !departed.Founding || !DemoCrowding.Crowded(report, ledger)))
-                        return "外移的直接原因必須是同一聚落同一週的飢餓事件（或有週帳證據的擁擠開拓、婚嫁遷移）";
+                    // 第 08-12 章：擁擠時也可以搬進還養得起人的聚落（聚集），不限開拓。
+                    if (!mate && (ledger is null || departed is null || !DemoCrowding.Crowded(report, ledger)))
+                        return "外移的直接原因必須是同一聚落同一週的飢餓事件（或有週帳證據的擁擠分家、婚嫁遷移）";
                 }
                 else if (parent.Kind != DemoSettlementEventKind.Hunger
                     || parent.SettlementId != e.SettlementId || parent.Week != e.Week)
