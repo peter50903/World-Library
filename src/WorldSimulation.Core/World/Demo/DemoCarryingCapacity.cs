@@ -132,7 +132,7 @@ public sealed record DemoMapCapacity(long WeeklySupply, int Sources, long People
         if (!config.SharedCatchmentEnabled || config.FoodPerPersonPerWeek <= 0)
             return new DemoMapCapacity(0, 0, 0);
         var habitable = new HashSet<(int, int)>(map.Cells
-            .Where(c => c.Terrain != DemoTerrain.Water && DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(c.Column, c.Row)))
+            .Where(c => DemoMigrationRoutes.Habitable(map, new DemoCellRef(c.Column, c.Row))) // 第 08-11 章：離水 2 格內
             .Select(c => (c.Column, c.Row)));
         var reachable = DemoForagingWorld.Sources(map, Array.Empty<DemoCellRef>())
             .Where(s => s.FoodAvailable > 0 && DemoHexFoodCatchment.EligibleCells(map, s).Any(c => habitable.Contains((c.Column, c.Row))))

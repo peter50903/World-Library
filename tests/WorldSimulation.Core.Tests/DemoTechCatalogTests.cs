@@ -12,8 +12,8 @@ public sealed class DemoTechCatalogTests
     public void CatalogReadsEveryEnabledRowOfTheTechSheets()
     {
         var all = DemoTechCatalog.All;
-        // 10B 9、10C～10K 各 8、10L～10N 各 7、10R 25。
-        Assert.Equal(127, all.Length);
+        // 10B 9、10C 8、10D 9（含 08-11 掘井）、10E～10K 各 8、10L～10N 各 7、10R 25。
+        Assert.Equal(128, all.Length);
         Assert.Equal(Enumerable.Range(0, all.Length), all.Select(n => n.Index));
         Assert.Equal(all.Length, all.Select(n => n.Id).Distinct().Count());
         Assert.All(all, n => Assert.All(n.Parents, p => Assert.True(DemoTechCatalog.Contains(p))));

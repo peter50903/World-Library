@@ -62,7 +62,7 @@ public sealed class DemoSettlementFoundingTests
 
                 var end = site[^1];
                 Assert.Null(world.Sites.SettlementAt(end.Column, end.Row));
-                Assert.True(DemoMigrationRoutes.HasWaterAccess(world.Map, end));
+                Assert.True(DemoMigrationRoutes.Habitable(world.Map, end)); // 第 08-11 章：離水 2 格內
 
                 // 找到的是最近的合格空格：路線更短的格子都不合格。
                 var shorter = DemoMigrationRoutes.FindFoundingSite(world.Map, origin, site.Length - 1, Free);

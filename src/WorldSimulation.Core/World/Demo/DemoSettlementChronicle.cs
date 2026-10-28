@@ -90,13 +90,14 @@ public sealed record DemoSettlementChronicle(
         // 第 08-6 章：習得技術、本聚落率先讓世界進入新時代。
         // 第 08-6 章 c 節：開墾完成農田。
         foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan
-            or DemoSettlementEventKind.FarmlandCleared))
+            or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
             {
                 DemoSettlementEventKind.KnowledgeLearned => $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}",
                 DemoSettlementEventKind.FarmlandCleared => "開墾一塊農田",
+                DemoSettlementEventKind.FarmlandAbandoned => "一塊農田無人耕作，開始荒廢",
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };

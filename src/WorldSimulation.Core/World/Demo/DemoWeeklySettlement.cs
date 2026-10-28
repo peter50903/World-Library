@@ -225,7 +225,10 @@ public enum DemoSettlementEventKind
     /// <summary>第 08-6 章：世界進入新時代；直接原因＝同週同聚落的習得技術事件。Count＝時代（<see cref="DemoEra"/>）。</summary>
     EraBegan = 11,
     /// <summary>第 08-6 章 c 節：聚落開墾完成一塊農田（根因）。Count＝格編號（列×欄數＋欄＋1）。</summary>
-    FarmlandCleared = 12
+    FarmlandCleared = 12,
+
+    /// <summary>第 08-11 章：農田無人耕作，開始荒廢（Count＝格編號；之後每週開發度下降，降到 0 變回草原）。</summary>
+    FarmlandAbandoned = 13
 }
 
 /// <summary>
@@ -266,6 +269,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.KnowledgeLearned => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
@@ -607,7 +611,8 @@ internal static class DemoWeeklySettlement
         long? firstEventId = null,
         Func<int, long>? debtSourceOf = null,
         bool? hopeRules = null,
-        Func<int, long>? toolYieldPercent = null)
+        Func<int, long>? toolYieldPercent = null,
+        Func<int, bool>? wells = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -658,9 +663,9 @@ internal static class DemoWeeklySettlement
             {
                 var people = population[settlement.Id];
                 var adults = Math.Min(people, adultWorkers?.GetValueOrDefault(settlement.Id) ?? people);
-                var hasWater = DemoMigrationRoutes.HasWaterAccess(map!, new DemoCellRef(settlement.Column, settlement.Row));
-                var carriers = hasWater ? Math.Min(adults, survival.CarriersNeeded(people)) : 0;
-                var served = hasWater ? Math.Min(people, checked(carriers * survival.PeoplePerWaterCarrier)) : 0;
+                // 第 08-11 章：離水 1 格要挑水（取水者加倍），會掘井則與鄰水相同。
+                var (carriers, served) = DemoMigrationRoutes.WaterPlan(map!, new DemoCellRef(settlement.Column, settlement.Row),
+                    wells?.Invoke(settlement.Id) ?? false, people, adults);
                 water[settlement.Id] = (adults, people - adults, carriers,
                     DemoSurvivalTempSettings.DehydrationDebt(people - served, config.FoodPerPersonPerWeek));
                 foragingWorkers[settlement.Id] = adults - carriers;
@@ -985,12 +990,14 @@ internal static class DemoWeeklySettlement
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
                         && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                    config.FoundingSearchMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                    config.FoundingSearchMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                    wells?.Invoke(settlement.Id) ?? false);
                 // 第 08-4 章【TEMP 規則】希望時代：附近找不到空地時，缺糧或擁擠的聚落願意走得更遠（婚嫁範圍）去開拓，
                 // 不會一直困在養不起的地方。
                 if (site.Length < 2 && config.HopeEra && config.FoundingSearchMaxSteps < DemoMateTempSettings.MateRouteMaxSteps)
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null);
+                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                        wells?.Invoke(settlement.Id) ?? false);
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {

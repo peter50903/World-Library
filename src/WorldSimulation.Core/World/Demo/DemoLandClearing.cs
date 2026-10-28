@@ -64,7 +64,37 @@ public static class DemoLandClearing
                 DemoSettlementEventKind.FarmlandCleared, CellId(map, cell),
                 $"開墾完成：({cell.Column},{cell.Row}) 的草原成為農田【TEMP】", EventId: nextEventId++));
         }
+
+        // 第 08-11 章：農田荒廢——相鄰沒有有人的聚落（維護者）時，每週開發度－TempDecayPercentPerWeek；
+        // 農田開始荒廢記一筆事件（記在相鄰、編號最小的聚落，多半已是遺跡），降到 0 變回草原。
+        foreach (var parcel in land.Parcels.OrderBy(p => p.Row).ThenBy(p => p.Column))
+        {
+            var cell = parcel.Cell;
+            var neighbours = Neighbours(map, sites, cell).ToList();
+            if (neighbours.Any(s => !s.IsRuin && population.ResidentsOf(s.Id) > 0))
+                continue;
+            var left = parcel.DevelopmentPercent - TempDecayPercentPerWeek;
+            land = land.With(map, sites, left <= 0
+                ? new DemoLandParcel(cell.Column, cell.Row, DemoLandDevelopment.Undeveloped, 0)
+                : new DemoLandParcel(cell.Column, cell.Row, DemoLandDevelopment.Clearing, left));
+            if (parcel.State == DemoLandDevelopment.Farmland && neighbours.OrderBy(s => s.Id).FirstOrDefault() is { } owner)
+                events.Add(new DemoSettlementEvent(week, worldTime, owner.Id, owner.Name,
+                    DemoSettlementEventKind.FarmlandAbandoned, CellId(map, cell),
+                    $"農田荒廢：({cell.Column},{cell.Row}) 附近已無人耕作，開始變回草原【TEMP】", EventId: nextEventId++));
+        }
         return (land, events);
+    }
+
+    /// <summary>【TEMP】第 08-11 章：無人維護的農田每週開發度下降（%）；與開墾速度相同，約一年變回草原。</summary>
+    public const int TempDecayPercentPerWeek = 2;
+
+    /// <summary>格子相鄰（六鄰格）的聚落（含遺跡）。</summary>
+    private static IEnumerable<DemoSettlement> Neighbours(DemoHexWorld map, DemoWorldSites sites, DemoCellRef cell)
+    {
+        var origin = map.GetCell(cell.Column, cell.Row);
+        foreach (var d in DemoRouteNetwork.Directions)
+            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c && sites.SettlementAt(c.Column, c.Row) is { } s)
+                yield return s;
     }
 
     /// <summary>聚落六鄰格中可開墾的草原（未開發或開墾中）。</summary>

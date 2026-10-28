@@ -75,15 +75,21 @@ public sealed partial class DemoObserverWorld
         var stocks = reports.Count == 0 ? new Dictionary<int, long>()
             : reports[0].Sources.Where(x => x.StockOpening > 0).ToDictionary(x => x.SourceId, x => x.StockOpening);
         // 第 08-6 章 c 節：開墾完成的格（每格只能開墾完成一次）。
-        var clearedEvents = earlierEvents.Concat(reports.SelectMany(r => r.Events))
-            .Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
-        if (clearedEvents.Any(e => e.Count < 1 || e.Count > (long)map.Columns * map.Rows)
-            || clearedEvents.Select(e => e.Count).Distinct().Count() != clearedEvents.Count)
-            Reject("開墾完成事件的格編號不合法或重複");
+        // 第 08-11 章：農田荒廢後可再開墾——同一格的開墾完成與荒廢事件必須交替（先開墾）。
+        var landEvents = earlierEvents.Concat(reports.SelectMany(r => r.Events))
+            .Where(e => e.Kind is DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned)
+            .OrderBy(e => e.EventId).ToList();
+        if (landEvents.Any(e => e.Count < 1 || e.Count > (long)map.Columns * map.Rows)
+            || landEvents.GroupBy(e => e.Count).Any(g => g.Select((e, i) => (e.Kind == DemoSettlementEventKind.FarmlandCleared) != (i % 2 == 0)).Any(bad => bad)))
+            Reject("開墾完成或農田荒廢事件的格編號不合法或順序錯誤");
         IReadOnlyCollection<DemoCellRef> FarmlandBefore(int week)
-            => clearedEvents.Where(e => e.Week < week).Select(e => DemoLandClearing.CellOf(map, e.Count)).ToArray();
+            => landEvents.Where(e => e.Week < week).GroupBy(e => e.Count)
+                .Where(g => g.Last().Kind == DemoSettlementEventKind.FarmlandCleared)
+                .Select(g => DemoLandClearing.CellOf(map, g.Key)).ToArray();
+        var waterKnowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>() ?? DemoKnowledgeState.Initial;
+        bool WellsAt(int settlementId, int week) => waterKnowledge.Records is not null && DemoKnowledge.Wells(waterKnowledge, sites.Settlements, settlementId, week);
         foreach (var report in reports)
-            CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore);
+            CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt);
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -174,7 +180,7 @@ public sealed partial class DemoObserverWorld
             }
         }
         if (!land.FarmlandCells().ToHashSet().SetEquals(FarmlandBefore(int.MaxValue)))
-            Reject("農田與開墾完成事件不一致");
+            Reject("農田與開墾完成、荒廢事件不一致");
         candidate._land = land;
         candidate._reserves = reserves.ToImmutableSortedDictionary();
         candidate._settlementFood = food.ToImmutableSortedDictionary();
@@ -237,7 +243,7 @@ public sealed partial class DemoObserverWorld
     /// 第 07 章 c 節起共享採集情境也會建村與成為遺跡：來源清單依當週開始時的人造佔格重算。
     /// </summary>
     private static void CheckSourceLedgers(DemoWeekReport report, DemoHexWorld map, DemoWorldSites sites, DemoWeeklyTempConfig weekly,
-        Dictionary<int, long> stocks, Func<int, IReadOnlyCollection<DemoCellRef>> farmlandBefore)
+        Dictionary<int, long> stocks, Func<int, IReadOnlyCollection<DemoCellRef>> farmlandBefore, Func<int, int, bool> wellsAt)
     {
         var w = report.Week;
         if (!weekly.SharedCatchmentEnabled)
@@ -293,9 +299,8 @@ public sealed partial class DemoObserverWorld
             var place = sites.Settlements.Single(s => s.Id == ledger.SettlementId);
             var people = ledger.PopulationOpening;
             var adults = Math.Min(people, ledger.AdultWorkersOpening < 0 ? people : ledger.AdultWorkersOpening);
-            var hasWater = DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(place.Column, place.Row));
-            var carriers = hasWater ? Math.Min(adults, survival.CarriersNeeded(people)) : 0;
-            var served = hasWater ? Math.Min(people, checked(carriers * survival.PeoplePerWaterCarrier)) : 0;
+            var (carriers, served) = DemoMigrationRoutes.WaterPlan(map, new DemoCellRef(place.Column, place.Row),
+                wellsAt(place.Id, report.Week), people, adults); // 第 08-11 章
             if (ledger.WaterCarriers != carriers
                 || ledger.WaterShortage != DemoSurvivalTempSettings.DehydrationDebt(people - served, weekly.FoodPerPersonPerWeek)
                 || ledger.FoodSpoiled != DemoSurvivalTempSettings.Spoilage(ledger.FoodOpening)
@@ -423,7 +428,7 @@ public sealed partial class DemoObserverWorld
             if (!founded.IsFounded || founded.FoundedWeek < lastWeek || founded.FoundedWeek > weekCount
                 || string.IsNullOrWhiteSpace(founded.Name) || founded.FoundedByBatchId < 1
                 || from is null || from.FoundedWeek >= founded.FoundedWeek
-                || !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(founded.Column, founded.Row)))
+                || map.GetCell(founded.Column, founded.Row).Terrain == DemoTerrain.Water)
                 Reject($"新聚落 #{founded.Id} 的建立紀錄不合法");
             // 資源點緊接聚落之後配號（DemoWeeklySettlement）；檢查 ID 大於既有全部、空格、非水域。
             sites = sites.WithFoundedSettlement(founded, checked(founded.Id + 1), map);
