@@ -22,8 +22,8 @@
 
 | 項目 | 內容 |
 |---|---|
-| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs`（`M1Evaluator.Stability`、`TempStabilityExplosionFactor`） |
-| 目前值 | **2026-10-21 Claude 定案【TEMP】（第 08 章 d 節，總綱第 8 節數值類）：選項 C**——一次長跑期末仍有人、且期末人口不超過期初 **10 倍**＝通過；全滅或爆量＝警告；矩陣（含普通世界調查）任一長跑通過即通過。理由：人類採集情境已有真實出生，爆量與全滅都量得到；10 倍遠高於目前任何種子的最高人口，只抓失控。 |
+| 程式位置 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs`（`M1Evaluator.Stability`、`TempStabilityExplosionFactor`、`TempStabilityCapacityFactor`） |
+| 目前值 | **2026-10-21 Claude 定案【TEMP】（第 08 章 d 節，總綱第 8 節數值類）：選項 C**——一次長跑期末仍有人、且期末人口不超過期初 **10 倍**＝通過；全滅或爆量＝警告；矩陣（含普通世界調查）任一長跑通過即通過。理由：人類採集情境已有真實出生，爆量與全滅都量得到；10 倍遠高於目前任何種子的最高人口，只抓失控。**2026-10-28 第 08-11 章修正**：有地圖承載估計時改取「期初 10 倍」與「承載上限 2 倍」的較大者（`TempStabilityCapacityFactor`）——小聚落不再餓死後，期初 15 人長到 160 人仍在承載上限內，是正常成長。 |
 | 設定檔現況 | `45G_M1驗收.csv` 第 9 列：條件「不是所有種子都因數值失控在 100 年內全滅或無限爆人口」，Warning；沒有量化門檻 |
 | 影響 | `--m1-check` 報告中這一項永遠是「警告」，無法說 M1 穩定性通過 |
 | 選項 | **A** 維持只列數據，等出生規則實作後再定門檻。<br>**B** 只檢查「全滅」：任一種子在一般情境 100 年內所有聚落全滅＝警告；不檢查爆量。<br>**C** 全滅與爆量都檢查；爆量倍數（期末／期初人口）需使用者給數字。 |
@@ -458,7 +458,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 10 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2） |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 18 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中 |
-| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 26 | D1、D2、D3、D5、第 3 節 |
+| `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 27 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |
