@@ -52,10 +52,17 @@ public static class ArtAssets
     public const string UiHelp = "res://assets/ui/ui_icon_help.png";
     public const string UiMapTerrain = "res://assets/ui/ui_icon_mapmode_terrain.png";
     public const string UiMapFood = "res://assets/ui/ui_icon_mapmode_food.png";
-    /// <summary>第 08-10a 章 V2：家系地圖模式圖示（UI_ICON_MAPMODE_LINEAGE，待 GPT 交付；未到前按鈕顯示文字）。</summary>
+    /// <summary>第 08-10a 章 V2：家系地圖模式圖示（UI_ICON_MAPMODE_LINEAGE）。</summary>
     public const string UiMapLineage = "res://assets/ui/ui_icon_mapmode_lineage.png";
-    /// <summary>第 08-10a 章 V4：知識地圖模式圖示（UI_ICON_MAPMODE_KNOWLEDGE，待 GPT 交付）。</summary>
+    /// <summary>第 08-10a 章 V4：知識地圖模式圖示（UI_ICON_MAPMODE_KNOWLEDGE）。</summary>
     public const string UiMapKnowledge = "res://assets/ui/ui_icon_mapmode_knowledge.png";
+    /// <summary>第 08-10a 章 V5：文化地圖模式圖示（UI_ICON_MAPMODE_CULTURE；文化模式完成前不用）。</summary>
+    public const string UiMapCulture = "res://assets/ui/ui_icon_mapmode_culture.png";
+    /// <summary>第 06-2 章：格線開關圖示（UI_ICON_GRID）。</summary>
+    public const string UiGrid = "res://assets/ui/ui_icon_grid.png";
+    /// <summary>第 06-2 章 b 節：丘陵與礦脈（地形尚未加入丘陵前不用）。</summary>
+    public const string TileHills = "res://assets/tiles/hills.png";
+    public const string OverlayOreVein = "res://assets/tiles/overlay_ore_vein.png";
     public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
     public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（缺少時按鈕顯示「開發」）
     public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（缺少時按鈕顯示「圖表」）
@@ -72,6 +79,7 @@ public static class ArtAssets
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
+        UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 

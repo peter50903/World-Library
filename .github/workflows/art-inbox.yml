@@ -1,0 +1,79 @@
+name: 美術收件匣匯入
+
+# 從雲端硬碟「世界圖書館_素材收件匣」（需設為知道連結者可檢視）下載圖片，
+# 依 assets/manifest.csv 縮放到規格尺寸、存到 godot/assets/，並把狀態改為「已交付」。
+# Claude 的工作環境連不到雲端硬碟，所以由 GitHub 下載（不耗用對話額度）。
+# 觸發：推送到 claude/art-inbox* 分支（結果提交回同一分支），或手動執行（從 main 執行時另開分支與合併請求）。
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: '雲端硬碟資料夾網址（留空＝素材收件匣）'
+        required: false
+        default: ''
+  push:
+    branches: ['claude/art-inbox**']
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: art-inbox-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DEFAULT_FOLDER: https://drive.google.com/drive/folders/1MQz1wlDt6fnKDWNHJ2dhXf1e3yFa8zlu
+
+jobs:
+  import:
+    name: 下載並匯入收件匣圖片
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安裝工具
+        run: pip install --quiet gdown==5.2.0 pillow==11.0.0
+      - name: 下載收件匣
+        run: |
+          set -euo pipefail
+          url="${{ github.event.inputs.folder }}"
+          [ -z "$url" ] && url="$DEFAULT_FOLDER"
+          mkdir -p /tmp/inbox
+          ids=$(grep -v '^#' assets/art-inbox-ids.txt 2>/dev/null | tr -d '\r' | grep . || true)
+          if [ -n "$ids" ] && [ -z "${{ github.event.inputs.folder }}" ]; then
+            # 指定檔案 ID：資料夾超過 50 個檔時 gdown 會截斷，改逐檔下載（保留雲端檔名）。
+            cd /tmp/inbox
+            for id in $ids; do gdown "$id"; done
+            cd -
+          else
+            gdown --folder "$url" -O /tmp/inbox --remaining-ok
+          fi
+          find /tmp/inbox -type f | sed 's|^/tmp/inbox/||'
+      - name: 匯入
+        run: python3 tools/art_inbox.py /tmp/inbox | tee /tmp/art-inbox.log
+      - name: 提交
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add godot/assets assets/manifest.csv
+          if git diff --cached --quiet; then
+            echo "沒有新圖片或圖片未改變。"
+            exit 0
+          fi
+          git commit -m "美術收件匣匯入（$(git diff --cached --name-only -- godot/assets | wc -l) 張）" -m "$(cat /tmp/art-inbox.log)"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            branch="claude/art-inbox-${GITHUB_RUN_ID}"
+            git switch -c "$branch"
+            git push origin "$branch"
+            gh pr create --base main --head "$branch" --title "美術收件匣匯入" --body-file /tmp/art-inbox.log
+          else
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+          echo "::notice title=美術收件匣匯入::$(sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g' /tmp/art-inbox.log)" || true
