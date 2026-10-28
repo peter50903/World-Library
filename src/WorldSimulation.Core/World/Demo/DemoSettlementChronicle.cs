@@ -61,7 +61,7 @@ public sealed record DemoSettlementChronicle(
 
     public static ImmutableSortedDictionary<int, DemoSettlementChronicle> Advance(
         ImmutableSortedDictionary<int, DemoSettlementChronicle> chronicles, DemoWeekReport report,
-        IReadOnlyList<DemoRepresentative> inOffice)
+        IReadOnlyList<DemoRepresentative> inOffice, DemoKnowledgeState? knowledge = null)
     {
         ArgumentNullException.ThrowIfNull(chronicles);
         ArgumentNullException.ThrowIfNull(report);
@@ -123,19 +123,24 @@ public sealed record DemoSettlementChronicle(
                     $"{DemoRepresentative.RoleName(who.Role)} {who.Name} 卸任：{x.Reason}"))
             };
         }
-        // 第 08-6 章 d 節【TEMP 規則】聚落等級：有木匠且人口達門檻＝村莊；任一條件消失就降一級（記入小史）。
+        // 第 08-11 章【TEMP 規則】居住地五級（世紀帝國式）：人口與本級設施（專家或技術）決定升降，每週最多一級（記入小史）。
         var exited = report.RepresentativeExits.Select(x => x.Id).ToHashSet();
         var office = inOffice.Where(r => !exited.Contains(r.Id)).Concat(report.Appointments).ToList();
         foreach (var ledger in report.Settlements)
         {
             var c = builder.GetValueOrDefault(ledger.SettlementId) ?? Empty;
-            var carpenter = office.Any(r => r.SettlementId == ledger.SettlementId && r.Role == DemoRepresentativeRole.Carpenter);
-            var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, carpenter, c.Tier);
+            var id = ledger.SettlementId;
+            bool Knows(string tech) => knowledge?.Knows(id, DemoTechnology.Of(tech)) == true;
+            bool Has(DemoTierFacility f) => f.Role is { } role
+                ? office.Any(r => r.SettlementId == id && r.Role == role)
+                : f.TechId is { } tech && Knows(tech);
+            var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, Has, c.Tier, Knows);
             if (tier == c.Tier)
                 continue;
+            string Names(DemoSettlementTier t) => string.Join("、", DemoSettlementHistory.FacilitiesOf(t).Where(Has).Select(f => f.Name));
             var text = tier > c.Tier
-                ? $"有木匠、人口 {ledger.PopulationClosing} 人，由{DemoSettlementHistory.TierName(c.Tier)}{TierUpMarker}{DemoSettlementHistory.TierName(tier)}"
-                : $"{(carpenter ? $"人口降到 {ledger.PopulationClosing} 人" : "失去木匠")}{TierDownMarker}{DemoSettlementHistory.TierName(tier)}";
+                ? $"人口 {ledger.PopulationClosing} 人、有{Names(c.Tier)}，由{DemoSettlementHistory.TierName(c.Tier)}{TierUpMarker}{DemoSettlementHistory.TierName(tier)}"
+                : $"{(ledger.PopulationClosing < DemoSettlementHistory.TempKeepPopulation(c.Tier) ? $"人口降到 {ledger.PopulationClosing} 人" : "設施不足兩種")}{TierDownMarker}{DemoSettlementHistory.TierName(tier)}";
             builder[ledger.SettlementId] = c with { Tier = tier, Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };
         }
         return builder.ToImmutable();

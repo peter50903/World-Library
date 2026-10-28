@@ -143,7 +143,7 @@ public sealed class DemoChangeTracker
         foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin))
         {
             var tier = world.ChronicleOf(s.Id).Tier;
-            var before = _tiers.GetValueOrDefault(s.Id, DemoSettlementTier.Settlement);
+            var before = _tiers.GetValueOrDefault(s.Id, DemoSettlementTier.Camp);
             if (tier > before) _ups++;
             else if (tier < before) _downs++;
             _tiers[s.Id] = tier;
@@ -168,7 +168,7 @@ public sealed class DemoChangeTracker
         _decades.Add(new DemoChangeDecade(
             _fromYear, toYear, _founded, _ruined, _ups, _downs, _first, _spread, _farmland, _eras,
             world.WorldPopulation, living.Count,
-            living.Count(s => world.ChronicleOf(s.Id).Tier == DemoSettlementTier.Village),
+            living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Village),
             lineages.Count, lineages.Count == 0 ? 0 : lineages.Max(), world.Era));
         _fromYear = toYear + 1;
         _founded = _ruined = _ups = _downs = _first = _spread = _farmland = _eras = 0;

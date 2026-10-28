@@ -108,9 +108,9 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
-    public void WoodworkingBringsACarpenter_AndACarpenterVillageIsAVillage()
+    public void WoodworkingBringsACarpenter_WhoCountsAsALumberCamp()
     {
-        // 第 08-6 章 d 節：可及森林的聚落研究木工；學會後補任木匠，有木匠且人口達門檻才是村莊。
+        // 第 08-6 章 d 節：可及森林的聚落研究木工，學會後補任木匠；第 08-11 章木匠＝木工坊（營地級設施之一）。
         DemoObserverWorld? world = null;
         DemoSettlementEvent? learned = null;
         foreach (var seed in new ulong[] { 1, 2, 3 })
@@ -130,8 +130,7 @@ public sealed class DemoKnowledgeTests
         var carpenter = world.RepresentativesOf(place.Id).Any(r => r.Role == DemoRepresentativeRole.Carpenter);
         var population = world.SettlementPopulation(place.Id);
         Assert.True(carpenter || population == 0, "學會木工的聚落應補任木匠");
-        Assert.Equal(DemoSettlementHistory.TierFor(population, carpenter, world.ChronicleOf(place.Id).Tier), world.ChronicleOf(place.Id).Tier);
-        if (world.ChronicleOf(place.Id).Tier == DemoSettlementTier.Village)
+        if (world.ChronicleOf(place.Id).Tier >= DemoSettlementTier.Village)
             Assert.Contains(DemoSettlementHistory.Lines(world, place.Id), l => l.Contains("發展為村莊", StringComparison.Ordinal));
         Assert.Empty(world.BuildCausalIndex().Problems);
         var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
@@ -139,15 +138,29 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
-    public void VillageNeedsACarpenterAndEnoughPeople_WithASmallerDropThreshold()
+    public void TiersNeedPeopleAndTwoFacilitiesOfTheCurrentTier_LikeAgeOfEmpiresAges()
     {
-        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, hasCarpenter: false));
-        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillagePopulation - 1, true));
-        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillagePopulation, true));
-        // 已是村莊：人口降到保留門檻以下、或失去木匠才降一級。
-        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillageKeepPopulation, true, DemoSettlementTier.Village));
-        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(DemoSettlementHistory.TempVillageKeepPopulation - 1, true, DemoSettlementTier.Village));
-        Assert.Equal(DemoSettlementTier.Settlement, DemoSettlementHistory.TierFor(50, false, DemoSettlementTier.Village));
+        // 第 08-11 章：營地→村莊要人口 10＋營地級設施兩種（木工坊、磨坊、獵屋、祭壇任兩種）；每週最多升降一級。
+        static Func<DemoTierFacility, bool> Has(params string[] names) => f => names.Contains(f.Name);
+        var camp = DemoSettlementTier.Camp;
+        Assert.Equal(camp, DemoSettlementHistory.TierFor(50, Has("木工坊"), camp));
+        Assert.Equal(camp, DemoSettlementHistory.TierFor(9, Has("木工坊", "磨坊"), camp));
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(10, Has("木工坊", "磨坊"), camp));
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(500, Has("木工坊", "磨坊"), camp)); // 一次只升一級
+        // 村莊→城鎮：人口 60＋村莊級設施兩種；保留下限 8；失去撐起村莊的設施就降級。
+        Assert.Equal(DemoSettlementTier.Town, DemoSettlementHistory.TierFor(60, Has("木工坊", "磨坊", "市集", "陶窯"), DemoSettlementTier.Village));
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(59, Has("木工坊", "磨坊", "市集", "陶窯"), DemoSettlementTier.Village));
+        Assert.Equal(DemoSettlementTier.Village, DemoSettlementHistory.TierFor(8, Has("木工坊", "獵屋"), DemoSettlementTier.Village));
+        Assert.Equal(camp, DemoSettlementHistory.TierFor(7, Has("木工坊", "獵屋"), DemoSettlementTier.Village));
+        Assert.Equal(camp, DemoSettlementHistory.TierFor(50, Has("木工坊"), DemoSettlementTier.Village));
+        // 首都另需王權。
+        var all = Has(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.City).Select(f => f.Name)
+            .Concat(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.Town).Select(f => f.Name)).ToArray());
+        Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(5000, all, DemoSettlementTier.City, _ => false));
+        Assert.Equal(new[] { "營地", "村莊", "城鎮", "城市", "首都" }, Enum.GetValues<DemoSettlementTier>().Select(DemoSettlementHistory.TierName));
+        // 等級閘門：第 3 階技術要城鎮。
+        Assert.False(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_SOIL_MANAGEMENT"), DemoSettlementTier.Village));
+        Assert.True(DemoKnowledge.TierAllows(DemoTechCatalog.Get("TECH_SOIL_MANAGEMENT"), DemoSettlementTier.Town));
     }
 
     [Fact]

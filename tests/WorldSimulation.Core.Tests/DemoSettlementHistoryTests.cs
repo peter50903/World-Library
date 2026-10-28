@@ -43,10 +43,12 @@ public sealed class DemoSettlementHistoryTests
         Assert.Contains(DemoSettlementHistory.Lines(world, child!.FoundedFromSettlementId), l => l.Contains($"建立{child.Name}"));
         // 人口曾達 10 人的聚落記下里程碑；第 08-6 章 d 節起村莊另需木匠（見 DemoKnowledgeTests）。
         var grown = world.Sites.Settlements.First(s => world.WeekReports()
-            .Any(w => w.Settlements.Any(l => l.SettlementId == s.Id && l.PopulationClosing >= DemoSettlementHistory.TempVillagePopulation)));
+            .Any(w => w.Settlements.Any(l => l.SettlementId == s.Id && l.PopulationClosing >= DemoSettlementHistory.TempUpPopulation(DemoSettlementTier.Village))));
         Assert.Contains(DemoSettlementHistory.Lines(world, grown.Id), l => l.Contains("人口首次達到 10 人"));
-        Assert.All(world.Sites.Settlements.Where(s => !world.RepresentativesOf(s.Id).Any(r => r.Role == DemoRepresentativeRole.Carpenter)),
-            s => Assert.Equal(DemoSettlementTier.Settlement, world.ChronicleOf(s.Id).Tier));
+        // 第 08-11 章：沒有任何營地級設施的專家（木匠、農師、獵人、巫祝）就還是營地。
+        var campRoles = DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.Camp).Select(f => f.Role).ToHashSet();
+        Assert.All(world.Sites.Settlements.Where(s => !world.RepresentativesOf(s.Id).Any(r => campRoles.Contains(r.Role))),
+            s => Assert.Equal(DemoSettlementTier.Camp, world.ChronicleOf(s.Id).Tier));
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Godot;
+using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.GodotClient;
 
@@ -27,6 +28,16 @@ public static class ArtAssets
     public const string IconDeath = "res://assets/icons/icon_death.png";
     public const string IconFood = "res://assets/icons/icon_food.png";
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
+
+    /// <summary>第 08-11 章：居住地五級的地圖圖示（村莊沿用 icon_settlement_village.png）。</summary>
+    public static string SettlementTierIcon(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => "res://assets/icons/icon_settlement_camp.png",
+        DemoSettlementTier.Village => IconVillage,
+        DemoSettlementTier.Town => "res://assets/icons/icon_settlement_town.png",
+        DemoSettlementTier.City => "res://assets/icons/icon_settlement_city.png",
+        _ => "res://assets/icons/icon_settlement_capital.png"
+    };
 
     // 介面（第 05 章）
     public const string UiPlay = "res://assets/ui/ui_icon_play.png";
