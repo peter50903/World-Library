@@ -145,9 +145,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":25,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":26,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 25 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 26 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -163,7 +163,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 25 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 26 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -459,7 +459,7 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=32 Toolbar=1 MapMode=3 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=32 Toolbar=1 MapMode=4 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
           # 第 08 章 b 節：年度圖表——工具列開圖表、年帳＝無畫面年報、四組系列、真的滑鼠點年份、篩選該年事件、點事件定位地圖。
           WORLD_SIM_CHART_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-chart.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-chart.log; then

@@ -66,14 +66,52 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
 /// </summary>
 public static class DemoKnowledge
 {
-    /// <summary>【TEMP】農耕習得門檻（研究點）：20 個成年人約 25 年。</summary>
-    public const long TempThreshold = 26_000;
+    /// <summary>
+    /// 【TEMP】第 08-10a 章 V4：門檻＝正式設定 ResearchTimeBase × 本倍率（08-7a 原訂 325）。
+    /// 使用者 2026-10-28 裁決希望時代是序章（10～20 年）；V0 量到 325 時第一項技術要 36～53 年，改 110。
+    /// </summary>
+    public const long TempResearchScale = 110;
 
-    /// <summary>【TEMP】第 08-6 章 d 節：木工習得門檻：農耕的 1.5 倍。</summary>
-    public const long TempWoodworkingThreshold = 39_000;
+    /// <summary>正式設定 10B TECH_CROP_CULTIVATION（基礎作物栽培）的 ResearchTimeBase。A1 改讀設定檔後移除。</summary>
+    public const long CropCultivationTimeBase = 80;
 
-    /// <summary>【TEMP】第 08-6 章 e 節：鍛造習得門檻：農耕的 2 倍（只有已習得木工的聚落累積）。</summary>
-    public const long TempSmithingThreshold = 52_000;
+    /// <summary>正式設定 10E TECH_BASIC_CARPENTRY（基礎木工）的 ResearchTimeBase。</summary>
+    public const long BasicCarpentryTimeBase = 100;
+
+    /// <summary>正式設定 10C TECH_BASIC_FORGING（基礎鍛造）的 ResearchTimeBase。</summary>
+    public const long BasicForgingTimeBase = 180;
+
+    /// <summary>農耕習得門檻（研究點）＝80×110。</summary>
+    public const long TempThreshold = CropCultivationTimeBase * TempResearchScale;
+
+    /// <summary>木工習得門檻＝100×110。</summary>
+    public const long TempWoodworkingThreshold = BasicCarpentryTimeBase * TempResearchScale;
+
+    /// <summary>鍛造習得門檻＝180×110（只有已習得木工的聚落累積）。</summary>
+    public const long TempSmithingThreshold = BasicForgingTimeBase * TempResearchScale;
+
+    /// <summary>
+    /// 【TEMP】第 08-10a 章 V4（08-7a 鄰近傳播，參考 CK3 革新傳播）：範圍內每有一個已習得的聚落，每週＋門檻的萬分之 5（0.05%），
+    /// 最多算 <see cref="TempDiffusionMaxNeighbours"/> 個（0.25%）。
+    /// </summary>
+    public const long TempDiffusionPerNeighbourBasisPoints = 5;
+
+    /// <summary>【TEMP】鄰近傳播最多計入的已習得聚落數。</summary>
+    public const int TempDiffusionMaxNeighbours = 5;
+
+    /// <summary>【TEMP】鄰近傳播的範圍（六角格距離；與開拓選址的 6 格相同，勢力範圍出現前的暫代）。</summary>
+    public const int TempDiffusionRange = 6;
+
+    /// <summary>兩個聚落的六角格距離（軸向座標）。</summary>
+    public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var x = map.GetCell(a.Column, a.Row);
+        var y = map.GetCell(b.Column, b.Row);
+        var dq = x.AxialQ - y.AxialQ;
+        var dr = x.AxialR - y.AxialR;
+        return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
+    }
 
     /// <summary>【TEMP】第 08-6 章 e 節：習得鍛造後，工具讓每名勞力的採集量增加的百分比。</summary>
     public const long TempToolYieldPercent = 25;
@@ -124,7 +162,8 @@ public static class DemoKnowledge
         var era = state.Era;
         var eraWeek = state.EraWeek;
         var rules = DemoHumanLifecycle.Rules;
-        foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
+        var living = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        foreach (var settlement in living)
         {
             foreach (var technology in Enum.GetValues<DemoTechnology>())
             {
@@ -140,7 +179,11 @@ public static class DemoKnowledge
                 var carried = report.Migrations
                     .Where(m => m.Arrived && m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
-                var gain = checked(practitioners + carried * threshold * TempCarryPercent / 100);
+                // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落（有從業條件才傳得進來）。
+                var neighbours = map is null || practitioners == 0 ? 0
+                    : living.Count(o => o.Id != settlement.Id && state.Knows(o.Id, technology) && Distance(map, o, settlement) <= TempDiffusionRange);
+                var diffusion = checked(threshold * Math.Min(neighbours, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000);
+                var gain = checked(practitioners + diffusion + carried * threshold * TempCarryPercent / 100);
                 if (gain == 0)
                     continue;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
@@ -150,6 +193,8 @@ public static class DemoKnowledge
                     continue;
                 var cause = carried > 0
                     ? $"已習得的聚落有 {carried} 人遷入，帶來{Name(technology)}的經驗"
+                    : neighbours > 0
+                    ? $"鄰近 {neighbours} 個已習得{Name(technology)}的聚落傳來做法，加上 {practitioners} 名成年人的經驗"
                     : technology switch
                     {
                         DemoTechnology.Woodworking => $"{practitioners} 名成年人長年在森林取木的經驗累積",

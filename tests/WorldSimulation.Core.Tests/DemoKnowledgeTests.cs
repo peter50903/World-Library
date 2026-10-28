@@ -194,4 +194,30 @@ public sealed class DemoKnowledgeTests
                 Assert.All(world.Sites.Settlements, s => Assert.True(world.SettlementHungerDebt(s.Id) < limit));
         }
     }
+
+    /// <summary>第 08-10a 章 V4：希望時代是序章——預設種子 25 年內進入開拓時代（V0 量到原門檻要 36～53 年）。</summary>
+    [Fact]
+    public void HopeEraIsAPrologue_EndingWithinTwentyFiveYears()
+    {
+        foreach (var seed in new ulong[] { 1, 2, 3 })
+        {
+            var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
+            for (var day = 0; day < 25 * TestCalendar.DaysPerYear && world.Era == DemoEra.Hope; day++)
+                world.AdvanceOneDay();
+            Assert.True(world.Era == DemoEra.Pioneer, $"種子 {seed} 25 年內沒有進入開拓時代");
+        }
+        Assert.Equal(80 * DemoKnowledge.TempResearchScale, DemoKnowledge.ThresholdOf(DemoTechnology.Farming));
+    }
+
+    /// <summary>第 08-10a 章 V4：鄰近傳播的距離是六角格距離。</summary>
+    [Fact]
+    public void DistanceIsTheHexDistanceBetweenSettlementCells()
+    {
+        var map = DemoHexWorld.Generate(1);
+        var a = new DemoSettlement(1, "甲", 2, 2);
+        Assert.Equal(0, DemoKnowledge.Distance(map, a, a));
+        Assert.Equal(1, DemoKnowledge.Distance(map, a, new DemoSettlement(2, "乙", 3, 2)));
+        Assert.Equal(3, DemoKnowledge.Distance(map, a, new DemoSettlement(3, "丙", 5, 2)));
+        Assert.Equal(2, DemoKnowledge.Distance(map, a, new DemoSettlement(4, "丁", 2, 4)));
+    }
 }
