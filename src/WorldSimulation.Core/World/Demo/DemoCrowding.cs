@@ -47,7 +47,7 @@ public static class DemoCrowding
         var spare = new Dictionary<DemoCellRef, long>();
         foreach (var source in sources)
         {
-            var add = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
+            var add = SupplyOf(source) - source.Harvested;
             var cells = DemoHexFoodCatchment.EligibleCells(map,
                 new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
             // 第 08-4 章【TEMP 規則】：共用來源的餘量由可及的既有聚落與新來者平分（不重複計給每一個鄰居）。
@@ -60,6 +60,10 @@ public static class DemoCrowding
         }
         return spare;
     }
+
+    /// <summary>來源的每週供應（第 08-12 章起帳上記實際供應，含技術加成；舊帳退回依種類）。</summary>
+    public static long SupplyOf(DemoSourceWeekLedger source)
+        => source.WeeklySupply > 0 ? source.WeeklySupply : DemoForagingWorld.Settings.WeeklySupply(source.Kind);
 
     /// <summary>【TEMP】擁擠分家分出的人數上限＝倖存人口 ÷ 這個除數（缺糧外移仍是一半）。</summary>
     public const long TempCrowdingShareDivisor = 3;
@@ -77,7 +81,7 @@ public static class DemoCrowding
         var result = settlements.ToDictionary(s => s.Id, _ => 0L);
         foreach (var source in sources)
         {
-            var spare = DemoForagingWorld.Settings.WeeklySupply(source.Kind) - source.Harvested;
+            var spare = SupplyOf(source) - source.Harvested;
             var cells = DemoHexFoodCatchment.EligibleCells(map,
                 new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
             // 第 08-4 章【TEMP 規則】：共用來源的餘量由可及的聚落平分（原本每個鄰居都算到全部，

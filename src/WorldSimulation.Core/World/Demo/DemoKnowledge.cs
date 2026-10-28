@@ -174,6 +174,40 @@ public static class DemoKnowledge
 
     public static string Name(DemoTechnology technology) => technology.Node.Name;
 
+    /// <summary>
+    /// 【TEMP】第 08-12 章技術效果：來源每週供應加成。農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；
+    /// 河流與開放水域：結網漁撈＋20%。取相鄰（來源格或六鄰格）聚落在該週以前已習得者的最大加成。
+    /// </summary>
+    public static readonly ImmutableArray<(DemoCatchmentSourceKind Kind, string TechId, long Percent)> TempSourceBonuses = ImmutableArray.Create(
+        (DemoCatchmentSourceKind.Farmland, "TECH_IRRIGATION", 50L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_CROP_ROTATION", 25L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_SOIL_MANAGEMENT", 25L),
+        (DemoCatchmentSourceKind.MainRiver, "TECH_NET_FISHING", 20L),
+        (DemoCatchmentSourceKind.OpenWater, "TECH_NET_FISHING", 20L));
+
+    /// <summary>第 08-12 章：<paramref name="week"/> 結算時某來源的技術加成（%）。</summary>
+    public static long SourcePercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(sites);
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(source);
+        var bonuses = TempSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
+        if (bonuses.Count == 0)
+            return 0;
+        var origin = map.GetCell(source.Column, source.Row);
+        var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr)).Prepend(origin)
+            .Where(c => c is not null).Select(c => sites.SettlementAt(c!.Column, c.Row)).Where(s => s is not null);
+        long best = 0;
+        foreach (var settlement in nearby)
+        {
+            var total = bonuses.Where(b => state.Of(settlement!.Id, DemoTechnology.Of(b.TechId)) is { Learned: true } r && r.LearnedWeek < week)
+                .Sum(b => b.Percent);
+            best = Math.Max(best, total);
+        }
+        return best;
+    }
+
     /// <summary>第 08-11 章：掘井（10D）。</summary>
     public const string WellDiggingId = "TECH_WELL_DIGGING";
 

@@ -411,7 +411,8 @@ public sealed partial class DemoObserverWorld
                 debtSourceOf: DebtSourceOf,
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
-                wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1))); // 第 08-11 章：掘井
+                wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
+                sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1))); // 第 08-12 章
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 

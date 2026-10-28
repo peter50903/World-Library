@@ -405,7 +405,8 @@ public sealed record DemoSourceWeekLedger(
     IReadOnlyList<DemoSourceShare> Shares,
     long Unharvested,
     long StockOpening = 0,
-    long Regenerated = 0)
+    long Regenerated = 0,
+    long WeeklySupply = 0)
 {
     /// <summary>本週採收合計（Σ份額）。</summary>
     public long Harvested => (Shares ?? Array.Empty<DemoSourceShare>()).Sum(x => x.Food);
@@ -430,10 +431,10 @@ public sealed record DemoSourceWeekLedger(
     /// 第 06 章 c 節：本週每個來源的期初存量、再生與可採（依編號；可採＞0 才列）。
     /// <paramref name="potential"/> 的 FoodAvailable 是每週供應；<paramref name="stocks"/> 是上週期末存量（沒有＝0）。
     /// </summary>
-    internal static IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated)> Plan(
+    internal static IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated, long Supply)> Plan(
         IReadOnlyList<DemoCatchmentFoodSource> potential, IReadOnlyDictionary<int, long> stocks, int capWeeks)
     {
-        var plan = new List<(DemoCatchmentFoodSource, long, long)>();
+        var plan = new List<(DemoCatchmentFoodSource, long, long, long)>();
         foreach (var source in potential.OrderBy(x => x.Id))
         {
             var opening = stocks.GetValueOrDefault(source.Id);
@@ -441,19 +442,19 @@ public sealed record DemoSourceWeekLedger(
             var regenerated = Math.Max(0, Math.Min(source.FoodAvailable, cap - opening));
             var available = checked(opening + regenerated);
             if (available > 0)
-                plan.Add((source with { FoodAvailable = available }, opening, regenerated));
+                plan.Add((source with { FoodAvailable = available }, opening, regenerated, source.FoodAvailable));
         }
         return plan;
     }
 
     /// <summary>由一次共享分配組出全部來源帳。</summary>
     internal static IReadOnlyList<DemoSourceWeekLedger> From(int week,
-        IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated)> plan, DemoCatchmentFoodResult allocation)
+        IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated, long Supply)> plan, DemoCatchmentFoodResult allocation)
         => Array.AsReadOnly(plan.Select(p =>
             new DemoSourceWeekLedger(week, p.Source.Id, p.Source.Kind, p.Source.Column, p.Source.Row, p.Source.FoodAvailable,
                 Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == p.Source.Id).OrderBy(h => h.SettlementId)
                     .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()),
-                allocation.UnharvestedSourceFood.GetValueOrDefault(p.Source.Id), p.Opening, p.Regenerated)).ToArray());
+                allocation.UnharvestedSourceFood.GetValueOrDefault(p.Source.Id), p.Opening, p.Regenerated, p.Supply)).ToArray());
 }
 
 /// <summary>
@@ -612,7 +613,8 @@ internal static class DemoWeeklySettlement
         Func<int, long>? debtSourceOf = null,
         bool? hopeRules = null,
         Func<int, long>? toolYieldPercent = null,
-        Func<int, bool>? wells = null)
+        Func<int, bool>? wells = null,
+        Func<DemoCatchmentFoodSource, long>? sourcePercent = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -678,7 +680,8 @@ internal static class DemoWeeklySettlement
         if (config.SharedCatchmentEnabled)
         {
             var plan = DemoSourceWeekLedger.Plan(
-                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land),
+                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land,
+                    sourcePercent), // 第 08-12 章：技術提高來源供應
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
                 plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,

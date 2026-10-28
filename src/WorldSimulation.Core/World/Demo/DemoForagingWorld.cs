@@ -32,8 +32,18 @@ public static class DemoForagingWorld
     /// 第 08 章 a 節：農田格不再提供野採。第 08-6 章 c 節：農田格改為農田來源（同一格編號，供應較高），
     /// 可及規則與草原野採相同（本格與六鄰格）。
     /// </summary>
-    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites, DemoLandDevelopmentMap? land)
-        => Sources(map, sites?.OccupiedCells(), land?.FarmlandCells());
+    public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites, DemoLandDevelopmentMap? land,
+        Func<DemoCatchmentFoodSource, long>? percent = null)
+        => WithPercent(Sources(map, sites?.OccupiedCells(), land?.FarmlandCells()), percent);
+
+    /// <summary>
+    /// 第 08-12 章：技術讓某些來源每週供應增加 <paramref name="percent"/>%（灌溉、輪作的農田，結網漁撈的水域）。
+    /// 增加的是真實的每週供應（存量上限跟著變），不是憑空的糧食。
+    /// </summary>
+    public static IReadOnlyList<DemoCatchmentFoodSource> WithPercent(IReadOnlyList<DemoCatchmentFoodSource> sources,
+        Func<DemoCatchmentFoodSource, long>? percent)
+        => percent is null ? sources
+            : sources.Select(s => percent(s) is var p and > 0 ? s with { FoodAvailable = checked(s.FoodAvailable * (100 + p) / 100) } : s).ToArray();
 
     /// <summary>第 08-6 章 c 節：佔格之外的自然來源，<paramref name="farmland"/> 格改為農田來源。</summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied,
