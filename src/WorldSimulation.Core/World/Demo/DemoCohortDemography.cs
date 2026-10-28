@@ -443,6 +443,11 @@ public sealed class DemoCohortDemography
             events.Add(new DemoCohortEvent(DemoTempDemographicKind.NaturalDeath, key.Settlement, key.Batch, dead, age));
         }
 
+        // 第 08-12 章：途中隊伍全員死亡（途中餓死或本週老死）後，隨隊的懷孕跟著消失——
+        // 否則孩子會「出生」在已解散、沒有隊伍帳的隊伍裡，群體人口比世界人口多一人（長測種子 7 第 85 年）。
+        foreach (var key in preg.Keys.Where(k => k.Item2 > 0 && !groups.Any(g => g.Key.Batch == k.Item2 && g.Value > 0)).ToList())
+            preg.Remove(key);
+
         // ② 到期分娩、③ 流產。
         foreach (var (key, n) in _pregnancies)
         {
