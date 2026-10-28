@@ -81,7 +81,17 @@
 |---|---|---|
 | 門檻倍率 | ResearchTimeBase × 110（原 325）：農耕 8800、木工 11000、鍛造 19800 | 使用者 2026-10-28：希望時代是序章（10～20 年）；V0 量到原倍率要 36～53 年 |
 | 鄰近傳播 | 範圍 6 格內每個已習得聚落每週＋門檻 0.05%，最多 5 個（0.25%） | 08-7a 規則；範圍在勢力範圍（第 10 章）出現前暫用開拓選址的 6 格 |
-| 知識模式配色 | 0 灰褐、1 淡金、2 橙、3 以上赭紅 | 只影響顯示 |
+| 知識模式配色 | 0 灰褐、1 淡金、2 橙、3 以上赭紅（A1 起改五段，見 D08-7a-A1） | 只影響顯示 |
+
+#### D08-7a-A1｜知識樹改讀正式設定（第 08-9 章 A1，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 新領域研究時間 | 10R 各列（第 1 階 80～100、第 2 階 120～180、第 3 階 220～260、第 4 階 360～380、第 5 階 520～600） | 與 10B～10N 同階的範圍一致；08-7b 未訂 |
+| 等級閘門 | 第 1 階任何聚落、第 2 階村莊、第 3 階以上暫不可研究 | 08-7a；城邦以上等級尚未出現 |
+| 從業者對照 | 依 08-7b 第 3 節；礦脈、牧群、石材、守衛、魔法、寶石未出現的領域為 0；以物易物的「有往來」＝6 格內有其他聚落；成文法＝村長 1 人 | 地理條件之外的人數規則先用成年人 |
+| 工具階梯 | 石器改良＋10%、基礎鍛造＋15%、熱處理＋10%（可疊加） | 08-7b；取代原本鍛造＋25% |
+| 知識模式配色 | 依習得數分五段：0、1～4、5～9、10～14、15 以上 | 技術從 3 項變成上百項 |
 
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
@@ -431,7 +441,7 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 14 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色 |
+| `godot/Scripts/DemoHexMap.cs` | 15 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
@@ -444,7 +454,7 @@
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 8 | 第 08-6 章知識樹門檻與傳播（D08-6a）、木工門檻（D08-6d）、鍛造門檻與工具加成（D08-6e）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c） |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 10 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 5 | 第 08-6 章 c 節農田開墾（D08-6c） |

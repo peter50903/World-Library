@@ -50,9 +50,9 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
     /// <summary>第 08-6 章：專業知識持有者需要的技術（權力者為 null）。</summary>
     public static DemoTechnology? TechnologyOf(DemoRepresentativeRole role) => role switch
     {
-        DemoRepresentativeRole.Farmer => DemoTechnology.Farming,
-        DemoRepresentativeRole.Carpenter => DemoTechnology.Woodworking,
-        DemoRepresentativeRole.Smith => DemoTechnology.Smithing,
+        DemoRepresentativeRole.Farmer => DemoTechnology.CropCultivation,
+        DemoRepresentativeRole.Carpenter => DemoTechnology.BasicCarpentry,
+        DemoRepresentativeRole.Smith => DemoTechnology.BasicForging,
         _ => null
     };
 }

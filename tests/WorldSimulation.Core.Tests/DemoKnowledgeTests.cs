@@ -4,10 +4,10 @@ using Xunit;
 
 namespace WorldSimulation.Core.Tests;
 
-/// <summary>第 08-6 章 a 節：知識樹（農耕）與時代（希望時代→開拓時代）。</summary>
+/// <summary>第 08-6 章 a 節、第 08-7a 章 A1：知識樹（正式設定 10B～10N、10R）與時代（希望時代→開拓時代）。</summary>
 public sealed class DemoKnowledgeTests
 {
-    /// <summary>希望時代世界跑到第一個聚落學會農耕的那一週（最多 60 年，種子依序找）。</summary>
+    /// <summary>希望時代世界跑到第一個聚落學會開局知識以外技術的那一週（最多 60 年，種子依序找）。</summary>
     private static DemoObserverWorld UntilPioneer()
     {
         foreach (var seed in new ulong[] { 1, 2, 3 })
@@ -18,30 +18,30 @@ public sealed class DemoKnowledgeTests
             if (world.Era == DemoEra.Pioneer)
                 return world;
         }
-        throw new InvalidOperationException("三個種子 60 年內都沒有聚落學會農耕。");
+        throw new InvalidOperationException("三個種子 60 年內都沒有聚落學會新技術。");
     }
 
     [Fact]
-    public void FirstFarmingVillage_StartsThePioneerEra_WithAFarmerAndHistory()
+    public void FirstLearnedTechnology_StartsThePioneerEra_WithHistory()
     {
         var world = UntilPioneer();
         var events = world.SettlementEvents();
         var era = Assert.Single(events, e => e.Kind == DemoSettlementEventKind.EraBegan);
         var learned = events.Single(e => e.EventId == era.CauseEventId);
         Assert.Equal(DemoSettlementEventKind.KnowledgeLearned, learned.Kind);
-        Assert.Equal(DemoTechnology.Farming, (DemoTechnology)learned.Count);
-        Assert.True(world.Knowledge.Knows(learned.SettlementId, DemoTechnology.Farming));
+        var technology = (DemoTechnology)learned.Count;
+        Assert.False(DemoKnowledge.IsOpening(technology));
+        Assert.Equal(1, technology.Node.Tier);
+        Assert.True(world.Knowledge.Knows(learned.SettlementId, technology));
         Assert.Equal(era.Week, world.Knowledge.EraWeek);
         Assert.Equal("TEMP_EV_ERA_BEGAN", world.EventHistory.Find(era.EventId)!.EventTypeId);
         Assert.Contains("開拓時代", DemoWorldOverview.Of(world, 365).Lines()[0], StringComparison.Ordinal);
-        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains("學會農耕", StringComparison.Ordinal));
+        Assert.Contains(DemoSettlementHistory.Lines(world, learned.SettlementId), l => l.Contains($"學會{technology.Node.Name}", StringComparison.Ordinal));
         Assert.Contains(world.QueryCell(world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Column,
-            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith("知識：農耕（第", StringComparison.Ordinal));
+            world.Sites.Settlements.Single(s => s.Id == learned.SettlementId).Row).Lines, l => l.StartsWith($"知識：{technology.Node.Name}（第", StringComparison.Ordinal));
 
-        // 下一週補任農師（專業知識持有者）。
         for (var day = 0; day < 7; day++)
             world.AdvanceOneDay();
-        Assert.Contains(world.RepresentativesOf(learned.SettlementId), r => r.Role == DemoRepresentativeRole.Farmer);
         Assert.Empty(world.BuildCausalIndex().Problems);
 
         // 存讀檔後知識樹與時代相同，續跑一致。
@@ -60,14 +60,16 @@ public sealed class DemoKnowledgeTests
     {
         // 第 08-6 章 c 節：學會農耕的聚落開墾相鄰草原（每週＋2%），完成後成為農田來源、採收記為農糧。
         var world = UntilPioneer();
-        for (var day = 0; day < 6 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
+        for (var day = 0; day < 8 * 365 && !world.SettlementEvents().Any(e => e.Kind == DemoSettlementEventKind.FarmlandCleared); day++)
             world.AdvanceOneDay();
         var cleared = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).ToList();
-        Assert.True(cleared.Count > 0, $"開拓時代 6 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
+        Assert.True(cleared.Count > 0, $"開拓時代 8 年內沒有開墾完成的農田；開墾中 {world.Land.Parcels.Count} 塊");
         var cell = DemoLandClearing.CellOf(world.Map, cleared[0].Count);
         Assert.Equal(DemoLandDevelopment.Farmland, world.Land.StateOf(cell));
         Assert.Equal(DemoTerrain.Grassland, world.Map.GetCell(cell.Column, cell.Row).Terrain);
-        Assert.True(world.Knowledge.Knows(cleared[0].SettlementId, DemoTechnology.Farming));
+        Assert.True(world.Knowledge.Knows(cleared[0].SettlementId, DemoTechnology.CropCultivation));
+        if (world.SettlementPopulation(cleared[0].SettlementId) > 0) // 學會作物栽培後補任農師
+            Assert.Contains(world.RepresentativesOf(cleared[0].SettlementId), r => r.Role == DemoRepresentativeRole.Farmer);
         Assert.Contains(DemoSettlementHistory.Lines(world, cleared[0].SettlementId), l => l.Contains("開墾一塊農田", StringComparison.Ordinal));
         Assert.Contains(world.QueryCell(cell.Column, cell.Row).Lines, l => l.StartsWith("土地開發：農田", StringComparison.Ordinal));
 
@@ -111,10 +113,10 @@ public sealed class DemoKnowledgeTests
         foreach (var seed in new ulong[] { 1, 2, 3 })
         {
             world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.LivingForagingSample);
-            for (var day = 0; day < 80 * 365 && !world.Knowledge.Records.Any(r => r.Technology == DemoTechnology.Woodworking && r.Learned); day++)
+            for (var day = 0; day < 80 * 365 && !world.Knowledge.Records.Any(r => r.Technology == DemoTechnology.BasicCarpentry && r.Learned); day++)
                 world.AdvanceOneDay();
             learned = world.LatestWeek?.Events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.KnowledgeLearned
-                && (DemoTechnology)e.Count == DemoTechnology.Woodworking);
+                && (DemoTechnology)e.Count == DemoTechnology.BasicCarpentry);
             if (learned is not null) break;
         }
         Assert.NotNull(learned);
@@ -146,20 +148,23 @@ public sealed class DemoKnowledgeTests
     }
 
     [Fact]
-    public void SmithingToolsRaiseYieldFromTheWeekAfterLearning()
+    public void ToolLadderRaisesYieldFromTheWeekAfterEachStep()
     {
-        // 第 08-6 章 e 節：鍛造在木工之後；習得後下一週起每名勞力可採量＋25%。
+        // 08-7b 工具階梯：石器改良＋10% → 基礎鍛造再＋15%（合計＋25%）；習得後下一週起生效。
+        var stone = DemoTechnology.Of("TECH_IMPROVED_STONE_TOOLS");
         var state = DemoKnowledgeState.Initial with
         {
             Records = System.Collections.Immutable.ImmutableList.Create(
-                new DemoKnowledgeRecord(1, DemoTechnology.Smithing, DemoKnowledge.TempSmithingThreshold, 10)),
+                new DemoKnowledgeRecord(1, stone, DemoKnowledge.ThresholdOf(stone), 10),
+                new DemoKnowledgeRecord(1, DemoTechnology.BasicForging, DemoKnowledge.ThresholdOf(DemoTechnology.BasicForging), 20)),
             Era = DemoEra.Pioneer, EraWeek = 5
         };
         Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 1, 10));
-        Assert.Equal(DemoKnowledge.TempToolYieldPercent, DemoKnowledge.ToolYieldPercent(state, 1, 11));
-        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 2, 11));
-        Assert.Equal(DemoRepresentativeRole.Smith, Enum.GetValues<DemoRepresentativeRole>().Single(r => DemoRepresentative.TechnologyOf(r) == DemoTechnology.Smithing));
-        Assert.True(DemoKnowledge.ThresholdOf(DemoTechnology.Smithing) > DemoKnowledge.ThresholdOf(DemoTechnology.Woodworking));
+        Assert.Equal(10, DemoKnowledge.ToolYieldPercent(state, 1, 11));
+        Assert.Equal(25, DemoKnowledge.ToolYieldPercent(state, 1, 21));
+        Assert.Equal(0, DemoKnowledge.ToolYieldPercent(state, 2, 21));
+        Assert.Equal(DemoRepresentativeRole.Smith, Enum.GetValues<DemoRepresentativeRole>().Single(r => DemoRepresentative.TechnologyOf(r) == DemoTechnology.BasicForging));
+        Assert.True(DemoKnowledge.ThresholdOf(DemoTechnology.BasicForging) > DemoKnowledge.ThresholdOf(DemoTechnology.BasicCarpentry));
 
         var config = DemoWeeklyTempConfig.LivingForagingSample;
         var ledger = new DemoSettlementWeekLedger(1, 1, "測試", 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 5);
@@ -177,7 +182,7 @@ public sealed class DemoKnowledgeTests
         Assert.All(world.Knowledge.Records, r => Assert.InRange(r.Progress, 0, DemoKnowledge.ThresholdOf(r.Technology)));
         // 一年後每個有人的聚落都有研究進度，人多的聚落進度較多（每週＋成年人數）。
         var inhabited = world.Sites.Settlements.Where(s => world.SettlementPopulation(s.Id) > 0).ToList();
-        Assert.All(inhabited, s => Assert.True(world.Knowledge.Of(s.Id, DemoTechnology.Farming)?.Progress > 0));
+        Assert.All(inhabited, s => Assert.True(world.Knowledge.Of(s.Id, DemoTechnology.CropCultivation)?.Progress > 0));
         // 非人類繁衍世界沒有知識樹。
         var plain = new DemoObserverWorld(DemoScenario.Sample(1));
         for (var day = 0; day < 70; day++)
@@ -210,7 +215,7 @@ public sealed class DemoKnowledgeTests
                 world.AdvanceOneDay();
             Assert.True(world.Era == DemoEra.Pioneer, $"種子 {seed} 25 年內沒有進入開拓時代");
         }
-        Assert.Equal(80 * DemoKnowledge.TempResearchScale, DemoKnowledge.ThresholdOf(DemoTechnology.Farming));
+        Assert.Equal(80 * DemoKnowledge.TempResearchScale, DemoKnowledge.ThresholdOf(DemoTechnology.CropCultivation));
     }
 
     /// <summary>第 08-10a 章 V4：鄰近傳播的距離是六角格距離。</summary>

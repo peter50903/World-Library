@@ -45,7 +45,7 @@ public static class DemoLandClearing
         var rules = DemoHumanLifecycle.Rules;
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
         {
-            if (!knowledge.Knows(settlement.Id, DemoTechnology.Farming) || population.AdultsIn(settlement.Id, rules) < TempMinAdults)
+            if (!knowledge.Knows(settlement.Id, DemoTechnology.CropCultivation) || population.AdultsIn(settlement.Id, rules) < TempMinAdults)
                 continue;
             var target = Candidates(land, map, sites, settlement, reserved)
                 .OrderByDescending(c => land.StateOf(c) == DemoLandDevelopment.Clearing)

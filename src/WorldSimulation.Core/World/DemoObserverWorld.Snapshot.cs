@@ -142,7 +142,7 @@ public sealed partial class DemoObserverWorld
         var knowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>()
             ?? throw new InvalidDataException("TEMP 存檔缺少知識樹。");
         if (knowledge.Records is null || !Enum.IsDefined(knowledge.Era)
-            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || !Enum.IsDefined(r.Technology)
+            || knowledge.Records.Any(r => r is null || sites.Settlements.All(s => s.Id != r.SettlementId) || DemoKnowledge.IsOpening(r.Technology)
                 || r.Progress < 0 || r.Progress > DemoKnowledge.ThresholdOf(r.Technology) || r.LearnedWeek < 0 || r.LearnedWeek > weekCount
                 || (r.LearnedWeek > 0) != (r.Progress == DemoKnowledge.ThresholdOf(r.Technology)))
             || knowledge.Records.GroupBy(r => (r.SettlementId, r.Technology)).Any(g => g.Count() > 1)
