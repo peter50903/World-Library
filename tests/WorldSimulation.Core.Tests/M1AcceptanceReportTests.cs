@@ -168,7 +168,11 @@ public sealed class M1AcceptanceReportTests
     {
         var famine = Matrix.Value.Where(r => r.Run.Preset == M1Preset.LaborFamine).ToList();
         Assert.Equal(M1AcceptanceCli.DefaultSeeds.Count, famine.Count);
-        Assert.All(famine, r => Assert.Equal(M1Verdict.Pass, Result(r, "M1_FAMINE").Verdict));
+        Assert.All(famine, r =>
+        {
+            var result = Result(r, "M1_FAMINE");
+            Assert.True(result.Verdict == M1Verdict.Pass, $"種子 {r.Run.Seed}：{result.Diagnosis}");
+        });
     }
 
     [Fact]
