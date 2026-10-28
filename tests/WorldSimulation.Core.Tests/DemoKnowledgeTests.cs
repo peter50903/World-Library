@@ -75,8 +75,12 @@ public sealed class DemoKnowledgeTests
             world.AdvanceOneDay();
         var source = Assert.Single(world.LatestWeek!.Sources, x => x.Column == cell.Column && x.Row == cell.Row);
         Assert.Equal(DemoCatchmentSourceKind.Farmland, source.Kind);
-        Assert.True(world.LatestWeek!.Settlements.Sum(l => l.FoodFromFarming) > 0);
         Assert.All(world.LatestWeek!.Settlements, l => Assert.True(l.NoMagicFood));
+        // 第 08-7c 章：開拓時代提早、人口較少時，自然來源夠吃的週不一定動用農田；兩年內至少有一週採收到農糧。
+        var firstWeek = world.LatestWeek!.Week;
+        for (var day = 0; day < 2 * 365 && !world.WeekReports().Any(w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0); day++)
+            world.AdvanceOneDay();
+        Assert.Contains(world.WeekReports(), w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0);
         Assert.Empty(world.BuildCausalIndex().Problems);
 
         // 存讀檔後土地相同，續跑一致；竄改農田（沒有開墾事件）會被拒讀。
