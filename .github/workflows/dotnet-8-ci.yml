@@ -76,6 +76,11 @@ jobs:
               fi
               echo "::notice title=地圖 $m 效能診斷::$(grep -E '===|耗時|^Y(1|10|20|30) |彙整|存檔|週報欄位|缺糧 #' "/tmp/diag-map-$m.txt" | cut -c1-220 | head -45 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
             done
+            # 第 08-10a 章 V0：世界變化報告 10 年冒煙（完整基準在下一個步驟；只要基準不跑其他長測時，PR 貼「change-report」標籤）。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --change-report --seed 1 --years 10 > /tmp/change-smoke.txt
+            grep -q '=== 世界變化報告｜種子 1｜10 年｜地圖 小' /tmp/change-smoke.txt
+            grep -q '^第 1～10 年｜重大 ' /tmp/change-smoke.txt
+            grep -q '^總結：第一項技術 ' /tmp/change-smoke.txt
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
               grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80
@@ -254,6 +259,23 @@ jobs:
           else
             echo "WorldSimulation.sln not present yet. Skipping game build and tests."
           fi
+
+      - name: 世界變化報告基準（第 08-10a 章 V0，完整長測或 PR 貼「change-report」標籤時跑）
+        if: (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'change-report')) && hashFiles('WorldSimulation.sln') != ''
+        shell: bash
+        run: |
+          set -uo pipefail
+          for spec in "small 1,2,3,4,5" "medium 1"; do
+            set -- $spec
+            if ! timeout 1200 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --change-report --seeds "$2" --years 100 --map "$1" > "/tmp/change-$1.txt" 2>&1; then
+              echo "::warning title=世界變化報告 $1 未完成::$(tail -10 "/tmp/change-$1.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+            fi
+            # 註記每則約 4 KB、每步驟最多 10 則：每則 10 行。
+            split -l 10 -d "/tmp/change-$1.txt" "/tmp/change-$1-part-"
+            for part in /tmp/change-$1-part-*; do
+              echo "::notice title=世界變化報告 $1 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
+            done
+          done
 
       - name: Upload M1 acceptance report (第 08 章 d 節)
         if: always()
