@@ -232,6 +232,8 @@ jobs:
             # 驗收結論以註記列出（API 可讀，供 PR 說明引用）。
             summary="$(sed -n '/=== M1 驗收總結/,$p' /tmp/observer-m1.log; grep '^  種子 [0-9]*｜人口 \|調查結果' /tmp/observer-m1.log)"
             echo "::notice title=M1 正式驗收::$(printf '%s' "$summary" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
+            # 第 06-2 章：各情境的 M1_FAMINE 判讀（危機傳導量測容易受地圖影響，列出來方便查）。
+            echo "::notice title=M1_FAMINE 各情境::$(awk -F'｜' '/^--- 種子 /{h=$1"｜"$2} /^  M1_FAMINE｜/{print h" "$4" "substr($5,1,330)}' /tmp/observer-m1.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')"
             # Every Enabled=TRUE CheckID from the CSV must be reported, in CSV order, in the summary.
             expected_ids="$(tail -n +2 'config/sheets/45G_M1驗收.csv' | tr -d '\r' | awk -F, '$NF=="TRUE"{print $1}')"
             test -n "$expected_ids"
