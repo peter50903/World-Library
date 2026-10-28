@@ -53,6 +53,8 @@ public static class ChangeReport
             }
             tracker.Finish(world);
             Print(tracker, output, printed);
+            foreach (var line in tracker.RuinCauses)
+                output.WriteLine(line); // 第 08-11 章：遺跡成因
             output.WriteLine(tracker.Summary());
         }
         return 0;

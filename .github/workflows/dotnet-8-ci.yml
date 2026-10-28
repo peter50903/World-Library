@@ -272,8 +272,8 @@ jobs:
             if ! timeout 1200 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --change-report --seeds "$2" --years 100 --map "$1" > "/tmp/change-$1.txt" 2>&1; then
               echo "::warning title=世界變化報告 $1 未完成::$(tail -10 "/tmp/change-$1.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
             fi
-            # 註記每則約 4 KB、每步驟最多 10 則：每則 10 行。
-            split -l 10 -d "/tmp/change-$1.txt" "/tmp/change-$1-part-"
+            # 註記每則約 4 KB、每步驟最多 10 則：每則 14 行（第 08-11 章加遺跡成因）。
+            split -l 14 -d "/tmp/change-$1.txt" "/tmp/change-$1-part-"
             for part in /tmp/change-$1-part-*; do
               echo "::notice title=世界變化報告 $1 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
             done
