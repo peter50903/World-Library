@@ -43,7 +43,7 @@ public static class HudLayout
     public const double TempConsoleShare = 0.30;
     public const double TempMapMinShare = 0.40; // 地圖至少保留的可見寬度比例
     public const int TempBarHeight = 72;      // TEMP：功能列高（圖示按鈕 64＋木板上下 4）
-    public const int TempToolbarWidth = 760;  // TEMP：十顆 64 圖示按鈕（地形、糧食、家系、知識、格線｜情境、存讀檔、說明、圖表、開發）＋間距 8×9＋木板左右邊（第 08-11 章：原 600 放不下，兩側按鈕壓到邊框）
+    public const int TempToolbarWidth = 830;  // TEMP：十一顆 64 圖示按鈕（地形、糧食、家系、知識、文化、格線｜情境、存讀檔、說明、圖表、開發）＋間距 8×10＋木板左右邊（第 08-11 章：原 600 放不下；第 08-8 章 B1 加文化）
 
     public static HudFrame Compute(int width, int height, bool detailOpen, bool consoleOpen)
     {

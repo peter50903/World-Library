@@ -83,6 +83,7 @@ public static class ArtAssets
         UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
         UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
+        UiMapCulture, // 第 08-8 章 B1：文化模式
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 

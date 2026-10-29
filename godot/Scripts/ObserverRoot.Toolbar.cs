@@ -16,6 +16,7 @@ public partial class ObserverRoot
     private Button _mapTerrainButton = null!;
     private Button _mapFoodButton = null!;
     private Button _mapLineageButton = null!; // 第 08-10a 章 V2
+    private Button _mapCultureButton = null!; // 第 08-8 章 B1
     private Button _gridToggle = null!; // 第 06-2 章
     private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
     private string _foodLegendText = string.Empty;
@@ -68,6 +69,11 @@ public partial class ObserverRoot
             "地圖模式：知識（聚落與採集範圍依已習得的技術數著色；看得出技術從哪裡傳開）");
         _mapKnowledgeButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Knowledge);
         row.AddChild(_mapKnowledgeButton);
+        // 第 08-8 章 B1：文化模式。
+        _mapCultureButton = ToolButton(ArtAssets.UiMapCulture, "文化",
+            "地圖模式：文化（聚落與採集範圍依主要文化著色；遷徙與婚嫁會讓文化比例流動）");
+        _mapCultureButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Culture);
+        row.AddChild(_mapCultureButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
         _gridToggle.ToggleMode = true;
@@ -114,6 +120,8 @@ public partial class ObserverRoot
             _mapLineageButton.SelfModulate = mode == DemoHexMap.Mode.Lineage ? Colors.White : new Color(1, 1, 1, 0.5f);
         if (_mapKnowledgeButton is not null)
             _mapKnowledgeButton.SelfModulate = mode == DemoHexMap.Mode.Knowledge ? Colors.White : new Color(1, 1, 1, 0.5f);
+        if (_mapCultureButton is not null)
+            _mapCultureButton.SelfModulate = mode == DemoHexMap.Mode.Culture ? Colors.White : new Color(1, 1, 1, 0.5f);
         // 第 08-10a 章 V4：圖例跟著模式換（糧食狀況／知識）。
         if (_foodLegend is not null)
             _foodLegend.Text = mode == DemoHexMap.Mode.Knowledge ? KnowledgeLegend() : _foodLegendText;
@@ -173,7 +181,7 @@ public partial class ObserverRoot
                 "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「編年史」切換右側面板，再按一次收合。",
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（現況、代表人物、技術、研究、歷史分頁）；遺跡另列在下方。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色／文化：依主要文化著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })
@@ -320,6 +328,11 @@ public partial class ObserverRoot
             || _world.Sites.Settlements.Any(s => _hexMap.KnowledgeCounts.GetValueOrDefault(s.Id) != _world.Knowledge.KnownBy(s.Id).Count)
             || !_foodLegend.Text.Contains("尚無技術", StringComparison.Ordinal))
             fail("knowledge map mode does not show Core's knowledge.");
+        // 第 08-8 章 B1：文化模式＝Core 各聚落的主要文化。
+        _mapCultureButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_hexMap.MapMode != DemoHexMap.Mode.Culture
+            || _world.Sites.Settlements.Any(s => _world.Culture.MainCultureOf(s.Id) is { } c && _hexMap.CultureOf.GetValueOrDefault(s.Id) != c))
+            fail("culture map mode does not show Core's culture.");
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
@@ -334,6 +347,6 @@ public partial class ObserverRoot
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
             fail("toolbar / map mode art was not applied.");
-        return $"Toolbar=1 MapMode=4 Modal={modals}";
+        return $"Toolbar=1 MapMode=5 Modal={modals}";
     }
 }

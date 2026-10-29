@@ -77,6 +77,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle = ImmutableSortedDictionary<int, DemoSettlementChronicle>.Empty;
     private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
+    private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-8 章 B1：文化
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -147,6 +148,8 @@ public sealed partial class DemoObserverWorld
             _demography = DemoCohortDemography.Open(
                 _population.ToDictionary(p => p.Key, p => checked((int)p.Value)), DemoHumanLifecycle.Rules,
                 new DemoOpeningDraws(_rng)); // 第 07 章 a 節：混齡開局（世界種子 ECOLOGY_INIT 流，不推進計數器）；第 07-1 章：只記群體人數
+        if (weekly.HumanLifecycleEnabled)
+            _culture = DemoCultures.Open(Map, _sites, _rng); // 第 08-8 章 B1：開局文化（RELIGION 流實體局部亂數，不推進計數器）
         _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);
@@ -212,6 +215,9 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 08-6 章：知識樹（各聚落研究進度與已習得的技術）與目前時代。</summary>
     public DemoKnowledgeState Knowledge => _knowledge;
+
+    /// <summary>第 08-8 章 B1：文化（只有人類繁衍世界有）。</summary>
+    public DemoCultureState Culture => _culture;
 
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
@@ -435,6 +441,8 @@ public sealed partial class DemoObserverWorld
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);
+                // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化。
+                commit.StageCulture(DemoCultures.Advance(_culture, withKnowledge.Report, lifecycle.Outcome.Sites, _rng));
             }
             else
             {
@@ -517,6 +525,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _chronicle) sb.Append(inv, $"chronicle{kv.Key}={kv.Value.Fingerprint()};");
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
+        sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

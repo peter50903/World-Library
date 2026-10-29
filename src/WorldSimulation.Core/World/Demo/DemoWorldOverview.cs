@@ -71,12 +71,23 @@ public sealed record DemoWorldOverview(
             year?.SettlementsFounded ?? 0)
         {
             // 第 08-11 章：各等級的有人聚落數（營地、村莊、城鎮、城市、首都）。
-            Tiers = Enum.GetValues<DemoSettlementTier>().Select(t => active.Count(s => world.ChronicleOf(s.Id).Tier == t)).ToArray()
+            Tiers = Enum.GetValues<DemoSettlementTier>().Select(t => active.Count(s => world.ChronicleOf(s.Id).Tier == t)).ToArray(),
+            // 第 08-8 章 B1：各文化的估計人口（聚落人口×比例），由多到少。
+            Cultures = world.Culture.Cultures
+                .Select(c => (c.Name, People: active.Sum(s => world.SettlementPopulation(s.Id)
+                    * (world.Culture.SharesOf(s.Id).FirstOrDefault(x => x.CultureId == c.Id)?.Permille ?? 0) / 1000)))
+                .Where(x => x.People > 0).OrderByDescending(x => x.People).ThenBy(x => x.Name, StringComparer.Ordinal).ToArray()
         };
     }
 
     /// <summary>第 08-11 章：各等級的有人聚落數，依 <see cref="DemoSettlementTier"/> 順序。</summary>
     public IReadOnlyList<int> Tiers { get; init; } = Array.Empty<int>();
+
+    /// <summary>第 08-8 章 B1：各文化的估計人口（由多到少）。</summary>
+    public IReadOnlyList<(string Name, long People)> Cultures { get; init; } = Array.Empty<(string, long)>();
+
+    /// <summary>總覽最多列幾個文化。</summary>
+    public const int MaxCultureLines = 4;
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
     public long? CapacityPercent => Capacity > 0 ? Population * 100 / Capacity : null;
@@ -102,6 +113,9 @@ public sealed record DemoWorldOverview(
             lines.Add(I($"育齡伴侶約 {Couples} 對｜懷孕中 {Pregnant}"));
         }
         lines.Add(I($"存糧 {FoodStored}（途中攜帶 {FoodInTransit}）｜本週缺糧聚落 {ShortVillages}"));
+        if (Cultures.Count > 0)
+            lines.Add(I($"文化 {Cultures.Count} 種：") + string.Join("、", Cultures.Take(MaxCultureLines).Select(c => I($"{c.Name} 約 {c.People} 人")))
+                + (Cultures.Count > MaxCultureLines ? "…" : ""));
         lines.Add(I($"今年：出生 {BirthsThisYear}｜老死 {OldAgeDeathsThisYear}｜餓死 {StarvationDeathsThisYear}｜外移 {EmigrantsThisYear}｜建村 {FoundedThisYear}"));
         return lines;
     }

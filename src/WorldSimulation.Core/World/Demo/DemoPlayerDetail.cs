@@ -119,6 +119,14 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");
             now.Add(world.IsStarving(settlement.Id) ? "糧食：短缺，有人挨餓" : "糧食：充足");
         }
+        // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
+        var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();
+        if (shares.Count > 0)
+        {
+            now.Add("文化：" + string.Join("、", shares.Select(s => $"{world.Culture.Culture(s.CultureId)?.Name ?? "？"} {(s.Permille + 5) / 10}%")));
+            if (world.Culture.Culture(shares[0].CultureId) is { } main)
+                now.Add($"{main.Name}的傳統：" + string.Join("、", main.Traits.Select(DemoCultures.TraitName)));
+        }
         else
         {
             now.Add($"第 {YearOfWeek(settlement.RuinedWeek)} 年起無人居住");
@@ -128,7 +136,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         var people = world.RepresentativesOf(settlement.Id)
             .OrderBy(r => r.Role)
             .Select(r => $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
-                + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任）")
+                + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
+                + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "") + "）")
             .ToList();
         if (people.Count == 0)
             people.Add(settlement.IsRuin ? "已無人居住" : "目前沒有代表人物");
