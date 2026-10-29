@@ -129,6 +129,16 @@
 | 聚集 | 擁擠分家時，先找已知、走得到、來源餘量≥這批人每週需求 2 倍的聚落搬進去；沒有才開拓 | 人往養得起的地方聚（WorldBox、CK3 的人口流向城市），少開小營地 |
 | 技術效果 | 農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；河流與開放水域：結網漁撈＋20%（相鄰聚落已習得者取最大，習得後下一週起） | 文明帝國的地塊改良、世紀帝國的磨坊升級；提高真實的每週供應，存量上限跟著變 |
 
+#### D08-8｜文化 B1（第 08-8 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 開局分群 | 開局聚落相距 ≤6 格連成一群，每群一個文化 | 08-8 原訂婚嫁範圍 12 格；小地圖 12 格會讓整張圖只有一個文化 |
+| 生計特性加權 | 條件（鄰林、鄰河、鄰海、鄰草原、開拓、開局）成立權重×4，不成立不抽 | 十字軍之王地區傳統：地形決定生計 |
+| 文化名稱 | 群內編號最小的開局聚落名＋「人」 | 讀得懂、可對照地圖 |
+| 比例流動 | 千分比；抵達者依人數加權併入，開拓的新聚落沿用隊伍比例；新任代表人物依比例抽文化 | 08-8 第 4 節 |
+| 文化模式配色 | 家系配色錯開半圈 | 只影響顯示 |
+
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -462,8 +472,9 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 8 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
+| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 4 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |

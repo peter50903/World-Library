@@ -157,6 +157,29 @@ public sealed partial class DemoObserverWorld
             || (knowledge.Era != DemoEra.Hope && (knowledge.EraWeek < 1 || knowledge.EraWeek > weekCount)))
             Reject("知識樹或時代不合法");
         candidate._knowledge = knowledge with { Records = knowledge.Records.ToImmutableList() };
+        // 第 08-8 章 B1：文化（文化編號唯一、比例合計千分之一千且指向存在的文化與聚落）。
+        var culture = state.GetProperty("Culture").Deserialize<DemoCultureState>()
+            ?? throw new InvalidDataException("TEMP 存檔缺少文化。");
+        if (culture.Cultures is null || culture.Settlements is null || culture.Batches is null || culture.Representatives is null)
+            Reject("文化狀態不完整");
+        var cultureIds = culture.Cultures.Select(c => c.Id).ToHashSet();
+        bool BadShares(IReadOnlyList<DemoCultureShare>? shares)
+            => shares is null || shares.Count == 0 || shares.Sum(x => x.Permille) != 1000
+               || shares.Any(x => x.Permille <= 0 || !cultureIds.Contains(x.CultureId))
+               || shares.Select(x => x.CultureId).Distinct().Count() != shares.Count;
+        if (cultureIds.Count != culture.Cultures.Count || culture.Cultures.Any(c => c.Id < 1 || c.Traits is null || string.IsNullOrWhiteSpace(c.Name))
+            || culture.Settlements.Any(x => sites.Settlements.All(s => s.Id != x.SettlementId) || BadShares(x.Shares))
+            || culture.Settlements.Select(x => x.SettlementId).Distinct().Count() != culture.Settlements.Count
+            || culture.Batches.Any(x => BadShares(x.Shares))
+            || culture.Representatives.Any(r => !cultureIds.Contains(r.CultureId)))
+            Reject("文化狀態不合法");
+        candidate._culture = culture with
+        {
+            Cultures = culture.Cultures.ToImmutableList(),
+            Settlements = culture.Settlements.ToImmutableList(),
+            Batches = culture.Batches.ToImmutableList(),
+            Representatives = culture.Representatives.ToImmutableList()
+        };
         // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得鍛造。
         foreach (var report in reports)
             foreach (var ledger in report.Settlements)

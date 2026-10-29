@@ -72,6 +72,7 @@ public sealed partial class DemoObserverWorld
         private ImmutableSortedDictionary<int, DemoSettlementChronicle> _chronicle; // 第 04-1 章：聚落小史
         private ImmutableSortedDictionary<int, long> _debtSources; // 第 04-1 章：飢餓債來源
         private DemoKnowledgeState _knowledge; // 第 08-6 章：知識樹與時代
+        private DemoCultureState _culture; // 第 08-8 章 B1：文化
         private DemoLandDevelopmentMap _land; // 第 08-6 章 c 節：開墾
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
@@ -95,6 +96,7 @@ public sealed partial class DemoObserverWorld
             _chronicle = world._chronicle;
             _debtSources = world._debtSources;
             _knowledge = world._knowledge;
+            _culture = world._culture;
             _land = world._land;
         }
 
@@ -232,6 +234,16 @@ public sealed partial class DemoObserverWorld
             _land = land;
         }
 
+        /// <summary>第 08-8 章 B1：生死與遷徙之後的文化（只在結算週、歷史步驟之前）。</summary>
+        public void StageCulture(DemoCultureState culture)
+        {
+            ArgumentNullException.ThrowIfNull(culture);
+            RequireWeekly(nameof(StageCulture));
+            if (_step != Step.Population)
+                throw new InvalidOperationException($"提交順序錯誤：{nameof(StageCulture)} 必須在生死之後、歷史之前呼叫（目前 {_step}）。");
+            _culture = culture;
+        }
+
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
         public DemoWeeklyOutcome Outcome => _outcome ?? throw new InvalidOperationException("尚未暫存週結算。");
 
@@ -264,6 +276,7 @@ public sealed partial class DemoObserverWorld
             world._chronicle = _chronicle;
             world._debtSources = _debtSources;
             world._knowledge = _knowledge;
+            world._culture = _culture;
             world._land = _land;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }

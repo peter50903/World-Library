@@ -39,7 +39,23 @@ public partial class DemoHexMap : Control
         Terrain,
         Food,
         Lineage, // 第 08-10a 章 V2：家系
-        Knowledge // 第 08-10a 章 V4：知識（已習得幾項技術）
+        Knowledge, // 第 08-10a 章 V4：知識（已習得幾項技術）
+        Culture // 第 08-10a 章 V5、08-8 章 B1：文化（各聚落的主要文化）
+    }
+
+    /// <summary>第 08-8 章 B1：聚落的主要文化編號（文化模式著色）。</summary>
+    public IReadOnlyDictionary<int, int> CultureOf { get; set; } = new Dictionary<int, int>();
+
+    /// <summary>第 08-8 章 B1：文化的固定順序（文化編號），決定配色。</summary>
+    public IReadOnlyList<int> CultureOrder { get; set; } = Array.Empty<int>();
+
+    public Color CultureColor(int cultureId)
+    {
+        var index = 0;
+        for (var i = 0; i < CultureOrder.Count; i++)
+            if (CultureOrder[i] == cultureId) index = i;
+        // 與家系錯開半圈，兩個模式切換時顏色不會一樣。
+        return TempLineagePalette[(index + TempLineagePalette.Length / 2) % TempLineagePalette.Length];
     }
 
     private Mode _mode = Mode.Terrain;
@@ -206,7 +222,7 @@ public partial class DemoHexMap : Control
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
-                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge))
+                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture))
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
@@ -280,6 +296,10 @@ public partial class DemoHexMap : Control
         // 第 08-10a 章 V2：家系模式——地形壓暗，聚落與採集範圍塗家系色，家系之間畫合併後的邊界（參考 WorldBox／CK3 分布圖層）。
         if (_mode == Mode.Lineage && Sites is not null)
             DrawTerritory(start, radius, owner => LineageColor(owner.LineageRootId), owner => owner.LineageRootId);
+        // 第 08-8 章 B1：文化模式——同樣的領域，依聚落的主要文化著色。
+        if (_mode == Mode.Culture && Sites is not null)
+            DrawTerritory(start, radius, owner => CultureColor(CultureOf.GetValueOrDefault(owner.SettlementId)),
+                owner => CultureOf.GetValueOrDefault(owner.SettlementId));
         // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
         if (_mode == Mode.Knowledge && Sites is not null)
             DrawTerritory(start, radius, owner => KnowledgeColor(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)),
