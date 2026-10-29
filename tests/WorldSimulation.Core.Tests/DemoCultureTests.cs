@@ -137,7 +137,9 @@ public sealed class DemoCultureEffectTests
     public void SplitIsARootEventAndSavesKeepContacts()
     {
         Assert.Equal("TEMP_EV_CULTURE_SPLIT", DemoEventTypes.Of(DemoSettlementEventKind.CultureSplit).TypeId);
-        var world = Lived.Value;
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 2 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
         Assert.NotEmpty(world.Culture.Contacts);
         var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
         Assert.Equal(world.Culture.Fingerprint(), reloaded.Culture.Fingerprint());
