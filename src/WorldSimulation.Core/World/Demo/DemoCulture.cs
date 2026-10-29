@@ -328,7 +328,7 @@ public static class DemoCultures
                     if (settlements.GetValueOrDefault(s.Id) is { Count: > 1 } sh && MainOf(s.Id) is { } main)
                         settlements[s.Id] = Assimilate(sh, main);
 
-            // 分化：同文化聚落依 TempClusterRange 連成區塊；最大的區塊是主體（同大取編號小），主體與從主體來的移入者刷新往來。
+            // 分化：同文化聚落依 TempContactRange 連成區塊；最大的區塊是主體（同大取編號小），主體與從主體來的移入者刷新往來。
             foreach (var group in living.Where(s => MainOf(s.Id) is not null).GroupBy(s => MainOf(s.Id)!.Value).OrderBy(g => g.Key))
             {
                 var blocks = Blocks(map, group.ToList());
@@ -409,13 +409,19 @@ public static class DemoCultures
         return result.OrderBy(s => s.CultureId).ToImmutableList();
     }
 
-    /// <summary>同文化聚落依 <see cref="TempClusterRange"/> 格連成的區塊（並查集）。</summary>
+    /// <summary>
+    /// 【TEMP】分化判定的往來範圍：同文化聚落相距不超過這麼多格才算同一區塊（開局分群用 6 格；
+    /// 06 格時整張圖連成一串、百年內從不分化，08-10c 第 B4 列）。
+    /// </summary>
+    public const int TempContactRange = 3;
+
+    /// <summary>同文化聚落依 <see cref="TempContactRange"/> 格連成的區塊（並查集）。</summary>
     public static List<List<DemoSettlement>> Blocks(DemoHexWorld map, IReadOnlyList<DemoSettlement> settlements)
     {
         var parent = settlements.ToDictionary(s => s.Id, s => s.Id);
         int Find(int x) => parent[x] == x ? x : parent[x] = Find(parent[x]);
         foreach (var a in settlements)
-            foreach (var b in settlements.Where(b => b.Id > a.Id && DemoKnowledge.Distance(map, a, b) <= TempClusterRange))
+            foreach (var b in settlements.Where(b => b.Id > a.Id && DemoKnowledge.Distance(map, a, b) <= TempContactRange))
                 parent[Find(b.Id)] = Find(a.Id);
         return settlements.GroupBy(s => Find(s.Id)).Select(g => g.OrderBy(s => s.Id).ToList()).OrderBy(b => b[0].Id).ToList();
     }
