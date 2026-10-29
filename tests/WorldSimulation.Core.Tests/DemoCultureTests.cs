@@ -83,3 +83,24 @@ public sealed class DemoCultureTests
         Assert.Empty(new DemoObserverWorld(DemoScenario.Sample(3)).Culture.Cultures); // 非人類繁衍世界沒有文化
     }
 }
+
+/// <summary>第 08-8 章 B2：文化的研究效果。</summary>
+public sealed class DemoCultureEffectTests
+{
+    [Fact]
+    public void CultureTraitsChangeResearchAndDiffusion()
+    {
+        var hunting = DemoTechCatalog.Get("TECH_HUNTING");
+        var crop = DemoTechCatalog.Get("TECH_CROP_CULTIVATION");
+        var boat = DemoTechCatalog.Get("TECH_BASIC_BOATBUILDING");
+        Assert.Equal(0, DemoKnowledge.CultureResearchPercent(crop, Array.Empty<string>()));
+        Assert.Equal(10, DemoKnowledge.CultureResearchPercent(crop, new[] { "CT_SCHOLARLY" }));
+        Assert.Equal(60, DemoKnowledge.CultureResearchPercent(hunting, new[] { "CT_SCHOLARLY", "CT_MARTIAL", "CT_STEPPE_FOLK" }));
+        Assert.Equal(25, DemoKnowledge.CultureResearchPercent(boat, new[] { "CT_SEA_FOLK" }));
+        Assert.Equal(0, DemoKnowledge.CultureResearchPercent(crop, new[] { "CT_MERCHANT", "CT_MARTIAL" }));
+        Assert.Equal(25, DemoKnowledge.CultureResearchPercent(DemoTechCatalog.Get("TECH_BARTER"), new[] { "CT_MERCHANT" }));
+        Assert.Equal(100, DemoKnowledge.CultureDiffusionPercent(Array.Empty<string>()));
+        Assert.Equal(50, DemoKnowledge.CultureDiffusionPercent(new[] { "CT_TRADITIONAL" }));
+        Assert.Equal(200, DemoKnowledge.CultureDiffusionPercent(new[] { "CT_OPEN" }));
+    }
+}

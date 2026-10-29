@@ -431,7 +431,9 @@ public sealed partial class DemoObserverWorld
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
                 var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map,
-                    id => ChronicleOf(id).Tier, _land); // 第 08-7a 章 A1：等級閘門、磨粉要農田
+                    id => ChronicleOf(id).Tier, _land, // 第 08-7a 章 A1：等級閘門、磨粉要農田
+                    id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c) is { } main
+                        ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>()); // 第 08-8 章 B2：文化研究效果
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
