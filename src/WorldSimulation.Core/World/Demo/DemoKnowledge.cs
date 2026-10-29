@@ -151,6 +151,27 @@ public static class DemoKnowledge
         _ => false
     };
 
+    /// <summary>
+    /// 【TEMP】第 08-8 章 B2 文化效果（研究）：主要文化的特性讓從業者與專家的研究點增加（%）。
+    /// 重學→全部＋10%；尚武→狩獵＋25%；海之民→造船＋25%；草原子民→狩獵、弓箭＋25%；重商→以物易物、貨幣＋25%。
+    /// </summary>
+    public static long CultureResearchPercent(DemoTechNode node, IReadOnlyCollection<string> traits)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentNullException.ThrowIfNull(traits);
+        long p = 0;
+        if (traits.Contains("CT_SCHOLARLY")) p += 10;
+        if (traits.Contains("CT_MARTIAL") && node.Domain == "HUNT") p += 25;
+        if (traits.Contains("CT_SEA_FOLK") && node.Domain == "10E" && node.Branch == "造船") p += 25;
+        if (traits.Contains("CT_STEPPE_FOLK") && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
+        if (traits.Contains("CT_MERCHANT") && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
+        return p;
+    }
+
+    /// <summary>【TEMP】第 08-8 章 B2：鄰近傳播倍率（%）：守舊減半、開放加倍。</summary>
+    public static long CultureDiffusionPercent(IReadOnlyCollection<string> traits)
+        => traits.Contains("CT_TRADITIONAL") ? 50 : traits.Contains("CT_OPEN") ? 200 : 100;
+
     /// <summary>兩個聚落的六角格距離（軸向座標）。</summary>
     public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
     {
@@ -327,7 +348,8 @@ public static class DemoKnowledge
     /// </summary>
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
-        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null)
+        DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
+        Func<int, IReadOnlyCollection<string>>? cultureTraits = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -371,6 +393,7 @@ public static class DemoKnowledge
                 arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
                 map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
+            var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
 
             foreach (var node in catalog)
             {
@@ -392,12 +415,14 @@ public static class DemoKnowledge
                     .Sum(m => m.PopulationClosing);
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
                 var known = neighbours.Count(o => state.Knows(o.Id, technology));
-                var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000);
+                var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000
+                    * CultureDiffusionPercent(traits) / 100); // 第 08-8 章 B2：守舊減半、開放加倍
                 // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
                 var experts = ExpertResearch(node, roles);
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
                 var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
-                var gain = checked(practitioners + experts + diffusion + boost + carried * threshold * TempCarryPercent / 100);
+                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, traits)) / 100 // 第 08-8 章 B2
+                    + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boostNow };
