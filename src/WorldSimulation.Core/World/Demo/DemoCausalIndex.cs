@@ -333,6 +333,9 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.FarmlandAbandoned:
                 // 第 08-11 章：根因（附近已無人耕作；開發度另存於土地開發狀態）。
                 return parent is null && e.Count > 0 ? null : "農田荒廢是根因，事件人數欄必須是格編號";
+            case DemoSettlementEventKind.CultureSplit:
+                // 第 08-8 章 B4：根因（斷絕往來的計時另存於文化狀態）。
+                return parent is null && e.Count > 0 ? null : "文化分化是根因，事件人數欄必須是新文化編號";
 
             default:
                 return "未知的事件種類";

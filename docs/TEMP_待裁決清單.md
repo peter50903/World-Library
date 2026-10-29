@@ -138,6 +138,8 @@
 | 文化名稱 | 群內編號最小的開局聚落名＋「人」 | 讀得懂、可對照地圖 |
 | 比例流動 | 千分比；抵達者依人數加權併入，開拓的新聚落沿用隊伍比例；新任代表人物依比例抽文化 | 08-8 第 4 節 |
 | 文化模式配色 | 家系配色錯開半圈 | 只影響顯示 |
+| 文化分化（B4） | 同主要文化的有人聚落依 3 格連成區塊，最大區塊（同大取編號小）是主體；其他區塊每個聚落都滿 30 年（08-8 原訂 50 年）沒在主體內、也沒有從主體來的移入者，就整塊分化出子文化（名＝區塊編號最小聚落名＋「人」，換掉上層文化一個特性） | 08-8 第 3 節；48C CUL_SPLIT |
+| 文化同化（B4） | 每 10 年，聚落內每個少數文化的千分比有 20%（向下取整）轉為主要文化 | 08-8 第 4 節；48C 不瞬間同化 |
 | 文化研究效果（B2） | 主要文化特性：重學全部＋10%、尚武狩獵＋25%、海之民造船＋25%、草原子民狩獵與弓箭＋25%、重商以物易物與貨幣＋25%（加在從業者與專家的研究點）；鄰近傳播守舊×0.5、開放×2 | 08-8 第 5 節；加總後取整 |
 
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
@@ -475,7 +477,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
-| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 4 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動（D08-8） |
+| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 8 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
@@ -502,13 +504,13 @@
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
-| `src/WorldSimulation.Core/History/WorldEvent.cs` | 2 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」 |
+| `src/WorldSimulation.Core/History/WorldEvent.cs` | 3 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」；第 08-8 章 B4「文化」 |
 | `src/WorldSimulation.Core/World/Demo/DemoPlayerDetail.cs` | 3 | 第 08-11 章玩家詳情：拿掉 TEMP 標記的文字處理（不是數值） |
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 17 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2）；第 08-12 章技術效果（D08-12）；第 08-8 章 B2 文化研究效果（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 18 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 19 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

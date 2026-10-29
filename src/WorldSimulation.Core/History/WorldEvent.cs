@@ -25,7 +25,10 @@ public enum CauseRootCategory
     Lifecycle = 2,
 
     /// <summary>【TEMP】第 08-6 章 知識：習得技術、時代開始。</summary>
-    Knowledge = 3
+    Knowledge = 3,
+
+    /// <summary>【TEMP】第 08-8 章 B4 文化：文化分化。</summary>
+    Culture = 4
 }
 
 /// <summary>

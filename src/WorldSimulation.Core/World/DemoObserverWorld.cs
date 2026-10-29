@@ -438,13 +438,15 @@ public sealed partial class DemoObserverWorld
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
                     lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
-                var added = learned.Concat(cleared).ToArray();
+                // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
+                var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,
+                    checked(landNextId + cleared.Count), lifecycle.Population.Representatives);
+                var added = learned.Concat(cleared).Concat(split).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);
-                // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化。
-                commit.StageCulture(DemoCultures.Advance(_culture, withKnowledge.Report, lifecycle.Outcome.Sites, _rng));
+                commit.StageCulture(culture);
             }
             else
             {

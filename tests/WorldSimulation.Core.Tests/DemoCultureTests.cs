@@ -103,4 +103,45 @@ public sealed class DemoCultureEffectTests
         Assert.Equal(50, DemoKnowledge.CultureDiffusionPercent(new[] { "CT_TRADITIONAL" }));
         Assert.Equal(200, DemoKnowledge.CultureDiffusionPercent(new[] { "CT_OPEN" }));
     }
+
+    // ── 第 08-8 章 B4：分化與同化 ──
+
+    [Fact]
+    public void AssimilationMovesTwentyPercentOfEachMinorityToTheMainCulture()
+    {
+        var shares = new[] { new DemoCultureShare(1, 700), new DemoCultureShare(2, 250), new DemoCultureShare(3, 50) };
+        var after = DemoCultures.Assimilate(shares, 1);
+        Assert.Equal(new[] { (1, 760), (2, 200), (3, 40) }, after.Select(s => (s.CultureId, s.Permille)));
+        Assert.Equal(1000, after.Sum(s => s.Permille));
+        // 只剩 1‰ 的少數文化不會被進位吃掉，但 4‰ 以下最終會歸零（向下取整，持續同化）。
+        Assert.Equal(new[] { (1, 996), (2, 4) }, DemoCultures.Assimilate(new[] { new DemoCultureShare(1, 995), new DemoCultureShare(2, 5) }, 1)
+            .Select(s => (s.CultureId, s.Permille)));
+    }
+
+    [Fact]
+    public void ChildCultureReplacesExactlyOneTraitFromTheSamePool()
+    {
+        var parent = ImmutableList.Create("CT_FOREST_FOLK", "CT_ELDER_COUNCIL");
+        for (ulong seed = 0; seed < 20; seed++)
+        {
+            var child = DemoCultures.Mutate(parent, i => seed * 7919 + i * 104729);
+            Assert.Equal(parent.Count, child.Count);
+            var lost = parent.Except(child).Single();
+            var gained = child.Except(parent).Single();
+            var pool = DemoCultures.TraitPool.First(e => e.TraitId == lost).PoolId;
+            Assert.Equal(pool, DemoCultures.TraitPool.First(e => e.TraitId == gained).PoolId);
+        }
+    }
+
+    [Fact]
+    public void SplitIsARootEventAndSavesKeepContacts()
+    {
+        Assert.Equal("TEMP_EV_CULTURE_SPLIT", DemoEventTypes.Of(DemoSettlementEventKind.CultureSplit).TypeId);
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 2 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        Assert.NotEmpty(world.Culture.Contacts);
+        var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.Culture.Fingerprint(), reloaded.Culture.Fingerprint());
+    }
 }

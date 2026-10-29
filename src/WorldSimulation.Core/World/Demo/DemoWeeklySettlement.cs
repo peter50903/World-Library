@@ -228,7 +228,10 @@ public enum DemoSettlementEventKind
     FarmlandCleared = 12,
 
     /// <summary>第 08-11 章：農田無人耕作，開始荒廢（Count＝格編號；之後每週開發度下降，降到 0 變回草原）。</summary>
-    FarmlandAbandoned = 13
+    FarmlandAbandoned = 13,
+
+    /// <summary>第 08-8 章 B4：文化分化（人數欄＝新文化編號；根因）。</summary>
+    CultureSplit = 14
 }
 
 /// <summary>
@@ -270,6 +273,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.CultureSplit => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }

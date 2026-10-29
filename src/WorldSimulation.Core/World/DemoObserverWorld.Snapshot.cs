@@ -160,7 +160,7 @@ public sealed partial class DemoObserverWorld
         // 第 08-8 章 B1：文化（文化編號唯一、比例合計千分之一千且指向存在的文化與聚落）。
         var culture = state.GetProperty("Culture").Deserialize<DemoCultureState>()
             ?? throw new InvalidDataException("TEMP 存檔缺少文化。");
-        if (culture.Cultures is null || culture.Settlements is null || culture.Batches is null || culture.Representatives is null)
+        if (culture.Cultures is null || culture.Settlements is null || culture.Batches is null || culture.Representatives is null || culture.Contacts is null)
             Reject("文化狀態不完整");
         var cultureIds = culture.Cultures.Select(c => c.Id).ToHashSet();
         bool BadShares(IReadOnlyList<DemoCultureShare>? shares)
@@ -171,14 +171,19 @@ public sealed partial class DemoObserverWorld
             || culture.Settlements.Any(x => sites.Settlements.All(s => s.Id != x.SettlementId) || BadShares(x.Shares))
             || culture.Settlements.Select(x => x.SettlementId).Distinct().Count() != culture.Settlements.Count
             || culture.Batches.Any(x => BadShares(x.Shares))
-            || culture.Representatives.Any(r => !cultureIds.Contains(r.CultureId)))
+            || culture.Representatives.Any(r => !cultureIds.Contains(r.CultureId))
+            // 第 08-8 章 B4：子文化指向較早的上層文化；往來計時不晚於目前週次、每聚落一筆。
+            || culture.Cultures.Any(c => c.ParentId != 0 && (c.ParentId >= c.Id || !cultureIds.Contains(c.ParentId)))
+            || culture.Contacts.Any(x => x.LastContactWeek < 0 || x.LastContactWeek > days / 7 || sites.Settlements.All(s => s.Id != x.SettlementId))
+            || culture.Contacts.Select(x => x.SettlementId).Distinct().Count() != culture.Contacts.Count)
             Reject("文化狀態不合法");
         candidate._culture = culture with
         {
             Cultures = culture.Cultures.ToImmutableList(),
             Settlements = culture.Settlements.ToImmutableList(),
             Batches = culture.Batches.ToImmutableList(),
-            Representatives = culture.Representatives.ToImmutableList()
+            Representatives = culture.Representatives.ToImmutableList(),
+            Contacts = culture.Contacts.ToImmutableList()
         };
         // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得鍛造。
         foreach (var report in reports)
