@@ -383,8 +383,8 @@ public static class DemoCultures
         }, events);
     }
 
-    /// <summary>【TEMP】第 08-8 章 B4：與同文化主體斷絕往來滿這麼多年就分化（48C CUL_SPLIT）。</summary>
-    public const int TempSplitYears = 50;
+    /// <summary>【TEMP】第 08-8 章 B4：與同文化主體斷絕往來滿這麼多年就分化（48C CUL_SPLIT；08-8 原訂 50 年，百年只分化 1 次，改 30 年，08-10c）。</summary>
+    public const int TempSplitYears = 30;
 
     /// <summary>【TEMP】同化週期（年）與每次少數文化轉為主要文化的比例（%）。</summary>
     public const int TempAssimilationYears = 10;
