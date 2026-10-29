@@ -41,6 +41,7 @@ public partial class ObserverRoot
         DemoChronicleCategory.Hunger => "缺糧",
         DemoChronicleCategory.Representative => "代表人物",
         DemoChronicleCategory.Population => "人口里程碑",
+        DemoChronicleCategory.Culture => "文化",
         _ => category.ToString()
     };
 

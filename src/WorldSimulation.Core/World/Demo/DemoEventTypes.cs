@@ -34,7 +34,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.KnowledgeLearned] = new("TEMP_EV_KNOWLEDGE_LEARNED", "習得技術", CauseRootCategory.Knowledge),
         [DemoSettlementEventKind.EraBegan] = new("TEMP_EV_ERA_BEGAN", "時代開始", CauseRootCategory.Knowledge),
         [DemoSettlementEventKind.FarmlandCleared] = new("TEMP_EV_FARMLAND_CLEARED", "開墾農田", CauseRootCategory.Knowledge),
-        [DemoSettlementEventKind.FarmlandAbandoned] = new("TEMP_EV_FARMLAND_ABANDONED", "農田荒廢", CauseRootCategory.Resource)
+        [DemoSettlementEventKind.FarmlandAbandoned] = new("TEMP_EV_FARMLAND_ABANDONED", "農田荒廢", CauseRootCategory.Resource),
+        [DemoSettlementEventKind.CultureSplit] = new("TEMP_EV_CULTURE_SPLIT", "文化分化", CauseRootCategory.Culture)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);
