@@ -441,7 +441,13 @@ public sealed partial class DemoObserverWorld
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
                 var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,
                     checked(landNextId + cleared.Count), lifecycle.Population.Representatives);
-                var added = learned.Concat(cleared).Concat(split).ToArray();
+                // 第 08-8 章 B3：信仰（習得祖靈祭祀時創立、改信、隨遷徙流動；事件接在分化之後）。
+                var (faith, faithEvents) = DemoFaiths.Advance(culture.Faith, report, learned, lifecycle.Outcome.Sites, Map, _rng,
+                    lifecycle.Population.Representatives,
+                    id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
+                    checked(landNextId + cleared.Count + split.Count));
+                culture = culture with { Faith = faith };
+                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);

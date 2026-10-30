@@ -177,13 +177,36 @@ public sealed partial class DemoObserverWorld
             || culture.Contacts.Any(x => x.LastContactWeek < 0 || x.LastContactWeek > days / 7 || sites.Settlements.All(s => s.Id != x.SettlementId))
             || culture.Contacts.Select(x => x.SettlementId).Distinct().Count() != culture.Contacts.Count)
             Reject("文化狀態不合法");
+        // 第 08-8 章 B3：信仰（編號唯一、比例合計千分之一千且指向存在的信仰或無信仰、代表人物信仰存在）。
+        var faith = culture.Faith;
+        if (faith?.Faiths is null || faith.Settlements is null || faith.Batches is null || faith.Representatives is null)
+            Reject("信仰狀態不完整");
+        var faithIds = faith!.Faiths.Select(f => f.Id).ToHashSet();
+        bool BadFaith(IReadOnlyList<DemoCultureShare>? shares)
+            => shares is null || shares.Count == 0 || shares.Sum(x => x.Permille) != 1000
+               || shares.Any(x => x.Permille <= 0 || (x.CultureId != 0 && !faithIds.Contains(x.CultureId)))
+               || shares.Select(x => x.CultureId).Distinct().Count() != shares.Count;
+        if (faithIds.Count != faith.Faiths.Count || faith.Faiths.Any(f => f.Id < 1 || f.Tenets is null || f.Doctrines is null || string.IsNullOrWhiteSpace(f.Name)
+                || sites.Settlements.All(s => s.Id != f.FounderSettlementId))
+            || faith.Settlements.Any(x => sites.Settlements.All(s => s.Id != x.SettlementId) || BadFaith(x.Shares))
+            || faith.Settlements.Select(x => x.SettlementId).Distinct().Count() != faith.Settlements.Count
+            || faith.Batches.Any(x => BadFaith(x.Shares))
+            || faith.Representatives.Any(r => !faithIds.Contains(r.CultureId)))
+            Reject("信仰狀態不合法");
         candidate._culture = culture with
         {
             Cultures = culture.Cultures.ToImmutableList(),
             Settlements = culture.Settlements.ToImmutableList(),
             Batches = culture.Batches.ToImmutableList(),
             Representatives = culture.Representatives.ToImmutableList(),
-            Contacts = culture.Contacts.ToImmutableList()
+            Contacts = culture.Contacts.ToImmutableList(),
+            Faith = faith with
+            {
+                Faiths = faith.Faiths.Select(f => f with { Tenets = f.Tenets.ToImmutableList(), Doctrines = f.Doctrines.ToImmutableList() }).ToImmutableList(),
+                Settlements = faith.Settlements.ToImmutableList(),
+                Batches = faith.Batches.ToImmutableList(),
+                Representatives = faith.Representatives.ToImmutableList()
+            }
         };
         // 第 08-6 章 e 節：近期週帳的工具加成＝該週以前已習得鍛造。
         foreach (var report in reports)

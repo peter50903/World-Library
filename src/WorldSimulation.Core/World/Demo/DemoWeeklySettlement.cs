@@ -231,7 +231,13 @@ public enum DemoSettlementEventKind
     FarmlandAbandoned = 13,
 
     /// <summary>第 08-8 章 B4：文化分化（人數欄＝新文化編號；根因）。</summary>
-    CultureSplit = 14
+    CultureSplit = 14,
+
+    /// <summary>第 08-8 章 B3：創立信仰（人數欄＝信仰編號；直接原因＝同週同聚落習得祖靈祭祀）。</summary>
+    FaithFounded = 15,
+
+    /// <summary>第 08-8 章 B3：信仰失傳（人數欄＝信仰編號；根因）。</summary>
+    FaithExtinct = 16
 }
 
 /// <summary>
@@ -273,7 +279,8 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
-            DemoSettlementEventKind.CultureSplit => $"第 {day} 天  |  {SettlementName} {Cause}",
+            DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
+                => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
     }
