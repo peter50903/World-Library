@@ -40,7 +40,31 @@ public partial class DemoHexMap : Control
         Food,
         Lineage, // 第 08-10a 章 V2：家系
         Knowledge, // 第 08-10a 章 V4：知識（已習得幾項技術）
-        Culture // 第 08-10a 章 V5、08-8 章 B1：文化（各聚落的主要文化）
+        Culture, // 第 08-10a 章 V5、08-8 章 B1：文化（各聚落的主要文化）
+        Faith // 第 08-8 章 B3：信仰（各聚落的主要信仰；無信仰灰色，聖地標記）
+    }
+
+    /// <summary>第 08-8 章 B3：聚落的主要信仰編號（沒有信徒的聚落不在表內）。</summary>
+    public IReadOnlyDictionary<int, int> FaithOf { get; set; } = new Dictionary<int, int>();
+
+    /// <summary>第 08-8 章 B3：信仰的固定順序（信仰編號），決定配色。</summary>
+    public IReadOnlyList<int> FaithOrder { get; set; } = Array.Empty<int>();
+
+    /// <summary>第 08-8 章 B3：現存信仰的創立聚落（聖地）。</summary>
+    public IReadOnlySet<int> HolySites { get; set; } = new HashSet<int>();
+
+    /// <summary>無信仰聚落的顏色。</summary>
+    public static readonly Color TempNoFaithColor = new(0.55f, 0.55f, 0.55f);
+
+    public Color FaithColor(int faithId)
+    {
+        if (faithId == 0)
+            return TempNoFaithColor;
+        var index = 0;
+        for (var i = 0; i < FaithOrder.Count; i++)
+            if (FaithOrder[i] == faithId) index = i;
+        // 與家系錯開四分之一圈、與文化錯開，三個模式切換時顏色不同。
+        return TempLineagePalette[(index + TempLineagePalette.Length / 4) % TempLineagePalette.Length];
     }
 
     /// <summary>第 08-8 章 B1：聚落的主要文化編號（文化模式著色）。</summary>
@@ -222,7 +246,7 @@ public partial class DemoHexMap : Control
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
-                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture))
+                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
@@ -300,6 +324,25 @@ public partial class DemoHexMap : Control
         if (_mode == Mode.Culture && Sites is not null)
             DrawTerritory(start, radius, owner => CultureColor(CultureOf.GetValueOrDefault(owner.SettlementId)),
                 owner => CultureOf.GetValueOrDefault(owner.SettlementId));
+        // 第 08-8 章 B3：信仰模式——同樣的領域，依主要信仰著色；聖地（創立聚落）另畫標記。
+        if (_mode == Mode.Faith && Sites is not null)
+        {
+            DrawTerritory(start, radius, owner => FaithColor(FaithOf.GetValueOrDefault(owner.SettlementId)),
+                owner => FaithOf.GetValueOrDefault(owner.SettlementId));
+            var holy = ArtAssets.Texture(ArtAssets.IconHolySite);
+            foreach (var site in Sites.Settlements.Where(s => HolySites.Contains(s.Id)))
+            {
+                var cell = World!.GetCell(site.Column, site.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (holy is not null)
+                    DrawTextureRect(holy, new Rect2(center - new Vector2(radius, radius) * 0.7f, new Vector2(radius, radius) * 1.4f), false);
+                else
+                {
+                    DrawCircle(center, radius * 0.35f, new Color(0.95f, 0.80f, 0.35f));
+                    DrawArc(center, radius * 0.35f, 0, Mathf.Tau, 24, Colors.Black, 2f);
+                }
+            }
+        }
         // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
         if (_mode == Mode.Knowledge && Sites is not null)
             DrawTerritory(start, radius, owner => KnowledgeColor(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)),

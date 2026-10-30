@@ -61,6 +61,10 @@ public static class ArtAssets
     public const string UiMapKnowledge = "res://assets/ui/ui_icon_mapmode_knowledge.png";
     /// <summary>第 08-10a 章 V5：文化地圖模式圖示（UI_ICON_MAPMODE_CULTURE；文化模式完成前不用）。</summary>
     public const string UiMapCulture = "res://assets/ui/ui_icon_mapmode_culture.png";
+
+    /// <summary>第 08-8 章 B3：信仰模式按鈕與聖地標記（待製作；未交付前按鈕顯示文字、聖地畫金色圓點）。</summary>
+    public const string UiMapFaith = "res://assets/ui/ui_icon_mapmode_faith.png";
+    public const string IconHolySite = "res://assets/icons/icon_holy_site.png";
     /// <summary>第 06-2 章：格線開關圖示（UI_ICON_GRID）。</summary>
     public const string UiGrid = "res://assets/ui/ui_icon_grid.png";
     /// <summary>第 06-2 章 b 節：丘陵與礦脈（地形尚未加入丘陵前不用）。</summary>

@@ -1407,6 +1407,11 @@ public partial class ObserverRoot : Control
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
+        // 第 08-8 章 B3：信仰模式。
+        _hexMap.FaithOf = _world.Sites.Settlements.Where(s => _world.Culture.Faith.MainFaithOf(s.Id) is not null)
+            .ToDictionary(s => s.Id, s => _world.Culture.Faith.MainFaithOf(s.Id)!.Value);
+        _hexMap.FaithOrder = _world.Culture.Faith.Faiths.Select(f => f.Id).ToList();
+        _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
         _hexMap.SettlementScale = _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier)); // 第 08-11 章：五級
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
