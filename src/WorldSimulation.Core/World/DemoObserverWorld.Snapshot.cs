@@ -90,10 +90,13 @@ public sealed partial class DemoObserverWorld
         bool WellsAt(int settlementId, int week) => waterKnowledge.Records is not null && DemoKnowledge.Wells(waterKnowledge, sites.Settlements, settlementId, week);
         // 第 08-8 章 B2：生計文化加成依主要文化變化紀錄（其餘文化欄位在下方驗證）。
         var cultureHistory = state.GetProperty("Culture").Deserialize<DemoCultureState>() ?? DemoCultureState.Empty;
+        // 第 12-1 章 C1：狩獵加成依年度名單（野生動物其餘欄位在下方驗證）。
+        var wildlife = state.TryGetProperty("Wildlife", out var wl) ? wl.Deserialize<DemoWildlifeState>() ?? DemoWildlifeState.Empty : DemoWildlifeState.Empty;
         foreach (var report in reports)
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
                 (s, week) => waterKnowledge.Records is null ? 0
-                    : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week, cultureHistory.MainHistory is null ? null : cultureHistory.TraitsAt));
+                    : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week, cultureHistory.MainHistory is null ? null : cultureHistory.TraitsAt,
+                        wildlife.Hunting is null ? null : wildlife.HuntingAt));
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -202,6 +205,19 @@ public sealed partial class DemoObserverWorld
             || faith.Batches.Any(x => BadFaith(x.Shares))
             || faith.Representatives.Any(r => !faithIds.Contains(r.CultureId)))
             Reject("信仰狀態不合法");
+        // 第 12-1 章 C1：野生動物（每格一組、不超過承載、狩獵名單指向存在的聚落且週次遞增）。
+        if (weekly.HumanLifecycleEnabled)
+        {
+            if (wildlife.Hunting is null || wildlife.Prey.IsDefault || wildlife.Wolves.IsDefault
+                || wildlife.Prey.Length != map.Cells.Count || wildlife.Wolves.Length != map.Cells.Count
+                || map.Cells.Select((c, i) => (c, i)).Any(x => wildlife.Prey[x.i] < 0 || wildlife.Wolves[x.i] < 0
+                    || wildlife.Prey[x.i] > DemoWildlife.Capacity(x.c).Prey || wildlife.Wolves[x.i] > DemoWildlife.Capacity(x.c).Wolves)
+                || wildlife.LastYearWeek < 0 || wildlife.LastYearWeek > days / 7
+                || wildlife.Hunting.Any(h => h.SettlementIds is null || h.SettlementIds.Any(id => sites.Settlements.All(s => s.Id != id)))
+                || wildlife.Hunting.Zip(wildlife.Hunting.Skip(1)).Any(p => p.Second.FromWeek <= p.First.FromWeek))
+                Reject("野生動物狀態不合法");
+            candidate._wildlife = wildlife with { Hunting = wildlife.Hunting.Select(h => h with { SettlementIds = h.SettlementIds.ToImmutableList() }).ToImmutableList() };
+        }
         candidate._culture = culture with
         {
             Cultures = culture.Cultures.ToImmutableList(),

@@ -46,7 +46,8 @@ public sealed class DemoTechEffectTests
             s => Assert.Contains(s.WeeklySupply, new[] // 第 08-8 章 B2：鄰近林地子民聚落＋10%
             {
                 DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest),
-                DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest) * 110 / 100
+                DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest) * 110 / 100,
+                DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest) * 120 / 100 // 第 12-1 章 C1：再加狩獵
             }));
         var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
         for (var d = 0; d < 60; d++)

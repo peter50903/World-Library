@@ -91,6 +91,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         var lines = new List<string> { DemoCellQuery.ShortName(world.Map, ignoreSettlement ? null : world.Sites, cell) };
         if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
             lines.Add(parcel.State == DemoLandDevelopment.Farmland ? "農田" : $"開墾中（{parcel.DevelopmentPercent}%）");
+        if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
+            lines.Add(note); // 第 12-1 章 C1
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
             lines.Add($"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}：{batch.People} 人，從{batch.FromName}前往{batch.ToName}");
         return new DemoPlayerDetail(lines[0], new[] { new DemoDetailTab("地點", lines) }, null);
@@ -118,6 +120,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");
             now.Add(world.IsStarving(settlement.Id) ? "糧食：短缺，有人挨餓" : "糧食：充足");
+            // 第 12-1 章 C1：附近獵物多寡（不揭示數字）。
+            if (!world.Wildlife.Prey.IsDefaultOrEmpty)
+                now.Add("附近獵物：" + DemoWildlife.PreyLevel(world.Wildlife, world.Map, settlement) switch { 2 => "豐富", 1 => "普通", _ => "稀少" });
         }
         // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
         var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();
