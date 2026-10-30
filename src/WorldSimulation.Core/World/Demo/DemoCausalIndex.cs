@@ -336,6 +336,13 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.CultureSplit:
                 // 第 08-8 章 B4：根因（斷絕往來的計時另存於文化狀態）。
                 return parent is null && e.Count > 0 ? null : "文化分化是根因，事件人數欄必須是新文化編號";
+            case DemoSettlementEventKind.FaithFounded:
+                // 第 08-8 章 B3：直接原因＝同週同聚落習得祖靈祭祀。
+                return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week && parent.SettlementId == e.SettlementId
+                    && parent.Count == DemoTechnology.Of(DemoFaiths.AncestorRites).Index && e.Count > 0
+                    ? null : "創立信仰的直接原因必須是同週同聚落習得祖靈祭祀";
+            case DemoSettlementEventKind.FaithExtinct:
+                return parent is null && e.Count > 0 ? null : "信仰失傳是根因，事件人數欄必須是信仰編號";
 
             default:
                 return "未知的事件種類";

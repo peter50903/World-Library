@@ -178,8 +178,8 @@ public sealed class WorldRecipeTests
             var slots = DemoSaveSlots.ListAll(directory);
             var config = WorldRecipe.CurrentConfigHash[..8];
             var derived = WorldRecipe.ForSeeds(7).HistorySeed;
-            Assert.Equal($"槽 1：第 3 日｜世界種子 7｜歷史種子 8｜一般示範｜設定 {config}｜存檔第 34 版｜可讀", slots[0].Describe());
-            Assert.Equal($"槽 2：第 3 日｜世界種子 7｜歷史種子 {derived}（衍生）｜一般示範｜設定 {config}｜存檔第 34 版｜可讀", slots[1].Describe());
+            Assert.Equal($"槽 1：第 3 日｜世界種子 7｜歷史種子 8｜一般示範｜設定 {config}｜存檔第 35 版｜可讀", slots[0].Describe());
+            Assert.Equal($"槽 2：第 3 日｜世界種子 7｜歷史種子 {derived}（衍生）｜一般示範｜設定 {config}｜存檔第 35 版｜可讀", slots[1].Describe());
         }
         finally
         {

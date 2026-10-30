@@ -21,7 +21,8 @@ public enum DemoChronicleCategory
     Hunger = 8,
     Representative = 9,
     Population = 10,
-    Culture = 11
+    Culture = 11,
+    Faith = 12
 }
 
 /// <summary>條目文字的一段；<see cref="SettlementId"/>＞0 的段落是可點擊的聚落名稱（參考 CK3 名稱底線）。</summary>
@@ -114,6 +115,13 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Farmland, e.EventId,
                         Name(e.SettlementId), T(" 附近的一塊農田無人耕作，開始荒廢"));
                     break;
+                case DemoSettlementEventKind.FaithFounded:
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.FaithExtinct:
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.CultureSplit:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Culture, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
@@ -197,6 +205,7 @@ public static class DemoWorldChronicle
         Part(DemoChronicleCategory.Farmland, "開墾農田");
         Part(DemoChronicleCategory.Famine, "餓死紀錄");
         Part(DemoChronicleCategory.Culture, "文化分化");
+        Part(DemoChronicleCategory.Faith, "信仰興衰");
         var head = $"第 {years[0].Year}～{years[^1].Year} 年：";
         return head + (parts.Count == 0 ? "沒有重大事件" : string.Join("、", parts))
                + $"｜出生 {years.Sum(y => y.Births)}、老死 {years.Sum(y => y.NaturalDeaths)}";

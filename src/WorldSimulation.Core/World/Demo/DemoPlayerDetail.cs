@@ -126,6 +126,15 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             now.Add("文化：" + string.Join("、", shares.Select(s => $"{world.Culture.Culture(s.CultureId)?.Name ?? "？"} {(s.Permille + 5) / 10}%")));
             if (world.Culture.Culture(shares[0].CultureId) is { } main)
                 now.Add($"{main.Name}的傳統：" + string.Join("、", main.Traits.Select(DemoCultures.TraitName)));
+            // 第 08-8 章 B3：信仰比例與主要信仰的信條、教義。
+            var faith = world.Culture.Faith;
+            now.Add("信仰：" + string.Join("、", faith.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId)
+                .Select(s => $"{(s.CultureId == 0 ? "無信仰" : faith.Faith(s.CultureId)?.Name ?? "？")} {(s.Permille + 5) / 10}%")));
+            if (faith.MainFaithOf(settlement.Id) is { } mf && faith.Faith(mf) is { } f)
+            {
+                now.Add($"{f.Name}的信條：" + string.Join("、", f.Tenets.Select(DemoFaiths.EntryName)));
+                now.Add($"{f.Name}的教義：" + string.Join("、", f.Doctrines.Select(DemoFaiths.EntryName)));
+            }
         }
         else
         {
@@ -137,7 +146,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             .OrderBy(r => r.Role)
             .Select(r => $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
                 + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
-                + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "") + "）")
+                + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "")
+                + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）")
             .ToList();
         if (people.Count == 0)
             people.Add(settlement.IsRuin ? "已無人居住" : "目前沒有代表人物");

@@ -140,6 +140,9 @@
 | 文化模式配色 | 家系配色錯開半圈 | 只影響顯示 |
 | 文化分化（B4） | 同主要文化的有人聚落依 3 格連成區塊，最大區塊（同大取編號小）是主體；其他區塊每個聚落都滿 30 年（08-8 原訂 50 年）沒在主體內、也沒有從主體來的移入者，就整塊分化出子文化（名＝區塊編號最小聚落名＋「人」，換掉上層文化一個特性） | 08-8 第 3 節；48C CUL_SPLIT |
 | 文化同化（B4） | 每 10 年，聚落內每個少數文化的千分比有 20%（向下取整）轉為主要文化 | 08-8 第 4 節；48C 不瞬間同化 |
+| 信仰創立（B3） | 習得祖靈祭祀、6 格內沒有以任何信仰為主的聚落時，由該聚落代表人物（村長優先）創立「聚落名＋祖靈信仰」；核心信條照 P04A 各池抽數（總數 2～4），制度教義照 06K（必抽 1 項、選抽 0～1 項）；尚武→戰爭、林地子民→自然、守土→祖先權重×2 | 08-8 第 3 節 |
+| 信仰傳播（B3） | 只改信無信仰者：創立聚落每週無信仰者的 2%、6 格內有以某信仰為主的聚落時 0.5%（取鄰近最多聚落信的那個）；積極傳教×2、封閉信仰×0.5；每週至少 1‰ | 08-8 第 4 節；改宗衝突留第 11 章 |
+| 新信條四條 | 武裝朝聖 25、食人儀式 8、通靈者 18、聖樹崇拜 18（P04A 儀式池權重） | 08-8 第 2 節；效果待接（食人儀式的饑荒糧食要改週帳驗證） |
 | 文化研究效果（B2） | 主要文化特性：重學全部＋10%、尚武狩獵＋25%、海之民造船＋25%、草原子民狩獵與弓箭＋25%、重商以物易物與貨幣＋25%（加在從業者與專家的研究點）；鄰近傳播守舊×0.5、開放×2 | 08-8 第 5 節；加總後取整 |
 
 #### D07-1a｜群體人口（第 07-1 章 a 節，Claude 定案【TEMP】）
@@ -477,6 +480,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
+| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 6 格、改信速度、創立者文化加權（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 8 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
@@ -510,7 +514,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 19 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 21 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

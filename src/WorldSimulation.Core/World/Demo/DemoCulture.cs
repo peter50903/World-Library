@@ -40,6 +40,9 @@ public sealed record DemoCultureState(
     /// <summary>第 08-8 章 B4：各聚落最後一次與同文化主體往來的週次。</summary>
     public ImmutableList<DemoCultureContact> Contacts { get; init; } = ImmutableList<DemoCultureContact>.Empty;
 
+    /// <summary>第 08-8 章 B3：信仰（與文化同存於「文化信仰」狀態）。</summary>
+    public DemoFaithState Faith { get; init; } = DemoFaithState.Empty;
+
     public DemoCulture? Culture(int id) => Cultures.FirstOrDefault(c => c.Id == id);
 
     /// <summary>某聚落的文化比例（由多到少）；沒有紀錄＝空。</summary>
@@ -62,7 +65,8 @@ public sealed record DemoCultureState(
            + string.Concat(Settlements.Select(s => $"sc{s.SettlementId}=" + string.Join(',', s.Shares.Select(x => $"{x.CultureId}:{x.Permille}")) + ";"))
            + string.Concat(Batches.Select(s => $"bc{s.BatchId}=" + string.Join(',', s.Shares.Select(x => $"{x.CultureId}:{x.Permille}")) + ";"))
            + string.Concat(Representatives.Select(r => $"rc{r.RepresentativeId}={r.CultureId};"))
-           + string.Concat(Contacts.Select(c => $"ct{c.SettlementId}@{c.LastContactWeek};"));
+           + string.Concat(Contacts.Select(c => $"ct{c.SettlementId}@{c.LastContactWeek};"))
+           + Faith.Fingerprint();
 }
 
 /// <summary>P02 特性池的一列（加權條件取自 04 文化特性定義）。</summary>
@@ -268,35 +272,7 @@ public static class DemoCultures
             return (state, Array.Empty<DemoSettlementEvent>());
         var settlements = state.Settlements.ToDictionary(s => s.SettlementId, s => (IReadOnlyList<DemoCultureShare>)s.Shares);
         var batches = state.Batches.ToDictionary(b => b.BatchId, b => (IReadOnlyList<DemoCultureShare>)b.Shares);
-
-        foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
-            batches[leg.BatchId] = settlements.GetValueOrDefault(leg.FromSettlementId) ?? Array.Empty<DemoCultureShare>();
-
-        var arrivedPeople = new Dictionary<int, long>();
-        foreach (var leg in report.Migrations.Where(m => m.Arrived).OrderBy(m => m.BatchId))
-        {
-            var carried = batches.GetValueOrDefault(leg.BatchId) ?? Array.Empty<DemoCultureShare>();
-            batches.Remove(leg.BatchId);
-            if (carried.Count == 0 || leg.PopulationClosing <= 0)
-                continue;
-            if (leg.Founding)
-            {
-                if (sites.Settlements.FirstOrDefault(s => s.FoundedByBatchId == leg.BatchId) is { } founded)
-                    settlements[founded.Id] = carried;
-                continue;
-            }
-            var target = leg.ToSettlementId;
-            var ledger = report.Settlements.FirstOrDefault(l => l.SettlementId == target);
-            var already = arrivedPeople.GetValueOrDefault(target);
-            var existing = ledger is null ? 0 : Math.Max(0, ledger.PopulationClosing - ledger.Immigrants + already);
-            settlements[target] = Mix(settlements.GetValueOrDefault(target) ?? Array.Empty<DemoCultureShare>(), existing,
-                carried, leg.PopulationClosing);
-            arrivedPeople[target] = already + leg.PopulationClosing;
-        }
-        // 途中全員死亡、解散的隊伍不再保留。
-        var travelling = report.Migrations.Where(m => !m.Arrived && m.PopulationClosing > 0).Select(m => m.BatchId).ToHashSet();
-        foreach (var id in batches.Keys.Where(id => !travelling.Contains(id)).ToList())
-            batches.Remove(id);
+        Flow(settlements, batches, report, sites, Array.Empty<DemoCultureShare>());
 
         var reps = state.Representatives.ToDictionary(r => r.RepresentativeId, r => r.CultureId);
         var repSettlement = new Dictionary<long, int>();
@@ -382,6 +358,44 @@ public static class DemoCultures
             Contacts = contacts.OrderBy(kv => kv.Key).Select(kv => new DemoCultureContact(kv.Key, kv.Value)).ToImmutableList()
         }, events);
     }
+
+    /// <summary>
+    /// 比例隨遷徙流動（文化與信仰共用）：出發的隊伍帶走出發地比例；抵達者依人數加權併入目的聚落；開拓隊建立的新聚落沿用隊伍比例；
+    /// 途中全員死亡、解散的隊伍移除。<paramref name="none"/>＝沒有紀錄的聚落或隊伍視為的比例（文化＝空、信仰＝全員無信仰）。
+    /// </summary>
+    public static void Flow(Dictionary<int, IReadOnlyList<DemoCultureShare>> settlements, Dictionary<int, IReadOnlyList<DemoCultureShare>> batches,
+        DemoWeekReport report, DemoWorldSites sites, IReadOnlyList<DemoCultureShare> none)
+    {
+        foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
+            batches[leg.BatchId] = settlements.GetValueOrDefault(leg.FromSettlementId) ?? none;
+
+        var arrivedPeople = new Dictionary<int, long>();
+        foreach (var leg in report.Migrations.Where(m => m.Arrived).OrderBy(m => m.BatchId))
+        {
+            var carried = batches.GetValueOrDefault(leg.BatchId) ?? none;
+            batches.Remove(leg.BatchId);
+            if (carried.Count == 0 || leg.PopulationClosing <= 0)
+                continue;
+            if (leg.Founding)
+            {
+                if (sites.Settlements.FirstOrDefault(s => s.FoundedByBatchId == leg.BatchId) is { } founded)
+                    settlements[founded.Id] = carried;
+                continue;
+            }
+            var target = leg.ToSettlementId;
+            var ledger = report.Settlements.FirstOrDefault(l => l.SettlementId == target);
+            var already = arrivedPeople.GetValueOrDefault(target);
+            var existing = ledger is null ? 0 : Math.Max(0, ledger.PopulationClosing - ledger.Immigrants + already);
+            settlements[target] = Mix(settlements.GetValueOrDefault(target) ?? none, existing,
+                carried, leg.PopulationClosing);
+            arrivedPeople[target] = already + leg.PopulationClosing;
+        }
+        // 途中全員死亡、解散的隊伍不再保留。
+        var travelling = report.Migrations.Where(m => !m.Arrived && m.PopulationClosing > 0).Select(m => m.BatchId).ToHashSet();
+        foreach (var id in batches.Keys.Where(id => !travelling.Contains(id)).ToList())
+            batches.Remove(id);
+    }
+
 
     /// <summary>【TEMP】第 08-8 章 B4：與同文化主體斷絕往來滿這麼多年就分化（48C CUL_SPLIT；08-8 原訂 50 年，百年只分化 1 次，改 30 年，08-10c）。</summary>
     public const int TempSplitYears = 30;

@@ -76,6 +76,11 @@ public sealed record DemoWorldOverview(
             Cultures = world.Culture.Cultures
                 .Select(c => (c.Name, People: active.Sum(s => world.SettlementPopulation(s.Id)
                     * (world.Culture.SharesOf(s.Id).FirstOrDefault(x => x.CultureId == c.Id)?.Permille ?? 0) / 1000)))
+                .Where(x => x.People > 0).OrderByDescending(x => x.People).ThenBy(x => x.Name, StringComparer.Ordinal).ToArray(),
+            // 第 08-8 章 B3：各信仰的估計信徒（聚落人口×比例）與無信仰者。
+            Faiths = world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0)
+                .Select(f => (f.Name, People: active.Sum(s => world.SettlementPopulation(s.Id)
+                    * (world.Culture.Faith.SharesOf(s.Id).FirstOrDefault(x => x.CultureId == f.Id)?.Permille ?? 0) / 1000)))
                 .Where(x => x.People > 0).OrderByDescending(x => x.People).ThenBy(x => x.Name, StringComparer.Ordinal).ToArray()
         };
     }
@@ -86,7 +91,10 @@ public sealed record DemoWorldOverview(
     /// <summary>第 08-8 章 B1：各文化的估計人口（由多到少）。</summary>
     public IReadOnlyList<(string Name, long People)> Cultures { get; init; } = Array.Empty<(string, long)>();
 
-    /// <summary>總覽最多列幾個文化。</summary>
+    /// <summary>第 08-8 章 B3：各信仰的估計信徒（由多到少；失傳的不列）。</summary>
+    public IReadOnlyList<(string Name, long People)> Faiths { get; init; } = Array.Empty<(string, long)>();
+
+    /// <summary>總覽最多列幾個文化（信仰同）。</summary>
     public const int MaxCultureLines = 4;
 
     /// <summary>理論上限的達成百分比（沒有上限＝null）。</summary>
@@ -116,6 +124,9 @@ public sealed record DemoWorldOverview(
         if (Cultures.Count > 0)
             lines.Add(I($"文化 {Cultures.Count} 種：") + string.Join("、", Cultures.Take(MaxCultureLines).Select(c => I($"{c.Name} 約 {c.People} 人")))
                 + (Cultures.Count > MaxCultureLines ? "…" : ""));
+        lines.Add(Faiths.Count == 0 ? "信仰：人人尚無信仰"
+            : I($"信仰 {Faiths.Count} 種：") + string.Join("、", Faiths.Take(MaxCultureLines).Select(f => I($"{f.Name} 約 {f.People} 人")))
+                + (Faiths.Count > MaxCultureLines ? "…" : ""));
         lines.Add(I($"今年：出生 {BirthsThisYear}｜老死 {OldAgeDeathsThisYear}｜餓死 {StarvationDeathsThisYear}｜外移 {EmigrantsThisYear}｜建村 {FoundedThisYear}"));
         return lines;
     }
