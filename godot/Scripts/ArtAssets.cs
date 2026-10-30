@@ -62,7 +62,7 @@ public static class ArtAssets
     /// <summary>第 08-10a 章 V5：文化地圖模式圖示（UI_ICON_MAPMODE_CULTURE；文化模式完成前不用）。</summary>
     public const string UiMapCulture = "res://assets/ui/ui_icon_mapmode_culture.png";
 
-    /// <summary>第 08-8 章 B3：信仰模式按鈕與聖地標記（待製作；未交付前按鈕顯示文字、聖地畫金色圓點）。</summary>
+    /// <summary>第 08-8 章 B3：信仰模式按鈕與聖地標記。</summary>
     public const string UiMapFaith = "res://assets/ui/ui_icon_mapmode_faith.png";
     public const string IconHolySite = "res://assets/icons/icon_holy_site.png";
     /// <summary>第 06-2 章：格線開關圖示（UI_ICON_GRID）。</summary>
@@ -88,6 +88,7 @@ public static class ArtAssets
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
         UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
         UiMapCulture, // 第 08-8 章 B1：文化模式
+        UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
