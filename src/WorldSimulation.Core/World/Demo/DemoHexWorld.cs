@@ -1,3 +1,4 @@
+using WorldSimulation.Core.Entity;
 using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
@@ -10,7 +11,10 @@ public enum DemoTerrain
 {
     Grassland = 0,
     Forest = 1,
-    Water = 2
+    Water = 2,
+
+    /// <summary>第 06-3 章：丘陵（陸地；採集量為草原的一半、不能開墾農田；可能有礦脈）。</summary>
+    Hills = 3
 }
 
 /// <summary>
@@ -27,7 +31,8 @@ public sealed record DemoHexCell(
     DemoTerrain Terrain,
     bool MainWaterway = false,
     bool Sea = false,
-    bool Shallow = false)
+    bool Shallow = false,
+    bool Ore = false)
 {
     /// <summary>第 06-1 章：畫面水平位置（odd-r：奇數列往右半格），判斷河的兩岸用。</summary>
     public double ScreenX => Column + 0.5 * (Row & 1);
@@ -330,8 +335,53 @@ public sealed class DemoHexWorld
             }
         }
 
+        // ④ 第 06-3 章：丘陵帶與礦脈（實體局部亂數，不推進地理流計數器；前面的地形與後續開局聚落不受影響）。
+        PlaceHills(rng, cells, Columns, Rows);
+
         var readOnly = Array.AsReadOnly(cells);
         return new DemoHexWorld(seed, size, readOnly, DemoRouteNetwork.Build(readOnly, DemoRouteTempSettings.Current));
+    }
+
+    /// <summary>【TEMP】第 06-3 章：每多少欄一條丘陵帶（至少一條）、每條長度 4～7 格、丘陵格有礦脈的機率 1/3。</summary>
+    public const int TempColumnsPerHillRange = 8;
+    public const int TempHillRangeMin = 4;
+    public const int TempHillRangeMax = 7;
+    public const int TempOreOneIn = 3;
+
+    private const string HillNamespace = "TEMP-HILLS-v1";
+
+    /// <summary>
+    /// 第 06-3 章：每條丘陵帶從隨機一格陸地（非水域）出發，往隨機相鄰陸地格走 4～7 步，走過的格成為丘陵；
+    /// 每個丘陵格 1/3 有礦脈。抽樣用地理流的實體局部亂數（丘陵帶 i＝實體 i+1；礦脈＝格編號＋10000）。
+    /// </summary>
+    private static void PlaceHills(RngRegistry rng, DemoHexCell[] cells, int columns, int rows)
+    {
+        ulong Draw(ulong entity, ulong i) => EntityLocalRandom.Create(rng, EntityId.From(entity), RngStreams.Geography, HillNamespace).GetUInt64(i);
+        var byAxial = cells.Select((c, i) => (c, i)).ToDictionary(x => (x.c.AxialQ, x.c.AxialR), x => x.i);
+        var land = Enumerable.Range(0, cells.Length).Where(i => cells[i].Terrain != DemoTerrain.Water).ToArray();
+        if (land.Length == 0)
+            return;
+        var ranges = Math.Max(1, columns / TempColumnsPerHillRange);
+        for (var k = 0; k < ranges; k++)
+        {
+            var entity = (ulong)k + 1;
+            var at = land[(int)(Draw(entity, 0) % (ulong)land.Length)];
+            var length = TempHillRangeMin + (int)(Draw(entity, 1) % (ulong)(TempHillRangeMax - TempHillRangeMin + 1));
+            for (var step = 0; step < length; step++)
+            {
+                cells[at] = cells[at] with { Terrain = DemoTerrain.Hills };
+                var here = cells[at];
+                var next = DemoRouteNetwork.Directions
+                    .Select(d => byAxial.TryGetValue((here.AxialQ + d.Dq, here.AxialR + d.Dr), out var n) ? n : -1)
+                    .Where(n => n >= 0 && cells[n].Terrain is DemoTerrain.Grassland or DemoTerrain.Forest).ToArray();
+                if (next.Length == 0)
+                    break;
+                at = next[(int)(Draw(entity, 2 + (ulong)step) % (ulong)next.Length)];
+            }
+        }
+        for (var i = 0; i < cells.Length; i++)
+            if (cells[i].Terrain == DemoTerrain.Hills && Draw(10_000UL + (ulong)i, 0) % TempOreOneIn == 0)
+                cells[i] = cells[i] with { Ore = true };
     }
 
     public DemoHexCell GetCell(int column, int row)

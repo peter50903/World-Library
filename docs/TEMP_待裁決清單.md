@@ -129,6 +129,14 @@
 | 聚集 | 擁擠分家時，先找已知、走得到、來源餘量≥這批人每週需求 2 倍的聚落搬進去；沒有才開拓 | 人往養得起的地方聚（WorldBox、CK3 的人口流向城市），少開小營地 |
 | 技術效果 | 農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；河流與開放水域：結網漁撈＋20%（相鄰聚落已習得者取最大，習得後下一週起） | 文明帝國的地塊改良、世紀帝國的磨坊升級；提高真實的每週供應，存量上限跟著變 |
 
+#### D06-3｜丘陵與礦脈（第 06-3 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 丘陵帶 | 每 8 欄一條（至少一條），隨機陸地出發走 4～7 步 | 小地圖 1 條、中 3 條、大 6 條；成帶而非散點（WorldBox／FMS 山脈） |
+| 礦脈 | 丘陵格 1/3 | 每條丘陵帶平均 1～2 處礦脈，D2 採礦有地方可用 |
+| 丘陵採集 | 草原野採的一半、不能開墾 | 丘陵貧瘠；給聚落選址有取捨 |
+
 #### D08-8｜文化 B1（第 08-8 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -468,7 +476,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoOpeningDraws.cs` | 1 | 第 07 章 a 節：混齡開局亂數命名空間 `TEMP-HUMAN-OPENING-v1`（世界種子 ECOLOGY_INIT 流）|
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
-| `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 6 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值 |
+| `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 7 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值；第 06-3 章丘陵採集為草原一半 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
@@ -489,9 +497,9 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 10 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2） |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 12 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
-| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 18 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中 |
+| `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 27 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
 | `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |

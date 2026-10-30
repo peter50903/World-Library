@@ -244,6 +244,9 @@ public partial class DemoHexMap : Control
             {
                 var full = HexCoordinates.Polygon(center, radius);
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
+                // 第 06-3 章：礦脈疊圖（農田、開墾中不疊）。
+                if (cell.Ore && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
+                    DrawPolygon(full, Tint6(Colors.White), HexUvs(full, center, radius), ore);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
                 if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
@@ -255,6 +258,7 @@ public partial class DemoHexMap : Control
                 DemoTerrain.Water => new Color(0.20f, 0.39f, 0.54f),
                 DemoTerrain.Forest => new Color(0.17f, 0.38f, 0.28f),
                 DemoTerrain.Grassland => new Color(0.41f, 0.56f, 0.34f),
+                DemoTerrain.Hills => new Color(0.52f, 0.47f, 0.33f), // 第 06-3 章
                 _ => throw new InvalidOperationException("Unknown TEMP terrain value.")
             };
 
@@ -491,6 +495,7 @@ public partial class DemoHexMap : Control
     {
         DemoTerrain.Grassland => ArtAssets.Texture(ArtAssets.TileGrassland),
         DemoTerrain.Forest => ArtAssets.Texture(ArtAssets.TileForest),
+        DemoTerrain.Hills => ArtAssets.Texture(ArtAssets.TileHills), // 第 06-3 章
         DemoTerrain.Water => ArtAssets.Texture(river ? ArtAssets.TileRiver : ArtAssets.TileWater),
         _ => null
     };

@@ -13,6 +13,8 @@ public static class ArtAssets
     // 地形圖塊（尖頂六角，第 06 章）
     public const string TileGrassland = "res://assets/tiles/grassland.png";
     public const string TileForest = "res://assets/tiles/forest.png";
+    public const string TileHills = "res://assets/tiles/hills.png"; // 第 06-3 章
+    public const string OverlayOreVein = "res://assets/tiles/overlay_ore_vein.png"; // 第 06-3 章
     public const string TileWater = "res://assets/tiles/water.png";
     public const string TileRiver = "res://assets/tiles/river.png";
     // 第 06-1 章：河流淺灘（渡口）；缺少時用河流圖塊調淡＋踏石。water.png 是海洋（深海圖塊）。
@@ -88,7 +90,8 @@ public static class ArtAssets
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
         UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
         UiMapCulture, // 第 08-8 章 B1：文化模式
-        UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
+        UiMapFaith, IconHolySite,
+        TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈 // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 

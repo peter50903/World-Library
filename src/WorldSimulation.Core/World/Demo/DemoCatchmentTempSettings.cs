@@ -104,6 +104,9 @@ public sealed record DemoCatchmentTempSettings(
             else if (tile.Terrain == DemoTerrain.Grassland)
                 all.Add(new DemoCatchmentFoodSource(
                     id, tile.Column, tile.Row, DemoCatchmentSourceKind.GrasslandForage, GrasslandForageWeeklySupply));
+            else if (tile.Terrain == DemoTerrain.Hills) // 第 06-3 章【TEMP】丘陵：草原野採的一半
+                all.Add(new DemoCatchmentFoodSource(
+                    id, tile.Column, tile.Row, DemoCatchmentSourceKind.GrasslandForage, GrasslandForageWeeklySupply / 2));
             else if (rivers.Contains(new DemoCellRef(tile.Column, tile.Row)))
                 all.Add(new DemoCatchmentFoodSource(
                     id, tile.Column, tile.Row, DemoCatchmentSourceKind.MainRiver, MainRiverWeeklySupply));
