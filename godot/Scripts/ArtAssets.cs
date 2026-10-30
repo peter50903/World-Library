@@ -69,9 +69,6 @@ public static class ArtAssets
     public const string IconHolySite = "res://assets/icons/icon_holy_site.png";
     /// <summary>第 06-2 章：格線開關圖示（UI_ICON_GRID）。</summary>
     public const string UiGrid = "res://assets/ui/ui_icon_grid.png";
-    /// <summary>第 06-2 章 b 節：丘陵與礦脈（地形尚未加入丘陵前不用）。</summary>
-    public const string TileHills = "res://assets/tiles/hills.png";
-    public const string OverlayOreVein = "res://assets/tiles/overlay_ore_vein.png";
     public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
     public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（缺少時按鈕顯示「開發」）
     public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（缺少時按鈕顯示「圖表」）
@@ -90,8 +87,8 @@ public static class ArtAssets
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
         UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
         UiMapCulture, // 第 08-8 章 B1：文化模式
-        UiMapFaith, IconHolySite,
-        TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈 // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
+        UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
+        TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
