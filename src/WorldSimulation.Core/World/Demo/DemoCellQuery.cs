@@ -61,6 +61,7 @@ public static class DemoCellQuery
         DemoTerrain.Grassland => "草原（TEMP）",
         DemoTerrain.Forest => "森林（TEMP）",
         DemoTerrain.Water => "水域（TEMP）",
+        DemoTerrain.Hills => "丘陵（TEMP）",
         _ => "未定義（TEMP）"
     };
 
@@ -76,6 +77,7 @@ public static class DemoCellQuery
             return place.IsRuin ? $"{place.Name}（遺跡）" : place.Name;
         if (cell.Terrain == DemoTerrain.Forest) return "森林";
         if (cell.Terrain == DemoTerrain.Grassland) return "草原";
+        if (cell.Terrain == DemoTerrain.Hills) return cell.Ore ? "丘陵（有礦脈）" : "丘陵";
         if (cell.Sea) return "大海";
         return cell.Shallow ? "淺灘（可涉水過河）" : "河流";
     }

@@ -269,7 +269,10 @@ public static class DemoHexFoodCatchment
         if (source.Kind is DemoCatchmentSourceKind.MainRiver or DemoCatchmentSourceKind.OpenWater
             && tile.Terrain != DemoTerrain.Water)
             throw new InvalidOperationException("Water food requires a water cell.");
-        if (source.Kind is DemoCatchmentSourceKind.GrasslandForage or DemoCatchmentSourceKind.Farmland && tile.Terrain != DemoTerrain.Grassland)
-            throw new InvalidOperationException("Grassland foraging and farmland must be on grassland.");
+        if (source.Kind == DemoCatchmentSourceKind.Farmland && tile.Terrain != DemoTerrain.Grassland)
+            throw new InvalidOperationException("Farmland must be on grassland.");
+        // 第 06-3 章：丘陵也是野採來源（草原的一半）。
+        if (source.Kind == DemoCatchmentSourceKind.GrasslandForage && tile.Terrain is not (DemoTerrain.Grassland or DemoTerrain.Hills))
+            throw new InvalidOperationException("Grassland foraging must be on grassland or hills.");
     }
 }

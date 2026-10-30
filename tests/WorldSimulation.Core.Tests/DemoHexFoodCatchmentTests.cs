@@ -173,8 +173,8 @@ public sealed class DemoHexFoodCatchmentTests
             s => Assert.Equal(20, s.FoodAvailable));
         Assert.Single(sources.Where(s => s.Kind == DemoCatchmentSourceKind.MainRiver
             && s.FoodAvailable == 5));
-        Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.GrasslandForage),
-            s => Assert.Equal(8, s.FoodAvailable));
+        Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.GrasslandForage), // 第 06-3 章：丘陵為草原一半
+            s => Assert.Equal(Map.GetCell(s.Column, s.Row).Terrain == DemoTerrain.Hills ? 4 : 8, s.FoodAvailable));
         Assert.All(sources.Where(s => s.Kind == DemoCatchmentSourceKind.OpenWater),
             s => Assert.Equal(3, s.FoodAvailable));
         var otherWaterTiles = Map.Cells.Where(c => c.Terrain == DemoTerrain.Water
@@ -216,6 +216,7 @@ public sealed class DemoHexFoodCatchmentTests
             {
                 DemoTerrain.Forest => 20,
                 DemoTerrain.Grassland => 8,
+                DemoTerrain.Hills => 4, // 第 06-3 章
                 _ => 3
             };
             Assert.Equal(expected, source.FoodAvailable);

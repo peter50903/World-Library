@@ -349,6 +349,7 @@ public sealed class DemoWorldSites
     {
         DemoTerrain.Grassland => DemoResourceKind.Uncultivated, // 第 08 章 a 節：草原不再自動成為農地
         DemoTerrain.Forest => DemoResourceKind.Woodland,
+        DemoTerrain.Hills => DemoResourceKind.Uncultivated, // 第 06-3 章
         DemoTerrain.Water => DemoResourceKind.Fishery,
         _ => throw new InvalidOperationException("Unknown TEMP terrain value.")
     };
