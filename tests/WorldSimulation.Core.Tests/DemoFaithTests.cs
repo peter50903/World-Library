@@ -42,10 +42,15 @@ public sealed class DemoFaithTests
     public void AncestorRitesFoundFaithsThatSpreadAndSurviveSaving()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
-        for (var d = 0; d < 40 * TestCalendar.DaysPerYear; d++)
+        var rites = DemoTechnology.Of(DemoFaiths.AncestorRites);
+        for (var d = 0; d < 100 * TestCalendar.DaysPerYear && world.Culture.Faith.Faiths.IsEmpty; d++)
             world.AdvanceOneDay();
         var faith = world.Culture.Faith;
-        Assert.NotEmpty(faith.Faiths);
+        var learners = world.Knowledge.Records.Count(r => r.Learned && r.Technology == rites);
+        Assert.True(!faith.Faiths.IsEmpty, $"百年內沒有信仰；習得祖靈祭祀的聚落 {learners} 個");
+        for (var d = 0; d < 10 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay(); // 創立後再走 10 年，讓信仰傳播
+        faith = world.Culture.Faith;
         foreach (var f in faith.Faiths)
         {
             Assert.InRange(f.Tenets.Count, 2, DemoFaiths.MaxTenets);
