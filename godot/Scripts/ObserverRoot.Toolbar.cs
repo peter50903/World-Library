@@ -77,7 +77,7 @@ public partial class ObserverRoot
         row.AddChild(_mapCultureButton);
         // 第 08-8 章 B3：信仰模式。
         _mapFaithButton = ToolButton(ArtAssets.UiMapFaith, "信仰",
-            "地圖模式：信仰（聚落與採集範圍依主要信仰著色，灰色＝尚無信仰；金色標記＝信仰的創立地）");
+            "地圖模式：信仰（聚落與採集範圍依主要信仰著色，灰色＝尚無信仰；石陣祭火標記＝信仰的創立地）");
         _mapFaithButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Faith);
         row.AddChild(_mapFaithButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
