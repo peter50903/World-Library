@@ -56,7 +56,7 @@ public sealed class DemoSourceLedgerTests
             // 第 07 章 c 節：來源依「本週開始時」的人造佔格（本週末才成為遺跡的聚落本週仍佔格）。
             var plan = DemoSourceWeekLedger.Plan(DemoForagingWorld.WithPercent(
                     DemoForagingWorld.Sources(world.Map, world.Sites.OccupiedCellsAtWeek(week.Week)),
-                    x => DemoKnowledge.SourcePercent(world.Knowledge, world.Sites, world.Map, x, week.Week)), // 第 08-12 章
+                    x => DemoKnowledge.SourcePercent(world.Knowledge, world.Sites, world.Map, x, week.Week, world.Culture.TraitsAt)), // 第 08-12 章；第 08-8 章 B2
                 stocks, DemoForagingWorld.Settings.SourceStockCapWeeks);
             var expected = DemoSourceWeekLedger.From(week.Week, plan, recomputed);
             Assert.Equal(expected, week.Sources);

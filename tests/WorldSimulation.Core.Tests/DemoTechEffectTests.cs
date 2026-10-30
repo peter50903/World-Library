@@ -43,7 +43,11 @@ public sealed class DemoTechEffectTests
             world.AdvanceOneDay();
         Assert.All(world.WeekReports().SelectMany(w => w.Sources), s => Assert.True(s.WeeklySupply > 0));
         Assert.All(world.WeekReports().SelectMany(w => w.Sources).Where(s => s.Kind == DemoCatchmentSourceKind.Forest),
-            s => Assert.Equal(DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest), s.WeeklySupply));
+            s => Assert.Contains(s.WeeklySupply, new[] // 第 08-8 章 B2：鄰近林地子民聚落＋10%
+            {
+                DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest),
+                DemoForagingWorld.Settings.WeeklySupply(DemoCatchmentSourceKind.Forest) * 110 / 100
+            }));
         var loaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
         for (var d = 0; d < 60; d++)
         {
