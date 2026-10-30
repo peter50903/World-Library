@@ -17,6 +17,7 @@ public partial class ObserverRoot
     private Button _mapFoodButton = null!;
     private Button _mapLineageButton = null!; // 第 08-10a 章 V2
     private Button _mapCultureButton = null!; // 第 08-8 章 B1
+    private Button _mapFaithButton = null!; // 第 08-8 章 B3
     private Button _gridToggle = null!; // 第 06-2 章
     private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
     private string _foodLegendText = string.Empty;
@@ -74,6 +75,11 @@ public partial class ObserverRoot
             "地圖模式：文化（聚落與採集範圍依主要文化著色；遷徙與婚嫁會讓文化比例流動）");
         _mapCultureButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Culture);
         row.AddChild(_mapCultureButton);
+        // 第 08-8 章 B3：信仰模式。
+        _mapFaithButton = ToolButton(ArtAssets.UiMapFaith, "信仰",
+            "地圖模式：信仰（聚落與採集範圍依主要信仰著色，灰色＝尚無信仰；金色標記＝信仰的創立地）");
+        _mapFaithButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Faith);
+        row.AddChild(_mapFaithButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
         _gridToggle.ToggleMode = true;
@@ -122,6 +128,8 @@ public partial class ObserverRoot
             _mapKnowledgeButton.SelfModulate = mode == DemoHexMap.Mode.Knowledge ? Colors.White : new Color(1, 1, 1, 0.5f);
         if (_mapCultureButton is not null)
             _mapCultureButton.SelfModulate = mode == DemoHexMap.Mode.Culture ? Colors.White : new Color(1, 1, 1, 0.5f);
+        if (_mapFaithButton is not null)
+            _mapFaithButton.SelfModulate = mode == DemoHexMap.Mode.Faith ? Colors.White : new Color(1, 1, 1, 0.5f);
         // 第 08-10a 章 V4：圖例跟著模式換（糧食狀況／知識）。
         if (_foodLegend is not null)
             _foodLegend.Text = mode == DemoHexMap.Mode.Knowledge ? KnowledgeLegend() : _foodLegendText;
@@ -333,6 +341,12 @@ public partial class ObserverRoot
         if (_hexMap.MapMode != DemoHexMap.Mode.Culture
             || _world.Sites.Settlements.Any(s => _world.Culture.MainCultureOf(s.Id) is { } c && _hexMap.CultureOf.GetValueOrDefault(s.Id) != c))
             fail("culture map mode does not show Core's culture.");
+        // 第 08-8 章 B3：信仰模式＝Core 各聚落的主要信仰與聖地。
+        _mapFaithButton.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_hexMap.MapMode != DemoHexMap.Mode.Faith
+            || _world.Sites.Settlements.Any(s => _hexMap.FaithOf.GetValueOrDefault(s.Id) != (_world.Culture.Faith.MainFaithOf(s.Id) ?? 0))
+            || _world.Culture.Faith.Faiths.Any(f => f.ExtinctWeek == 0 && !_hexMap.HolySites.Contains(f.FounderSettlementId)))
+            fail("faith map mode does not show Core's faith.");
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
@@ -347,6 +361,6 @@ public partial class ObserverRoot
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
             fail("toolbar / map mode art was not applied.");
-        return $"Toolbar=1 MapMode=5 Modal={modals}";
+        return $"Toolbar=1 MapMode=6 Modal={modals}";
     }
 }
