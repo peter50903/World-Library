@@ -1,23 +1,4 @@
 # 美術收件匣匯入（.github/workflows/art-inbox.yml）：推送到 claude/art-inbox* 時下載這些雲端硬碟檔案 ID（每行一個）。
 # 空白或沒有這個檔＝下載整個收件匣資料夾（一次最多 50 個檔）。
-1lgyNtAn8TcdL0nQTbfg9X5OQ8ZTaLDP7
-1XX9nf_cu0Qb-1i7jcuE4C0Q9Gv8t5sdX
-1mfG8VHsZNMW5GsK_a1j8uOxzsCSYJ0LP
-1MKaDNBPZ7oqi0uxEMSL0EQwMCCA5IUB_
-1WUruafmqIX3gWtBvo9AZLGm6JiNDwMmZ
-16S8yinUXd5NoVg9lkW3_7N6p9onfOel8
-1jiE-_-EJjxNaRY6ObFJkhu3qixdaUhkl
-1lTqvjTT-rnLKvinztiBpH4lCbSuvTH1Z
-103KV7IplDtVepVaX9aC13VjKO_DCtlqH
-1pE3OtGsJ4yzsr6AHyzZ1h3fdb1ejrTLo
-1YwDxOwc3qXidXTSf5vB_M_JBybSfxhk-
-12j8BD2Yd-mUwhZDquoY0ZR0r3n5Qbh-V
-1-_4xuvDUhHbh28Fx7cO1_9c064tTFsaA
-13CCtYwY-jd8Qz_TwaSiYxO-oKSZKG3wx
-1jp-nhiVBXsxn77z6qfiKoEBtpDa_bTcR
-16ShvlL-3yDSREy4xbwGd-JagPlFZ4d_8
-1Lyu7CUbhIMKFpqH-zjN-QL0kziEHLCSO
-1Hu8XwfaeeS1BF2R9j1eZarb2HbYDLZcv
-1RZTPJDbCSsQimeXJJ1PdGzH1fPb1IBS0
-1Mjg2mUAqN3y2ZZ5uD5PwsFoUi01YPQWL
-13e8ItSj0tzQ9FxBaOx6lFyVQWIk85Dmz
+1NystKMqOneJfoA3aftsAbsXCxgUTmAsI
+1SQjAVpxNHJlohLztVE6IEgSoyG1xmHBV
