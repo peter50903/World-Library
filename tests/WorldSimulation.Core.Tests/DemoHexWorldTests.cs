@@ -55,7 +55,8 @@ public sealed class DemoHexWorldTests
         var raw = map.Cells.Select(_ => (DemoTerrain)(rng.NextUInt64(RngStreams.Geography) % 2UL)).ToArray();
         var expected = DemoHexWorld.SmoothLand(raw, DemoHexWorld.SmallColumns, DemoHexWorld.SmallRows);
         foreach (var (cell, i) in map.Cells.Select((c, i) => (c, i)))
-            Assert.Equal(cell.MainWaterway || cell.Sea ? DemoTerrain.Water : expected[i], cell.Terrain);
+            Assert.Equal(cell.MainWaterway || cell.Sea ? DemoTerrain.Water
+                : cell.Terrain == DemoTerrain.Hills ? DemoTerrain.Hills : expected[i], cell.Terrain); // 第 06-3 章：丘陵最後蓋上（實體局部亂數）
 
         Assert.Equal(96UL, rng.GetDrawCounter(RngStreams.Geography));
         var replay = RngRegistry.Create(seed);

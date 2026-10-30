@@ -171,7 +171,7 @@ public sealed class DemoWorldSitesTests
             Assert.Equal((s.Column, s.Row), (resource.Column, resource.Row));
             var expectedKind = cell.Terrain switch
             {
-                DemoTerrain.Grassland => DemoResourceKind.Uncultivated, // 第 08 章 a 節
+                DemoTerrain.Grassland or DemoTerrain.Hills => DemoResourceKind.Uncultivated, // 第 08 章 a 節；第 06-3 章丘陵
                 DemoTerrain.Forest => DemoResourceKind.Woodland,
                 _ => DemoResourceKind.Fishery
             };

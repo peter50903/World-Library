@@ -26,7 +26,7 @@ public sealed class DemoForagingPlayableTests
             {
                 DemoCatchmentSourceKind.Forest => 20,
                 DemoCatchmentSourceKind.MainRiver => 5,
-                DemoCatchmentSourceKind.GrasslandForage => 8,
+                DemoCatchmentSourceKind.GrasslandForage => world.Map.GetCell(source.Column, source.Row).Terrain == DemoTerrain.Hills ? 4 : 8, // 第 06-3 章
                 DemoCatchmentSourceKind.OpenWater => 3,
                 _ => throw new InvalidOperationException("Unexpected source")
             };
