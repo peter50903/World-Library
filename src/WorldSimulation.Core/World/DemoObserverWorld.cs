@@ -418,7 +418,8 @@ public sealed partial class DemoObserverWorld
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
-                sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1))); // 第 08-12 章
+                sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
+                    _culture.TraitsAt)); // 第 08-12 章；第 08-8 章 B2 生計文化
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -432,8 +433,9 @@ public sealed partial class DemoObserverWorld
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
                 var (knowledge, learned) = DemoKnowledge.Advance(_knowledge, report, lifecycle.Population, lifecycle.Outcome.Sites, nextId, Map,
                     id => ChronicleOf(id).Tier, _land, // 第 08-7a 章 A1：等級閘門、磨粉要農田
-                    id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c) is { } main
-                        ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>()); // 第 08-8 章 B2：文化研究效果
+                    id => (_culture.MainCultureOf(id) is { } c && _culture.Culture(c) is { } main ? main.Traits : (IEnumerable<string>)Array.Empty<string>())
+                        .Concat(_culture.Faith.MainFaithOf(id) is { } f && _culture.Faith.Faith(f) is { } faith ? faith.Tenets : Enumerable.Empty<string>())
+                        .ToArray()); // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,

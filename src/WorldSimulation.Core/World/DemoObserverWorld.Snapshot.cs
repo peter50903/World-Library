@@ -88,9 +88,12 @@ public sealed partial class DemoObserverWorld
                 .Select(g => DemoLandClearing.CellOf(map, g.Key)).ToArray();
         var waterKnowledge = state.GetProperty("Knowledge").Deserialize<DemoKnowledgeState>() ?? DemoKnowledgeState.Initial;
         bool WellsAt(int settlementId, int week) => waterKnowledge.Records is not null && DemoKnowledge.Wells(waterKnowledge, sites.Settlements, settlementId, week);
+        // 第 08-8 章 B2：生計文化加成依主要文化變化紀錄（其餘文化欄位在下方驗證）。
+        var cultureHistory = state.GetProperty("Culture").Deserialize<DemoCultureState>() ?? DemoCultureState.Empty;
         foreach (var report in reports)
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
-                (s, week) => waterKnowledge.Records is null ? 0 : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week));
+                (s, week) => waterKnowledge.Records is null ? 0
+                    : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week, cultureHistory.MainHistory is null ? null : cultureHistory.TraitsAt));
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -175,7 +178,13 @@ public sealed partial class DemoObserverWorld
             // 第 08-8 章 B4：子文化指向較早的上層文化；往來計時不晚於目前週次、每聚落一筆。
             || culture.Cultures.Any(c => c.ParentId != 0 && (c.ParentId >= c.Id || !cultureIds.Contains(c.ParentId)))
             || culture.Contacts.Any(x => x.LastContactWeek < 0 || x.LastContactWeek > days / 7 || sites.Settlements.All(s => s.Id != x.SettlementId))
-            || culture.Contacts.Select(x => x.SettlementId).Distinct().Count() != culture.Contacts.Count)
+            || culture.Contacts.Select(x => x.SettlementId).Distinct().Count() != culture.Contacts.Count
+            // 第 08-8 章 B2：主要文化紀錄指向存在的聚落與文化、每聚落週次遞增，最後一筆＝目前的主要文化。
+            || culture.MainHistory is null
+            || culture.MainHistory.Any(h => !cultureIds.Contains(h.CultureId) || h.Week < 0 || h.Week > days / 7 || sites.Settlements.All(s => s.Id != h.SettlementId))
+            || culture.MainHistory.GroupBy(h => h.SettlementId).Any(g => g.Zip(g.Skip(1)).Any(p => p.Second.Week <= p.First.Week))
+            || culture.Settlements.Any(x => culture.MainHistory.LastOrDefault(h => h.SettlementId == x.SettlementId)?.CultureId
+                != x.Shares.OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).First().CultureId))
             Reject("文化狀態不合法");
         // 第 08-8 章 B3：信仰（編號唯一、比例合計千分之一千且指向存在的信仰或無信仰、代表人物信仰存在）。
         var faith = culture.Faith;
@@ -200,6 +209,7 @@ public sealed partial class DemoObserverWorld
             Batches = culture.Batches.ToImmutableList(),
             Representatives = culture.Representatives.ToImmutableList(),
             Contacts = culture.Contacts.ToImmutableList(),
+            MainHistory = culture.MainHistory!.ToImmutableList(),
             Faith = faith with
             {
                 Faiths = faith.Faiths.Select(f => f with { Tenets = f.Tenets.ToImmutableList(), Doctrines = f.Doctrines.ToImmutableList() }).ToImmutableList(),

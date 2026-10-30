@@ -165,6 +165,7 @@ public static class DemoKnowledge
         if (traits.Contains("CT_SEA_FOLK") && node.Domain == "10E" && node.Branch == "造船") p += 25;
         if (traits.Contains("CT_STEPPE_FOLK") && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
         if (traits.Contains("CT_MERCHANT") && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
+        if (traits.Contains("DOC_SPIRIT_MEDIUM") && node.Domain == "FAITH") p += 25; // 第 08-8 章 B3：通靈者（信條與文化特性一起傳入）
         return p;
     }
 
@@ -206,15 +207,28 @@ public static class DemoKnowledge
         (DemoCatchmentSourceKind.MainRiver, "TECH_NET_FISHING", 20L),
         (DemoCatchmentSourceKind.OpenWater, "TECH_NET_FISHING", 20L));
 
-    /// <summary>第 08-12 章：<paramref name="week"/> 結算時某來源的技術加成（%）。</summary>
-    public static long SourcePercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week)
+    /// <summary>【TEMP】第 08-8 章 B2：生計文化的來源加成（%）：林地子民森林、河岸子民河流、海之民開闊水域、草原子民草原野採各＋10%。</summary>
+    public static readonly ImmutableArray<(DemoCatchmentSourceKind Kind, string TraitId, long Percent)> TempCultureSourceBonuses = ImmutableArray.Create(
+        (DemoCatchmentSourceKind.Forest, "CT_FOREST_FOLK", 10L),
+        (DemoCatchmentSourceKind.MainRiver, "CT_RIVER_FOLK", 10L),
+        (DemoCatchmentSourceKind.OpenWater, "CT_SEA_FOLK", 10L),
+        (DemoCatchmentSourceKind.GrasslandForage, "CT_STEPPE_FOLK", 10L));
+
+    /// <summary>
+    /// 第 08-12 章：<paramref name="week"/> 結算時某來源的技術加成（%）；第 08-8 章 B2 另加相鄰聚落主要文化的生計加成
+    /// （<paramref name="traitsAt"/>＝聚落在該週結算時的主要文化特性），取相鄰聚落中最高者。
+    /// </summary>
+    public static long SourcePercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
+        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(source);
         var bonuses = TempSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
-        if (bonuses.Count == 0)
+        var cultural = traitsAt is null ? new List<(DemoCatchmentSourceKind, string TraitId, long Percent)>()
+            : TempCultureSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
+        if (bonuses.Count == 0 && cultural.Count == 0)
             return 0;
         var origin = map.GetCell(source.Column, source.Row);
         var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr)).Prepend(origin)
@@ -224,6 +238,11 @@ public static class DemoKnowledge
         {
             var total = bonuses.Where(b => state.Of(settlement!.Id, DemoTechnology.Of(b.TechId)) is { Learned: true } r && r.LearnedWeek < week)
                 .Sum(b => b.Percent);
+            if (cultural.Count > 0)
+            {
+                var traits = traitsAt!(settlement!.Id, week);
+                total += cultural.Where(b => traits.Contains(b.TraitId)).Sum(b => b.Percent);
+            }
             best = Math.Max(best, total);
         }
         return best;

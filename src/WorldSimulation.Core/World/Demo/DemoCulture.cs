@@ -21,6 +21,12 @@ public sealed record DemoBatchCulture(int BatchId, ImmutableList<DemoCultureShar
 /// <summary>代表人物（重要人物）各自的文化。</summary>
 public sealed record DemoRepresentativeCulture(long RepresentativeId, int CultureId);
 
+/// <summary>
+/// 第 08-8 章 B2：聚落主要文化的變化紀錄——從 <see cref="Week"/> 週結算之後主要文化是 <see cref="CultureId"/>
+/// （開局＝第 0 週）。週帳驗證用它找出某週結算時的主要文化。
+/// </summary>
+public sealed record DemoMainCulture(int SettlementId, int Week, int CultureId);
+
 /// <summary>第 08-8 章 B4：某聚落最後一次與同文化主體往來的週次（分化的計時）。</summary>
 public sealed record DemoCultureContact(int SettlementId, int LastContactWeek);
 
@@ -39,6 +45,14 @@ public sealed record DemoCultureState(
 
     /// <summary>第 08-8 章 B4：各聚落最後一次與同文化主體往來的週次。</summary>
     public ImmutableList<DemoCultureContact> Contacts { get; init; } = ImmutableList<DemoCultureContact>.Empty;
+
+    /// <summary>第 08-8 章 B2：各聚落主要文化的變化紀錄（依聚落、週次排序）。</summary>
+    public ImmutableList<DemoMainCulture> MainHistory { get; init; } = ImmutableList<DemoMainCulture>.Empty;
+
+    /// <summary>第 <paramref name="week"/> 週結算時（該週以前）某聚落主要文化的特性；沒有紀錄＝空。</summary>
+    public IReadOnlyCollection<string> TraitsAt(int settlementId, int week)
+        => MainHistory.LastOrDefault(h => h.SettlementId == settlementId && h.Week < week) is { } h && Culture(h.CultureId) is { } c
+            ? c.Traits : Array.Empty<string>();
 
     /// <summary>第 08-8 章 B3：信仰（與文化同存於「文化信仰」狀態）。</summary>
     public DemoFaithState Faith { get; init; } = DemoFaithState.Empty;
@@ -66,6 +80,7 @@ public sealed record DemoCultureState(
            + string.Concat(Batches.Select(s => $"bc{s.BatchId}=" + string.Join(',', s.Shares.Select(x => $"{x.CultureId}:{x.Permille}")) + ";"))
            + string.Concat(Representatives.Select(r => $"rc{r.RepresentativeId}={r.CultureId};"))
            + string.Concat(Contacts.Select(c => $"ct{c.SettlementId}@{c.LastContactWeek};"))
+           + string.Concat(MainHistory.Select(h => $"mh{h.SettlementId}@{h.Week}={h.CultureId};"))
            + Faith.Fingerprint();
 }
 
@@ -214,8 +229,12 @@ public static class DemoCultures
             foreach (var s in cluster)
                 settlements.Add(new DemoSettlementCulture(s.Id, ImmutableList.Create(new DemoCultureShare(id, 1000))));
         }
-        return new DemoCultureState(cultures.ToImmutable(), settlements.OrderBy(s => s.SettlementId).ToImmutableList(),
-            ImmutableList<DemoBatchCulture>.Empty, ImmutableList<DemoRepresentativeCulture>.Empty);
+        var opened = settlements.OrderBy(s => s.SettlementId).ToImmutableList();
+        return new DemoCultureState(cultures.ToImmutable(), opened,
+            ImmutableList<DemoBatchCulture>.Empty, ImmutableList<DemoRepresentativeCulture>.Empty)
+        {
+            MainHistory = opened.Select(s => new DemoMainCulture(s.SettlementId, 0, s.Shares[0].CultureId)).ToImmutableList()
+        };
     }
 
     /// <summary>
@@ -349,8 +368,20 @@ public static class DemoCultures
 
         bool IsIn(long repId, int settlementId) => repSettlement.GetValueOrDefault(repId) == settlementId;
 
+        // 第 08-8 章 B2：主要文化有變化（建立、遷入、分化、同化）時記一筆。
+        var history = state.MainHistory.ToBuilder();
+        var last = state.MainHistory.GroupBy(h => h.SettlementId).ToDictionary(g => g.Key, g => g.Last().CultureId);
+        foreach (var (id, shares) in settlements.OrderBy(kv => kv.Key))
+        {
+            if (shares.Count == 0) continue;
+            var main = shares.OrderByDescending(x => x.Permille).ThenBy(x => x.CultureId).First().CultureId;
+            if (!last.TryGetValue(id, out var before) || before != main)
+                history.Add(new DemoMainCulture(id, report.Week, main));
+        }
+
         return (state with
         {
+            MainHistory = history.OrderBy(h => h.SettlementId).ThenBy(h => h.Week).ToImmutableList(),
             Cultures = cultures.ToImmutable(),
             Settlements = settlements.OrderBy(kv => kv.Key).Select(kv => new DemoSettlementCulture(kv.Key, kv.Value.ToImmutableList())).ToImmutableList(),
             Batches = batches.OrderBy(kv => kv.Key).Select(kv => new DemoBatchCulture(kv.Key, kv.Value.ToImmutableList())).ToImmutableList(),
