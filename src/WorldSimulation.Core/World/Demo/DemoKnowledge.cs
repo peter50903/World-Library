@@ -303,7 +303,12 @@ public static class DemoKnowledge
         bool NearSea,
         bool HasFarmland,
         bool HasNeighbour,
-        long Shamans = 0);
+        long Shamans = 0,
+        bool NearOre = false,
+        bool NearHills = false);
+
+    /// <summary>【TEMP】第 06-3 章：礦脈在聚落幾格內算「勢力範圍內有礦脈」（採礦冶金、珠寶精工的從業條件）。</summary>
+    public const int TempOreRange = 2;
 
     /// <summary>
     /// 【TEMP】08-7b 第 2、3 節：每項技術的從業者人數（地理條件不成立＝0，不累積）。
@@ -315,8 +320,8 @@ public static class DemoKnowledge
         return node.Domain switch
         {
             "10B" => If(node.Branch == "作物", c.Adults),                      // 畜牧要野獸或牧群（尚無）
-            "10C" => 0,                                                         // 要有礦脈（尚無）
-            "10D" => If(node.Branch != "石造", c.Adults),                      // 石造要石材地形（尚無）
+            "10C" => If(c.NearOre, c.Adults),                                   // 第 06-3 章：勢力範圍內有礦脈
+            "10D" => If(node.Branch != "石造" || c.NearHills, c.Adults),       // 第 06-3 章：石造要可及丘陵（石材）
             "10E" => node.Branch == "造船" ? If(c.NearForest && c.NearWater, c.Adults) : If(c.NearForest, c.Adults),
             "10F" => node.Branch is "紡織" or "服裝" ? If(c.NearGrassland, c.Adults) : If(knows("TECH_HUNTING"), c.Adults),
             "10G" => node.Id switch
@@ -330,7 +335,7 @@ public static class DemoKnowledge
             "10J" => If(c.Tier >= DemoSettlementTier.Village && c.HasLeader, c.Adults), // 學者另見 A2
             "10K" => 0,                                                         // 魔法法則章節開工前不出現
             "10L" => If(c.NearWater && knows("TECH_FIRE"), c.Adults),
-            "10M" => 0,                                                         // 要有礦脈或寶石（尚無）
+            "10M" => If(c.NearOre, c.Adults),                                   // 第 06-3 章：要有礦脈（寶石尚無）
             "10N" => If(knows("TECH_BASIC_CARPENTRY"), c.Adults),
             "HUNT" => node.Id switch
             {
@@ -403,7 +408,9 @@ public static class DemoKnowledge
                 map is not null && Around(map, settlement).Any(c => c.Sea),
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0,
-                population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman));
+                population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman),
+                map is not null && NearOre(map, settlement),
+                near.Contains(DemoTerrain.Hills));
             var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,
@@ -478,6 +485,14 @@ public static class DemoKnowledge
     }
 
     /// <summary>聚落本格與六鄰格（地圖內）。</summary>
+    /// <summary>第 06-3 章：聚落 <see cref="TempOreRange"/> 格內有礦脈。</summary>
+    public static bool NearOre(DemoHexWorld map, DemoSettlement settlement)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var origin = map.GetCell(settlement.Column, settlement.Row);
+        return map.Cells.Any(c => c.Ore && DemoWorldSites.HexDistance(origin, c) <= TempOreRange);
+    }
+
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement settlement)
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);

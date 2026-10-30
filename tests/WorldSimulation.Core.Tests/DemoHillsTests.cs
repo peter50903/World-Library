@@ -30,3 +30,38 @@ public sealed class DemoHillsTests
         Assert.StartsWith("丘陵", DemoCellQuery.ShortName(map, null, hill));
     }
 }
+
+/// <summary>第 06-3 章／08-9 D2：礦脈讓採礦冶金、珠寶精工有從業者；丘陵讓石造有從業者。</summary>
+public sealed class DemoMiningResearchTests
+{
+    private static DemoKnowledge.Context Ctx(bool ore, bool hills)
+        => new(DemoSettlementTier.Village, 10, 2, true, 0, false, true, true, false, false, false, 0, ore, hills);
+
+    [Fact]
+    public void OreWithinReachUnlocksMiningAndJewelleryPractitioners()
+    {
+        var prospecting = DemoTechCatalog.Get("TECH_PROSPECTING");
+        Assert.Equal(0, DemoKnowledge.Practitioners(prospecting, Ctx(false, false), _ => false));
+        Assert.Equal(10, DemoKnowledge.Practitioners(prospecting, Ctx(true, false), _ => false));
+        var jewel = DemoTechCatalog.All.First(n => n.Domain == "10M");
+        Assert.Equal(10, DemoKnowledge.Practitioners(jewel, Ctx(true, false), _ => true));
+        var stone = DemoTechCatalog.All.FirstOrDefault(n => n.Domain == "10D" && n.Branch == "石造");
+        if (stone is not null)
+        {
+            Assert.Equal(0, DemoKnowledge.Practitioners(stone, Ctx(false, false), _ => true));
+            Assert.Equal(10, DemoKnowledge.Practitioners(stone, Ctx(false, true), _ => true));
+        }
+    }
+
+    [Fact]
+    public void NearOreMeansAnOreVeinWithinTwoCells()
+    {
+        var map = Enumerable.Range(1, 30).Select(s => DemoHexWorld.Generate((ulong)s)).First(m => m.Cells.Any(c => c.Ore));
+        var ore = map.Cells.First(c => c.Ore);
+        var onIt = new DemoSettlement(1, "甲", ore.Column, ore.Row);
+        Assert.True(DemoKnowledge.NearOre(map, onIt));
+        var far = map.Cells.FirstOrDefault(c => map.Cells.Where(o => o.Ore).All(o => DemoWorldSites.HexDistance(o, c) > DemoKnowledge.TempOreRange));
+        if (far is not null)
+            Assert.False(DemoKnowledge.NearOre(map, new DemoSettlement(2, "乙", far.Column, far.Row)));
+    }
+}
