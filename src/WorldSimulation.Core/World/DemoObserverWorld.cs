@@ -427,7 +427,8 @@ public sealed partial class DemoObserverWorld
             {
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
-                    checked(_history.LastEventId + 1), _knowledge);
+                    checked(_history.LastEventId + 1), _knowledge,
+                    id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true); // 第 08-8 章 B2
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
