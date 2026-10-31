@@ -63,6 +63,9 @@ internal static class DemoHumanLifecycle
         // 途中餓死（開拓時代起）：在抵達之前，從隊伍的年齡群移除。
         foreach (var leg in report.Migrations.Where(m => !m.Departed && m.Deaths > 0).OrderBy(m => m.BatchId))
             moved = moved.Starve(leg.FromSettlementId, leg.BatchId, leg.Deaths, day, Rules, elderAge).Population;
+        // 第 12-1 章 C2：遭野獸襲擊而死的人也從隊伍的年齡群移除（同餓死的挑選順序，簡化）。
+        foreach (var leg in report.Migrations.Where(m => !m.Departed && m.AttackDeaths > 0).OrderBy(m => m.BatchId))
+            moved = moved.Starve(leg.FromSettlementId, leg.BatchId, leg.AttackDeaths, day, Rules, elderAge).Population;
         foreach (var leg in report.Migrations.Where(m => m.Arrived).OrderBy(m => m.BatchId))
         {
             if (moved.MembersOf(leg.BatchId) != leg.PopulationClosing)

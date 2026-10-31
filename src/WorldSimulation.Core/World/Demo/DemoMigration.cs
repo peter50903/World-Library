@@ -80,10 +80,14 @@ public sealed record DemoMigrationWeekLedger(
     long Births = 0,
     long NaturalDeaths = 0,
     long HungerDebtRemovedByNaturalDeath = 0,
-    bool MateSeeking = false)
+    bool MateSeeking = false,
+    long AttackDeaths = 0)
 {
-    /// <summary>第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。</summary>
-    public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths == PopulationClosing;
+    /// <summary>
+    /// 第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。
+    /// 第 12-1 章 C2：<see cref="AttackDeaths"/>＝途中被野獸襲擊而死（不含在 Deaths 內、不減飢餓債）。
+    /// </summary>
+    public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths - AttackDeaths == PopulationClosing;
 
     public bool FoodBalanced => FoodOpening - FoodConsumed == FoodClosing;
 
@@ -96,14 +100,14 @@ public sealed record DemoMigrationWeekLedger(
     /// <summary>M1_MIG：不瞬移——原地或相鄰格；出發週必須停在原地；全數死亡的隊伍不再移動也不會抵達。</summary>
     public bool NoTeleport
         => (CellBefore == CellAfter || DemoMigrationRoutes.AreAdjacent(CellBefore, CellAfter))
-        && (!Departed || (CellBefore == CellAfter && !Arrived && Deaths == 0 && FoodConsumed == 0))
+        && (!Departed || (CellBefore == CellAfter && !Arrived && Deaths == 0 && AttackDeaths == 0 && FoodConsumed == 0))
         && (!Arrived || PopulationClosing > 0);
 
     public bool NonNegative
         => PopulationOpening >= 0 && Deaths >= 0 && PopulationClosing >= 0
         && FoodOpening >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
         && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0 && HungerDebtRemovedByDeath >= 0
-        && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0
+        && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0 && AttackDeaths >= 0
         && (Arrived ? Births == 0 && NaturalDeaths == 0 : true); // 抵達週的成員已併入目的聚落，生死記在聚落帳
 
     public bool IsBalanced

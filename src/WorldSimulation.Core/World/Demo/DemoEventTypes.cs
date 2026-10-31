@@ -37,7 +37,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.FarmlandAbandoned] = new("TEMP_EV_FARMLAND_ABANDONED", "農田荒廢", CauseRootCategory.Resource),
         [DemoSettlementEventKind.CultureSplit] = new("TEMP_EV_CULTURE_SPLIT", "文化分化", CauseRootCategory.Culture),
         [DemoSettlementEventKind.FaithFounded] = new("TEMP_EV_FAITH_FOUNDED", "創立信仰", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.FaithExtinct] = new("TEMP_EV_FAITH_EXTINCT", "信仰失傳", CauseRootCategory.Culture)
+        [DemoSettlementEventKind.FaithExtinct] = new("TEMP_EV_FAITH_EXTINCT", "信仰失傳", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.BeastAttack] = new("TEMP_EV_BEAST_ATTACK", "野獸襲擊", CauseRootCategory.Resource)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

@@ -22,7 +22,8 @@ public enum DemoChronicleCategory
     Representative = 9,
     Population = 10,
     Culture = 11,
-    Faith = 12
+    Faith = 12,
+    Wilds = 13
 }
 
 /// <summary>條目文字的一段；<see cref="SettlementId"/>＞0 的段落是可點擊的聚落名稱（參考 CK3 名稱底線）。</summary>
@@ -122,6 +123,11 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.FaithExtinct:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.BeastAttack:
+                    // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
+                    Add(e.Week, DemoChronicleLevel.Normal,
+                        DemoChronicleCategory.Wilds, e.EventId, Name(e.SettlementId), T(" 的" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.CultureSplit:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Culture, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
@@ -206,6 +212,7 @@ public static class DemoWorldChronicle
         Part(DemoChronicleCategory.Famine, "餓死紀錄");
         Part(DemoChronicleCategory.Culture, "文化分化");
         Part(DemoChronicleCategory.Faith, "信仰興衰");
+        Part(DemoChronicleCategory.Wilds, "野外險境");
         var head = $"第 {years[0].Year}～{years[^1].Year} 年：";
         return head + (parts.Count == 0 ? "沒有重大事件" : string.Join("、", parts))
                + $"｜出生 {years.Sum(y => y.Births)}、老死 {years.Sum(y => y.NaturalDeaths)}";

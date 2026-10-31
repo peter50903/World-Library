@@ -425,7 +425,9 @@ public sealed partial class DemoObserverWorld
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
-                    _culture.TraitsAt, _wildlife.HuntingAt)); // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵
+                    _culture.TraitsAt, _wildlife.HuntingAt), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵
+                beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
+                    _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech)))); // 第 12-1 章 C2
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -593,7 +595,7 @@ public sealed partial class DemoObserverWorld
     internal SortedDictionary<long, int[]> EarlierEventCells(int windowStart)
     {
         var result = new SortedDictionary<long, int[]>();
-        foreach (var e in SettlementEvents().Where(e => e.Week < windowStart && e.Kind == DemoSettlementEventKind.MigrantStarvationDeath))
+        foreach (var e in SettlementEvents().Where(e => e.Week < windowStart && e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.BeastAttack))
         {
             var formal = _history.Find(e.EventId);
             var place = _sites.Settlements.Single(s => s.Id == e.SettlementId);

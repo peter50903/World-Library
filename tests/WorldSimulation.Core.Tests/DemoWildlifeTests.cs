@@ -44,3 +44,36 @@ public sealed class DemoWildlifeTests
         Assert.False(state.HuntingAt(4, 53));
     }
 }
+
+/// <summary>第 12-1 章 C2：狼群襲擊途中隊伍。</summary>
+public sealed class DemoBeastAttackTests
+{
+    [Fact]
+    public void AttacksNeedWolvesAreDeterministicAndArcheryHalvesTheChance()
+    {
+        var map = DemoHexWorld.Generate(3);
+        var cell = map.Cells.First(c => c.Terrain == DemoTerrain.Forest);
+        var index = cell.Row * map.Columns + cell.Column;
+        var none = System.Collections.Immutable.ImmutableArray.CreateRange(new int[map.Cells.Count]);
+        var wolves = none.SetItem(index, 2); // 2 隻狼：每週 6%（弓箭 3%）
+        var batch = new DemoMigrationBatch(7, 1, "甲", 2, "乙", System.Collections.Immutable.ImmutableArray.Create(new DemoCellRef(cell.Column, cell.Row)), 0, 5, 0, 0, 1);
+        var rng = WorldSimulation.Core.Rng.RngRegistry.Create(42);
+        Assert.All(Enumerable.Range(1, 200), w => Assert.Equal(0, DemoWildlife.AttackDeaths(new DemoWildlifeState(none, none, 0), map, batch, w, rng, false)));
+        var state = new DemoWildlifeState(none, wolves, 0);
+        var hits = Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, false)).ToList();
+        var archers = Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, true)).ToList();
+        Assert.All(hits, d => Assert.InRange(d, 0, 2));
+        Assert.InRange(hits.Count(d => d > 0), 80, 170);     // 6% × 2000 ≈ 120
+        Assert.InRange(archers.Count(d => d > 0), 30, 90);   // 3% × 2000 ≈ 60
+        Assert.Equal(hits, Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, false)));
+    }
+
+    [Fact]
+    public void AttackDeathsKeepTheTravelLedgerBalanced()
+    {
+        var ledger = new DemoMigrationWeekLedger(5, 7, 1, 2, new DemoCellRef(0, 0), new DemoCellRef(1, 0), false, false,
+            10, 0, 8, 20, 20, 0, 0, 0, 0, 0, 0, AttackDeaths: 2);
+        Assert.True(ledger.PopulationBalanced);
+        Assert.True(ledger.NonNegative);
+    }
+}

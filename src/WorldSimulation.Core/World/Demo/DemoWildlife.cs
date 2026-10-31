@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -29,7 +31,7 @@ public sealed record DemoWildlifeState(ImmutableArray<int> Prey, ImmutableArray<
 }
 
 /// <summary>
-/// 第 12-1 章 C1【TEMP 規則】野生動物：承載依地形；每 52 週結算——狩獵、驅狼、獵物成長、狼捕食、超出承載往鄰格擴散。
+/// 第 12-1 章 C1【TEMP 規則】野生動物：承載依地形；每 52 週結算——狩獵、驅狼、獵物成長、狼捕食、狼往獵物養得活的數量移動、超出承載往鄰格擴散。
 /// 不抽亂數（純函式）；希望時代也照常結算（動物不受時代影響），但狩獵要已會「狩獵」。
 /// </summary>
 public static class DemoWildlife
@@ -37,10 +39,13 @@ public static class DemoWildlife
     /// <summary>【TEMP】結算週期（週）。</summary>
     public const int TempYearWeeks = 52;
 
-    /// <summary>【TEMP】獵物年成長（往承載的缺口 %）、狼吃飽時年增加（%）、每隻狼每年吃幾隻獵物。</summary>
-    public const int TempPreyGrowthPercent = 25;
-    public const int TempWolfGrowthPercent = 20;
-    public const int TempPreyPerWolf = 3;
+    /// <summary>
+    /// 【TEMP】獵物年成長（往承載的缺口 %）；每隻狼每年吃幾隻獵物；每隻狼需要幾隻剩下的獵物才養得活（狼的目標數）。
+    /// 狼每年往目標數移動 1 隻（從鄰近林地遷入或餓死）。原訂「吃 3 隻、吃飽增 20%」第二年全滅且不再回來（08-10c）。
+    /// </summary>
+    public const int TempPreyGrowthPercent = 50;
+    public const int TempPreyPerWolf = 1;
+    public const int TempPreyToSupportWolf = 2;
 
     /// <summary>【TEMP】每名成年人每年狩獵取走的獵物（千分之幾隻）；聚落附近的狼每年被驅趕的比例（%）。</summary>
     public const int TempHuntPerAdultPermille = 200;
@@ -151,24 +156,15 @@ public static class DemoWildlife
                 wolves[i] -= wolves[i] * TempWolfDrivenPercent / 100; // 聚落附近的狼被驅散
         }
 
-        // ② 自然：獵物往承載成長；狼吃獵物，吃飽才增加，不足按缺口死亡。
+        // ② 自然：獵物往承載成長；狼吃獵物；狼往「剩下的獵物養得活的數量」移動 1 隻（不超過承載）。
         for (var i = 0; i < cells.Count; i++)
         {
             var cap = CapacityAt(map, cells[i], human);
             if (cap.Prey > prey[i])
                 prey[i] += Math.Max(1, (cap.Prey - prey[i]) * TempPreyGrowthPercent / 100);
-            var need = wolves[i] * TempPreyPerWolf;
-            if (need <= prey[i])
-            {
-                prey[i] -= need;
-                if (wolves[i] > 0) wolves[i] += Math.Max(1, wolves[i] * TempWolfGrowthPercent / 100);
-            }
-            else
-            {
-                var fed = prey[i] / TempPreyPerWolf;
-                prey[i] -= fed * TempPreyPerWolf;
-                wolves[i] = fed;
-            }
+            prey[i] -= Math.Min(prey[i], wolves[i] * TempPreyPerWolf);
+            var target = Math.Min(cap.Wolves, prey[i] / TempPreyToSupportWolf);
+            wolves[i] += Math.Sign(target - wolves[i]);
         }
 
         // ③ 擴散：超出承載的部分平均移往相鄰可住格（依方向順序），無處可去就死亡。
@@ -207,5 +203,35 @@ public static class DemoWildlife
         var last = state.Hunting.LastOrDefault();
         var hunting = last is not null && last.SettlementIds.SequenceEqual(rich) ? state.Hunting : state.Hunting.Add(new DemoHuntingYear(week, rich));
         return next with { Hunting = hunting };
+    }
+
+    /// <summary>
+    /// 【TEMP】第 12-1 章 C2：狼至少這麼多隻的格才會襲擊；每隻狼每週襲擊機率（%）；已會弓箭的出發聚落機率減半。
+    /// （原訂 2 隻、2%：狼承載只有 2、聚落每年驅散一半，路線附近幾乎沒有 2 隻狼的格，百年 0 次，08-10c）
+    /// </summary>
+    public const int TempAttackMinWolves = 1;
+    public const int TempAttackPercentPerWolf = 3;
+
+    public const string ArcheryTech = "TECH_ARCHERY";
+
+    private const string AttackNamespace = "TEMP-BEAST-v1";
+
+    /// <summary>
+    /// 第 12-1 章 C2：隊伍本週所在格的狼群襲擊死亡人數（0＝沒有襲擊；1～2 人）。
+    /// 抽樣用戰鬥流的實體局部亂數（實體＝隊伍、索引＝週次），不推進計數器，重跑結果相同。
+    /// </summary>
+    public static long AttackDeaths(DemoWildlifeState state, DemoHexWorld map, DemoMigrationBatch batch, int week, RngRegistry rng, bool archery)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(batch);
+        if (state.Wolves.IsDefaultOrEmpty)
+            return 0;
+        var wolves = state.Wolves[Index(map, batch.Cell.Column, batch.Cell.Row)];
+        if (wolves < TempAttackMinWolves)
+            return 0;
+        var chance = wolves * TempAttackPercentPerWolf * (archery ? 50 : 100) / 100;
+        var r = EntityLocalRandom.Create(rng, EntityId.From((ulong)batch.Id), RngStreams.Combat, AttackNamespace).GetUInt64((ulong)week);
+        return (long)(r % 100UL) < chance ? 1 + (long)(r / 100UL % 2UL) : 0;
     }
 }
