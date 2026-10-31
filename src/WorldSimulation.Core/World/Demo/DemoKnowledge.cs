@@ -56,6 +56,16 @@ public sealed record DemoKnowledgeState(ImmutableList<DemoKnowledgeRecord> Recor
         => technology.Node.IsOpening || Of(settlementId, technology)?.Learned == true;
 
     /// <summary>研究習得的技術（不含開局知識）。</summary>
+    /// <summary>
+    /// 第 08-13 章（試玩回饋三之 3）：聚落最擅長的領域——開局知識以外、習得最多項的領域（同數取最近習得者，再同取代號小）；沒有＝null。
+    /// 知識地圖依它著色，看得出各地發展方向不同，而不只是技術數。
+    /// </summary>
+    public string? LeadingDomain(int settlementId)
+        => Records.Where(r => r.SettlementId == settlementId && r.Learned && !DemoKnowledge.IsOpening(r.Technology))
+            .GroupBy(r => r.Technology.Node.Domain)
+            .OrderByDescending(g => g.Count()).ThenByDescending(g => g.Max(r => r.LearnedWeek)).ThenBy(g => g.Key, StringComparer.Ordinal)
+            .Select(g => g.Key).FirstOrDefault();
+
     public IReadOnlyList<DemoTechnology> KnownBy(int settlementId)
         => Records.Where(r => r.SettlementId == settlementId && r.Learned).Select(r => r.Technology).ToList();
 

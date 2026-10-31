@@ -107,13 +107,13 @@ public partial class ObserverRoot
         SetMapMode(DemoHexMap.Mode.Terrain);
     }
 
-    private static string KnowledgeLegend()
+    private string KnowledgeLegend()
     {
-        var starts = DemoHexMap.KnowledgeBandStarts;
-        var legend = string.Join("  ", starts.Select((start, i) =>
-            $"[color=#{DemoHexMap.KnowledgeColor(start).ToHtml(false)}]■[/color] "
-            + (start == 0 ? "尚無技術" : i == starts.Length - 1 ? $"{start} 項以上" : $"{start}～{starts[i + 1] - 1} 項")));
-        return $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
+        // 第 08-13 章：圖例列出目前地圖上出現的擅長領域（顏色越淡＝技術越少）；沒有技術的聚落另列。
+        var domains = _hexMap.KnowledgeDomain.Values.Distinct().OrderBy(d => d, StringComparer.Ordinal).ToList();
+        var parts = domains.Select(d => $"[color=#{DemoHexMap.DomainMapColor(d).ToHtml(false)}]■[/color] 擅長{DemoPlayerDetail.DomainName(d)}")
+            .Append($"[color=#{DemoHexMap.DomainMapColor(null).ToHtml(false)}]■[/color] 尚無技術");
+        return $"[outline_size=4][outline_color=#000000]{string.Join("  ", parts)}（顏色越淡技術越少）[/outline_color][/outline_size]";
     }
 
     private void SetMapMode(DemoHexMap.Mode mode)
@@ -334,6 +334,7 @@ public partial class ObserverRoot
         _mapKnowledgeButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Knowledge
             || _world.Sites.Settlements.Any(s => _hexMap.KnowledgeCounts.GetValueOrDefault(s.Id) != _world.Knowledge.KnownBy(s.Id).Count)
+            || _world.Sites.Settlements.Any(s => _hexMap.KnowledgeDomain.GetValueOrDefault(s.Id) != _world.Knowledge.LeadingDomain(s.Id))
             || !_foodLegend.Text.Contains("尚無技術", StringComparison.Ordinal))
             fail("knowledge map mode does not show Core's knowledge.");
         // 第 08-8 章 B1：文化模式＝Core 各聚落的主要文化。
