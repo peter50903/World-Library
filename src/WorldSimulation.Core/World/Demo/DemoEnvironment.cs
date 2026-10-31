@@ -29,6 +29,26 @@ public static class DemoEnvironment
     public const long TempWildfireSourcePercent = -90;
     public const int TempRange = 2;
 
+    /// <summary>【TEMP】第 08-13 章：野火開始後這麼多週畫成「燃燒中」，之後到結束畫成「焦土」（顯示用）。</summary>
+    public const int TempBurningWeeks = 4;
+
+    /// <summary>地圖上某格本週的環境外觀（顯示用；不影響規則）。</summary>
+    public enum Look { None, Burning, Scorched, Dry }
+
+    public static Look LookAt(IReadOnlyList<DemoEnvironmentSpell> spells, DemoHexCell cell, int week)
+    {
+        var at = new DemoCellRef(cell.Column, cell.Row);
+        var look = Look.None;
+        foreach (var x in spells.Where(x => week > x.FromWeek && week <= x.ToWeek && x.Cells.Contains(at)))
+        {
+            if (x.Kind == DemoSettlementEventKind.Wildfire)
+                return week <= x.FromWeek + TempBurningWeeks ? Look.Burning : Look.Scorched;
+            if (x.Kind == DemoSettlementEventKind.Heatwave && cell.Terrain == DemoTerrain.Grassland)
+                look = Look.Dry;
+        }
+        return look;
+    }
+
     private const string Namespace = "TEMP-ENVIRONMENT-v1";
 
     public static bool IsSpell(DemoSettlementEventKind kind)
@@ -61,8 +81,8 @@ public static class DemoEnvironment
                 continue;
             if (spell.Kind == DemoSettlementEventKind.Heatwave && source.Kind is DemoCatchmentSourceKind.GrasslandForage or DemoCatchmentSourceKind.Farmland)
                 p = Math.Min(p, TempHeatwaveSourcePercent);
-            if (spell.Kind == DemoSettlementEventKind.Wildfire && source.Kind == DemoCatchmentSourceKind.Forest)
-                p = Math.Min(p, TempWildfireSourcePercent);
+            if (spell.Kind == DemoSettlementEventKind.Wildfire && source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)
+                p = Math.Min(p, TempWildfireSourcePercent); // 第 08-13 章：燒過的草原也一樣
         }
         return p;
     }
@@ -89,7 +109,7 @@ public static class DemoEnvironment
             var s = sites.Settlements.First(x => x.Id == spell.SettlementId);
             events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name,
                 spell.Kind == DemoSettlementEventKind.Heatwave ? DemoSettlementEventKind.HeatwaveEnded : DemoSettlementEventKind.ForestRegrown,
-                spell.Cells.Count, spell.Kind == DemoSettlementEventKind.Heatwave ? "熱浪退去，草原與田地恢復" : "燒毀的森林重新長出",
+                spell.Cells.Count, spell.Kind == DemoSettlementEventKind.Heatwave ? "熱浪退去，草原與田地恢復" : "燒毀的森林與草原重新長出",
                 EventId: nextEventId++, CauseEventId: spell.EventId));
         }
         // 結束的環境狀態仍保留（存檔近期週報要依它重算來源帳；每世紀約二十筆，不清除）。
@@ -115,7 +135,8 @@ public static class DemoEnvironment
             if (fire.Count > 0 && (int)(Draw(rng, year, 2) % 100UL) < TempWildfirePercent)
             {
                 var s = fire[(int)(Draw(rng, year, 3) % (ulong)fire.Count)];
-                var forests = Around(map, s, TempRange).Where(c => c.Terrain == DemoTerrain.Forest && sites.SettlementAt(c.Column, c.Row) is null)
+                // 第 08-13 章：野火也燒草原（WorldBox 的火會沿草地蔓延）。
+                var forests = Around(map, s, TempRange).Where(c => c.Terrain is DemoTerrain.Forest or DemoTerrain.Grassland && sites.SettlementAt(c.Column, c.Row) is null)
                     .OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
                 var take = Math.Min(forests.Count, 1 + (int)(Draw(rng, year, 4) % 3UL));
                 var start = forests.Count == 0 ? 0 : (int)(Draw(rng, year, 5) % (ulong)forests.Count);
@@ -125,7 +146,7 @@ public static class DemoEnvironment
                 {
                     var id = nextEventId++;
                     events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name, DemoSettlementEventKind.Wildfire, burnt.Count,
-                        $"野火燒毀了附近 {burnt.Count} 片森林（三年內無法採集、獵物逃散）", EventId: id));
+                        $"野火燒毀了附近 {burnt.Count} 片森林與草原（三年內無法採集、獵物逃散）", EventId: id));
                     spells.Add(new DemoEnvironmentSpell(DemoSettlementEventKind.Wildfire, s.Id, week, week + TempWildfireWeeks, id, burnt));
                     var p = prey.ToBuilder();
                     foreach (var c in burnt)

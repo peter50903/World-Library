@@ -96,8 +96,11 @@ public static class DemoCultures
 {
     public const string Namespace = "TEMP-CULTURE-v1";
 
-    /// <summary>【TEMP】開局聚落相距不超過這麼多格就同一個文化（08-8 原訂婚嫁範圍 12 格；地圖小，12 格會讓整張圖只有一個文化）。</summary>
-    public const int TempClusterRange = 6;
+    /// <summary>
+    /// 【TEMP】開局聚落相距不超過這麼多格就同一個文化（08-8 原訂婚嫁範圍 12 格；先改 6 格；
+    /// 第 08-13 章試玩回饋三之 3「文化看起來大家都一樣」改 3 格，與分化判定的往來範圍相同）。
+    /// </summary>
+    public const int TempClusterRange = 3;
 
     /// <summary>【TEMP】特性的加權條件成立時，權重乘以這個倍數；條件是地形或出身且不成立時權重為 0（不抽）。</summary>
     public const int TempConditionWeightFactor = 4;
