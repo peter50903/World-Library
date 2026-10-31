@@ -51,6 +51,14 @@ internal static class DemoHumanLifecycle
             starvedReps.AddRange(r.StarvedRepresentatives);
             starvedSplit[ledger.SettlementId] = (r.Children, r.Elders);
         }
+        // 第 12-1 章 C3：天災死者也從聚落的年齡群移除（同餓死的挑選順序，簡化）；罹難的代表人物另記卸任原因。
+        var disasterReps = new List<DemoRepresentative>();
+        foreach (var ledger in report.Settlements.Where(l => l.DisasterDeaths > 0))
+        {
+            var r = moved.Starve(ledger.SettlementId, 0, ledger.DisasterDeaths, day, Rules, elderAge);
+            moved = r.Population;
+            disasterReps.AddRange(r.StarvedRepresentatives);
+        }
 
         // ① 出發：與結算時同一份規劃。② 抵達：隊伍的年齡群與懷孕併入目的聚落。
         foreach (var leg in report.Migrations.Where(m => m.Departed).OrderBy(m => m.BatchId))
@@ -100,7 +108,7 @@ internal static class DemoHumanLifecycle
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
-            knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule);
+            knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps);
 
         long Sum(DemoTempDemographicKind kind, int settlement, int batch)
             => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
@@ -205,9 +213,13 @@ internal static class DemoHumanLifecycle
     private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
         Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
             DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge,
-            IReadOnlyList<DemoRepresentative> starved, Func<int, bool>? strongRule = null)
+            IReadOnlyList<DemoRepresentative> starved, Func<int, bool>? strongRule = null,
+            IReadOnlyList<DemoRepresentative>? disasterVictims = null)
     {
-        var exits = starved.Select(r => new DemoRepresentativeExit(r.Id, r.SettlementId, $"餓死（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）")).ToList();
+        var exits = starved.Select(r => new DemoRepresentativeExit(r.Id, r.SettlementId, $"餓死（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）"))
+            .Concat((disasterVictims ?? Array.Empty<DemoRepresentative>()).Select(r =>
+                new DemoRepresentativeExit(r.Id, r.SettlementId, $"死於天災（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）"))) // 第 12-1 章 C3
+            .ToList();
         var current = new List<DemoRepresentative>();
         var diedIds = died.Select(r => r.Id).ToHashSet();
         foreach (var r in population.Representatives)

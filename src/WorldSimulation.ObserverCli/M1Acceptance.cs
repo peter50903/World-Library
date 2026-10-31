@@ -545,7 +545,7 @@ public static class M1Evaluator
                 if (naturalEvents.Sum(e => e.Count) != l.NaturalDeaths || naturalEvents.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                     problems.Add($"{At(run, report.Week)} {Name(l)} 自然死亡 {l.NaturalDeaths} 人，帶原因的自然死亡事件 {naturalEvents.Sum(e => e.Count)} 人");
                 wBirths += l.Births;
-                wDeaths += l.Deaths;
+                wDeaths += l.Deaths + l.DisasterDeaths; // 第 12-1 章 C3：天災
                 settledStarvation += l.StarvationDeaths;
                 naturalDeaths += l.NaturalDeaths;
                 emigrants += l.Emigrants;

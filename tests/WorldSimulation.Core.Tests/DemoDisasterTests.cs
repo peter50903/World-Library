@@ -1,0 +1,63 @@
+using WorldSimulation.Core.Rng;
+using WorldSimulation.Core.World;
+using WorldSimulation.Core.World.Demo;
+using Xunit;
+
+namespace WorldSimulation.Core.Tests;
+
+/// <summary>第 12-1 章 C3a：天災的時機、地理前提、頻率與存檔。</summary>
+public sealed class DemoDisasterTests
+{
+    [Fact]
+    public void WorldPoolGivesAtMostOneDisasterPerYearFollowsEraAndGeography()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var ids = world.Sites.Settlements.Select(s => s.Id).ToList();
+        var rng = RngRegistry.Create(5);
+        int Week(int year) => year * DemoWildlife.TempYearWeeks + DemoDisasters.TempYearWeek;
+        Assert.Empty(DemoDisasters.Roll(Week(3) + 1, DemoEra.Pioneer, 1000, world.Map, world.Sites, ids, rng));
+        var all = new List<DemoDisasterStrike>();
+        for (var year = 1; year <= 1000; year++)
+        {
+            Assert.Empty(DemoDisasters.Roll(Week(year), DemoEra.Hope, 1000, world.Map, world.Sites, ids, rng)); // 希望時代空池
+            var strikes = DemoDisasters.Roll(Week(year), DemoEra.Pioneer, 1000, world.Map, world.Sites, ids, rng);
+            Assert.InRange(strikes.Count, 0, 1);
+            Assert.Equal(strikes, DemoDisasters.Roll(Week(year), DemoEra.Pioneer, 1000, world.Map, world.Sites, ids, rng));
+            all.AddRange(strikes.Values);
+            // 規模門檻：世界人口不足 300 時沒有地震與隕石。
+            Assert.DoesNotContain(DemoDisasters.Roll(Week(year), DemoEra.Pioneer, 299, world.Map, world.Sites, ids, rng).Values,
+                x => x.Kind is DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Meteorite);
+        }
+        // 抽中後 30% 才發生，且要有合格聚落：千年遠少於 300 件（不重抽）。
+        Assert.InRange(all.Count, 50, 300);
+        foreach (var strike in all)
+            Assert.True(DemoDisasters.Eligible(strike.Kind, world.Map, world.Sites.Settlements.First(x => x.Id == strike.SettlementId)));
+    }
+
+    [Fact]
+    public void FrequencyDoesNotGrowWithTheNumberOfSettlements()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var rng = RngRegistry.Create(9);
+        var all = world.Sites.Settlements.Select(s => s.Id).ToList();
+        var few = all.Take(2).ToList();
+        int Count(IReadOnlyList<int> ids) => Enumerable.Range(1, 600).Count(y =>
+            DemoDisasters.Roll(y * DemoWildlife.TempYearWeeks + DemoDisasters.TempYearWeek, DemoEra.Pioneer, 1000, world.Map, world.Sites, ids, rng)
+                .Values.Any(x => x.Kind == DemoSettlementEventKind.Meteorite));
+        Assert.Equal(Count(all), Count(few)); // 隕石任何聚落都合格：聚落多寡不改變年數
+    }
+
+    [Fact]
+    public void LivingWorldRecordsDisastersAsChronicleEventsAndSavesStayConsistent()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 60 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        var lines = world.Sites.Settlements.SelectMany(s => world.ChronicleOf(s.Id).Milestones).Select(m => m.Text).ToList();
+        Assert.Contains(lines, l => l.StartsWith("洪水", StringComparison.Ordinal) || l.StartsWith("地震", StringComparison.Ordinal)
+            || l.StartsWith("龍捲風", StringComparison.Ordinal) || l.StartsWith("隕石", StringComparison.Ordinal));
+        Assert.Empty(world.BuildCausalIndex().Problems);
+        var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.ExportTempSave(), reloaded.ExportTempSave());
+    }
+}

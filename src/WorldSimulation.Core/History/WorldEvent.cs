@@ -28,7 +28,10 @@ public enum CauseRootCategory
     Knowledge = 3,
 
     /// <summary>【TEMP】第 08-8 章 B4 文化：文化分化。</summary>
-    Culture = 4
+    Culture = 4,
+
+    /// <summary>【TEMP】第 12-1 章 C3 天災：地震、龍捲風、隕石、洪水。</summary>
+    Disaster = 5
 }
 
 /// <summary>

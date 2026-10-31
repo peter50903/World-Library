@@ -30,6 +30,7 @@ public static class ArtAssets
     public const string IconDeath = "res://assets/icons/icon_death.png";
     public const string IconFood = "res://assets/icons/icon_food.png";
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
+    public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
 
     /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
     public static string TechDomainIcon(string domain) => $"res://assets/icons/tech_{domain.ToLowerInvariant()}.png";
@@ -89,6 +90,7 @@ public static class ArtAssets
         UiMapCulture, // 第 08-8 章 B1：文化模式
         UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
         TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈
+        IconDisaster, // 第 12-1 章 C3：天災標記
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 
