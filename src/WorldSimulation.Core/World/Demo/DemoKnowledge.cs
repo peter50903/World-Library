@@ -424,6 +424,7 @@ public static class DemoKnowledge
         var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
         var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
+        DemoPerf.Mark("知識：準備");
         foreach (var settlement in living)
         {
             var neighbours = map is null ? new List<DemoSettlement>()
@@ -516,8 +517,10 @@ public static class DemoKnowledge
             }
         }
 
+        DemoPerf.Mark("知識：逐聚落");
         var next = new DemoKnowledgeState(
             records.Values.OrderBy(r => r.SettlementId).ThenBy(r => r.Technology).ToImmutableList(), era, eraWeek);
+        DemoPerf.Mark("知識：整表");
         return (next, events);
     }
 
