@@ -131,14 +131,22 @@ public static class DemoKnowledge
     /// </summary>
     public static IReadOnlyList<string> ExpertDomains(DemoRepresentativeRole role) => role switch
     {
-        DemoRepresentativeRole.Leader => new[] { "SOCIETY" },
-        DemoRepresentativeRole.Farmer => new[] { "10B", "10G" },
-        DemoRepresentativeRole.Carpenter => new[] { "10D", "10E", "10N" },
-        DemoRepresentativeRole.Smith => new[] { "10C", "10M" },
-        DemoRepresentativeRole.Hunter => new[] { "HUNT", "10F" },
-        DemoRepresentativeRole.Shaman => new[] { "FAITH", "10H" },
+        // 第 08-13 章第 5 節：固定陣列（原本每次呼叫新建；逐技術都會查）。
+        DemoRepresentativeRole.Leader => LeaderDomains,
+        DemoRepresentativeRole.Farmer => FarmerDomains,
+        DemoRepresentativeRole.Carpenter => CarpenterDomains,
+        DemoRepresentativeRole.Smith => SmithDomains,
+        DemoRepresentativeRole.Hunter => HunterDomains,
+        DemoRepresentativeRole.Shaman => ShamanDomains,
         _ => Array.Empty<string>()
     };
+
+    private static readonly IReadOnlyList<string> LeaderDomains = Array.AsReadOnly(new[] { "SOCIETY" });
+    private static readonly IReadOnlyList<string> FarmerDomains = Array.AsReadOnly(new[] { "10B", "10G" });
+    private static readonly IReadOnlyList<string> CarpenterDomains = Array.AsReadOnly(new[] { "10D", "10E", "10N" });
+    private static readonly IReadOnlyList<string> SmithDomains = Array.AsReadOnly(new[] { "10C", "10M" });
+    private static readonly IReadOnlyList<string> HunterDomains = Array.AsReadOnly(new[] { "HUNT", "10F" });
+    private static readonly IReadOnlyList<string> ShamanDomains = Array.AsReadOnly(new[] { "FAITH", "10H" });
 
     /// <summary>某聚落本週對某技術的專家與學者加速（每週研究點）。</summary>
     public static long ExpertResearch(DemoTechNode node, IEnumerable<DemoRepresentativeRole> roles)
