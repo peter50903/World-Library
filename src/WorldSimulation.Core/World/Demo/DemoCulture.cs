@@ -51,8 +51,18 @@ public sealed record DemoCultureState(
 
     /// <summary>第 <paramref name="week"/> 週結算時（該週以前）某聚落主要文化的特性；沒有紀錄＝空。</summary>
     public IReadOnlyCollection<string> TraitsAt(int settlementId, int week)
-        => MainHistory.LastOrDefault(h => h.SettlementId == settlementId && h.Week < week) is { } h && Culture(h.CultureId) is { } c
-            ? c.Traits : Array.Empty<string>();
+    {
+        // 第 08-13 章第 5 節：依聚落分組的索引（以紀錄清單本身為鍵快取；清單不可變，換清單就換索引）。結果與線性搜尋相同。
+        var bySettlement = HistoryIndex.GetValue(MainHistory, list => list.GroupBy(h => h.SettlementId).ToDictionary(g => g.Key, g => g.ToArray()));
+        if (!bySettlement.TryGetValue(settlementId, out var entries))
+            return Array.Empty<string>();
+        for (var i = entries.Length - 1; i >= 0; i--)
+            if (entries[i].Week < week)
+                return Culture(entries[i].CultureId) is { } c ? c.Traits : Array.Empty<string>();
+        return Array.Empty<string>();
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImmutableList<DemoMainCulture>, Dictionary<int, DemoMainCulture[]>> HistoryIndex = new();
 
     /// <summary>第 08-8 章 B3：信仰（與文化同存於「文化信仰」狀態）。</summary>
     public DemoFaithState Faith { get; init; } = DemoFaithState.Empty;
