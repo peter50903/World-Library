@@ -132,14 +132,16 @@ public sealed record DemoSettlementChronicle(
         }
         // 第 08-11 章【TEMP 規則】居住地五級（世紀帝國式）：人口與本級設施（專家或技術）決定升降，每週最多一級（記入小史）。
         var exited = report.RepresentativeExits.Select(x => x.Id).ToHashSet();
-        var office = inOffice.Where(r => !exited.Contains(r.Id)).Concat(report.Appointments).ToList();
+        // 第 08-13 章第 5 節：在任者依聚落分組（原本每個聚落、每種設施掃全世界在任者；結果相同）。
+        var officeAt = inOffice.Where(r => !exited.Contains(r.Id)).Concat(report.Appointments)
+            .GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.Select(r => r.Role).ToHashSet());
         foreach (var ledger in report.Settlements)
         {
             var c = builder.GetValueOrDefault(ledger.SettlementId) ?? Empty;
             var id = ledger.SettlementId;
             bool Knows(string tech) => knowledge?.Knows(id, DemoTechnology.Of(tech)) == true;
             bool Has(DemoTierFacility f) => f.Role is { } role
-                ? office.Any(r => r.SettlementId == id && r.Role == role)
+                ? officeAt.TryGetValue(id, out var roles) && roles.Contains(role)
                 : f.TechId is { } tech && Knows(tech);
             var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, Has, c.Tier, Knows);
             if (tier == c.Tier)

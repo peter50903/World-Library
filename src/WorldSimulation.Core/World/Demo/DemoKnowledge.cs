@@ -169,13 +169,34 @@ public static class DemoKnowledge
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(traits);
+        return CultureResearchPercent(node, ResearchTraitsOf(traits));
+    }
+
+    /// <summary>第 08-13 章第 5 節：研究相關的文化特性先轉成旗標（每個聚落一次），逐技術只看旗標。</summary>
+    [Flags]
+    private enum ResearchTraits
+    {
+        None = 0, Scholarly = 1, Martial = 2, SeaFolk = 4, SteppeFolk = 8, Merchant = 16, SpiritMedium = 32
+    }
+
+    private static ResearchTraits ResearchTraitsOf(IReadOnlyCollection<string> traits)
+        => (traits.Contains("CT_SCHOLARLY") ? ResearchTraits.Scholarly : 0)
+            | (traits.Contains("CT_MARTIAL") ? ResearchTraits.Martial : 0)
+            | (traits.Contains("CT_SEA_FOLK") ? ResearchTraits.SeaFolk : 0)
+            | (traits.Contains("CT_STEPPE_FOLK") ? ResearchTraits.SteppeFolk : 0)
+            | (traits.Contains("CT_MERCHANT") ? ResearchTraits.Merchant : 0)
+            | (traits.Contains("DOC_SPIRIT_MEDIUM") ? ResearchTraits.SpiritMedium : 0);
+
+    private static long CultureResearchPercent(DemoTechNode node, ResearchTraits t)
+    {
+        if (t == ResearchTraits.None) return 0;
         long p = 0;
-        if (traits.Contains("CT_SCHOLARLY")) p += 10;
-        if (traits.Contains("CT_MARTIAL") && node.Domain == "HUNT") p += 25;
-        if (traits.Contains("CT_SEA_FOLK") && node.Domain == "10E" && node.Branch == "造船") p += 25;
-        if (traits.Contains("CT_STEPPE_FOLK") && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
-        if (traits.Contains("CT_MERCHANT") && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
-        if (traits.Contains("DOC_SPIRIT_MEDIUM") && node.Domain == "FAITH") p += 25; // 第 08-8 章 B3：通靈者（信條與文化特性一起傳入）
+        if (t.HasFlag(ResearchTraits.Scholarly)) p += 10;
+        if (t.HasFlag(ResearchTraits.Martial) && node.Domain == "HUNT") p += 25;
+        if (t.HasFlag(ResearchTraits.SeaFolk) && node.Domain == "10E" && node.Branch == "造船") p += 25;
+        if (t.HasFlag(ResearchTraits.SteppeFolk) && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
+        if (t.HasFlag(ResearchTraits.Merchant) && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
+        if (t.HasFlag(ResearchTraits.SpiritMedium) && node.Domain == "FAITH") p += 25; // 第 08-8 章 B3：通靈者（信條與文化特性一起傳入）
         return p;
     }
 
@@ -485,6 +506,8 @@ public static class DemoKnowledge
                 map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
+            var researchTraits = ResearchTraitsOf(traits);
+            var diffusionPercent = CultureDiffusionPercent(traits);
 
             foreach (var node in catalog)
             {
@@ -508,12 +531,12 @@ public static class DemoKnowledge
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
                 var known = neighbourKnown[node.Index];
                 var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000
-                    * CultureDiffusionPercent(traits) / 100); // 第 08-8 章 B2：守舊減半、開放加倍
+                    * diffusionPercent / 100); // 第 08-8 章 B2：守舊減半、開放加倍
                 // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
                 var experts = ExpertResearch(node, roles);
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
                 var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
-                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, traits)) / 100 // 第 08-8 章 B2
+                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
                     + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
