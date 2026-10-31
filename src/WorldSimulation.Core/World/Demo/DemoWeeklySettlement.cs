@@ -715,6 +715,7 @@ internal static class DemoWeeklySettlement
             }
         }
 
+        DemoPerf.Mark("結算：取水與需求");
         if (config.SharedCatchmentEnabled)
         {
             var plan = DemoSourceWeekLedger.Plan(
@@ -763,6 +764,7 @@ internal static class DemoWeeklySettlement
         var weekSites = sites; // V0-06B：本週建立的新聚落會加進這份副本，輸入的 sites 不變。
 
         // 途中隊伍（V0-06A）：只靠攜帶的糧食，飢餓與死亡規則與聚落相同；活著的人沿路線前進一格。
+        DemoPerf.Mark("結算：來源與分配");
         foreach (var batch in migrations.OrderBy(b => b.Id))
         {
             // #88：隊伍的途中餓死、抵達、建立新聚落，直接原因都是它出發那週的外移事件。
@@ -869,6 +871,7 @@ internal static class DemoWeeklySettlement
                 batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding, AttackDeaths: attacked));
         }
 
+        DemoPerf.Mark("結算：途中隊伍");
         foreach (var settlement in weekSites.Settlements.OrderBy(s => s.Id))
         {
             var people = population[settlement.Id];
@@ -1240,7 +1243,9 @@ internal static class DemoWeeklySettlement
             EntityIdNextClosing = DemoEntityIds.NextValue(ids.Capture()),
             Sources = sourceLedgers
         };
+        DemoPerf.Mark("結算：聚落與遷徙");
         Verify(report);
+        DemoPerf.Mark("結算：自我驗證");
         return new DemoWeeklyOutcome(report, nextReserves.ToImmutable(), nextFood.ToImmutable(),
             nextPopulation.ToImmutable(), nextDebt.ToImmutable(), nextMigrations.ToImmutable(), ids.Capture(),
             weekSites) { SourceStocks = nextSourceStocks };

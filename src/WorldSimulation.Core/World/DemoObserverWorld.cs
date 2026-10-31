@@ -427,6 +427,7 @@ public sealed partial class DemoObserverWorld
     /// </summary>
     private DemoDayAdvance AdvanceOneDayCore(bool settleWeekly)
     {
+        DemoPerf.Begin(); // 第 08-13 章：效能剖析打點（預設關閉）
         var commit = BeginCommit(settleWeekly);
         commit.StageSchedule();
         Checkpoint(DemoCommitStage.AfterScheduleStaged);
@@ -440,6 +441,7 @@ public sealed partial class DemoObserverWorld
                 ? (IReadOnlyDictionary<int, DemoDisasterStrike>)new Dictionary<int, DemoDisasterStrike>()
                 : DemoDisasters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, WorldPopulation, Map, _sites,
                     _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
+            DemoPerf.Mark("排程與天災");
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
@@ -463,6 +465,7 @@ public sealed partial class DemoObserverWorld
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
                 hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1))); // C3b
+            DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -472,6 +475,7 @@ public sealed partial class DemoObserverWorld
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
                     checked(_history.LastEventId + 1), _knowledge,
                     id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true); // 第 08-8 章 B2
+                DemoPerf.Mark("生死");
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
                 var nextId = report.Events.Count == 0 ? checked(_history.LastEventId + 1) : checked(report.Events[^1].EventId + 1);
@@ -481,6 +485,7 @@ public sealed partial class DemoObserverWorld
                         .Concat(_culture.Faith.MainFaithOf(id) is { } f && _culture.Faith.Faith(f) is { } faith ? faith.Tenets : Enumerable.Empty<string>())
                         .ToArray(), // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
                     MeteoriteOre); // 第 12-1 章：隕石留下的礦脈
+                DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (cleanLand, clearedOnly) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
@@ -492,15 +497,18 @@ public sealed partial class DemoObserverWorld
                 var ore = DemoDisasters.MeteoriteOre(strikes, report.Events, Map, lifecycle.Outcome.Sites, MeteoriteOre, report.Week, report.WorldTime, _rng,
                     checked(landNextId + clearedOnly.Count + ruined.Count));
                 var cleared = clearedOnly.Concat(ruined).Concat(ore).ToList();
+                DemoPerf.Mark("土地與天災");
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
                 var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,
                     checked(landNextId + cleared.Count), lifecycle.Population.Representatives);
+                DemoPerf.Mark("文化");
                 // 第 08-8 章 B3：信仰（習得祖靈祭祀時創立、改信、隨遷徙流動；事件接在分化之後）。
                 var (faith, faithEvents) = DemoFaiths.Advance(culture.Faith, report, learned, lifecycle.Outcome.Sites, Map, _rng,
                     lifecycle.Population.Representatives,
                     id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
                     checked(landNextId + cleared.Count + split.Count));
                 culture = culture with { Faith = faith };
+                DemoPerf.Mark("信仰");
                 // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）；C3b：熱浪、野火的開始與結束（事件接在信仰之後）。
                 var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
                 var yearly = DemoWildlife.Advance(_wildlife, report.Week, Map, lifecycle.Outcome.Sites, land,
@@ -508,6 +516,7 @@ public sealed partial class DemoObserverWorld
                 var (wildlife, environmentEvents) = DemoEnvironment.Advance(yearly, report.Week, report.WorldTime, knowledge.Era, Map,
                     lifecycle.Outcome.Sites, lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
                     _rng, checked(landNextId + cleared.Count + split.Count + faithEvents.Count));
+                DemoPerf.Mark("野生動物與環境");
                 var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
@@ -519,8 +528,10 @@ public sealed partial class DemoObserverWorld
             {
                 commit.StagePopulation(null, null);
             }
+            DemoPerf.Mark("暫存");
             Checkpoint(DemoCommitStage.AfterPopulationStaged);
             commit.StageHistory(commit.Outcome.Report);
+            DemoPerf.Mark("歷史");
         }
         else
         {
@@ -530,6 +541,7 @@ public sealed partial class DemoObserverWorld
 
         Checkpoint(DemoCommitStage.BeforePublish);
         commit.PublishTo(this);
+        DemoPerf.Mark(commit.SettlesWeek ? "發布" : "非結算日");
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
 
