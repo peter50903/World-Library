@@ -376,7 +376,7 @@ public static class DemoKnowledge
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
-        Func<int, IReadOnlyCollection<string>>? cultureTraits = null)
+        Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -412,7 +412,7 @@ public static class DemoKnowledge
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0,
                 population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman),
-                map is not null && NearOre(map, settlement),
+                map is not null && NearOre(map, settlement, extraOre),
                 near.Contains(DemoTerrain.Hills));
             var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
             var practice = new Practice(
@@ -489,11 +489,12 @@ public static class DemoKnowledge
 
     /// <summary>聚落本格與六鄰格（地圖內）。</summary>
     /// <summary>第 06-3 章：聚落 <see cref="TempOreRange"/> 格內有礦脈。</summary>
-    public static bool NearOre(DemoHexWorld map, DemoSettlement settlement)
+    public static bool NearOre(DemoHexWorld map, DemoSettlement settlement, IReadOnlySet<DemoCellRef>? extraOre = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        return map.Cells.Any(c => c.Ore && DemoWorldSites.HexDistance(origin, c) <= TempOreRange);
+        return map.Cells.Any(c => (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)
+            && DemoWorldSites.HexDistance(origin, c) <= TempOreRange); // 第 12-1 章：含隕石留下的礦脈
     }
 
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement settlement)

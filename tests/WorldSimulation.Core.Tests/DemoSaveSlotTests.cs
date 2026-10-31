@@ -46,10 +46,10 @@ public sealed class DemoSaveSlotTests : IDisposable
         DemoSaveSlots.Save(c, 3, _directory);
 
         var slots = DemoSaveSlots.ListAll(_directory);
-        Assert.Equal((42UL, 9, "一般示範", 40), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
+        Assert.Equal((42UL, 9, "一般示範", 41), (slots[0].Seed!.Value, slots[0].DaysElapsed!.Value, slots[0].ScenarioName!, slots[0].Version!.Value));
         Assert.Equal((7UL, 21, "開拓"), (slots[1].Seed!.Value, slots[1].DaysElapsed!.Value, slots[1].ScenarioName!));
         Assert.Equal((3UL, 30, "局部饑荒"), (slots[2].Seed!.Value, slots[2].DaysElapsed!.Value, slots[2].ScenarioName!));
-        Assert.Equal($"槽 2：第 21 日｜世界種子 7｜歷史種子 {WorldRecipe.ForSeeds(7).HistorySeed}（衍生）｜開拓｜設定 {WorldRecipe.CurrentConfigHash[..8]}｜存檔第 40 版｜可讀", slots[1].Describe());
+        Assert.Equal($"槽 2：第 21 日｜世界種子 7｜歷史種子 {WorldRecipe.ForSeeds(7).HistorySeed}（衍生）｜開拓｜設定 {WorldRecipe.CurrentConfigHash[..8]}｜存檔第 41 版｜可讀", slots[1].Describe());
         Assert.All(slots, s => Assert.True(s.Compatible));
 
         Assert.Equal(a.ExportTempSave(), DemoSaveSlots.Load(1, _directory).ExportTempSave());
@@ -131,11 +131,11 @@ public sealed class DemoSaveSlotTests : IDisposable
         Assert.Equal("不是已知的示範情境", DemoSaveSlots.ReadInfo(1, _directory).Error);
     }
 
-    // ── 版本策略（C04／C05）：只有第 40 版可讀；第 1～39 版「版本太舊，請建立新世界」；其他版本不受支援 ──
+    // ── 版本策略（C04／C05）：只有第 41 版可讀；第 1～40 版「版本太舊，請建立新世界」；其他版本不受支援 ──
 
     [Theory]
     [InlineData(0)]
-    [InlineData(41)]
+    [InlineData(42)]
     [InlineData(99)]
     [InlineData(-2)]
     public void UnknownVersion_IsRejected(int version)

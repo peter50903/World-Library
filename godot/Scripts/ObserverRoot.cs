@@ -1406,6 +1406,7 @@ public partial class ObserverRoot : Control
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
+        _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();

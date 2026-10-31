@@ -61,3 +61,29 @@ public sealed class DemoDisasterTests
         Assert.Equal(world.ExportTempSave(), reloaded.ExportTempSave());
     }
 }
+
+/// <summary>第 12-1 章：隕石落點留下礦脈。</summary>
+public sealed class DemoMeteoriteOreTests
+{
+    [Fact]
+    public void MeteoriteLeavesOreNextToTheStruckSettlementAndUnlocksMining()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var s = world.Sites.Settlements.First();
+        var meteor = new DemoSettlementEvent(30, TimeSpan.FromDays(210), s.Id, s.Name, DemoSettlementEventKind.Meteorite, 1, "隕石", EventId: 900);
+        var strikes = new Dictionary<int, DemoDisasterStrike> { [s.Id] = new(s.Id, DemoSettlementEventKind.Meteorite, 1, "隕石") };
+        var events = DemoDisasters.MeteoriteOre(strikes, new[] { meteor }, world.Map, world.Sites, new HashSet<DemoCellRef>(), 30,
+            TimeSpan.FromDays(210), RngRegistry.Create(1), 901);
+        var ore = Assert.Single(events);
+        Assert.Equal(DemoSettlementEventKind.MeteoriteOre, ore.Kind);
+        Assert.Equal(900, ore.CauseEventId);
+        var cell = DemoLandClearing.CellOf(world.Map, ore.Count);
+        Assert.Equal(1, DemoWorldSites.HexDistance(world.Map.GetCell(s.Column, s.Row), world.Map.GetCell(cell.Column, cell.Row)));
+        Assert.NotEqual(DemoTerrain.Water, world.Map.GetCell(cell.Column, cell.Row).Terrain);
+        var set = DemoDisasters.OreCells(events, world.Map).ToHashSet();
+        Assert.True(DemoKnowledge.NearOre(world.Map, s, set));
+        // 同一格不會再落一次礦脈。
+        Assert.DoesNotContain(DemoDisasters.MeteoriteOre(strikes, new[] { meteor }, world.Map, world.Sites, set, 30, TimeSpan.FromDays(210), RngRegistry.Create(1), 950),
+            e => DemoLandClearing.CellOf(world.Map, e.Count) == cell);
+    }
+}

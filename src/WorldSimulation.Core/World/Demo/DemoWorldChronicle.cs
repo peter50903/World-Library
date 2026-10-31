@@ -132,6 +132,10 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Disaster, e.EventId,
                         Name(e.SettlementId), T($" 發生{DemoDisasters.Name(e.Kind)}：" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.MeteoriteOre:
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Disaster, e.EventId,
+                        Name(e.SettlementId), T(" 附近的" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.BeastAttack:
                     // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
                     Add(e.Week, DemoChronicleLevel.Normal,

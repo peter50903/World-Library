@@ -246,7 +246,10 @@ public enum DemoSettlementEventKind
     Earthquake = 18,
     Tornado = 19,
     Meteorite = 20,
-    Flood = 21
+    Flood = 21,
+
+    /// <summary>第 12-1 章：隕石落點留下礦脈（人數欄＝格編號；直接原因＝同週同聚落的隕石事件）。</summary>
+    MeteoriteOre = 22
 }
 
 /// <summary>
@@ -290,7 +293,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
-                or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
+                or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

@@ -348,6 +348,10 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.Flood:
                 // 第 12-1 章 C3：天災是根因（地理前提與機率另見 DemoDisasters）。
                 return parent is null && e.Count >= 0 ? null : "天災是根因，事件人數欄是死亡人數";
+            case DemoSettlementEventKind.MeteoriteOre:
+                // 第 12-1 章：直接原因＝同週同聚落的隕石事件；人數欄＝格編號。
+                return parent is { Kind: DemoSettlementEventKind.Meteorite } && parent.Week == e.Week && parent.SettlementId == e.SettlementId && e.Count > 0
+                    ? null : "隕石礦脈的直接原因必須是同週同聚落的隕石事件";
             case DemoSettlementEventKind.FaithExtinct:
                 return parent is null && e.Count > 0 ? null : "信仰失傳是根因，事件人數欄必須是信仰編號";
 
