@@ -95,9 +95,10 @@ internal static class DemoHumanLifecycle
             .ToDictionary(g => g.Key, g => (long)g.Count());
 
         // ③ 生死：受孕只在本週真實糧帳寬裕的聚落，數量不超過可預留的口糧（第 08-3 章）。
+        var ledgerOf = report.Settlements.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.Single());
         var outcome = moved.AdvanceWeek(report.Week, id =>
         {
-            var ledger = report.Settlements.SingleOrDefault(s => s.SettlementId == id);
+            var ledger = ledgerOf.GetValueOrDefault(id);
             if (ledger is null || ledger.HungerDebtClosing != 0 || ledger.PopulationClosing <= 0
                 || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, ledger.SourceSlack))
                 return 0;
@@ -110,8 +111,8 @@ internal static class DemoHumanLifecycle
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
             knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps);
 
-        long Sum(DemoTempDemographicKind kind, int settlement, int batch)
-            => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
+        var eventSums = outcome.Events.GroupBy(e => (e.Kind, e.SettlementId, e.BatchId)).ToDictionary(g => g.Key, g => g.Sum(e => e.Count));
+        long Sum(DemoTempDemographicKind kind, int settlement, int batch) => eventSums.GetValueOrDefault((kind, settlement, batch));
 
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
@@ -172,13 +173,14 @@ internal static class DemoHumanLifecycle
         // 人數＝事件人數（週帳對帳規則改為「有出生就恰好一筆、人數相等」）。
         var events = report.Events.ToList();
         long eventId = events.Count == 0 ? firstNewEventId : checked(events[^1].EventId + 1);
+        var siteOf = weekly.Sites.Settlements.ToDictionary(s => s.Id);
         foreach (var g in outcome.Events.Where(e => e.Kind is DemoTempDemographicKind.NaturalDeath or DemoTempDemographicKind.Birth)
                      .GroupBy(e => (Birth: e.Kind == DemoTempDemographicKind.Birth, e.BatchId, e.SettlementId))
                      .OrderBy(g => g.Key.Birth ? 1 : 0).ThenBy(g => g.Key.BatchId).ThenBy(g => g.Key.SettlementId))
         {
             var count = g.Sum(e => e.Count);
             if (count == 0) continue;
-            var site = weekly.Sites.Settlements.Single(s => s.Id == g.Key.SettlementId);
+            var site = siteOf[g.Key.SettlementId];
             var travel = g.Key.BatchId > 0 ? $"（遷徙隊伍 #{g.Key.BatchId} 途中）" : "";
             var youngest = g.Min(e => e.Age);
             var oldest = g.Max(e => e.Age);
