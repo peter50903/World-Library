@@ -309,7 +309,8 @@ public partial class DemoHexMap : Control
                     DrawPolygon(full, Tint6(Colors.White), HexUvs(full, center, radius), ore);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
-                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
+                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
+                    && (placed.IsRuin || !UseFootprints(radius))) // 第 08-13 章第 4 節：近看畫建築（地形畫完後），遠看畫圖示
                     DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
                 continue;
             }
@@ -344,7 +345,7 @@ public partial class DemoHexMap : Control
                 if (!DrawMarker(ArtAssets.IconRuin, center, radius * 1.4f))
                     DrawCircle(center, radius * 0.17f, new Color(0.45f, 0.43f, 0.40f));
             }
-            else if (VisibleSite(cell) is { } settlement)
+            else if (VisibleSite(cell) is { } settlement && !UseFootprints(radius))
             {
                 // 第 12-1 章 C3：一年內遭天災的聚落在右上角疊災害標記。
                 if (RecentDisasters.Contains(settlement.Id))
@@ -356,6 +357,10 @@ public partial class DemoHexMap : Control
                     DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
             }
         }
+
+        // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
+        if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
+            DrawFootprints(start, radius);
 
         // 第 05 章 b 節：糧食狀況模式——地形壓暗，聚落格塗上狀況色並加粗外框。
         if (_mode == Mode.Food && Sites is not null)
