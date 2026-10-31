@@ -28,6 +28,9 @@ public static class LivingDiagnosis
             }
         }
 
+        // 第 08-13 章：各階段耗時剖析（只在診斷時開啟）。
+        DemoPerf.Enabled = true;
+        DemoPerf.Reset();
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, null, size), DemoWeeklyTempConfig.LivingForagingSample);
         output.WriteLine($"=== 普通世界人口診斷｜種子 {seed}｜{years} 年｜地圖 {DemoMapSizes.Name(size)}（{world.Map.Columns}×{world.Map.Rows}）｜{world.MapCapacity.Describe()} ===");
@@ -54,6 +57,8 @@ public static class LivingDiagnosis
             var now = clock.Elapsed;
             output.WriteLine(string.Create(CultureInfo.InvariantCulture,
                 $"  耗時：到第 {year} 年共 {now.TotalSeconds:F1} 秒（這段每年 {(now - lap).TotalSeconds / (year - lapYear):F2} 秒）｜週報 {world.WeekReports().Count} 份｜事件 {world.WeekReports().Sum(w => w.Events.Count)} 筆"));
+            if (year % 10 == 0)
+                output.WriteLine($"  剖析（累計）：{DemoPerf.Describe()}");
             lap = now;
             lapYear = year;
             var day = world.Snapshot().DaysElapsed;
