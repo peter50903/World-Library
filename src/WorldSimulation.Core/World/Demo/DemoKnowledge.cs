@@ -434,11 +434,29 @@ public static class DemoKnowledge
         var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
         var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
+        // 第 08-13 章第 5 節：鄰近聚落改查範圍內的格（原本兩兩比距離）；鄰近已習得數改由鄰居的已習得清單累加（原本每項技術逐一查每個鄰居）。結果相同。
+        var livingAt = living.GroupBy(s => (s.Column, s.Row)).ToDictionary(g => g.Key, g => g.ToList());
+        var learnedOf = state.Records.Where(r => r.Learned).GroupBy(r => r.SettlementId)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.Technology.Index).ToArray());
+        List<DemoSettlement> NeighboursOf(DemoSettlement settlement)
+        {
+            var found = new List<DemoSettlement>();
+            var origin = map!.GetCell(settlement.Column, settlement.Row);
+            for (var dq = -TempDiffusionRange; dq <= TempDiffusionRange; dq++)
+                for (var dr = Math.Max(-TempDiffusionRange, -dq - TempDiffusionRange); dr <= Math.Min(TempDiffusionRange, -dq + TempDiffusionRange); dr++)
+                    if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c && livingAt.TryGetValue((c.Column, c.Row), out var here))
+                        found.AddRange(here.Where(o => o.Id != settlement.Id));
+            return found;
+        }
         DemoPerf.Mark("知識：準備");
         foreach (var settlement in living)
         {
-            var neighbours = map is null ? new List<DemoSettlement>()
-                : living.Where(o => o.Id != settlement.Id && Distance(map, o, settlement) <= TempDiffusionRange).ToList();
+            var neighbours = map is null ? new List<DemoSettlement>() : NeighboursOf(settlement);
+            var neighbourKnown = new int[catalog.Length];
+            foreach (var o in neighbours)
+                if (learnedOf.TryGetValue(o.Id, out var known))
+                    foreach (var index in known)
+                        neighbourKnown[index]++;
             var stats = population.StatsOf(settlement.Id, 0, day, rules);
             var reps = repsOf.GetValueOrDefault(settlement.Id) ?? new List<DemoRepresentative>();
             var arrived = arrivalsTo.GetValueOrDefault(settlement.Id) ?? new List<DemoMigrationWeekLedger>();
@@ -488,7 +506,7 @@ public static class DemoKnowledge
                 var carried = arrived.Where(m => state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
-                var known = neighbours.Count(o => state.Knows(o.Id, technology));
+                var known = neighbourKnown[node.Index];
                 var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000
                     * CultureDiffusionPercent(traits) / 100); // 第 08-8 章 B2：守舊減半、開放加倍
                 // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
