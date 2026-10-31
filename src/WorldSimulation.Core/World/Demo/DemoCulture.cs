@@ -51,8 +51,18 @@ public sealed record DemoCultureState(
 
     /// <summary>第 <paramref name="week"/> 週結算時（該週以前）某聚落主要文化的特性；沒有紀錄＝空。</summary>
     public IReadOnlyCollection<string> TraitsAt(int settlementId, int week)
-        => MainHistory.LastOrDefault(h => h.SettlementId == settlementId && h.Week < week) is { } h && Culture(h.CultureId) is { } c
-            ? c.Traits : Array.Empty<string>();
+    {
+        // 第 08-13 章第 5 節：依聚落分組的索引（以紀錄清單本身為鍵快取；清單不可變，換清單就換索引）。結果與線性搜尋相同。
+        var bySettlement = HistoryIndex.GetValue(MainHistory, list => list.GroupBy(h => h.SettlementId).ToDictionary(g => g.Key, g => g.ToArray()));
+        if (!bySettlement.TryGetValue(settlementId, out var entries))
+            return Array.Empty<string>();
+        for (var i = entries.Length - 1; i >= 0; i--)
+            if (entries[i].Week < week)
+                return Culture(entries[i].CultureId) is { } c ? c.Traits : Array.Empty<string>();
+        return Array.Empty<string>();
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImmutableList<DemoMainCulture>, Dictionary<int, DemoMainCulture[]>> HistoryIndex = new();
 
     /// <summary>第 08-8 章 B3：信仰（與文化同存於「文化信仰」狀態）。</summary>
     public DemoFaithState Faith { get; init; } = DemoFaithState.Empty;
@@ -61,7 +71,10 @@ public sealed record DemoCultureState(
 
     /// <summary>某聚落的文化比例（由多到少）；沒有紀錄＝空。</summary>
     public IReadOnlyList<DemoCultureShare> SharesOf(int settlementId)
-        => Settlements.FirstOrDefault(s => s.SettlementId == settlementId)?.Shares ?? (IReadOnlyList<DemoCultureShare>)Array.Empty<DemoCultureShare>();
+        => SettlementIndex.GetValue(Settlements, list => list.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.First()))
+            .GetValueOrDefault(settlementId)?.Shares ?? (IReadOnlyList<DemoCultureShare>)Array.Empty<DemoCultureShare>(); // 第 08-13 章第 5 節：依聚落索引（同 FirstOrDefault）
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImmutableList<DemoSettlementCulture>, Dictionary<int, DemoSettlementCulture>> SettlementIndex = new();
 
     /// <summary>聚落的主要文化（比例最高者；同比例取編號小）；沒有＝null。</summary>
     public int? MainCultureOf(int settlementId)

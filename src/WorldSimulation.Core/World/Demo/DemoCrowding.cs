@@ -79,6 +79,7 @@ public static class DemoCrowding
         ArgumentNullException.ThrowIfNull(sources);
         var settlements = active.ToList();
         var result = settlements.ToDictionary(s => s.Id, _ => 0L);
+        var at = settlements.Select((s, i) => (Index: i, S: s)).GroupBy(x => (x.S.Column, x.S.Row)).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var source in sources)
         {
             var spare = SupplyOf(source) - source.Harvested;
@@ -86,7 +87,9 @@ public static class DemoCrowding
                 new DemoCatchmentFoodSource(source.SourceId, source.Column, source.Row, source.Kind, source.FoodAvailable));
             // 第 08-4 章【TEMP 規則】：共用來源的餘量由可及的聚落平分（原本每個鄰居都算到全部，
             // 相鄰聚落同時依同一份餘量生育、接納遷入，人口超過來源後長期缺糧）。
-            var reaching = settlements.Where(s => cells.Any(c => c.Column == s.Column && c.Row == s.Row)).ToList();
+            // 第 08-13 章第 5 節：依格查聚落（原本逐一比對全部聚落；順序同樣依聚落清單順序）。
+            var reaching = cells.SelectMany(c => at.GetValueOrDefault((c.Column, c.Row)) ?? new List<(int Index, DemoSettlement S)>())
+                .OrderBy(x => x.Index).Select(x => x.S).ToList();
             foreach (var settlement in reaching)
                 result[settlement.Id] = checked(result[settlement.Id] + spare / reaching.Count);
         }

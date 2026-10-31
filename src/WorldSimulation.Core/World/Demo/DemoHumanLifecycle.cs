@@ -94,10 +94,12 @@ internal static class DemoHumanLifecycle
         var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))
             .ToDictionary(g => g.Key, g => (long)g.Count());
 
+        DemoPerf.Mark("生死：餓死與遷徙");
         // ③ 生死：受孕只在本週真實糧帳寬裕的聚落，數量不超過可預留的口糧（第 08-3 章）。
+        var ledgerOf = report.Settlements.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.Single());
         var outcome = moved.AdvanceWeek(report.Week, id =>
         {
-            var ledger = report.Settlements.SingleOrDefault(s => s.SettlementId == id);
+            var ledger = ledgerOf.GetValueOrDefault(id);
             if (ledger is null || ledger.HungerDebtClosing != 0 || ledger.PopulationClosing <= 0
                 || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, ledger.SourceSlack))
                 return 0;
@@ -105,13 +107,15 @@ internal static class DemoHumanLifecycle
                 : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);
         }, Rules, draws, minimumDeaths);
 
+        DemoPerf.Mark("生死：年齡群");
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
             knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps);
 
-        long Sum(DemoTempDemographicKind kind, int settlement, int batch)
-            => outcome.Events.Where(e => e.Kind == kind && e.SettlementId == settlement && e.BatchId == batch).Sum(e => e.Count);
+        DemoPerf.Mark("生死：代表人物");
+        var eventSums = outcome.Events.GroupBy(e => (e.Kind, e.SettlementId, e.BatchId)).ToDictionary(g => g.Key, g => g.Sum(e => e.Count));
+        long Sum(DemoTempDemographicKind kind, int settlement, int batch) => eventSums.GetValueOrDefault((kind, settlement, batch));
 
         var next = weekly.Population.ToBuilder();
         var nextDebt = weekly.HungerDebt.ToBuilder();
@@ -172,13 +176,14 @@ internal static class DemoHumanLifecycle
         // 人數＝事件人數（週帳對帳規則改為「有出生就恰好一筆、人數相等」）。
         var events = report.Events.ToList();
         long eventId = events.Count == 0 ? firstNewEventId : checked(events[^1].EventId + 1);
+        var siteOf = weekly.Sites.Settlements.ToDictionary(s => s.Id);
         foreach (var g in outcome.Events.Where(e => e.Kind is DemoTempDemographicKind.NaturalDeath or DemoTempDemographicKind.Birth)
                      .GroupBy(e => (Birth: e.Kind == DemoTempDemographicKind.Birth, e.BatchId, e.SettlementId))
                      .OrderBy(g => g.Key.Birth ? 1 : 0).ThenBy(g => g.Key.BatchId).ThenBy(g => g.Key.SettlementId))
         {
             var count = g.Sum(e => e.Count);
             if (count == 0) continue;
-            var site = weekly.Sites.Settlements.Single(s => s.Id == g.Key.SettlementId);
+            var site = siteOf[g.Key.SettlementId];
             var travel = g.Key.BatchId > 0 ? $"（遷徙隊伍 #{g.Key.BatchId} 途中）" : "";
             var youngest = g.Min(e => e.Age);
             var oldest = g.Max(e => e.Age);
@@ -197,7 +202,9 @@ internal static class DemoHumanLifecycle
             Appointments = appointments, RepresentativeExits = exits,
             EntityIdNextClosing = DemoEntityIds.NextValue(entityIds)
         };
+        DemoPerf.Mark("生死：帳與事件");
         DemoWeeklySettlement.Verify(revised);
+        DemoPerf.Mark("生死：驗證");
         return (weekly with
         {
             Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),
@@ -233,14 +240,18 @@ internal static class DemoHumanLifecycle
         }
 
         var appointments = new List<DemoRepresentative>();
+        // 第 08-13 章第 5 節：在任者依聚落分組（原本每次掃全部在任者；結果相同）。
+        var currentAt = current.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.ToList());
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin && population.ResidentsOf(s.Id) > 0).OrderBy(s => s.Id))
         {
-            long Free(DemoCohortGroup g) => g.Count - current.Count(r => r.SettlementId == settlement.Id && r.BirthYear == g.BirthYear && r.Sex == g.Sex);
+            if (!currentAt.TryGetValue(settlement.Id, out var here))
+                currentAt[settlement.Id] = here = new List<DemoRepresentative>();
+            long Free(DemoCohortGroup g) => g.Count - here.Count(r => r.BirthYear == g.BirthYear && r.Sex == g.Sex);
             var adults = population.GroupsAt(settlement.Id, 0)
                 .Where(g => DemoCohortDemography.AgeAt(g.BirthYear, day) >= Rules.AdultAgeYears).ToList();
             foreach (var role in Enum.GetValues<DemoRepresentativeRole>())
             {
-                if (current.Any(r => r.SettlementId == settlement.Id && r.Role == role)) continue;
+                if (here.Any(r => r.Role == role)) continue;
                 // 第 08-6 章：專業知識持有者只在已習得該技術的聚落（農師＝農耕、木匠＝木工）。
                 if (DemoRepresentative.TechnologyOf(role) is { } needed && !knowledge.Knows(settlement.Id, needed)) continue;
                 var candidates = adults.Where(g => Free(g) > 0).ToList();
@@ -256,6 +267,7 @@ internal static class DemoHumanLifecycle
                 var id = DemoEntityIds.NextLong(ids);
                 var person = new DemoRepresentative(id, settlement.Id, role, names.Person(id, pick.Sex), pick.Sex, pick.BirthYear, report.Week);
                 current.Add(person);
+                here.Add(person);
                 appointments.Add(person);
             }
         }

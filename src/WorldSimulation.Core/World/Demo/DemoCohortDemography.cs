@@ -140,7 +140,21 @@ public sealed class DemoCohortDemography
 
     /// <summary>某年齡群裡已是代表人物的人數（外移時不帶走他們）。</summary>
     public long RepresentativesIn(int settlementId, int birthYear, DemoTempSex sex)
-        => Representatives.Count(r => r.SettlementId == settlementId && r.BirthYear == birthYear && r.Sex == sex);
+        => (_repIndex ??= Representatives.GroupBy(r => (r.SettlementId, r.BirthYear, r.Sex)).ToDictionary(g => g.Key, g => (long)g.Count()))
+            .GetValueOrDefault((settlementId, birthYear, sex));
+
+    // 第 08-13 章第 5 節：依地點（聚落、隊伍）索引年齡群、懷孕與代表人物（物件不可變，第一次用到時建立；結果與逐一掃描相同）。
+    private Dictionary<(int Settlement, int BirthYear, DemoTempSex Sex), long>? _repIndex;
+    private Dictionary<(int Settlement, int Batch), List<KeyValuePair<(int Settlement, int Batch, int BirthYear, DemoTempSex Sex), long>>>? _placeIndex;
+    private Dictionary<(int Settlement, int Batch), long>? _pregIndex;
+    private Dictionary<int, long>? _batchIndex;
+
+    private IReadOnlyList<KeyValuePair<(int Settlement, int Batch, int BirthYear, DemoTempSex Sex), long>> GroupsOfPlace(int settlementId, int batchId)
+    {
+        _placeIndex ??= _groups.GroupBy(kv => (kv.Key.Settlement, kv.Key.Batch)).ToDictionary(g => g.Key, g => g.ToList());
+        return _placeIndex.TryGetValue((settlementId, batchId), out var list)
+            ? list : Array.Empty<KeyValuePair<(int Settlement, int Batch, int BirthYear, DemoTempSex Sex), long>>();
+    }
 
     public static int YearOfDay(int day) => (int)Math.Floor(day / (double)DaysPerYear);
 
@@ -243,9 +257,8 @@ public sealed class DemoCohortDemography
     {
         long total = 0, children = 0, adults = 0, elders = 0, fw = 0, fm = 0, pm = 0;
         var elder = DemoSurvivalTempSettings.Current.ElderAgeYears;
-        foreach (var (key, n) in _groups)
+        foreach (var (key, n) in GroupsOfPlace(settlementId, batchId))
         {
-            if (key.Settlement != settlementId || key.Batch != batchId) continue;
             var age = AgeAt(key.BirthYear, day);
             total += n;
             if (age < rules.AdultAgeYears) { children += n; continue; }
@@ -258,7 +271,8 @@ public sealed class DemoCohortDemography
                 if (age < elder) pm += n;
             }
         }
-        var pregnant = _pregnancies.Where(kv => kv.Key.Settlement == settlementId && kv.Key.Batch == batchId).Sum(kv => kv.Value);
+        var pregnant = (_pregIndex ??= _pregnancies.GroupBy(kv => (kv.Key.Settlement, kv.Key.Batch)).ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value)))
+            .GetValueOrDefault((settlementId, batchId));
         return new DemoCohortStats(total, children, adults, elders, fw, fm, pm, pregnant);
     }
 
@@ -275,17 +289,18 @@ public sealed class DemoCohortDemography
     public long AdultsIn(int settlementId, DemoTempDemographyRules rules)
     {
         var day = LastWeek * 7;
-        return _groups.Where(kv => kv.Key.Settlement == settlementId && kv.Key.Batch == 0
-            && AgeAt(kv.Key.BirthYear, day) >= rules.AdultAgeYears).Sum(kv => kv.Value);
+        return GroupsOfPlace(settlementId, 0).Where(kv => AgeAt(kv.Key.BirthYear, day) >= rules.AdultAgeYears).Sum(kv => kv.Value);
     }
 
-    public long ResidentsOf(int settlementId) => _groups.Where(kv => kv.Key.Settlement == settlementId && kv.Key.Batch == 0).Sum(kv => kv.Value);
+    public long ResidentsOf(int settlementId) => GroupsOfPlace(settlementId, 0).Sum(kv => kv.Value);
 
-    public long MembersOf(int batchId) => _groups.Where(kv => kv.Key.Batch == batchId).Sum(kv => kv.Value);
+    public long MembersOf(int batchId) => batchId == 0 ? _groups.Where(kv => kv.Key.Batch == 0).Sum(kv => kv.Value)
+        : (_batchIndex ??= _groups.Where(kv => kv.Key.Batch != 0).GroupBy(kv => kv.Key.Batch).ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value)))
+            .GetValueOrDefault(batchId);
 
     /// <summary>某地各年齡群（依出生年、性別）。</summary>
     public IReadOnlyList<DemoCohortGroup> GroupsAt(int settlementId, int batchId)
-        => Groups.Where(g => g.SettlementId == settlementId && g.BatchId == batchId).ToList();
+        => GroupsOfPlace(settlementId, batchId).Select(kv => new DemoCohortGroup(kv.Key.Settlement, kv.Key.Batch, kv.Key.BirthYear, kv.Key.Sex, kv.Value)).ToList();
 
     /// <summary>
     /// 出發：定居者依 <paramref name="take"/>（出生年、性別 → 人數）加入隊伍 <paramref name="batchId"/>，
@@ -445,7 +460,8 @@ public sealed class DemoCohortDemography
 
         // 第 08-12 章：途中隊伍全員死亡（途中餓死或本週老死）後，隨隊的懷孕跟著消失——
         // 否則孩子會「出生」在已解散、沒有隊伍帳的隊伍裡，群體人口比世界人口多一人（長測種子 7 第 85 年）。
-        foreach (var key in preg.Keys.Where(k => k.Item2 > 0 && !groups.Any(g => g.Key.Batch == k.Item2 && g.Value > 0)).ToList())
+        var aliveBatches = groups.Where(g => g.Key.Batch > 0 && g.Value > 0).Select(g => g.Key.Batch).ToHashSet();
+        foreach (var key in preg.Keys.Where(k => k.Item2 > 0 && !aliveBatches.Contains(k.Item2)).ToList())
             preg.Remove(key);
 
         // ② 到期分娩、③ 流產。

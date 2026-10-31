@@ -336,8 +336,23 @@ public sealed class DemoWorldSites
         => Array.AsReadOnly(Settlements.Where(s => !s.IsRuin).Select(s => new DemoCellRef(s.Column, s.Row)).ToArray());
 
     /// <summary>Settlement at the offset cell, or null. Pure query.</summary>
+    private Dictionary<(int, int), DemoSettlement>? _byCell;
+
+    /// <summary>
+    /// 某格的聚落（同格多個時取清單中第一個，與原本的線性搜尋相同）。
+    /// 第 08-13 章第 5 節：改用第一次查詢時建立的格索引（本物件不可變，索引不會過期）。
+    /// </summary>
     public DemoSettlement? SettlementAt(int column, int row)
-        => Settlements.FirstOrDefault(s => s.Column == column && s.Row == row);
+    {
+        if (_byCell is null)
+        {
+            var index = new Dictionary<(int, int), DemoSettlement>(Settlements.Count);
+            foreach (var s in Settlements)
+                index.TryAdd((s.Column, s.Row), s);
+            _byCell = index;
+        }
+        return _byCell.GetValueOrDefault((column, row));
+    }
 
     public IReadOnlyList<DemoResourcePoint> ResourcePointsOf(int settlementId)
         => Array.AsReadOnly(ResourcePoints.Where(r => r.SettlementId == settlementId).ToArray());

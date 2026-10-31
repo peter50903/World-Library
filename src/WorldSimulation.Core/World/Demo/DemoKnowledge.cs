@@ -237,6 +237,17 @@ public static class DemoKnowledge
         return checked(Boosts(state, sites, map, source, week, traitsAt, huntingAt) + environment);
     }
 
+    /// <summary>第 08-13 章第 5 節：每個技術的前置技術編號（前置檢查每週每聚落每技術都做；原本每次依名稱查表）。</summary>
+    private static readonly Lazy<int[][]> ParentIndexes = new(() =>
+        DemoTechCatalog.All.Select(n => n.Parents.Select(p => DemoTechCatalog.Get(p).Index).ToArray()).ToArray());
+
+    private static readonly (DemoCatchmentSourceKind Kind, string TechId, long Percent)[] NoBonuses = [];
+    private static readonly (DemoCatchmentSourceKind Kind, string TraitId, long Percent)[] NoCultureBonuses = [];
+    private static readonly Dictionary<DemoCatchmentSourceKind, (DemoCatchmentSourceKind Kind, string TechId, long Percent)[]> BonusesOf =
+        TempSourceBonuses.GroupBy(b => b.Kind).ToDictionary(g => g.Key, g => g.ToArray());
+    private static readonly Dictionary<DemoCatchmentSourceKind, (DemoCatchmentSourceKind Kind, string TraitId, long Percent)[]> CultureBonusesOf =
+        TempCultureSourceBonuses.GroupBy(b => b.Kind).ToDictionary(g => g.Key, g => g.ToArray());
+
     private static long Boosts(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
         Func<int, int, IReadOnlyCollection<string>>? traitsAt, Func<int, int, bool>? huntingAt)
     {
@@ -244,21 +255,27 @@ public static class DemoKnowledge
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(source);
-        var bonuses = TempSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
-        var cultural = traitsAt is null ? new List<(DemoCatchmentSourceKind, string TraitId, long Percent)>()
-            : TempCultureSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
+        // 第 08-13 章第 5 節：加成表依來源種類預先分組；鄰近聚落用迴圈查（每週每個來源都會呼叫；結果相同）。
+        var bonuses = BonusesOf.GetValueOrDefault(source.Kind) ?? NoBonuses;
+        var cultural = traitsAt is null ? NoCultureBonuses : CultureBonusesOf.GetValueOrDefault(source.Kind) ?? NoCultureBonuses;
         var hunted = huntingAt is not null && source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
-        if (bonuses.Count == 0 && cultural.Count == 0 && !hunted)
+        if (bonuses.Length == 0 && cultural.Length == 0 && !hunted)
             return 0;
         var origin = map.GetCell(source.Column, source.Row);
-        var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr)).Prepend(origin)
-            .Where(c => c is not null).Select(c => sites.SettlementAt(c!.Column, c.Row)).Where(s => s is not null);
+        var nearby = new List<DemoSettlement>(2);
+        if (sites.SettlementAt(origin.Column, origin.Row) is { } own)
+            nearby.Add(own);
+        foreach (var d in DemoRouteNetwork.Directions)
+            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c && sites.SettlementAt(c.Column, c.Row) is { } s)
+                nearby.Add(s);
+        if (nearby.Count == 0)
+            return 0;
         long best = 0;
         foreach (var settlement in nearby)
         {
             var total = bonuses.Where(b => state.Of(settlement!.Id, DemoTechnology.Of(b.TechId)) is { Learned: true } r && r.LearnedWeek < week)
                 .Sum(b => b.Percent);
-            if (cultural.Count > 0)
+            if (cultural.Length > 0)
             {
                 var traits = traitsAt!(settlement!.Id, week);
                 total += cultural.Where(b => traits.Contains(b.TraitId)).Sum(b => b.Percent);
@@ -411,34 +428,41 @@ public static class DemoKnowledge
         var farmland = land?.FarmlandCells().ToHashSet() ?? new HashSet<DemoCellRef>();
         var catalog = DemoTechCatalog.All;
         var arrivals = report.Migrations.Where(m => m.Arrived).ToList();
+        // 第 08-13 章第 5 節：逐聚落查詢改為先分組（結果相同）。
+        var repsOf = population.Representatives.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.ToList());
+        var founders = sites.Settlements.Where(s => s.IsFounded).Select(s => s.FoundedFromSettlementId).ToHashSet();
+        var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
+        var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var settlement in living)
         {
             var neighbours = map is null ? new List<DemoSettlement>()
                 : living.Where(o => o.Id != settlement.Id && Distance(map, o, settlement) <= TempDiffusionRange).ToList();
             var stats = population.StatsOf(settlement.Id, 0, day, rules);
+            var reps = repsOf.GetValueOrDefault(settlement.Id) ?? new List<DemoRepresentative>();
+            var arrived = arrivalsTo.GetValueOrDefault(settlement.Id) ?? new List<DemoMigrationWeekLedger>();
             var near = map is null ? new HashSet<DemoTerrain>() : Around(map, settlement).Select(c => c.Terrain).ToHashSet();
             var context = new Context(
                 tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Camp,
                 population.AdultsIn(settlement.Id, rules),
                 stats.Elders,
-                population.Representatives.Any(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Leader),
-                population.Representatives.Count(r => r.SettlementId == settlement.Id && DemoRepresentative.TechnologyOf(r.Role) is not null),
+                reps.Any(r => r.Role == DemoRepresentativeRole.Leader),
+                reps.Count(r => DemoRepresentative.TechnologyOf(r.Role) is not null),
                 near.Contains(DemoTerrain.Forest),
                 near.Contains(DemoTerrain.Grassland),
                 near.Contains(DemoTerrain.Water),
                 map is not null && Around(map, settlement).Any(c => c.Sea),
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0,
-                population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman),
+                reps.Count(r => r.Role == DemoRepresentativeRole.Shaman),
                 map is not null && NearOre(map, settlement, extraOre),
                 near.Contains(DemoTerrain.Hills));
-            var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
+            var roles = reps.Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,
-                sites.Settlements.Any(s => s.IsFounded && s.FoundedFromSettlementId == settlement.Id),
-                report.Events.Any(e => e.SettlementId == settlement.Id && e.Kind == DemoSettlementEventKind.NaturalDeath),
-                arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
+                founders.Contains(settlement.Id),
+                mourning.Contains(settlement.Id),
+                arrived.Any(m => m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
                 map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
@@ -453,13 +477,14 @@ public static class DemoKnowledge
                 if (current.Learned)
                     continue;
                 // 08-7a 四道閘門：前置、等級、場所、地區（從業者）。
-                if (!node.Parents.All(KnowsHere) || !TierAllows(node, context.Tier) || !FacilityAllows(node))
+                if (!ParentIndexes.Value[node.Index].All(i => state.Knows(settlement.Id, new DemoTechnology(i)))
+                    || !TierAllows(node, context.Tier) || !FacilityAllows(node))
                     continue;
                 var practitioners = Practitioners(node, context, KnowsHere);
                 if (practitioners == 0)
                     continue;
                 var threshold = ThresholdOf(technology);
-                var carried = arrivals.Where(m => m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
+                var carried = arrived.Where(m => state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
                 var known = neighbours.Count(o => state.Knows(o.Id, technology));
@@ -512,8 +537,13 @@ public static class DemoKnowledge
     {
         ArgumentNullException.ThrowIfNull(map);
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        return map.Cells.Any(c => (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)
-            && DemoWorldSites.HexDistance(origin, c) <= TempOreRange); // 第 12-1 章：含隕石留下的礦脈
+        // 第 08-13 章第 5 節：只看範圍內的格（原本掃全圖；結果相同）。
+        for (var dq = -TempOreRange; dq <= TempOreRange; dq++)
+            for (var dr = Math.Max(-TempOreRange, -dq - TempOreRange); dr <= Math.Min(TempOreRange, -dq + TempOreRange); dr++)
+                if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c
+                    && (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)) // 第 12-1 章：含隕石留下的礦脈
+                    return true;
+        return false;
     }
 
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement settlement)

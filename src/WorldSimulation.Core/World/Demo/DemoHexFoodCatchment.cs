@@ -95,6 +95,19 @@ public static class DemoHexFoodCatchment
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(source);
         ValidateSource(map, source);
+        // 第 08-13 章第 5 節：可及格只取決於地圖、來源位置與種類，每張地圖快取（每週每個來源都會查）。
+        var cache = EligibleCache.GetValue(map, _ => new Dictionary<(int, int, DemoCatchmentSourceKind), IReadOnlyList<DemoHexCell>>());
+        var key = (source.Column, source.Row, source.Kind);
+        if (!cache.TryGetValue(key, out var cells))
+            cache[key] = cells = ComputeEligibleCells(map, source);
+        return cells;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<DemoHexWorld,
+        Dictionary<(int, int, DemoCatchmentSourceKind), IReadOnlyList<DemoHexCell>>> EligibleCache = new();
+
+    private static IReadOnlyList<DemoHexCell> ComputeEligibleCells(DemoHexWorld map, DemoCatchmentFoodSource source)
+    {
         var origin = map.GetCell(source.Column, source.Row);
         // 第 07-1 章 c 節：只看本格與六個鄰格（原本逐格掃全圖，結果相同）。
         var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
@@ -151,11 +164,19 @@ public static class DemoHexFoodCatchment
         var labour = claimList.ToDictionary(c => c.SettlementId, c => c.HarvestCapacity);
         var remainingSources = sourceList.ToDictionary(s => s.Id, s => s.FoodAvailable);
         var taken = new Dictionary<(int Source, int Settlement), long>();
+        // 第 08-13 章第 5 節：只看來源本格與六鄰格上的聚落（可及範圍就是這幾格），不再逐一比對全部聚落；
+        // 結果仍依聚落編號排序，與原本相同。
+        var claimAt = claimList.ToDictionary(c => (c.Column, c.Row));
         var eligibleOf = sourceList.ToDictionary(s => s.Id, s =>
         {
             var origin = map.GetCell(s.Column, s.Row);
-            return claimList.Where(claim => IsInReach(origin, map.GetCell(claim.Column, claim.Row),
-                DemoCatchmentSourceKinds.IncludesOrigin(s.Kind))).ToArray();
+            var found = new List<DemoCatchmentFoodClaim>(4);
+            if (DemoCatchmentSourceKinds.IncludesOrigin(s.Kind) && claimAt.TryGetValue((origin.Column, origin.Row), out var self))
+                found.Add(self);
+            foreach (var d in DemoRouteNetwork.Directions)
+                if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } n && claimAt.TryGetValue((n.Column, n.Row), out var c))
+                    found.Add(c);
+            return found.OrderBy(c => c.SettlementId).ToArray();
         });
 
         void Pass(IEnumerable<DemoCatchmentFoodSource> order, Dictionary<int, long> want)
@@ -196,9 +217,15 @@ public static class DemoHexFoodCatchment
             .Select(kv => new DemoCatchmentHarvest(kv.Key.Source, kv.Key.Settlement, kv.Value)).ToList();
         var remainingSorted = new SortedDictionary<int, long>(remainingSources);
         // The source and claimant budgets are each conserved, with no invented provisions.
-        if (sourceList.Any(s => harvest.Where(h => h.SourceId == s.Id).Sum(h => h.FoodHarvested) > s.FoodAvailable)
-            || claimList.Any(c => harvest.Where(h => h.SettlementId == c.SettlementId)
-                .Sum(h => h.FoodHarvested) > Math.Min(c.FoodNeeded, c.HarvestCapacity)))
+        var bySource = new Dictionary<int, long>();
+        var bySettlement = new Dictionary<int, long>();
+        foreach (var h in harvest)
+        {
+            bySource[h.SourceId] = bySource.GetValueOrDefault(h.SourceId) + h.FoodHarvested;
+            bySettlement[h.SettlementId] = bySettlement.GetValueOrDefault(h.SettlementId) + h.FoodHarvested;
+        }
+        if (sourceList.Any(s => bySource.GetValueOrDefault(s.Id) > s.FoodAvailable)
+            || claimList.Any(c => bySettlement.GetValueOrDefault(c.SettlementId) > Math.Min(c.FoodNeeded, c.HarvestCapacity)))
             throw new InvalidOperationException("TEMP food catchment resource conservation failed.");
         return new DemoCatchmentFoodResult(harvest.AsReadOnly(), needs, remainingSorted);
     }

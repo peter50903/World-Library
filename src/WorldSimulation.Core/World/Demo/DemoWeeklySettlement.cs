@@ -485,11 +485,16 @@ public sealed record DemoSourceWeekLedger(
     /// <summary>由一次共享分配組出全部來源帳。</summary>
     internal static IReadOnlyList<DemoSourceWeekLedger> From(int week,
         IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated, long Supply)> plan, DemoCatchmentFoodResult allocation)
-        => Array.AsReadOnly(plan.Select(p =>
+    {
+        // 第 08-13 章第 5 節：採收先依來源分組一次（原本每個來源掃一次全部採收；結果相同）。
+        var bySource = allocation.Harvests.GroupBy(h => h.SourceId).ToDictionary(g => g.Key,
+            g => (IReadOnlyList<DemoSourceShare>)Array.AsReadOnly(g.OrderBy(h => h.SettlementId)
+                .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()));
+        return Array.AsReadOnly(plan.Select(p =>
             new DemoSourceWeekLedger(week, p.Source.Id, p.Source.Kind, p.Source.Column, p.Source.Row, p.Source.FoodAvailable,
-                Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == p.Source.Id).OrderBy(h => h.SettlementId)
-                    .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()),
+                bySource.GetValueOrDefault(p.Source.Id) ?? Array.AsReadOnly(Array.Empty<DemoSourceShare>()),
                 allocation.UnharvestedSourceFood.GetValueOrDefault(p.Source.Id), p.Opening, p.Regenerated, p.Supply)).ToArray());
+    }
 }
 
 /// <summary>
@@ -718,18 +723,22 @@ internal static class DemoWeeklySettlement
         DemoPerf.Mark("結算：取水與需求");
         if (config.SharedCatchmentEnabled)
         {
-            var plan = DemoSourceWeekLedger.Plan(
-                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land,
-                    sourcePercent), // 第 08-12 章：技術提高來源供應
+            var weekSources = DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land,
+                sourcePercent); // 第 08-12 章：技術提高來源供應
+            DemoPerf.Mark("結算：來源建表與加成");
+            var plan = DemoSourceWeekLedger.Plan(weekSources,
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
+            DemoPerf.Mark("結算：來源存量");
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
                 plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,
                 yieldPercent: toolYieldPercent, // 第 08-6 章 e 節：工具提高採集效率
                 baseNeeds: config.HumanLifecycleEnabled ? baseNeeds : null); // 第 08-3 章兩階段分配
+            DemoPerf.Mark("結算：分配");
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
         }
+        DemoPerf.Mark("結算：來源帳");
         // 第 08-1 章：每個聚落可及範圍內全部自然來源的「每週可持續供應－本週全部採收」（DemoCrowding）。
         var slackBySettlement = config.SharedCatchmentEnabled && map is not null
             ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
@@ -764,7 +773,7 @@ internal static class DemoWeeklySettlement
         var weekSites = sites; // V0-06B：本週建立的新聚落會加進這份副本，輸入的 sites 不變。
 
         // 途中隊伍（V0-06A）：只靠攜帶的糧食，飢餓與死亡規則與聚落相同；活著的人沿路線前進一格。
-        DemoPerf.Mark("結算：來源與分配");
+        DemoPerf.Mark("結算：餘量與彙總");
         foreach (var batch in migrations.OrderBy(b => b.Id))
         {
             // #88：隊伍的途中餓死、抵達、建立新聚落，直接原因都是它出發那週的外移事件。
