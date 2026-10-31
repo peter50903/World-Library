@@ -43,10 +43,12 @@ public enum DemoMapSize
 {
     Small = 0,
     Medium = 1,
-    Large = 2
+    Large = 2,
+    /// <summary>第 08-13 章第 5 節（試玩回饋三：世界太小）。</summary>
+    Huge = 3
 }
 
-/// <summary>第 07-1 章 c 節【TEMP】地圖尺寸：小 12×8、中 24×16、大 48×32。</summary>
+/// <summary>第 07-1 章 c 節【TEMP】地圖尺寸：小 12×8、中 24×16、大 48×32；第 08-13 章：巨大 96×64。</summary>
 public static class DemoMapSizes
 {
     public static (int Columns, int Rows) Dimensions(DemoMapSize size) => size switch
@@ -54,6 +56,7 @@ public static class DemoMapSizes
         DemoMapSize.Small => (DemoHexWorld.SmallColumns, DemoHexWorld.SmallRows),
         DemoMapSize.Medium => (24, 16),
         DemoMapSize.Large => (48, 32),
+        DemoMapSize.Huge => (96, 64),
         _ => throw new ArgumentOutOfRangeException(nameof(size))
     };
 
@@ -62,6 +65,7 @@ public static class DemoMapSizes
         DemoMapSize.Small => "小",
         DemoMapSize.Medium => "中",
         DemoMapSize.Large => "大",
+        DemoMapSize.Huge => "巨大",
         _ => throw new ArgumentOutOfRangeException(nameof(size))
     };
 }

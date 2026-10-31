@@ -24,6 +24,8 @@ public partial class ObserverRoot
         }
 
         var slotsBefore = Slots();
+        // 第 08-13 章第 5 節：建立世界預設改為大地圖；本冒煙驗證的是小地圖配方（與 Core 預設相同）。
+        _mapSizePicker.Select(_mapSizePicker.GetItemIndex((int)DemoMapSize.Small));
 
         // 1. 第 0 日：輸入 123／456 直接建立，與 Core 依同配方建立的世界完全相同。
         Type("123", "456");
