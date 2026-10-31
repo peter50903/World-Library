@@ -31,7 +31,7 @@ public sealed record DemoWildlifeState(ImmutableArray<int> Prey, ImmutableArray<
 }
 
 /// <summary>
-/// 第 12-1 章 C1【TEMP 規則】野生動物：承載依地形；每 52 週結算——狩獵、驅狼、獵物成長、狼捕食、超出承載往鄰格擴散。
+/// 第 12-1 章 C1【TEMP 規則】野生動物：承載依地形；每 52 週結算——狩獵、驅狼、獵物成長、狼捕食、狼往獵物養得活的數量移動、超出承載往鄰格擴散。
 /// 不抽亂數（純函式）；希望時代也照常結算（動物不受時代影響），但狩獵要已會「狩獵」。
 /// </summary>
 public static class DemoWildlife
@@ -39,10 +39,13 @@ public static class DemoWildlife
     /// <summary>【TEMP】結算週期（週）。</summary>
     public const int TempYearWeeks = 52;
 
-    /// <summary>【TEMP】獵物年成長（往承載的缺口 %）、狼吃飽時年增加（%）、每隻狼每年吃幾隻獵物。</summary>
-    public const int TempPreyGrowthPercent = 25;
-    public const int TempWolfGrowthPercent = 20;
-    public const int TempPreyPerWolf = 3;
+    /// <summary>
+    /// 【TEMP】獵物年成長（往承載的缺口 %）；每隻狼每年吃幾隻獵物；每隻狼需要幾隻剩下的獵物才養得活（狼的目標數）。
+    /// 狼每年往目標數移動 1 隻（從鄰近林地遷入或餓死）。原訂「吃 3 隻、吃飽增 20%」第二年全滅且不再回來（08-10c）。
+    /// </summary>
+    public const int TempPreyGrowthPercent = 50;
+    public const int TempPreyPerWolf = 1;
+    public const int TempPreyToSupportWolf = 2;
 
     /// <summary>【TEMP】每名成年人每年狩獵取走的獵物（千分之幾隻）；聚落附近的狼每年被驅趕的比例（%）。</summary>
     public const int TempHuntPerAdultPermille = 200;
@@ -153,24 +156,15 @@ public static class DemoWildlife
                 wolves[i] -= wolves[i] * TempWolfDrivenPercent / 100; // 聚落附近的狼被驅散
         }
 
-        // ② 自然：獵物往承載成長；狼吃獵物，吃飽才增加，不足按缺口死亡。
+        // ② 自然：獵物往承載成長；狼吃獵物；狼往「剩下的獵物養得活的數量」移動 1 隻（不超過承載）。
         for (var i = 0; i < cells.Count; i++)
         {
             var cap = CapacityAt(map, cells[i], human);
             if (cap.Prey > prey[i])
                 prey[i] += Math.Max(1, (cap.Prey - prey[i]) * TempPreyGrowthPercent / 100);
-            var need = wolves[i] * TempPreyPerWolf;
-            if (need <= prey[i])
-            {
-                prey[i] -= need;
-                if (wolves[i] > 0) wolves[i] += Math.Max(1, wolves[i] * TempWolfGrowthPercent / 100);
-            }
-            else
-            {
-                var fed = prey[i] / TempPreyPerWolf;
-                prey[i] -= fed * TempPreyPerWolf;
-                wolves[i] = fed;
-            }
+            prey[i] -= Math.Min(prey[i], wolves[i] * TempPreyPerWolf);
+            var target = Math.Min(cap.Wolves, prey[i] / TempPreyToSupportWolf);
+            wolves[i] += Math.Sign(target - wolves[i]);
         }
 
         // ③ 擴散：超出承載的部分平均移往相鄰可住格（依方向順序），無處可去就死亡。
