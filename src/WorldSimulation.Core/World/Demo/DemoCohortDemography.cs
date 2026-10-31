@@ -300,7 +300,7 @@ public sealed class DemoCohortDemography
 
     /// <summary>某地各年齡群（依出生年、性別）。</summary>
     public IReadOnlyList<DemoCohortGroup> GroupsAt(int settlementId, int batchId)
-        => Groups.Where(g => g.SettlementId == settlementId && g.BatchId == batchId).ToList();
+        => GroupsOfPlace(settlementId, batchId).Select(kv => new DemoCohortGroup(kv.Key.Settlement, kv.Key.Batch, kv.Key.BirthYear, kv.Key.Sex, kv.Value)).ToList();
 
     /// <summary>
     /// 出發：定居者依 <paramref name="take"/>（出生年、性別 → 人數）加入隊伍 <paramref name="batchId"/>，

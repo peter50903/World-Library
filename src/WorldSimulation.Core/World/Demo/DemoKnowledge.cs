@@ -227,6 +227,10 @@ public static class DemoKnowledge
         return checked(Boosts(state, sites, map, source, week, traitsAt, huntingAt) + environment);
     }
 
+    /// <summary>第 08-13 章第 5 節：每個技術的前置技術編號（前置檢查每週每聚落每技術都做；原本每次依名稱查表）。</summary>
+    private static readonly Lazy<int[][]> ParentIndexes = new(() =>
+        DemoTechCatalog.All.Select(n => n.Parents.Select(p => DemoTechCatalog.Get(p).Index).ToArray()).ToArray());
+
     private static readonly (DemoCatchmentSourceKind Kind, string TechId, long Percent)[] NoBonuses = [];
     private static readonly (DemoCatchmentSourceKind Kind, string TraitId, long Percent)[] NoCultureBonuses = [];
     private static readonly Dictionary<DemoCatchmentSourceKind, (DemoCatchmentSourceKind Kind, string TechId, long Percent)[]> BonusesOf =
@@ -463,7 +467,8 @@ public static class DemoKnowledge
                 if (current.Learned)
                     continue;
                 // 08-7a 四道閘門：前置、等級、場所、地區（從業者）。
-                if (!node.Parents.All(KnowsHere) || !TierAllows(node, context.Tier) || !FacilityAllows(node))
+                if (!ParentIndexes.Value[node.Index].All(i => state.Knows(settlement.Id, new DemoTechnology(i)))
+                    || !TierAllows(node, context.Tier) || !FacilityAllows(node))
                     continue;
                 var practitioners = Practitioners(node, context, KnowsHere);
                 if (practitioners == 0)
