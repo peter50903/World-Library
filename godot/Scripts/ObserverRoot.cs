@@ -1404,10 +1404,14 @@ public partial class ObserverRoot : Control
         _hexMap.Lineage = DemoLineageMap.Compute(_world.Map, _world.Sites);
         _hexMap.LineageRoots = DemoLineageMap.Roots(_world.Sites);
         _hexMap.KnowledgeCounts = _world.Sites.Settlements.ToDictionary(s => s.Id, s => _world.Knowledge.KnownBy(s.Id).Count); // 第 08-10a 章 V4
+        _hexMap.KnowledgeDomain = _world.Sites.Settlements.Where(s => _world.Knowledge.LeadingDomain(s.Id) is not null)
+            .ToDictionary(s => s.Id, s => _world.Knowledge.LeadingDomain(s.Id)!); // 第 08-13 章：擅長領域
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
+        _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
+        _hexMap.CurrentWeek = _world.CommittedWeeks;
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();

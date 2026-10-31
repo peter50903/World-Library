@@ -14,6 +14,10 @@ public static class ArtAssets
     public const string TileGrassland = "res://assets/tiles/grassland.png";
     public const string TileForest = "res://assets/tiles/forest.png";
     public const string TileHills = "res://assets/tiles/hills.png"; // 第 06-3 章
+    // 第 08-13 章：天災反映在地形上（待製作；未交付前在原地形圖塊上染色）。
+    public const string TileBurning = "res://assets/tiles/burning.png";
+    public const string TileScorched = "res://assets/tiles/scorched.png";
+    public const string TileGrasslandDry = "res://assets/tiles/grassland_dry.png";
     public const string OverlayOreVein = "res://assets/tiles/overlay_ore_vein.png"; // 第 06-3 章
     public const string TileWater = "res://assets/tiles/water.png";
     public const string TileRiver = "res://assets/tiles/river.png";

@@ -108,6 +108,35 @@ public partial class DemoHexMap : Control
 
     public static int KnowledgeBand(int count) => Array.FindLastIndex(KnowledgeBandStarts, start => count >= start) is var i and >= 0 ? i : 0;
 
+    /// <summary>第 08-13 章：聚落最擅長的領域（知識模式的色相）；沒有＝不在表內。</summary>
+    public IReadOnlyDictionary<int, string> KnowledgeDomain { get; set; } = new Dictionary<int, string>();
+
+    /// <summary>TEMP 顯示配色（第 08-13 章）：知識模式各領域的色相（飽和、彼此區隔）。</summary>
+    public static Color DomainMapColor(string? domain) => domain switch
+    {
+        "10B" => new Color(0.45f, 0.75f, 0.20f), "10C" => new Color(0.55f, 0.55f, 0.60f), "10D" => new Color(0.80f, 0.62f, 0.30f),
+        "10E" => new Color(0.55f, 0.35f, 0.15f), "10F" => new Color(0.85f, 0.40f, 0.65f), "10G" => new Color(0.95f, 0.70f, 0.15f),
+        "10H" => new Color(0.20f, 0.75f, 0.60f), "10I" => new Color(0.75f, 0.15f, 0.15f), "10J" => new Color(0.25f, 0.45f, 0.90f),
+        "10K" => new Color(0.60f, 0.30f, 0.90f), "10L" => new Color(0.90f, 0.45f, 0.25f), "10M" => new Color(0.95f, 0.85f, 0.30f),
+        "10N" => new Color(0.50f, 0.42f, 0.30f), "HUNT" => new Color(0.20f, 0.50f, 0.25f), "SOCIETY" => new Color(0.45f, 0.35f, 0.75f),
+        "FAITH" => new Color(0.95f, 0.95f, 0.75f),
+        _ => new Color(0.45f, 0.42f, 0.38f)
+    };
+
+    /// <summary>第 08-13 章：知識模式顏色＝擅長領域的色相，技術越少越淡。</summary>
+    public Color KnowledgeTint(int settlementId)
+    {
+        var count = KnowledgeCounts.GetValueOrDefault(settlementId);
+        var hue = DomainMapColor(KnowledgeDomain.GetValueOrDefault(settlementId));
+        return KnowledgeBand(count) switch
+        {
+            0 => DomainMapColor(null),
+            1 => hue.Lerp(Colors.White, 0.45f),
+            2 => hue.Lerp(Colors.White, 0.2f),
+            _ => hue
+        };
+    }
+
     public static Color KnowledgeColor(int count) => KnowledgeBand(count) switch
     {
         0 => new Color(0.45f, 0.42f, 0.38f),
@@ -187,6 +216,19 @@ public partial class DemoHexMap : Control
     /// <summary>第 12-1 章 C3：一年內遭天災的聚落（地圖畫災害標記）。</summary>
     public IReadOnlySet<int> RecentDisasters { get; set; } = new HashSet<int>();
 
+    /// <summary>第 08-13 章：熱浪、野火（地形外觀）與目前週次。</summary>
+    public IReadOnlyList<DemoEnvironmentSpell> Spells { get; set; } = Array.Empty<DemoEnvironmentSpell>();
+    public int CurrentWeek { get; set; }
+
+    /// <summary>第 08-13 章：環境外觀的圖塊；沒有素材時用原地形圖塊染色（燃燒橘紅、焦土暗褐、乾旱枯黃）。</summary>
+    private static (Texture2D? Tile, Color Tint) LookArt(DemoEnvironment.Look look) => look switch
+    {
+        DemoEnvironment.Look.Burning => (ArtAssets.Texture(ArtAssets.TileBurning), new Color(1.0f, 0.45f, 0.25f)),
+        DemoEnvironment.Look.Scorched => (ArtAssets.Texture(ArtAssets.TileScorched), new Color(0.45f, 0.38f, 0.32f)),
+        DemoEnvironment.Look.Dry => (ArtAssets.Texture(ArtAssets.TileGrasslandDry), new Color(1.0f, 0.86f, 0.55f)),
+        _ => (null, Colors.White)
+    };
+
     /// <summary>第 12-1 章：隕石留下的礦脈格（疊礦脈圖）。</summary>
     public IReadOnlySet<DemoCellRef> MeteoriteOre { get; set; } = new HashSet<DemoCellRef>();
 
@@ -208,6 +250,10 @@ public partial class DemoHexMap : Control
     private const float TempZoomStep = 1.2f;
     private const float TempMinZoom = 0.6f;
     private const float TempMaxZoom = 3f;
+    /// <summary>第 08-13 章第 5 節【TEMP】大地圖：開新世界時鏡頭拉近到每格約這個半徑（像素），可縮小看全圖；最大縮放到每格這麼大。</summary>
+    private const float TempComfortHexRadius = 26f;
+    private const float TempMaxHexRadius = 64f;
+    private DemoHexWorld? _viewWorld;
     private float _zoom = 1f;
     private Vector2 _pan = Vector2.Zero;
     private bool _middleDragging;
@@ -239,6 +285,8 @@ public partial class DemoHexMap : Control
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            if (!OnScreen(center, radius))
+                continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
             var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
             // 第 06 章 a 節：主水道來自 Core 地圖（每個世界都有）；MainRiverTiles 只是舊注入的相容來源。
             var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
@@ -246,10 +294,16 @@ public partial class DemoHexMap : Control
             // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
             var land = Land.StateOf(new DemoCellRef(cell.Column, cell.Row));
             var shallowArt = cell.Shallow ? ArtAssets.Texture(ArtAssets.TileRiverShallow) : null;
-            if ((LandTexture(land) ?? shallowArt ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
+            // 第 08-13 章：熱浪、野火的地形外觀（有素材換圖，沒有就在原圖塊上染色）。
+            var look = DemoEnvironment.LookAt(Spells, cell, CurrentWeek);
+            var (lookTile, lookTint) = LookArt(look);
+            if ((lookTile ?? LandTexture(land) ?? shallowArt ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
             {
-                var full = HexCoordinates.Polygon(center, radius);
-                DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
+                // 第 08-13 章（試玩回饋三之 2）：圖塊各自帶深色描邊，相鄰格看得出接縫——
+                // 取樣時往內縮掉描邊（TempTileInset），並把六角形畫大一點點讓相鄰格重疊，格線關閉時地形連成一片。
+                var full = HexCoordinates.Polygon(center, radius + TempTileOverlap);
+                DrawPolygon(full, Tint6(lookTile is null && look != DemoEnvironment.Look.None ? lookTint : WaterTint(cell, shallowArt is not null)),
+                    HexUvs(full, center, radius), tile);
                 // 第 06-3 章：礦脈疊圖（農田、開墾中不疊）。
                 if ((cell.Ore || MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row))) && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
                     DrawPolygon(full, Tint6(Colors.White), HexUvs(full, center, radius), ore);
@@ -309,6 +363,8 @@ public partial class DemoHexMap : Control
             foreach (var cell in World.Cells)
             {
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (!OnScreen(center, radius))
+                    continue;
                 var hex = HexCoordinates.Polygon(center, radius - 1.4f);
                 if (VisibleSite(cell) is { IsRuin: true } ruinSite)
                 {
@@ -358,8 +414,8 @@ public partial class DemoHexMap : Control
         }
         // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
         if (_mode == Mode.Knowledge && Sites is not null)
-            DrawTerritory(start, radius, owner => KnowledgeColor(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)),
-                owner => KnowledgeBand(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)));
+            DrawTerritory(start, radius, owner => KnowledgeTint(owner.SettlementId),
+                owner => (KnowledgeDomain.GetValueOrDefault(owner.SettlementId) ?? "").GetHashCode() * 8 + KnowledgeBand(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)));
 
         // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
 
@@ -371,8 +427,11 @@ public partial class DemoHexMap : Control
         {
             var gridColor = new Color(0.05f, 0.04f, 0.03f, TempGridAlpha);
             foreach (var cell in World.Cells)
-                DrawPolyline(Closed(HexCoordinates.Polygon(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius)),
-                    gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+            {
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (OnScreen(center, radius))
+                    DrawPolyline(Closed(HexCoordinates.Polygon(center, radius)), gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+            }
         }
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
@@ -510,13 +569,21 @@ public partial class DemoHexMap : Control
     };
 
     /// <summary>尖頂六角頂點 → 圖塊 UV（圖塊＝六角形外接矩形：寬 √3·r、高 2r）。</summary>
+    /// <summary>TEMP 顯示參數（第 08-13 章）：取樣往內縮的比例（藏住圖塊描邊）、六角形外擴的像素（相鄰格重疊、不留細縫）。</summary>
+    public const float TempTileInset = 0.07f;
+    public const float TempTileOverlap = 0.9f;
+
     private static Vector2[] HexUvs(Vector2[] vertices, Vector2 center, float radius)
     {
         var halfWidth = Mathf.Sqrt(3f) * 0.5f * radius;
         var uvs = new Vector2[vertices.Length];
         for (var i = 0; i < vertices.Length; i++)
-            uvs[i] = new Vector2((vertices[i].X - center.X + halfWidth) / (2f * halfWidth),
-                (vertices[i].Y - center.Y + radius) / (2f * radius));
+        {
+            var u = (vertices[i].X - center.X + halfWidth) / (2f * halfWidth);
+            var v = (vertices[i].Y - center.Y + radius) / (2f * radius);
+            // 往中心縮 TempTileInset：外圈的描邊不會畫出來。
+            uvs[i] = new Vector2(0.5f + (u - 0.5f) * (1f - TempTileInset), 0.5f + (v - 0.5f) * (1f - TempTileInset));
+        }
         return uvs;
     }
 
@@ -586,7 +653,7 @@ public partial class DemoHexMap : Control
             // Cursor-anchored zoom: the point under the pointer does not jump.
             var next = Mathf.Clamp(
                 _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),
-                TempMinZoom, TempMaxZoom);
+                TempMinZoom, Mathf.Max(TempMaxZoom, TempMaxHexRadius / Layout().Radius));
             if (!Mathf.IsEqualApprox(next, _zoom))
             {
                 var cursorFromCenter = button.Position - Size * 0.5f;
@@ -620,6 +687,8 @@ public partial class DemoHexMap : Control
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            if (center.DistanceSquaredTo(position) > radius * radius)
+                continue; // 外接圓之外不可能在格內
             if (Geometry2D.IsPointInPolygon(position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
                 return cell;
         }
@@ -653,10 +722,20 @@ public partial class DemoHexMap : Control
     private (Vector2 Start, float Radius) ViewLayout()
     {
         var (baseStart, baseRadius) = Layout();
+        // 第 08-13 章第 5 節：換了世界就重設鏡頭；全圖塞進畫面時每格太小（大地圖），先拉近到看得清楚的大小（地圖中央）。
+        if (!ReferenceEquals(_viewWorld, World) && World is not null && Size.X > 0f && Size.Y > 0f)
+        {
+            _viewWorld = World;
+            _zoom = baseRadius < TempComfortHexRadius ? TempComfortHexRadius / baseRadius : 1f;
+            _pan = Vector2.Zero;
+        }
         var viewportCenter = Size * 0.5f;
         return (viewportCenter + (baseStart - viewportCenter) * _zoom + _pan,
             baseRadius * _zoom);
     }
+
+    private bool OnScreen(Vector2 center, float radius)
+        => center.X > -radius * 2f && center.Y > -radius * 2f && center.X < Size.X + radius * 2f && center.Y < Size.Y + radius * 2f;
 
     private (Vector2 Start, float Radius) Layout()
     {

@@ -67,8 +67,8 @@ public static class DemoFaiths
 
     public static readonly IReadOnlyList<DemoCultureShare> NoFaith = ImmutableList.Create(new DemoCultureShare(0, 1000));
 
-    /// <summary>【TEMP】信仰的勢力範圍（格）：接觸既有信仰、鄰近傳播都用這個距離（同開局文化分群）。</summary>
-    public const int TempRange = 6;
+    /// <summary>【TEMP】信仰的勢力範圍（格）：接觸既有信仰、鄰近傳播都用這個距離（原 6 格；第 08-13 章改 3 格，遠方聚落各自創立信仰）。</summary>
+    public const int TempRange = 3;
 
     /// <summary>【TEMP】每週改信比例（萬分比，乘以無信仰者的千分比）：創立聚落 2%、鄰近聚落 0.5%。</summary>
     public const int TempFounderRate = 200;

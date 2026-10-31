@@ -96,9 +96,9 @@ public sealed class DemoEnvironmentTests
     {
         var cell = new DemoCellRef(2, 3);
         var heat = new DemoEnvironmentSpell(DemoSettlementEventKind.Heatwave, 1, 26, 78, 500, System.Collections.Immutable.ImmutableList.Create(cell));
-        var fire = new DemoEnvironmentSpell(DemoSettlementEventKind.Wildfire, 1, 26, 182, 501, System.Collections.Immutable.ImmutableList.Create(cell));
+        var fire = new DemoEnvironmentSpell(DemoSettlementEventKind.Wildfire, 1, 26, 182, 501, System.Collections.Immutable.ImmutableList.Create(new DemoCellRef(4, 4)));
         var grass = new DemoCatchmentFoodSource(1, 2, 3, DemoCatchmentSourceKind.GrasslandForage, 8);
-        var forest = new DemoCatchmentFoodSource(2, 2, 3, DemoCatchmentSourceKind.Forest, 20);
+        var forest = new DemoCatchmentFoodSource(2, 4, 4, DemoCatchmentSourceKind.Forest, 20); // 野火燒的格（08-13：也燒草原，與熱浪分開測）
         var spells = new[] { heat, fire };
         Assert.Equal(0, DemoEnvironment.SourcePercent(spells, grass, 26));
         Assert.Equal(DemoEnvironment.TempHeatwaveSourcePercent, DemoEnvironment.SourcePercent(spells, grass, 27));
