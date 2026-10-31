@@ -38,7 +38,8 @@ public sealed class DemoChangeReportTests
         Assert.InRange(tracker.Decades.Sum(d => d.FirstLearned), 0, DemoTechCatalog.All.Length);
         Assert.Equal(tracker.Decades.Sum(d => d.EraChanges) > 0, tracker.PioneerEraYear is not null);
         Assert.All(tracker.Decades, d => Assert.Equal(
-            d.Founded + d.Ruined + d.TierUps + d.TierDowns + d.FirstLearned + d.Farmland + d.EraChanges, d.Major));
+            d.Founded + d.Ruined + d.TierUps + d.TierDowns + d.FirstLearned + d.Farmland + d.EraChanges
+            + d.CultureSplits + d.FaithsFounded + d.Disasters, d.Major)); // 第 08-8 章 B3／B4、第 12-1 章 C3
     }
 
     [Fact]
