@@ -485,11 +485,16 @@ public sealed record DemoSourceWeekLedger(
     /// <summary>由一次共享分配組出全部來源帳。</summary>
     internal static IReadOnlyList<DemoSourceWeekLedger> From(int week,
         IReadOnlyList<(DemoCatchmentFoodSource Source, long Opening, long Regenerated, long Supply)> plan, DemoCatchmentFoodResult allocation)
-        => Array.AsReadOnly(plan.Select(p =>
+    {
+        // 第 08-13 章第 5 節：採收先依來源分組一次（原本每個來源掃一次全部採收；結果相同）。
+        var bySource = allocation.Harvests.GroupBy(h => h.SourceId).ToDictionary(g => g.Key,
+            g => (IReadOnlyList<DemoSourceShare>)Array.AsReadOnly(g.OrderBy(h => h.SettlementId)
+                .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()));
+        return Array.AsReadOnly(plan.Select(p =>
             new DemoSourceWeekLedger(week, p.Source.Id, p.Source.Kind, p.Source.Column, p.Source.Row, p.Source.FoodAvailable,
-                Array.AsReadOnly(allocation.Harvests.Where(h => h.SourceId == p.Source.Id).OrderBy(h => h.SettlementId)
-                    .Select(h => new DemoSourceShare(h.SettlementId, h.FoodHarvested)).ToArray()),
+                bySource.GetValueOrDefault(p.Source.Id) ?? Array.AsReadOnly(Array.Empty<DemoSourceShare>()),
                 allocation.UnharvestedSourceFood.GetValueOrDefault(p.Source.Id), p.Opening, p.Regenerated, p.Supply)).ToArray());
+    }
 }
 
 /// <summary>
