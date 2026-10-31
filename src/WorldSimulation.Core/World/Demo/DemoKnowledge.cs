@@ -219,7 +219,7 @@ public static class DemoKnowledge
     /// （<paramref name="traitsAt"/>＝聚落在該週結算時的主要文化特性），取相鄰聚落中最高者。
     /// </summary>
     public static long SourcePercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
-        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null)
+        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null, Func<int, int, bool>? huntingAt = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(sites);
@@ -228,7 +228,8 @@ public static class DemoKnowledge
         var bonuses = TempSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
         var cultural = traitsAt is null ? new List<(DemoCatchmentSourceKind, string TraitId, long Percent)>()
             : TempCultureSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
-        if (bonuses.Count == 0 && cultural.Count == 0)
+        var hunted = huntingAt is not null && source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
+        if (bonuses.Count == 0 && cultural.Count == 0 && !hunted)
             return 0;
         var origin = map.GetCell(source.Column, source.Row);
         var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr)).Prepend(origin)
@@ -243,6 +244,8 @@ public static class DemoKnowledge
                 var traits = traitsAt!(settlement!.Id, week);
                 total += cultural.Where(b => traits.Contains(b.TraitId)).Sum(b => b.Percent);
             }
+            if (hunted && huntingAt!(settlement!.Id, week))
+                total += DemoWildlife.TempHuntingSourcePercent; // 第 12-1 章 C1：獵物豐富時的獸肉
             best = Math.Max(best, total);
         }
         return best;

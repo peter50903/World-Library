@@ -78,6 +78,7 @@ public sealed partial class DemoObserverWorld
     private ImmutableSortedDictionary<int, long> _debtSources = ImmutableSortedDictionary<int, long>.Empty; // 聚落 → 最近一筆飢餓債來源事件
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
     private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-8 章 B1：文化
+    private DemoWildlifeState _wildlife = DemoWildlifeState.Empty; // 第 12-1 章 C1：野生動物
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -150,6 +151,8 @@ public sealed partial class DemoObserverWorld
                 new DemoOpeningDraws(_rng)); // 第 07 章 a 節：混齡開局（世界種子 ECOLOGY_INIT 流，不推進計數器）；第 07-1 章：只記群體人數
         if (weekly.HumanLifecycleEnabled)
             _culture = DemoCultures.Open(Map, _sites, _rng); // 第 08-8 章 B1：開局文化（RELIGION 流實體局部亂數，不推進計數器）
+        if (weekly.HumanLifecycleEnabled)
+            _wildlife = DemoWildlife.Open(Map, _sites, _land); // 第 12-1 章 C1：開局野生動物（承載的一半，不抽亂數）
         _entityIds = openingIds.Capture();
 
         _scheduler = new Scheduler(_clock);
@@ -218,6 +221,9 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 08-8 章 B1：文化（只有人類繁衍世界有）。</summary>
     public DemoCultureState Culture => _culture;
+
+    /// <summary>第 12-1 章 C1：野生動物（聚合）。</summary>
+    public DemoWildlifeState Wildlife => _wildlife;
 
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
@@ -419,7 +425,7 @@ public sealed partial class DemoObserverWorld
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
-                    _culture.TraitsAt)); // 第 08-12 章；第 08-8 章 B2 生計文化
+                    _culture.TraitsAt, _wildlife.HuntingAt)); // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -455,7 +461,11 @@ public sealed partial class DemoObserverWorld
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);
-                commit.StageCulture(culture);
+                // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）。
+                var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
+                var wildlife = DemoWildlife.Advance(_wildlife, report.Week, Map, lifecycle.Outcome.Sites, land,
+                    id => lifecycle.Population.AdultsIn(id, DemoHumanLifecycle.Rules), id => knowledge.Knows(id, hunting));
+                commit.StageCulture(culture, wildlife);
             }
             else
             {
