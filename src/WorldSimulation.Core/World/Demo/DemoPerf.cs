@@ -34,11 +34,13 @@ public static class DemoPerf
         Order.Clear();
     }
 
-    /// <summary>各階段累計秒數（依第一次出現順序）與合計。</summary>
+    /// <summary>合計與佔 2% 以上的階段累計秒數（由大到小）。</summary>
     public static string Describe()
     {
         var total = Ticks.Values.Sum();
         if (total == 0) return "（沒有剖析資料）";
-        return string.Join("｜", Order.Select(s => $"{s} {Ticks[s] / (double)Stopwatch.Frequency:F2}s（{Ticks[s] * 100 / total}%）"));
+        // 只列佔 2% 以上的階段、由大到小（CI 註記有長度上限）。
+        return $"合計 {total / (double)Stopwatch.Frequency:F1}s｜" + string.Join("｜", Order.Where(s => Ticks[s] * 50 >= total).OrderByDescending(s => Ticks[s])
+            .Select(s => $"{s} {Ticks[s] / (double)Stopwatch.Frequency:F2}s（{Ticks[s] * 100 / total}%）"));
     }
 }
