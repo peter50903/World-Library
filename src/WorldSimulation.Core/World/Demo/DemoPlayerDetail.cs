@@ -91,6 +91,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         var lines = new List<string> { DemoCellQuery.ShortName(world.Map, ignoreSettlement ? null : world.Sites, cell) };
         if (world.Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { } parcel)
             lines.Add(parcel.State == DemoLandDevelopment.Farmland ? "農田" : $"開墾中（{parcel.DevelopmentPercent}%）");
+        if (world.MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row)))
+            lines.Add("隕石留下的礦脈"); // 第 12-1 章
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))

@@ -156,4 +156,35 @@ public static class DemoDisasters
         }
         return (land, events);
     }
+
+    /// <summary>
+    /// 第 12-1 章（WorldBox v09：隕石嘗試在落點附近放礦物，放置可能失敗）：隕石落在承受聚落相鄰的一格陸地（不是聚落格、不是已有礦脈的格），
+    /// 該格留下礦脈，記「隕石礦脈」事件（人數欄＝格編號，直接原因＝隕石事件）。沒有可落的格就沒有礦脈。
+    /// </summary>
+    public static IReadOnlyList<DemoSettlementEvent> MeteoriteOre(IReadOnlyDictionary<int, DemoDisasterStrike> strikes, IReadOnlyList<DemoSettlementEvent> weekEvents,
+        DemoHexWorld map, DemoWorldSites sites, IReadOnlySet<DemoCellRef> existingOre, int week, TimeSpan worldTime, RngRegistry rng, long nextEventId)
+    {
+        ArgumentNullException.ThrowIfNull(weekEvents);
+        var events = new List<DemoSettlementEvent>();
+        var year = week / DemoWildlife.TempYearWeeks;
+        foreach (var strike in strikes.Values.Where(x => x.Kind == DemoSettlementEventKind.Meteorite))
+        {
+            var cause = weekEvents.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.Meteorite && e.SettlementId == strike.SettlementId);
+            if (cause is null) continue;
+            var s = sites.Settlements.First(x => x.Id == strike.SettlementId);
+            var spots = Around(map, s, 1).Where(c => c.Terrain != DemoTerrain.Water && !(c.Column == s.Column && c.Row == s.Row)
+                    && !c.Ore && !existingOre.Contains(new DemoCellRef(c.Column, c.Row)) && sites.SettlementAt(c.Column, c.Row) is null)
+                .OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
+            if (spots.Count == 0) continue;
+            var spot = spots[(int)(Draw(rng, year, 200) % (ulong)spots.Count)];
+            events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name, DemoSettlementEventKind.MeteoriteOre,
+                DemoLandClearing.CellId(map, new DemoCellRef(spot.Column, spot.Row)),
+                $"隕石坑 ({spot.Column},{spot.Row}) 裡發現了礦脈", EventId: nextEventId++, CauseEventId: cause.EventId));
+        }
+        return events;
+    }
+
+    /// <summary>事件中所有隕石留下的礦脈格。</summary>
+    public static IEnumerable<DemoCellRef> OreCells(IEnumerable<DemoSettlementEvent> events, DemoHexWorld map)
+        => events.Where(e => e.Kind == DemoSettlementEventKind.MeteoriteOre).Select(e => DemoLandClearing.CellOf(map, e.Count));
 }

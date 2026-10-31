@@ -42,7 +42,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.Earthquake] = new("TEMP_EV_EARTHQUAKE", "地震", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.Tornado] = new("TEMP_EV_TORNADO", "龍捲風", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.Meteorite] = new("TEMP_EV_METEORITE", "隕石", CauseRootCategory.Disaster),
-        [DemoSettlementEventKind.Flood] = new("TEMP_EV_FLOOD", "洪水", CauseRootCategory.Disaster)
+        [DemoSettlementEventKind.Flood] = new("TEMP_EV_FLOOD", "洪水", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.MeteoriteOre] = new("TEMP_EV_METEORITE_ORE", "隕石礦脈", CauseRootCategory.Disaster)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

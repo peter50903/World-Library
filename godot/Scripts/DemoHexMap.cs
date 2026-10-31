@@ -187,6 +187,9 @@ public partial class DemoHexMap : Control
     /// <summary>第 12-1 章 C3：一年內遭天災的聚落（地圖畫災害標記）。</summary>
     public IReadOnlySet<int> RecentDisasters { get; set; } = new HashSet<int>();
 
+    /// <summary>第 12-1 章：隕石留下的礦脈格（疊礦脈圖）。</summary>
+    public IReadOnlySet<DemoCellRef> MeteoriteOre { get; set; } = new HashSet<DemoCellRef>();
+
     /// <summary>畫面上看得到的聚落（已消失的遺跡＝null）。</summary>
     private DemoSettlement? VisibleSite(DemoHexCell cell)
         => Sites?.SettlementAt(cell.Column, cell.Row) is { } s && !FadedRuins.Contains(s.Id) ? s : null;
@@ -248,7 +251,7 @@ public partial class DemoHexMap : Control
                 var full = HexCoordinates.Polygon(center, radius);
                 DrawPolygon(full, Tint6(WaterTint(cell, shallowArt is not null)), HexUvs(full, center, radius), tile);
                 // 第 06-3 章：礦脈疊圖（農田、開墾中不疊）。
-                if (cell.Ore && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
+                if ((cell.Ore || MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row))) && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
                     DrawPolygon(full, Tint6(Colors.White), HexUvs(full, center, radius), ore);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);

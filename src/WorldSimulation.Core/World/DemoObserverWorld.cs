@@ -381,6 +381,34 @@ public sealed partial class DemoObserverWorld
     public IReadOnlyList<DemoSettlementEvent> SettlementEvents()
         => Array.AsReadOnly(_earlierEvents.Concat(_weeks.SelectMany(w => w.Events)).ToArray()); // 第 04-1 章：含讀檔前的事件
 
+    private HashSet<DemoCellRef> _oreCache = new();
+    private int _oreCacheWeek = -1;
+    private int _oreCacheEarlier = -1;
+
+    /// <summary>
+    /// 第 12-1 章：隕石留下的礦脈格（由已提交的「隕石礦脈」事件推得；地圖本身不可變）。
+    /// 快取只往後掃新提交的週報；讀檔或週報視窗改變時整個重算。
+    /// </summary>
+    public IReadOnlySet<DemoCellRef> MeteoriteOre
+    {
+        get
+        {
+            var firstWeek = _weeks.Count == 0 ? int.MaxValue : _weeks[0].Week;
+            if (_oreCacheEarlier != _earlierEvents.Count || _oreCacheWeek < firstWeek - 1)
+            {
+                _oreCache = DemoDisasters.OreCells(_earlierEvents, Map).ToHashSet();
+                _oreCacheEarlier = _earlierEvents.Count;
+                _oreCacheWeek = firstWeek - 1;
+            }
+            foreach (var w in _weeks.Where(w => w.Week > _oreCacheWeek))
+            {
+                _oreCache.UnionWith(DemoDisasters.OreCells(w.Events, Map));
+                _oreCacheWeek = w.Week;
+            }
+            return _oreCache;
+        }
+    }
+
     /// <summary>
     /// 推進到下一個排程日，整天是一次原子提交（第 03 章 a 節，44F Stage 4～6）：
     /// <see cref="DemoWorldCommit"/> 依固定順序暫存 ①排程與時鐘 → ②亂數 → ③帳本（週結算）→ ④生死 → ⑤歷史（週報），
@@ -450,7 +478,8 @@ public sealed partial class DemoObserverWorld
                     id => ChronicleOf(id).Tier, _land, // 第 08-7a 章 A1：等級閘門、磨粉要農田
                     id => (_culture.MainCultureOf(id) is { } c && _culture.Culture(c) is { } main ? main.Traits : (IEnumerable<string>)Array.Empty<string>())
                         .Concat(_culture.Faith.MainFaithOf(id) is { } f && _culture.Faith.Faith(f) is { } faith ? faith.Tenets : Enumerable.Empty<string>())
-                        .ToArray()); // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
+                        .ToArray(), // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
+                    MeteoriteOre); // 第 12-1 章：隕石留下的礦脈
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (cleanLand, clearedOnly) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
@@ -458,7 +487,10 @@ public sealed partial class DemoObserverWorld
                 // 第 12-1 章 C3：洪水、龍捲風毀農田（事件接在開墾事件之後）。
                 var (land, ruined) = DemoDisasters.RuinFarmland(strikes, cleanLand, Map, lifecycle.Outcome.Sites, report.Week, report.WorldTime, _rng,
                     checked(landNextId + clearedOnly.Count));
-                var cleared = clearedOnly.Concat(ruined).ToList();
+                // 第 12-1 章：隕石落點留下礦脈（事件接在毀田之後）。
+                var ore = DemoDisasters.MeteoriteOre(strikes, report.Events, Map, lifecycle.Outcome.Sites, MeteoriteOre, report.Week, report.WorldTime, _rng,
+                    checked(landNextId + clearedOnly.Count + ruined.Count));
+                var cleared = clearedOnly.Concat(ruined).Concat(ore).ToList();
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
                 var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,
                     checked(landNextId + cleared.Count), lifecycle.Population.Representatives);
