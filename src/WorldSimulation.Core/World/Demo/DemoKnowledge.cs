@@ -508,6 +508,7 @@ public static class DemoKnowledge
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
             var researchTraits = ResearchTraitsOf(traits);
             var diffusionPercent = CultureDiffusionPercent(traits);
+            DemoPerf.Mark("知識：聚落條件");
 
             foreach (var node in catalog)
             {
@@ -566,9 +567,9 @@ public static class DemoKnowledge
                         EventId: nextEventId++, CauseEventId: learnedEvent.EventId));
                 }
             }
+            DemoPerf.Mark("知識：逐技術");
         }
 
-        DemoPerf.Mark("知識：逐聚落");
         var next = new DemoKnowledgeState(
             records.Values.OrderBy(r => r.SettlementId).ThenBy(r => r.Technology).ToImmutableList(), era, eraWeek);
         DemoPerf.Mark("知識：整表");
