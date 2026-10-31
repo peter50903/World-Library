@@ -784,6 +784,23 @@ public partial class ObserverRoot : Control
             || !ReferenceEquals(_world.Sites, sitesBefore))
             throw new InvalidOperationException("Map viewport inputs changed the simulated world.");
 
+        // 第 08-13 章第 4 節：聚落外觀依等級長大——同一聚落等級越高佔格不少於低一級、城鎮有木柵、城市起有石牆；每個聚落至少一棟建築。
+        var scaleBefore = _hexMap.SettlementScale;
+        var fpSample = _world.Sites.Settlements.First(x => !x.IsRuin);
+        var previousCells = 0;
+        foreach (var fpTier in Enum.GetValues<DemoSettlementTier>())
+        {
+            _hexMap.SettlementScale = new Dictionary<int, (long, DemoSettlementTier)> { [fpSample.Id] = (60, fpTier) };
+            var fpPlan = _hexMap.FootprintOf(fpSample);
+            if (fpPlan.Buildings.Count == 0 || fpPlan.Cells.Count < previousCells
+                || fpPlan.Palisade != (fpTier == DemoSettlementTier.Town) || fpPlan.StoneWall != (fpTier >= DemoSettlementTier.City))
+                throw new InvalidOperationException($"Settlement footprint for {fpTier} is wrong.");
+            previousCells = fpPlan.Cells.Count;
+        }
+        _hexMap.SettlementScale = scaleBefore;
+        if (_world.Sites.Settlements.Where(x => !x.IsRuin).Any(x => _hexMap.FootprintOf(x).Buildings.Count == 0))
+            throw new InvalidOperationException("A settlement has no buildings on the map.");
+
         GD.Print($"WORLD_SIM_MAP_INPUT_OK: Zoom=1.20 Pan=44 Day={dayBefore}");
     }
 
