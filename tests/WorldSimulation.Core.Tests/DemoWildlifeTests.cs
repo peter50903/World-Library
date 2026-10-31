@@ -55,16 +55,16 @@ public sealed class DemoBeastAttackTests
         var cell = map.Cells.First(c => c.Terrain == DemoTerrain.Forest);
         var index = cell.Row * map.Columns + cell.Column;
         var none = System.Collections.Immutable.ImmutableArray.CreateRange(new int[map.Cells.Count]);
-        var wolves = none.SetItem(index, 2);
+        var wolves = none.SetItem(index, 2); // 2 隻狼：每週 6%（弓箭 3%）
         var batch = new DemoMigrationBatch(7, 1, "甲", 2, "乙", System.Collections.Immutable.ImmutableArray.Create(new DemoCellRef(cell.Column, cell.Row)), 0, 5, 0, 0, 1);
         var rng = WorldSimulation.Core.Rng.RngRegistry.Create(42);
-        Assert.Equal(0, DemoWildlife.AttackDeaths(new DemoWildlifeState(none, none, 0), map, batch, 10, rng, false));
+        Assert.All(Enumerable.Range(1, 200), w => Assert.Equal(0, DemoWildlife.AttackDeaths(new DemoWildlifeState(none, none, 0), map, batch, w, rng, false)));
         var state = new DemoWildlifeState(none, wolves, 0);
         var hits = Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, false)).ToList();
         var archers = Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, true)).ToList();
         Assert.All(hits, d => Assert.InRange(d, 0, 2));
-        Assert.InRange(hits.Count(d => d > 0), 40, 130);     // 4% × 2000 ≈ 80
-        Assert.InRange(archers.Count(d => d > 0), 15, 70);   // 2% × 2000 ≈ 40
+        Assert.InRange(hits.Count(d => d > 0), 80, 170);     // 6% × 2000 ≈ 120
+        Assert.InRange(archers.Count(d => d > 0), 30, 90);   // 3% × 2000 ≈ 60
         Assert.Equal(hits, Enumerable.Range(1, 2000).Select(w => DemoWildlife.AttackDeaths(state, map, batch, w, rng, false)));
     }
 

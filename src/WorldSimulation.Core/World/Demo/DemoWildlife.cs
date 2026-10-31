@@ -211,9 +211,12 @@ public static class DemoWildlife
         return next with { Hunting = hunting };
     }
 
-    /// <summary>【TEMP】第 12-1 章 C2：狼至少這麼多隻的格才會襲擊；每隻狼每週襲擊機率（%）；已會弓箭的出發聚落機率減半。</summary>
-    public const int TempAttackMinWolves = 2;
-    public const int TempAttackPercentPerWolf = 2;
+    /// <summary>
+    /// 【TEMP】第 12-1 章 C2：狼至少這麼多隻的格才會襲擊；每隻狼每週襲擊機率（%）；已會弓箭的出發聚落機率減半。
+    /// （原訂 2 隻、2%：狼承載只有 2、聚落每年驅散一半，路線附近幾乎沒有 2 隻狼的格，百年 0 次，08-10c）
+    /// </summary>
+    public const int TempAttackMinWolves = 1;
+    public const int TempAttackPercentPerWolf = 3;
 
     public const string ArcheryTech = "TECH_ARCHERY";
 
