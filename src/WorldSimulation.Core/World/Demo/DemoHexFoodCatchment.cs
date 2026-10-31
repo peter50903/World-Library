@@ -95,6 +95,19 @@ public static class DemoHexFoodCatchment
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(source);
         ValidateSource(map, source);
+        // 第 08-13 章第 5 節：可及格只取決於地圖、來源位置與種類，每張地圖快取（每週每個來源都會查）。
+        var cache = EligibleCache.GetValue(map, _ => new Dictionary<(int, int, DemoCatchmentSourceKind), IReadOnlyList<DemoHexCell>>());
+        var key = (source.Column, source.Row, source.Kind);
+        if (!cache.TryGetValue(key, out var cells))
+            cache[key] = cells = ComputeEligibleCells(map, source);
+        return cells;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<DemoHexWorld,
+        Dictionary<(int, int, DemoCatchmentSourceKind), IReadOnlyList<DemoHexCell>>> EligibleCache = new();
+
+    private static IReadOnlyList<DemoHexCell> ComputeEligibleCells(DemoHexWorld map, DemoCatchmentFoodSource source)
+    {
         var origin = map.GetCell(source.Column, source.Row);
         // 第 07-1 章 c 節：只看本格與六個鄰格（原本逐格掃全圖，結果相同）。
         var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))

@@ -227,6 +227,13 @@ public static class DemoKnowledge
         return checked(Boosts(state, sites, map, source, week, traitsAt, huntingAt) + environment);
     }
 
+    private static readonly (DemoCatchmentSourceKind Kind, string TechId, long Percent)[] NoBonuses = [];
+    private static readonly (DemoCatchmentSourceKind Kind, string TraitId, long Percent)[] NoCultureBonuses = [];
+    private static readonly Dictionary<DemoCatchmentSourceKind, (DemoCatchmentSourceKind Kind, string TechId, long Percent)[]> BonusesOf =
+        TempSourceBonuses.GroupBy(b => b.Kind).ToDictionary(g => g.Key, g => g.ToArray());
+    private static readonly Dictionary<DemoCatchmentSourceKind, (DemoCatchmentSourceKind Kind, string TraitId, long Percent)[]> CultureBonusesOf =
+        TempCultureSourceBonuses.GroupBy(b => b.Kind).ToDictionary(g => g.Key, g => g.ToArray());
+
     private static long Boosts(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
         Func<int, int, IReadOnlyCollection<string>>? traitsAt, Func<int, int, bool>? huntingAt)
     {
@@ -234,21 +241,27 @@ public static class DemoKnowledge
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(source);
-        var bonuses = TempSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
-        var cultural = traitsAt is null ? new List<(DemoCatchmentSourceKind, string TraitId, long Percent)>()
-            : TempCultureSourceBonuses.Where(b => b.Kind == source.Kind).ToList();
+        // 第 08-13 章第 5 節：加成表依來源種類預先分組；鄰近聚落用迴圈查（每週每個來源都會呼叫；結果相同）。
+        var bonuses = BonusesOf.GetValueOrDefault(source.Kind) ?? NoBonuses;
+        var cultural = traitsAt is null ? NoCultureBonuses : CultureBonusesOf.GetValueOrDefault(source.Kind) ?? NoCultureBonuses;
         var hunted = huntingAt is not null && source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage;
-        if (bonuses.Count == 0 && cultural.Count == 0 && !hunted)
+        if (bonuses.Length == 0 && cultural.Length == 0 && !hunted)
             return 0;
         var origin = map.GetCell(source.Column, source.Row);
-        var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr)).Prepend(origin)
-            .Where(c => c is not null).Select(c => sites.SettlementAt(c!.Column, c.Row)).Where(s => s is not null);
+        var nearby = new List<DemoSettlement>(2);
+        if (sites.SettlementAt(origin.Column, origin.Row) is { } own)
+            nearby.Add(own);
+        foreach (var d in DemoRouteNetwork.Directions)
+            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c && sites.SettlementAt(c.Column, c.Row) is { } s)
+                nearby.Add(s);
+        if (nearby.Count == 0)
+            return 0;
         long best = 0;
         foreach (var settlement in nearby)
         {
             var total = bonuses.Where(b => state.Of(settlement!.Id, DemoTechnology.Of(b.TechId)) is { Learned: true } r && r.LearnedWeek < week)
                 .Sum(b => b.Percent);
-            if (cultural.Count > 0)
+            if (cultural.Length > 0)
             {
                 var traits = traitsAt!(settlement!.Id, week);
                 total += cultural.Where(b => traits.Contains(b.TraitId)).Sum(b => b.Percent);
