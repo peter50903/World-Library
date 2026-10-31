@@ -764,7 +764,8 @@ internal static class DemoWeeklySettlement
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             // 第 12-1 章 C2：餓死之後，經過狼群的隊伍可能遭襲（希望時代不發生）；遭襲者不減飢餓債。
-            var attacked = hope || beastAttack is null ? 0 : Math.Min(people - deaths, Math.Max(0, beastAttack(batch)));
+            // 至少留一人（攜帶的糧食跟著倖存者，糧食帳不會憑空消失）【TEMP】。
+            var attacked = hope || beastAttack is null ? 0 : Math.Max(0, Math.Min(people - deaths - 1, beastAttack(batch)));
             var survivors = people - deaths - attacked;
             if (survivors == 0)
                 removedByDeath = debt;
@@ -790,9 +791,7 @@ internal static class DemoWeeklySettlement
             {
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
                     DemoSettlementEventKind.BeastAttack, attacked,
-                    survivors == 0
-                        ? $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}前往{batch.ToName}途中遭狼群襲擊，全數罹難"
-                        : $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}前往{batch.ToName}途中遭狼群襲擊，{attacked} 人罹難",
+                    $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}前往{batch.ToName}途中遭狼群襲擊，{attacked} 人罹難",
                     batch.Id), emigrationEventId));
             }
 

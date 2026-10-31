@@ -124,8 +124,8 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.BeastAttack:
-                    // 第 12-1 章 C2：隊伍全數罹難是重大事件，其他為一般。
-                    Add(e.Week, e.Cause.Contains("全數罹難", StringComparison.Ordinal) ? DemoChronicleLevel.Major : DemoChronicleLevel.Normal,
+                    // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
+                    Add(e.Week, DemoChronicleLevel.Normal,
                         DemoChronicleCategory.Wilds, e.EventId, Name(e.SettlementId), T(" 的" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.CultureSplit:

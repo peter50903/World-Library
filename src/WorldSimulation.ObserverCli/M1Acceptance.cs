@@ -555,7 +555,7 @@ public static class M1Evaluator
             foreach (var m in report.Migrations)
             {
                 if (!m.PopulationBalanced)
-                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 人口帳：{m.PopulationOpening}＋途中出生 {m.Births}－餓死 {m.Deaths}－自然死亡 {m.NaturalDeaths}≠{m.PopulationClosing}");
+                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 人口帳：{m.PopulationOpening}＋途中出生 {m.Births}－餓死 {m.Deaths}－自然死亡 {m.NaturalDeaths}－獸襲 {m.AttackDeaths}≠{m.PopulationClosing}");
 
                 // #98：途中隊伍逐週銜接：本週期初＝上週期末（上週仍在路上）。
                 if (!m.Departed)
@@ -571,7 +571,7 @@ public static class M1Evaluator
                     problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 途中死亡 {m.Deaths} 人，帶原因事件 {causedDeaths.Sum(e => e.Count)} 人");
                 // 第 07 章 b 節：途中出生與自然死亡也算進世界人口。
                 wBirths += m.Births;
-                wDeaths += m.Deaths + m.NaturalDeaths;
+                wDeaths += m.Deaths + m.NaturalDeaths + m.AttackDeaths; // 第 12-1 章 C2：獸襲
                 roadDeaths += m.Deaths;
             }
 
