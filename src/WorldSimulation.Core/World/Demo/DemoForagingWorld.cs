@@ -67,7 +67,26 @@ public static class DemoForagingWorld
     }
 
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied)
-        => Settings.BuildPotentialSources(map, MainRiverTiles(map), occupied);
+    {
+        // 第 08-13 章第 5 節：自然來源只取決於地圖與佔格；佔格沒變就沿用上次的結果（每週結算都會建表；結果相同）。
+        var key = occupied is null ? Array.Empty<DemoCellRef>()
+            : occupied.Distinct().OrderBy(c => c.Row).ThenBy(c => c.Column).ToArray();
+        var holder = NaturalCache.GetValue(map, _ => new NaturalSourcesHolder());
+        if (Volatile.Read(ref holder.Last) is { } last && last.Occupied.AsSpan().SequenceEqual(key))
+            return last.Sources;
+        var built = Settings.BuildPotentialSources(map, MainRiverTiles(map), occupied);
+        Volatile.Write(ref holder.Last, new NaturalSources(key, built)); // 整筆替換，多執行緒讀取不會讀到一半
+        return built;
+    }
+
+    private sealed record NaturalSources(DemoCellRef[] Occupied, IReadOnlyList<DemoCatchmentFoodSource> Sources);
+
+    private sealed class NaturalSourcesHolder
+    {
+        public NaturalSources? Last;
+    }
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<DemoHexWorld, NaturalSourcesHolder> NaturalCache = new();
 
     /// <summary>第 07 章 c 節：<paramref name="cell"/> 可及至少一個未被佔用的自然來源（開拓選址條件）。</summary>
     public static bool ReachesFreeSource(DemoHexWorld map, IReadOnlyList<DemoCellRef> occupied, DemoCellRef cell)
