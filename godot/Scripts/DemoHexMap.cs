@@ -250,6 +250,10 @@ public partial class DemoHexMap : Control
     private const float TempZoomStep = 1.2f;
     private const float TempMinZoom = 0.6f;
     private const float TempMaxZoom = 3f;
+    /// <summary>第 08-13 章第 5 節【TEMP】大地圖：開新世界時鏡頭拉近到每格約這個半徑（像素），可縮小看全圖；最大縮放到每格這麼大。</summary>
+    private const float TempComfortHexRadius = 26f;
+    private const float TempMaxHexRadius = 64f;
+    private DemoHexWorld? _viewWorld;
     private float _zoom = 1f;
     private Vector2 _pan = Vector2.Zero;
     private bool _middleDragging;
@@ -281,6 +285,8 @@ public partial class DemoHexMap : Control
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            if (!OnScreen(center, radius))
+                continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
             var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
             // 第 06 章 a 節：主水道來自 Core 地圖（每個世界都有）；MainRiverTiles 只是舊注入的相容來源。
             var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
@@ -357,6 +363,8 @@ public partial class DemoHexMap : Control
             foreach (var cell in World.Cells)
             {
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (!OnScreen(center, radius))
+                    continue;
                 var hex = HexCoordinates.Polygon(center, radius - 1.4f);
                 if (VisibleSite(cell) is { IsRuin: true } ruinSite)
                 {
@@ -419,8 +427,11 @@ public partial class DemoHexMap : Control
         {
             var gridColor = new Color(0.05f, 0.04f, 0.03f, TempGridAlpha);
             foreach (var cell in World.Cells)
-                DrawPolyline(Closed(HexCoordinates.Polygon(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius)),
-                    gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+            {
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (OnScreen(center, radius))
+                    DrawPolyline(Closed(HexCoordinates.Polygon(center, radius)), gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+            }
         }
 
         // #89: outline the settlement of the selected event on top of the terrain and markers.
@@ -642,7 +653,7 @@ public partial class DemoHexMap : Control
             // Cursor-anchored zoom: the point under the pointer does not jump.
             var next = Mathf.Clamp(
                 _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),
-                TempMinZoom, TempMaxZoom);
+                TempMinZoom, Mathf.Max(TempMaxZoom, TempMaxHexRadius / Layout().Radius));
             if (!Mathf.IsEqualApprox(next, _zoom))
             {
                 var cursorFromCenter = button.Position - Size * 0.5f;
@@ -676,6 +687,8 @@ public partial class DemoHexMap : Control
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            if (center.DistanceSquaredTo(position) > radius * radius)
+                continue; // 外接圓之外不可能在格內
             if (Geometry2D.IsPointInPolygon(position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
                 return cell;
         }
@@ -709,10 +722,20 @@ public partial class DemoHexMap : Control
     private (Vector2 Start, float Radius) ViewLayout()
     {
         var (baseStart, baseRadius) = Layout();
+        // 第 08-13 章第 5 節：換了世界就重設鏡頭；全圖塞進畫面時每格太小（大地圖），先拉近到看得清楚的大小（地圖中央）。
+        if (!ReferenceEquals(_viewWorld, World) && World is not null && Size.X > 0f && Size.Y > 0f)
+        {
+            _viewWorld = World;
+            _zoom = baseRadius < TempComfortHexRadius ? TempComfortHexRadius / baseRadius : 1f;
+            _pan = Vector2.Zero;
+        }
         var viewportCenter = Size * 0.5f;
         return (viewportCenter + (baseStart - viewportCenter) * _zoom + _pan,
             baseRadius * _zoom);
     }
+
+    private bool OnScreen(Vector2 center, float radius)
+        => center.X > -radius * 2f && center.Y > -radius * 2f && center.X < Size.X + radius * 2f && center.Y < Size.Y + radius * 2f;
 
     private (Vector2 Start, float Radius) Layout()
     {
