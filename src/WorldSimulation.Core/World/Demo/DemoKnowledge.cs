@@ -414,34 +414,41 @@ public static class DemoKnowledge
         var farmland = land?.FarmlandCells().ToHashSet() ?? new HashSet<DemoCellRef>();
         var catalog = DemoTechCatalog.All;
         var arrivals = report.Migrations.Where(m => m.Arrived).ToList();
+        // 第 08-13 章第 5 節：逐聚落查詢改為先分組（結果相同）。
+        var repsOf = population.Representatives.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.ToList());
+        var founders = sites.Settlements.Where(s => s.IsFounded).Select(s => s.FoundedFromSettlementId).ToHashSet();
+        var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
+        var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var settlement in living)
         {
             var neighbours = map is null ? new List<DemoSettlement>()
                 : living.Where(o => o.Id != settlement.Id && Distance(map, o, settlement) <= TempDiffusionRange).ToList();
             var stats = population.StatsOf(settlement.Id, 0, day, rules);
+            var reps = repsOf.GetValueOrDefault(settlement.Id) ?? new List<DemoRepresentative>();
+            var arrived = arrivalsTo.GetValueOrDefault(settlement.Id) ?? new List<DemoMigrationWeekLedger>();
             var near = map is null ? new HashSet<DemoTerrain>() : Around(map, settlement).Select(c => c.Terrain).ToHashSet();
             var context = new Context(
                 tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Camp,
                 population.AdultsIn(settlement.Id, rules),
                 stats.Elders,
-                population.Representatives.Any(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Leader),
-                population.Representatives.Count(r => r.SettlementId == settlement.Id && DemoRepresentative.TechnologyOf(r.Role) is not null),
+                reps.Any(r => r.Role == DemoRepresentativeRole.Leader),
+                reps.Count(r => DemoRepresentative.TechnologyOf(r.Role) is not null),
                 near.Contains(DemoTerrain.Forest),
                 near.Contains(DemoTerrain.Grassland),
                 near.Contains(DemoTerrain.Water),
                 map is not null && Around(map, settlement).Any(c => c.Sea),
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0,
-                population.Representatives.Count(r => r.SettlementId == settlement.Id && r.Role == DemoRepresentativeRole.Shaman),
+                reps.Count(r => r.Role == DemoRepresentativeRole.Shaman),
                 map is not null && NearOre(map, settlement, extraOre),
                 near.Contains(DemoTerrain.Hills));
-            var roles = population.Representatives.Where(r => r.SettlementId == settlement.Id).Select(r => r.Role).ToList();
+            var roles = reps.Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,
-                sites.Settlements.Any(s => s.IsFounded && s.FoundedFromSettlementId == settlement.Id),
-                report.Events.Any(e => e.SettlementId == settlement.Id && e.Kind == DemoSettlementEventKind.NaturalDeath),
-                arrivals.Any(m => m.ToSettlementId == settlement.Id && m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
+                founders.Contains(settlement.Id),
+                mourning.Contains(settlement.Id),
+                arrived.Any(m => m.FromSettlementId != settlement.Id && m.FromSettlementId > 0),
                 map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
@@ -462,7 +469,7 @@ public static class DemoKnowledge
                 if (practitioners == 0)
                     continue;
                 var threshold = ThresholdOf(technology);
-                var carried = arrivals.Where(m => m.ToSettlementId == settlement.Id && state.Knows(m.FromSettlementId, technology))
+                var carried = arrived.Where(m => state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
                 var known = neighbours.Count(o => state.Knows(o.Id, technology));

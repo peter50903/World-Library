@@ -94,6 +94,7 @@ internal static class DemoHumanLifecycle
         var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))
             .ToDictionary(g => g.Key, g => (long)g.Count());
 
+        DemoPerf.Mark("生死：餓死與遷徙");
         // ③ 生死：受孕只在本週真實糧帳寬裕的聚落，數量不超過可預留的口糧（第 08-3 章）。
         var ledgerOf = report.Settlements.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.Single());
         var outcome = moved.AdvanceWeek(report.Week, id =>
@@ -106,11 +107,13 @@ internal static class DemoHumanLifecycle
                 : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);
         }, Rules, draws, minimumDeaths);
 
+        DemoPerf.Mark("生死：年齡群");
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
             knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps);
 
+        DemoPerf.Mark("生死：代表人物");
         var eventSums = outcome.Events.GroupBy(e => (e.Kind, e.SettlementId, e.BatchId)).ToDictionary(g => g.Key, g => g.Sum(e => e.Count));
         long Sum(DemoTempDemographicKind kind, int settlement, int batch) => eventSums.GetValueOrDefault((kind, settlement, batch));
 
@@ -199,7 +202,9 @@ internal static class DemoHumanLifecycle
             Appointments = appointments, RepresentativeExits = exits,
             EntityIdNextClosing = DemoEntityIds.NextValue(entityIds)
         };
+        DemoPerf.Mark("生死：帳與事件");
         DemoWeeklySettlement.Verify(revised);
+        DemoPerf.Mark("生死：驗證");
         return (weekly with
         {
             Report = revised, Population = next.ToImmutable(), HungerDebt = nextDebt.ToImmutable(),

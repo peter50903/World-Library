@@ -30,7 +30,10 @@ public sealed record DemoFaithState(
 
     /// <summary>某聚落的信仰比例（含無信仰＝0）；沒有紀錄＝全員無信仰。</summary>
     public IReadOnlyList<DemoCultureShare> SharesOf(int settlementId)
-        => Settlements.FirstOrDefault(s => s.SettlementId == settlementId)?.Shares ?? DemoFaiths.NoFaith;
+        => SettlementIndex.GetValue(Settlements, list => list.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.First()))
+            .GetValueOrDefault(settlementId)?.Shares ?? DemoFaiths.NoFaith; // 第 08-13 章第 5 節：依聚落索引（同 FirstOrDefault）
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImmutableList<DemoSettlementCulture>, Dictionary<int, DemoSettlementCulture>> SettlementIndex = new();
 
     /// <summary>聚落的主要信仰（不含無信仰；比例最高、同比例取編號小）；沒有信徒＝null。</summary>
     public int? MainFaithOf(int settlementId)

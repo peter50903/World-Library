@@ -71,7 +71,10 @@ public sealed record DemoCultureState(
 
     /// <summary>某聚落的文化比例（由多到少）；沒有紀錄＝空。</summary>
     public IReadOnlyList<DemoCultureShare> SharesOf(int settlementId)
-        => Settlements.FirstOrDefault(s => s.SettlementId == settlementId)?.Shares ?? (IReadOnlyList<DemoCultureShare>)Array.Empty<DemoCultureShare>();
+        => SettlementIndex.GetValue(Settlements, list => list.GroupBy(s => s.SettlementId).ToDictionary(g => g.Key, g => g.First()))
+            .GetValueOrDefault(settlementId)?.Shares ?? (IReadOnlyList<DemoCultureShare>)Array.Empty<DemoCultureShare>(); // 第 08-13 章第 5 節：依聚落索引（同 FirstOrDefault）
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImmutableList<DemoSettlementCulture>, Dictionary<int, DemoSettlementCulture>> SettlementIndex = new();
 
     /// <summary>聚落的主要文化（比例最高者；同比例取編號小）；沒有＝null。</summary>
     public int? MainCultureOf(int settlementId)
