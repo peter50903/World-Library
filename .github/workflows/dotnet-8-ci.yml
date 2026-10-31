@@ -70,7 +70,7 @@ jobs:
               done
             done
             # 第 07-1 章 c 節：中、大地圖效能診斷（只報告；完整長測時跑 30 年）。
-            for m in $([ "$FULL" = true ] && echo medium large); do
+            for m in $([ "$FULL" = true ] && echo medium large huge); do
               if ! timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed 1 --years 30 --map "$m" > "/tmp/diag-map-$m.txt" 2>&1; then
                 echo "::warning title=地圖 $m 效能診斷未完成::$(tail -30 "/tmp/diag-map-$m.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
               fi

@@ -273,6 +273,7 @@ public partial class ObserverRoot : Control
             var (columns, rows) = DemoMapSizes.Dimensions(size);
             _mapSizePicker.AddItem($"{DemoMapSizes.Name(size)}（{columns}×{rows} 格）", (int)size);
         }
+        _mapSizePicker.Select(_mapSizePicker.GetItemIndex((int)DemoMapSize.Large)); // 第 08-13 章第 5 節：新世界預設大地圖
         sizeRow.AddChild(_mapSizePicker);
         _seedStartButton = new Button { Text = "以此種子建立世界", CustomMinimumSize = new Vector2(0, 36) };
         _seedStartButton.Pressed += RequestSeedWorld;
