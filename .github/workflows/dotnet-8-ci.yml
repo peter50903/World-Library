@@ -74,7 +74,7 @@ jobs:
               if ! timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --diagnose-living --seed 1 --years 30 --map "$m" > "/tmp/diag-map-$m.txt" 2>&1; then
                 echo "::warning title=地圖 $m 效能診斷未完成::$(tail -30 "/tmp/diag-map-$m.txt" | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
               fi
-              echo "::notice title=地圖 $m 效能診斷::$(grep -E '===|耗時|剖析|^Y(1|10|20|30) |彙整|存檔|週報欄位|缺糧 #' "/tmp/diag-map-$m.txt" | cut -c1-600 | head -45 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+              echo "::notice title=地圖 $m 效能診斷::$(grep -E '===|耗時|剖析|^Y(1|10|20|30) |彙整|存檔|週報欄位|缺糧 #' "/tmp/diag-map-$m.txt" | cut -c1-900 | head -45 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
             done
             # 第 08-10a 章 V0：世界變化報告 10 年冒煙（完整基準在下一個步驟；只要基準不跑其他長測時，PR 貼「change-report」標籤）。
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --change-report --seed 1 --years 10 > /tmp/change-smoke.txt

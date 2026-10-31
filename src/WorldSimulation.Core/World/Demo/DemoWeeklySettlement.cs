@@ -718,18 +718,22 @@ internal static class DemoWeeklySettlement
         DemoPerf.Mark("結算：取水與需求");
         if (config.SharedCatchmentEnabled)
         {
-            var plan = DemoSourceWeekLedger.Plan(
-                DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land,
-                    sourcePercent), // 第 08-12 章：技術提高來源供應
+            var weekSources = DemoForagingWorld.Sources(map ?? throw new InvalidOperationException("Shared foraging needs map."), sites, land,
+                sourcePercent); // 第 08-12 章：技術提高來源供應
+            DemoPerf.Mark("結算：來源建表與加成");
+            var plan = DemoSourceWeekLedger.Plan(weekSources,
                 sourceStocks ?? ImmutableSortedDictionary<int, long>.Empty, DemoForagingWorld.Settings.SourceStockCapWeeks);
+            DemoPerf.Mark("結算：來源存量");
             sharedHarvest = DemoForagingWorld.Allocate(map, sites, population, config, foragingWorkers,
                 plan.Select(p => p.Source).ToArray(), foodNeeded: foodNeeded,
                 yieldPercent: toolYieldPercent, // 第 08-6 章 e 節：工具提高採集效率
                 baseNeeds: config.HumanLifecycleEnabled ? baseNeeds : null); // 第 08-3 章兩階段分配
+            DemoPerf.Mark("結算：分配");
             sourceLedgers = DemoSourceWeekLedger.From(week, plan, sharedHarvest);
             nextSourceStocks = sourceLedgers.Where(x => x.StockClosing > 0)
                 .ToImmutableSortedDictionary(x => x.SourceId, x => x.StockClosing);
         }
+        DemoPerf.Mark("結算：來源帳");
         // 第 08-1 章：每個聚落可及範圍內全部自然來源的「每週可持續供應－本週全部採收」（DemoCrowding）。
         var slackBySettlement = config.SharedCatchmentEnabled && map is not null
             ? DemoCrowding.SlackInReach(map, sites, sourceLedgers)
@@ -764,7 +768,7 @@ internal static class DemoWeeklySettlement
         var weekSites = sites; // V0-06B：本週建立的新聚落會加進這份副本，輸入的 sites 不變。
 
         // 途中隊伍（V0-06A）：只靠攜帶的糧食，飢餓與死亡規則與聚落相同；活著的人沿路線前進一格。
-        DemoPerf.Mark("結算：來源與分配");
+        DemoPerf.Mark("結算：餘量與彙總");
         foreach (var batch in migrations.OrderBy(b => b.Id))
         {
             // #88：隊伍的途中餓死、抵達、建立新聚落，直接原因都是它出發那週的外移事件。
