@@ -90,7 +90,7 @@ public sealed class DemoTechCatalogTests
     }
 
     [Fact]
-    public void LivingWorldsLearnManyTechnologiesButNeverMiningOrMagic()
+    public void LivingWorldsLearnManyTechnologiesButNeverMagicAndMineOnlyNearOre()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(2), DemoWeeklyTempConfig.LivingForagingSample);
         for (var day = 0; day < 40 * TestCalendar.DaysPerYear; day++)
@@ -100,9 +100,12 @@ public sealed class DemoTechCatalogTests
         Assert.All(learned, r =>
         {
             Assert.InRange(r.Technology.Node.Tier, 1, 3); // 第 08-11 章：城鎮可研究第 3 階
-            Assert.DoesNotContain(r.Technology.Node.Domain, new[] { "10C", "10I", "10K", "10M" });
+            Assert.DoesNotContain(r.Technology.Node.Domain, new[] { "10I", "10K" });
             Assert.All(r.Technology.Node.Parents, p => Assert.True(world.Knowledge.Knows(r.SettlementId, DemoTechnology.Of(p))));
         });
+        // 第 06-3 章：採礦冶金只能從礦脈附近的聚落開始（之後可鄰近傳播）。
+        if (learned.Any(r => r.Technology.Node.Domain == "10C"))
+            Assert.Contains(world.Sites.Settlements, s => DemoKnowledge.NearOre(world.Map, s));
         // 第 2 階只出現在當時是村莊的聚落（降級後仍保留知識，只檢查曾經是村莊）。
         Assert.All(learned.Where(r => r.Technology.Node.Tier == 2),
             r => Assert.Contains(DemoSettlementHistory.Lines(world, r.SettlementId), l => l.Contains("發展為村莊", StringComparison.Ordinal)));
