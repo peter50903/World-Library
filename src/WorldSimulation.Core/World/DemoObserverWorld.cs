@@ -407,6 +407,11 @@ public sealed partial class DemoObserverWorld
 
         if (commit.SettlesWeek)
         {
+            // 第 12-1 章 C3：本週的天災（天災週才有；希望時代沒有）。
+            var strikes = _demography is null || _knowledge.Era == DemoEra.Hope
+                ? (IReadOnlyDictionary<int, DemoDisasterStrike>)new Dictionary<int, DemoDisasterStrike>()
+                : DemoDisasters.Roll(checked(CommittedWeeks + 1), Map, _sites,
+                    _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
@@ -427,7 +432,8 @@ public sealed partial class DemoObserverWorld
                 sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
                     _culture.TraitsAt, _wildlife.HuntingAt), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵
                 beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
-                    _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech)))); // 第 12-1 章 C2
+                    _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
+                disaster: id => strikes.GetValueOrDefault(id)); // 第 12-1 章 C3
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -447,8 +453,12 @@ public sealed partial class DemoObserverWorld
                         .ToArray()); // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
-                var (land, cleared) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
+                var (cleanLand, clearedOnly) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
                     lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
+                // 第 12-1 章 C3：洪水、龍捲風毀農田（事件接在開墾事件之後）。
+                var (land, ruined) = DemoDisasters.RuinFarmland(strikes, cleanLand, Map, lifecycle.Outcome.Sites, report.Week, report.WorldTime, _rng,
+                    checked(landNextId + clearedOnly.Count));
+                var cleared = clearedOnly.Concat(ruined).ToList();
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
                 var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,
                     checked(landNextId + cleared.Count), lifecycle.Population.Representatives);

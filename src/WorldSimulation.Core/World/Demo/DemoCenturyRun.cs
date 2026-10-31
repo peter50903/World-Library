@@ -205,7 +205,7 @@ public static class DemoCenturyRun
                 foreach (var l in latest.Settlements)
                 {
                     births = checked(births + l.Births);
-                    deaths = checked(deaths + l.Deaths);
+                    deaths = checked(deaths + l.Deaths + l.DisasterDeaths);
                     naturalDeaths = checked(naturalDeaths + l.NaturalDeaths);
                     produced = checked(produced + l.FoodProduced);
                     consumed = checked(consumed + l.FoodConsumed);
@@ -245,6 +245,8 @@ public static class DemoCenturyRun
                             starvationEvents++;
                             deathsInEvents = checked(deathsInEvents + e.Count);
                             break;
+                        case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
+                            or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: // 第 12-1 章 C3
                         case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2
                             deathsInEvents = checked(deathsInEvents + e.Count);
                             break;

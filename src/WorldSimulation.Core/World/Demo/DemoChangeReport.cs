@@ -28,14 +28,15 @@ public sealed record DemoChangeDecade(
     int Cultures = 0,
     int FaithsFounded = 0,
     int Faiths = 0,
-    int BeastAttacks = 0)
+    int BeastAttacks = 0,
+    int Disasters = 0)
 {
     /// <summary>這一段的重大事件數（08-10b 的重大級）。</summary>
-    public int Major => Founded + Ruined + TierUps + TierDowns + FirstLearned + Farmland + EraChanges + CultureSplits + FaithsFounded;
+    public int Major => Founded + Ruined + TierUps + TierDowns + FirstLearned + Farmland + EraChanges + CultureSplits + FaithsFounded + Disasters;
 
     public string Describe()
         => $"第 {FromYear}～{ToYear} 年｜重大 {Major}（建村 {Founded}、遺跡 {Ruined}、升村莊 {TierUps}、降級 {TierDowns}、"
-           + $"技術首創 {FirstLearned}、開墾 {Farmland}、時代 {EraChanges}、文化分化 {CultureSplits}、創立信仰 {FaithsFounded}）｜傳入 {SpreadLearned}｜獸襲 {BeastAttacks}"
+           + $"技術首創 {FirstLearned}、開墾 {Farmland}、時代 {EraChanges}、文化分化 {CultureSplits}、創立信仰 {FaithsFounded}、天災 {Disasters}）｜傳入 {SpreadLearned}｜獸襲 {BeastAttacks}"
            + $"｜期末 人口 {Population}、有人聚落 {LivingSettlements}、村莊 {Villages}（城鎮以上 {Towns}、最大聚落 {LargestPopulation} 人）、家系 {Lineages}（最大 {LargestLineage} 聚落）、文化 {Cultures}、信仰 {Faiths}"
            + $"｜{DemoKnowledge.EraName(Era)}";
 }
@@ -52,7 +53,7 @@ public sealed class DemoChangeTracker
     private int _lastWeek;
     private int _fromYear = 1;
     private int _lastYear;
-    private int _founded, _ruined, _ups, _downs, _first, _spread, _farmland, _eras, _splits, _faiths, _attacks;
+    private int _founded, _ruined, _ups, _downs, _first, _spread, _farmland, _eras, _splits, _faiths, _attacks, _disasters;
 
     // 第 08-11 章：遺跡成因——每個聚落每年的人口流動，聚落成為遺跡時回看最後 10 年。
     private sealed class YearFlow
@@ -129,6 +130,8 @@ public sealed class DemoChangeTracker
                     case DemoSettlementEventKind.CultureSplit: _splits++; break;
                     case DemoSettlementEventKind.FaithFounded: _faiths++; break;
                     case DemoSettlementEventKind.BeastAttack: _attacks++; break;
+                    case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
+                        or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: _disasters++; break;
                     case DemoSettlementEventKind.EraBegan:
                         _eras++;
                         PioneerEraYear ??= year;
@@ -183,8 +186,8 @@ public sealed class DemoChangeTracker
             living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Town),
             living.Count == 0 ? 0 : living.Max(s => world.SettlementPopulation(s.Id)), _splits,
             living.Select(s => world.Culture.MainCultureOf(s.Id)).Where(c => c is not null).Distinct().Count(), _faiths,
-            world.Culture.Faith.Faiths.Count(f => f.ExtinctWeek == 0), _attacks));
-        _splits = _faiths = _attacks = 0;
+            world.Culture.Faith.Faiths.Count(f => f.ExtinctWeek == 0), _attacks, _disasters));
+        _splits = _faiths = _attacks = _disasters = 0;
         _fromYear = toYear + 1;
         _founded = _ruined = _ups = _downs = _first = _spread = _farmland = _eras = 0;
     }

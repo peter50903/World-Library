@@ -111,7 +111,7 @@ public static class DemoYearLedger
             foreach (var l in report.Settlements)
             {
                 Births = checked(Births + l.Births);
-                Deaths = checked(Deaths + l.Deaths);
+                Deaths = checked(Deaths + l.Deaths + l.DisasterDeaths);
                 NaturalDeaths = checked(NaturalDeaths + l.NaturalDeaths);
                 Produced = checked(Produced + l.FoodProduced);
                 Consumed = checked(Consumed + l.FoodConsumed);
@@ -144,6 +144,8 @@ public static class DemoYearLedger
                         StarvationEvents++;
                         DeathsInEvents = checked(DeathsInEvents + e.Count);
                         break;
+                    case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
+                        or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: // 第 12-1 章 C3
                     case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2：帶原因的非自然死亡
                         DeathsInEvents = checked(DeathsInEvents + e.Count);
                         break;

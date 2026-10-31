@@ -342,6 +342,12 @@ public sealed class DemoCausalIndex
                 return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week && parent.SettlementId == e.SettlementId
                     && parent.Count == DemoTechnology.Of(DemoFaiths.AncestorRites).Index && e.Count > 0
                     ? null : "創立信仰的直接原因必須是同週同聚落習得祖靈祭祀";
+            case DemoSettlementEventKind.Earthquake:
+            case DemoSettlementEventKind.Tornado:
+            case DemoSettlementEventKind.Meteorite:
+            case DemoSettlementEventKind.Flood:
+                // 第 12-1 章 C3：天災是根因（地理前提與機率另見 DemoDisasters）。
+                return parent is null && e.Count >= 0 ? null : "天災是根因，事件人數欄是死亡人數";
             case DemoSettlementEventKind.FaithExtinct:
                 return parent is null && e.Count > 0 ? null : "信仰失傳是根因，事件人數欄必須是信仰編號";
 

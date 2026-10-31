@@ -44,6 +44,7 @@ public partial class ObserverRoot
         DemoChronicleCategory.Culture => "文化",
         DemoChronicleCategory.Faith => "信仰",
         DemoChronicleCategory.Wilds => "野外",
+        DemoChronicleCategory.Disaster => "天災",
         _ => category.ToString()
     };
 

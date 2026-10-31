@@ -138,6 +138,7 @@
 | 成長與捕食 | 獵物往承載缺口長 50%（至少 1）；每狼每年吃 1 獵物；狼每年往「剩下獵物÷2」（不超過承載）移動 1 隻；超出承載依方向順序移往鄰格 | 原訂「吃 3、吃飽增 20%」第二年狼全滅不再回來；改成穩定的趨近模型 |
 | 狩獵 | 會狩獵的聚落每名成年人每年取走 0.2 隻（無條件進位），附近的狼每年驅散一半 | 人類活動壓低族群（49C MON_HUMAN） |
 | 狩獵加成 | 會狩獵且採集範圍內獵物達承載一半以上：森林與草原野採來源＋10%（依年度名單） | 獸肉；不另開食物種類，避免週帳多一類來源 |
+| 天災（C3a） | 每年第 26 週對每個有人聚落擲一次，依序取第一個命中：洪水（鄰河，3%，0～2 人、範圍內農田各 50% 毀成開墾一半）、地震（2 格內有丘陵，1.5%，1～4 人）、龍捲風（周圍一半以上草原，1.5%，0～2 人、毀 1 塊農田）、隕石（任何地方，0.3%，1～3 人）；至少留一人、不減飢餓債；希望時代沒有 | 使用者 2026-10-31：參考 WorldBox 的地震、龍捲風、隕石；洪水沿用 12-1 原案 |
 | 獸襲（C2） | 隊伍所在格有狼時每週機率＝狼數×3%（原訂 ≥2 隻、2%，百年 0 次）（出發聚落會弓箭則減半），每次 1～2 人、至少留一人；希望時代不發生；遭襲者不減飢餓債 | 12-1 第 3 節；隊伍帳另一欄，餓死規則不變 |
 
 #### D06-3｜丘陵與礦脈（第 06-3 章，Claude 定案【TEMP】）
@@ -492,7 +493,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 7 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 63 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 64 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人；C3 天災至少留一人 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -503,6 +504,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
+| `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 6 | 第 12-1 章 C3a 天災：結算週、四種年機率、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 6 格、改信速度、創立者文化加權（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 8 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） |
@@ -532,13 +534,13 @@
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
-| `src/WorldSimulation.Core/History/WorldEvent.cs` | 3 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」；第 08-8 章 B4「文化」 |
+| `src/WorldSimulation.Core/History/WorldEvent.cs` | 4 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」；第 08-8 章 B4「文化」；第 12-1 章 C3「天災」 |
 | `src/WorldSimulation.Core/World/Demo/DemoPlayerDetail.cs` | 3 | 第 08-11 章玩家詳情：拿掉 TEMP 標記的文字處理（不是數值） |
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 19 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2）；第 08-12 章技術效果（D08-12）；第 08-8 章 B2 文化研究與生計來源加成（D08-8）；第 06-3 章礦脈勢力範圍（D06-3） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 22 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 26 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

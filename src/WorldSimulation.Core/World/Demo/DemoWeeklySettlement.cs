@@ -240,7 +240,13 @@ public enum DemoSettlementEventKind
     FaithExtinct = 16,
 
     /// <summary>第 12-1 章 C2：遷徙或開拓隊伍途中遭野獸襲擊（人數欄＝死亡人數；直接原因＝隊伍的外移事件）。</summary>
-    BeastAttack = 17
+    BeastAttack = 17,
+
+    /// <summary>第 12-1 章 C3（參考 WorldBox）：地震、龍捲風、隕石、洪水（人數欄＝死亡人數，可為 0；根因）。</summary>
+    Earthquake = 18,
+    Tornado = 19,
+    Meteorite = 20,
+    Flood = 21
 }
 
 /// <summary>
@@ -283,7 +289,8 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
-                or DemoSettlementEventKind.BeastAttack
+                or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
+                or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
@@ -337,7 +344,8 @@ public sealed record DemoSettlementWeekLedger(
     long ChildStarvationDeaths = 0,
     long ElderStarvationDeaths = 0,
     long SourceSlack = 0,
-    long ToolYieldPercent = 0)
+    long ToolYieldPercent = 0,
+    long DisasterDeaths = 0)
 {
     /// <summary>第 08-6 章 e 節：本週每名勞力可採量（工具加成後）。</summary>
     public long YieldPerWorker(DemoWeeklyTempConfig config)
@@ -380,7 +388,7 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>M1_POP 的人口帳部分。</summary>
     public bool PopulationBalanced
-        => PopulationOpening + Births - Deaths + Immigrants - Emigrants == PopulationClosing;
+        => PopulationOpening + Births - Deaths - DisasterDeaths + Immigrants - Emigrants == PopulationClosing; // 第 12-1 章 C3：天災死亡另一欄
 
     public bool NonNegative
         => ReserveOpening >= 0 && Regenerated >= 0 && Harvested >= 0 && ReserveClosing >= 0
@@ -630,7 +638,8 @@ internal static class DemoWeeklySettlement
         Func<int, long>? toolYieldPercent = null,
         Func<int, bool>? wells = null,
         Func<DemoCatchmentFoodSource, long>? sourcePercent = null,
-        Func<DemoMigrationBatch, long>? beastAttack = null)
+        Func<DemoMigrationBatch, long>? beastAttack = null,
+        Func<int, DemoDisasterStrike?>? disaster = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -940,7 +949,13 @@ internal static class DemoWeeklySettlement
             CapHopeDebt(ref debt, ref recovered);
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
-            var survivors = people - deaths;
+            // 第 12-1 章 C3：本週的天災（希望時代不發生）；至少留一人【TEMP】，天災死者不減飢餓債。
+            var strike = hope ? null : disaster?.Invoke(settlement.Id);
+            var disasterDeaths = strike is null ? 0 : Math.Max(0, Math.Min(people - deaths - 1, strike.Deaths));
+            var survivors = people - deaths - disasterDeaths;
+            if (strike is not null)
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name, strike.Kind, disasterDeaths,
+                    strike.Cause + (disasterDeaths > 0 ? $"，{disasterDeaths} 人罹難" : "，沒有人罹難")), 0));
             if (survivors == 0)
                 removedByDeath = debt; // 聚落無人倖存：剩餘飢餓債沒有承擔者。
             debt -= removedByDeath;
@@ -1182,7 +1197,8 @@ internal static class DemoWeeklySettlement
                 AdultWorkersOpening: adultWorkers?.GetValueOrDefault(settlement.Id) ?? people,
                 FoodSpoiled: spoiled, WaterShortage: waterShortage, WaterCarriers: waterPlan.Carriers,
                 SourceSlack: slackBySettlement.GetValueOrDefault(settlement.Id),
-                ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0));
+                ToolYieldPercent: config.SharedCatchmentEnabled ? toolYieldPercent?.Invoke(settlement.Id) ?? 0 : 0,
+                DisasterDeaths: disasterDeaths));
         }
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
@@ -1344,7 +1360,9 @@ internal static class DemoWeeklySettlement
             var birthEvents = report.Events
                 .Where(e => e.SettlementId == ledger.SettlementId && e.MigrationBatchId == 0
                     && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
-            if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths
+            // 第 12-1 章 C3：天災死亡對天災事件。
+            var disasterEvents = report.Events.Where(e => e.SettlementId == ledger.SettlementId && DemoDisasters.IsDisaster(e.Kind)).Sum(e => e.Count);
+            if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths || disasterEvents != ledger.DisasterDeaths
                 || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId
                     && e.Kind == DemoSettlementEventKind.StarvationDeath && string.IsNullOrWhiteSpace(e.Cause)))
@@ -1425,7 +1443,7 @@ internal static class DemoWeeklySettlement
         var closing = report.Settlements.Sum(l => l.PopulationClosing)
             + migrations.Where(m => !m.Arrived).Sum(m => m.PopulationClosing);
         var births = report.Settlements.Sum(l => l.Births) + migrations.Sum(m => m.Births);
-        var deaths = report.Settlements.Sum(l => l.Deaths) + migrations.Sum(m => m.Deaths + m.NaturalDeaths + m.AttackDeaths);
+        var deaths = report.Settlements.Sum(l => l.Deaths + l.DisasterDeaths) + migrations.Sum(m => m.Deaths + m.NaturalDeaths + m.AttackDeaths);
         if (opening + births - deaths != closing)
             throw new InvalidOperationException(
                 $"第 {report.Week} 週世界人口不守恆：{opening}＋{births}－{deaths}≠{closing}（含途中人口）。");

@@ -184,6 +184,9 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-11 章：已消失的遺跡（不重要的遺跡荒廢數年後還原成原本的土地，地圖不再畫）。</summary>
     public IReadOnlySet<int> FadedRuins { get; set; } = new HashSet<int>();
 
+    /// <summary>第 12-1 章 C3：一年內遭天災的聚落（地圖畫災害標記）。</summary>
+    public IReadOnlySet<int> RecentDisasters { get; set; } = new HashSet<int>();
+
     /// <summary>畫面上看得到的聚落（已消失的遺跡＝null）。</summary>
     private DemoSettlement? VisibleSite(DemoHexCell cell)
         => Sites?.SettlementAt(cell.Column, cell.Row) is { } s && !FadedRuins.Contains(s.Id) ? s : null;
@@ -286,6 +289,9 @@ public partial class DemoHexMap : Control
             }
             else if (VisibleSite(cell) is { } settlement)
             {
+                // 第 12-1 章 C3：一年內遭天災的聚落在右上角疊災害標記。
+                if (RecentDisasters.Contains(settlement.Id))
+                    DrawMarker(ArtAssets.IconDisaster, center + new Vector2(radius * 0.45f, -radius * 0.45f), radius * 0.8f);
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
                 // V0-06B: settlements founded by migrants get a white ring so the new dot stands out.
