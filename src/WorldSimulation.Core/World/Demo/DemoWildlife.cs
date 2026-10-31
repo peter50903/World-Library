@@ -205,7 +205,7 @@ public static class DemoWildlife
         }
 
         // ④ 狩獵加成名單：會狩獵且採集範圍內獵物豐富。
-        var next = new DemoWildlifeState(prey.ToImmutableArray(), wolves.ToImmutableArray(), week) { Hunting = state.Hunting };
+        var next = new DemoWildlifeState(prey.ToImmutableArray(), wolves.ToImmutableArray(), week) { Hunting = state.Hunting, Spells = state.Spells }; // 第 12-1 章 C3b：環境狀態要帶著走
         var rich = living.Where(s => hunts(s.Id) && PreyLevel(next, map, s) == 2).Select(s => s.Id).ToImmutableList();
         var last = state.Hunting.LastOrDefault();
         var hunting = last is not null && last.SettlementIds.SequenceEqual(rich) ? state.Hunting : state.Hunting.Add(new DemoHuntingYear(week, rich));
