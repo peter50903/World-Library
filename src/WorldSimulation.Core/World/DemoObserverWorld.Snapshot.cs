@@ -96,7 +96,7 @@ public sealed partial class DemoObserverWorld
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
                 (s, week) => waterKnowledge.Records is null ? 0
                     : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week, cultureHistory.MainHistory is null ? null : cultureHistory.TraitsAt,
-                        wildlife.Hunting is null ? null : wildlife.HuntingAt));
+                        wildlife.Hunting is null ? null : wildlife.HuntingAt, wildlife.Spells));
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
@@ -214,9 +214,19 @@ public sealed partial class DemoObserverWorld
                     || wildlife.Prey[x.i] > DemoWildlife.Capacity(x.c).Prey || wildlife.Wolves[x.i] > DemoWildlife.Capacity(x.c).Wolves)
                 || wildlife.LastYearWeek < 0 || wildlife.LastYearWeek > days / 7
                 || wildlife.Hunting.Any(h => h.SettlementIds is null || h.SettlementIds.Any(id => sites.Settlements.All(s => s.Id != id)))
-                || wildlife.Hunting.Zip(wildlife.Hunting.Skip(1)).Any(p => p.Second.FromWeek <= p.First.FromWeek))
+                || wildlife.Hunting.Zip(wildlife.Hunting.Skip(1)).Any(p => p.Second.FromWeek <= p.First.FromWeek)
+                // 第 12-1 章 C3b：環境狀態指向存在的聚落、期間正確、格在地圖內。
+                || wildlife.Spells is null
+                || wildlife.Spells.Any(x => x.Cells is null || !DemoEnvironment.IsSpell(x.Kind) || x.FromWeek < 0 || x.FromWeek > days / 7
+                    || x.ToWeek != x.FromWeek + (x.Kind == DemoSettlementEventKind.Heatwave ? DemoEnvironment.TempHeatwaveWeeks : DemoEnvironment.TempWildfireWeeks)
+                    || sites.Settlements.All(s => s.Id != x.SettlementId)
+                    || x.Cells.Any(c => c.Column < 0 || c.Row < 0 || c.Column >= map.Columns || c.Row >= map.Rows)))
                 Reject("野生動物狀態不合法");
-            candidate._wildlife = wildlife with { Hunting = wildlife.Hunting.Select(h => h with { SettlementIds = h.SettlementIds.ToImmutableList() }).ToImmutableList() };
+            candidate._wildlife = wildlife with
+            {
+                Hunting = wildlife.Hunting.Select(h => h with { SettlementIds = h.SettlementIds.ToImmutableList() }).ToImmutableList(),
+                Spells = wildlife.Spells!.Select(x => x with { Cells = x.Cells.ToImmutableList() }).ToImmutableList()
+            };
         }
         candidate._culture = culture with
         {

@@ -249,7 +249,15 @@ public enum DemoSettlementEventKind
     Flood = 21,
 
     /// <summary>第 12-1 章：隕石落點留下礦脈（人數欄＝格編號；直接原因＝同週同聚落的隕石事件）。</summary>
-    MeteoriteOre = 22
+    MeteoriteOre = 22,
+
+    /// <summary>第 12-1 章 C3b：熱浪開始（人數欄＝受影響格數；根因）與結束（直接原因＝開始）。</summary>
+    Heatwave = 23,
+    HeatwaveEnded = 24,
+
+    /// <summary>第 12-1 章 C3b：野火（人數欄＝燒毀格數；根因）與森林重新長出（直接原因＝野火）。</summary>
+    Wildfire = 25,
+    ForestRegrown = 26
 }
 
 /// <summary>
@@ -294,6 +302,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                 or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
+                or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
@@ -642,7 +651,8 @@ internal static class DemoWeeklySettlement
         Func<int, bool>? wells = null,
         Func<DemoCatchmentFoodSource, long>? sourcePercent = null,
         Func<DemoMigrationBatch, long>? beastAttack = null,
-        Func<int, DemoDisasterStrike?>? disaster = null)
+        Func<int, DemoDisasterStrike?>? disaster = null,
+        Func<DemoSettlement, long>? hungerCause = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -972,7 +982,8 @@ internal static class DemoWeeklySettlement
                     DemoSettlementEventKind.Hunger, survivalShortage,
                     (shortage > 0 ? $"需求 {demand}，可取得 {available}" : "糧食足夠")
                     + (waterShortage > 0 ? $"，缺水（生存債 +{waterShortage}）" : "")
-                    + $"，飢餓債 {debtOpening}→{checked(debtOpening + survivalShortage)}"), 0);
+                    + $"，飢餓債 {debtOpening}→{checked(debtOpening + survivalShortage)}"),
+                    hungerCause?.Invoke(settlement) ?? 0); // 第 12-1 章 C3b：熱浪範圍內的缺糧以熱浪為原因
                 hungerEventId = hunger.EventId;
                 events.Add(hunger);
             }

@@ -43,7 +43,15 @@ public static class DemoForagingWorld
     public static IReadOnlyList<DemoCatchmentFoodSource> WithPercent(IReadOnlyList<DemoCatchmentFoodSource> sources,
         Func<DemoCatchmentFoodSource, long>? percent)
         => percent is null ? sources
-            : sources.Select(s => percent(s) is var p and > 0 ? s with { FoodAvailable = checked(s.FoodAvailable * (100 + p) / 100) } : s).ToArray();
+            : sources.Select(s => percent(s) is var p and not 0
+                ? s with { FoodAvailable = Reduced(s.FoodAvailable, p) } : s).ToArray(); // 第 12-1 章 C3b：可為負（熱浪、野火）
+
+    /// <summary>加成後的每週供應；減產時原本有供應的來源至少留 1（來源仍存在）。</summary>
+    private static long Reduced(long supply, long percent)
+    {
+        var value = checked(supply * Math.Max(0, 100 + percent) / 100);
+        return percent < 0 && supply > 0 ? Math.Max(1, value) : value;
+    }
 
     /// <summary>第 08-6 章 c 節：佔格之外的自然來源，<paramref name="farmland"/> 格改為農田來源。</summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied,

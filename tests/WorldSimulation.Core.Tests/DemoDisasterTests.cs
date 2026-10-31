@@ -87,3 +87,46 @@ public sealed class DemoMeteoriteOreTests
             e => DemoLandClearing.CellOf(world.Map, e.Count) == cell);
     }
 }
+
+/// <summary>第 12-1 章 C3b：熱浪與野火是一段期間的環境狀態。</summary>
+public sealed class DemoEnvironmentTests
+{
+    [Fact]
+    public void SpellsCutTheirSourcesOnlyDuringTheirPeriod()
+    {
+        var cell = new DemoCellRef(2, 3);
+        var heat = new DemoEnvironmentSpell(DemoSettlementEventKind.Heatwave, 1, 26, 78, 500, System.Collections.Immutable.ImmutableList.Create(cell));
+        var fire = new DemoEnvironmentSpell(DemoSettlementEventKind.Wildfire, 1, 26, 182, 501, System.Collections.Immutable.ImmutableList.Create(cell));
+        var grass = new DemoCatchmentFoodSource(1, 2, 3, DemoCatchmentSourceKind.GrasslandForage, 8);
+        var forest = new DemoCatchmentFoodSource(2, 2, 3, DemoCatchmentSourceKind.Forest, 20);
+        var spells = new[] { heat, fire };
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, grass, 26));
+        Assert.Equal(DemoEnvironment.TempHeatwaveSourcePercent, DemoEnvironment.SourcePercent(spells, grass, 27));
+        Assert.Equal(DemoEnvironment.TempHeatwaveSourcePercent, DemoEnvironment.SourcePercent(spells, grass, 78));
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, grass, 79));
+        Assert.Equal(DemoEnvironment.TempWildfireSourcePercent, DemoEnvironment.SourcePercent(spells, forest, 100));
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, forest with { Column = 5 }, 100));
+        var reduced = DemoForagingWorld.WithPercent(new[] { forest }, s => DemoEnvironment.SourcePercent(spells, s, 100));
+        Assert.Equal(2, Assert.Single(reduced).FoodAvailable);
+        var settlement = new DemoSettlement(1, "甲", 2, 3);
+        Assert.Equal(500, DemoEnvironment.HeatwaveCause(spells, settlement, 40));
+        Assert.Equal(0, DemoEnvironment.HeatwaveCause(spells, settlement, 80));
+    }
+
+    [Fact]
+    public void LivingWorldHeatwavesAndWildfiresStartEndAndReplay()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 70 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        var spells = world.Wildlife.Spells;
+        Assert.NotEmpty(spells);
+        var events = world.SettlementEvents();
+        foreach (var spell in spells.Where(x => x.ToWeek <= world.CommittedWeeks))
+            Assert.Contains(events, e => e.CauseEventId == spell.EventId
+                && e.Kind is DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.ForestRegrown);
+        Assert.Empty(world.BuildCausalIndex().Problems);
+        var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
+        Assert.Equal(world.ExportTempSave(), reloaded.ExportTempSave());
+    }
+}

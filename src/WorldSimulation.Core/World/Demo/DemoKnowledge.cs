@@ -219,7 +219,16 @@ public static class DemoKnowledge
     /// （<paramref name="traitsAt"/>＝聚落在該週結算時的主要文化特性），取相鄰聚落中最高者。
     /// </summary>
     public static long SourcePercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
-        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null, Func<int, int, bool>? huntingAt = null)
+        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null, Func<int, int, bool>? huntingAt = null,
+        IReadOnlyList<DemoEnvironmentSpell>? spells = null)
+    {
+        // 第 12-1 章 C3b：熱浪、野火的減產另加在技術與文化加成之後（不受「取相鄰聚落最高者」影響）。
+        var environment = spells is null ? 0 : DemoEnvironment.SourcePercent(spells, source, week);
+        return checked(Boosts(state, sites, map, source, week, traitsAt, huntingAt) + environment);
+    }
+
+    private static long Boosts(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
+        Func<int, int, IReadOnlyCollection<string>>? traitsAt, Func<int, int, bool>? huntingAt)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(sites);

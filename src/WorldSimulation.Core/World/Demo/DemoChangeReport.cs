@@ -131,7 +131,8 @@ public sealed class DemoChangeTracker
                     case DemoSettlementEventKind.FaithFounded: _faiths++; break;
                     case DemoSettlementEventKind.BeastAttack: _attacks++; break;
                     case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
-                        or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: _disasters++; break;
+                        or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
+                        or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire: _disasters++; break; // 第 12-1 章 C3b
                     case DemoSettlementEventKind.EraBegan:
                         _eras++;
                         PioneerEraYear ??= year;
