@@ -253,13 +253,6 @@ public static class DemoHexFoodCatchment
     private static Dictionary<int, long> ProportionalShares(long available, IReadOnlyList<DemoCatchmentFoodClaim> eligible,
         IReadOnlyDictionary<int, long> needs, IReadOnlyDictionary<int, long> labour)
     {
-        if (eligible.Count == 1)
-        {
-            // 第 08-13 章第 5 節：只有一個聚落可及時，注水分配的結果就是 min(可採, 剩餘空間)。
-            var only = eligible[0];
-            var room = Math.Min(needs[only.SettlementId], labour[only.SettlementId]);
-            return new Dictionary<int, long> { [only.SettlementId] = available > 0 && room > 0 && only.HarvestCapacity > 0 ? Math.Min(available, room) : 0 };
-        }
         var takes = eligible.ToDictionary(c => c.SettlementId, _ => 0L);
         long Room(DemoCatchmentFoodClaim c) => Math.Min(needs[c.SettlementId], labour[c.SettlementId]) - takes[c.SettlementId];
         while (available > 0)
