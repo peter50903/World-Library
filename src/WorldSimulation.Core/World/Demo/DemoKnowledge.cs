@@ -502,8 +502,13 @@ public static class DemoKnowledge
     {
         ArgumentNullException.ThrowIfNull(map);
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        return map.Cells.Any(c => (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)
-            && DemoWorldSites.HexDistance(origin, c) <= TempOreRange); // 第 12-1 章：含隕石留下的礦脈
+        // 第 08-13 章第 5 節：只看範圍內的格（原本掃全圖；結果相同）。
+        for (var dq = -TempOreRange; dq <= TempOreRange; dq++)
+            for (var dr = Math.Max(-TempOreRange, -dq - TempOreRange); dr <= Math.Min(TempOreRange, -dq + TempOreRange); dr++)
+                if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c
+                    && (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)) // 第 12-1 章：含隕石留下的礦脈
+                    return true;
+        return false;
     }
 
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement settlement)

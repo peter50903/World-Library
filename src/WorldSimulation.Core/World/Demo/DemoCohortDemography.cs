@@ -289,8 +289,7 @@ public sealed class DemoCohortDemography
     public long AdultsIn(int settlementId, DemoTempDemographyRules rules)
     {
         var day = LastWeek * 7;
-        return _groups.Where(kv => kv.Key.Settlement == settlementId && kv.Key.Batch == 0
-            && AgeAt(kv.Key.BirthYear, day) >= rules.AdultAgeYears).Sum(kv => kv.Value);
+        return GroupsOfPlace(settlementId, 0).Where(kv => AgeAt(kv.Key.BirthYear, day) >= rules.AdultAgeYears).Sum(kv => kv.Value);
     }
 
     public long ResidentsOf(int settlementId) => GroupsOfPlace(settlementId, 0).Sum(kv => kv.Value);
