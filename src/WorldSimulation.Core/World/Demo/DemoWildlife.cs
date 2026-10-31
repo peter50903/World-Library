@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -207,5 +209,32 @@ public static class DemoWildlife
         var last = state.Hunting.LastOrDefault();
         var hunting = last is not null && last.SettlementIds.SequenceEqual(rich) ? state.Hunting : state.Hunting.Add(new DemoHuntingYear(week, rich));
         return next with { Hunting = hunting };
+    }
+
+    /// <summary>【TEMP】第 12-1 章 C2：狼至少這麼多隻的格才會襲擊；每隻狼每週襲擊機率（%）；已會弓箭的出發聚落機率減半。</summary>
+    public const int TempAttackMinWolves = 2;
+    public const int TempAttackPercentPerWolf = 2;
+
+    public const string ArcheryTech = "TECH_ARCHERY";
+
+    private const string AttackNamespace = "TEMP-BEAST-v1";
+
+    /// <summary>
+    /// 第 12-1 章 C2：隊伍本週所在格的狼群襲擊死亡人數（0＝沒有襲擊；1～2 人）。
+    /// 抽樣用戰鬥流的實體局部亂數（實體＝隊伍、索引＝週次），不推進計數器，重跑結果相同。
+    /// </summary>
+    public static long AttackDeaths(DemoWildlifeState state, DemoHexWorld map, DemoMigrationBatch batch, int week, RngRegistry rng, bool archery)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(batch);
+        if (state.Wolves.IsDefaultOrEmpty)
+            return 0;
+        var wolves = state.Wolves[Index(map, batch.Cell.Column, batch.Cell.Row)];
+        if (wolves < TempAttackMinWolves)
+            return 0;
+        var chance = wolves * TempAttackPercentPerWolf * (archery ? 50 : 100) / 100;
+        var r = EntityLocalRandom.Create(rng, EntityId.From((ulong)batch.Id), RngStreams.Combat, AttackNamespace).GetUInt64((ulong)week);
+        return (long)(r % 100UL) < chance ? 1 + (long)(r / 100UL % 2UL) : 0;
     }
 }

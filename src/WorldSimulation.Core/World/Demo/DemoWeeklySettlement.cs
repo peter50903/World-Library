@@ -237,7 +237,10 @@ public enum DemoSettlementEventKind
     FaithFounded = 15,
 
     /// <summary>第 08-8 章 B3：信仰失傳（人數欄＝信仰編號；根因）。</summary>
-    FaithExtinct = 16
+    FaithExtinct = 16,
+
+    /// <summary>第 12-1 章 C2：遷徙或開拓隊伍途中遭野獸襲擊（人數欄＝死亡人數；直接原因＝隊伍的外移事件）。</summary>
+    BeastAttack = 17
 }
 
 /// <summary>
@@ -280,6 +283,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
+                or DemoSettlementEventKind.BeastAttack
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
@@ -625,7 +629,8 @@ internal static class DemoWeeklySettlement
         bool? hopeRules = null,
         Func<int, long>? toolYieldPercent = null,
         Func<int, bool>? wells = null,
-        Func<DemoCatchmentFoodSource, long>? sourcePercent = null)
+        Func<DemoCatchmentFoodSource, long>? sourcePercent = null,
+        Func<DemoMigrationBatch, long>? beastAttack = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -758,7 +763,9 @@ internal static class DemoWeeklySettlement
             CapHopeDebt(ref debt, ref recovered);
             var deaths = hope ? 0 : Math.Min(people, debt / config.HungerDebtPerStarvationDeath);
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
-            var survivors = people - deaths;
+            // 第 12-1 章 C2：餓死之後，經過狼群的隊伍可能遭襲（希望時代不發生）；遭襲者不減飢餓債。
+            var attacked = hope || beastAttack is null ? 0 : Math.Min(people - deaths, Math.Max(0, beastAttack(batch)));
+            var survivors = people - deaths - attacked;
             if (survivors == 0)
                 removedByDeath = debt;
             debt -= removedByDeath;
@@ -776,6 +783,16 @@ internal static class DemoWeeklySettlement
                         : survivors == 0
                         ? $"前往{batch.ToName}途中攜帶的糧食耗盡，隊伍全數死亡"
                         : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）",
+                    batch.Id), emigrationEventId));
+            }
+
+            if (attacked > 0)
+            {
+                events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
+                    DemoSettlementEventKind.BeastAttack, attacked,
+                    survivors == 0
+                        ? $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}前往{batch.ToName}途中遭狼群襲擊，全數罹難"
+                        : $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}前往{batch.ToName}途中遭狼群襲擊，{attacked} 人罹難",
                     batch.Id), emigrationEventId));
             }
 
@@ -828,7 +845,7 @@ internal static class DemoWeeklySettlement
                 batch.Cell, batch.Path[step], Departed: false, Arrived: arrived,
                 people, deaths, survivors,
                 batch.Food, consumed, foodClosing, shortage,
-                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding));
+                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding, AttackDeaths: attacked));
         }
 
         foreach (var settlement in weekSites.Settlements.OrderBy(s => s.Id))
@@ -1366,6 +1383,10 @@ internal static class DemoWeeklySettlement
             if (migrantDeaths.Sum(e => e.Count) != m.Deaths || migrantDeaths.Any(e => string.IsNullOrWhiteSpace(e.Cause)))
                 throw new InvalidOperationException(
                     $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 途中死亡沒有對應的帶原因事件（death without cause）。");
+            // 第 12-1 章 C2：遭野獸襲擊的死亡也要有恰好對應的事件。
+            if (report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.BeastAttack).Sum(e => e.Count) != m.AttackDeaths)
+                throw new InvalidOperationException(
+                    $"第 {report.Week} 週遷徙隊伍 #{m.BatchId} 遭襲死亡沒有對應的事件。");
             var travelBirths = report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
             var travelNatural = report.Events.Where(e => e.MigrationBatchId == m.BatchId && e.Kind == DemoSettlementEventKind.NaturalDeath).Sum(e => e.Count);
             if (travelBirths != m.Births || travelNatural != m.NaturalDeaths)
@@ -1405,7 +1426,7 @@ internal static class DemoWeeklySettlement
         var closing = report.Settlements.Sum(l => l.PopulationClosing)
             + migrations.Where(m => !m.Arrived).Sum(m => m.PopulationClosing);
         var births = report.Settlements.Sum(l => l.Births) + migrations.Sum(m => m.Births);
-        var deaths = report.Settlements.Sum(l => l.Deaths) + migrations.Sum(m => m.Deaths + m.NaturalDeaths);
+        var deaths = report.Settlements.Sum(l => l.Deaths) + migrations.Sum(m => m.Deaths + m.NaturalDeaths + m.AttackDeaths);
         if (opening + births - deaths != closing)
             throw new InvalidOperationException(
                 $"第 {report.Week} 週世界人口不守恆：{opening}＋{births}－{deaths}≠{closing}（含途中人口）。");

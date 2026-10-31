@@ -221,7 +221,7 @@ public static class DemoCenturyRun
                 {
                     // 第 07 章 b 節：途中出生與自然死亡也是世界人口的增減。
                     births = checked(births + m.Births);
-                    deaths = checked(deaths + m.Deaths + m.NaturalDeaths);
+                    deaths = checked(deaths + m.Deaths + m.NaturalDeaths + m.AttackDeaths);
                     naturalDeaths = checked(naturalDeaths + m.NaturalDeaths);
                     consumed = checked(consumed + m.FoodConsumed);
                     shortage = checked(shortage + m.FoodShortage);
@@ -243,6 +243,9 @@ public static class DemoCenturyRun
                             break;
                         case DemoSettlementEventKind.MigrantStarvationDeath:
                             starvationEvents++;
+                            deathsInEvents = checked(deathsInEvents + e.Count);
+                            break;
+                        case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2
                             deathsInEvents = checked(deathsInEvents + e.Count);
                             break;
                         case DemoSettlementEventKind.Emigration:

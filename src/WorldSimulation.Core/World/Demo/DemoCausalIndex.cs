@@ -269,11 +269,12 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.Arrival:
             case DemoSettlementEventKind.SettlementFounded:
             case DemoSettlementEventKind.MigrantStarvationDeath:
+            case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2
             {
                 if (parent is null || parent.Kind != DemoSettlementEventKind.Emigration
                     || parent.MigrationBatchId != e.MigrationBatchId || parent.Week >= e.Week)
                     return $"直接原因必須是隊伍 #{e.MigrationBatchId} 在更早週次的外移事件";
-                if (e.Kind == DemoSettlementEventKind.MigrantStarvationDeath && parent.SettlementId != e.SettlementId)
+                if (e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.BeastAttack && parent.SettlementId != e.SettlementId)
                     return "途中餓死事件的聚落必須是隊伍的出發聚落";
                 // GPT 審 #91：事件本身也要有當週隊伍帳為證據，偽造的抵達／建立／途中餓死不能只靠父事件過關。
                 return TravelLedgerProblem(report, e);
@@ -366,6 +367,9 @@ public sealed class DemoCausalIndex
             DemoSettlementEventKind.MigrantStarvationDeath when ledger.FromSettlementId != e.SettlementId
                 || ledger.Deaths <= 0 || ledger.Deaths != e.Count
                 => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 途中死亡（事件死亡 {e.Count}，週帳死亡 {ledger.Deaths}）",
+            DemoSettlementEventKind.BeastAttack when ledger.FromSettlementId != e.SettlementId
+                || ledger.AttackDeaths <= 0 || ledger.AttackDeaths != e.Count
+                => $"週帳沒有對應的隊伍 #{e.MigrationBatchId} 遭襲死亡（事件 {e.Count}，週帳 {ledger.AttackDeaths}）",
             _ => null
         };
     }
@@ -514,6 +518,7 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.Emigration => "外移",
         DemoSettlementEventKind.Arrival => "抵達",
         DemoSettlementEventKind.MigrantStarvationDeath => "途中餓死",
+        DemoSettlementEventKind.BeastAttack => "途中遭襲",
         DemoSettlementEventKind.SettlementFounded => "建立新聚落",
         DemoSettlementEventKind.Birth => "出生",
         DemoSettlementEventKind.NaturalDeath => "自然死亡",

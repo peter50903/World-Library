@@ -138,6 +138,7 @@
 | 成長與捕食 | 獵物往承載缺口長 25%（至少 1）；每狼每年吃 3 獵物，吃飽增 20%（至少 1），不足按缺口餓死；超出承載依方向順序移往鄰格，沒地方就死亡 | 簡化的捕食者—獵物模型 |
 | 狩獵 | 會狩獵的聚落每名成年人每年取走 0.2 隻（無條件進位），附近的狼每年驅散一半 | 人類活動壓低族群（49C MON_HUMAN） |
 | 狩獵加成 | 會狩獵且採集範圍內獵物達承載一半以上：森林與草原野採來源＋10%（依年度名單） | 獸肉；不另開食物種類，避免週帳多一類來源 |
+| 獸襲（C2） | 隊伍所在格狼 ≥ 2 時每週機率＝狼數×2%（出發聚落會弓箭則減半），每次 1～2 人；希望時代不發生；遭襲者不減飢餓債 | 12-1 第 3 節；隊伍帳另一欄，餓死規則不變 |
 
 #### D06-3｜丘陵與礦脈（第 06-3 章，Claude 定案【TEMP】）
 
@@ -502,7 +503,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
-| `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 6 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載（D12-1） |
+| `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 6 格、改信速度、創立者文化加權（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 8 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
@@ -537,7 +538,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 21 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 22 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

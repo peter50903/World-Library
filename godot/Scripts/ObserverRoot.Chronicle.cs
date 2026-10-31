@@ -43,6 +43,7 @@ public partial class ObserverRoot
         DemoChronicleCategory.Population => "人口里程碑",
         DemoChronicleCategory.Culture => "文化",
         DemoChronicleCategory.Faith => "信仰",
+        DemoChronicleCategory.Wilds => "野外",
         _ => category.ToString()
     };
 
