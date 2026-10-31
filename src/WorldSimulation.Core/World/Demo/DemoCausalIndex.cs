@@ -235,8 +235,10 @@ public sealed class DemoCausalIndex
             }
             case DemoSettlementEventKind.Hunger:
             {
-                if (parent is not null)
-                    return "飢餓是根因（本週需求大於可取得），不應有直接原因事件";
+                // 第 12-1 章 C3b：熱浪範圍內的缺糧以熱浪為直接原因（DST_CHAIN）；其他飢餓是根因。
+                if (parent is not null && !(parent.Kind == DemoSettlementEventKind.Heatwave && parent.Week < e.Week
+                        && e.Week <= parent.Week + DemoEnvironment.TempHeatwaveWeeks))
+                    return "飢餓是根因（本週需求大於可取得），不應有直接原因事件（熱浪期間的缺糧除外）";
                 var ledger = report.Settlements.SingleOrDefault(l => l.SettlementId == e.SettlementId);
                 var survival = ledger is null ? 0 : ledger.FoodShortage + ledger.WaterShortage;
                 if (ledger is null || survival <= 0 || survival != e.Count)
@@ -348,6 +350,15 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.Flood:
                 // 第 12-1 章 C3：天災是根因（地理前提與機率另見 DemoDisasters）。
                 return parent is null && e.Count >= 0 ? null : "天災是根因，事件人數欄是死亡人數";
+            case DemoSettlementEventKind.Heatwave:
+            case DemoSettlementEventKind.Wildfire:
+                return parent is null && e.Count > 0 ? null : "熱浪、野火是根因，事件人數欄是受影響格數";
+            case DemoSettlementEventKind.HeatwaveEnded:
+                return parent is { Kind: DemoSettlementEventKind.Heatwave } && e.Week == parent.Week + DemoEnvironment.TempHeatwaveWeeks
+                    ? null : "熱浪結束的直接原因必須是一年前的熱浪";
+            case DemoSettlementEventKind.ForestRegrown:
+                return parent is { Kind: DemoSettlementEventKind.Wildfire } && e.Week == parent.Week + DemoEnvironment.TempWildfireWeeks
+                    ? null : "森林重生的直接原因必須是三年前的野火";
             case DemoSettlementEventKind.MeteoriteOre:
                 // 第 12-1 章：直接原因＝同週同聚落的隕石事件；人數欄＝格編號。
                 return parent is { Kind: DemoSettlementEventKind.Meteorite } && parent.Week == e.Week && parent.SettlementId == e.SettlementId && e.Count > 0

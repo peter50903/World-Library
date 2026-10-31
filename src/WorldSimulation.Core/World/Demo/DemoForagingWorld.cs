@@ -43,7 +43,8 @@ public static class DemoForagingWorld
     public static IReadOnlyList<DemoCatchmentFoodSource> WithPercent(IReadOnlyList<DemoCatchmentFoodSource> sources,
         Func<DemoCatchmentFoodSource, long>? percent)
         => percent is null ? sources
-            : sources.Select(s => percent(s) is var p and > 0 ? s with { FoodAvailable = checked(s.FoodAvailable * (100 + p) / 100) } : s).ToArray();
+            : sources.Select(s => percent(s) is var p and not 0
+                ? s with { FoodAvailable = checked(s.FoodAvailable * Math.Max(0, 100 + p) / 100) } : s).ToArray(); // 第 12-1 章 C3b：可為負（熱浪、野火）
 
     /// <summary>第 08-6 章 c 節：佔格之外的自然來源，<paramref name="farmland"/> 格改為農田來源。</summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, IReadOnlyList<DemoCellRef>? occupied,

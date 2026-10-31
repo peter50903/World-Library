@@ -18,6 +18,9 @@ public sealed record DemoWildlifeState(ImmutableArray<int> Prey, ImmutableArray<
 {
     public static DemoWildlifeState Empty { get; } = new(ImmutableArray<int>.Empty, ImmutableArray<int>.Empty, 0);
 
+    /// <summary>第 12-1 章 C3b：進行中的環境狀態（熱浪、野火；依開始事件編號排序）。</summary>
+    public ImmutableList<DemoEnvironmentSpell> Spells { get; init; } = ImmutableList<DemoEnvironmentSpell>.Empty;
+
     /// <summary>每一年的狩獵加成名單（依週次排序）。</summary>
     public ImmutableList<DemoHuntingYear> Hunting { get; init; } = ImmutableList<DemoHuntingYear>.Empty;
 
@@ -27,7 +30,8 @@ public sealed record DemoWildlifeState(ImmutableArray<int> Prey, ImmutableArray<
 
     public string Fingerprint()
         => $"wl{LastYearWeek}:" + string.Join(',', Prey) + "|" + string.Join(',', Wolves) + ";"
-           + string.Concat(Hunting.Select(h => $"hy{h.FromWeek}=" + string.Join(',', h.SettlementIds) + ";"));
+           + string.Concat(Hunting.Select(h => $"hy{h.FromWeek}=" + string.Join(',', h.SettlementIds) + ";"))
+           + string.Concat(Spells.Select(x => $"sp{x.Kind}@{x.SettlementId}:{x.FromWeek}-{x.ToWeek}#{x.EventId}=" + string.Join(',', x.Cells.Select(c => $"{c.Column}.{c.Row}")) + ";"));
 }
 
 /// <summary>
@@ -129,6 +133,9 @@ public static class DemoWildlife
         if (state.Prey.IsDefaultOrEmpty || week - state.LastYearWeek < TempYearWeeks)
             return state;
         var human = Human(sites, land);
+        // 第 12-1 章 C3b：野火燒毀中的森林沒有動物（與人類佔用格同樣承載為 0）。
+        foreach (var spell in state.Spells.Where(x => x.Kind == DemoSettlementEventKind.Wildfire && week <= x.ToWeek))
+            human.UnionWith(spell.Cells);
         var prey = state.Prey.ToArray();
         var wolves = state.Wolves.ToArray();
         var cells = map.Cells;

@@ -458,10 +458,11 @@ public sealed partial class DemoObserverWorld
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
-                    _culture.TraitsAt, _wildlife.HuntingAt), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵
+                    _culture.TraitsAt, _wildlife.HuntingAt, _wildlife.Spells), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火
                 beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
-                disaster: id => strikes.GetValueOrDefault(id)); // 第 12-1 章 C3
+                disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
+                hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1))); // C3b
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
 
@@ -500,15 +501,18 @@ public sealed partial class DemoObserverWorld
                     id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
                     checked(landNextId + cleared.Count + split.Count));
                 culture = culture with { Faith = faith };
-                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).ToArray();
+                // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）；C3b：熱浪、野火的開始與結束（事件接在信仰之後）。
+                var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
+                var yearly = DemoWildlife.Advance(_wildlife, report.Week, Map, lifecycle.Outcome.Sites, land,
+                    id => lifecycle.Population.AdultsIn(id, DemoHumanLifecycle.Rules), id => knowledge.Knows(id, hunting));
+                var (wildlife, environmentEvents) = DemoEnvironment.Advance(yearly, report.Week, report.WorldTime, knowledge.Era, Map,
+                    lifecycle.Outcome.Sites, lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
+                    _rng, checked(landNextId + cleared.Count + split.Count + faithEvents.Count));
+                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);
-                // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）。
-                var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
-                var wildlife = DemoWildlife.Advance(_wildlife, report.Week, Map, lifecycle.Outcome.Sites, land,
-                    id => lifecycle.Population.AdultsIn(id, DemoHumanLifecycle.Rules), id => knowledge.Knows(id, hunting));
                 commit.StageCulture(culture, wildlife);
             }
             else

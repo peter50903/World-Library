@@ -132,6 +132,17 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Disaster, e.EventId,
                         Name(e.SettlementId), T($" 發生{DemoDisasters.Name(e.Kind)}：" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.Heatwave:
+                case DemoSettlementEventKind.Wildfire:
+                    // 第 12-1 章 C3b：熱浪、野火開始是重大事件；結束是一般事件。
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Disaster, e.EventId,
+                        Name(e.SettlementId), T(" 一帶" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.HeatwaveEnded:
+                case DemoSettlementEventKind.ForestRegrown:
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Disaster, e.EventId,
+                        Name(e.SettlementId), T(" 一帶" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.MeteoriteOre:
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Disaster, e.EventId,
                         Name(e.SettlementId), T(" 附近的" + DemoPlayerDetail.Clean(e.Cause)));

@@ -139,6 +139,7 @@
 | 狩獵 | 會狩獵的聚落每名成年人每年取走 0.2 隻（無條件進位），附近的狼每年驅散一半 | 人類活動壓低族群（49C MON_HUMAN） |
 | 狩獵加成 | 會狩獵且採集範圍內獵物達承載一半以上：森林與草原野採來源＋10%（依年度名單） | 獸肉；不另開食物種類，避免週帳多一類來源 |
 | 天災（C3a） | 世界層級事件池（WorldBox v09 結構）：每年第 26 週依時代候選池與權重抽 1 件（開拓時代：洪水 3、地震 3、龍捲風 3、隕石 1；希望時代空池），抽中後地震與隕石要世界人口 ≥300，再 30% 發生，最後從符合地理前提的有人聚落選 1 個；任何一關不過當年沒有天災、不重抽。後果：洪水 0～2 人＋範圍內農田各 50% 毀成開墾一半；地震 1～4 人；龍捲風 0～2 人＋毀 1 塊農田；隕石 1～3 人；至少留一人、不減飢餓債 | 使用者 2026-10-31 採用 WorldBox v09 研究的結構（世界事件池、時代候選池、規模門檻），數值不照搬 |
+| 熱浪、野火（C3b） | 開拓時代起每年第 26 週各擲一次 12%：熱浪找周圍以草原為主、不鄰河的聚落，一年內 2 格內草原野採與農田 −40%，範圍內的缺糧以熱浪為直接原因；野火找相鄰有森林的聚落，燒毀 2 格內 1～3 格森林，三年內這些森林 −90%、獵物歸零；開始為重大事件、結束為一般事件；不直接扣人命 | WorldBox v09：乾旱、霜害是持續的環境作用、不走事件池；做成有開始與結束的環境狀態；−90% 而非 −100% 讓來源仍存在、週帳不出現 0 供應 |
 | 隕石礦脈 | 隕石落在承受聚落相鄰的一格陸地（非聚落、非已有礦脈），該格留下礦脈；沒有可落的格就沒有 | WorldBox v09：隕石嘗試在落點附近放礦物、可能失敗；接上 D2 採礦 |
 | 獸襲（C2） | 隊伍所在格有狼時每週機率＝狼數×3%（原訂 ≥2 隻、2%，百年 0 次）（出發聚落會弓箭則減半），每次 1～2 人、至少留一人；希望時代不發生；遭襲者不減飢餓債 | 12-1 第 3 節；隊伍帳另一欄，餓死規則不變 |
 
@@ -505,6 +506,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
+| `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 3 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 6 格、改信速度、創立者文化加權（D08-8） |
@@ -541,7 +543,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 27 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 31 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
