@@ -410,7 +410,7 @@ public sealed partial class DemoObserverWorld
             // 第 12-1 章 C3：本週的天災（天災週才有；希望時代沒有）。
             var strikes = _demography is null || _knowledge.Era == DemoEra.Hope
                 ? (IReadOnlyDictionary<int, DemoDisasterStrike>)new Dictionary<int, DemoDisasterStrike>()
-                : DemoDisasters.Roll(checked(CommittedWeeks + 1), Map, _sites,
+                : DemoDisasters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, WorldPopulation, Map, _sites,
                     _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,

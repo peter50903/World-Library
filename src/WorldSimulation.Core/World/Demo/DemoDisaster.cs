@@ -7,9 +7,10 @@ namespace WorldSimulation.Core.World.Demo;
 public sealed record DemoDisasterStrike(int SettlementId, DemoSettlementEventKind Kind, long Deaths, string Cause);
 
 /// <summary>
-/// 第 12-1 章 C3a【TEMP 規則】天災（參考 WorldBox 的地震、龍捲風、隕石，另加河岸洪水）：
-/// 每年第 <see cref="TempYearWeek"/> 週對每個有人聚落依地理前提擲一次，依「洪水→地震→龍捲風→隕石」順序取第一個命中（一聚落一年最多一次）。
-/// 用事件流的實體局部亂數（實體＝聚落、索引＝年份），不推進計數器，重跑相同。希望時代沒有天災。
+/// 第 12-1 章 C3a【TEMP 規則】天災（使用者 2026-10-31 採用 WorldBox v09 研究的結構，不照搬數值）：
+/// <b>世界層級事件池</b>——每年第 <see cref="TempYearWeek"/> 週，依目前時代的候選池與權重抽 1 件；
+/// 抽中後才檢查世界人口門檻與發生機率，再從符合地理前提的有人聚落中選 1 個承受；任何一關不過當年就沒有天災，<b>不重抽</b>。
+/// 頻率因此與聚落數無關。希望時代候選池為空。用事件流的實體局部亂數（索引＝年份），不推進計數器，重跑相同。
 /// 洪水與龍捲風另毀農田（變回開墾一半，記「農田荒廢」事件）。玩家只看到編年史一行與地圖上的災害標記。
 /// </summary>
 public static class DemoDisasters
@@ -17,17 +18,33 @@ public static class DemoDisasters
     /// <summary>【TEMP】每年在第幾週結算天災（與野生動物的年結算錯開）。</summary>
     public const int TempYearWeek = 26;
 
-    /// <summary>【TEMP】年機率（千分比）：洪水 30、地震 15、龍捲風 15、隕石 3。</summary>
-    public const int TempFloodPermille = 30;
-    public const int TempEarthquakePermille = 15;
-    public const int TempTornadoPermille = 15;
-    public const int TempMeteoritePermille = 3;
+    /// <summary>【TEMP】抽中且過門檻後真的發生的機率（%）。</summary>
+    public const int TempChancePercent = 30;
+
+    /// <summary>候選：權重、世界人口門檻（等於門檻可通過）。</summary>
+    public sealed record Candidate(DemoSettlementEventKind Kind, int Weight, long MinWorldPopulation);
+
+    /// <summary>
+    /// 【TEMP】各時代的候選池（WorldBox：時代決定候選範圍）。希望時代空池；開拓時代四種；征服時代之後再擴充。
+    /// 地震、隕石要世界人口達 300 人（WorldBox 的規模門檻：避免世界太早被毀；原作讀全部單位，數字不照搬）。
+    /// </summary>
+    public static IReadOnlyList<Candidate> PoolOf(DemoEra era) => era switch
+    {
+        DemoEra.Hope => Array.Empty<Candidate>(),
+        _ => new[]
+        {
+            new Candidate(DemoSettlementEventKind.Flood, 3, 0),
+            new Candidate(DemoSettlementEventKind.Earthquake, 3, 300),
+            new Candidate(DemoSettlementEventKind.Tornado, 3, 0),
+            new Candidate(DemoSettlementEventKind.Meteorite, 1, 300)
+        }
+    };
 
     /// <summary>【TEMP】洪水毀掉範圍內每塊農田的機率（%）；被毀的農田變回開墾中的這個開發度。</summary>
     public const int TempFloodFarmlandPercent = 50;
     public const int TempRuinedFarmlandPercent = 50;
 
-    private const string Namespace = "TEMP-DISASTER-v1";
+    private const string Namespace = "TEMP-DISASTER-v2";
 
     public static bool IsDisaster(DemoSettlementEventKind kind)
         => kind is DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
@@ -42,8 +59,8 @@ public static class DemoDisasters
         _ => kind.ToString()
     };
 
-    private static ulong Draw(RngRegistry rng, int settlementId, int year, int k)
-        => EntityLocalRandom.Create(rng, EntityId.From((ulong)settlementId), RngStreams.Event, Namespace).GetUInt64((ulong)year * 16 + (ulong)k);
+    private static ulong Draw(RngRegistry rng, int year, int k)
+        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 16 + (ulong)k);
 
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement s, int range)
     {
@@ -51,9 +68,30 @@ public static class DemoDisasters
         return map.Cells.Where(c => DemoWorldSites.HexDistance(origin, c) <= range);
     }
 
-    /// <summary>本週的天災（不是天災週＝空）。</summary>
-    public static IReadOnlyDictionary<int, DemoDisasterStrike> Roll(int week, DemoHexWorld map, DemoWorldSites sites,
-        IEnumerable<int> livingIds, RngRegistry rng)
+    /// <summary>某聚落符合某天災的地理前提。</summary>
+    public static bool Eligible(DemoSettlementEventKind kind, DemoHexWorld map, DemoSettlement s)
+    {
+        var near = Around(map, s, 1).ToList();
+        return kind switch
+        {
+            DemoSettlementEventKind.Flood => near.Any(c => c.MainWaterway && !c.Sea),
+            DemoSettlementEventKind.Earthquake => Around(map, s, 2).Any(c => c.Terrain == DemoTerrain.Hills),
+            DemoSettlementEventKind.Tornado => near.Count(c => c.Terrain == DemoTerrain.Grassland) * 2 >= near.Count,
+            _ => true // 隕石：任何地方
+        };
+    }
+
+    private static (int Min, int Max, string Cause) Effect(DemoSettlementEventKind kind) => kind switch
+    {
+        DemoSettlementEventKind.Flood => (0, 2, "河水暴漲，洪水淹沒了聚落一帶"),
+        DemoSettlementEventKind.Earthquake => (1, 4, "大地震動，房舍倒塌"),
+        DemoSettlementEventKind.Tornado => (0, 2, "龍捲風橫掃草原，捲走了屋頂與田地"),
+        _ => (1, 3, "一顆隕石從天而降，砸在聚落附近")
+    };
+
+    /// <summary>本週的天災（不是天災週、空池、門檻或機率不過、沒有合格聚落＝空；最多 1 件）。</summary>
+    public static IReadOnlyDictionary<int, DemoDisasterStrike> Roll(int week, DemoEra era, long worldPopulation, DemoHexWorld map,
+        DemoWorldSites sites, IEnumerable<int> livingIds, RngRegistry rng)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
@@ -61,26 +99,29 @@ public static class DemoDisasters
         if (week % DemoWildlife.TempYearWeeks != TempYearWeek)
             return result;
         var year = week / DemoWildlife.TempYearWeeks;
-        foreach (var id in livingIds.OrderBy(i => i))
+        var pool = PoolOf(era);
+        var total = pool.Sum(c => c.Weight);
+        if (total == 0)
+            return result;
+        // ① 依權重抽一件（還沒看門檻）。
+        var pick = (int)(Draw(rng, year, 0) % (ulong)total);
+        var chosen = pool[0];
+        foreach (var c in pool)
         {
-            var s = sites.Settlements.First(x => x.Id == id);
-            var near = Around(map, s, 1).ToList();
-            var candidates = new List<(DemoSettlementEventKind Kind, int Permille, long Deaths, string Cause)>();
-            long Deaths(int k, int min, int max) => min + (long)(Draw(rng, id, year, 8 + k) % (ulong)(max - min + 1));
-            if (near.Any(c => c.MainWaterway && !c.Sea))
-                candidates.Add((DemoSettlementEventKind.Flood, TempFloodPermille, Deaths(0, 0, 2), "河水暴漲，洪水淹沒了聚落一帶"));
-            if (Around(map, s, 2).Any(c => c.Terrain == DemoTerrain.Hills))
-                candidates.Add((DemoSettlementEventKind.Earthquake, TempEarthquakePermille, Deaths(1, 1, 4), "大地震動，房舍倒塌"));
-            if (near.Count(c => c.Terrain == DemoTerrain.Grassland) * 2 >= near.Count)
-                candidates.Add((DemoSettlementEventKind.Tornado, TempTornadoPermille, Deaths(2, 0, 2), "龍捲風橫掃草原，捲走了屋頂與田地"));
-            candidates.Add((DemoSettlementEventKind.Meteorite, TempMeteoritePermille, Deaths(3, 1, 3), "一顆隕石從天而降，砸在聚落附近"));
-            foreach (var (kind, permille, deaths, cause) in candidates)
-            {
-                if ((int)(Draw(rng, id, year, (int)kind) % 1000UL) >= permille) continue;
-                result[id] = new DemoDisasterStrike(id, kind, deaths, cause);
-                break;
-            }
+            if (pick < c.Weight) { chosen = c; break; }
+            pick -= c.Weight;
         }
+        // ② 門檻與機率；③ 合格聚落中選一個。任何一關不過：當年沒有天災，不重抽。
+        if (worldPopulation < chosen.MinWorldPopulation || (int)(Draw(rng, year, 1) % 100UL) >= TempChancePercent)
+            return result;
+        var eligible = livingIds.OrderBy(i => i).Select(i => sites.Settlements.First(x => x.Id == i))
+            .Where(s => Eligible(chosen.Kind, map, s)).ToList();
+        if (eligible.Count == 0)
+            return result;
+        var target = eligible[(int)(Draw(rng, year, 2) % (ulong)eligible.Count)];
+        var (min, max, cause) = Effect(chosen.Kind);
+        var deaths = min + (long)(Draw(rng, year, 3) % (ulong)(max - min + 1));
+        result[target.Id] = new DemoDisasterStrike(target.Id, chosen.Kind, deaths, cause);
         return result;
     }
 
@@ -104,7 +145,7 @@ public static class DemoDisasters
             foreach (var parcel in fields)
             {
                 var hit = strike.Kind == DemoSettlementEventKind.Flood
-                    ? (int)(Draw(rng, s.Id, year, 100 + k++) % 100UL) < TempFloodFarmlandPercent
+                    ? (int)(Draw(rng, year, 100 + k++) % 100UL) < TempFloodFarmlandPercent
                     : k++ == 0;
                 if (!hit) continue;
                 land = land.With(map, sites, new DemoLandParcel(parcel.Column, parcel.Row, DemoLandDevelopment.Clearing, TempRuinedFarmlandPercent));
