@@ -151,9 +151,10 @@ public partial class DemoHexMap
         {
             for (var x = 0; x < width; x++)
             {
-                // 像素中心 → 軸向座標（Center 的反算）→ 立方座標取整。
-                var px = x + 0.5f + offset.X;
-                var py = y + 0.5f + offset.Y;
+                // 像素中心 → 軸向座標（Center 的反算）→ 立方座標取整。第 08-15 章第 3 節：先依位置扭曲取樣點，邊界不再是直線。
+                var (wx, wy) = Warp(x + 0.5f + offset.X, y + 0.5f + offset.Y, r);
+                var px = wx;
+                var py = wy;
                 var fr = py / (1.5f * r);
                 var fq = px / (sqrtThree * r) - fr / 2f;
                 var (q, rr) = CubeRound(fq, fr);
@@ -180,6 +181,27 @@ public partial class DemoHexMap
         _strategicStructure = structure;
         _strategicBuiltAt = now;
         return _strategicTexture;
+    }
+
+    /// <summary>【TEMP】戰略圖取樣扭曲：以格半徑為網格的平滑雜訊，位移最多約 0.35 格半徑（邊界彎曲但格的歸屬不跑遠）。</summary>
+    private static (float X, float Y) Warp(float x, float y, float r)
+    {
+        float Noise(float u, float v, int salt)
+        {
+            var iu = Mathf.FloorToInt(u);
+            var iv = Mathf.FloorToInt(v);
+            var fu = u - iu;
+            var fv = v - iv;
+            fu = fu * fu * (3f - 2f * fu);
+            fv = fv * fv * (3f - 2f * fv);
+            var a = Hash(iu, iv, salt);
+            var b = Hash(iu + 1, iv, salt);
+            var c = Hash(iu, iv + 1, salt);
+            var d = Hash(iu + 1, iv + 1, salt);
+            return Mathf.Lerp(Mathf.Lerp(a, b, fu), Mathf.Lerp(c, d, fu), fv);
+        }
+        var scale = 1f / (r * 0.9f);
+        return (x + Noise(x * scale, y * scale, 11) * r * 0.35f, y + Noise(x * scale, y * scale, 23) * r * 0.35f);
     }
 
     private static (int Q, int R) CubeRound(float fq, float fr)
@@ -215,7 +237,7 @@ public partial class DemoHexMap
                 var cell = World.Cells[i];
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 if (OnScreen(center, radius))
-                    DrawColoredPolygon(HexCoordinates.Polygon(center, radius + 0.6f), colors[i]);
+                    DrawShape(center, ScreenShape(cell, center, radius + 0.6f), colors[i]); // 第 08-15 章第 3 節：不規則邊界
             }
         }
         if (Sites is null)
