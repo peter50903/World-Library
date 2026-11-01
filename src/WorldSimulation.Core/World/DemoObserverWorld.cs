@@ -464,7 +464,8 @@ public sealed partial class DemoObserverWorld
                 beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
-                hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1))); // C3b
+                hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1)), // C3b
+                verify: _demography is null); // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
