@@ -611,4 +611,25 @@ public sealed partial class DemoObserverWorld
     [DoesNotReturn]
     private static void Reject(string reason)
         => throw new InvalidDataException($"TEMP 存檔驗證失敗：{reason}，已拒絕載入。");
+
+    /// <summary>
+    /// 第 08-14 章第 3 節：遊戲中的歷史壓縮——安裝與讀檔相同的分層狀態（近期週報＋之前的年帳與聚落事件），
+    /// 所以放在讀檔安裝這一側（週報清單只在提交與安裝處指派）。
+    /// </summary>
+    private void CompactIfDue()
+    {
+        if (!CompactHistory)
+            return;
+        var start = SaveWindowStart();
+        var drop = start - FirstRetainedWeek;
+        if (drop < TempCompactEveryWeeks)
+            return;
+        var years = YearSummaries().Take(YearsBeforeWeek(start)).ToImmutableList();
+        var earlier = SettlementEvents().Where(e => e.Week < start).ToImmutableList();
+        _frozenYears = years;
+        _earlierEvents = earlier;
+        _weeks = _weeks.RemoveRange(0, drop);
+        _weekBase = start - 1;
+    }
+
 }

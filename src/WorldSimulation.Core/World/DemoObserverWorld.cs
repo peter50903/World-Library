@@ -653,22 +653,6 @@ public sealed partial class DemoObserverWorld
     /// <summary>【TEMP】第 08-14 章第 3 節：可丟棄的舊週報累積到這麼多週才壓縮一次（避免每週搬動）。</summary>
     internal const int TempCompactEveryWeeks = 104;
 
-    private void CompactIfDue()
-    {
-        if (!CompactHistory)
-            return;
-        var start = SaveWindowStart();
-        var drop = start - FirstRetainedWeek;
-        if (drop < TempCompactEveryWeeks)
-            return;
-        var years = YearSummaries().Take(YearsBeforeWeek(start)).ToImmutableList();
-        var earlier = SettlementEvents().Where(e => e.Week < start).ToImmutableList();
-        _frozenYears = years;
-        _earlierEvents = earlier;
-        _weeks = _weeks.RemoveRange(0, drop);
-        _weekBase = start - 1;
-    }
-
     /// <summary>【TEMP】第 04-1 章：存檔至少保留最近這麼多週的完整週報（遷徙消息、遺跡判定等只往回看幾週）。</summary>
     internal const int TempSaveWindowWeeks = 52;
 
