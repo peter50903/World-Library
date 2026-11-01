@@ -35,6 +35,39 @@ public partial class DemoHexMap
     private (DemoHexWorld? World, Mode Mode) _strategicStructure;
     private ulong _strategicBuiltAt;
 
+    /// <summary>第 08-15 章：文化、信仰的名稱（色塊層的滑鼠提示用；ObserverRoot 刷新時注入）。</summary>
+    public IReadOnlyDictionary<int, string> CultureNames { get; set; } = new Dictionary<int, string>();
+    public IReadOnlyDictionary<int, string> FaithNames { get; set; } = new Dictionary<int, string>();
+
+    /// <summary>色塊層的滑鼠提示：這一格的顏色代表什麼（依地圖模式）。</summary>
+    public string ColorMeaning(DemoHexCell cell)
+    {
+        var at = new DemoCellRef(cell.Column, cell.Row);
+        string SiteName(int id) => Sites?.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+        if (!Lineage.TryGetValue(at, out var owner))
+            return _mode == Mode.Food ? "糧食：沒有聚落" : "無人之地";
+        var site = SiteName(owner.SettlementId);
+        return _mode switch
+        {
+            Mode.Food => Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: false } here
+                ? "糧食：" + (FoodStatuses.TryGetValue(here.Id, out var s) ? s : FoodStatus.Unsettled) switch
+                {
+                    FoodStatus.Ample => "充足",
+                    FoodStatus.Tight => "緊張",
+                    FoodStatus.Starving => "飢餓",
+                    _ => "尚未結算"
+                } + $"（{here.Name}）"
+                : $"{site}的領域（糧食模式只標聚落格）",
+            Mode.Culture => $"文化：{CultureNames.GetValueOrDefault(CultureOf.GetValueOrDefault(owner.SettlementId), "未定")}（{site}）",
+            Mode.Faith => FaithOf.GetValueOrDefault(owner.SettlementId) is var f and > 0
+                ? $"信仰：{FaithNames.GetValueOrDefault(f, $"#{f}")}（{site}）" + (HolySites.Contains(owner.SettlementId) ? "｜聖地" : "")
+                : $"無信仰（{site}）",
+            Mode.Knowledge => (KnowledgeDomain.GetValueOrDefault(owner.SettlementId) is { } d ? $"擅長：{DemoPlayerDetail.DomainName(d)}，" : "")
+                + $"已習得 {KnowledgeCounts.GetValueOrDefault(owner.SettlementId)} 項技術（{site}）",
+            _ => $"{SiteName(owner.LineageRootId)}一系的領域（屬於 {site}）"
+        };
+    }
+
     /// <summary>每格的平面顏色（地形＋模式疊色）；世界資料換了才重算（每週一次左右）。</summary>
     private Color[] FlatColors()
     {
@@ -118,9 +151,10 @@ public partial class DemoHexMap
         {
             for (var x = 0; x < width; x++)
             {
-                // 像素中心 → 軸向座標（Center 的反算）→ 立方座標取整。
-                var px = x + 0.5f + offset.X;
-                var py = y + 0.5f + offset.Y;
+                // 像素中心 → 軸向座標（Center 的反算）→ 立方座標取整。第 08-15 章第 3 節：先依位置扭曲取樣點，邊界不再是直線。
+                var (wx, wy) = Warp(x + 0.5f + offset.X, y + 0.5f + offset.Y, r);
+                var px = wx;
+                var py = wy;
                 var fr = py / (1.5f * r);
                 var fq = px / (sqrtThree * r) - fr / 2f;
                 var (q, rr) = CubeRound(fq, fr);
@@ -147,6 +181,27 @@ public partial class DemoHexMap
         _strategicStructure = structure;
         _strategicBuiltAt = now;
         return _strategicTexture;
+    }
+
+    /// <summary>【TEMP】戰略圖取樣扭曲：以格半徑為網格的平滑雜訊，位移最多約 0.35 格半徑（邊界彎曲但格的歸屬不跑遠）。</summary>
+    private static (float X, float Y) Warp(float x, float y, float r)
+    {
+        float Noise(float u, float v, int salt)
+        {
+            var iu = Mathf.FloorToInt(u);
+            var iv = Mathf.FloorToInt(v);
+            var fu = u - iu;
+            var fv = v - iv;
+            fu = fu * fu * (3f - 2f * fu);
+            fv = fv * fv * (3f - 2f * fv);
+            var a = Hash(iu, iv, salt);
+            var b = Hash(iu + 1, iv, salt);
+            var c = Hash(iu, iv + 1, salt);
+            var d = Hash(iu + 1, iv + 1, salt);
+            return Mathf.Lerp(Mathf.Lerp(a, b, fu), Mathf.Lerp(c, d, fu), fv);
+        }
+        var scale = 1f / (r * 0.9f);
+        return (x + Noise(x * scale, y * scale, 11) * r * 0.35f, y + Noise(x * scale, y * scale, 23) * r * 0.35f);
     }
 
     private static (int Q, int R) CubeRound(float fq, float fr)
@@ -182,7 +237,7 @@ public partial class DemoHexMap
                 var cell = World.Cells[i];
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 if (OnScreen(center, radius))
-                    DrawColoredPolygon(HexCoordinates.Polygon(center, radius + 0.6f), colors[i]);
+                    DrawShape(center, ScreenShape(cell, center, radius + 0.6f), colors[i]); // 第 08-15 章第 3 節：不規則邊界
             }
         }
         if (Sites is null)

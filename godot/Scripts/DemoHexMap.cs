@@ -195,7 +195,6 @@ public partial class DemoHexMap : Control
     /// <summary>b 節：地形是否已用素材圖塊繪製（冒煙測試用）。</summary>
     public bool UsesTerrainArt => TerrainTexture(DemoTerrain.Grassland, false) is not null;
 
-    private static readonly Color[] White6 = Enumerable.Repeat(Colors.White, 6).ToArray();
 
     /// <summary>第 06-2 章：是否畫六角格線（預設不畫，地形看起來連成一片；功能列「格線」可切換）。只影響顯示。</summary>
     public bool ShowGrid
@@ -310,12 +309,12 @@ public partial class DemoHexMap : Control
             {
                 // 第 08-13 章（試玩回饋三之 2）：圖塊各自帶深色描邊，相鄰格看得出接縫——
                 // 取樣時往內縮掉描邊（TempTileInset），並把六角形畫大一點點讓相鄰格重疊，格線關閉時地形連成一片。
-                var full = HexCoordinates.Polygon(center, radius + TempTileOverlap);
-                DrawPolygon(full, Tint6(lookTile is null && look != DemoEnvironment.Look.None ? lookTint : WaterTint(cell, shallowArt is not null)),
-                    HexUvs(full, center, radius), tile);
+                // 第 08-15 章第 3 節：外形是不規則邊界（相鄰格共用同一條彎曲的邊）。
+                var full = ScreenShape(cell, center, radius + TempTileOverlap);
+                DrawShape(center, full, lookTile is null && look != DemoEnvironment.Look.None ? lookTint : WaterTint(cell, shallowArt is not null), tile, radius);
                 // 第 06-3 章：礦脈疊圖（農田、開墾中不疊）。
                 if ((cell.Ore || MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row))) && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
-                    DrawPolygon(full, Tint6(Colors.White), HexUvs(full, center, radius), ore);
+                    DrawShape(center, full, Colors.White, ore, radius);
                 if (cell.Shallow && shallowArt is null)
                     DrawStones(center, radius);
                 if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
@@ -342,7 +341,7 @@ public partial class DemoHexMap : Control
                 terrainColor = new Color(0.72f, 0.62f, 0.30f);
             else if (land == DemoLandDevelopment.Clearing)
                 terrainColor = new Color(0.52f, 0.42f, 0.28f);
-            DrawColoredPolygon(vertices, terrainColor);
+            DrawShape(center, ScreenShape(cell, center, radius), terrainColor);
             var outline = new Vector2[7];
             for (var i = 0; i < 6; i++)
                 outline[i] = vertices[i];
@@ -379,23 +378,23 @@ public partial class DemoHexMap : Control
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 if (!OnScreen(center, radius))
                     continue;
-                var hex = HexCoordinates.Polygon(center, radius - 1.4f);
+                var hex = ScreenShape(cell, center, radius);
                 if (VisibleSite(cell) is { IsRuin: true } ruinSite)
                 {
-                    DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                    DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
                     DrawMarker(SettlementIcon(ruinSite), center, radius * 1.4f);
                 }
                 else if (VisibleSite(cell) is { } site)
                 {
                     var status = FoodStatuses.TryGetValue(site.Id, out var known) ? known : FoodStatus.Unsettled;
                     var color = FoodStatusColor(status);
-                    DrawColoredPolygon(hex, new Color(color, 0.55f));
+                    DrawShape(center, hex, new Color(color, 0.55f));
                     DrawPolyline(Closed(hex), color, 3.5f);
                     DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
                 }
                 else
                 {
-                    DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                    DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
                 }
             }
         }
@@ -444,7 +443,7 @@ public partial class DemoHexMap : Control
             {
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 if (OnScreen(center, radius))
-                    DrawPolyline(Closed(HexCoordinates.Polygon(center, radius)), gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
+                    DrawPolyline(Closed(ScreenShape(cell, center, radius)), gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
             }
         }
 
@@ -459,12 +458,7 @@ public partial class DemoHexMap : Control
         {
             var cell = World.GetCell(focus.Column, focus.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
-            var ring = new Vector2[7];
-            for (var i = 0; i < 6; i++)
-                ring[i] = vertices[i];
-            ring[6] = vertices[0];
-            DrawPolyline(ring, new Color(1f, 0.95f, 0.35f), 3.5f);
+            DrawPolyline(Closed(ScreenShape(cell, center, radius - 1.4f)), new Color(1f, 0.95f, 0.35f), 3.5f);
         }
 
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
@@ -498,14 +492,14 @@ public partial class DemoHexMap : Control
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             if (!OnScreen(center, radius))
                 continue; // 第 08-15 章：畫面外不畫
-            var hex = HexCoordinates.Polygon(center, radius);
+            var hex = ScreenShape(cell, center, radius);
             if (!Lineage.TryGetValue(new DemoCellRef(cell.Column, cell.Row), out var owner))
             {
-                DrawColoredPolygon(hex, new Color(0f, 0f, 0f, 0.45f));
+                DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
                 continue;
             }
             var fill = color(owner);
-            DrawColoredPolygon(hex, new Color(fill, 0.55f));
+            DrawShape(center, hex, new Color(fill, 0.55f));
             // 邊界：相鄰格不同家系（或沒有歸屬、在地圖外）時才畫這一條邊，同家系之間不畫線，看起來是一整片。
             foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
             {
@@ -516,7 +510,7 @@ public partial class DemoHexMap : Control
                     continue;
                 var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                DrawLine(hex[edge], hex[(edge + 1) % 6], fill.Darkened(0.35f), 3f);
+                DrawPolyline(EdgeOf(hex, edge), fill.Darkened(0.35f), 3f);
             }
         }
         foreach (var site in Sites!.Settlements)
@@ -534,7 +528,6 @@ public partial class DemoHexMap : Control
         => cell.Shallow && !hasShallowArt ? new Color(1.35f, 1.30f, 1.10f)
             : Colors.White;
 
-    private static Color[] Tint6(Color color) => color == Colors.White ? White6 : Enumerable.Repeat(color, 6).ToArray();
 
     /// <summary>第 06-1 章（TEMP 後備）：淺灘的一排踏石（橫越河道，示意可涉水過河）。</summary>
     private void DrawStones(Vector2 center, float radius)
@@ -723,7 +716,13 @@ public partial class DemoHexMap : Control
     /// 第 08-5 章（使用者 2026-10-23）：滑鼠停在格上只說明這一格是什麼（森林、大海、某某村莊…）。
     /// </summary>
     public override string _GetTooltip(Vector2 atPosition)
-        => World is not null && CellAt(atPosition) is { } cell ? DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell) : "";
+    {
+        if (World is null || CellAt(atPosition) is not { } cell)
+            return "";
+        var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
+        // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
+        return LayerFor(ViewLayout().Radius) == ViewLayer.Local ? name : $"{name}\n{ColorMeaning(cell)}";
+    }
 
     /// <summary>
     /// #89：把指定格移到地圖中央並標示外框（只改顯示用的平移，不改縮放、不改世界狀態）。
