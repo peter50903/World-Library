@@ -95,6 +95,9 @@ public static class ArtAssets
         UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
         TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈
         IconDisaster, // 第 12-1 章 C3：天災標記
+        TileBurning, TileScorched, TileGrasslandDry, // 第 08-13 章第 6 節：天災反映在地圖上（美術收件匣 2026-11-01）
+        DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
+        DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
     };
 

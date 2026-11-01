@@ -24,6 +24,8 @@ public partial class DemoHexMap
     public const string SpriteMarket = "res://assets/sprites/market.png";
     public const string SpriteTemple = "res://assets/sprites/temple.png";
     public const string SpriteKeep = "res://assets/sprites/keep.png";
+    public const string SpritePalisade = "res://assets/sprites/palisade.png";
+    public const string SpriteStoneWall = "res://assets/sprites/stone_wall.png";
 
     public enum Building { Tent, Hut, House, StoneHouse, Market, Temple, Keep }
 
@@ -117,9 +119,9 @@ public partial class DemoHexMap
                 return start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             }
             if (plan.Palisade)
-                DrawWall(new[] { plan.Cells[0] }, CenterOf, radius, new Color(0.45f, 0.30f, 0.16f), 0.07f);
+                DrawWall(new[] { plan.Cells[0] }, CenterOf, radius, new Color(0.45f, 0.30f, 0.16f), 0.07f, SpritePalisade);
             if (plan.StoneWall)
-                DrawWall(plan.Cells, CenterOf, radius, new Color(0.62f, 0.60f, 0.56f), 0.11f);
+                DrawWall(plan.Cells, CenterOf, radius, new Color(0.62f, 0.60f, 0.56f), 0.11f, SpriteStoneWall);
             foreach (var b in plan.Buildings)
                 spots.Add((CenterOf(b.Cell) + b.Offset * radius, b.Kind));
             if (RecentDisasters.Contains(settlement.Id)) // 第 12-1 章 C3：一年內遭天災
@@ -130,8 +132,9 @@ public partial class DemoHexMap
     }
 
     /// <summary>沿佔格的外緣畫牆（兩格都在牆內的邊不畫）。</summary>
-    private void DrawWall(IReadOnlyList<DemoCellRef> cells, Func<DemoCellRef, Vector2> centerOf, float radius, Color color, float width)
+    private void DrawWall(IReadOnlyList<DemoCellRef> cells, Func<DemoCellRef, Vector2> centerOf, float radius, Color color, float width, string sprite)
     {
+        var texture = ArtAssets.Texture(sprite);
         var inside = cells.ToHashSet();
         foreach (var c in cells)
         {
@@ -145,8 +148,19 @@ public partial class DemoHexMap
                     continue;
                 var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                DrawLine(hex[edge], hex[(edge + 1) % 6], color.Darkened(0.45f), radius * width + 2f);
-                DrawLine(hex[edge], hex[(edge + 1) % 6], color, radius * width);
+                var (edgeStart, edgeEnd) = (hex[edge], hex[(edge + 1) % 6]);
+                if (texture is not null)
+                {
+                    // 素材沿邊貼一段（牆的高度依素材比例、約為格半徑的 width×3），畫完把變換還原。
+                    var length = edgeStart.DistanceTo(edgeEnd);
+                    var height = radius * width * 3f;
+                    DrawSetTransform(edgeStart, (edgeEnd - edgeStart).Angle(), Vector2.One);
+                    DrawTextureRect(texture, new Rect2(0f, -height * 0.7f, length, height), false);
+                    DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+                    continue;
+                }
+                DrawLine(edgeStart, edgeEnd, color.Darkened(0.45f), radius * width + 2f);
+                DrawLine(edgeStart, edgeEnd, color, radius * width);
             }
         }
     }
