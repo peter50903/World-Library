@@ -35,6 +35,39 @@ public partial class DemoHexMap
     private (DemoHexWorld? World, Mode Mode) _strategicStructure;
     private ulong _strategicBuiltAt;
 
+    /// <summary>第 08-15 章：文化、信仰的名稱（色塊層的滑鼠提示用；ObserverRoot 刷新時注入）。</summary>
+    public IReadOnlyDictionary<int, string> CultureNames { get; set; } = new Dictionary<int, string>();
+    public IReadOnlyDictionary<int, string> FaithNames { get; set; } = new Dictionary<int, string>();
+
+    /// <summary>色塊層的滑鼠提示：這一格的顏色代表什麼（依地圖模式）。</summary>
+    public string ColorMeaning(DemoHexCell cell)
+    {
+        var at = new DemoCellRef(cell.Column, cell.Row);
+        string SiteName(int id) => Sites?.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
+        if (!Lineage.TryGetValue(at, out var owner))
+            return _mode == Mode.Food ? "糧食：沒有聚落" : "無人之地";
+        var site = SiteName(owner.SettlementId);
+        return _mode switch
+        {
+            Mode.Food => Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: false } here
+                ? "糧食：" + (FoodStatuses.TryGetValue(here.Id, out var s) ? s : FoodStatus.Unsettled) switch
+                {
+                    FoodStatus.Ample => "充足",
+                    FoodStatus.Tight => "緊張",
+                    FoodStatus.Starving => "飢餓",
+                    _ => "尚未結算"
+                } + $"（{here.Name}）"
+                : $"{site}的領域（糧食模式只標聚落格）",
+            Mode.Culture => $"文化：{CultureNames.GetValueOrDefault(CultureOf.GetValueOrDefault(owner.SettlementId), "未定")}（{site}）",
+            Mode.Faith => FaithOf.GetValueOrDefault(owner.SettlementId) is var f and > 0
+                ? $"信仰：{FaithNames.GetValueOrDefault(f, $"#{f}")}（{site}）" + (HolySites.Contains(owner.SettlementId) ? "｜聖地" : "")
+                : $"無信仰（{site}）",
+            Mode.Knowledge => (KnowledgeDomain.GetValueOrDefault(owner.SettlementId) is { } d ? $"擅長：{DemoPlayerDetail.DomainName(d)}，" : "")
+                + $"已習得 {KnowledgeCounts.GetValueOrDefault(owner.SettlementId)} 項技術（{site}）",
+            _ => $"{SiteName(owner.LineageRootId)}一系的領域（屬於 {site}）"
+        };
+    }
+
     /// <summary>每格的平面顏色（地形＋模式疊色）；世界資料換了才重算（每週一次左右）。</summary>
     private Color[] FlatColors()
     {
