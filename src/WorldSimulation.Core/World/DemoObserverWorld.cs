@@ -543,6 +543,8 @@ public sealed partial class DemoObserverWorld
 
         Checkpoint(DemoCommitStage.BeforePublish);
         commit.PublishTo(this);
+        if (commit.SettlesWeek)
+            CompactIfDue(); // 第 08-14 章第 3 節
         DemoPerf.Mark(commit.SettlesWeek ? "發布" : "非結算日");
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
     }
@@ -641,6 +643,15 @@ public sealed partial class DemoObserverWorld
     }
 
     private void Checkpoint(DemoCommitStage stage) => FaultInjector?.Invoke(stage);
+
+    /// <summary>
+    /// 第 08-14 章第 3 節：遊戲進行中也做分層（與存檔相同：近期週報＋之前的年帳與聚落事件），記憶體不隨年數一直增加。
+    /// 只有遊戲客戶端開啟；長測、驗收、測試需要全部週報，預設關閉。壓縮後的狀態與「存檔再讀檔」相同（世界指紋不變）。
+    /// </summary>
+    public bool CompactHistory { get; set; }
+
+    /// <summary>【TEMP】第 08-14 章第 3 節：可丟棄的舊週報累積到這麼多週才壓縮一次（避免每週搬動）。</summary>
+    internal const int TempCompactEveryWeeks = 104;
 
     /// <summary>【TEMP】第 04-1 章：存檔至少保留最近這麼多週的完整週報（遷徙消息、遺跡判定等只往回看幾週）。</summary>
     internal const int TempSaveWindowWeeks = 52;

@@ -90,11 +90,11 @@ public partial class ObserverRoot : Control
 
     /// <summary>每次都建立全新的 Core 示範世界；Godot 不自行計算人口、食物或路線。</summary>
     private static DemoObserverWorld CreateTempWorld(TempScenario scenario)
-        => new(DemoScenario.Sample(SeedFor(scenario)), ConfigFor(scenario));
+        => new(DemoScenario.Sample(SeedFor(scenario)), ConfigFor(scenario)) { CompactHistory = true }; // 第 08-14 章第 3 節
 
     /// <summary>第 02 章 a 節：玩家輸入的世界配方＋目前選的 TEMP 情境。</summary>
     private static DemoObserverWorld CreateTempWorld(TempScenario scenario, WorldRecipe recipe)
-        => new(recipe, ConfigFor(scenario));
+        => new(recipe, ConfigFor(scenario)) { CompactHistory = true };
 
     private static string PickerLabel(TempScenario scenario) => scenario switch
     {
@@ -980,6 +980,7 @@ public partial class ObserverRoot : Control
     private void InstallWorld(DemoObserverWorld world, string cellInfoText)
     {
         PausePlayback();
+        world.CompactHistory = true; // 第 08-14 章第 3 節：遊戲中舊週報壓成年帳（與存檔相同）
         _world = world;
         ResetMajorEventAlert(); // #95: no stale alert from the previous world.
         _pendingScenario = null;

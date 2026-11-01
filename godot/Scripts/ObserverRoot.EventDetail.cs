@@ -80,8 +80,7 @@ public partial class ObserverRoot
     /// <summary>週報有變（或換了世界）才重建因果索引；清單保留目前選取。#96：清單只顯示符合篩選的事件。</summary>
     private void RefreshEventList()
     {
-        var weeks = _world.WeekReports();
-        if (!ReferenceEquals(_causalWorld, _world) || _causalWeeks != weeks.Count)
+        if (!ReferenceEquals(_causalWorld, _world) || _causalWeeks != _world.CommittedWeeks) // 第 08-14 章：舊週報會被壓縮，改看已提交週數
         {
             if (!ReferenceEquals(_causalWorld, _world))
             {
@@ -91,7 +90,7 @@ public partial class ObserverRoot
             }
             _causal = _world.BuildCausalIndex(); // 第 04-1 章：含讀檔前保存的較早事件
             _causalWorld = _world;
-            _causalWeeks = weeks.Count;
+            _causalWeeks = _world.CommittedWeeks;
         }
 
         SyncFilterSettlements();
