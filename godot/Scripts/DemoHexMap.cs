@@ -282,6 +282,15 @@ public partial class DemoHexMap : Control
 
         var (start, radius) = ViewLayout();
 
+        // 第 08-15 章：遠看（戰略層、區域層）用簡化畫法；近景層才畫圖塊、建築與格線。
+        var layer = LayerFor(radius);
+        if (layer != ViewLayer.Local)
+        {
+            DrawSimplified(start, radius, layer);
+            DrawHighlightAndMigrants(start, radius, migrants: layer == ViewLayer.Regional);
+            return;
+        }
+
         foreach (var cell in World.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
@@ -439,8 +448,14 @@ public partial class DemoHexMap : Control
             }
         }
 
+        DrawHighlightAndMigrants(start, radius, migrants: true);
+    }
+
+    /// <summary>選取外框與途中隊伍（各視角層共用；戰略層不畫隊伍）。</summary>
+    private void DrawHighlightAndMigrants(Vector2 start, float radius, bool migrants)
+    {
         // #89: outline the settlement of the selected event on top of the terrain and markers.
-        if (Highlight is { } focus && World.Contains(focus.Column, focus.Row))
+        if (Highlight is { } focus && World!.Contains(focus.Column, focus.Row))
         {
             var cell = World.GetCell(focus.Column, focus.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
@@ -453,6 +468,8 @@ public partial class DemoHexMap : Control
         }
 
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
+        if (!migrants)
+            return;
         var font = ThemeDB.FallbackFont;
         foreach (var batch in Migrants)
         {
@@ -479,6 +496,8 @@ public partial class DemoHexMap : Control
         foreach (var cell in World!.Cells)
         {
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+            if (!OnScreen(center, radius))
+                continue; // 第 08-15 章：畫面外不畫
             var hex = HexCoordinates.Polygon(center, radius);
             if (!Lineage.TryGetValue(new DemoCellRef(cell.Column, cell.Row), out var owner))
             {
