@@ -9,7 +9,7 @@ namespace WorldSimulation.Core.Tests;
 public sealed class DemoTechEffectTests
 {
     [Fact]
-    public void FarmingTechsRaiseFarmlandSupplyFromTheWeekAfterLearning()
+    public void FarmingTechsRaiseFarmlandSupplyFromTheMonthAfterLearning()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
         var site = world.Sites.Settlements[0];
@@ -27,8 +27,10 @@ public sealed class DemoTechEffectTests
             Records = ImmutableList.Create(Learned("TECH_IRRIGATION", 10), Learned("TECH_CROP_ROTATION", 20)),
             Era = DemoEra.Pioneer, EraWeek = 5
         };
+        // 第 08-14 章第 1 節：加成以本月第一週為準——第 10 週學會，第 9～12 週這個月還沒有，第 13 週起才有。
         Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 10));
-        Assert.Equal(50, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 11));
+        Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 12));
+        Assert.Equal(50, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 13));
         Assert.Equal(75, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 21));
         Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, forest, 21));
         var boosted = DemoForagingWorld.WithPercent(new[] { farm }, s => DemoKnowledge.SourcePercent(state, world.Sites, world.Map, s, 21));
