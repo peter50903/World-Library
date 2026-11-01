@@ -723,7 +723,13 @@ public partial class DemoHexMap : Control
     /// 第 08-5 章（使用者 2026-10-23）：滑鼠停在格上只說明這一格是什麼（森林、大海、某某村莊…）。
     /// </summary>
     public override string _GetTooltip(Vector2 atPosition)
-        => World is not null && CellAt(atPosition) is { } cell ? DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell) : "";
+    {
+        if (World is null || CellAt(atPosition) is not { } cell)
+            return "";
+        var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
+        // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
+        return LayerFor(ViewLayout().Radius) == ViewLayer.Local ? name : $"{name}\n{ColorMeaning(cell)}";
+    }
 
     /// <summary>
     /// #89：把指定格移到地圖中央並標示外框（只改顯示用的平移，不改縮放、不改世界狀態）。
