@@ -131,14 +131,22 @@ public static class DemoKnowledge
     /// </summary>
     public static IReadOnlyList<string> ExpertDomains(DemoRepresentativeRole role) => role switch
     {
-        DemoRepresentativeRole.Leader => new[] { "SOCIETY" },
-        DemoRepresentativeRole.Farmer => new[] { "10B", "10G" },
-        DemoRepresentativeRole.Carpenter => new[] { "10D", "10E", "10N" },
-        DemoRepresentativeRole.Smith => new[] { "10C", "10M" },
-        DemoRepresentativeRole.Hunter => new[] { "HUNT", "10F" },
-        DemoRepresentativeRole.Shaman => new[] { "FAITH", "10H" },
+        // 第 08-13 章第 5 節：固定陣列（原本每次呼叫新建；逐技術都會查）。
+        DemoRepresentativeRole.Leader => LeaderDomains,
+        DemoRepresentativeRole.Farmer => FarmerDomains,
+        DemoRepresentativeRole.Carpenter => CarpenterDomains,
+        DemoRepresentativeRole.Smith => SmithDomains,
+        DemoRepresentativeRole.Hunter => HunterDomains,
+        DemoRepresentativeRole.Shaman => ShamanDomains,
         _ => Array.Empty<string>()
     };
+
+    private static readonly IReadOnlyList<string> LeaderDomains = Array.AsReadOnly(new[] { "SOCIETY" });
+    private static readonly IReadOnlyList<string> FarmerDomains = Array.AsReadOnly(new[] { "10B", "10G" });
+    private static readonly IReadOnlyList<string> CarpenterDomains = Array.AsReadOnly(new[] { "10D", "10E", "10N" });
+    private static readonly IReadOnlyList<string> SmithDomains = Array.AsReadOnly(new[] { "10C", "10M" });
+    private static readonly IReadOnlyList<string> HunterDomains = Array.AsReadOnly(new[] { "HUNT", "10F" });
+    private static readonly IReadOnlyList<string> ShamanDomains = Array.AsReadOnly(new[] { "FAITH", "10H" });
 
     /// <summary>某聚落本週對某技術的專家與學者加速（每週研究點）。</summary>
     public static long ExpertResearch(DemoTechNode node, IEnumerable<DemoRepresentativeRole> roles)
@@ -169,13 +177,34 @@ public static class DemoKnowledge
     {
         ArgumentNullException.ThrowIfNull(node);
         ArgumentNullException.ThrowIfNull(traits);
+        return CultureResearchPercent(node, ResearchTraitsOf(traits));
+    }
+
+    /// <summary>第 08-13 章第 5 節：研究相關的文化特性先轉成旗標（每個聚落一次），逐技術只看旗標。</summary>
+    [Flags]
+    private enum ResearchTraits
+    {
+        None = 0, Scholarly = 1, Martial = 2, SeaFolk = 4, SteppeFolk = 8, Merchant = 16, SpiritMedium = 32
+    }
+
+    private static ResearchTraits ResearchTraitsOf(IReadOnlyCollection<string> traits)
+        => (traits.Contains("CT_SCHOLARLY") ? ResearchTraits.Scholarly : 0)
+            | (traits.Contains("CT_MARTIAL") ? ResearchTraits.Martial : 0)
+            | (traits.Contains("CT_SEA_FOLK") ? ResearchTraits.SeaFolk : 0)
+            | (traits.Contains("CT_STEPPE_FOLK") ? ResearchTraits.SteppeFolk : 0)
+            | (traits.Contains("CT_MERCHANT") ? ResearchTraits.Merchant : 0)
+            | (traits.Contains("DOC_SPIRIT_MEDIUM") ? ResearchTraits.SpiritMedium : 0);
+
+    private static long CultureResearchPercent(DemoTechNode node, ResearchTraits t)
+    {
+        if (t == ResearchTraits.None) return 0;
         long p = 0;
-        if (traits.Contains("CT_SCHOLARLY")) p += 10;
-        if (traits.Contains("CT_MARTIAL") && node.Domain == "HUNT") p += 25;
-        if (traits.Contains("CT_SEA_FOLK") && node.Domain == "10E" && node.Branch == "造船") p += 25;
-        if (traits.Contains("CT_STEPPE_FOLK") && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
-        if (traits.Contains("CT_MERCHANT") && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
-        if (traits.Contains("DOC_SPIRIT_MEDIUM") && node.Domain == "FAITH") p += 25; // 第 08-8 章 B3：通靈者（信條與文化特性一起傳入）
+        if (t.HasFlag(ResearchTraits.Scholarly)) p += 10;
+        if (t.HasFlag(ResearchTraits.Martial) && node.Domain == "HUNT") p += 25;
+        if (t.HasFlag(ResearchTraits.SeaFolk) && node.Domain == "10E" && node.Branch == "造船") p += 25;
+        if (t.HasFlag(ResearchTraits.SteppeFolk) && node.Id is "TECH_HUNTING" or "TECH_ARCHERY") p += 25;
+        if (t.HasFlag(ResearchTraits.Merchant) && node.Id is "TECH_BARTER" or "TECH_CURRENCY") p += 25;
+        if (t.HasFlag(ResearchTraits.SpiritMedium) && node.Domain == "FAITH") p += 25; // 第 08-8 章 B3：通靈者（信條與文化特性一起傳入）
         return p;
     }
 
@@ -434,10 +463,29 @@ public static class DemoKnowledge
         var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
         var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
+        // 第 08-13 章第 5 節：鄰近聚落改查範圍內的格（原本兩兩比距離）；鄰近已習得數改由鄰居的已習得清單累加（原本每項技術逐一查每個鄰居）。結果相同。
+        var livingAt = living.GroupBy(s => (s.Column, s.Row)).ToDictionary(g => g.Key, g => g.ToList());
+        var learnedOf = state.Records.Where(r => r.Learned).GroupBy(r => r.SettlementId)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.Technology.Index).ToArray());
+        List<DemoSettlement> NeighboursOf(DemoSettlement settlement)
+        {
+            var found = new List<DemoSettlement>();
+            var origin = map!.GetCell(settlement.Column, settlement.Row);
+            for (var dq = -TempDiffusionRange; dq <= TempDiffusionRange; dq++)
+                for (var dr = Math.Max(-TempDiffusionRange, -dq - TempDiffusionRange); dr <= Math.Min(TempDiffusionRange, -dq + TempDiffusionRange); dr++)
+                    if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c && livingAt.TryGetValue((c.Column, c.Row), out var here))
+                        found.AddRange(here.Where(o => o.Id != settlement.Id));
+            return found;
+        }
+        DemoPerf.Mark("知識：準備");
         foreach (var settlement in living)
         {
-            var neighbours = map is null ? new List<DemoSettlement>()
-                : living.Where(o => o.Id != settlement.Id && Distance(map, o, settlement) <= TempDiffusionRange).ToList();
+            var neighbours = map is null ? new List<DemoSettlement>() : NeighboursOf(settlement);
+            var neighbourKnown = new int[catalog.Length];
+            foreach (var o in neighbours)
+                if (learnedOf.TryGetValue(o.Id, out var known))
+                    foreach (var index in known)
+                        neighbourKnown[index]++;
             var stats = population.StatsOf(settlement.Id, 0, day, rules);
             var reps = repsOf.GetValueOrDefault(settlement.Id) ?? new List<DemoRepresentative>();
             var arrived = arrivalsTo.GetValueOrDefault(settlement.Id) ?? new List<DemoMigrationWeekLedger>();
@@ -466,6 +514,9 @@ public static class DemoKnowledge
                 map is not null && !DemoMigrationRoutes.HasWaterAccess(map, new DemoCellRef(settlement.Column, settlement.Row)));
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
+            var researchTraits = ResearchTraitsOf(traits);
+            var diffusionPercent = CultureDiffusionPercent(traits);
+            DemoPerf.Mark("知識：聚落條件");
 
             foreach (var node in catalog)
             {
@@ -487,14 +538,14 @@ public static class DemoKnowledge
                 var carried = arrived.Where(m => state.Knows(m.FromSettlementId, technology))
                     .Sum(m => m.PopulationClosing);
                 // 第 08-10a 章 V4：鄰近傳播——上週已習得、範圍內的其他聚落。
-                var known = neighbours.Count(o => state.Knows(o.Id, technology));
+                var known = neighbourKnown[node.Index];
                 var diffusion = checked(threshold * Math.Min(known, TempDiffusionMaxNeighbours) * TempDiffusionPerNeighbourBasisPoints / 10_000
-                    * CultureDiffusionPercent(traits) / 100); // 第 08-8 章 B2：守舊減半、開放加倍
+                    * diffusionPercent / 100); // 第 08-8 章 B2：守舊減半、開放加倍
                 // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
                 var experts = ExpertResearch(node, roles);
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
                 var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
-                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, traits)) / 100 // 第 08-8 章 B2
+                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
                     + diffusion + boost + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
@@ -524,10 +575,12 @@ public static class DemoKnowledge
                         EventId: nextEventId++, CauseEventId: learnedEvent.EventId));
                 }
             }
+            DemoPerf.Mark("知識：逐技術");
         }
 
         var next = new DemoKnowledgeState(
             records.Values.OrderBy(r => r.SettlementId).ThenBy(r => r.Technology).ToImmutableList(), era, eraWeek);
+        DemoPerf.Mark("知識：整表");
         return (next, events);
     }
 

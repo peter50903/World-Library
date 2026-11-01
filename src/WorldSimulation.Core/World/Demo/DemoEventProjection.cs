@@ -23,10 +23,12 @@ public static class DemoEventProjection
         ArgumentNullException.ThrowIfNull(sites);
         participants ??= NoParticipants;
         var result = new List<WorldEvent>(report.Events.Count);
+        // 第 08-13 章第 5 節：聚落依編號查（重複編號時 SingleOrDefault 會丟例外，這裡同樣丟）。
+        var siteOf = report.Events.Count == 0 ? new Dictionary<int, DemoSettlement>() : sites.Settlements.ToDictionary(s => s.Id);
         foreach (var e in report.Events)
         {
             var type = DemoEventTypes.Of(e.Kind);
-            var settlement = sites.Settlements.SingleOrDefault(s => s.Id == e.SettlementId)
+            var settlement = siteOf.GetValueOrDefault(e.SettlementId)
                 ?? throw new InvalidOperationException($"事件 #{e.EventId} 的聚落 #{e.SettlementId} 不存在。");
             var (column, row) = (settlement.Column, settlement.Row);
             if (e.Kind is DemoSettlementEventKind.MigrantStarvationDeath or DemoSettlementEventKind.BeastAttack
