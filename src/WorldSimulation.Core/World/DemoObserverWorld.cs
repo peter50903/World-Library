@@ -459,8 +459,8 @@ public sealed partial class DemoObserverWorld
                 hopeRules: _weekly.HopeEra && _knowledge.Era == DemoEra.Hope, // 第 08-6 章 b 節：開拓時代恢復餓死
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
-                sourcePercent: s => DemoKnowledge.SourcePercent(_knowledge, _sites, Map, s, checked(CommittedWeeks + 1),
-                    _culture.TraitsAt, _wildlife.HuntingAt, _wildlife.Spells), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火
+                sourcePercent: s => checked(CachedBoost(s, checked(CommittedWeeks + 1))
+                    + DemoEnvironment.SourcePercent(_wildlife.Spells, s, checked(CommittedWeeks + 1))), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
                 beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
@@ -484,7 +484,8 @@ public sealed partial class DemoObserverWorld
                     id => (_culture.MainCultureOf(id) is { } c && _culture.Culture(c) is { } main ? main.Traits : (IEnumerable<string>)Array.Empty<string>())
                         .Concat(_culture.Faith.MainFaithOf(id) is { } f && _culture.Faith.Faith(f) is { } faith ? faith.Tenets : Enumerable.Empty<string>())
                         .ToArray(), // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
-                    MeteoriteOre); // 第 12-1 章：隕石留下的礦脈
+                    MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
+                    _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks)); // 第 08-14 章：最近一輪的週報
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
@@ -543,6 +544,19 @@ public sealed partial class DemoObserverWorld
         commit.PublishTo(this);
         DemoPerf.Mark(commit.SettlesWeek ? "發布" : "非結算日");
         return new DemoDayAdvance(DaysOf(commit.DueTime), commit.DueTime, commit.PublishedWeek);
+    }
+
+    // 第 08-14 章第 1 節：來源加成同一個月內不變（只看本月第一週以前習得的技術），依（月、聚落配置）沿用。
+    private (int BoostWeek, DemoWorldSites Sites, Dictionary<(int, DemoCatchmentSourceKind), long> Values)? _boostCache;
+
+    private long CachedBoost(DemoCatchmentFoodSource source, int week)
+    {
+        var boostWeek = DemoKnowledge.BoostWeek(week);
+        if (_boostCache is not { } cache || cache.BoostWeek != boostWeek || !ReferenceEquals(cache.Sites, _sites))
+            _boostCache = cache = (boostWeek, _sites, new Dictionary<(int, DemoCatchmentSourceKind), long>());
+        if (!cache.Values.TryGetValue((source.Id, source.Kind), out var value))
+            cache.Values[(source.Id, source.Kind)] = value = DemoKnowledge.BoostPercent(_knowledge, _sites, Map, source, week, _culture.TraitsAt, _wildlife.HuntingAt);
+        return value;
     }
 
     /// <summary>第 07-1 章 b 節：新建聚落命名（沿用母村前綴或新取，不與既有聚落重名）。</summary>

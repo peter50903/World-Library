@@ -111,6 +111,18 @@ public static class DemoKnowledge
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
     public const long TempCarryPercent = 25;
 
+    /// <summary>
+    /// 第 08-14 章第 1 節【TEMP】分頻：每個聚落每幾週研究一次（依聚落編號錯開到不同週），一次累積這幾週的進度；
+    /// 遷入、喪事、往來看這幾週內的週報。技術與文化的來源加成也每這麼多週才更新一次。
+    /// </summary>
+    public const int TempCycleWeeks = 4;
+
+    /// <summary>某聚落在第 <paramref name="week"/> 週是否輪到研究。</summary>
+    public static bool StudiesInWeek(int settlementId, int week) => settlementId % TempCycleWeeks == week % TempCycleWeeks;
+
+    /// <summary>第 08-14 章第 1 節：來源加成以「本月第一週」為準（第 1～4 週看第 1 週、第 5～8 週看第 5 週…）。</summary>
+    public static int BoostWeek(int week) => week <= 0 ? week : week - (week - 1) % TempCycleWeeks;
+
     /// <summary>08-7b 第 1 節（使用者 2026-10-23 裁決）：開局五項知識裡不在 10R 第 0 階的那一項（10G 第 1 階）。</summary>
     public const string OpeningCookingId = "TECH_BASIC_COOKING";
 
@@ -263,8 +275,13 @@ public static class DemoKnowledge
     {
         // 第 12-1 章 C3b：熱浪、野火的減產另加在技術與文化加成之後（不受「取相鄰聚落最高者」影響）。
         var environment = spells is null ? 0 : DemoEnvironment.SourcePercent(spells, source, week);
-        return checked(Boosts(state, sites, map, source, week, traitsAt, huntingAt) + environment);
+        return checked(BoostPercent(state, sites, map, source, week, traitsAt, huntingAt) + environment);
     }
+
+    /// <summary>第 08-14 章第 1 節：技術、文化、狩獵的來源加成（以本月第一週為準，同一個月內不變，可沿用）。</summary>
+    public static long BoostPercent(DemoKnowledgeState state, DemoWorldSites sites, DemoHexWorld map, DemoCatchmentFoodSource source, int week,
+        Func<int, int, IReadOnlyCollection<string>>? traitsAt = null, Func<int, int, bool>? huntingAt = null)
+        => Boosts(state, sites, map, source, BoostWeek(week), traitsAt, huntingAt);
 
     /// <summary>第 08-13 章第 5 節：每個技術的前置技術編號（前置檢查每週每聚落每技術都做；原本每次依名稱查表）。</summary>
     private static readonly Lazy<int[][]> ParentIndexes = new(() =>
@@ -441,7 +458,8 @@ public static class DemoKnowledge
     public static (DemoKnowledgeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
-        Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null)
+        Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null,
+        IReadOnlyList<DemoWeekReport>? earlierWeeks = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -454,13 +472,17 @@ public static class DemoKnowledge
         var rules = DemoHumanLifecycle.Rules;
         var day = checked(population.LastWeek * 7);
         var living = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        // 第 08-14 章第 1 節：本週輪到的聚落才研究（鄰近傳播仍看全部聚落）；遷入、喪事看最近一輪的週報。
+        var studying = living.Where(s => StudiesInWeek(s.Id, report.Week)).ToList();
+        var window = (earlierWeeks ?? Array.Empty<DemoWeekReport>()).Where(w => w.Week > report.Week - TempCycleWeeks && w.Week < report.Week)
+            .Append(report).ToList();
         var farmland = land?.FarmlandCells().ToHashSet() ?? new HashSet<DemoCellRef>();
         var catalog = DemoTechCatalog.All;
-        var arrivals = report.Migrations.Where(m => m.Arrived).ToList();
+        var arrivals = window.SelectMany(w => w.Migrations).Where(m => m.Arrived).ToList();
         // 第 08-13 章第 5 節：逐聚落查詢改為先分組（結果相同）。
         var repsOf = population.Representatives.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.ToList());
         var founders = sites.Settlements.Where(s => s.IsFounded).Select(s => s.FoundedFromSettlementId).ToHashSet();
-        var mourning = report.Events.Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
+        var mourning = window.SelectMany(w => w.Events).Where(e => e.Kind == DemoSettlementEventKind.NaturalDeath).Select(e => e.SettlementId).ToHashSet();
         var arrivalsTo = arrivals.GroupBy(m => m.ToSettlementId).ToDictionary(g => g.Key, g => g.ToList());
 
         // 第 08-13 章第 5 節：鄰近聚落改查範圍內的格（原本兩兩比距離）；鄰近已習得數改由鄰居的已習得清單累加（原本每項技術逐一查每個鄰居）。結果相同。
@@ -478,7 +500,7 @@ public static class DemoKnowledge
             return found;
         }
         DemoPerf.Mark("知識：準備");
-        foreach (var settlement in living)
+        foreach (var settlement in studying)
         {
             var neighbours = map is null ? new List<DemoSettlement>() : NeighboursOf(settlement);
             var neighbourKnown = new int[catalog.Length];
@@ -545,8 +567,9 @@ public static class DemoKnowledge
                 var experts = ExpertResearch(node, roles);
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
                 var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
-                var gain = checked((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
-                    + diffusion + boost + carried * threshold * TempCarryPercent / 100);
+                // 第 08-14 章第 1 節：每輪累積 TempCycleWeeks 週的經驗與傳播；實踐加速與遷入帶來的經驗照原規則各算一次。
+                var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
+                    + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100);
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boostNow };
