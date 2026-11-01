@@ -375,6 +375,7 @@
 |---|---|---|
 | 縮放範圍 | 0.6～3 倍 | `godot/Scripts/DemoHexMap.cs:29-30` |
 | 每格滾輪倍率 | 1.2 | `godot/Scripts/DemoHexMap.cs:28` |
+| 視角分層（第 08-15 章） | 每格半徑 <6 像素＝戰略層（整張圖預畫、每格一色）；6～14＝區域層（純色、圖示）；≥14＝近景層（完整） | `godot/Scripts/DemoHexMap.Layers.cs` |
 | 聚落外觀（第 08-13 章第 4 節） | 每格半徑 ≥14 像素畫建築、否則單一圖示；每 10 人一棟屋（營地每 5 人一頂帳篷，最多 3）；每格最多 3 棟 | `godot/Scripts/DemoHexMap.Footprint.cs` |
 | 大地圖開場每格半徑／最大每格半徑（第 08-13 章第 5 節） | 26／64 像素；最大縮放取 3 倍與「64 像素÷全圖每格半徑」較大者 | `godot/Scripts/DemoHexMap.cs`（`TempComfortHexRadius`、`TempMaxHexRadius`） |
 
@@ -529,6 +530,7 @@
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
 | `godot/Scripts/DemoHexMap.cs` | 19 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 |
 | `godot/Scripts/DemoHexMap.Footprint.cs` | 2 | 第 08-13 章第 4 節聚落外觀：近看門檻、每屋人數、每格屋數、素材前色塊顏色 |
+| `godot/Scripts/DemoHexMap.Layers.cs` | 1 | 第 08-15 章視角分層：戰略層格半徑上限 6、戰略圖取樣半徑 4、重畫間隔 250 毫秒、各模式疊色比例 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
