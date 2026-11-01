@@ -264,6 +264,23 @@ public partial class ObserverRoot
         // 第 08-11 章：分頁籤（現況｜代表人物｜技術｜研究｜歷史；開發資訊開啟時多一頁「除錯」）。
         _detailTabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddChild(_detailTabs);
+        // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
+        _detailTabs.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        var parchment = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
+        StyleBoxFlat TabStyle(float alpha) => ArtAssets.Track(new StyleBoxFlat
+        {
+            BgColor = parchment ? new Color(0.55f, 0.42f, 0.25f, alpha) : new Color(TempGold, alpha * 0.6f),
+            CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4,
+            ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3
+        });
+        _detailTabs.AddThemeStyleboxOverride("tab_selected", TabStyle(0.45f));
+        _detailTabs.AddThemeStyleboxOverride("tab_unselected", TabStyle(0.15f));
+        _detailTabs.AddThemeStyleboxOverride("tab_hovered", TabStyle(0.30f));
+        _detailTabs.AddThemeStyleboxOverride("tabbar_background", new StyleBoxEmpty());
+        var ink = parchment ? TempInk : TempParchmentText;
+        _detailTabs.AddThemeColorOverride("font_selected_color", ink);
+        _detailTabs.AddThemeColorOverride("font_unselected_color", ink with { A = 0.7f });
+        _detailTabs.AddThemeColorOverride("font_hovered_color", ink);
     }
 
     private void ShowDetailAt(int column, int row)
