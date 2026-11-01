@@ -502,7 +502,7 @@
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 15 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 19 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 20 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-14 章遊戲中壓縮週期 104 週 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Snapshot.cs` | 9 | D8；第 04-1 章分層存檔讀檔；第 08-6 章知識樹檢查；第 08-8 章文化讀檔驗證 |
