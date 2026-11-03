@@ -1433,6 +1433,8 @@ public partial class ObserverRoot : Control
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
+        _hexMap.CultureNames = _world.Culture.Cultures.ToDictionary(c => c.Id, c => c.Name); // 第 08-15 章：色塊層提示
+        _hexMap.FaithNames = _world.Culture.Faith.Faiths.ToDictionary(f => f.Id, f => f.Name);
         // 第 08-8 章 B3：信仰模式。
         _hexMap.FaithOf = _world.Sites.Settlements.Where(s => _world.Culture.Faith.MainFaithOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.Faith.MainFaithOf(s.Id)!.Value);
