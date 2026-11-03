@@ -523,6 +523,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 4 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1）；08-13 燃燒外觀週數 |
 | `godot/Scripts/TerrainSurface.cs` | 1 | 第 06-4 章第 2 步連續地表：像素大小（D06-4） |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 8 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） |
+| `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
