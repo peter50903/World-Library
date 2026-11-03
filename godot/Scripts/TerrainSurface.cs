@@ -36,12 +36,13 @@ public partial class TerrainSurface : Control
         Material = _material;
     }
 
-    /// <summary>每次地圖重畫時呼叫：<paramref name="codes"/> 依「列×欄數＋欄」排列；同一個陣列不會重複上傳。</summary>
+    /// <summary>每次地圖重畫時呼叫：<paramref name="codes"/> 每格四個位元組（地表代碼、天災疊層、疊層強度、保留），
+    /// 依「列×欄數＋欄」排列；同一個陣列不會重複上傳。</summary>
     public void Show(byte[] codes, int columns, int rows, Vector2 origin, float radius)
     {
         if (!ReferenceEquals(codes, _uploaded) || _grid != (columns, rows))
         {
-            var image = Image.CreateFromData(columns, rows, false, Image.Format.R8, codes);
+            var image = Image.CreateFromData(columns, rows, false, Image.Format.Rgba8, codes);
             if (_cells is not null && _grid == (columns, rows))
                 _cells.Update(image);
             else
@@ -228,6 +229,53 @@ void fragment() {
 		}
 		if (!is_water(c1) && c2 == 4 && edge < 0.12) {
 			col = mix(vec3(0.80, 0.74, 0.54), col, edge / 0.12);
+		}
+	}
+	// 天災疊層（試玩回饋 2026-11-03 之 3）：依時間漸變，像素風抖點。
+	vec4 o = texelFetch(cells, clamp(ivec2(a0.x + (a0.y - (a0.y & 1)) / 2, a0.y), ivec2(0), grid - ivec2(1)), 0);
+	int ov = int(o.g * 255.0 + 0.5);
+	float amt = o.b;
+	bool inside = a0.y >= 0 && a0.y < grid.y && a0.x + (a0.y - (a0.y & 1)) / 2 >= 0 && a0.x + (a0.y - (a0.y & 1)) / 2 < grid.x;
+	if (inside && ov > 0 && amt > 0.0) {
+		vec2 u = p / radius;
+		float hp = hash(floor(p / pixel) + 11.7);
+		vec3 scorched = mix(vec3(0.20, 0.17, 0.15), vec3(0.32, 0.27, 0.23), fbm(u * 1.3));
+		if (ov == 1) {
+			vec3 fire = mix(vec3(0.60, 0.16, 0.05), vec3(1.0, 0.70, 0.20), vnoise(u * 4.0 + vec2(0.0, -TIME * 1.5)));
+			float flame = step(hp, amt * (0.55 + 0.45 * vnoise(u * 6.0 + vec2(0.0, -TIME * 3.0))));
+			col = mix(mix(col, scorched, amt), fire, flame);
+		} else if (ov == 2) {
+			if (hp < amt) {
+				col = scorched;
+			}
+		} else if (ov == 3) {
+			if (hp < amt) {
+				col = mix(vec3(0.66, 0.60, 0.34), vec3(0.76, 0.68, 0.42), fbm(u * 1.3));
+			}
+		} else if (ov == 4) {
+			if (hp < amt * (0.8 + 0.2 * vnoise(u * 3.0 + vec2(TIME * 0.2, 0.0)))) {
+				col = mix(vec3(0.26, 0.42, 0.52), vec3(0.34, 0.52, 0.60), vnoise(u * 2.5 + vec2(0.0, TIME * 0.3)));
+			}
+		} else if (ov == 5) {
+			if (hp < amt * 0.55) {
+				col = mix(vec3(0.44, 0.36, 0.26), vec3(0.56, 0.48, 0.36), hash(floor(p / pixel) + 5.3));
+			}
+		} else if (ov == 6) {
+			if (abs(vnoise(u * 5.0) - 0.5) < 0.05 * amt) {
+				col = vec3(0.12, 0.10, 0.09);
+			}
+		} else if (ov == 7) {
+			float d = distance(p, center_of(a0)) / radius;
+			float r = 0.55 * amt;
+			if (d < r) {
+				col = mix(vec3(0.16, 0.13, 0.12), vec3(0.30, 0.26, 0.22), d / max(r, 0.01));
+			} else if (d < r + 0.12) {
+				col = mix(col, vec3(0.50, 0.44, 0.36), amt);
+			}
+		} else if (ov == 8) {
+			if (hp > 0.93) {
+				col = vec3(0.74, 0.68, 0.52);
+			}
 		}
 	}
 	COLOR = vec4(col, 1.0);

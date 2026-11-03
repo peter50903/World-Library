@@ -1431,6 +1431,8 @@ public partial class ObserverRoot : Control
         _hexMap.Dungeons = _world.Dungeons.Select(d => d.Cell).ToArray(); // 第 12-1 章 C4
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
         _hexMap.CurrentWeek = _world.CommittedWeeks;
+        // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
+        _hexMap.DisasterMarks = DisasterMarks();
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
@@ -1468,5 +1470,16 @@ public partial class ObserverRoot : Control
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
         RefreshEventList();
         RefreshFoodDiagnostics(); // #104
+    }
+
+    private IReadOnlyList<DisasterMark> DisasterMarks()
+    {
+        var events = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks).SelectMany(w => w.Events).ToList();
+        var cells = _world.Sites.Settlements.ToDictionary(s => s.Id, s => new DemoCellRef(s.Column, s.Row));
+        return events.Where(e => DemoDisasters.IsDisaster(e.Kind) && cells.ContainsKey(e.SettlementId))
+            .Select(e => new DisasterMark(e.EventId, e.Kind, e.Week, cells[e.SettlementId],
+                events.FirstOrDefault(o => o.Kind == DemoSettlementEventKind.MeteoriteOre && o.CauseEventId == e.EventId) is { } ore
+                    ? DemoLandClearing.CellOf(_world.Map, ore.Count) : (DemoCellRef?)null))
+            .ToList();
     }
 }
