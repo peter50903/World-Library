@@ -393,7 +393,7 @@ public sealed partial class DemoObserverWorld
     {
         get
         {
-            var firstWeek = _weeks.Count == 0 ? int.MaxValue : _weeks[0].Week;
+            var firstWeek = FirstRetainedWeek; // 還沒有週報時也用真實的起點（原本用 int.MaxValue，第一週查詢後快取就不再更新）
             if (_oreCacheEarlier != _earlierEvents.Count || _oreCacheWeek < firstWeek - 1)
             {
                 _oreCache = DemoDisasters.OreCells(_earlierEvents, Map).ToHashSet();
@@ -421,7 +421,7 @@ public sealed partial class DemoObserverWorld
     {
         get
         {
-            var firstWeek = _weeks.Count == 0 ? int.MaxValue : _weeks[0].Week;
+            var firstWeek = FirstRetainedWeek; // 還沒有週報時也用真實的起點（原本用 int.MaxValue，第一週查詢後快取就不再更新）
             if (_dungeonCacheEarlier != _earlierEvents.Count || _dungeonCacheWeek < firstWeek - 1)
             {
                 _dungeonCache = new List<DemoDungeon>();

@@ -96,6 +96,8 @@ public sealed class DemoDungeonTests
             world.AdvanceOneDay();
         Assert.InRange(world.Dungeons.Count, 0, DemoDungeons.TargetCount(world.Map));
         Assert.Equal(world.Dungeons.Count, world.SettlementEvents().Count(e => e.Kind == DemoSettlementEventKind.DungeonAppeared));
+        // 回歸：隕石礦脈用同一種快取，必須等於全部「隕石礦脈」事件的格。
+        Assert.Equal(DemoDisasters.OreCells(world.SettlementEvents(), world.Map).ToHashSet(), world.MeteoriteOre.ToHashSet());
         Assert.Empty(world.BuildCausalIndex().Problems);
         var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
         Assert.Equal(world.ExportTempSave(), reloaded.ExportTempSave());
