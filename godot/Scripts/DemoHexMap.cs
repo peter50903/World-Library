@@ -481,6 +481,9 @@ public partial class DemoHexMap : Control
     /// <summary>選取外框與途中隊伍（各視角層共用；戰略層不畫隊伍）。</summary>
     private void DrawHighlightAndMigrants(Vector2 start, float radius, bool migrants)
     {
+        // 試玩回饋 2026-11-03 之 3：天災當下的動畫與燃燒的煙（近景與區域層）。
+        if (migrants)
+            DrawDisasterEffects(start, radius);
         // 第 12-1 章 C4：地下城標記（近景與區域層；戰略層只看色塊）。沒有素材時畫深色圓點加紅框。
         if (migrants)
         {
@@ -638,30 +641,29 @@ public partial class DemoHexMap : Control
     public const float TempTileOverlap = 0.9f;
 
     private byte[]? _surfaceCodes;
-    private (DemoHexWorld? World, int Week, object? Land, object? Spells, object? Ore) _surfaceKey;
+    private (DemoHexWorld? World, int Week, float Fraction, object? Land, object? Spells, object? Ore, object? Marks) _surfaceKey;
 
-    /// <summary>第 06-4 章第 2 步：每格的地表代碼（列×欄數＋欄）；地圖、週、土地、天災、礦脈變了才重算。</summary>
+    /// <summary>
+    /// 第 06-4 章第 2 步：每格四個位元組（列×欄數＋欄）：地表代碼、天災疊層種類、疊層強度、保留。
+    /// 地圖、時間、土地、天災、礦脈變了才重算；試玩回饋 2026-11-03 之 3：天災改成依時間漸變的疊層。
+    /// </summary>
     private byte[] SurfaceCodes()
     {
-        var key = (World, CurrentWeek, (object?)Land, (object?)Spells, (object?)MeteoriteOre);
+        var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks);
         if (_surfaceCodes is not null && key.Equals(_surfaceKey))
             return _surfaceCodes;
-        var codes = new byte[World!.Columns * World.Rows];
+        var data = new byte[World!.Columns * World.Rows * 4];
         foreach (var cell in World.Cells)
-            codes[cell.Row * World.Columns + cell.Column] = (byte)SurfaceCode(cell);
+            data[(cell.Row * World.Columns + cell.Column) * 4] = (byte)SurfaceCode(cell);
+        FillOverlays(data);
         _surfaceKey = key;
-        return _surfaceCodes = codes;
+        return _surfaceCodes = data;
     }
 
     private TerrainSurface.Code SurfaceCode(DemoHexCell cell)
     {
         var at = new DemoCellRef(cell.Column, cell.Row);
-        switch (DemoEnvironment.LookAt(Spells, cell, CurrentWeek))
-        {
-            case DemoEnvironment.Look.Burning: return TerrainSurface.Code.Burning;
-            case DemoEnvironment.Look.Scorched: return TerrainSurface.Code.Scorched;
-            case DemoEnvironment.Look.Dry: return TerrainSurface.Code.DryGrass;
-        }
+        // 熱浪、野火不再直接換地表，改由天災疊層依時間漸變（DemoHexMap.Disasters.cs）。
         switch (Land.StateOf(at))
         {
             case DemoLandDevelopment.Farmland: return TerrainSurface.Code.Farmland;
