@@ -404,8 +404,9 @@ public partial class ObserverRoot
     private static Control TechBadge(DemoTechBadge b)
     {
         var learned = b.Percent >= 100;
-        var tooltip = $"{b.Name}（{b.DomainName}{(b.Tier > 0 ? $"，第 {b.Tier} 階" : "")}）\n"
-            + (b.Opening ? "開局知識" : learned ? $"第 {b.LearnedYear} 年習得" : $"研究中 {b.Percent}%");
+        // 試玩回饋 2026-11-03 之 2：滑鼠說明寫出這項技術是什麼、目前在世界中的作用、怎麼學得快、前置。
+        var tooltip = (DemoTechCatalog.Contains(b.Id) ? DemoTechTooltip.Text(DemoTechCatalog.Get(b.Id)) : b.Name) + "\n"
+            + (b.Opening ? "開局時就會" : learned ? $"第 {b.LearnedYear} 年習得" : $"研究中，進度 {b.Percent}%");
         var panel = new PanelContainer { CustomMinimumSize = new Vector2(TempBadgeSize, TempBadgeSize), TooltipText = tooltip };
         var color = DomainColor(b.Domain);
         panel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
