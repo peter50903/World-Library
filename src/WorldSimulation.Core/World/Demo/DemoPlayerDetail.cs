@@ -93,6 +93,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             lines.Add(parcel.State == DemoLandDevelopment.Farmland ? "農田" : $"開墾中（{parcel.DevelopmentPercent}%）");
         if (world.MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row)))
             lines.Add("隕石留下的礦脈"); // 第 12-1 章
+        if (world.Dungeons.FirstOrDefault(d => d.Cell.Column == cell.Column && d.Cell.Row == cell.Row) is { } dungeon)
+            lines.Add($"地下城：{dungeon.Name}（{dungeon.Layers} 層，第 {DemoSettlementHistory.YearOfDay(checked(dungeon.AppearedWeek * 7))} 年出現）"); // 第 12-1 章 C4
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
@@ -125,6 +127,10 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             // 第 12-1 章 C1：附近獵物多寡（不揭示數字）。
             if (!world.Wildlife.Prey.IsDefaultOrEmpty)
                 now.Add("附近獵物：" + DemoWildlife.PreyLevel(world.Wildlife, world.Map, settlement) switch { 2 => "豐富", 1 => "普通", _ => "稀少" });
+            // 第 12-1 章 C4：附近的地下城。
+            var nearDungeons = DemoDungeons.Near(world.Dungeons, world.Map, settlement).Select(d => d.Name).ToList();
+            if (nearDungeons.Count > 0)
+                now.Add("附近有地下城：" + string.Join("、", nearDungeons));
         }
         // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
         var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();

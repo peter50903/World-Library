@@ -363,6 +363,9 @@ public sealed class DemoCausalIndex
                 // 第 12-1 章：直接原因＝同週同聚落的隕石事件；人數欄＝格編號。
                 return parent is { Kind: DemoSettlementEventKind.Meteorite } && parent.Week == e.Week && parent.SettlementId == e.SettlementId && e.Count > 0
                     ? null : "隕石礦脈的直接原因必須是同週同聚落的隕石事件";
+            case DemoSettlementEventKind.DungeonAppeared:
+                // 第 12-1 章 C4：根因；人數欄＝格編號。
+                return parent is null && e.Count > 0 ? null : "地下城出現是根因，事件人數欄必須是格編號";
             case DemoSettlementEventKind.FaithExtinct:
                 return parent is null && e.Count > 0 ? null : "信仰失傳是根因，事件人數欄必須是信仰編號";
 

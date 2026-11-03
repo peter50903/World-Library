@@ -47,7 +47,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.Heatwave] = new("TEMP_EV_HEATWAVE", "熱浪", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.HeatwaveEnded] = new("TEMP_EV_HEATWAVE_ENDED", "熱浪結束", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.Wildfire] = new("TEMP_EV_WILDFIRE", "野火", CauseRootCategory.Disaster),
-        [DemoSettlementEventKind.ForestRegrown] = new("TEMP_EV_FOREST_REGROWN", "森林重生", CauseRootCategory.Disaster)
+        [DemoSettlementEventKind.ForestRegrown] = new("TEMP_EV_FOREST_REGROWN", "森林重生", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.DungeonAppeared] = new("TEMP_EV_DUNGEON_APPEARED", "地下城出現", CauseRootCategory.Disaster)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

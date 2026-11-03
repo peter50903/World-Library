@@ -257,7 +257,10 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 12-1 章 C3b：野火（人數欄＝燒毀格數；根因）與森林重新長出（直接原因＝野火）。</summary>
     Wildfire = 25,
-    ForestRegrown = 26
+    ForestRegrown = 26,
+
+    /// <summary>第 12-1 章 C4：地下城出現（人數欄＝格編號；根因；掛在最近的有人聚落）。</summary>
+    DungeonAppeared = 27
 }
 
 /// <summary>
@@ -303,6 +306,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                 or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown
+                or DemoSettlementEventKind.DungeonAppeared
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

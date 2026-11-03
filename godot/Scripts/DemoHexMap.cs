@@ -228,6 +228,9 @@ public partial class DemoHexMap : Control
         _ => (null, Colors.White)
     };
 
+    /// <summary>第 12-1 章 C4：地下城所在格（近景與區域層畫地下城標記）。</summary>
+    public IReadOnlyCollection<DemoCellRef> Dungeons { get; set; } = Array.Empty<DemoCellRef>();
+
     /// <summary>第 12-1 章：隕石留下的礦脈格（疊礦脈圖）。</summary>
     public IReadOnlySet<DemoCellRef> MeteoriteOre { get; set; } = new HashSet<DemoCellRef>();
 
@@ -453,6 +456,25 @@ public partial class DemoHexMap : Control
     /// <summary>選取外框與途中隊伍（各視角層共用；戰略層不畫隊伍）。</summary>
     private void DrawHighlightAndMigrants(Vector2 start, float radius, bool migrants)
     {
+        // 第 12-1 章 C4：地下城標記（近景與區域層；戰略層只看色塊）。沒有素材時畫深色圓點加紅框。
+        if (migrants)
+        {
+            foreach (var d in Dungeons)
+            {
+                if (!World!.Contains(d.Column, d.Row))
+                    continue;
+                var cell = World.GetCell(d.Column, d.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (!OnScreen(center, radius))
+                    continue;
+                if (!DrawMarker(ArtAssets.IconDungeon, center, Math.Max(radius * 1.3f, 14f)))
+                {
+                    DrawCircle(center, Math.Max(radius * 0.3f, 4f), new Color(0.10f, 0.08f, 0.10f));
+                    DrawArc(center, Math.Max(radius * 0.3f, 4f), 0, Mathf.Tau, 24, new Color(0.75f, 0.20f, 0.18f), 2f);
+                }
+            }
+        }
+
         // #89: outline the settlement of the selected event on top of the terrain and markers.
         if (Highlight is { } focus && World!.Contains(focus.Column, focus.Row))
         {

@@ -92,7 +92,8 @@ public sealed record DemoSettlementChronicle(
         foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan
             or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
-            or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire))
+            or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
+            or DemoSettlementEventKind.DungeonAppeared))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
@@ -103,7 +104,7 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded => DemoPlayerDetail.Clean(e.Cause),
                 DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite
                     or DemoSettlementEventKind.Flood => $"{DemoDisasters.Name(e.Kind)}：{DemoPlayerDetail.Clean(e.Cause)}", // 第 12-1 章 C3
-                DemoSettlementEventKind.MeteoriteOre => DemoPlayerDetail.Clean(e.Cause),
+                DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.DungeonAppeared => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C4
                 DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C3b
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
