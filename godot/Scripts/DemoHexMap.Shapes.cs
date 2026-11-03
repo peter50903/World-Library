@@ -11,9 +11,9 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>【TEMP】角點抖動、邊中段抖動（格半徑的倍數）、每條邊切幾段；圖塊取樣放大倍率（抖動到格外時仍取到圖塊內的不透明像素）。</summary>
-    private const float TempCornerJitter = 0.10f;
-    private const float TempEdgeJitter = 0.11f;
-    private const int TempEdgeSegments = 4;
+    private const float TempCornerJitter = 0.06f;
+    private const float TempEdgeJitter = 0.14f;
+    private const int TempEdgeSegments = 6;
     private const float TempShapeUvScale = 1.22f;
 
     private DemoHexWorld? _shapeWorld;
@@ -70,7 +70,8 @@ public partial class DemoHexMap
         for (var k = 1; k < TempEdgeSegments; k++)
         {
             var t = k / (float)TempEdgeSegments;
-            var amount = Hash(kf.Item1 * 31 + kt.Item1, kf.Item2 * 17 + kt.Item2, 3 + k) * TempEdgeJitter * Mathf.Sin(Mathf.Pi * t);
+            // 第 06-4 章第 2 步（試玩回饋：邊緣抖動不舒服）：每條邊只彎一次（一個平滑弧），不再每段各自抖動成鋸齒。
+            var amount = Hash(kf.Item1 * 31 + kt.Item1, kf.Item2 * 17 + kt.Item2, 3) * TempEdgeJitter * Mathf.Sin(Mathf.Pi * t);
             list.Add(from.Lerp(to, t) + normal * amount);
         }
         if (!forward)

@@ -229,7 +229,7 @@ public partial class DemoHexMap
             var (offset, size) = StrategicFrame(radius);
             DrawTextureRect(texture, new Rect2(start + offset, size), false);
         }
-        else
+        else if (_surface is not { Active: true }) // 第 06-4 章第 2 步：地形模式由連續地表畫
         {
             var colors = FlatColors();
             for (var i = 0; i < World!.Cells.Count; i++)
