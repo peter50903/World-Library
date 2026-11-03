@@ -140,7 +140,7 @@ public partial class DemoHexMap
         {
             var cell = World!.GetCell(c.Column, c.Row);
             var center = centerOf(c);
-            var hex = HexCoordinates.Polygon(center, radius * 0.97f);
+            var hex = ScreenShape(cell, center, radius * 0.97f); // 第 08-15 章第 3 節：沿不規則邊界
             foreach (var (dq, dr) in HexDirections)
             {
                 var n = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
@@ -148,19 +148,23 @@ public partial class DemoHexMap
                     continue;
                 var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
                 var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                var (edgeStart, edgeEnd) = (hex[edge], hex[(edge + 1) % 6]);
-                if (texture is not null)
+                var path = EdgeOf(hex, edge);
+                for (var k = 0; k + 1 < path.Length; k++)
                 {
-                    // 素材沿邊貼一段（牆的高度依素材比例、約為格半徑的 width×3），畫完把變換還原。
-                    var length = edgeStart.DistanceTo(edgeEnd);
-                    var height = radius * width * 3f;
-                    DrawSetTransform(edgeStart, (edgeEnd - edgeStart).Angle(), Vector2.One);
-                    DrawTextureRect(texture, new Rect2(0f, -height * 0.7f, length, height), false);
-                    DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-                    continue;
+                    var (edgeStart, edgeEnd) = (path[k], path[k + 1]);
+                    if (texture is not null)
+                    {
+                        // 素材沿邊逐段貼（牆的高度依素材比例、約為格半徑的 width×3），畫完把變換還原。
+                        var length = edgeStart.DistanceTo(edgeEnd);
+                        var height = radius * width * 3f;
+                        DrawSetTransform(edgeStart, (edgeEnd - edgeStart).Angle(), Vector2.One);
+                        DrawTextureRect(texture, new Rect2(0f, -height * 0.7f, length + 1f, height), false);
+                        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+                        continue;
+                    }
+                    DrawLine(edgeStart, edgeEnd, color.Darkened(0.45f), radius * width + 2f);
+                    DrawLine(edgeStart, edgeEnd, color, radius * width);
                 }
-                DrawLine(edgeStart, edgeEnd, color.Darkened(0.45f), radius * width + 2f);
-                DrawLine(edgeStart, edgeEnd, color, radius * width);
             }
         }
     }
