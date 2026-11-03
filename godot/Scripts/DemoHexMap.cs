@@ -270,8 +270,14 @@ public partial class DemoHexMap : Control
         TooltipText = " "; // 第 08-5 章：提示文字依滑鼠所在格（_GetTooltip）
     }
 
+    private TerrainSurface? _surface;
+
     public override void _Ready()
     {
+        // 第 06-4 章第 2 步：連續地表（畫在本節點的圖示與建築下面）。
+        _surface = new TerrainSurface();
+        AddChild(_surface);
+        _surface.SetAnchorsPreset(LayoutPreset.FullRect);
         Resized += QueueRedraw;
         MouseExited += () => _middleDragging = false;
         QueueRedraw();
@@ -280,12 +286,23 @@ public partial class DemoHexMap : Control
     public override void _Draw()
     {
         if (World is null)
+        {
+            _surface?.Hide();
             return;
+        }
 
         var (start, radius) = ViewLayout();
 
         // 第 08-15 章：遠看（戰略層、區域層）用簡化畫法；近景層才畫圖塊、建築與格線。
         var layer = LayerFor(radius);
+        // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
+        if (_surface is not null)
+        {
+            if (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))
+                _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius);
+            else
+                _surface.Hide();
+        }
         if (layer != ViewLayer.Local)
         {
             DrawSimplified(start, radius, layer);
@@ -298,6 +315,14 @@ public partial class DemoHexMap : Control
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             if (!OnScreen(center, radius))
                 continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
+            if (_surface is { Active: true })
+            {
+                // 地形已由連續地表畫好；這裡只畫聚落圖示（近看畫建築，遠看與遺跡畫圖示）。
+                if (VisibleSite(cell) is { } site && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
+                    && (site.IsRuin || !UseFootprints(radius)))
+                    DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
+                continue;
+            }
             var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
             // 第 06 章 a 節：主水道來自 Core 地圖（每個世界都有）；MainRiverTiles 只是舊注入的相容來源。
             var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
@@ -611,6 +636,47 @@ public partial class DemoHexMap : Control
     /// <summary>TEMP 顯示參數（第 08-13 章）：取樣往內縮的比例（藏住圖塊描邊）、六角形外擴的像素（相鄰格重疊、不留細縫）。</summary>
     public const float TempTileInset = 0.07f;
     public const float TempTileOverlap = 0.9f;
+
+    private byte[]? _surfaceCodes;
+    private (DemoHexWorld? World, int Week, object? Land, object? Spells, object? Ore) _surfaceKey;
+
+    /// <summary>第 06-4 章第 2 步：每格的地表代碼（列×欄數＋欄）；地圖、週、土地、天災、礦脈變了才重算。</summary>
+    private byte[] SurfaceCodes()
+    {
+        var key = (World, CurrentWeek, (object?)Land, (object?)Spells, (object?)MeteoriteOre);
+        if (_surfaceCodes is not null && key.Equals(_surfaceKey))
+            return _surfaceCodes;
+        var codes = new byte[World!.Columns * World.Rows];
+        foreach (var cell in World.Cells)
+            codes[cell.Row * World.Columns + cell.Column] = (byte)SurfaceCode(cell);
+        _surfaceKey = key;
+        return _surfaceCodes = codes;
+    }
+
+    private TerrainSurface.Code SurfaceCode(DemoHexCell cell)
+    {
+        var at = new DemoCellRef(cell.Column, cell.Row);
+        switch (DemoEnvironment.LookAt(Spells, cell, CurrentWeek))
+        {
+            case DemoEnvironment.Look.Burning: return TerrainSurface.Code.Burning;
+            case DemoEnvironment.Look.Scorched: return TerrainSurface.Code.Scorched;
+            case DemoEnvironment.Look.Dry: return TerrainSurface.Code.DryGrass;
+        }
+        switch (Land.StateOf(at))
+        {
+            case DemoLandDevelopment.Farmland: return TerrainSurface.Code.Farmland;
+            case DemoLandDevelopment.Clearing: return TerrainSurface.Code.Clearing;
+        }
+        return cell.Terrain switch
+        {
+            DemoTerrain.Water when cell.Sea => TerrainSurface.Code.Sea,
+            DemoTerrain.Water when cell.Shallow => TerrainSurface.Code.Shallow,
+            DemoTerrain.Water => TerrainSurface.Code.River,
+            DemoTerrain.Forest => TerrainSurface.Code.Forest,
+            DemoTerrain.Hills => cell.Ore || MeteoriteOre.Contains(at) ? TerrainSurface.Code.HillsOre : TerrainSurface.Code.Hills,
+            _ => TerrainSurface.Code.Grassland
+        };
+    }
 
     private static Vector2[] HexUvs(Vector2[] vertices, Vector2 center, float radius)
     {
