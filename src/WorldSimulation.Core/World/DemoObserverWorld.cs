@@ -409,6 +409,35 @@ public sealed partial class DemoObserverWorld
         }
     }
 
+    private List<DemoDungeon> _dungeonCache = new();
+    private int _dungeonCacheWeek = -1;
+    private int _dungeonCacheEarlier = -1;
+
+    /// <summary>
+    /// 第 12-1 章 C4：世界上的地下城（由已提交的「地下城出現」事件推得，名字與層數重算；不另存）。
+    /// 快取方式同 <see cref="MeteoriteOre"/>。
+    /// </summary>
+    public IReadOnlyList<DemoDungeon> Dungeons
+    {
+        get
+        {
+            var firstWeek = _weeks.Count == 0 ? int.MaxValue : _weeks[0].Week;
+            if (_dungeonCacheEarlier != _earlierEvents.Count || _dungeonCacheWeek < firstWeek - 1)
+            {
+                _dungeonCache = new List<DemoDungeon>();
+                DemoDungeons.Collect(_earlierEvents, Map, _rng, _dungeonCache);
+                _dungeonCacheEarlier = _earlierEvents.Count;
+                _dungeonCacheWeek = firstWeek - 1;
+            }
+            foreach (var w in _weeks.Where(w => w.Week > _dungeonCacheWeek))
+            {
+                DemoDungeons.Collect(w.Events, Map, _rng, _dungeonCache);
+                _dungeonCacheWeek = w.Week;
+            }
+            return _dungeonCache;
+        }
+    }
+
     /// <summary>
     /// 推進到下一個排程日，整天是一次原子提交（第 03 章 a 節，44F Stage 4～6）：
     /// <see cref="DemoWorldCommit"/> 依固定順序暫存 ①排程與時鐘 → ②亂數 → ③帳本（週結算）→ ④生死 → ⑤歷史（週報），
@@ -498,7 +527,11 @@ public sealed partial class DemoObserverWorld
                 // 第 12-1 章：隕石落點留下礦脈（事件接在毀田之後）。
                 var ore = DemoDisasters.MeteoriteOre(strikes, report.Events, Map, lifecycle.Outcome.Sites, MeteoriteOre, report.Week, report.WorldTime, _rng,
                     checked(landNextId + clearedOnly.Count + ruined.Count));
-                var cleared = clearedOnly.Concat(ruined).Concat(ore).ToList();
+                // 第 12-1 章 C4：地下城出現（事件接在隕石礦脈之後；用本週習得後的時代）。
+                var dungeon = DemoDungeons.Roll(report.Week, report.WorldTime, knowledge.Era, Map, lifecycle.Outcome.Sites,
+                    lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
+                    Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count));
+                var cleared = clearedOnly.Concat(ruined).Concat(ore).Concat(dungeon).ToList();
                 DemoPerf.Mark("土地與天災");
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
                 var (culture, split) = DemoCultures.Advance(_culture, report, lifecycle.Outcome.Sites, _rng, Map,

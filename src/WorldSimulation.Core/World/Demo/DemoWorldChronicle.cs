@@ -147,6 +147,11 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Disaster, e.EventId,
                         Name(e.SettlementId), T(" 附近的" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.DungeonAppeared:
+                    // 第 12-1 章 C4：地下城出現是重大事件。
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.BeastAttack:
                     // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
                     Add(e.Week, DemoChronicleLevel.Normal,

@@ -1428,6 +1428,7 @@ public partial class ObserverRoot : Control
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
+        _hexMap.Dungeons = _world.Dungeons.Select(d => d.Cell).ToArray(); // 第 12-1 章 C4
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
