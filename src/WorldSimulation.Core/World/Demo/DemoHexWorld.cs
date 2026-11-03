@@ -89,9 +89,14 @@ public sealed class DemoHexWorld
     /// <summary>【TEMP】第 07-1 章 c 節：地圖每 8 列一個淺灘渡口（小地圖 1 個）。</summary>
     public const int TempRowsPerFord = 8;
 
+    /// <summary>第 06-4 章：中地圖以上用高度圖大陸；小地圖（12×8 塞不下大陸）保留南緣海洋的舊生成。</summary>
+    public static bool UsesContinents(DemoMapSize size) => size != DemoMapSize.Small;
+
     /// <summary>第 07-1 章 c 節：某尺寸地圖從 GEOGRAPHY 流抽的次數。</summary>
     public static int GeographyDrawsFor(DemoMapSize size)
     {
+        if (UsesContinents(size))
+            return 0; // 第 06-4 章：大陸生成只用實體局部亂數
         var (columns, rows) = DemoMapSizes.Dimensions(size);
         return columns * rows + columns + RiversFor(columns) * (rows + FordsFor(rows));
     }
@@ -247,6 +252,15 @@ public sealed class DemoHexWorld
     public static DemoHexWorld Generate(RngRegistry rng, DemoMapSize size = DemoMapSize.Small)
     {
         var (Columns, Rows) = DemoMapSizes.Dimensions(size);
+        if (UsesContinents(size))
+        {
+            // 第 06-4 章：中、大、巨大地圖改用高度圖大陸（不推進地理流計數器）；小地圖保留下面的舊生成（測試與快速試玩用）。
+            ArgumentNullException.ThrowIfNull(rng);
+            if (rng.GetDrawCounter(RngStreams.Geography) != 0)
+                throw new InvalidOperationException("Demo map generation requires an unused GEOGRAPHY stream.");
+            var continent = Array.AsReadOnly(DemoContinentGenerator.Generate(rng, Columns, Rows));
+            return new DemoHexWorld(rng.WorldSeed, size, continent, DemoRouteNetwork.Build(continent, DemoRouteTempSettings.Current));
+        }
         var seaScale = Math.Max(1, Rows / SmallRows);
         ArgumentNullException.ThrowIfNull(rng);
         if (rng.GetDrawCounter(RngStreams.Geography) != 0)

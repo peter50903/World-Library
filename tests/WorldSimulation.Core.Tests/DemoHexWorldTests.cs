@@ -122,21 +122,22 @@ public sealed class DemoHexWorldTests
         Assert.True(same / pairs >= 0.65, $"same-terrain neighbour share {same / pairs:F2}");
     }
 
-    /// <summary>第 06-2 章：中地圖 2 條河、大地圖 4 條河（每 12 欄一條）。</summary>
+    /// <summary>第 06-2 章：中地圖 2 條河、大地圖 4 條河（每 12 欄一條）；第 06-4 章起河從丘陵流向海。</summary>
     [Theory]
     [InlineData(DemoMapSize.Medium)]
     [InlineData(DemoMapSize.Large)]
     public void WiderMapsHaveMoreRivers(DemoMapSize size)
     {
         var (columns, _) = DemoMapSizes.Dimensions(size);
-        var rivers = DemoHexWorld.RiversFor(columns);
-        Assert.Equal(columns / DemoHexWorld.TempColumnsPerRiver, rivers);
+        Assert.Equal(columns / DemoHexWorld.TempColumnsPerRiver, DemoHexWorld.RiversFor(columns));
         var withSeveral = Enumerable.Range(1, 10).Count(i =>
         {
             var map = DemoHexWorld.Generate((ulong)i, size);
-            var band = columns / rivers;
-            return Enumerable.Range(0, rivers).Count(k => map.MainWaterway.Any(c => c.Column / band == k)) >= 2;
+            // 河口＝臨海的河流格；每條流到海的河至少一個。
+            var mouths = map.MainWaterway.Count(r => DemoRouteNetwork.Directions
+                .Any(d => map.AtAxial(map.GetCell(r.Column, r.Row).AxialQ + d.Dq, map.GetCell(r.Column, r.Row).AxialR + d.Dr) is { Sea: true }));
+            return mouths >= (size == DemoMapSize.Medium ? 1 : 2);
         });
-        Assert.True(withSeveral >= 8, $"only {withSeveral}/10 maps had rivers in two or more bands");
+        Assert.True(withSeveral >= 8, $"only {withSeveral}/10 maps had enough river mouths");
     }
 }
