@@ -302,6 +302,10 @@ public partial class ObserverRoot
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             if (tab.Badges.Count > 0)
                 scroll.AddChild(TechBadgeGrid(tab)); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
+            else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
+                scroll.AddChild(peopleList); // 第 08-16 章：代表人物有人像
+            else if ((tab.Emblem is not null || tab.FaithSymbol is not null) && HeraldryHeader(tab) is { } header)
+                scroll.AddChild(header); // 第 08-16 章：文化紋章與信仰符號
             else
                 scroll.AddChild(new Label
                 {
@@ -389,6 +393,70 @@ public partial class ObserverRoot
         "FAITH" => new Color(0.60f, 0.52f, 0.35f), "OPENING" => new Color(0.65f, 0.32f, 0.15f),
         _ => new Color(0.4f, 0.4f, 0.4f)
     };
+
+    /// <summary>【TEMP】詳情面板的人像、紋章大小（像素）。</summary>
+    private const float TempPortraitSize = 88f;
+    private const float TempEmblemSize = 56f;
+
+    private static TextureRect Picture(Texture2D texture, float size) => new()
+    {
+        Texture = texture, CustomMinimumSize = new Vector2(size, size), ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+        StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered, TextureFilter = TextureFilterEnum.Nearest, MouseFilter = MouseFilterEnum.Ignore
+    };
+
+    private static Label WrapLabel(string text) => new()
+    {
+        Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill
+    };
+
+    /// <summary>第 08-16 章：代表人物一人一列（人像＋文字）；人像部件缺少時回傳 null，改用純文字。</summary>
+    private Control? PeopleList(DemoDetailTab tab)
+    {
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var person in tab.People)
+        {
+            var fabric = person.Portrait.CultureId > 0 ? _hexMap.CultureColor(person.Portrait.CultureId) : new Color(0.55f, 0.50f, 0.42f);
+            if (Heraldry.Portrait(person.Portrait, fabric) is not { } face)
+                return null;
+            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var frame = new PanelContainer();
+            frame.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                BgColor = new Color(0.24f, 0.20f, 0.16f), BorderColor = new Color(0.55f, 0.43f, 0.27f),
+                BorderWidthLeft = 2, BorderWidthRight = 2, BorderWidthTop = 2, BorderWidthBottom = 2,
+                CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6, CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6
+            });
+            frame.AddChild(Picture(face, TempPortraitSize));
+            row.AddChild(frame);
+            row.AddChild(WrapLabel(string.Join("\n", person.Lines)));
+            column.AddChild(row);
+        }
+        return column;
+    }
+
+    /// <summary>第 08-16 章：現況分頁上方的文化紋章與信仰符號，下面接原本的文字。</summary>
+    private Control? HeraldryHeader(DemoDetailTab tab)
+    {
+        var icons = new HBoxContainer();
+        if (tab.Emblem is { } emblem && Heraldry.Emblem(emblem, _hexMap.CultureColor(emblem.CultureId)) is { } shield)
+            icons.AddChild(Picture(shield, TempEmblemSize));
+        if (tab.FaithSymbol is { } symbol && Heraldry.FaithSymbol(symbol, _hexMap.FaithColor(tab.FaithId)) is { } sign)
+        {
+            var disc = new PanelContainer();
+            disc.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                BgColor = new Color(0.12f, 0.10f, 0.09f), CornerRadiusTopLeft = 28, CornerRadiusTopRight = 28, CornerRadiusBottomLeft = 28, CornerRadiusBottomRight = 28
+            });
+            disc.AddChild(Picture(sign, TempEmblemSize));
+            icons.AddChild(disc);
+        }
+        if (icons.GetChildCount() == 0)
+            return null;
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        column.AddChild(icons);
+        column.AddChild(WrapLabel(string.Join("\n", tab.Lines)));
+        return column;
+    }
 
     private Control TechBadgeGrid(DemoDetailTab tab)
     {

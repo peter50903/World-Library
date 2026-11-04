@@ -137,7 +137,9 @@ public static class ArtAssets
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
-    }.Concat(TerrainTextures.Select(t => t.Path)).ToArray(); // 第 06-4 章第 4 步：地形紋理
+    }.Concat(TerrainTextures.Select(t => t.Path)) // 第 06-4 章第 4 步：地形紋理
+        .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
+        .ToArray();
 
     private static readonly Dictionary<string, Resource?> Cache = new();
 
