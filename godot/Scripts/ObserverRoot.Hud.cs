@@ -392,12 +392,36 @@ public partial class ObserverRoot
     private Control TechBadgeGrid(DemoDetailTab tab)
     {
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        var grid = new GridContainer { Columns = TempBadgeColumns };
-        grid.AddThemeConstantOverride("h_separation", 6);
-        grid.AddThemeConstantOverride("v_separation", 6);
-        foreach (var badge in tab.Badges)
-            grid.AddChild(TechBadge(badge));
-        column.AddChild(grid);
+        GridContainer Grid(IEnumerable<DemoTechBadge> badges)
+        {
+            var grid = new GridContainer { Columns = TempBadgeColumns };
+            grid.AddThemeConstantOverride("h_separation", 6);
+            grid.AddThemeConstantOverride("v_separation", 6);
+            foreach (var badge in badges)
+                grid.AddChild(TechBadge(badge));
+            return grid;
+        }
+        if (tab.KeyBadgeCount <= 0)
+        {
+            column.AddChild(Grid(tab.Badges));
+            return column;
+        }
+        // 第 08-16 章（知識樹收斂顯示）：關鍵技術放最上面，其餘技術預設收合。
+        column.AddChild(new Label { Text = tab.KeyTitle, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        column.AddChild(Grid(tab.Badges.Take(tab.KeyBadgeCount)));
+        var rest = tab.Badges.Skip(tab.KeyBadgeCount).ToList();
+        if (rest.Count == 0)
+            return column;
+        var others = Grid(rest);
+        others.Visible = false;
+        var toggle = new Button { Text = $"其他技術 {rest.Count} 項 ▸", Flat = true, Alignment = HorizontalAlignment.Left };
+        toggle.Pressed += () =>
+        {
+            others.Visible = !others.Visible;
+            toggle.Text = $"其他技術 {rest.Count} 項 {(others.Visible ? "▾" : "▸")}";
+        };
+        column.AddChild(toggle);
+        column.AddChild(others);
         return column;
     }
 

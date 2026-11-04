@@ -7,6 +7,11 @@ namespace WorldSimulation.Core.World.Demo;
 public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
 {
     public IReadOnlyList<DemoTechBadge> Badges { get; init; } = Array.Empty<DemoTechBadge>();
+
+    /// <summary>第 08-16 章（知識樹收斂顯示）：前幾個徽章是「關鍵技術」，介面放最上面並加標題；其餘收合。</summary>
+    public int KeyBadgeCount { get; init; }
+
+    public string KeyTitle { get; init; } = "";
 }
 
 /// <summary>
@@ -61,6 +66,20 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
     private static DemoTechBadge Badge(DemoTechnology t, int? year, long percent)
         => new(t.Id, DemoKnowledge.Name(t), t.Node.Domain, DomainName(t.Node.Domain), DomainGlyph(t.Node.Domain), t.Node.Tier, year, percent,
             DemoKnowledge.IsOpening(t));
+
+    /// <summary>
+    /// 第 08-16 章：某等級升下一級所需設施對應的技術（設施本身要技術，或要某職業的代表人物、而那個職業要技術）；
+    /// 城市升首都另需王權。首都＝沒有下一級。
+    /// </summary>
+    public static IReadOnlyList<DemoTechnology> KeyTechnologies(DemoSettlementTier tier)
+    {
+        var list = DemoSettlementHistory.FacilitiesOf(tier)
+            .Select(f => f.TechId is { } id ? DemoTechnology.Of(id) : f.Role is { } role ? DemoRepresentative.TechnologyOf(role) : null)
+            .Where(t => t is not null).Select(t => t!.Value).Distinct().ToList();
+        if (tier == DemoSettlementTier.City)
+            list.Add(DemoTechnology.Of(DemoSettlementHistory.CapitalTechId));
+        return list;
+    }
 
     /// <summary>研究分頁最多列幾項（進度高的在前）。</summary>
     public const int MaxResearchLines = 10;
@@ -177,8 +196,21 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         if (known.Count == 0)
             techs.Add("尚未研究出新技術");
 
-        var knownBadges = DemoTechnology.All.Where(DemoKnowledge.IsOpening).Select(t => Badge(t, null, 100))
-            .Concat(known.Select(r => Badge(r.Technology, YearOfWeek(r.LearnedWeek), 100))).ToList();
+        // 第 08-16 章（世紀帝國式收斂顯示）：關鍵技術＝讓本聚落升下一級的設施所需的技術，放最上面；其餘收合。
+        var keyTechs = KeyTechnologies(world.ChronicleOf(settlement.Id).Tier);
+        var keyBadges = keyTechs.Select(t => records.FirstOrDefault(r => r.Technology == t) is { } rec
+                ? rec.Learned ? Badge(t, YearOfWeek(rec.LearnedWeek), 100) : Badge(t, null, rec.Progress * 100 / DemoKnowledge.ThresholdOf(t))
+                : Badge(t, null, 0)).ToList();
+        var keySet = keyTechs.ToHashSet();
+        var knownBadges = keyBadges
+            .Concat(DemoTechnology.All.Where(DemoKnowledge.IsOpening).Select(t => Badge(t, null, 100)))
+            .Concat(known.Where(r => !keySet.Contains(r.Technology)).Select(r => Badge(r.Technology, YearOfWeek(r.LearnedWeek), 100))).ToList();
+        var nextTier = world.ChronicleOf(settlement.Id).Tier + 1;
+        var keyTitle = keyTechs.Count == 0 ? "" : settlement.IsRuin ? "關鍵技術"
+            : $"升為{DemoSettlementHistory.TierName(nextTier)}的關鍵技術（有其中兩項設施才能升級）";
+        if (keyTechs.Count > 0)
+            techs.Insert(0, keyTitle + "：" + string.Join("、", keyTechs.Select(t =>
+                DemoKnowledge.Name(t) + (known.Any(r => r.Technology == t) ? "（已會）" : ""))));
 
         // 研究
         var researching = records.Where(r => !r.Learned && r.Progress > 0)
@@ -203,7 +235,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         {
             new DemoDetailTab("現況", now),
             new DemoDetailTab("代表人物", people),
-            new DemoDetailTab("技術", techs) { Badges = knownBadges },
+            new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
             new DemoDetailTab("歷史", history)
         }, settlement.Id);
