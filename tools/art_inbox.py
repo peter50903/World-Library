@@ -71,6 +71,47 @@ def animation_strip(img: Image.Image, w: int, h: int, frames: int = 4) -> Image.
     return out
 
 
+def drop_flat_background(img: Image.Image) -> Image.Image:
+    """GPT 沒給真正透明背景時：從四角把相近的底色往內填成透明。"""
+    if img.getchannel("A").getextrema()[0] < 250:
+        return img  # 已經有透明處
+    from PIL import ImageChops, ImageDraw
+    probe = img.convert("RGB")
+    sentinel = (255, 0, 255)
+    for corner in ((0, 0), (img.width - 1, 0), (0, img.height - 1), (img.width - 1, img.height - 1)):
+        if probe.getpixel(corner) != sentinel:
+            ImageDraw.floodfill(probe, corner, sentinel, thresh=40)
+    diff = ImageChops.difference(probe, Image.new("RGB", probe.size, sentinel)).convert("L")
+    out = img.copy()
+    out.putalpha(diff.point(lambda v: 0 if v == 0 else 255))
+    return out
+
+
+def pixel_part(img: Image.Image, w: int, h: int, frames: int = 1) -> Image.Image:
+    """像素零件（第 08-16 章第 12 節）：去背、取不透明範圍、等比縮進 (w/frames)×h 的小像素格（底部置中）、
+    透明度只留全有或全無、顏色收斂成最多 12 色——成品就是地圖上的實際像素，程式直接疊進像素地表。"""
+    img = drop_flat_background(img.convert("RGBA"))
+    alpha = img.getchannel("A").point(lambda a: 0 if a < 48 else a)
+    img.putalpha(alpha)
+    src_w = img.width // frames
+    cells = [img.crop((k * src_w, 0, (k + 1) * src_w, img.height)) for k in range(frames)]
+    boxes = [b for b in (c.getchannel("A").getbbox() for c in cells) if b]
+    if boxes:
+        box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+        cells = [c.crop(box) for c in cells]
+    fw = w // frames
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    for k, c in enumerate(cells):
+        scale = min(fw / c.width, h / c.height)
+        size = (max(1, round(c.width * scale)), max(1, round(c.height * scale)))
+        a = c.getchannel("A").resize(size, Image.Resampling.BOX).point(lambda v: 255 if v >= 128 else 0)
+        rgb = c.convert("RGB").resize(size, Image.Resampling.BOX).quantize(12, Image.Quantize.MEDIANCUT).convert("RGB")
+        small = rgb.convert("RGBA")
+        small.putalpha(a)
+        out.alpha_composite(small, (k * fw + (fw - size[0]) // 2, h - size[1]))
+    return out
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(__doc__)
@@ -98,7 +139,9 @@ def main() -> int:
         w, h = target_size(row["規格"])
         transparent = "透明背景" in row["規格"]  # 「不透明」也含「透明」二字，要比對整個詞
         img = Image.open(f).convert("RGBA" if transparent else "RGB")
-        if row["類型"].startswith("地形紋理"):
+        if row["類型"].startswith("像素零件"):
+            img = pixel_part(img, w, h, 4 if "動畫" in row["類型"] else 1)
+        elif row["類型"].startswith("地形紋理"):
             img = seamless_pixel_texture(img, w, h)
         elif "動畫" in row["類型"]:
             img = animation_strip(img, w, h)
