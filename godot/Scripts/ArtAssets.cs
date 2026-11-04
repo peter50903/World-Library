@@ -54,18 +54,6 @@ public static class ArtAssets
     public const string SfxFounding = "res://assets/audio/sfx_founding.ogg";
     public const string SfxEra = "res://assets/audio/sfx_era.ogg";
 
-    /// <summary>第 06-4 章第 4 步：地表著色器的紋理（著色器參數名、檔案）。</summary>
-    public static readonly (string Uniform, string Path)[] TerrainTextures =
-    {
-        ("tex_grass", "res://assets/textures/grassland.png"), ("tex_forest", "res://assets/textures/forest.png"),
-        ("tex_hills", "res://assets/textures/hills.png"), ("tex_sea", "res://assets/textures/sea.png"),
-        ("tex_river", "res://assets/textures/river.png"), ("tex_shallow", "res://assets/textures/shallow.png"),
-        ("tex_beach", "res://assets/textures/beach.png"), ("tex_farmland", "res://assets/textures/farmland.png"),
-        ("tex_clearing", "res://assets/textures/clearing.png"), ("tex_dry", "res://assets/textures/dry_grass.png"),
-        ("tex_scorched", "res://assets/textures/scorched.png"), ("tex_flood", "res://assets/textures/flood.png"),
-        ("tex_ore", "res://assets/textures/ore_specks.png")
-    };
-
     /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀，每幀 128×64；缺少時由程式畫小人）。</summary>
     public const string FxMigrantsWalk = "res://assets/fx/migrants_walk.png";
 
@@ -137,8 +125,7 @@ public static class ArtAssets
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
-    }.Concat(TerrainTextures.Select(t => t.Path)) // 第 06-4 章第 4 步：地形紋理
-        .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
+    }.Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
         .Concat(new[] { ObserverRoot.EraArt(DemoEra.Hope), ObserverRoot.EraArt(DemoEra.Pioneer), ObserverRoot.EraArt((DemoEra)2) }) // 第 08-16 章：時代插圖
         .ToArray();
 
