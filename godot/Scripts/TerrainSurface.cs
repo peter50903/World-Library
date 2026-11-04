@@ -144,7 +144,18 @@ bool is_water(int c) {
 	return c == 4 || c == 5 || c == 6;
 }
 
-vec3 surface(int c, vec2 p, float coast, float t) {
+float dev_at(ivec2 a) {
+	if (a.y < 0 || a.y >= grid.y) {
+		return 0.0;
+	}
+	int col = a.x + (a.y - (a.y & 1)) / 2;
+	if (col < 0 || col >= grid.x) {
+		return 0.0;
+	}
+	return texelFetch(cells, ivec2(col, a.y), 0).a;
+}
+
+vec3 surface(int c, vec2 p, float coast, float t, float dev) {
 	vec2 u = p / radius;
 	float n = fbm(u * 1.3);
 	float fine = hash(floor(p / pixel));
@@ -178,8 +189,18 @@ vec3 surface(int c, vec2 p, float coast, float t) {
 		return mix(vec3(0.70, 0.60, 0.30), vec3(0.62, 0.52, 0.25), stripe) + (n - 0.5) * 0.05;
 	}
 	if (c == 8) {
-		vec3 b = mix(vec3(0.50, 0.40, 0.26), vec3(0.42, 0.48, 0.28), n);
-		return fine > 0.92 ? vec3(0.32, 0.24, 0.16) : b;
+		// 開墾中或荒廢中：依開發度 dev（0～1）漸變——低時是長著雜草的草地、中段是翻開的泥土與樹樁、接近 1 是田壟。
+		vec3 grass = mix(vec3(0.36, 0.52, 0.28), vec3(0.47, 0.60, 0.33), n);
+		vec3 soil = mix(vec3(0.50, 0.40, 0.26), vec3(0.44, 0.36, 0.22), n);
+		if (fine > 0.94) {
+			soil = vec3(0.32, 0.24, 0.16);
+		}
+		float stripe = step(0.5, fract((p.x * 0.7 + p.y * 0.7) / (radius * 0.22)));
+		vec3 field = mix(vec3(0.70, 0.60, 0.30), vec3(0.62, 0.52, 0.25), stripe);
+		float d1 = clamp(dev * 2.0, 0.0, 1.0);
+		float d2 = clamp(dev * 2.0 - 1.0, 0.0, 1.0);
+		vec3 col = fine < d1 ? soil : grass;
+		return hash(floor(p / pixel) + 7.7) < d2 ? field : col;
 	}
 	if (c == 9) {
 		return mix(vec3(0.55, 0.18, 0.06), vec3(1.0, 0.62, 0.18), vnoise(u * 4.0 + vec2(0.0, -t * 1.5)));
@@ -201,10 +222,12 @@ void fragment() {
 	float fq = w.x / (1.7320508 * radius) - fr * 0.5;
 	ivec2 a0 = cube_round(vec2(fq, fr));
 	int c1 = code_at(a0);
+
 	float d1 = distance(w, center_of(a0));
 	ivec2 dirs[6] = { ivec2(1, 0), ivec2(1, -1), ivec2(0, -1), ivec2(-1, 0), ivec2(-1, 1), ivec2(0, 1) };
 	float d2 = 1e9;
 	int c2 = c1;
+	ivec2 a2 = a0;
 	for (int i = 0; i < 6; i++) {
 		ivec2 a = a0 + dirs[i];
 		int c = code_at(a);
@@ -213,6 +236,7 @@ void fragment() {
 			if (d < d2) {
 				d2 = d;
 				c2 = c;
+				a2 = a;
 			}
 		}
 	}
@@ -221,11 +245,11 @@ void fragment() {
 	if (c1 == 4 && !is_water(c2)) {
 		coast = 1.0 - smoothstep(0.0, 0.5, edge);
 	}
-	vec3 col = surface(c1, p, coast, TIME);
+	vec3 col = surface(c1, p, coast, TIME, dev_at(a0));
 	if (c2 != c1) {
 		float t = smoothstep(0.0, 0.35, edge);
 		if (hash(floor(p / pixel) + 3.1) > 0.5 + 0.5 * t) {
-			col = surface(c2, p, 0.0, TIME);
+			col = surface(c2, p, 0.0, TIME, dev_at(a2));
 		}
 		if (!is_water(c1) && c2 == 4 && edge < 0.12) {
 			col = mix(vec3(0.80, 0.74, 0.54), col, edge / 0.12);
