@@ -255,8 +255,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         {
             new DemoDetailTab("現況", now)
             {
-                Emblem = world.Culture.MainCultureOf(settlement.Id) is { } mc && world.Culture.Culture(mc) is { } mainCulture ? DemoHeraldry.EmblemOf(mainCulture) : null,
-                FaithSymbol = world.Culture.Faith.MainFaithOf(settlement.Id) is { } mf && world.Culture.Faith.Faith(mf) is { } mainFaith ? DemoHeraldry.FaithSymbolOf(mainFaith) : null,
+                Emblem = world.Culture.MainCultureOf(settlement.Id) is { } emblemCulture && world.Culture.Culture(emblemCulture) is { } mainCulture ? DemoHeraldry.EmblemOf(mainCulture) : null,
+                FaithSymbol = world.Culture.Faith.MainFaithOf(settlement.Id) is { } symbolFaith && world.Culture.Faith.Faith(symbolFaith) is { } mainFaith ? DemoHeraldry.FaithSymbolOf(mainFaith) : null,
                 FaithId = world.Culture.Faith.MainFaithOf(settlement.Id) ?? 0
             },
             new DemoDetailTab("代表人物", people) { People = entries },
