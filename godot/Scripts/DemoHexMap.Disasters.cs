@@ -223,7 +223,16 @@ public partial class DemoHexMap
         foreach (var (cell, kind, amount) in _decals)
         {
             var center = ScreenOf(start, radius, cell);
-            if (!OnScreen(center, radius * 2f) || ArtAssets.Texture(DecalPath(kind)) is not { } decal)
+            if (!OnScreen(center, radius * 2f))
+                continue;
+            // 第 08-16 章第 12 節：像素零件版的坑、裂縫、殘骸（原像素大小、最近鄰），沒有才用舊特效圖。
+            if (PixelParts.Texture(PixelDecal(kind)) is { } px)
+            {
+                var pxSize = PixelParts.ScreenSize(px, radius);
+                DrawTextureRect(px, new Rect2(center - pxSize / 2f, pxSize), false, new Color(1, 1, 1, amount));
+                continue;
+            }
+            if (ArtAssets.Texture(DecalPath(kind)) is not { } decal)
                 continue;
             var size = radius * (kind == Overlay.Crater ? 1.5f : 1.8f);
             DrawTextureRect(decal, new Rect2(center - new Vector2(size, size) / 2f, new Vector2(size, size)), false, new Color(1, 1, 1, amount));
@@ -243,13 +252,22 @@ public partial class DemoHexMap
                 if (dk < TempFireBurnWeeks)
                     _fireOnScreen = true;
                 // 美術素材（2026-11-04）：火焰動畫兩叢、煙霧貼圖；沒有素材時畫圓形的煙。
-                if (dk < TempFireBurnWeeks && ArtAssets.Texture(ArtAssets.FxFire) is { } fire)
+                if (dk < TempFireBurnWeeks && PixelParts.Texture("px_fire") is { } pxFire)
+                {
+                    // 像素火焰（4 格動畫，原像素大小）：每格三叢。
+                    var frame = (int)(seconds * TempFireFps + k) % 4;
+                    var w = PixelParts.ScreenSize(pxFire, radius, 4).X;
+                    DrawStripFrame(pxFire, frame, center + new Vector2(-radius * 0.35f, radius * 0.4f), w);
+                    DrawStripFrame(pxFire, (frame + 2) % 4, center + new Vector2(radius * 0.3f, radius * 0.15f), w);
+                    DrawStripFrame(pxFire, (frame + 1) % 4, center + new Vector2(0f, radius * 0.6f), w);
+                }
+                else if (dk < TempFireBurnWeeks && ArtAssets.Texture(ArtAssets.FxFire) is { } fire)
                 {
                     var frame = (int)(seconds * TempFireFps + k) % 4;
                     DrawStripFrame(fire, frame, center + new Vector2(-radius * 0.3f, radius * 0.35f), radius * 0.9f);
                     DrawStripFrame(fire, (frame + 2) % 4, center + new Vector2(radius * 0.32f, radius * 0.1f), radius * 0.75f);
                 }
-                var smoke = ArtAssets.Texture(ArtAssets.FxSmoke);
+                var smoke = (Texture2D?)PixelParts.Texture("px_smoke") ?? ArtAssets.Texture(ArtAssets.FxSmoke);
                 for (var p = 0; p < 3; p++)
                 {
                     var phase = Mathf.PosMod(seconds * 0.4f + p / 3f + k * 0.17f, 1f);
@@ -345,6 +363,13 @@ public partial class DemoHexMap
 
     /// <summary>【TEMP】火焰動畫每秒幾格。</summary>
     public const float TempFireFps = 8f;
+
+    private static string PixelDecal(Overlay kind) => kind switch
+    {
+        Overlay.Crater => "px_crater",
+        Overlay.Cracks => "px_crack",
+        _ => "px_debris"
+    };
 
     private static string DecalPath(Overlay kind) => kind switch
     {
