@@ -526,7 +526,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
 | `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 4 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1）；08-13 燃燒外觀週數 |
 | `godot/Scripts/DemoHexMap.Migrants.cs` | 1 | 第 08-16 章遷徙小人：幾人一個小人、最多幾個、步伐速度、動畫重畫間隔（D06-4） |
-| `godot/Scripts/DemoHexMap.Disasters.cs` | 1 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） |
+| `godot/Scripts/DemoHexMap.Disasters.cs` | 3 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） ；火焰動畫格速、天災音效與火燒循環音量 |
 | `godot/Scripts/TerrainSurface.cs` | 1 | 第 06-4 章第 2 步連續地表：像素大小（D06-4） |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 9 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數 |
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |

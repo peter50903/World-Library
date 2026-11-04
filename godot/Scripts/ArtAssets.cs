@@ -36,6 +36,24 @@ public static class ArtAssets
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
     public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
     public const string IconDungeon = "res://assets/icons/icon_dungeon.png"; // 第 12-1 章 C4
+    /// <summary>第 12-1 章第 7 節：天災特效（美術收件匣 2026-11-04；缺少時由程式畫）。</summary>
+    public const string FxFire = "res://assets/fx/fire.png";
+    public const string FxSmoke = "res://assets/fx/smoke.png";
+    public const string FxMeteor = "res://assets/fx/meteor.png";
+    public const string FxTornado = "res://assets/fx/tornado.png";
+    public const string FxCrater = "res://assets/fx/crater.png";
+    public const string FxCracks = "res://assets/fx/cracks.png";
+    public const string FxDebris = "res://assets/fx/debris.png";
+
+    /// <summary>第 08-16 章：天災與事件音效（美術收件匣 2026-11-04）。</summary>
+    public const string SfxFire = "res://assets/audio/sfx_fire.ogg";
+    public const string SfxEarthquake = "res://assets/audio/sfx_earthquake.ogg";
+    public const string SfxMeteor = "res://assets/audio/sfx_meteor.ogg";
+    public const string SfxFlood = "res://assets/audio/sfx_flood.ogg";
+    public const string SfxTornado = "res://assets/audio/sfx_tornado.ogg";
+    public const string SfxFounding = "res://assets/audio/sfx_founding.ogg";
+    public const string SfxEra = "res://assets/audio/sfx_era.ogg";
+
     /// <summary>第 06-4 章第 4 步：地表著色器的紋理（著色器參數名、檔案）。</summary>
     public static readonly (string Uniform, string Path)[] TerrainTextures =
     {
@@ -113,6 +131,8 @@ public static class ArtAssets
         IconDisaster, // 第 12-1 章 C3：天災標記
         IconDungeon, // 第 12-1 章 C4：地下城標記
         FxMigrantsWalk, // 第 08-16 章：遷徙人群走路動畫（美術收件匣 2026-11-04）
+        FxFire, FxSmoke, FxMeteor, FxTornado, FxCrater, FxCracks, FxDebris, // 第 12-1 章第 7 節：天災特效
+        SfxFire, SfxEarthquake, SfxMeteor, SfxFlood, SfxTornado, SfxFounding, SfxEra, // 第 08-16 章：天災與事件音效
         TileBurning, TileScorched, TileGrasslandDry, // 第 08-13 章第 6 節：天災反映在地圖上（美術收件匣 2026-11-01）
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,

@@ -1433,6 +1433,7 @@ public partial class ObserverRoot : Control
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
+        PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
         _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
@@ -1481,5 +1482,27 @@ public partial class ObserverRoot : Control
                 events.FirstOrDefault(o => o.Kind == DemoSettlementEventKind.MeteoriteOre && o.CauseEventId == e.EventId) is { } ore
                     ? DemoLandClearing.CellOf(_world.Map, ore.Count) : (DemoCellRef?)null))
             .ToList();
+    }
+
+    private int _soundWeek = -1;
+
+    /// <summary>
+    /// 第 08-16 章：新提交的週裡有世界進入新時代就播時代音效、有建立新聚落就播建村號角（每次刷新最多各一次）。
+    /// 讀檔或一次跳過很多週時只同步、不補播。
+    /// </summary>
+    private void PlayEventSounds()
+    {
+        var latest = _world.CommittedWeeks;
+        if (_soundWeek < 0 || latest < _soundWeek || latest - _soundWeek > 4)
+        {
+            _soundWeek = latest;
+            return;
+        }
+        var fresh = _world.WeekReports().Where(w => w.Week > _soundWeek).SelectMany(w => w.Events).ToList();
+        _soundWeek = latest;
+        if (fresh.Any(e => e.Kind == DemoSettlementEventKind.EraBegan))
+            _hexMap.PlaySfx(ArtAssets.SfxEra);
+        else if (fresh.Any(e => e.Kind == DemoSettlementEventKind.SettlementFounded))
+            _hexMap.PlaySfx(ArtAssets.SfxFounding);
     }
 }
