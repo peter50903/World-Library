@@ -1507,7 +1507,7 @@ public partial class ObserverRoot : Control
             _hexMap.PlaySfx(ArtAssets.SfxEra);
             ShowEraCard((DemoEra)era.Count); // 第 08-16 章：時代插圖
         }
-        else if (fresh.Any(e => e.Kind == DemoSettlementEventKind.SettlementFounded))
-            _hexMap.PlaySfx(ArtAssets.SfxFounding);
+        else if (fresh.Any(e => e.Kind == DemoSettlementEventKind.SettlementFounded) && _hexMap.CurrentLayer != DemoHexMap.ViewLayer.Strategic)
+            _hexMap.PlaySfx(ArtAssets.SfxFounding); // 試玩回饋 2026-11-04 之 2：遠看全圖時不播建村聲
     }
 }

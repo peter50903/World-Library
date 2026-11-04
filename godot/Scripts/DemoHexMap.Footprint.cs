@@ -13,9 +13,9 @@ public partial class DemoHexMap
 {
     /// <summary>【TEMP】每格半徑小於此（像素）時不畫建築、改畫單一圖示；每幾人一棟屋（營地每幾人一頂帳篷）；每格最多幾棟。</summary>
     private const float TempFootprintMinRadius = 14f;
-    private const int TempPeoplePerHouse = 10;
+    private const int TempPeoplePerHouse = 25;
     private const int TempPeoplePerTent = 5;
-    private const int TempHousesPerCell = 3;
+    private const int TempHousesPerCell = 2;
 
     public const string SpriteTent = "res://assets/sprites/tent.png";
     public const string SpriteHut = "res://assets/sprites/hut.png";
@@ -87,9 +87,9 @@ public partial class DemoHexMap
         {
             var cell = cells[i / TempHousesPerCell];
             var slot = i % TempHousesPerCell;
-            // 三個位置繞格心各差 120°，起始角依聚落與格決定；本格中央有市集等建築時屋子往外推。
-            var angle = Mathf.Tau * ((settlement.Id * 7 + cell.Column * 3 + cell.Row * 5) % 12) / 12f + slot * Mathf.Tau / 3f;
-            var distance = cell == own && centerTaken ? 0.55f : cell == own && count == 1 ? 0f : 0.42f;
+            // 位置繞格心平均分開，起始角依聚落與格決定；本格中央有市集等建築時屋子往外推。
+            var angle = Mathf.Tau * ((settlement.Id * 7 + cell.Column * 3 + cell.Row * 5) % 12) / 12f + slot * Mathf.Tau / TempHousesPerCell;
+            var distance = cell == own && centerTaken ? 0.62f : cell == own && count == 1 ? 0f : 0.38f;
             buildings.Add(new BuildingSpot(cell, house, Vector2.FromAngle(angle) * distance));
         }
         var walled = tier >= DemoSettlementTier.City;
@@ -171,15 +171,16 @@ public partial class DemoHexMap
 
     private void DrawBuilding(Building kind, Vector2 at, float radius)
     {
+        // 試玩回饋 2026-11-04 之 6（建築小得像地形噪點）：建築放大約 1.7 倍、數量減少（【TEMP】倍率）。
         var (path, size) = kind switch
         {
-            Building.Tent => (SpriteTent, 0.42f),
-            Building.Hut => (SpriteHut, 0.45f),
-            Building.House => (SpriteHouse, 0.48f),
-            Building.StoneHouse => (SpriteStoneHouse, 0.5f),
-            Building.Market => (SpriteMarket, 0.62f),
-            Building.Temple => (SpriteTemple, 0.7f),
-            _ => (SpriteKeep, 0.85f)
+            Building.Tent => (SpriteTent, 0.72f),
+            Building.Hut => (SpriteHut, 0.8f),
+            Building.House => (SpriteHouse, 0.85f),
+            Building.StoneHouse => (SpriteStoneHouse, 0.88f),
+            Building.Market => (SpriteMarket, 1.0f),
+            Building.Temple => (SpriteTemple, 1.1f),
+            _ => (SpriteKeep, 1.3f)
         };
         if (DrawMarker(path, at, radius * size))
             return;

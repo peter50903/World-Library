@@ -66,6 +66,8 @@ public partial class DemoHexMap
     public override void _Process(double delta)
     {
         UpdateFireLoop();
+        if (_surfaceStale && Time.GetTicksMsec() - _surfaceBuiltMs >= TempSurfaceRefreshMs)
+            QueueRedraw();
         if (!WantsAnimation)
             return;
         var now = Time.GetTicksMsec();
@@ -216,6 +218,7 @@ public partial class DemoHexMap
     {
         var now = Time.GetTicksMsec();
         var seconds = now / 1000f;
+        _fireOnScreen = false;
         // 地面痕跡貼圖：隕石坑、地震裂縫、龍捲風殘骸（依時間淡去）。
         foreach (var (cell, kind, amount) in _decals)
         {
@@ -237,6 +240,8 @@ public partial class DemoHexMap
                 var center = ScreenOf(start, radius, spell.Cells[k]);
                 if (!OnScreen(center, radius * 3f))
                     continue;
+                if (dk < TempFireBurnWeeks)
+                    _fireOnScreen = true;
                 // 美術素材（2026-11-04）：火焰動畫兩叢、煙霧貼圖；沒有素材時畫圓形的煙。
                 if (dk < TempFireBurnWeeks && ArtAssets.Texture(ArtAssets.FxFire) is { } fire)
                 {
@@ -360,27 +365,38 @@ public partial class DemoHexMap
     /// <summary>無畫面模式與冒煙測試靜音（由觀察者介面設定）。</summary>
     public bool AudioMuted { get; set; }
 
-    /// <summary>【TEMP】天災音效、火燒循環音量（dB）。</summary>
-    public const float TempSfxVolumeDb = -6f;
-    public const float TempFireLoopVolumeDb = -14f;
+    /// <summary>【TEMP】天災音效、火燒循環音量（dB）。
+    /// 試玩回饋 2026-11-04 之 2（音效好吵）：調低，同一種音效至少隔 <see cref="TempSfxMinGapMs"/> 毫秒、全部音效至少隔 <see cref="TempSfxAnyGapMs"/> 毫秒。</summary>
+    public const float TempSfxVolumeDb = -16f;
+    public const float TempFireLoopVolumeDb = -26f;
+    public const ulong TempSfxMinGapMs = 8000;
+    public const ulong TempSfxAnyGapMs = 1500;
 
     private AudioStreamPlayer? _fireLoop;
+    private readonly Dictionary<string, ulong> _sfxLastMs = new();
+    private ulong _sfxAnyLastMs;
+    private bool _fireOnScreen;
 
-    /// <summary>播一次音效（每次一個播放器，播完自行移除，可重疊）。</summary>
+    /// <summary>播一次音效（每次一個播放器，播完自行移除）；太密的略過。</summary>
     public void PlaySfx(string path)
     {
         if (AudioMuted || !IsInsideTree() || ArtAssets.Audio(path) is not { } stream)
             return;
+        var now = Time.GetTicksMsec();
+        if ((_sfxLastMs.TryGetValue(path, out var last) && now - last < TempSfxMinGapMs) || (_sfxAnyLastMs > 0 && now - _sfxAnyLastMs < TempSfxAnyGapMs))
+            return;
+        _sfxLastMs[path] = now;
+        _sfxAnyLastMs = now;
         var player = new AudioStreamPlayer { Stream = stream, VolumeDb = TempSfxVolumeDb };
         AddChild(player);
         player.Finished += player.QueueFree;
         player.Play();
     }
 
-    /// <summary>畫面上有東西在燒時循環播放火燒聲。</summary>
+    /// <summary>畫面上看得到火（近看或中景、火在畫面內）時才循環播放火燒聲。</summary>
     private void UpdateFireLoop()
     {
-        var want = _hasFire && !AudioMuted;
+        var want = _hasFire && _fireOnScreen && !AudioMuted && CurrentLayer != ViewLayer.Strategic;
         if (want && _fireLoop is null && ArtAssets.Audio(ArtAssets.SfxFire) is { } stream)
         {
             if (stream is AudioStreamOggVorbis ogg)

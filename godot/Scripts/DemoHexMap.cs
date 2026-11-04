@@ -669,6 +669,11 @@ public partial class DemoHexMap : Control
     private readonly HashSet<DemoCellRef> _builtCells = new();
     private (object?, object?, object?, object?) _builtKey;
     private byte[]? _surfaceCodes;
+    private ulong _surfaceBuiltMs;
+    private bool _surfaceStale;
+
+    /// <summary>【TEMP】地表資料最短重算間隔（毫秒）。</summary>
+    private const ulong TempSurfaceRefreshMs = 250;
     private (DemoHexWorld? World, int Week, float Fraction, object? Land, object? Spells, object? Ore, object? Marks, object? Sites, object? Ruins, object? Scale, object? Lineage) _surfaceKey;
 
     /// <summary>
@@ -680,6 +685,16 @@ public partial class DemoHexMap : Control
         var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
         if (_surfaceCodes is not null && key.Equals(_surfaceKey))
             return _surfaceCodes;
+        // 試玩回饋 2026-11-04 之 4（遊戲進行時拖地圖很卡）：同一張地圖最多每 TempSurfaceRefreshMs 毫秒重算一次
+        // （原本週內進度每幀都變、每幀重算並重新上傳）；換地圖立刻重算。
+        var nowMs = Time.GetTicksMsec();
+        if (_surfaceCodes is not null && ReferenceEquals(key.World, _surfaceKey.World) && nowMs - _surfaceBuiltMs < TempSurfaceRefreshMs)
+        {
+            _surfaceStale = true; // 間隔到了由 _Process 補畫一次
+            return _surfaceCodes;
+        }
+        _surfaceStale = false;
+        _surfaceBuiltMs = nowMs;
         // 有房子的格只在聚落、等級或領域改變時重算（地表每幀都可能重算，聚落外觀不必）。
         var builtKey = ((object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
         if (!builtKey.Equals(_builtKey))
