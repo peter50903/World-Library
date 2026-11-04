@@ -514,21 +514,7 @@ public partial class DemoHexMap : Control
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
         if (!migrants)
             return;
-        var font = ThemeDB.FallbackFont;
-        foreach (var batch in Migrants)
-        {
-            var center = MigrantPosition(start, radius, batch);
-            if (!DrawMarker(ArtAssets.IconMigrants, center, radius * 0.95f))
-            {
-                DrawCircle(center, radius * 0.22f, new Color(0.12f, 0.13f, 0.15f));
-                DrawCircle(center, radius * 0.16f, new Color(0.86f, 0.27f, 0.25f));
-            }
-            // 人數標籤：深色底＋白字，圖示或圓點上都看得清楚。
-            var size = Mathf.Max(8, (int)(radius * 0.32f));
-            var labelPos = center + new Vector2(radius * 0.05f, radius * 0.38f);
-            DrawCircle(labelPos + new Vector2(size * 0.3f, -size * 0.35f), size * 0.62f, new Color(0.12f, 0.08f, 0.05f, 0.85f));
-            DrawString(font, labelPos, batch.People.ToString(), HorizontalAlignment.Left, -1, size, Colors.White);
-        }
+        DrawMigrants(start, radius); // 第 08-16 章：沿路線走路的小人群
     }
 
     /// <summary>
@@ -654,7 +640,13 @@ public partial class DemoHexMap : Control
             return _surfaceCodes;
         var data = new byte[World!.Columns * World.Rows * 4];
         foreach (var cell in World.Cells)
-            data[(cell.Row * World.Columns + cell.Column) * 4] = (byte)SurfaceCode(cell);
+        {
+            var at = (cell.Row * World.Columns + cell.Column) * 4;
+            data[at] = (byte)SurfaceCode(cell);
+            // 第 08-16 章：開墾中與荒廢中的開發度（第 4 個位元組），地表依此從草地漸變到農田、或從農田漸變回草地。
+            if (Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { State: DemoLandDevelopment.Clearing } parcel)
+                data[at + 3] = (byte)Math.Clamp(parcel.DevelopmentPercent * 255 / 100, 0, 255);
+        }
         FillOverlays(data);
         _surfaceKey = key;
         return _surfaceCodes = data;
