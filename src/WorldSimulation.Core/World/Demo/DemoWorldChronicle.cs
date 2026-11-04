@@ -36,8 +36,12 @@ public sealed record DemoChronicleEntry(
     DemoChronicleLevel Level,
     DemoChronicleCategory Category,
     IReadOnlyList<DemoChronicleSegment> Segments,
-    long EventId = 0)
+    long EventId = 0,
+    long ParentEventId = 0)
 {
+    /// <summary>第 08-16 章：同一年裡起因也在編年史上的條目（介面縮排在起因下面，合成一段）；沒有＝0。</summary>
+    public bool IsFollowUp => ParentEventId > 0;
+
     public string Text => string.Concat(Segments.Select(s => s.Text));
 
     /// <summary>點這一筆時定位的聚落（第一個名稱）；沒有＝0。</summary>
@@ -80,6 +84,8 @@ public static class DemoWorldChronicle
         var entries = new List<(int Year, DemoChronicleEntry Entry)>();
         void Add(int week, DemoChronicleLevel level, DemoChronicleCategory category, long eventId, params DemoChronicleSegment[] segments)
             => entries.Add((YearOf(week), new DemoChronicleEntry(week, level, category, segments, eventId)));
+        // 第 08-16 章：沒有事件編號的年度合計（餓死、缺糧）記下它們的起因事件（例：熱浪），之後接到起因下面。
+        var aggregateCause = new Dictionary<int, long>();
 
         var events = world.SettlementEvents();
         var byId = events.Where(e => e.EventId > 0).GroupBy(e => e.EventId).ToDictionary(g => g.Key, g => g.First()); // 第 08-16 章：因果故事
@@ -173,6 +179,9 @@ public static class DemoWorldChronicle
                      .GroupBy(e => (Year: YearOf(e.Week), e.SettlementId)))
         {
             var lastWeek = g.Max(e => e.Week);
+            var heat = g.Where(e => e.Kind == DemoSettlementEventKind.Hunger && e.CauseEventId > 0)
+                .Select(e => e.CauseEventId).FirstOrDefault(id => byId.TryGetValue(id, out var c) && DemoEnvironment.IsSpell(c.Kind));
+            var firstAggregate = entries.Count;
             var starved = g.Where(e => e.Kind is DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.MigrantStarvationDeath).Sum(e => e.Count);
             if (starved > 0)
                 Add(lastWeek, DemoChronicleLevel.Major, DemoChronicleCategory.Famine, 0, Name(g.Key.SettlementId), T($" 本年餓死 {starved} 人"));
@@ -185,6 +194,25 @@ public static class DemoWorldChronicle
             var arrived = g.Where(e => e.Kind == DemoSettlementEventKind.Arrival).Sum(e => e.Count);
             if (arrived > 0)
                 Add(lastWeek, DemoChronicleLevel.Normal, DemoChronicleCategory.Migration, 0, Name(g.Key.SettlementId), T($" 本年遷入 {arrived} 人"));
+            if (heat > 0)
+                for (var k = firstAggregate; k < entries.Count; k++)
+                    if (entries[k].Entry.Category is DemoChronicleCategory.Famine or DemoChronicleCategory.Hunger)
+                        aggregateCause[k] = heat;
+        }
+
+        // 第 08-16 章：同一年裡，起因（沿因果鏈最近的祖先）也是編年史條目的，記為它的後續，介面縮排接在起因下面。
+        var entryYearOf = entries.Where(x => x.Entry.EventId > 0).GroupBy(x => x.Entry.EventId).ToDictionary(g => g.Key, g => g.First().Year);
+        for (var k = 0; k < entries.Count; k++)
+        {
+            var (year, entry) = entries[k];
+            long parent = 0;
+            if (entry.EventId > 0 && byId.TryGetValue(entry.EventId, out var e))
+                parent = DemoStories.CauseChain(e, byId).Select(c => c.EventId)
+                    .FirstOrDefault(id => id != entry.EventId && entryYearOf.TryGetValue(id, out var y) && y == year);
+            else if (aggregateCause.TryGetValue(k, out var cause) && entryYearOf.TryGetValue(cause, out var y2) && y2 == year)
+                parent = cause;
+            if (parent > 0)
+                entries[k] = (year, entry with { ParentEventId = parent });
         }
 
         // 聚落小史：等級升降（重大）、人口里程碑與代表人物就任／卸任（一般）。
@@ -220,10 +248,31 @@ public static class DemoWorldChronicle
             var bySettlement = stats.GetValueOrDefault(year) ?? new Dictionary<int, (long Births, long NaturalDeaths)>();
             result.Add(new DemoChronicleYear(
                 year, era, started,
-                byYear[year].OrderBy(e => e.Week).ThenBy(e => e.Level).ThenBy(e => e.Category).ToList().AsReadOnly(),
+                Threaded(byYear[year]).AsReadOnly(),
                 bySettlement.Values.Sum(v => v.Births), bySettlement.Values.Sum(v => v.NaturalDeaths), bySettlement));
         }
         return result.AsReadOnly();
+    }
+
+    /// <summary>第 08-16 章：起因依時間排列，每個起因的後續（遞迴）緊接在它下面，合成一段。</summary>
+    private static List<DemoChronicleEntry> Threaded(IEnumerable<DemoChronicleEntry> yearEntries)
+    {
+        static IOrderedEnumerable<DemoChronicleEntry> Sort(IEnumerable<DemoChronicleEntry> xs)
+            => xs.OrderBy(e => e.Week).ThenBy(e => e.Level).ThenBy(e => e.Category);
+        var all = yearEntries.ToList();
+        var ids = all.Where(e => e.EventId > 0).Select(e => e.EventId).ToHashSet();
+        var children = all.Where(e => e.ParentEventId > 0 && ids.Contains(e.ParentEventId)).ToLookup(e => e.ParentEventId);
+        var result = new List<DemoChronicleEntry>(all.Count);
+        void Visit(DemoChronicleEntry e)
+        {
+            result.Add(e);
+            if (e.EventId > 0)
+                foreach (var c in Sort(children[e.EventId]))
+                    Visit(c);
+        }
+        foreach (var root in Sort(all.Where(e => e.ParentEventId == 0 || !ids.Contains(e.ParentEventId))))
+            Visit(root);
+        return result;
     }
 
     /// <summary>十年摘要（舊年份折疊時顯示）：只數重大條目。</summary>

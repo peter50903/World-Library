@@ -47,8 +47,20 @@ public sealed class DemoWorldChronicleTests
             Assert.True(e.SettlementId > 0);
             Assert.Contains(world.Sites.Settlements, s => s.Id == e.SettlementId);
         });
-        // 同一年內依週次排列；出生老死不出現在條目裡（統計級每年一行）。
-        Assert.All(years, y => Assert.Equal(y.Entries.Select(e => e.Week).OrderBy(w => w), y.Entries.Select(e => e.Week)));
+        // 同一年內起因依週次排列，後續（第 08-16 章）緊接在起因下面、不早於起因；出生老死不出現在條目裡（統計級每年一行）。
+        Assert.All(years, y =>
+        {
+            var ids = y.Entries.Where(e => e.EventId > 0).Select(e => e.EventId).ToHashSet();
+            var roots = y.Entries.Where(e => !(e.IsFollowUp && ids.Contains(e.ParentEventId))).Select(e => e.Week).ToList();
+            Assert.Equal(roots.OrderBy(w => w), roots);
+            for (var i = 0; i < y.Entries.Count; i++)
+                if (y.Entries[i].IsFollowUp && ids.Contains(y.Entries[i].ParentEventId))
+                {
+                    var parent = y.Entries.ToList().FindIndex(e => e.EventId == y.Entries[i].ParentEventId);
+                    Assert.InRange(parent, 0, i - 1);
+                    Assert.True(y.Entries[parent].Week <= y.Entries[i].Week);
+                }
+        });
         Assert.DoesNotContain(all, e => e.Text.Contains("出生", StringComparison.Ordinal));
     }
 

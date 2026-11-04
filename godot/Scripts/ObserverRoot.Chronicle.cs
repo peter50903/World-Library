@@ -188,9 +188,13 @@ public partial class ObserverRoot
             if (year.EraStarted)
                 text.Append("　— 進入").Append(DemoKnowledge.EraName(year.Era)).Append(" —");
             text.Append('\n');
+            // 第 08-16 章：起因也顯示時，後續縮排接在下面（合成一段）。
+            var shownIds = year.Entries.Where(ChronicleShows).Where(e => e.EventId > 0).Select(e => e.EventId).ToHashSet();
             foreach (var entry in year.Entries.Where(ChronicleShows))
             {
                 text.Append(entry.Level == DemoChronicleLevel.Major ? "◆ " : "・");
+                if (entry.IsFollowUp && shownIds.Contains(entry.ParentEventId))
+                    text.Append("　↳ ");
                 foreach (var segment in entry.Segments)
                 {
                     if (segment.SettlementId > 0)
