@@ -56,10 +56,13 @@ public partial class DemoHexMap
 
     public override void _Process(double delta)
     {
-        if (_impacts.Count == 0 && !_hasFire)
+        if (!WantsAnimation)
             return;
         var now = Time.GetTicksMsec();
         _impacts.RemoveAll(x => now - x.StartMs > TempImpactMs);
+        if (now - _lastAnimatedMs < TempAnimateEveryMs)
+            return; // 第 08-16 章：動畫限速重畫（大地圖不每幀重畫）
+        _lastAnimatedMs = now;
         QueueRedraw();
     }
 

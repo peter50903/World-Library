@@ -36,6 +36,8 @@ public static class ArtAssets
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
     public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
     public const string IconDungeon = "res://assets/icons/icon_dungeon.png"; // 第 12-1 章 C4
+    /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀；待製作，缺少時由程式畫小人）。</summary>
+    public const string FxMigrantsWalk = "res://assets/fx/migrants_walk.png";
 
     /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
     public static string TechDomainIcon(string domain) => $"res://assets/icons/tech_{domain.ToLowerInvariant()}.png";
