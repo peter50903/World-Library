@@ -302,6 +302,13 @@ public partial class DemoHexMap : Control
         // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
         if (_surface is not null)
         {
+            // 試玩回饋 2026-11-04：地表只畫在左上一塊——錨點沒有讓它跟著地圖變大（容器排版、視窗縮放時），
+            // 每次重畫都直接把它設成與地圖同位置、同大小。
+            if (_surface.Position != Vector2.Zero || _surface.Size != Size)
+            {
+                _surface.Position = Vector2.Zero;
+                _surface.Size = Size;
+            }
             if (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))
                 _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius);
             else
