@@ -21,12 +21,20 @@ public partial class TerrainSurface : Control
     }
 
     /// <summary>【TEMP】每格半徑幾個圖像素；地塊交界的扭曲幅度（格半徑的倍數）。</summary>
-    public const int TempTexelsPerRadius = 10;
+    public const int TempTexelsPerRadius = 24;
+
+    /// <summary>程式畫的底色與樹（素材到之前）每個「大像素」佔幾個圖像素。試玩回饋 2026-11-04：像素太低、放大沒細節——
+    /// 解析度由 10 提高到 24，像素零件素材以實際像素疊上；程式畫的部分維持原本的方塊大小。</summary>
+    private const int K = TempTexelsPerRadius / 10;
+
+    /// <summary>【TEMP】圖分塊上傳（每塊邊長）：只有改變的塊重新上傳。</summary>
+    private const int TempChunk = 512;
     public const float TempWarp = 0.38f;
 
     private const float Sqrt3 = 1.7320508f;
 
-    private ImageTexture? _texture;
+    private ImageTexture?[,] _chunks = new ImageTexture?[0, 0];
+    private bool[,] _dirty = new bool[0, 0];
     private byte[]? _pixels;
     private byte[]? _uploaded;
     private byte[]? _baked; // 上次烤圖時每格的四個位元組
@@ -75,11 +83,20 @@ public partial class TerrainSurface : Control
 
     public override void _Draw()
     {
-        if (!Active || _texture is null)
+        if (!Active)
             return;
         var scale = _radius / TempTexelsPerRadius;
         var topLeft = _origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius;
-        DrawTextureRect(_texture, new Rect2(topLeft, new Vector2(_width, _height) * scale), false);
+        var view = new Rect2(Vector2.Zero, Size);
+        for (var cy = 0; cy < _chunks.GetLength(1); cy++)
+            for (var cx = 0; cx < _chunks.GetLength(0); cx++)
+            {
+                if (_chunks[cx, cy] is not { } chunk)
+                    continue;
+                var rect = new Rect2(topLeft + new Vector2(cx, cy) * TempChunk * scale, chunk.GetSize() * scale);
+                if (rect.Intersects(view))
+                    DrawTextureRect(chunk, rect, false);
+            }
     }
 
     // ───────────── 選取：沿像素邊緣 ─────────────
@@ -173,6 +190,10 @@ public partial class TerrainSurface : Control
             _width = Mathf.CeilToInt((Sqrt3 * columns + Sqrt3 / 2f) * TempTexelsPerRadius);
             _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
             _pixels = new byte[_width * _height * 4];
+            foreach (var old in _chunks)
+                old?.Dispose();
+            _chunks = new ImageTexture?[(_width + TempChunk - 1) / TempChunk, (_height + TempChunk - 1) / TempChunk];
+            _dirty = new bool[_chunks.GetLength(0), _chunks.GetLength(1)];
             BuildOwners();
             _outlines.Clear();
         }
@@ -201,16 +222,32 @@ public partial class TerrainSurface : Control
             }
         }
         _baked = (byte[])codes.Clone();
-        if (!painted && _texture is not null)
-            return; // 沒有任何格改變：不重新上傳
-        using var image = Image.CreateFromData(_width, _height, false, Image.Format.Rgba8, _pixels!);
-        if (_texture is not null && !full)
-            _texture.Update(image);
-        else
-        {
-            _texture?.Dispose();
-            _texture = ImageTexture.CreateFromImage(image);
-        }
+        if (painted)
+            Upload();
+    }
+
+    /// <summary>只把重畫過的塊重新上傳。</summary>
+    private void Upload()
+    {
+        for (var cy = 0; cy < _dirty.GetLength(1); cy++)
+            for (var cx = 0; cx < _dirty.GetLength(0); cx++)
+            {
+                if (!_dirty[cx, cy])
+                    continue;
+                _dirty[cx, cy] = false;
+                var x0 = cx * TempChunk;
+                var y0 = cy * TempChunk;
+                var w = Math.Min(TempChunk, _width - x0);
+                var h = Math.Min(TempChunk, _height - y0);
+                var bytes = new byte[w * h * 4];
+                for (var y = 0; y < h; y++)
+                    Array.Copy(_pixels!, ((y0 + y) * _width + x0) * 4, bytes, y * w * 4, w * 4);
+                using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
+                if (_chunks[cx, cy] is { } chunk)
+                    chunk.Update(image);
+                else
+                    _chunks[cx, cy] = ImageTexture.CreateFromImage(image);
+            }
     }
 
     private static Vector2 TexelOf(Vector2 world) => (world - new Vector2(-Sqrt3 / 2f, -1f)) * TempTexelsPerRadius;
@@ -270,7 +307,7 @@ public partial class TerrainSurface : Control
 
     private void Spread(byte[] dist, Func<int, bool> source)
     {
-        Array.Fill(dist, (byte)7);
+        Array.Fill(dist, (byte)15);
         var queue = new Queue<int>();
         for (var i = 0; i < dist.Length; i++)
             if (source(i))
@@ -281,7 +318,7 @@ public partial class TerrainSurface : Control
         while (queue.Count > 0)
         {
             var i = queue.Dequeue();
-            if (dist[i] >= 6)
+            if (dist[i] >= 14)
                 continue;
             var x = i % _width;
             void Try(int n)
@@ -308,6 +345,9 @@ public partial class TerrainSurface : Control
         y1 = Math.Min(_height, y1);
         if (x0 >= x1 || y0 >= y1)
             return;
+        for (var cy = y0 / TempChunk; cy <= (y1 - 1) / TempChunk; cy++)
+            for (var cx = x0 / TempChunk; cx <= (x1 - 1) / TempChunk; cx++)
+                _dirty[cx, cy] = true;
         for (var y = y0; y < y1; y++)
             for (var x = x0; x < x1; x++)
                 Put(x, y, Ground(codes, x, y));
@@ -358,23 +398,25 @@ public partial class TerrainSurface : Control
         var overlay = codes[owner * 4 + 1];
         var amount = codes[owner * 4 + 2] / 255f;
         var dev = codes[owner * 4 + 3] / 255f;
-        var h = Hash(x, y, 1);
+        var bx = x / K;
+        var by = y / K;
+        var h = Hash(bx, by, 1);
         // 斑塊：大範圍平滑雜訊＋一點點逐像素變化（像素風的草地，不是噪點）。
-        var patch = Mathf.Clamp(Noise(x / 9f, y / 9f, 3) * 0.85f + h * 0.3f - 0.07f, 0f, 0.999f);
+        var patch = Mathf.Clamp(Noise(bx / 9f, by / 9f, 3) * 0.85f + h * 0.3f - 0.07f, 0f, 0.999f);
         Color c;
         switch ((Code)code)
         {
             case Code.Sea:
-                c = SeaShades[Math.Clamp(_seaDist![i] - 1 + (h < 0.08f ? -1 : 0), 0, SeaShades.Length - 1)];
+                c = SeaShades[Math.Clamp((_seaDist![i] - 1) / K + (h < 0.08f ? -1 : 0), 0, SeaShades.Length - 1)];
                 break;
             case Code.River:
-                c = _seaDist![i] <= 1 ? RiverShades[0] : RiverShades[1];
+                c = _seaDist![i] <= K ? RiverShades[0] : RiverShades[1];
                 break;
             case Code.Shallow:
                 c = h < 0.12f ? Stone : RiverShades[0];
                 break;
             default:
-                if (_seaDist![i] <= 2 && (_seaDist[i] <= 1 || h < 0.5f))
+                if (_seaDist![i] <= 2 * K && (_seaDist[i] <= K || h < 0.5f))
                 {
                     c = Pick(Sand, patch); // 海邊一圈沙灘
                     break;
@@ -383,24 +425,24 @@ public partial class TerrainSurface : Control
                 {
                     Code.Forest => Pick(ForestFloor, patch),
                     Code.Hills or Code.HillsOre => Pick(HillGround, patch),
-                    Code.Farmland => Field(x, y, 1f),
-                    Code.Clearing => dev > 0f ? Field(x, y, dev) : Pick(Soil, patch),
+                    Code.Farmland => Field(bx, by, 1f),
+                    Code.Clearing => dev > 0f ? Field(bx, by, dev) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
                     _ => Pick(Grass, patch)
                 };
-                if (_waterDist![i] == 1 && code != (byte)Code.Farmland)
+                if (_waterDist![i] is >= 1 and <= K && code != (byte)Code.Farmland)
                     c = c.Darkened(0.12f); // 河岸一圈稍暗
-                if (code == (byte)Code.HillsOre && Hash(x, y, 9) < 0.05f)
+                if (code == (byte)Code.HillsOre && Hash(bx, by, 9) < 0.05f)
                     c = OreSpeck;
                 break;
         }
         // 天災疊層：依強度把一部分像素換掉（像素風的漸變）。
-        var hit = Hash(x, y, 5) < amount;
+        var hit = Hash(bx, by, 5) < amount;
         switch ((DemoHexMap.Overlay)overlay)
         {
             case DemoHexMap.Overlay.Fire when hit:
-                c = Hash(x, y, 6) < 0.25f ? (Hash(x, y, 7) < 0.5f ? Ember : EmberDark) : Pick(Ash, patch);
+                c = Hash(bx, by, 6) < 0.25f ? (Hash(bx, by, 7) < 0.5f ? Ember : EmberDark) : Pick(Ash, patch);
                 break;
             case DemoHexMap.Overlay.Scorch when hit && !IsWater(code):
                 c = Pick(Ash, patch);
@@ -411,10 +453,10 @@ public partial class TerrainSurface : Control
             case DemoHexMap.Overlay.Flood when hit:
                 c = FloodWater;
                 break;
-            case DemoHexMap.Overlay.Ore when Hash(x, y, 9) < 0.06f:
+            case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.06f:
                 c = OreSpeck;
                 break;
-            case DemoHexMap.Overlay.Debris or DemoHexMap.Overlay.Cracks or DemoHexMap.Overlay.Crater when hit && Hash(x, y, 8) < 0.4f:
+            case DemoHexMap.Overlay.Debris or DemoHexMap.Overlay.Cracks or DemoHexMap.Overlay.Crater when hit && Hash(bx, by, 8) < 0.4f:
                 c = c.Darkened(0.4f);
                 break;
         }
@@ -469,26 +511,26 @@ public partial class TerrainSurface : Control
             case Code.Grassland:
             {
                 // 樹：交錯網格（每 4 像素一棵、隨機偏移）；草原上零星幾棵。
-                const int step = 4;
-                var reach = TempTexelsPerRadius + 2;
+                const int step = 4 * K;
+                var reach = TempTexelsPerRadius + 2 * K;
                 var spots = new List<(int X, int Y, float H)>();
                 for (var gy = (int)center.Y - reach; gy <= center.Y + reach; gy += step)
-                    for (var gx = (int)center.X - reach + (gy / step & 1) * 2; gx <= center.X + reach; gx += step)
+                    for (var gx = (int)center.X - reach + (gy / step & 1) * 2 * K; gx <= center.X + reach; gx += step)
                     {
                         var h = Hash(gx, gy, 20);
-                        var x = gx + (int)(Hash(gx, gy, 21) * 3f) - 1;
-                        var y = gy + (int)(Hash(gx, gy, 22) * 3f) - 1;
+                        var x = gx + ((int)(Hash(gx, gy, 21) * 3f) - 1) * K;
+                        var y = gy + ((int)(Hash(gx, gy, 22) * 3f) - 1) * K;
                         if (x < 0 || y < 0 || x >= _width || y >= _height || _owner![y * _width + x] != cell)
                             continue;
                         if (code == Code.Grassland && h > 0.035f)
                             continue;
-                        if (_seaDist![y * _width + x] <= 2 || _waterDist![y * _width + x] <= 1 || Burnt(x, y))
+                        if (_seaDist![y * _width + x] <= 2 * K || _waterDist![y * _width + x] <= K || Burnt(x / K, y / K))
                             continue;
                         spots.Add((x, y, h));
                     }
                 foreach (var (x, y, h) in spots.OrderBy(s => s.Y).ThenBy(s => s.X))
                 {
-                    var kind = Hash(x, y, 23);
+                    var kind = Hash(x / K, y / K, 23);
                     if (kind < 0.55f)
                         Stamp(RoundTree, x, y, LeafShades, clip);
                     else if (kind < 0.88f)
@@ -503,12 +545,12 @@ public partial class TerrainSurface : Control
             {
                 // 山頭：每格一大一小（位置依格固定），礦脈格的山上有幾點金黃。
                 var a = Hash(cell, 0, 30);
-                var big = new Vector2I((int)(center.X + (a - 0.5f) * 6f), (int)(center.Y + 2 + Hash(cell, 0, 31) * 3f));
-                var small = new Vector2I((int)(center.X + (a < 0.5f ? 5 : -5)), (int)(center.Y - 3));
+                var big = new Vector2I((int)(center.X + (a - 0.5f) * 6f * K), (int)(center.Y + (2 + Hash(cell, 0, 31) * 3f) * K));
+                var small = new Vector2I((int)(center.X + (a < 0.5f ? 5 : -5) * K), (int)(center.Y - 3 * K));
                 foreach (var (at, shape) in new[] { (small, Peak), (big, BigPeak) })
                 {
                     if (at.X < 0 || at.Y < 0 || at.X >= _width || at.Y >= _height || _owner![at.Y * _width + at.X] != cell
-                        || _seaDist![at.Y * _width + at.X] <= 1)
+                        || _seaDist![at.Y * _width + at.X] <= K)
                         continue;
                     Stamp(shape, at.X, at.Y, RockShades, clip, code == Code.HillsOre);
                 }
@@ -525,10 +567,8 @@ public partial class TerrainSurface : Control
             var line = shape[row];
             for (var col = 0; col < line.Length; col++)
             {
-                var x = ax - line.Length / 2 + col;
-                var y = ay - height + 1 + row;
-                if (!clip.HasPoint(new Vector2I(x, y)))
-                    continue;
+                var x = ax + (col - line.Length / 2) * K;
+                var y = ay + (row - height + 1) * K;
                 Color? c = line[col] switch
                 {
                     'd' => shades[0],
@@ -538,8 +578,12 @@ public partial class TerrainSurface : Control
                     't' => Trunk,
                     _ => null
                 };
-                if (c is { } color)
-                    Put(x, y, color);
+                if (c is not { } color)
+                    continue;
+                for (var dy = 0; dy < K; dy++)
+                    for (var dx = 0; dx < K; dx++)
+                        if (clip.HasPoint(new Vector2I(x + dx, y + dy)))
+                            Put(x + dx, y + dy, color);
             }
         }
     }
