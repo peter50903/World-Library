@@ -47,6 +47,10 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-8 章 B3：聚落的主要信仰編號（沒有信徒的聚落不在表內）。</summary>
     public IReadOnlyDictionary<int, int> FaithOf { get; set; } = new Dictionary<int, int>();
 
+    /// <summary>第 08-16 章：各文化的紋章、各信仰的符號（文化與信仰模式畫在聚落上）。</summary>
+    public IReadOnlyDictionary<int, DemoEmblem> CultureEmblems { get; set; } = new Dictionary<int, DemoEmblem>();
+    public IReadOnlyDictionary<int, string> FaithSymbolsById { get; set; } = new Dictionary<int, string>();
+
     /// <summary>第 08-8 章 B3：信仰的固定順序（信仰編號），決定配色。</summary>
     public IReadOnlyList<int> FaithOrder { get; set; } = Array.Empty<int>();
 
@@ -432,13 +436,39 @@ public partial class DemoHexMap : Control
             DrawTerritory(start, radius, owner => LineageColor(owner.LineageRootId), owner => owner.LineageRootId);
         // 第 08-8 章 B1：文化模式——同樣的領域，依聚落的主要文化著色。
         if (_mode == Mode.Culture && Sites is not null)
+        {
             DrawTerritory(start, radius, owner => CultureColor(CultureOf.GetValueOrDefault(owner.SettlementId)),
                 owner => CultureOf.GetValueOrDefault(owner.SettlementId));
+            // 第 08-16 章：每個聚落插上主要文化的紋章。
+            foreach (var site in Sites.Settlements.Where(s => !s.IsRuin && CultureOf.ContainsKey(s.Id)))
+            {
+                var cultureId = CultureOf[site.Id];
+                if (!CultureEmblems.TryGetValue(cultureId, out var emblem) || Heraldry.Emblem(emblem, CultureColor(cultureId)) is not { } shield)
+                    continue;
+                var cell = World!.GetCell(site.Column, site.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (OnScreen(center, radius))
+                    DrawTextureRect(shield, new Rect2(center - new Vector2(radius, radius) * 0.55f, new Vector2(radius, radius) * 1.1f), false);
+            }
+        }
         // 第 08-8 章 B3：信仰模式——同樣的領域，依主要信仰著色；聖地（創立聚落）另畫標記。
         if (_mode == Mode.Faith && Sites is not null)
         {
             DrawTerritory(start, radius, owner => FaithColor(FaithOf.GetValueOrDefault(owner.SettlementId)),
                 owner => FaithOf.GetValueOrDefault(owner.SettlementId));
+            // 第 08-16 章：每個有信徒的聚落畫上主要信仰的符號（深色圓底）。
+            foreach (var site in Sites.Settlements.Where(s => !s.IsRuin && FaithOf.ContainsKey(s.Id) && !HolySites.Contains(s.Id)))
+            {
+                var faithId = FaithOf[site.Id];
+                if (!FaithSymbolsById.TryGetValue(faithId, out var symbol) || Heraldry.FaithSymbol(symbol, FaithColor(faithId)) is not { } sign)
+                    continue;
+                var cell = World!.GetCell(site.Column, site.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (!OnScreen(center, radius))
+                    continue;
+                DrawCircle(center, radius * 0.45f, new Color(0.10f, 0.08f, 0.07f, 0.85f));
+                DrawTextureRect(sign, new Rect2(center - new Vector2(radius, radius) * 0.4f, new Vector2(radius, radius) * 0.8f), false);
+            }
             var holy = ArtAssets.Texture(ArtAssets.IconHolySite);
             foreach (var site in Sites.Settlements.Where(s => HolySites.Contains(s.Id)))
             {

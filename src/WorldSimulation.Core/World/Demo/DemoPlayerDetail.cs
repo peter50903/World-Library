@@ -12,7 +12,20 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
     public int KeyBadgeCount { get; init; }
 
     public string KeyTitle { get; init; } = "";
+
+    /// <summary>第 08-16 章：代表人物分頁的每一人（人像＋文字）；介面有素材就畫人像。</summary>
+    public IReadOnlyList<DemoPersonEntry> People { get; init; } = Array.Empty<DemoPersonEntry>();
+
+    /// <summary>第 08-16 章：現況分頁上方的文化紋章與信仰符號（沒有＝null）。</summary>
+    public DemoEmblem? Emblem { get; init; }
+
+    public string? FaithSymbol { get; init; }
+
+    public int FaithId { get; init; }
 }
+
+/// <summary>第 08-16 章：代表人物分頁的一人（人像部件＋原本的文字與小傳）。</summary>
+public sealed record DemoPersonEntry(long Id, DemoPortrait Portrait, IReadOnlyList<string> Lines);
 
 /// <summary>
 /// 第 08-11 章（使用者 2026-10-28：技術用 RPG 技能那樣的方形小圖示，不同圖案與數字代表領域與等級）。
@@ -175,16 +188,19 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
 
         // 代表人物（第 08-16 章：每人下面接兩三行小傳）
         var allEvents = world.SettlementEvents();
-        var people = world.RepresentativesOf(settlement.Id)
+        var entries = world.RepresentativesOf(settlement.Id)
             .OrderBy(r => r.Role)
-            .SelectMany(r => new[]
-            {
-                $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
-                + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
-                + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "")
-                + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）"
-            }.Concat(DemoStories.Biography(world, r, allEvents)))
+            .Select(r => new DemoPersonEntry(r.Id,
+                DemoHeraldry.PortraitOf(r, DemoCohortDemography.AgeAt(r.BirthYear, day), world.Culture.CultureOfRepresentative(r.Id) ?? 0),
+                new[]
+                {
+                    $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
+                    + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
+                    + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "")
+                    + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）"
+                }.Concat(DemoStories.Biography(world, r, allEvents)).ToList()))
             .ToList();
+        var people = entries.SelectMany(e => e.Lines).ToList();
         if (people.Count == 0)
             people.Add(settlement.IsRuin ? "已無人居住" : "目前沒有代表人物");
 
@@ -237,8 +253,13 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
 
         return new DemoPlayerDetail($"{settlement.Name}（{tier}）", new[]
         {
-            new DemoDetailTab("現況", now),
-            new DemoDetailTab("代表人物", people),
+            new DemoDetailTab("現況", now)
+            {
+                Emblem = world.Culture.MainCultureOf(settlement.Id) is { } emblemCulture && world.Culture.Culture(emblemCulture) is { } mainCulture ? DemoHeraldry.EmblemOf(mainCulture) : null,
+                FaithSymbol = world.Culture.Faith.MainFaithOf(settlement.Id) is { } symbolFaith && world.Culture.Faith.Faith(symbolFaith) is { } mainFaith ? DemoHeraldry.FaithSymbolOf(mainFaith) : null,
+                FaithId = world.Culture.Faith.MainFaithOf(settlement.Id) ?? 0
+            },
+            new DemoDetailTab("代表人物", people) { People = entries },
             new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
             new DemoDetailTab("歷史", history)
