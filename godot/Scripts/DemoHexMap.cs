@@ -317,7 +317,7 @@ public partial class DemoHexMap : Control
         if (layer != ViewLayer.Local)
         {
             DrawSimplified(start, radius, layer);
-            DrawHighlightAndMigrants(start, radius, migrants: layer == ViewLayer.Regional);
+            DrawHighlightAndMigrants(start, radius, migrants: false); // 試玩回饋 2026-11-05 之 3：遠看不畫遷徙與天災動畫，只看地塊與建築
             return;
         }
 
@@ -673,7 +673,7 @@ public partial class DemoHexMap : Control
     public const float TempTileOverlap = 0.9f;
 
     /// <summary>【TEMP】森林聚落空地的開發度（0～255；約四成：泥土與草地相間、沒有田壟）。</summary>
-    private const byte TempSettlementGround = 100;
+    private const byte TempSettlementGround = TerrainSurface.SettlementGround;
 
     private readonly HashSet<DemoCellRef> _builtCells = new();
     private (object?, object?, object?, object?) _builtKey;
@@ -744,7 +744,8 @@ public partial class DemoHexMap : Control
             case DemoLandDevelopment.Clearing: return TerrainSurface.Code.Clearing;
         }
         // 試玩回饋 2026-11-04：森林裡的聚落像蓋在樹上——有房子的格（含村莊蓋到相鄰格的房子）把樹砍出一片空地。
-        if (cell.Terrain == DemoTerrain.Forest && _builtCells.Contains(at))
+        // 試玩回饋 2026-11-05 之 8、13：草原上的聚落也一樣有泥土空地（人類聚落不再被草地吃掉）。
+        if (cell.Terrain is DemoTerrain.Forest or DemoTerrain.Grassland && _builtCells.Contains(at))
             return TerrainSurface.Code.Clearing;
         return cell.Terrain switch
         {
@@ -891,7 +892,38 @@ public partial class DemoHexMap : Control
             return "";
         var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
         // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
+        var status = DisasterStatus(cell.Column, cell.Row);
+        if (status.Length > 0)
+            name += "\n" + status;
         return LayerFor(ViewLayout().Radius) == ViewLayer.Local ? name : $"{name}\n{ColorMeaning(cell)}";
+    }
+
+    /// <summary>試玩回饋 2026-11-05 之 2：這一格目前的天災狀況（依地表疊層；沒有回傳空字串）。</summary>
+    public string DisasterStatus(int column, int row)
+    {
+        if (World is null || !World.Contains(column, row))
+            return "";
+        var data = _surfaceCodes ?? SurfaceCodes();
+        var i = (row * World.Columns + column) * 4;
+        var amount = data[i + 2] / 255f;
+        var fading = amount < 0.5f;
+        var kind = (Overlay)data[i + 1];
+        // 有素材的坑、裂縫、殘骸改畫成貼圖、不在資料裡，另外查。
+        foreach (var (c, k, _) in _decals)
+            if (c.Column == column && c.Row == row)
+                kind = k;
+        return kind switch
+        {
+            Overlay.Fire => "🔥 野火正在燃燒，草木與屋舍陷入火海",
+            Overlay.Scorch => fading ? "野火燒過的焦土，草木正慢慢長回" : "野火剛燒過：一片焦土，草木盡毀",
+            Overlay.Dry => fading ? "熱浪漸退，草木開始返青" : "熱浪：草木枯黃、水源減少",
+            Overlay.Flood => fading ? "洪水退去中，田地泥濘" : "洪水淹沒了這一帶",
+            Overlay.Debris => "龍捲風過境，四處散落殘骸",
+            Overlay.Cracks => "地震撕開的裂縫",
+            Overlay.Crater => "隕石墜落留下的大坑",
+            Overlay.Ore => "隕石帶來的礦石",
+            _ => ""
+        };
     }
 
     /// <summary>

@@ -295,6 +295,9 @@ public partial class ObserverRoot
             child.QueueFree();
         }
         var tabs = detail.Tabs.ToList();
+        // 試玩回饋 2026-11-05 之 2：遭遇天災的地塊在詳情第一頁最上面寫明狀況。
+        if (tabs.Count > 0 && _hexMap.DisasterStatus(column, row) is { Length: > 0 } status)
+            tabs[0] = tabs[0] with { Lines = new[] { status, "" }.Concat(tabs[0].Lines).ToList() };
         if (_showDebugInfo)
             tabs.Add(new DemoDetailTab("除錯", _world.QueryCell(column, row).Lines));
         foreach (var tab in tabs)
