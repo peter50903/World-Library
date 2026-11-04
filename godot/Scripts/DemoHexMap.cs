@@ -545,7 +545,14 @@ public partial class DemoHexMap : Control
         {
             var cell = World.GetCell(focus.Column, focus.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            DrawPolyline(Closed(ScreenShape(cell, center, radius - 1.4f)), new Color(1f, 0.95f, 0.35f), 3.5f);
+            // 試玩回饋 2026-11-04 之 4：畫了像素地表時，選取框沿這一格實際的像素邊緣（深色底線＋亮黃線）。
+            if (_surface?.OutlineOf(focus.Row * World.Columns + focus.Column) is { Length: > 0 } outline)
+            {
+                DrawMultiline(outline, new Color(0.1f, 0.08f, 0.05f, 0.8f), 4.5f);
+                DrawMultiline(outline, new Color(1f, 0.95f, 0.35f), 2f);
+            }
+            else
+                DrawPolyline(Closed(ScreenShape(cell, center, radius - 1.4f)), new Color(1f, 0.95f, 0.35f), 3.5f);
         }
 
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
@@ -858,6 +865,9 @@ public partial class DemoHexMap : Control
     {
         if (World is null)
             return null;
+        // 點選與畫面一致：畫了像素地表時，依滑鼠下那個像素屬於哪一格。
+        if (_surface?.CellAtScreen(position) is int owner && owner >= 0)
+            return World.GetCell(owner % World.Columns, owner / World.Columns);
         var (start, radius) = ViewLayout();
         foreach (var cell in World.Cells)
         {

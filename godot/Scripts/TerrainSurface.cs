@@ -82,6 +82,80 @@ public partial class TerrainSurface : Control
         DrawTextureRect(_texture, new Rect2(topLeft, new Vector2(_width, _height) * scale), false);
     }
 
+    // ───────────── 選取：沿像素邊緣 ─────────────
+
+    private readonly Dictionary<int, Vector2[]> _outlines = new();
+
+    /// <summary>螢幕位置落在哪一格（依地表實際的像素歸屬；地表沒畫或在地圖外回傳 -1）。</summary>
+    public int CellAtScreen(Vector2 screen)
+    {
+        if (!Active || _owner is null)
+            return -1;
+        var t = (screen - (_origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius)) / (_radius / TempTexelsPerRadius);
+        var x = Mathf.FloorToInt(t.X);
+        var y = Mathf.FloorToInt(t.Y);
+        return x < 0 || y < 0 || x >= _width || y >= _height ? -1 : _owner[y * _width + x];
+    }
+
+    /// <summary>試玩回饋 2026-11-04 之 4：選取框沿這一格實際的像素邊緣（成對的端點，螢幕座標），不再是扭曲的六邊形。</summary>
+    public Vector2[] OutlineOf(int cell)
+    {
+        if (!Active || _owner is null)
+            return Array.Empty<Vector2>();
+        if (!_outlines.TryGetValue(cell, out var segments))
+            _outlines[cell] = segments = BuildOutline(cell);
+        var scale = _radius / TempTexelsPerRadius;
+        var topLeft = _origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius;
+        var screen = new Vector2[segments.Length];
+        for (var i = 0; i < segments.Length; i++)
+            screen[i] = topLeft + segments[i] * scale;
+        return screen;
+    }
+
+    private Vector2[] BuildOutline(int cell)
+    {
+        var c = TexelOf(CenterOf(cell % _columns, cell / _columns));
+        var reach = TempTexelsPerRadius * 2;
+        int x0 = Math.Max(0, (int)c.X - reach), x1 = Math.Min(_width, (int)c.X + reach);
+        int y0 = Math.Max(0, (int)c.Y - reach), y1 = Math.Min(_height, (int)c.Y + reach);
+        bool Own(int x, int y) => x >= 0 && y >= 0 && x < _width && y < _height && _owner![y * _width + x] == cell;
+        var points = new List<Vector2>();
+        // 橫邊：每列把連續的邊接成一段；直邊同理。
+        for (var y = y0; y <= y1; y++)
+        {
+            var run = -1;
+            for (var x = x0; x <= x1; x++)
+            {
+                var edge = x < x1 && Own(x, y) != Own(x, y - 1);
+                if (edge && run < 0)
+                    run = x;
+                else if (!edge && run >= 0)
+                {
+                    points.Add(new Vector2(run, y));
+                    points.Add(new Vector2(x, y));
+                    run = -1;
+                }
+            }
+        }
+        for (var x = x0; x <= x1; x++)
+        {
+            var run = -1;
+            for (var y = y0; y <= y1; y++)
+            {
+                var edge = y < y1 && Own(x, y) != Own(x - 1, y);
+                if (edge && run < 0)
+                    run = y;
+                else if (!edge && run >= 0)
+                {
+                    points.Add(new Vector2(x, run));
+                    points.Add(new Vector2(x, y));
+                    run = -1;
+                }
+            }
+        }
+        return points.ToArray();
+    }
+
     // ───────────── 烤圖 ─────────────
 
     private static bool IsWater(byte code) => code is (byte)Code.Sea or (byte)Code.River or (byte)Code.Shallow;
@@ -100,6 +174,7 @@ public partial class TerrainSurface : Control
             _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
             _pixels = new byte[_width * _height * 4];
             BuildOwners();
+            _outlines.Clear();
         }
         // 水陸分布變了（換地圖）才重算離岸距離並整張重畫；平常只重畫改變的格與周圍。
         var waterChanged = full;
