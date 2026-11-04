@@ -125,7 +125,8 @@ public static class ArtAssets
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
-    }.Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
+    }.Concat(PixelParts.Names.Select(PixelParts.Path)) // 第 08-16 章第 12 節：像素零件
+        .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
         .Concat(new[] { ObserverRoot.EraArt(DemoEra.Hope), ObserverRoot.EraArt(DemoEra.Pioneer), ObserverRoot.EraArt((DemoEra)2) }) // 第 08-16 章：時代插圖
         .ToArray();
 

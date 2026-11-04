@@ -330,7 +330,9 @@ public partial class DemoHexMap : Control
             {
                 // 地形已由連續地表畫好；這裡只畫聚落圖示（近看畫建築，遠看與遺跡畫圖示）。
                 if (VisibleSite(cell) is { } site && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
-                    && (site.IsRuin || !UseFootprints(radius)))
+                    && (site.IsRuin || !UseFootprints(radius))
+                    // 第 08-16 章第 12 節：近看的遺跡畫像素零件（倒塌的石牆）。
+                    && !(site.IsRuin && UseFootprints(radius) && DrawPixelPart("bld_ruin", center + new Vector2(0f, radius * 0.3f), radius)))
                     DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
                 continue;
             }

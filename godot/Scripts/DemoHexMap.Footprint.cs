@@ -97,6 +97,16 @@ public partial class DemoHexMap
             buildings, tier == DemoSettlementTier.Town, walled);
     }
 
+    /// <summary>畫一個像素零件：底部置中在 <paramref name="bottom"/>，大小依像素地表的像素密度；素材缺少回傳 false。</summary>
+    private bool DrawPixelPart(string name, Vector2 bottom, float radius)
+    {
+        if (PixelParts.Texture(name) is not { } texture)
+            return false;
+        var size = PixelParts.ScreenSize(texture, radius);
+        DrawTextureRect(texture, new Rect2(bottom - new Vector2(size.X / 2f, size.Y), size), false);
+        return true;
+    }
+
     private static readonly (int Dq, int Dr)[] HexDirections = { (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1) };
 
     /// <summary>地形畫完之後畫全部聚落的建築與牆（由上而下排序，前面的屋子蓋住後面的）。</summary>
@@ -119,22 +129,28 @@ public partial class DemoHexMap
                 return start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             }
             if (plan.Palisade)
-                DrawWall(new[] { plan.Cells[0] }, CenterOf, radius, new Color(0.45f, 0.30f, 0.16f), 0.07f, SpritePalisade);
+                DrawWall(new[] { plan.Cells[0] }, CenterOf, radius, new Color(0.45f, 0.30f, 0.16f), 0.07f, SpritePalisade, "bld_palisade");
             if (plan.StoneWall)
-                DrawWall(plan.Cells, CenterOf, radius, new Color(0.62f, 0.60f, 0.56f), 0.11f, SpriteStoneWall);
+                DrawWall(plan.Cells, CenterOf, radius, new Color(0.62f, 0.60f, 0.56f), 0.11f, SpriteStoneWall, "bld_stone_wall");
             foreach (var b in plan.Buildings)
                 spots.Add((CenterOf(b.Cell) + b.Offset * radius, b.Kind));
             if (RecentDisasters.Contains(settlement.Id)) // 第 12-1 章 C3：一年內遭天災
-                DrawMarker(ArtAssets.IconDisaster, CenterOf(plan.Cells[0]) + new Vector2(radius * 0.55f, -radius * 0.6f), radius * 0.7f);
+            {
+                var mark = CenterOf(plan.Cells[0]) + new Vector2(radius * 0.55f, -radius * 0.6f);
+                if (!DrawPixelPart("px_icon_disaster", mark + new Vector2(0f, radius * 0.35f), radius))
+                    DrawMarker(ArtAssets.IconDisaster, mark, radius * 0.7f);
+            }
         }
         foreach (var (at, kind) in spots.OrderBy(s => s.At.Y).ThenBy(s => s.At.X))
             DrawBuilding(kind, at, radius);
     }
 
     /// <summary>沿佔格的外緣畫牆（兩格都在牆內的邊不畫）。</summary>
-    private void DrawWall(IReadOnlyList<DemoCellRef> cells, Func<DemoCellRef, Vector2> centerOf, float radius, Color color, float width, string sprite)
+    private void DrawWall(IReadOnlyList<DemoCellRef> cells, Func<DemoCellRef, Vector2> centerOf, float radius, Color color, float width, string sprite, string pixelPart)
     {
-        var texture = ArtAssets.Texture(sprite);
+        // 像素零件城牆：原尺寸、沿邊橫向重複（不拉伸）。
+        var pixel = PixelParts.Texture(pixelPart, repeat: true);
+        var texture = (Texture2D?)pixel ?? ArtAssets.Texture(sprite);
         var inside = cells.ToHashSet();
         foreach (var c in cells)
         {
@@ -156,9 +172,16 @@ public partial class DemoHexMap
                     {
                         // 素材沿邊逐段貼（牆的高度依素材比例、約為格半徑的 width×3），畫完把變換還原。
                         var length = edgeStart.DistanceTo(edgeEnd);
-                        var height = radius * width * 3f;
+                        var height = pixel is not null ? PixelParts.ScreenSize(pixel, radius).Y : radius * width * 3f;
                         DrawSetTransform(edgeStart, (edgeEnd - edgeStart).Angle(), Vector2.One);
-                        DrawTextureRect(texture, new Rect2(0f, -height * 0.7f, length + 1f, height), false);
+                        if (pixel is not null)
+                        {
+                            // 重複貼：以圖的原始像素尺寸為一段（DrawTextureRectRegion 的來源寬＝邊長換算成圖像素）。
+                            var scale = radius / TerrainSurface.TempTexelsPerRadius;
+                            DrawTextureRectRegion(pixel, new Rect2(0f, -height * 0.7f, length + 1f, height), new Rect2(0f, 0f, (length + 1f) / scale, pixel.GetHeight()));
+                        }
+                        else
+                            DrawTextureRect(texture, new Rect2(0f, -height * 0.7f, length + 1f, height), false);
                         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
                         continue;
                     }
@@ -182,6 +205,14 @@ public partial class DemoHexMap
             Building.Temple => (SpriteTemple, 1.1f),
             _ => (SpriteKeep, 1.3f)
         };
+        // 第 08-16 章第 12 節：像素零件建築——與像素地表同一像素密度、最近鄰取樣、底部對齊（透視與地圖一致）。
+        var px = kind switch
+        {
+            Building.Tent => "bld_tent", Building.Hut => "bld_hut", Building.House => "bld_house", Building.StoneHouse => "bld_stone_house",
+            Building.Market => "bld_market", Building.Temple => "bld_temple", _ => "bld_keep"
+        };
+        if (DrawPixelPart(px, at + new Vector2(0f, radius * 0.3f), radius))
+            return;
         if (DrawMarker(path, at, radius * size))
             return;
         // 素材到之前的色塊（【TEMP】顏色）。

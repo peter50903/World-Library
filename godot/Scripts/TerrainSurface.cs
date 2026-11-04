@@ -425,8 +425,8 @@ public partial class TerrainSurface : Control
                 {
                     Code.Forest => Pick(ForestFloor, patch),
                     Code.Hills or Code.HillsOre => Pick(HillGround, patch),
-                    Code.Farmland => Field(bx, by, 1f),
-                    Code.Clearing => dev > 0f ? Field(bx, by, dev) : Pick(Soil, patch),
+                    Code.Farmland => FieldArt(x, y, 1f) ?? Field(bx, by, 1f),
+                    Code.Clearing => dev > 0f ? FieldArt(x, y, dev) ?? Field(bx, by, dev) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
                     _ => Pick(Grass, patch)
@@ -465,6 +465,28 @@ public partial class TerrainSurface : Control
 
     /// <summary>田畦：全圖共用的 4×3 田塊格（相鄰的田連成一片），每塊一種作物、隔行深淺；
     /// <paramref name="dev"/>＜1 時依開發度從草地→翻開的泥土→田畦。</summary>
+    /// <summary>田塊素材（20×14）鋪成全圖共用的田格：成熟的田多半是麥田、間雜綠色作物；
+    /// 開墾中依開發度從草地→翻開的泥土→剛播種的田（素材缺少時回傳 null，改用程式畫的田畦）。</summary>
+    private static Color? FieldArt(int x, int y, float dev)
+    {
+        if (PixelParts.Get("px_field_wheat") is not { } wheat || PixelParts.Get("px_field_green") is not { } green
+            || PixelParts.Get("px_field_young") is not { } young || PixelParts.Get("px_field_soil") is not { } soil)
+            return null;
+        var tx = x / wheat.Width;
+        var ty = y / wheat.Height;
+        var plot = Hash(tx, ty, 13);
+        var h = Hash(x / K, y / K, 2);
+        PixelParts.Sprite tile;
+        if (dev >= 1f)
+            tile = plot < 0.6f ? wheat : plot < 0.9f ? green : young;
+        else if (h > dev * 1.6f)
+            return Pick(Grass, Hash(x / K, y / K, 3));
+        else
+            tile = dev >= 0.5f && plot < (dev - 0.5f) * 2f ? young : soil;
+        var c = tile.At(x % tile.Width, y % tile.Height);
+        return c.A < 0.5f ? Soil[0] : new Color(c.R, c.G, c.B);
+    }
+
     private static Color Field(int x, int y, float dev)
     {
         var h = Hash(x, y, 2);
@@ -502,61 +524,134 @@ public partial class TerrainSurface : Control
         var code = (Code)codes[cell * 4];
         var overlay = (DemoHexMap.Overlay)codes[cell * 4 + 1];
         var amount = codes[cell * 4 + 2] / 255f;
-        // 燒過、淹水的地方不畫樹（依疊層強度一棵棵消失）。
-        bool Burnt(int x, int y) => overlay is DemoHexMap.Overlay.Fire or DemoHexMap.Overlay.Scorch or DemoHexMap.Overlay.Flood
-                                    && Hash(x, y, 5) < amount;
+        bool Hit(int x, int y) => Hash(x / K, y / K, 5) < amount;
+        var fire = overlay is DemoHexMap.Overlay.Fire or DemoHexMap.Overlay.Scorch;
+        bool Owned(int x, int y) => x >= 0 && y >= 0 && x < _width && y < _height && _owner![y * _width + x] == cell;
+        bool Dry(int x, int y) => Owned(x, y) && _seaDist![y * _width + x] > 2 * K && _waterDist![y * _width + x] > K;
+
+        // 散布點：交錯網格、隨機偏移，只取屬於本格、不在水邊的點（由上而下排序，前面的蓋住後面的）。
+        List<(int X, int Y, float H)> Scatter(int step, int salt)
+        {
+            var reach = TempTexelsPerRadius + 2 * K;
+            var spots = new List<(int X, int Y, float H)>();
+            for (var gy = (int)center.Y - reach; gy <= center.Y + reach; gy += step)
+                for (var gx = (int)center.X - reach + (gy / step & 1) * step / 2; gx <= center.X + reach; gx += step)
+                {
+                    var x = gx + (int)((Hash(gx, gy, salt + 1) - 0.5f) * step * 0.6f);
+                    var y = gy + (int)((Hash(gx, gy, salt + 2) - 0.5f) * step * 0.6f);
+                    if (Dry(x, y))
+                        spots.Add((x, y, Hash(gx, gy, salt)));
+                }
+            return spots.OrderBy(s => s.Y).ThenBy(s => s.X).ToList();
+        }
+
+        var trees = new[] { PixelParts.Get("px_tree_round_1"), PixelParts.Get("px_tree_round_2"), PixelParts.Get("px_tree_pine_1"), PixelParts.Get("px_tree_pine_2"), PixelParts.Get("px_bush") };
+        var art = trees.All(t => t is not null);
+        void Tree(int x, int y, float kind)
+        {
+            // 燒過的地方：樹變成焦黑枯樹（火正大時）或只剩樹樁；淹水的地方不畫樹。
+            if (fire && Hit(x, y))
+            {
+                if (PixelParts.Get(kind < 0.6f ? "px_tree_burnt" : "px_stump") is { } burnt)
+                    StampSprite(burnt, x, y, clip);
+                return;
+            }
+            if (overlay == DemoHexMap.Overlay.Flood && Hit(x, y))
+                return;
+            if (art)
+                StampSprite(trees[kind < 0.3f ? 0 : kind < 0.55f ? 1 : kind < 0.75f ? 2 : kind < 0.92f ? 3 : 4]!, x, y, clip);
+            else if (kind < 0.55f)
+                Stamp(RoundTree, x, y, LeafShades, clip);
+            else if (kind < 0.88f)
+                Stamp(PineTree, x, y, PineShades, clip);
+            else
+                Stamp(Bush, x, y, LeafShades, clip);
+        }
+
         switch (code)
         {
             case Code.Forest:
+                // 樹：素材樹寬約 17 像素，每 10 像素一棵、彼此交疊成林冠（程式畫的樹每 8 像素一棵）。
+                foreach (var (x, y, h) in Scatter(art ? 10 : 4 * K, 20))
+                    Tree(x, y, Hash(x / K, y / K, 23));
+                break;
             case Code.Grassland:
             {
-                // 樹：交錯網格（每 4 像素一棵、隨機偏移）；草原上零星幾棵。
-                const int step = 4 * K;
-                var reach = TempTexelsPerRadius + 2 * K;
-                var spots = new List<(int X, int Y, float H)>();
-                for (var gy = (int)center.Y - reach; gy <= center.Y + reach; gy += step)
-                    for (var gx = (int)center.X - reach + (gy / step & 1) * 2 * K; gx <= center.X + reach; gx += step)
+                // 草原：草叢、野花（乾旱時是枯草）與零星幾棵樹。
+                var tufts = new[] { PixelParts.Get("px_grass_tuft_1"), PixelParts.Get("px_grass_tuft_2"), PixelParts.Get("px_flowers") };
+                if (tufts.All(t => t is not null))
+                    foreach (var (x, y, h) in Scatter(9, 40))
                     {
-                        var h = Hash(gx, gy, 20);
-                        var x = gx + ((int)(Hash(gx, gy, 21) * 3f) - 1) * K;
-                        var y = gy + ((int)(Hash(gx, gy, 22) * 3f) - 1) * K;
-                        if (x < 0 || y < 0 || x >= _width || y >= _height || _owner![y * _width + x] != cell)
+                        if (h > 0.22f)
                             continue;
-                        if (code == Code.Grassland && h > 0.035f)
+                        var dry = overlay == DemoHexMap.Overlay.Dry && Hit(x, y);
+                        if (fire && Hit(x, y) || overlay == DemoHexMap.Overlay.Flood && Hit(x, y))
                             continue;
-                        if (_seaDist![y * _width + x] <= 2 * K || _waterDist![y * _width + x] <= K || Burnt(x / K, y / K))
-                            continue;
-                        spots.Add((x, y, h));
+                        StampSprite(dry && PixelParts.Get("px_dry_tuft") is { } d ? d : tufts[(int)(h / 0.22f * 3f) % 3]!, x, y, clip);
                     }
-                foreach (var (x, y, h) in spots.OrderBy(s => s.Y).ThenBy(s => s.X))
-                {
-                    var kind = Hash(x / K, y / K, 23);
-                    if (kind < 0.55f)
-                        Stamp(RoundTree, x, y, LeafShades, clip);
-                    else if (kind < 0.88f)
-                        Stamp(PineTree, x, y, PineShades, clip);
-                    else
-                        Stamp(Bush, x, y, LeafShades, clip);
-                }
+                foreach (var (x, y, h) in Scatter(4 * K, 20))
+                    if (h < 0.035f)
+                        Tree(x, y, Hash(x / K, y / K, 23));
                 break;
             }
             case Code.Hills:
             case Code.HillsOre:
             {
-                // 山頭：每格一大一小（位置依格固定），礦脈格的山上有幾點金黃。
+                // 山頭：每格一大一小（位置依格固定）；礦脈格在山腳放兩三塊礦石（日後挖完就消失），一般丘陵偶有石頭。
                 var a = Hash(cell, 0, 30);
                 var big = new Vector2I((int)(center.X + (a - 0.5f) * 6f * K), (int)(center.Y + (2 + Hash(cell, 0, 31) * 3f) * K));
                 var small = new Vector2I((int)(center.X + (a < 0.5f ? 5 : -5) * K), (int)(center.Y - 3 * K));
-                foreach (var (at, shape) in new[] { (small, Peak), (big, BigPeak) })
+                var bigArt = PixelParts.Get("px_mountain_1");
+                var smallArt = PixelParts.Get("px_mountain_2");
+                foreach (var (at, shape, sprite) in new[] { (small, Peak, smallArt), (big, BigPeak, bigArt) })
                 {
-                    if (at.X < 0 || at.Y < 0 || at.X >= _width || at.Y >= _height || _owner![at.Y * _width + at.X] != cell
-                        || _seaDist![at.Y * _width + at.X] <= K)
+                    if (!Owned(at.X, at.Y) || _seaDist![at.Y * _width + at.X] <= K)
                         continue;
-                    Stamp(shape, at.X, at.Y, RockShades, clip, code == Code.HillsOre);
+                    if (sprite is not null && bigArt is not null && smallArt is not null)
+                        StampSprite(sprite, at.X, at.Y, clip);
+                    else
+                        Stamp(shape, at.X, at.Y, RockShades, clip, code == Code.HillsOre);
+                }
+                var rocks = code == Code.HillsOre ? new[] { "px_ore_1", "px_ore_2", "px_ore_1" } : new[] { "px_rock_1" };
+                for (var k = 0; k < rocks.Length; k++)
+                {
+                    if (code == Code.Hills && Hash(cell, k, 34) > 0.5f)
+                        continue;
+                    var at = new Vector2I((int)(center.X + (Hash(cell, k, 35) - 0.5f) * 2.4f * TempTexelsPerRadius * 0.5f),
+                        (int)(center.Y + TempTexelsPerRadius * 0.55f + Hash(cell, k, 36) * 4f));
+                    if (Owned(at.X, at.Y) && PixelParts.Get(rocks[k]) is { } rock)
+                        StampSprite(rock, at.X, at.Y, clip);
                 }
                 break;
             }
         }
+
+        // 天災留在地上的零件：隕石礦、焦土上的灰燼、洪水的波紋。
+        if (overlay == DemoHexMap.Overlay.Ore && PixelParts.Get("px_ore_meteor") is { } meteor && Owned((int)center.X, (int)center.Y + 6))
+            StampSprite(meteor, (int)center.X, (int)center.Y + 6, clip);
+        if (overlay == DemoHexMap.Overlay.Scorch && PixelParts.Get("px_ash") is { } ash)
+            foreach (var (x, y, h) in Scatter(12, 50))
+                if (h < 0.3f && Hit(x, y))
+                    StampSprite(ash, x, y, clip);
+        if (overlay == DemoHexMap.Overlay.Flood && PixelParts.Get("px_flood_ripple") is { } ripple)
+            foreach (var (x, y, h) in Scatter(12, 60))
+                if (h < 0.35f && Hit(x, y))
+                    StampSprite(ripple, x, y, clip);
+    }
+
+    /// <summary>把像素零件疊進地表：底部置中在 (<paramref name="ax"/>, <paramref name="ay"/>)，只畫不透明的像素。</summary>
+    private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, Rect2I clip)
+    {
+        var left = ax - sprite.Width / 2;
+        var top = ay - sprite.Height + 1;
+        for (var y = 0; y < sprite.Height; y++)
+            for (var x = 0; x < sprite.Width; x++)
+            {
+                var c = sprite.At(x, y);
+                if (c.A < 0.5f || !clip.HasPoint(new Vector2I(left + x, top + y)))
+                    continue;
+                Put(left + x, top + y, new Color(c.R, c.G, c.B));
+            }
     }
 
     private void Stamp(string[] shape, int ax, int ay, Color[] shades, Rect2I clip, bool ore = false)
