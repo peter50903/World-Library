@@ -1495,15 +1495,18 @@ public partial class ObserverRoot : Control
     private void PlayEventSounds()
     {
         var latest = _world.CommittedWeeks;
-        if (_soundWeek < 0 || latest < _soundWeek || latest - _soundWeek > 4)
+        if (_soundWeek < 0 || latest < _soundWeek || latest - _soundWeek > 12) // 最快速度每幀可推進約 4 週
         {
             _soundWeek = latest;
             return;
         }
         var fresh = _world.WeekReports().Where(w => w.Week > _soundWeek).SelectMany(w => w.Events).ToList();
         _soundWeek = latest;
-        if (fresh.Any(e => e.Kind == DemoSettlementEventKind.EraBegan))
+        if (fresh.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.EraBegan) is { } era)
+        {
             _hexMap.PlaySfx(ArtAssets.SfxEra);
+            ShowEraCard((DemoEra)era.Count); // 第 08-16 章：時代插圖
+        }
         else if (fresh.Any(e => e.Kind == DemoSettlementEventKind.SettlementFounded))
             _hexMap.PlaySfx(ArtAssets.SfxFounding);
     }

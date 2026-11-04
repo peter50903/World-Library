@@ -139,6 +139,7 @@ public static class ArtAssets
         SfxClick, SfxEventAlert, MusicObserverLoop
     }.Concat(TerrainTextures.Select(t => t.Path)) // 第 06-4 章第 4 步：地形紋理
         .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
+        .Concat(new[] { ObserverRoot.EraArt(DemoEra.Hope), ObserverRoot.EraArt(DemoEra.Pioneer), ObserverRoot.EraArt((DemoEra)2) }) // 第 08-16 章：時代插圖
         .ToArray();
 
     private static readonly Dictionary<string, Resource?> Cache = new();
