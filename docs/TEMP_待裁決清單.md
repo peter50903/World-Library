@@ -169,6 +169,7 @@
 | ID | 值 | 理由 |
 |---|---|---|
 | 開局分群 | 開局聚落相距 ≤3 格連成一群，每群一個文化（原 6 格；08-13：文化看起來都一樣） | 08-8 原訂婚嫁範圍 12 格；小地圖 12 格會讓整張圖只有一個文化 |
+| 遷徙之民、守土（B2 收尾，08-16） | 遷徙之民：出發聚落主要文化有此特性的隊伍途中每週吃 80%（04 表效果值 0.8，無條件進位），開拓找空地的範圍多 3 格；守土：不因擁擠主動分家，只在缺糧時外移 | 08-16 只保留改變行為的特性；看得見子村散得更開、守土村莊長得更大 |
 | 生計特性加權 | 條件（鄰林、鄰河、鄰海、鄰草原、開拓、開局）成立權重×4，不成立不抽 | 十字軍之王地區傳統：地形決定生計 |
 | 文化名稱 | 群內編號最小的開局聚落名＋「人」 | 讀得懂、可對照地圖 |
 | 比例流動 | 千分比；抵達者依人數加權併入，開拓的新聚落沿用隊伍比例；新任代表人物依比例抽文化 | 08-8 第 4 節 |
@@ -530,7 +531,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8） |
-| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 8 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） |
+| `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |

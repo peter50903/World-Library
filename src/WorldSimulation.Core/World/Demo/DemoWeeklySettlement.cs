@@ -662,6 +662,7 @@ internal static class DemoWeeklySettlement
         Func<DemoMigrationBatch, long>? beastAttack = null,
         Func<int, DemoDisasterStrike?>? disaster = null,
         Func<DemoSettlement, long>? hungerCause = null,
+        Func<int, IReadOnlyCollection<string>>? cultureTraits = null,
         bool verify = true)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
@@ -785,6 +786,10 @@ internal static class DemoWeeklySettlement
             var emigrationEventId = DemoCausalIndex.EmigrationEventId(publishedWeeks, batch);
             var people = batch.People;
             var demand = checked(people * config.FoodPerPersonPerWeek);
+            // 第 08-8 章 B2：遷徙之民（出發聚落的主要文化）路糧省吃，無條件進位。
+            var travelPercent = cultureTraits is null ? 100 : DemoCultures.TravelFoodPercent(cultureTraits(batch.FromSettlementId));
+            if (travelPercent != 100)
+                demand = checked(demand * travelPercent + 99) / 100;
             var consumed = Math.Min(batch.Food, demand);
             var foodClosing = batch.Food - consumed;
             var shortage = demand - consumed;
@@ -1038,7 +1043,8 @@ internal static class DemoWeeklySettlement
             var slack = slackBySettlement.GetValueOrDefault(settlement.Id);
             var crowded = map is not null && config.MigrationEnabled && config.FoundingEnabled
                 && config.SharedCatchmentEnabled && config.HumanLifecycleEnabled
-                && DemoCrowding.Crowded(shortage, demand, survivors, slack);
+                && DemoCrowding.Crowded(shortage, demand, survivors, slack)
+                && !(cultureTraits is not null && DemoCultures.StaysPut(cultureTraits(settlement.Id))); // 第 08-8 章 B2：守土不因擁擠分家
             var wantsToLeave = map is not null && config.MigrationEnabled && (shortage > 0 || crowded)
                 && survivors >= config.MinPopulationToEmigrate;
             var target = wantsToLeave && !crowded
@@ -1076,12 +1082,15 @@ internal static class DemoWeeklySettlement
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
                         && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
+                // 第 08-8 章 B2：遷徙之民走得更遠找空地。
+                var searchSteps = config.FoundingSearchMaxSteps
+                    + (cultureTraits is not null && cultureTraits(settlement.Id).Contains(DemoCultures.WandererTrait) ? DemoCultures.TempWandererExtraSteps : 0);
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                    config.FoundingSearchMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                    searchSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
                     wells?.Invoke(settlement.Id) ?? false);
                 // 第 08-4 章【TEMP 規則】希望時代：附近找不到空地時，缺糧或擁擠的聚落願意走得更遠（婚嫁範圍）去開拓，
                 // 不會一直困在養不起的地方。
-                if (site.Length < 2 && config.HopeEra && config.FoundingSearchMaxSteps < DemoMateTempSettings.MateRouteMaxSteps)
+                if (site.Length < 2 && config.HopeEra && searchSteps < DemoMateTempSettings.MateRouteMaxSteps)
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                         DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
                         wells?.Invoke(settlement.Id) ?? false);
@@ -1104,7 +1113,7 @@ internal static class DemoWeeklySettlement
                             ? $"人口接近附近來源上限：本週取用來源只剩 {slack}（＜需求 {demand} 的 TEMP {DemoCrowding.TempCrowdingSlackPercent}%），"
                               + "在挨餓之前分出一戶，"
                             : $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，")
-                        + $"前往 {destination} 開拓新聚落（TEMP 選址：{config.FoundingSearchMaxSteps} 格內有水源的空地），"
+                        + $"前往 {destination} 開拓新聚落（TEMP 選址：{searchSteps} 格內有水源的空地），"
                         + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
                         batch.Id), crowded ? 0 : hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
