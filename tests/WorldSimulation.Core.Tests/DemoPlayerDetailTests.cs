@@ -43,7 +43,12 @@ public sealed class DemoPlayerDetailTests
         foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin))
         {
             var detail = world.PlayerDetail(s.Column, s.Row);
-            var known = detail.Tabs[2].Badges;
+            // 第 08-16 章：前 KeyBadgeCount 個是關鍵技術（可能還沒學會），之後是開局知識與其他已習得技術。
+            var tab = detail.Tabs[2];
+            var keys = tab.Badges.Take(tab.KeyBadgeCount).ToList();
+            Assert.Equal(DemoPlayerDetail.KeyTechnologies(world.ChronicleOf(s.Id).Tier).Select(t => t.Id), keys.Select(b => b.Id));
+            Assert.All(keys, b => Assert.Equal(world.Knowledge.Knows(s.Id, DemoTechnology.Of(b.Id)), b.Percent >= 100));
+            var known = tab.Badges.Skip(tab.KeyBadgeCount).Concat(keys.Where(b => b.Percent >= 100)).ToList();
             Assert.Equal(DemoTechnology.All.Count(DemoKnowledge.IsOpening) + world.Knowledge.KnownBy(s.Id).Count, known.Count);
             Assert.All(known, b => Assert.Equal(100, b.Percent));
             Assert.All(known.Where(b => !b.Opening), b => Assert.NotNull(b.LearnedYear));
@@ -51,6 +56,18 @@ public sealed class DemoPlayerDetailTests
             Assert.All(detail.Tabs[3].Badges, b => Assert.InRange(b.Percent, 0, 99));
             Assert.All(known.Concat(detail.Tabs[3].Badges), b => Assert.NotEqual("？", b.Glyph));
         }
+    }
+
+    [Fact]
+    public void KeyTechnologiesAreWhatTheNextTierNeeds()
+    {
+        Assert.Contains(DemoTechnology.CropCultivation, DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Camp));
+        Assert.Contains(DemoTechnology.BasicCarpentry, DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Camp));
+        Assert.Contains(DemoTechnology.Of("TECH_CURRENCY"), DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Village));
+        Assert.Contains(DemoTechnology.Of(DemoSettlementHistory.CapitalTechId), DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.City));
+        Assert.Empty(DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Capital));
+        Assert.All(new[] { DemoSettlementTier.Camp, DemoSettlementTier.Village, DemoSettlementTier.Town },
+            t => Assert.InRange(DemoPlayerDetail.KeyTechnologies(t).Count, 3, 5));
     }
 
     [Fact]
