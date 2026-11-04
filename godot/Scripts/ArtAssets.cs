@@ -36,7 +36,7 @@ public static class ArtAssets
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
     public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
     public const string IconDungeon = "res://assets/icons/icon_dungeon.png"; // 第 12-1 章 C4
-    /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀；待製作，缺少時由程式畫小人）。</summary>
+    /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀，每幀 128×64；缺少時由程式畫小人）。</summary>
     public const string FxMigrantsWalk = "res://assets/fx/migrants_walk.png";
 
     /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
@@ -99,6 +99,7 @@ public static class ArtAssets
         TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈
         IconDisaster, // 第 12-1 章 C3：天災標記
         IconDungeon, // 第 12-1 章 C4：地下城標記
+        FxMigrantsWalk, // 第 08-16 章：遷徙人群走路動畫（美術收件匣 2026-11-04）
         TileBurning, TileScorched, TileGrasslandDry, // 第 08-13 章第 6 節：天災反映在地圖上（美術收件匣 2026-11-01）
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
