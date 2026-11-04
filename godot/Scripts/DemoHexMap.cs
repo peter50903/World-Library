@@ -302,6 +302,13 @@ public partial class DemoHexMap : Control
         // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
         if (_surface is not null)
         {
+            // 試玩回饋 2026-11-04：地表只畫在左上一塊——錨點沒有讓它跟著地圖變大（容器排版、視窗縮放時），
+            // 每次重畫都直接把它設成與地圖同位置、同大小。
+            if (_surface.Position != Vector2.Zero || _surface.Size != Size)
+            {
+                _surface.Position = Vector2.Zero;
+                _surface.Size = Size;
+            }
             if (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))
                 _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius);
             else
@@ -656,8 +663,13 @@ public partial class DemoHexMap : Control
     public const float TempTileInset = 0.07f;
     public const float TempTileOverlap = 0.9f;
 
+    /// <summary>【TEMP】森林聚落空地的開發度（0～255；約四成：泥土與草地相間、沒有田壟）。</summary>
+    private const byte TempSettlementGround = 100;
+
+    private readonly HashSet<DemoCellRef> _builtCells = new();
+    private (object?, object?, object?, object?) _builtKey;
     private byte[]? _surfaceCodes;
-    private (DemoHexWorld? World, int Week, float Fraction, object? Land, object? Spells, object? Ore, object? Marks) _surfaceKey;
+    private (DemoHexWorld? World, int Week, float Fraction, object? Land, object? Spells, object? Ore, object? Marks, object? Sites, object? Ruins, object? Scale, object? Lineage) _surfaceKey;
 
     /// <summary>
     /// 第 06-4 章第 2 步：每格四個位元組（列×欄數＋欄）：地表代碼、天災疊層種類、疊層強度、保留。
@@ -665,9 +677,23 @@ public partial class DemoHexMap : Control
     /// </summary>
     private byte[] SurfaceCodes()
     {
-        var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks);
+        var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
         if (_surfaceCodes is not null && key.Equals(_surfaceKey))
             return _surfaceCodes;
+        // 有房子的格只在聚落、等級或領域改變時重算（地表每幀都可能重算，聚落外觀不必）。
+        var builtKey = ((object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
+        if (!builtKey.Equals(_builtKey))
+        {
+            _builtKey = builtKey;
+            _builtCells.Clear();
+            if (Sites is not null)
+                foreach (var site in Sites.Settlements.Where(x => !x.IsRuin && !FadedRuins.Contains(x.Id)))
+                {
+                    _builtCells.Add(new DemoCellRef(site.Column, site.Row));
+                    foreach (var spot in FootprintOf(site).Buildings)
+                        _builtCells.Add(spot.Cell);
+                }
+        }
         var data = new byte[World!.Columns * World.Rows * 4];
         foreach (var cell in World.Cells)
         {
@@ -676,6 +702,8 @@ public partial class DemoHexMap : Control
             // 第 08-16 章：開墾中與荒廢中的開發度（第 4 個位元組），地表依此從草地漸變到農田、或從農田漸變回草地。
             if (Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { State: DemoLandDevelopment.Clearing } parcel)
                 data[at + 3] = (byte)Math.Clamp(parcel.DevelopmentPercent * 255 / 100, 0, 255);
+            else if (data[at] == (byte)TerrainSurface.Code.Clearing)
+                data[at + 3] = TempSettlementGround; // 森林裡的聚落：砍出的空地（泥土夾草）
         }
         FillOverlays(data);
         _surfaceKey = key;
@@ -691,6 +719,9 @@ public partial class DemoHexMap : Control
             case DemoLandDevelopment.Farmland: return TerrainSurface.Code.Farmland;
             case DemoLandDevelopment.Clearing: return TerrainSurface.Code.Clearing;
         }
+        // 試玩回饋 2026-11-04：森林裡的聚落像蓋在樹上——有房子的格（含村莊蓋到相鄰格的房子）把樹砍出一片空地。
+        if (cell.Terrain == DemoTerrain.Forest && _builtCells.Contains(at))
+            return TerrainSurface.Code.Clearing;
         return cell.Terrain switch
         {
             DemoTerrain.Water when cell.Sea => TerrainSurface.Code.Sea,

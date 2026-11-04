@@ -85,6 +85,8 @@ public partial class TerrainSurface : Control
         QueueRedraw();
     }
 
+    public override void _Ready() => Resized += QueueRedraw;
+
     public override void _Draw()
     {
         if (Active)
