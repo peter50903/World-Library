@@ -67,6 +67,33 @@ public sealed class DemoWaterAndFarmlandTests
     }
 
     [Fact]
+    public void SettlementsOnlyClearAsManyFieldsAsTheirPeopleNeed()
+    {
+        // 試玩回饋 2026-11-04 之 1：田數不超過 ⌈居民÷TempPeoplePerField⌉（以歷來最多人數計；只看附近沒有別的聚落的，避免共用田地）。
+        var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);
+        var peak = new Dictionary<int, long>();
+        for (var d = 0; d < 60 * TestCalendar.DaysPerYear; d++)
+        {
+            world.AdvanceOneDay();
+            if (d % 7 != 6)
+                continue;
+            foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin))
+                peak[s.Id] = Math.Max(peak.GetValueOrDefault(s.Id), world.SettlementPopulation(s.Id));
+        }
+        var checkedAny = false;
+        foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin))
+        {
+            var here = world.Map.GetCell(s.Column, s.Row);
+            if (world.Sites.Settlements.Any(o => o.Id != s.Id && DemoWorldSites.HexDistance(here, world.Map.GetCell(o.Column, o.Row)) <= 2))
+                continue;
+            checkedAny = true;
+            var cap = (peak.GetValueOrDefault(s.Id) + DemoLandClearing.TempPeoplePerField - 1) / DemoLandClearing.TempPeoplePerField;
+            Assert.True(DemoLandClearing.FieldsAround(world.Land, world.Map, s) <= cap, $"{s.Name} 的田超過需要");
+        }
+        Assert.True(checkedAny);
+    }
+
+    [Fact]
     public void FarmlandWithNoNeighbourDecaysBackToGrassland()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(1), DemoWeeklyTempConfig.LivingForagingSample);

@@ -9,6 +9,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// <item>每週開墾進度＋<see cref="TempPercentPerWeek"/>%（同一塊地鄰接多個開墾聚落時各自累加），滿 100% 成為農田。</item>
 /// <item>農田每週供應 <see cref="TempFarmlandWeeklySupply"/>（草原野採的三倍），可及規則與草原野採相同。</item>
 /// <item>開墾的人仍照常採集（第一版不扣勞力）。</item>
+/// <item>試玩回饋 2026-11-04：相鄰農田與開墾中的地已夠養全部居民（<see cref="TempPeoplePerField"/>）時不開新田。</item>
 /// </list>
 /// </summary>
 public static class DemoLandClearing
@@ -21,6 +22,17 @@ public static class DemoLandClearing
 
     /// <summary>【TEMP】每週開墾進度（%）：約一年開好一塊。</summary>
     public const int TempPercentPerWeek = 2;
+
+    /// <summary>【TEMP】一塊農田養幾人（每週 40 糧、每人約 4）：田數上限＝⌈居民÷此值⌉。</summary>
+    public const long TempPeoplePerField = 10;
+
+    /// <summary>聚落六鄰格中已是農田或開墾中的塊數。</summary>
+    public static int FieldsAround(DemoLandDevelopmentMap land, DemoHexWorld map, DemoSettlement settlement)
+    {
+        var origin = map.GetCell(settlement.Column, settlement.Row);
+        return DemoRouteNetwork.Directions.Count(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c
+            && land.StateOf(new DemoCellRef(c.Column, c.Row)) is DemoLandDevelopment.Farmland or DemoLandDevelopment.Clearing);
+    }
 
     /// <summary>【TEMP】開墾所需的最少成年人數。</summary>
     public const long TempMinAdults = 2;
@@ -55,6 +67,11 @@ public static class DemoLandClearing
                 .ThenBy(c => c.Row).ThenBy(c => c.Column)
                 .Select(c => (DemoCellRef?)c).FirstOrDefault();
             if (target is not { } cell)
+                continue;
+            // 試玩回饋 2026-11-04 之 1（農田比例太大）：田夠吃就不再開新田——
+            // 相鄰的農田與開墾中的地已達 ⌈居民÷TempPeoplePerField⌉ 塊時，不開工新的一塊（已開工的照常做完）。
+            if (land.StateOf(cell) != DemoLandDevelopment.Clearing
+                && FieldsAround(land, map, settlement) >= (population.ResidentsOf(settlement.Id) + TempPeoplePerField - 1) / TempPeoplePerField)
                 continue;
             var progress = Math.Min(100, (land.ParcelAt(cell)?.DevelopmentPercent ?? 0) + TempPercentPerWeek);
             if (progress < 100)
