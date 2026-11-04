@@ -36,6 +36,18 @@ public static class ArtAssets
     public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
     public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
     public const string IconDungeon = "res://assets/icons/icon_dungeon.png"; // 第 12-1 章 C4
+    /// <summary>第 06-4 章第 4 步：地表著色器的紋理（著色器參數名、檔案）。</summary>
+    public static readonly (string Uniform, string Path)[] TerrainTextures =
+    {
+        ("tex_grass", "res://assets/textures/grassland.png"), ("tex_forest", "res://assets/textures/forest.png"),
+        ("tex_hills", "res://assets/textures/hills.png"), ("tex_sea", "res://assets/textures/sea.png"),
+        ("tex_river", "res://assets/textures/river.png"), ("tex_shallow", "res://assets/textures/shallow.png"),
+        ("tex_beach", "res://assets/textures/beach.png"), ("tex_farmland", "res://assets/textures/farmland.png"),
+        ("tex_clearing", "res://assets/textures/clearing.png"), ("tex_dry", "res://assets/textures/dry_grass.png"),
+        ("tex_scorched", "res://assets/textures/scorched.png"), ("tex_flood", "res://assets/textures/flood.png"),
+        ("tex_ore", "res://assets/textures/ore_specks.png")
+    };
+
     /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀，每幀 128×64；缺少時由程式畫小人）。</summary>
     public const string FxMigrantsWalk = "res://assets/fx/migrants_walk.png";
 
@@ -88,6 +100,7 @@ public static class ArtAssets
 
     /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
     public static readonly string[] Used =
+    new[]
     {
         TileGrassland, TileForest, TileWater, TileRiver, TileRiverShallow, TileFarmland, TileFarmlandClearing,
         IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
@@ -104,7 +117,7 @@ public static class ArtAssets
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
-    };
+    }.Concat(TerrainTextures.Select(t => t.Path)).ToArray(); // 第 06-4 章第 4 步：地形紋理
 
     private static readonly Dictionary<string, Resource?> Cache = new();
 

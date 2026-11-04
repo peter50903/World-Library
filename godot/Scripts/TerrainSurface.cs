@@ -25,6 +25,9 @@ public partial class TerrainSurface : Control
     private byte[]? _uploaded;
     private (int Columns, int Rows) _grid;
 
+    /// <summary>第 06-4 章第 4 步：是否用 GPT 地形紋理（否＝程式畫的地表）。</summary>
+    public bool UsesTextures { get; }
+
     /// <summary>目前是否畫地表（近景層與區域層的地形模式）。</summary>
     public bool Active { get; private set; }
 
@@ -34,6 +37,17 @@ public partial class TerrainSurface : Control
         ShowBehindParent = true;
         _material = new ShaderMaterial { Shader = new Shader { Code = ShaderCode } };
         Material = _material;
+        // 第 06-4 章第 4 步：GPT 地形紋理（可無縫拼接）。全部讀得到才啟用，缺任何一張就照舊用程式畫的地表。
+        var all = true;
+        foreach (var (uniform, path) in ArtAssets.TerrainTextures)
+        {
+            if (ArtAssets.Texture(path) is { } texture)
+                _material.SetShaderParameter(uniform, texture);
+            else
+                all = false;
+        }
+        UsesTextures = all;
+        _material.SetShaderParameter("use_tex", all);
     }
 
     /// <summary>每次地圖重畫時呼叫：<paramref name="codes"/> 每格四個位元組（地表代碼、天災疊層、疊層強度、保留），
@@ -86,6 +100,21 @@ uniform vec2 origin;
 uniform float radius = 20.0;
 uniform ivec2 grid = ivec2(1, 1);
 uniform float pixel = 2.0;
+// 第 06-4 章第 4 步：地形紋理（一張鋪約 4 格寬；最近鄰取樣保持像素風）。
+uniform bool use_tex = false;
+uniform sampler2D tex_grass : filter_nearest, repeat_enable;
+uniform sampler2D tex_forest : filter_nearest, repeat_enable;
+uniform sampler2D tex_hills : filter_nearest, repeat_enable;
+uniform sampler2D tex_sea : filter_nearest, repeat_enable;
+uniform sampler2D tex_river : filter_nearest, repeat_enable;
+uniform sampler2D tex_shallow : filter_nearest, repeat_enable;
+uniform sampler2D tex_beach : filter_nearest, repeat_enable;
+uniform sampler2D tex_farmland : filter_nearest, repeat_enable;
+uniform sampler2D tex_clearing : filter_nearest, repeat_enable;
+uniform sampler2D tex_dry : filter_nearest, repeat_enable;
+uniform sampler2D tex_scorched : filter_nearest, repeat_enable;
+uniform sampler2D tex_flood : filter_nearest, repeat_enable;
+uniform sampler2D tex_ore : filter_nearest, repeat_enable;
 
 varying vec2 local_pos;
 
@@ -155,7 +184,63 @@ float dev_at(ivec2 a) {
 	return texelFetch(cells, ivec2(col, a.y), 0).a;
 }
 
+vec2 tex_uv(vec2 p) {
+	return p / (radius * 6.9282);
+}
+
+vec3 textured(int c, vec2 p, float coast, float t, float dev) {
+	vec2 uv = tex_uv(p);
+	float fine = hash(floor(p / pixel));
+	if (c == 0) {
+		return texture(tex_grass, uv).rgb;
+	}
+	if (c == 1) {
+		return texture(tex_forest, uv).rgb;
+	}
+	if (c == 2 || c == 3) {
+		vec3 h = texture(tex_hills, uv).rgb;
+		if (c == 3) {
+			vec4 o = texture(tex_ore, uv * 1.7);
+			h = mix(h, o.rgb, o.a);
+		}
+		return h;
+	}
+	if (c == 4) {
+		vec3 s = texture(tex_sea, uv + vec2(t * 0.004, t * 0.002)).rgb;
+		return mix(s, texture(tex_shallow, uv).rgb, coast * 0.7);
+	}
+	if (c == 5) {
+		return texture(tex_river, uv + vec2(0.0, t * 0.01)).rgb;
+	}
+	if (c == 6) {
+		return texture(tex_shallow, uv).rgb;
+	}
+	if (c == 7) {
+		return texture(tex_farmland, uv).rgb;
+	}
+	if (c == 8) {
+		// 開墾中或荒廢中：依開發度抖點漸變——草地→開墾地→田壟。
+		float d1 = clamp(dev * 2.0, 0.0, 1.0);
+		float d2 = clamp(dev * 2.0 - 1.0, 0.0, 1.0);
+		vec3 col = fine < d1 ? texture(tex_clearing, uv).rgb : texture(tex_grass, uv).rgb;
+		return hash(floor(p / pixel) + 7.7) < d2 ? texture(tex_farmland, uv).rgb : col;
+	}
+	if (c == 10) {
+		return texture(tex_scorched, uv).rgb;
+	}
+	if (c == 11) {
+		return texture(tex_dry, uv).rgb;
+	}
+	return vec3(-1.0);
+}
+
 vec3 surface(int c, vec2 p, float coast, float t, float dev) {
+	if (use_tex) {
+		vec3 tc = textured(c, p, coast, t, dev);
+		if (tc.r >= 0.0) {
+			return tc;
+		}
+	}
 	vec2 u = p / radius;
 	float n = fbm(u * 1.3);
 	float fine = hash(floor(p / pixel));
@@ -252,7 +337,7 @@ void fragment() {
 			col = surface(c2, p, 0.0, TIME, dev_at(a2));
 		}
 		if (!is_water(c1) && c2 == 4 && edge < 0.12) {
-			col = mix(vec3(0.80, 0.74, 0.54), col, edge / 0.12);
+			col = mix(use_tex ? texture(tex_beach, tex_uv(p)).rgb : vec3(0.80, 0.74, 0.54), col, edge / 0.12);
 		}
 	}
 	// 天災疊層（試玩回饋 2026-11-03 之 3）：依時間漸變，像素風抖點。
@@ -263,7 +348,7 @@ void fragment() {
 	if (inside && ov > 0 && amt > 0.0) {
 		vec2 u = p / radius;
 		float hp = hash(floor(p / pixel) + 11.7);
-		vec3 scorched = mix(vec3(0.20, 0.17, 0.15), vec3(0.32, 0.27, 0.23), fbm(u * 1.3));
+		vec3 scorched = use_tex ? texture(tex_scorched, tex_uv(p)).rgb : mix(vec3(0.20, 0.17, 0.15), vec3(0.32, 0.27, 0.23), fbm(u * 1.3));
 		if (ov == 1) {
 			vec3 fire = mix(vec3(0.60, 0.16, 0.05), vec3(1.0, 0.70, 0.20), vnoise(u * 4.0 + vec2(0.0, -TIME * 1.5)));
 			float flame = step(hp, amt * (0.55 + 0.45 * vnoise(u * 6.0 + vec2(0.0, -TIME * 3.0))));
@@ -274,11 +359,12 @@ void fragment() {
 			}
 		} else if (ov == 3) {
 			if (hp < amt) {
-				col = mix(vec3(0.66, 0.60, 0.34), vec3(0.76, 0.68, 0.42), fbm(u * 1.3));
+				col = use_tex ? texture(tex_dry, tex_uv(p)).rgb : mix(vec3(0.66, 0.60, 0.34), vec3(0.76, 0.68, 0.42), fbm(u * 1.3));
 			}
 		} else if (ov == 4) {
 			if (hp < amt * (0.8 + 0.2 * vnoise(u * 3.0 + vec2(TIME * 0.2, 0.0)))) {
-				col = mix(vec3(0.26, 0.42, 0.52), vec3(0.34, 0.52, 0.60), vnoise(u * 2.5 + vec2(0.0, TIME * 0.3)));
+				col = use_tex ? texture(tex_flood, tex_uv(p) + vec2(TIME * 0.003, 0.0)).rgb
+					: mix(vec3(0.26, 0.42, 0.52), vec3(0.34, 0.52, 0.60), vnoise(u * 2.5 + vec2(0.0, TIME * 0.3)));
 			}
 		} else if (ov == 5) {
 			if (hp < amt * 0.55) {
@@ -297,7 +383,10 @@ void fragment() {
 				col = mix(col, vec3(0.50, 0.44, 0.36), amt);
 			}
 		} else if (ov == 8) {
-			if (hp > 0.93) {
+			if (use_tex) {
+				vec4 ore = texture(tex_ore, tex_uv(p) * 1.7);
+				col = mix(col, ore.rgb, ore.a);
+			} else if (hp > 0.93) {
 				col = vec3(0.74, 0.68, 0.52);
 			}
 		}
