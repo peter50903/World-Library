@@ -209,6 +209,7 @@ public partial class ObserverRoot
         AddChild(_musicPlayer);
         WireClickSounds(_hud);
         var headless = _audioMuted = DisplayServer.GetName() == "headless";
+        _hexMap.AudioMuted = headless; // 第 08-16 章：天災與事件音效
         _musicToggle.Disabled = music is null;
         _musicToggle.SetPressedNoSignal(music is not null && !headless);
         if (_musicToggle.ButtonPressed)

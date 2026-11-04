@@ -26,7 +26,16 @@ public partial class DemoHexMap
             {
                 // 剛發生（本週或上週）而且第一次看到的才播動畫；讀檔看到的舊天災不播。
                 if (_seenDisasters.Add(mark.EventId) && mark.Week >= CurrentWeek - 1 && _disasterMarksPrimed)
+                {
                     _impacts.Add((mark, now));
+                    PlaySfx(mark.Kind switch
+                    {
+                        DemoSettlementEventKind.Earthquake => ArtAssets.SfxEarthquake,
+                        DemoSettlementEventKind.Meteorite => ArtAssets.SfxMeteor,
+                        DemoSettlementEventKind.Flood => ArtAssets.SfxFlood,
+                        _ => ArtAssets.SfxTornado
+                    });
+                }
             }
             _disasterMarksPrimed = true;
         }
@@ -56,6 +65,7 @@ public partial class DemoHexMap
 
     public override void _Process(double delta)
     {
+        UpdateFireLoop();
         if (!WantsAnimation)
             return;
         var now = Time.GetTicksMsec();
@@ -74,6 +84,17 @@ public partial class DemoHexMap
         var t = GameWeeks;
         var columns = World!.Columns;
         _hasFire = false;
+        _decals.Clear();
+        // 有素材的地面痕跡（坑、裂縫、殘骸）改畫成貼圖（DrawDisasterEffects），沒有才交給著色器。
+        void Decal(DemoCellRef c, Overlay kind, float amount)
+        {
+            if (amount <= 0f || !World!.Contains(c.Column, c.Row))
+                return;
+            if (ArtAssets.Texture(DecalPath(kind)) is not null)
+                _decals.Add((c, kind, Mathf.Clamp(amount, 0f, 1f)));
+            else
+                Set(c, kind, amount);
+        }
         void Set(DemoCellRef c, Overlay kind, float amount)
         {
             if (!World.Contains(c.Column, c.Row) || amount <= 0f)
@@ -142,15 +163,15 @@ public partial class DemoHexMap
                         var reached = d * path.Count; // 一週內沿路徑掃過
                         if (reached < k)
                             break;
-                        Set(path[k], Overlay.Debris, d < 2f ? 1f : 1f - (d - 2f) / (TempDebrisWeeks - 2f));
+                        Decal(path[k], Overlay.Debris, d < 2f ? 1f : 1f - (d - 2f) / (TempDebrisWeeks - 2f));
                     }
                     break;
                 case DemoSettlementEventKind.Earthquake:
                     foreach (var c in Ring(mark.Center, 1, landOnly: true))
-                        Set(c, Overlay.Cracks, 1f - d / TempCracksWeeks);
+                        Decal(c, Overlay.Cracks, 1f - d / TempCracksWeeks);
                     break;
                 case DemoSettlementEventKind.Meteorite:
-                    Set(mark.Impact ?? mark.Center, Overlay.Crater, d < 4f ? 1f : 1f - (d - 4f) / (TempCraterWeeks - 4f));
+                    Decal(mark.Impact ?? mark.Center, Overlay.Crater, d < 4f ? 1f : 1f - (d - 4f) / (TempCraterWeeks - 4f));
                     break;
             }
         }
@@ -195,6 +216,15 @@ public partial class DemoHexMap
     {
         var now = Time.GetTicksMsec();
         var seconds = now / 1000f;
+        // 地面痕跡貼圖：隕石坑、地震裂縫、龍捲風殘骸（依時間淡去）。
+        foreach (var (cell, kind, amount) in _decals)
+        {
+            var center = ScreenOf(start, radius, cell);
+            if (!OnScreen(center, radius * 2f) || ArtAssets.Texture(DecalPath(kind)) is not { } decal)
+                continue;
+            var size = radius * (kind == Overlay.Crater ? 1.5f : 1.8f);
+            DrawTextureRect(decal, new Rect2(center - new Vector2(size, size) / 2f, new Vector2(size, size)), false, new Color(1, 1, 1, amount));
+        }
         // 燃燒處冒煙：每格三團往上飄、漸淡的灰煙。
         foreach (var spell in Spells.Where(s => s.Kind == DemoSettlementEventKind.Wildfire))
         {
@@ -207,11 +237,23 @@ public partial class DemoHexMap
                 var center = ScreenOf(start, radius, spell.Cells[k]);
                 if (!OnScreen(center, radius * 3f))
                     continue;
+                // 美術素材（2026-11-04）：火焰動畫兩叢、煙霧貼圖；沒有素材時畫圓形的煙。
+                if (dk < TempFireBurnWeeks && ArtAssets.Texture(ArtAssets.FxFire) is { } fire)
+                {
+                    var frame = (int)(seconds * TempFireFps + k) % 4;
+                    DrawStripFrame(fire, frame, center + new Vector2(-radius * 0.3f, radius * 0.35f), radius * 0.9f);
+                    DrawStripFrame(fire, (frame + 2) % 4, center + new Vector2(radius * 0.32f, radius * 0.1f), radius * 0.75f);
+                }
+                var smoke = ArtAssets.Texture(ArtAssets.FxSmoke);
                 for (var p = 0; p < 3; p++)
                 {
                     var phase = Mathf.PosMod(seconds * 0.4f + p / 3f + k * 0.17f, 1f);
                     var puff = center + new Vector2(Mathf.Sin(phase * 6f + k) * radius * 0.25f, -phase * radius * 1.6f);
-                    DrawCircle(puff, radius * (0.18f + phase * 0.3f), new Color(0.25f, 0.23f, 0.22f, 0.45f * (1f - phase)));
+                    var size = radius * (0.18f + phase * 0.3f);
+                    if (smoke is not null)
+                        DrawTextureRect(smoke, new Rect2(puff - new Vector2(size, size) * 1.3f, new Vector2(size, size) * 2.6f), false, new Color(1, 1, 1, 0.7f * (1f - phase)));
+                    else
+                        DrawCircle(puff, size, new Color(0.25f, 0.23f, 0.22f, 0.45f * (1f - phase)));
                 }
             }
         }
@@ -232,9 +274,18 @@ public partial class DemoHexMap
                     {
                         // 劃過天空：拖著尾巴的火球。
                         var head = from.Lerp(target, p / 0.45f);
-                        var tail = from.Lerp(target, Mathf.Max(0f, p / 0.45f - 0.35f));
-                        DrawLine(tail, head, new Color(1f, 0.55f, 0.15f, 0.7f), Math.Max(2f, radius * 0.25f));
-                        DrawCircle(head, Math.Max(2f, radius * 0.22f), new Color(1f, 0.9f, 0.6f));
+                        if (ArtAssets.Texture(ArtAssets.FxMeteor) is { } meteor)
+                        {
+                            // 素材的火球在左下、尾巴在右上（與飛行方向一致）。
+                            var size = radius * 3f;
+                            DrawTextureRect(meteor, new Rect2(head - new Vector2(size * 0.25f, size * 0.75f), new Vector2(size, size)), false);
+                        }
+                        else
+                        {
+                            var tail = from.Lerp(target, Mathf.Max(0f, p / 0.45f - 0.35f));
+                            DrawLine(tail, head, new Color(1f, 0.55f, 0.15f, 0.7f), Math.Max(2f, radius * 0.25f));
+                            DrawCircle(head, Math.Max(2f, radius * 0.22f), new Color(1f, 0.9f, 0.6f));
+                        }
                     }
                     else
                     {
@@ -254,6 +305,11 @@ public partial class DemoHexMap
                     var k = Math.Min(path.Count - 2, (int)along);
                     var pos = path.Count == 1 ? ScreenOf(start, radius, path[0])
                         : ScreenOf(start, radius, path[Math.Max(0, k)]).Lerp(ScreenOf(start, radius, path[k + 1]), along - k);
+                    if (ArtAssets.Texture(ArtAssets.FxTornado) is { } tornado)
+                    {
+                        DrawStripFrame(tornado, (int)(seconds * 12f) % 4, pos + new Vector2(0, radius * 0.4f), radius * 1.6f);
+                        break;
+                    }
                     // 漏斗：由下往上越來越寬的旋轉橢圓。
                     for (var layer = 0; layer < 6; layer++)
                     {
@@ -278,5 +334,65 @@ public partial class DemoHexMap
                 }
             }
         }
+    }
+
+    private readonly List<(DemoCellRef Cell, Overlay Kind, float Amount)> _decals = new();
+
+    /// <summary>【TEMP】火焰動畫每秒幾格。</summary>
+    public const float TempFireFps = 8f;
+
+    private static string DecalPath(Overlay kind) => kind switch
+    {
+        Overlay.Crater => ArtAssets.FxCrater,
+        Overlay.Cracks => ArtAssets.FxCracks,
+        _ => ArtAssets.FxDebris
+    };
+
+    /// <summary>畫 4 幀橫排動畫的某一格：底部置中在 <paramref name="bottom"/>，寬 <paramref name="width"/>（高依比例）。</summary>
+    private void DrawStripFrame(Texture2D sheet, int frame, Vector2 bottom, float width)
+    {
+        var fw = sheet.GetWidth() / 4f;
+        var height = width * sheet.GetHeight() / fw;
+        DrawTextureRectRegion(sheet, new Rect2(bottom - new Vector2(width / 2f, height), new Vector2(width, height)),
+            new Rect2(fw * (frame % 4), 0, fw, sheet.GetHeight()));
+    }
+
+    /// <summary>無畫面模式與冒煙測試靜音（由觀察者介面設定）。</summary>
+    public bool AudioMuted { get; set; }
+
+    /// <summary>【TEMP】天災音效、火燒循環音量（dB）。</summary>
+    public const float TempSfxVolumeDb = -6f;
+    public const float TempFireLoopVolumeDb = -14f;
+
+    private AudioStreamPlayer? _fireLoop;
+
+    /// <summary>播一次音效（每次一個播放器，播完自行移除，可重疊）。</summary>
+    public void PlaySfx(string path)
+    {
+        if (AudioMuted || !IsInsideTree() || ArtAssets.Audio(path) is not { } stream)
+            return;
+        var player = new AudioStreamPlayer { Stream = stream, VolumeDb = TempSfxVolumeDb };
+        AddChild(player);
+        player.Finished += player.QueueFree;
+        player.Play();
+    }
+
+    /// <summary>畫面上有東西在燒時循環播放火燒聲。</summary>
+    private void UpdateFireLoop()
+    {
+        var want = _hasFire && !AudioMuted;
+        if (want && _fireLoop is null && ArtAssets.Audio(ArtAssets.SfxFire) is { } stream)
+        {
+            if (stream is AudioStreamOggVorbis ogg)
+                ogg.Loop = true;
+            _fireLoop = new AudioStreamPlayer { Stream = stream, VolumeDb = TempFireLoopVolumeDb };
+            AddChild(_fireLoop);
+        }
+        if (_fireLoop is null)
+            return;
+        if (want && !_fireLoop.Playing)
+            _fireLoop.Play();
+        else if (!want && _fireLoop.Playing)
+            _fireLoop.Stop();
     }
 }
