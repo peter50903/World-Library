@@ -346,7 +346,7 @@ public partial class TerrainSurface : Control
         return c;
     }
 
-    /// <summary>田畦：全圖共用的 6×4 田塊格（相鄰的田連成一片），每塊一種作物、隔行深淺；
+    /// <summary>田畦：全圖共用的 4×3 田塊格（相鄰的田連成一片），每塊一種作物、隔行深淺；
     /// <paramref name="dev"/>＜1 時依開發度從草地→翻開的泥土→田畦。</summary>
     private static Color Field(int x, int y, float dev)
     {
@@ -359,10 +359,11 @@ public partial class TerrainSurface : Control
             if (h > dev * 2f - 1f)
                 return Hash(x, y, 4) < 0.08f ? Stump : Pick(Soil, Hash(x, y, 4));
         }
-        if (x % 6 == 0 || y % 4 == 0)
+        // 試玩回饋 2026-11-04 之 1 更正：農田不是太多，是圖案太大——田塊縮成 4×3、作物交錯深淺。
+        if (x % 4 == 0 || y % 3 == 0)
             return Soil[0]; // 田埂
-        var crop = Crops[(int)(Hash(x / 6, y / 4, 12) * Crops.Length) % Crops.Length];
-        return y % 2 == 0 ? crop : crop.Darkened(0.12f);
+        var crop = Crops[(int)(Hash(x / 4, y / 3, 12) * Crops.Length) % Crops.Length];
+        return (x + y) % 2 == 0 ? crop : crop.Darkened(0.1f);
     }
 
     // ───────────── 疊在底色上的樹與山頭 ─────────────
