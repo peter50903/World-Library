@@ -61,3 +61,32 @@ public sealed class DemoContinentTests
         Assert.Equal(world.StateFingerprint(), loaded.StateFingerprint());
     }
 }
+
+/// <summary>第 06-4 章第 3 步：森林依濕度（沿海沿河多森林、內陸多草原）。</summary>
+public sealed class DemoForestMoistureTests
+{
+    [Theory]
+    [InlineData(1UL, DemoMapSize.Large)]
+    [InlineData(6UL, DemoMapSize.Medium)]
+    public void ForestsHugWaterAndGrasslandsFillTheInterior(ulong seed, DemoMapSize size)
+    {
+        var map = DemoHexWorld.Generate(seed, size);
+        bool NearWater(DemoHexCell c) => DemoRouteNetwork.Directions.Any(d => map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is { Terrain: DemoTerrain.Water });
+        var plains = map.Cells.Where(c => c.Terrain is DemoTerrain.Forest or DemoTerrain.Grassland).ToList();
+        double ForestShare(IEnumerable<DemoHexCell> cells) => cells.DefaultIfEmpty().Average(c => c?.Terrain == DemoTerrain.Forest ? 1.0 : 0.0);
+        var shore = ForestShare(plains.Where(NearWater));
+        var inland = ForestShare(plains.Where(c => !NearWater(c)));
+        Assert.True(shore > inland + 0.2, $"岸邊森林比例 {shore:F2} 沒有明顯高於內陸 {inland:F2}");
+        Assert.InRange(ForestShare(plains), 0.40, 0.50);
+        // 成片：相鄰平地同為森林或草原的比例。
+        double same = 0, pairs = 0;
+        foreach (var c in plains)
+            foreach (var d in DemoRouteNetwork.Directions)
+                if (map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is { Terrain: DemoTerrain.Forest or DemoTerrain.Grassland } n)
+                {
+                    pairs++;
+                    if (n.Terrain == c.Terrain) same++;
+                }
+        Assert.True(same / pairs >= 0.65, $"同地形相鄰比例 {same / pairs:F2}");
+    }
+}

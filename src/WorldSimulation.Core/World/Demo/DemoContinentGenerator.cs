@@ -8,7 +8,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// ① 三層平滑雜訊產生高度，四邊往下壓，邊緣多半是海；② 最高的 <see cref="TempLandPercent"/>% 是陸地，其餘是海（含內陸湖）；
 /// ③ 陸地中最高的 <see cref="TempHillPercent"/>% 是丘陵（沿高處成山脈），丘陵 1/3 有礦脈；
 /// ④ 河從丘陵附近出發，每步往最低的相鄰陸地走，到海或匯入別的河為止；每 <see cref="TempFordSpacing"/> 格找一處淺灘；
-/// ⑤ 森林與草原沿用第 06-2 章的擲硬幣＋多數決平滑（第 06-4 章第 3 步再改成依濕度）。
+/// ⑤ 森林依濕度（離海與河越近越濕，加平滑雜訊；第 06-4 章第 3 步）。
 /// 只用四種既有地形，不加新規則。全部用地理流的實體局部亂數（不推進計數器），同種子同地圖。高度只在生成時用，不存。
 /// </summary>
 public static class DemoContinentGenerator
@@ -27,6 +27,12 @@ public static class DemoContinentGenerator
 
     /// <summary>【TEMP】長度不到幾格的河不留（卡在低窪處的短溝）。</summary>
     public const int TempMinRiverLength = 3;
+
+    /// <summary>【TEMP】第 3 步森林：平地中最濕的多少 % 是森林；離水每格乾多少、最多算幾格；雜訊權重（%）。</summary>
+    public const int TempForestPercent = 45;
+    public const int TempMoisturePerStep = 120;
+    public const int TempMoistureReach = 6;
+    public const int TempMoistureNoisePercent = 120;
 
     /// <summary>【TEMP】離中心多遠（d²，四邊中點＝1000000）開始往下壓。</summary>
     public const long TempFalloffStart = 300_000;
@@ -64,10 +70,6 @@ public static class DemoContinentGenerator
             }
         }
 
-        // ⑤ 森林與草原（先擲再平滑，海之後蓋上）。
-        var raw = Enumerable.Range(0, count).Select(i => (DemoTerrain)(Draw(2_000_000UL + (ulong)i) % 2UL)).ToArray();
-        var land = DemoHexWorld.SmoothLand(raw, columns, rows);
-
         // ② 海平面：最高的 TempLandPercent% 是陸地（同高時依格編號，結果固定）。
         var order = Enumerable.Range(0, count).OrderByDescending(i => height[i]).ThenBy(i => i).ToArray();
         var landCount = Math.Max(1, count * TempLandPercent / 100);
@@ -79,7 +81,7 @@ public static class DemoContinentGenerator
         var hillCount = landCount * TempHillPercent / 100;
         var terrain = new DemoTerrain[count];
         for (var i = 0; i < count; i++)
-            terrain[i] = isLand[i] ? land[i] : DemoTerrain.Water;
+            terrain[i] = isLand[i] ? DemoTerrain.Grassland : DemoTerrain.Water; // 森林在河流定案後依濕度決定（⑤）
         foreach (var i in order.Take(hillCount))
             terrain[i] = DemoTerrain.Hills;
 
@@ -121,6 +123,38 @@ public static class DemoContinentGenerator
                 break;
             }
         }
+
+        // ⑤ 第 06-4 章第 3 步：森林依濕度——離水（海、河）越近越濕，加上平滑雜訊；
+        // 草原與森林中最濕的 TempForestPercent% 是森林。結果是沿海、沿河的林帶與內陸的大草原，而不是零碎斑點。
+        var wet = new int[count];
+        Array.Fill(wet, int.MaxValue);
+        var queue = new Queue<int>();
+        for (var i = 0; i < count; i++)
+            if (cells[i].Terrain == DemoTerrain.Water)
+            {
+                wet[i] = 0;
+                queue.Enqueue(i);
+            }
+        while (queue.Count > 0)
+        {
+            var i = queue.Dequeue();
+            foreach (var n in Neighbours(i))
+                if (n >= 0 && wet[n] > wet[i] + 1)
+                {
+                    wet[n] = wet[i] + 1;
+                    queue.Enqueue(n);
+                }
+        }
+        var rawNoise = Enumerable.Range(0, count).Select(i => (long)(Draw(5_000_000UL + (ulong)i) % 1000UL)).ToArray();
+        long Moisture(int i)
+        {
+            var around = Neighbours(i).Where(n => n >= 0).ToArray();
+            var noise = (rawNoise[i] + around.Sum(n => rawNoise[n])) / (1 + around.Length);
+            return 1000 - Math.Min(wet[i], TempMoistureReach) * TempMoisturePerStep + noise * TempMoistureNoisePercent / 100;
+        }
+        var plains = Enumerable.Range(0, count).Where(i => cells[i].Terrain == DemoTerrain.Grassland).ToArray();
+        foreach (var i in plains.OrderByDescending(Moisture).ThenBy(i => i).Take(plains.Length * TempForestPercent / 100))
+            cells[i] = cells[i] with { Terrain = DemoTerrain.Forest };
 
         // 河道通過的丘陵已變成水；礦脈只放在剩下的丘陵（1/3，與第 06-3 章相同）。
         for (var i = 0; i < count; i++)
