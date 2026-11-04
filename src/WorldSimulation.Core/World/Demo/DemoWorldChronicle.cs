@@ -82,6 +82,7 @@ public static class DemoWorldChronicle
             => entries.Add((YearOf(week), new DemoChronicleEntry(week, level, category, segments, eventId)));
 
         var events = world.SettlementEvents();
+        var byId = events.Where(e => e.EventId > 0).GroupBy(e => e.EventId).ToDictionary(g => g.Key, g => g.First()); // 第 08-16 章：因果故事
         var knownTechs = new HashSet<DemoTechnology>();
         var eraStarts = new Dictionary<int, DemoEra>();
         foreach (var e in events.OrderBy(e => e.Week).ThenBy(e => e.EventId))
@@ -101,13 +102,15 @@ public static class DemoWorldChronicle
                     break;
                 case DemoSettlementEventKind.SettlementFounded:
                     var from = parents.GetValueOrDefault(e.SettlementId);
+                    // 第 08-16 章：接上起因（例：熱浪讓家鄉鬧饑荒，一群人帶著存糧出走）。
+                    var why = DemoStories.WhyFounded(e, byId) is { } reason ? new[] { T("——" + reason) } : Array.Empty<DemoChronicleSegment>();
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Founding, e.EventId,
-                        from > 0 ? new[] { Name(from), T(" 的開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }
-                                 : new[] { T("開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") });
+                        (from > 0 ? new[] { Name(from), T(" 的開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }
+                                  : new[] { T("開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }).Concat(why).ToArray());
                     break;
                 case DemoSettlementEventKind.SettlementRuined:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Ruin, e.EventId,
-                        Name(e.SettlementId), T(" 人口歸零，成為遺跡"));
+                        Name(e.SettlementId), T(DemoStories.WhyRuined(e, events) is { } after ? $" 在{after}人口歸零，成為遺跡" : " 人口歸零，成為遺跡"));
                     break;
                 case DemoSettlementEventKind.FarmlandCleared:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Farmland, e.EventId,

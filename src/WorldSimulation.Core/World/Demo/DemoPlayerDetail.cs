@@ -154,13 +154,17 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             now.Add($"第 {YearOfWeek(settlement.RuinedWeek)} 年起無人居住");
         }
 
-        // 代表人物
+        // 代表人物（第 08-16 章：每人下面接兩三行小傳）
+        var allEvents = world.SettlementEvents();
         var people = world.RepresentativesOf(settlement.Id)
             .OrderBy(r => r.Role)
-            .Select(r => $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
+            .SelectMany(r => new[]
+            {
+                $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
                 + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
                 + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "")
-                + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）")
+                + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）"
+            }.Concat(DemoStories.Biography(world, r, allEvents)))
             .ToList();
         if (people.Count == 0)
             people.Add(settlement.IsRuin ? "已無人居住" : "目前沒有代表人物");
