@@ -1,0 +1,480 @@
+{
+  "version": 2,
+  "canvas": {
+    "height": 128,
+    "width": 128
+  },
+  "head": {
+    "neckBottomY": 77,
+    "centerX": 64,
+    "chinY": 66,
+    "centerY": 43,
+    "topY": 22
+  },
+  "backupRelativePath": "work\\portrait_unify_20261104_171546\\originals",
+  "clothing": {
+    "bottomY": 127,
+    "femaleShoulderWidth": 96,
+    "maleShoulderWidth": 112,
+    "topY": 69,
+    "necklineY": 77
+  },
+  "files": [
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsaccessory_female_carpenter_headwrap.png",
+      "hash": "05EABD24F197C9327282E5E6F0DFF868A9B6A4CF476722118ECD5AD80A1502B8",
+      "transparentPixels": 15840
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsaccessory_female_scholar_headband.png",
+      "hash": "D1BDA7BAFFF4C673E50A2999086219DCDC07FB9A407F82F87BDEAB3111166EAD",
+      "transparentPixels": 16282
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsaccessory_male_carpenter_charcoal.png",
+      "hash": "589785BA1E13873F143A755F699406B3AB7660C6C255340613EB2CD9ED787A7A",
+      "transparentPixels": 16373
+    },
+    {
+      "partiallyTransparentPixels": 26,
+      "file": "portraitsage_middle.png",
+      "hash": "E3132F61E0A110E4F13A5646B4AC5BB7FF8F8A88D2AE203B9A6EFB612E9ABF51",
+      "transparentPixels": 16358
+    },
+    {
+      "partiallyTransparentPixels": 112,
+      "file": "portraitsage_old.png",
+      "hash": "7244001A70298FC8A4470B8BD935344A2097F617E3A931F83E7E8FD2B56761AB",
+      "transparentPixels": 16272
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsbeard_1.png",
+      "hash": "5DB560DD6BE52B532D51583FF19FB1A792060C49041DB93FCEE8D660B506D547",
+      "transparentPixels": 16260
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsbeard_2.png",
+      "hash": "BE68589B04C5BD321EB6AAFDA34B59D636AE544DA23BA43F1CA703FF1FC4DEE4",
+      "transparentPixels": 15630
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsbeard_3.png",
+      "hash": "EE9153D353CC066DB679C4A77AC656179053695BE922022497841D604E835068",
+      "transparentPixels": 16290
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_blacksmith.png",
+      "hash": "E8C0A48AED9B46A798713DAC91791546B7A1A738C5780D0C1226E75E50CA5797",
+      "transparentPixels": 11538
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_carpenter.png",
+      "hash": "75177F57B2155BB832C1BC00C3AFE770C6516E3869C7E01059FA4898EC080B8D",
+      "transparentPixels": 11737
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_chief.png",
+      "hash": "CC4FA3E838677E654D7CD0586CAA30C0F03EE3970FA93C0E6FA32DE8584AF75A",
+      "transparentPixels": 11422
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_commoner.png",
+      "hash": "EA7162C54E0F13738C40AC82D89CA9ABAEB9932FACEFDD13611A176A28BCC831",
+      "transparentPixels": 11353
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_farmer.png",
+      "hash": "589F93435B6C18063BB21D91907BEF637AFDCC3069F2759E321EF6CABA9F0168",
+      "transparentPixels": 11417
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_hunter.png",
+      "hash": "88784002F7B779839129B6EFB9EDA309FCCECEAA7BAB02DD16970E91A5F5AE1C",
+      "transparentPixels": 11378
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_scholar.png",
+      "hash": "EFEDDE61D4D2CDABD39C122AF5103664BBD9000F9A44C250A48078A47C0B5B72",
+      "transparentPixels": 11554
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_female_shaman.png",
+      "hash": "9FFB35445F4100D263B028C6D3498698DA29B262450994D2C6A02B9FB0457DAC",
+      "transparentPixels": 11595
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_blacksmith.png",
+      "hash": "73E932389559CB5AA21D26FFD119DBBD1C2B0CEFD459AFB1736A2696D1D1D4E4",
+      "transparentPixels": 10674
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_carpenter.png",
+      "hash": "FA9BA798E079348A9B5AE287F13A2F7605EA88EC7FA84CFE290AA2163D0B7A79",
+      "transparentPixels": 10626
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_chief.png",
+      "hash": "27FEF089A7411D62DEDB1843BB39C30E621071524B1B1B46B45E58C2D2C972E0",
+      "transparentPixels": 10632
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_commoner.png",
+      "hash": "348D286440A5D58D362AE040E7C044A13742292C38FD4EF06E90D64B1EEDB675",
+      "transparentPixels": 10433
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_farmer.png",
+      "hash": "F4686F797FEEBFF91D869A7EA3D8B18B0F74B53CB04A44D3A10BDDF6AD18B6A2",
+      "transparentPixels": 10637
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_hunter.png",
+      "hash": "27110E81D6FF8292B7D5D7D4D80B3E69CEFADE54B4EDFD3A26791FC11C0D29B4",
+      "transparentPixels": 10621
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_scholar.png",
+      "hash": "08000A34F3538F07EF0DD41ECFF7245CE9BAF49DF7314AB9F2EFCC1116D8F696",
+      "transparentPixels": 10764
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsclothes_male_shaman.png",
+      "hash": "86817B0BBD73936F42B51655DC5C04FE2B956F5A7985F3A9A6B4AC5BB2464F63",
+      "transparentPixels": 10871
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_female_1.png",
+      "hash": "54E7036D7AB5FC67F826A22778311EBF447DD0701C0B4D5CC9A1F7BFCC062F9F",
+      "transparentPixels": 14785
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_female_2.png",
+      "hash": "28DF553A7265E53812347DB55F0282C3A99B757F0AEC0594A6E1F9CD65149340",
+      "transparentPixels": 14522
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_female_3.png",
+      "hash": "083B6471C078D4E8A8BB67EE5F509A520EA96FA4826E34DA5FF935327203893F",
+      "transparentPixels": 14822
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_female_4.png",
+      "hash": "D6C019BFE544D52D24446F60F531123BD1AB36486CEC48BB4548ECE733766ED2",
+      "transparentPixels": 14640
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_male_1.png",
+      "hash": "EC9FD8C99541E737AB96A262D189C6655D055D68D925DC13CD68778DF7CCCBC7",
+      "transparentPixels": 14970
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_male_2.png",
+      "hash": "34600DD265E46F47B43EEAE55871BE1DE8AFA4FB74ABFB2587EC534766B5B81E",
+      "transparentPixels": 14527
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_male_3.png",
+      "hash": "D5BFFB7313B6FB8D50063CB7B1E1D74300D79DFA1CA9552282ACA2DB63536583",
+      "transparentPixels": 14722
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitsface_male_4.png",
+      "hash": "D983A76866417ED915DFD8672307CBD56CE53BF7BE41EAA983330049C6B523F9",
+      "transparentPixels": 14506
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_female_1.png",
+      "hash": "B214F7E998E559ABBDA710D965C1D21E2F736EDB4C44E9D116DA96A7C258DFE0",
+      "transparentPixels": 14502
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_female_2.png",
+      "hash": "F3616387847795F956294BC998CC7E58FC65064E9C293D325C963EC548F071DA",
+      "transparentPixels": 15892
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_female_3.png",
+      "hash": "BC9557C672BD7C23B17628B987975466F54BBA49A76AF68118DDA2523CBF5EB2",
+      "transparentPixels": 14964
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_female_4.png",
+      "hash": "AD4F34522B30F826DC2367064045F395DB4E694A4C07332FDA18AD600212639B",
+      "transparentPixels": 14926
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_female_5.png",
+      "hash": "8448D060E506AC988581B15987D158F55CE29384C917D435B55991E4D11C5358",
+      "transparentPixels": 14516
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_male_1.png",
+      "hash": "34FC1A8292AE29D0A62450925F28BE25810F40D8EB02503901657CB7612F5A7D",
+      "transparentPixels": 16043
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_male_2.png",
+      "hash": "FC65E4E0D70F1AB4DD6B018E2340A68FB48797BA1DF31754C1CDC69A48C8062B",
+      "transparentPixels": 15546
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_male_3.png",
+      "hash": "63E5CA5F9E039286BB0C5A884537985C9140968536B45D7440EB966280DB0CF8",
+      "transparentPixels": 15981
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_male_4.png",
+      "hash": "2AADD3CCAA5292AE7E85E66E16C0E5E654E0A7A87C97DAA943E1F1C773E2953B",
+      "transparentPixels": 15810
+    },
+    {
+      "partiallyTransparentPixels": 0,
+      "file": "portraitshair_male_5.png",
+      "hash": "259C9538854BDF309B88A5DFE426866D484F0988D4CF056FCAD9E41752B8BD5A",
+      "transparentPixels": 16273
+    },
+    {
+      "file": "portraitsface_female_5.png",
+      "hash": "7E5ABDB154ED039AAA13A41C55822411525202F105EC1C214AEF17A181AA18B1",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14894
+    },
+    {
+      "file": "portraitsface_female_6.png",
+      "hash": "36B22343E17D1A053A711D1FC7C33C9B72ECBAE6128EEB704AEAD3F71F4C614F",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14819
+    },
+    {
+      "file": "portraitsface_female_7.png",
+      "hash": "376FE8C868D374181A797179C1EB327363E4C3B18CD6B0264E16A42B13D51BAE",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14840
+    },
+    {
+      "file": "portraitsface_female_8.png",
+      "hash": "A664F817A76BF465C4A514AF176936E8C0CFA95D94DB38EAD4BAC7C7545E1FF5",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14693
+    },
+    {
+      "file": "portraitsface_male_5.png",
+      "hash": "C4E474DAEDE1C175B1C43F75AF1D5317B3800314105433D36A1665DDF7E6A61D",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14852
+    },
+    {
+      "file": "portraitsface_male_6.png",
+      "hash": "8E2CF820429E04ED7921EB7E4D0F4015B76E602A9E2FAEF783137FC625827B72",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14692
+    },
+    {
+      "file": "portraitsface_male_7.png",
+      "hash": "0B2DD68705636456E2F0DE6AAF5B9461C5FEA25E000EDF001D64BF5250A5C9BC",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14764
+    },
+    {
+      "file": "portraitsface_male_8.png",
+      "hash": "63BDEEC0ACE6C12E5FB00008FCBDCE5CEF463ED7A8CF394470C1C4238A3D8541",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14561
+    },
+    {
+      "file": "portraitshair_female_10.png",
+      "hash": "271154608E13627E249AD0385D3868C044590C10A8189A3258659191DBA87C95",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15492
+    },
+    {
+      "file": "portraitshair_female_6.png",
+      "hash": "7F2D3AD8163BEC87B43F5BF424B9191A84248011C93040830F902F9BB8565E89",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15288
+    },
+    {
+      "file": "portraitshair_female_7.png",
+      "hash": "A610B22FDC1A91CD9FDF9C391D30C9AFB390E5822AB87052056E04BCBD52367C",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15798
+    },
+    {
+      "file": "portraitshair_female_8.png",
+      "hash": "536841C1B47D5A07A37B5B585E9AE979BE105930E055D3CA848BD5A8910C2374",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15398
+    },
+    {
+      "file": "portraitshair_female_9.png",
+      "hash": "0537EED4C59C8175E6431DB2EAB988F1520128B0872886A7EE5074DD25AD58F9",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 14771
+    },
+    {
+      "file": "portraitshair_male_10.png",
+      "hash": "E1254E83CD6EAADEAA8C31D625D71A8DB13EDE79015FC5425EDA0BF1A3BC829F",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15958
+    },
+    {
+      "file": "portraitshair_male_6.png",
+      "hash": "5811AFD373C6F6DF08DC07EEB4F87F6DDD3C025D51392061F823D2DC2BEAF1C3",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15927
+    },
+    {
+      "file": "portraitshair_male_7.png",
+      "hash": "18AD1D7C6E4E787FF9645A558B67B007450ADB99232370B54C2345954465DE60",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15580
+    },
+    {
+      "file": "portraitshair_male_8.png",
+      "hash": "820419C6F6764AD0F0C6D8D026FEF66E9D867F9D7B9B5CC87B9DE8376EA80020",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15177
+    },
+    {
+      "file": "portraitshair_male_9.png",
+      "hash": "74060EACF618E330D055ED01297FFAC440329C56527717A1AB4ADFB6563825D4",
+      "partiallyTransparentPixels": 0,
+      "transparentPixels": 15872
+    },
+    {
+      "description": "細長眼、寬鼻、薄唇",
+      "partiallyTransparentPixels": 0,
+      "hash": "9F0529DFA6A5AE2427C9066343D38DD11801F31AE611478B11B1E3D69BC5269E",
+      "file": "portraitsface_female_10.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14747
+    },
+    {
+      "description": "單眼皮、低鼻樑、柔和唇形",
+      "partiallyTransparentPixels": 0,
+      "hash": "A9B027E405EB7E76C9C0B6DC6F5C2EE3F9D07DA13C60AEC437D8E76670BD96A4",
+      "file": "portraitsface_female_11.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14684
+    },
+    {
+      "description": "下垂眼、長鼻、窄嘴",
+      "partiallyTransparentPixels": 0,
+      "hash": "9DE80BFBBFFF38425EFF27081E669D771DF1C2FD14C956B5D41024D93EC73C5A",
+      "file": "portraitsface_female_12.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14917
+    },
+    {
+      "description": "微上挑眼、翹鼻、寬嘴",
+      "partiallyTransparentPixels": 0,
+      "hash": "26F7260DA8695366D6AA335D325A0785E5A45C48A00759A12191FA9B80830297",
+      "file": "portraitsface_female_13.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14798
+    },
+    {
+      "description": "眼距較寬、厚眉、圓鼻頭",
+      "partiallyTransparentPixels": 0,
+      "hash": "7AF0BFED261892AB5964FA91B04E1E598AF60E15D86F5F32197E508FD7EE7CC6",
+      "file": "portraitsface_female_14.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14686
+    },
+    {
+      "description": "圓眼、短鼻、飽滿嘴唇",
+      "partiallyTransparentPixels": 0,
+      "hash": "A682750B5567538905C2560C099E640AF9C8DACB1368509EB7B6EEE7A72D6FD8",
+      "file": "portraitsface_female_9.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14799
+    },
+    {
+      "description": "細長眼、寬鼻、薄唇",
+      "partiallyTransparentPixels": 0,
+      "hash": "75B114475BF224432397AB75039F085FD1BD0B06B7E944AEFE69D020412DC4C6",
+      "file": "portraitsface_male_10.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14666
+    },
+    {
+      "description": "單眼皮、低鼻樑、柔和唇形",
+      "partiallyTransparentPixels": 0,
+      "hash": "FA44BAB5E6FBD63E35DF1734F9575A874479930487A938191589429CB2357573",
+      "file": "portraitsface_male_11.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14691
+    },
+    {
+      "description": "下垂眼、長鼻、窄嘴",
+      "partiallyTransparentPixels": 0,
+      "hash": "FD17D3D3237D2CDFACB6A76F313ADE4CF7AEB1E97AE3584F66C1F1A8D0066C8D",
+      "file": "portraitsface_male_12.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14881
+    },
+    {
+      "description": "微上挑眼、翹鼻、寬嘴",
+      "partiallyTransparentPixels": 0,
+      "hash": "ED267EA297EF92B05D79BB412F96F3CFD673DD91E0D0D8F1B06EE8367EA05BB4",
+      "file": "portraitsface_male_13.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14716
+    },
+    {
+      "description": "眼距較寬、厚眉、圓鼻頭",
+      "partiallyTransparentPixels": 0,
+      "hash": "107054B12A151B21B95D2CD2CC4BE189F224258E85AD10ACA01BFA2DD42AD3EE",
+      "file": "portraitsface_male_14.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14669
+    },
+    {
+      "description": "圓眼、短鼻、飽滿嘴唇",
+      "partiallyTransparentPixels": 0,
+      "hash": "153067D57356E918BCE0418526AD4D18D23F15643A83B702AF03C3BEEB55578A",
+      "file": "portraitsface_male_9.png",
+      "style": "young_adult_feature_variation",
+      "transparentPixels": 14698
+    }
+  ]
+}

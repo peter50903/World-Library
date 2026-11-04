@@ -4,6 +4,7 @@
 - 檔名比對：收件匣檔名＝manifest「檔名」去掉斜線（例：ui/ui_icon_grid.png → uiui_icon_grid.png），或與檔名最後一段相同。
 - 狀態：原本「已套用」的保持不變；其他改為「已交付」。
 - 對不到的檔案只列出，不處理。
+- 動畫（類型含「動畫」，第 08-16 章）：原圖橫向等分 4 格，取 4 格共同的不透明範圍裁切，每格等比縮進規格的單格大小、底部置中（不拉伸變形）。
 - 地形紋理（類型＝地形紋理，第 06-4 章）：先縮到「規格÷4」的邏輯像素、把四邊接縫融合成可無縫拼接，再每像素放大 4 倍（保持像素風、不模糊）。
 用法：python3 tools/art_inbox.py <收件匣資料夾>
 需要 Pillow。由 .github/workflows/art-inbox.yml 在 GitHub 上執行（雲端硬碟只能從 GitHub 下載）。
@@ -48,6 +49,28 @@ def seamless_pixel_texture(img: Image.Image, w: int, h: int, scale: int = 4) -> 
     return merged.resize((lw * scale, lh * scale), Image.Resampling.NEAREST)
 
 
+def animation_strip(img: Image.Image, w: int, h: int, frames: int = 4) -> Image.Image:
+    """橫排動畫：等分成 frames 格，取共同的不透明範圍，每格等比縮進 (w/frames)×h、底部置中。"""
+    # 先清掉幾乎透明的雜訊（GPT 常留一層 alpha 1～30 的背景），再取共同範圍。
+    alpha = img.getchannel("A").point(lambda a: 0 if a < 48 else a)
+    img = img.copy()
+    img.putalpha(alpha)
+    src_w = img.width // frames
+    cells = [img.crop((k * src_w, 0, (k + 1) * src_w, img.height)) for k in range(frames)]
+    boxes = [c.getchannel("A").getbbox() for c in cells]
+    boxes = [b for b in boxes if b]
+    if boxes:
+        box = (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+        cells = [c.crop(box) for c in cells]
+    fw = w // frames
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    for k, c in enumerate(cells):
+        scale = min(fw / c.width, h / c.height)
+        c = c.resize((max(1, round(c.width * scale)), max(1, round(c.height * scale))), Image.Resampling.LANCZOS)
+        out.alpha_composite(c, (k * fw + (fw - c.width) // 2, h - c.height))
+    return out
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print(__doc__)
@@ -77,6 +100,8 @@ def main() -> int:
         img = Image.open(f).convert("RGBA" if transparent else "RGB")
         if row["類型"].startswith("地形紋理"):
             img = seamless_pixel_texture(img, w, h)
+        elif "動畫" in row["類型"]:
+            img = animation_strip(img, w, h)
         elif img.size != (w, h):
             img = img.resize((w, h), Image.Resampling.LANCZOS)
         out = ASSET_DIR / row["檔名"]
