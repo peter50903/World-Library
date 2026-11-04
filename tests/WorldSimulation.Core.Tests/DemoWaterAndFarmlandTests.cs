@@ -42,6 +42,12 @@ public sealed class DemoWaterAndFarmlandTests
             Assert.Equal((0L, 0L), DemoMigrationRoutes.WaterPlan(map, Ref(far), false, 20, 15));
         }
         Assert.Equal("掘井", DemoTechCatalog.Get(DemoKnowledge.WellDiggingId).Name);
+        // 試玩回饋 2026-11-05 之 12：派過開拓隊或有農田也算實踐，加速一次給門檻的 60%。
+        var wellNode = DemoTechCatalog.Get(DemoKnowledge.WellDiggingId);
+        Assert.Equal(DemoKnowledge.TempWellBoostPercent, DemoKnowledge.BoostPercent(wellNode));
+        Assert.True(DemoKnowledge.PracticeHappened(wellNode, new DemoKnowledge.Practice(false, true, false, false)));
+        Assert.True(DemoKnowledge.PracticeHappened(wellNode, new DemoKnowledge.Practice(true, false, false, false)));
+        Assert.False(DemoKnowledge.PracticeHappened(wellNode, new DemoKnowledge.Practice(false, false, true, true)));
         Assert.Equal(new[] { "TECH_BASIC_CONSTRUCTION" }, DemoTechCatalog.Get(DemoKnowledge.WellDiggingId).Parents);
     }
 

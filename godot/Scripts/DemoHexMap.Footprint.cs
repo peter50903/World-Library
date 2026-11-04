@@ -97,6 +97,20 @@ public partial class DemoHexMap
             buildings, tier == DemoSettlementTier.Town, walled);
     }
 
+    /// <summary>一口石井（程式畫，與像素地表同一像素密度：寬 9、高 8 個圖像素）。</summary>
+    private void DrawWell(Vector2 bottom, float radius)
+    {
+        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var left = bottom + new Vector2(-4.5f * p, -8f * p);
+        void Px(float x, float y, float w, float h, Color c) => DrawRect(new Rect2(left + new Vector2(x, y) * p, new Vector2(w, h) * p), c);
+        Px(0, 0, 9, 1, new Color(0.45f, 0.28f, 0.14f));   // 木頂
+        Px(1, 1, 1, 3, new Color(0.40f, 0.25f, 0.12f));   // 柱
+        Px(7, 1, 1, 3, new Color(0.40f, 0.25f, 0.12f));
+        Px(0, 4, 9, 4, new Color(0.38f, 0.37f, 0.35f));   // 石圈
+        Px(1, 4, 7, 3, new Color(0.62f, 0.60f, 0.56f));
+        Px(2, 4, 5, 2, new Color(0.16f, 0.30f, 0.48f));   // 井水
+    }
+
     /// <summary>畫一個像素零件：底部置中在 <paramref name="bottom"/>，大小依像素地表的像素密度；素材缺少回傳 false。</summary>
     private bool DrawPixelPart(string name, Vector2 bottom, float radius)
     {
@@ -134,6 +148,9 @@ public partial class DemoHexMap
                 DrawWall(plan.Cells, CenterOf, radius, new Color(0.62f, 0.60f, 0.56f), 0.11f, SpriteStoneWall, "bld_stone_wall");
             foreach (var b in plan.Buildings)
                 spots.Add((CenterOf(b.Cell) + b.Offset * radius, b.Kind));
+            // 試玩回饋 2026-11-05 之 12：不臨水的聚落（靠掘井才住得下）在村口畫一口井。
+            if (!World.IsNearWater(new DemoCellRef(settlement.Column, settlement.Row)))
+                DrawWell(CenterOf(plan.Cells[0]) + new Vector2(-radius * 0.5f, radius * 0.45f), radius);
             if (RecentDisasters.Contains(settlement.Id)) // 第 12-1 章 C3：一年內遭天災
             {
                 var mark = CenterOf(plan.Cells[0]) + new Vector2(radius * 0.55f, -radius * 0.6f);

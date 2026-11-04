@@ -58,7 +58,9 @@ public static partial class DemoTechTooltip
                 lines.Add("用途：" + summary);
             lines.Add("目前作用：還沒有直接影響，之後的時代才會用到");
         }
-        if (!string.IsNullOrWhiteSpace(node.PracticeCondition))
+        if (node.Id == DemoKnowledge.WellDiggingId) // 試玩回饋 2026-11-05 之 12：掘井的實踐條件放寬（程式為準）
+            lines.Add("學得快的做法：在離水較遠處挑水度日、派開拓隊建村，或開墾出自己的農田");
+        else if (!string.IsNullOrWhiteSpace(node.PracticeCondition))
             lines.Add("學得快的做法：" + node.PracticeCondition.Replace("真實", "", StringComparison.Ordinal));
         if (node.Parents.Length > 0)
             lines.Add("前置：" + string.Join("、", node.Parents.Select(p => DemoTechCatalog.Get(p).Name)));
