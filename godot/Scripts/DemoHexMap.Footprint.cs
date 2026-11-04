@@ -13,9 +13,9 @@ public partial class DemoHexMap
 {
     /// <summary>【TEMP】每格半徑小於此（像素）時不畫建築、改畫單一圖示；每幾人一棟屋（營地每幾人一頂帳篷）；每格最多幾棟。</summary>
     private const float TempFootprintMinRadius = 14f;
-    private const int TempPeoplePerHouse = 25;
+    private const int TempPeoplePerHouse = 15;
     private const int TempPeoplePerTent = 5;
-    private const int TempHousesPerCell = 2;
+    private const int TempHousesPerCell = 3;
 
     public const string SpriteTent = "res://assets/sprites/tent.png";
     public const string SpriteHut = "res://assets/sprites/hut.png";
@@ -211,8 +211,17 @@ public partial class DemoHexMap
             Building.Tent => "bld_tent", Building.Hut => "bld_hut", Building.House => "bld_house", Building.StoneHouse => "bld_stone_house",
             Building.Market => "bld_market", Building.Temple => "bld_temple", _ => "bld_keep"
         };
-        if (DrawPixelPart(px, at + new Vector2(0f, radius * 0.3f), radius))
+        if (PixelParts.Texture(px) is { } pxTexture)
+        {
+            // 試玩回饋 2026-11-05 之 4（像浮在空中）：建築底下畫一圈落地陰影，站在聚落的泥土空地上。
+            var bottom = at + new Vector2(0f, radius * 0.3f);
+            var width = PixelParts.ScreenSize(pxTexture, radius).X;
+            DrawSetTransform(bottom + new Vector2(width * 0.08f, -width * 0.02f), 0f, new Vector2(1f, 0.32f));
+            DrawCircle(Vector2.Zero, width * 0.55f, new Color(0.08f, 0.06f, 0.04f, 0.38f));
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+            DrawPixelPart(px, bottom, radius);
             return;
+        }
         if (DrawMarker(path, at, radius * size))
             return;
         // 素材到之前的色塊（【TEMP】顏色）。

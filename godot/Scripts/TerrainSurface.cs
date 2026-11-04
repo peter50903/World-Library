@@ -34,8 +34,16 @@ public partial class TerrainSurface : Control
     private const float Sqrt3 = 1.7320508f;
 
     private ImageTexture?[,] _chunks = new ImageTexture?[0, 0];
+    private ImageTexture?[,] _detailChunks = new ImageTexture?[0, 0];
     private bool[,] _dirty = new bool[0, 0];
     private byte[]? _pixels;
+    private byte[]? _detail; // 試玩回饋 2026-11-05 之 6：草叢、野花、小石頭另一層，遠看不畫
+    private bool _toDetail;
+
+    /// <summary>【TEMP】細節層（草叢、野花、小石頭）在格半徑至少幾像素時才畫；整體調色（飽和度、亮度倍率）。</summary>
+    public const float TempDetailMinRadius = 26f;
+    public const float TempSaturation = 0.78f;
+    public const float TempBrightness = 0.9f;
     private byte[]? _uploaded;
     private byte[]? _baked; // 上次烤圖時每格的四個位元組
     private int[]? _owner; // 每個圖像素屬於哪一格（-1＝地圖外）
@@ -94,8 +102,11 @@ public partial class TerrainSurface : Control
                 if (_chunks[cx, cy] is not { } chunk)
                     continue;
                 var rect = new Rect2(topLeft + new Vector2(cx, cy) * TempChunk * scale, chunk.GetSize() * scale);
-                if (rect.Intersects(view))
-                    DrawTextureRect(chunk, rect, false);
+                if (!rect.Intersects(view))
+                    continue;
+                DrawTextureRect(chunk, rect, false);
+                if (_radius >= TempDetailMinRadius && _detailChunks[cx, cy] is { } detail)
+                    DrawTextureRect(detail, rect, false);
             }
     }
 
@@ -190,9 +201,13 @@ public partial class TerrainSurface : Control
             _width = Mathf.CeilToInt((Sqrt3 * columns + Sqrt3 / 2f) * TempTexelsPerRadius);
             _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
             _pixels = new byte[_width * _height * 4];
+            _detail = new byte[_width * _height * 4];
             foreach (var old in _chunks)
                 old?.Dispose();
+            foreach (var old in _detailChunks)
+                old?.Dispose();
             _chunks = new ImageTexture?[(_width + TempChunk - 1) / TempChunk, (_height + TempChunk - 1) / TempChunk];
+            _detailChunks = new ImageTexture?[_chunks.GetLength(0), _chunks.GetLength(1)];
             _dirty = new bool[_chunks.GetLength(0), _chunks.GetLength(1)];
             BuildOwners();
             _outlines.Clear();
@@ -239,15 +254,21 @@ public partial class TerrainSurface : Control
                 var y0 = cy * TempChunk;
                 var w = Math.Min(TempChunk, _width - x0);
                 var h = Math.Min(TempChunk, _height - y0);
-                var bytes = new byte[w * h * 4];
-                for (var y = 0; y < h; y++)
-                    Array.Copy(_pixels!, ((y0 + y) * _width + x0) * 4, bytes, y * w * 4, w * 4);
-                using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
-                if (_chunks[cx, cy] is { } chunk)
-                    chunk.Update(image);
-                else
-                    _chunks[cx, cy] = ImageTexture.CreateFromImage(image);
+                UploadChunk(_pixels!, _chunks, cx, cy, x0, y0, w, h);
+                UploadChunk(_detail!, _detailChunks, cx, cy, x0, y0, w, h);
             }
+    }
+
+    private void UploadChunk(byte[] source, ImageTexture?[,] chunks, int cx, int cy, int x0, int y0, int w, int h)
+    {
+        var bytes = new byte[w * h * 4];
+        for (var y = 0; y < h; y++)
+            Array.Copy(source, ((y0 + y) * _width + x0) * 4, bytes, y * w * 4, w * 4);
+        using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
+        if (chunks[cx, cy] is { } chunk)
+            chunk.Update(image);
+        else
+            chunks[cx, cy] = ImageTexture.CreateFromImage(image);
     }
 
     private static Vector2 TexelOf(Vector2 world) => (world - new Vector2(-Sqrt3 / 2f, -1f)) * TempTexelsPerRadius;
@@ -349,8 +370,11 @@ public partial class TerrainSurface : Control
             for (var cx = x0 / TempChunk; cx <= (x1 - 1) / TempChunk; cx++)
                 _dirty[cx, cy] = true;
         for (var y = y0; y < y1; y++)
+        {
+            Array.Clear(_detail!, (y * _width + x0) * 4, (x1 - x0) * 4);
             for (var x = x0; x < x1; x++)
                 Put(x, y, Ground(codes, x, y));
+        }
         var reach = TempTexelsPerRadius * 2;
         for (var row = 0; row < _rows; row++)
             for (var column = 0; column < _columns; column++)
@@ -364,11 +388,16 @@ public partial class TerrainSurface : Control
 
     private void Put(int x, int y, Color c)
     {
+        // 試玩回饋 2026-11-05 之 7（畫面刺眼）：自然景觀整體降飽和、略調暗；建築另外畫、保持原色，人類聚落因此更顯眼（之 8、13）。
+        var gray = 0.299f * c.R + 0.587f * c.G + 0.114f * c.B;
+        c = new Color(Mathf.Lerp(gray, c.R, TempSaturation) * TempBrightness, Mathf.Lerp(gray, c.G, TempSaturation) * TempBrightness,
+            Mathf.Lerp(gray, c.B, TempSaturation) * TempBrightness, c.A);
         var i = (y * _width + x) * 4;
-        _pixels![i] = (byte)(c.R * 255f);
-        _pixels[i + 1] = (byte)(c.G * 255f);
-        _pixels[i + 2] = (byte)(c.B * 255f);
-        _pixels[i + 3] = (byte)(c.A * 255f);
+        var target = _toDetail ? _detail! : _pixels!;
+        target[i] = (byte)(c.R * 255f);
+        target[i + 1] = (byte)(c.G * 255f);
+        target[i + 2] = (byte)(c.B * 255f);
+        target[i + 3] = (byte)(c.A * 255f);
     }
 
     // 【TEMP】WorldBox 式調色盤（亮、飽和、每種 2～3 個深淺）。
@@ -425,8 +454,10 @@ public partial class TerrainSurface : Control
                 {
                     Code.Forest => Pick(ForestFloor, patch),
                     Code.Hills or Code.HillsOre => Pick(HillGround, patch),
-                    Code.Farmland => FieldArt(x, y, 1f) ?? Field(bx, by, 1f),
-                    Code.Clearing => dev > 0f ? FieldArt(x, y, dev) ?? Field(bx, by, dev) : Pick(Soil, patch),
+                    // 試玩回饋 2026-11-05 之 5：田不再填滿整格六角形——依平滑雜訊與離格邊遠近只留不規則的幾片，其餘是草地。
+                    Code.Farmland => FieldMask(x, y, owner) ? FieldArt(x, y, 1f) ?? Field(bx, by, 1f) : Pick(Grass, patch),
+                    Code.Clearing when codes[owner * 4 + 3] == SettlementGround => VillageGround(x, y, owner, patch),
+                    Code.Clearing => dev > 0f ? (FieldMask(x, y, owner) ? FieldArt(x, y, dev) ?? Field(bx, by, dev) : Pick(Grass, patch)) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
                     _ => Pick(Grass, patch)
@@ -467,6 +498,24 @@ public partial class TerrainSurface : Control
     /// <paramref name="dev"/>＜1 時依開發度從草地→翻開的泥土→田畦。</summary>
     /// <summary>田塊素材（20×14）鋪成全圖共用的田格：成熟的田多半是麥田、間雜綠色作物；
     /// 開墾中依開發度從草地→翻開的泥土→剛播種的田（素材缺少時回傳 null，改用程式畫的田畦）。</summary>
+    /// <summary>與 DemoHexMap 的 TempSettlementGround 相同：有房子的格（聚落空地）。</summary>
+    public const byte SettlementGround = 100;
+
+    /// <summary>離格中心的距離（以格半徑為單位）。</summary>
+    private float CenterDistance(int x, int y, int cell)
+        => new Vector2(x, y).DistanceTo(TexelOf(CenterOf(cell % _columns, cell / _columns))) / TempTexelsPerRadius;
+
+    /// <summary>田塊的範圍：靠格中心的大致都是田，往外依平滑雜訊參差收邊（相鄰的田格仍會連成一片）。</summary>
+    private bool FieldMask(int x, int y, int cell)
+        => CenterDistance(x, y, cell) + (Noise(x / 16f, y / 16f, 7) - 0.5f) * 0.9f < 0.82f;
+
+    /// <summary>試玩回饋 2026-11-05 之 4、8、13：聚落的泥土空地——以格中心為圓心、邊緣參差的一片夯土，外圍是草地；
+    /// 建築站在空地上，不再浮在樹梢或草叢上，也不被背景吃掉。</summary>
+    private Color VillageGround(int x, int y, int cell, float patch)
+        => CenterDistance(x, y, cell) + (Noise(x / 10f, y / 10f, 8) - 0.5f) * 0.6f < 0.78f
+            ? Pick(Soil, Mathf.Clamp(Noise(x / 6f, y / 6f, 9) * 0.9f, 0f, 0.999f)).Lightened(0.08f)
+            : Pick(Grass, patch);
+
     private static Color? FieldArt(int x, int y, float dev)
     {
         if (PixelParts.Get("px_field_wheat") is not { } wheat || PixelParts.Get("px_field_green") is not { } green
@@ -572,22 +621,24 @@ public partial class TerrainSurface : Control
         {
             case Code.Forest:
                 // 樹：素材樹寬約 17 像素，每 10 像素一棵、彼此交疊成林冠（程式畫的樹每 8 像素一棵）。
+                // 試玩回饋 2026-11-05 之 5：林緣（附近有不是森林的地）樹木漸疏，看不出六角形的邊。
                 foreach (var (x, y, h) in Scatter(art ? 10 : 4 * K, 20))
-                    Tree(x, y, Hash(x / K, y / K, 23));
+                    if (!(NearOther(codes, x, y, cell, 12) && h < 0.5f))
+                        Tree(x, y, Hash(x / K, y / K, 23));
                 break;
             case Code.Grassland:
             {
                 // 草原：草叢、野花（乾旱時是枯草）與零星幾棵樹。
                 var tufts = new[] { PixelParts.Get("px_grass_tuft_1"), PixelParts.Get("px_grass_tuft_2"), PixelParts.Get("px_flowers") };
                 if (tufts.All(t => t is not null))
-                    foreach (var (x, y, h) in Scatter(9, 40))
+                    foreach (var (x, y, h) in Scatter(11, 40))
                     {
                         if (h > 0.22f)
                             continue;
                         var dry = overlay == DemoHexMap.Overlay.Dry && Hit(x, y);
                         if (fire && Hit(x, y) || overlay == DemoHexMap.Overlay.Flood && Hit(x, y))
                             continue;
-                        StampSprite(dry && PixelParts.Get("px_dry_tuft") is { } d ? d : tufts[(int)(h / 0.22f * 3f) % 3]!, x, y, clip);
+                        StampSprite(dry && PixelParts.Get("px_dry_tuft") is { } d ? d : tufts[(int)(h / 0.22f * 3f) % 3]!, x, y, clip, detail: true);
                     }
                 foreach (var (x, y, h) in Scatter(4 * K, 20))
                     if (h < 0.035f)
@@ -597,30 +648,24 @@ public partial class TerrainSurface : Control
             case Code.Hills:
             case Code.HillsOre:
             {
-                // 山頭：每格一大一小（位置依格固定）；礦脈格在山腳放兩三塊礦石（日後挖完就消失），一般丘陵偶有石頭。
-                var a = Hash(cell, 0, 30);
-                var big = new Vector2I((int)(center.X + (a - 0.5f) * 6f * K), (int)(center.Y + (2 + Hash(cell, 0, 31) * 3f) * K));
-                var small = new Vector2I((int)(center.X + (a < 0.5f ? 5 : -5) * K), (int)(center.Y - 3 * K));
+                // 試玩回饋 2026-11-05 之 1（山頭太密）：山頭改成隨機散布、平均每格一座左右（大小兩種），不再每格固定一大一小排成格子；
+                // 礦脈格散布兩三塊礦石（日後挖完就消失），一般丘陵偶有小石頭（細節層）。
                 var bigArt = PixelParts.Get("px_mountain_1");
                 var smallArt = PixelParts.Get("px_mountain_2");
-                foreach (var (at, shape, sprite) in new[] { (small, Peak, smallArt), (big, BigPeak, bigArt) })
+                var peaks = Scatter(22, 30).Where(p => p.H < 0.4f && _seaDist![p.Y * _width + p.X] > K).ToList();
+                foreach (var (x, y, h) in peaks)
                 {
-                    if (!Owned(at.X, at.Y) || _seaDist![at.Y * _width + at.X] <= K)
-                        continue;
-                    if (sprite is not null && bigArt is not null && smallArt is not null)
-                        StampSprite(sprite, at.X, at.Y, clip);
+                    if (bigArt is not null && smallArt is not null)
+                        StampSprite(h < 0.18f ? bigArt : smallArt, x, y, clip);
                     else
-                        Stamp(shape, at.X, at.Y, RockShades, clip, code == Code.HillsOre);
+                        Stamp(h < 0.18f ? BigPeak : Peak, x, y, RockShades, clip, code == Code.HillsOre);
                 }
-                var rocks = code == Code.HillsOre ? new[] { "px_ore_1", "px_ore_2", "px_ore_1" } : new[] { "px_rock_1" };
-                for (var k = 0; k < rocks.Length; k++)
+                foreach (var (x, y, h) in Scatter(14, 34))
                 {
-                    if (code == Code.Hills && Hash(cell, k, 34) > 0.5f)
-                        continue;
-                    var at = new Vector2I((int)(center.X + (Hash(cell, k, 35) - 0.5f) * 2.4f * TempTexelsPerRadius * 0.5f),
-                        (int)(center.Y + TempTexelsPerRadius * 0.55f + Hash(cell, k, 36) * 4f));
-                    if (Owned(at.X, at.Y) && PixelParts.Get(rocks[k]) is { } rock)
-                        StampSprite(rock, at.X, at.Y, clip);
+                    if (code == Code.HillsOre && h < 0.3f && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } ore)
+                        StampSprite(ore, x, y, clip);
+                    else if (code == Code.Hills && h < 0.12f && PixelParts.Get(h < 0.06f ? "px_rock_1" : "px_rock_2") is { } rock)
+                        StampSprite(rock, x, y, clip, detail: true);
                 }
                 break;
             }
@@ -639,9 +684,23 @@ public partial class TerrainSurface : Control
                     StampSprite(ripple, x, y, clip);
     }
 
-    /// <summary>把像素零件疊進地表：底部置中在 (<paramref name="ax"/>, <paramref name="ay"/>)，只畫不透明的像素。</summary>
-    private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, Rect2I clip)
+    /// <summary>上下左右 <paramref name="reach"/> 像素內有沒有屬於別種地形的格（森林旁的森林不算）。</summary>
+    private bool NearOther(byte[] codes, int x, int y, int cell, int reach)
     {
+        bool Other(int px, int py)
+        {
+            if (px < 0 || py < 0 || px >= _width || py >= _height)
+                return false;
+            var o = _owner![py * _width + px];
+            return o >= 0 && o != cell && codes[o * 4] != codes[cell * 4];
+        }
+        return Other(x - reach, y) || Other(x + reach, y) || Other(x, y - reach) || Other(x, y + reach);
+    }
+
+    /// <summary>把像素零件疊進地表：底部置中在 (<paramref name="ax"/>, <paramref name="ay"/>)，只畫不透明的像素。</summary>
+    private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, Rect2I clip, bool detail = false)
+    {
+        _toDetail = detail;
         var left = ax - sprite.Width / 2;
         var top = ay - sprite.Height + 1;
         for (var y = 0; y < sprite.Height; y++)
@@ -652,6 +711,7 @@ public partial class TerrainSurface : Control
                     continue;
                 Put(left + x, top + y, new Color(c.R, c.G, c.B));
             }
+        _toDetail = false;
     }
 
     private void Stamp(string[] shape, int ax, int ay, Color[] shades, Rect2I clip, bool ore = false)

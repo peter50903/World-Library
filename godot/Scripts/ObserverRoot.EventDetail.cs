@@ -140,7 +140,9 @@ public partial class ObserverRoot
         _causeButton.Text = "直接原因：—";
         _causeButton.Disabled = true;
         ClearEffectButtons();
-        _hexMap.Highlight = null;
+        // 試玩回饋 2026-11-05 之 9：事件清單每年刷新時會走到這裡——點地圖查看詳情時的選取框不能被清掉。
+        if (!_detailOpen)
+            _hexMap.Highlight = null;
         _hexMap.QueueRedraw();
     }
 
