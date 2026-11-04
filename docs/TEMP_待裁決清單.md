@@ -554,8 +554,8 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 20 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度 |
-| `godot/Scripts/DemoHexMap.Footprint.cs` | 2 | 第 08-13 章第 4 節聚落外觀：近看門檻、每屋人數、每格屋數、素材前色塊顏色 |
+| `godot/Scripts/DemoHexMap.cs` | 21 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度 |
+| `godot/Scripts/DemoHexMap.Footprint.cs` | 3 | 第 08-13 章第 4 節聚落外觀：近看門檻、每屋人數、每格屋數、素材前色塊顏色 |
 | `godot/Scripts/DemoHexMap.Layers.cs` | 2 | 第 08-15 章視角分層：戰略層格半徑上限 6、戰略圖取樣半徑 4、重畫間隔 250 毫秒、各模式疊色比例；戰略圖取樣扭曲 0.35 格 |
 | `godot/Scripts/DemoHexMap.Shapes.cs` | 1 | 第 08-15 章第 3 節不規則邊界：角點抖動 0.10、邊中段抖動 0.11、每邊 4 段、圖塊取樣放大 1.22 |
 | `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
