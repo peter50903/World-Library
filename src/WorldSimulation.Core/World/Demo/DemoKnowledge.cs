@@ -177,9 +177,17 @@ public static class DemoKnowledge
         "TECH_BASIC_CONSTRUCTION" or "TECH_ROAD_ENGINEERING" => p.FoundedAVillage, // 曾派開拓隊建村
         "TECH_ANCESTOR_RITES" => p.HadNaturalDeath,                             // 為逝者舉行祭祀
         "TECH_BARTER" => p.HadVisitors,                                          // 與其他聚落往來
-        "TECH_WELL_DIGGING" => p.CarriesWater,                                   // 第 08-11 章：不鄰水、要挑水
+        // 第 08-11 章：不鄰水、要挑水；試玩回饋 2026-11-05 之 12（開拓時代就要能移居內陸）：派過開拓隊或已開墾農田也算。
+        "TECH_WELL_DIGGING" => p.CarriesWater || p.FoundedAVillage || p.HasFarmland,
         _ => false
     };
+
+    /// <summary>【TEMP】試玩回饋 2026-11-05 之 12：掘井的實踐加速一次給門檻的幾 %（設定表是 20%）。</summary>
+    public const int TempWellBoostPercent = 60;
+
+    /// <summary>實踐加速一次給門檻的幾 %（掘井另見 <see cref="TempWellBoostPercent"/>）。</summary>
+    public static int BoostPercent(DemoTechNode node)
+        => node.Id == WellDiggingId ? Math.Max(node.PracticeBoostPercent, TempWellBoostPercent) : node.PracticeBoostPercent;
 
     /// <summary>
     /// 【TEMP】第 08-8 章 B2 文化效果（研究）：主要文化的特性讓從業者與專家的研究點增加（%）。
@@ -566,7 +574,7 @@ public static class DemoKnowledge
                 // 第 08-9 章 A2：專家×5、學者×10；實踐加速一次＋門檻的 PracticeBoostEffect。
                 var experts = ExpertResearch(node, roles);
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
-                var boost = boostNow ? checked(threshold * node.PracticeBoostPercent / 100) : 0;
+                var boost = boostNow ? checked(threshold * BoostPercent(node) / 100) : 0;
                 // 第 08-14 章第 1 節：每輪累積 TempCycleWeeks 週的經驗與傳播；實踐加速與遷入帶來的經驗照原規則各算一次。
                 var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
                     + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100);
