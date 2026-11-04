@@ -144,6 +144,26 @@ public static class DemoCultures
             .Select(r => header.Select((h, i) => (h, v: i < r.Count ? r[i].Trim() : "")).ToDictionary(x => x.h, x => x.v));
     }
 
+    /// <summary>第 08-8 章 B2 收尾（08-16：只保留會改變行為的特性）：遷徙之民、守土。</summary>
+    public const string WandererTrait = "CT_WANDERER";
+    public const string RootedTrait = "CT_ROOTED";
+
+    /// <summary>【TEMP】遷徙之民的開拓隊找空地的範圍再多幾格（「走得遠」：子村散得更開）。</summary>
+    public const int TempWandererExtraSteps = 3;
+
+    private static readonly Lazy<IReadOnlyDictionary<string, decimal>> EffectValues = new(() =>
+        Rows("04_文化特性定義.csv").Where(r => decimal.TryParse(r.GetValueOrDefault("效果值", ""), NumberStyles.Number, CultureInfo.InvariantCulture, out _))
+            .ToDictionary(r => r["CultureTraitID"], r => decimal.Parse(r["效果值"], CultureInfo.InvariantCulture)));
+
+    /// <summary>
+    /// 遷徙隊伍每週吃的路糧百分比：出發聚落的主要文化是遷徙之民＝效果值（04 表 0.8 → 80），否則 100。
+    /// </summary>
+    public static long TravelFoodPercent(IReadOnlyCollection<string> traits)
+        => traits.Contains(WandererTrait) ? (long)(EffectValues.Value.GetValueOrDefault(WandererTrait, 1m) * 100m) : 100;
+
+    /// <summary>守土：不因擁擠主動分家（只在真的缺糧時才外移）。</summary>
+    public static bool StaysPut(IReadOnlyCollection<string> traits) => traits.Contains(RootedTrait);
+
     /// <summary>創立地的條件（地形與出身），決定生計特性的權重。</summary>
     public sealed record Origin(bool NearForest, bool NearRiver, bool NearSea, bool NearGrassland, bool Founded);
 
