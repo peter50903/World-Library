@@ -251,7 +251,7 @@ public sealed class DemoKnowledgeTests
         Assert.Equal(80 * DemoKnowledge.TempResearchScale, DemoKnowledge.ThresholdOf(DemoTechnology.CropCultivation));
     }
 
-    /// <summary>第 08-10a 章 V4：鄰近傳播的距離是六角格距離。</summary>
+    /// <summary>第 08-10a 章 V4：鄰近傳播的距離是格距離（第 08-18a 章：切比雪夫距離）。</summary>
     [Fact]
     public void DistanceIsTheHexDistanceBetweenSettlementCells()
     {

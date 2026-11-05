@@ -11,10 +11,11 @@ public sealed class DemoDirectSnapshotTests
     /// <summary>推進到「有隊伍在途中、且已建立新聚落」的那一天（開拓情境），回傳世界與天數。</summary>
     private static (DemoObserverWorld World, ulong Seed, int Day) FrontierWorldWithTransitAndFoundedSettlement()
     {
-        foreach (var seed in new ulong[] { 42, 7, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 })
+        // 第 08-18a 章：方格（八鄰）路程較短，隊伍在途中的時間變短，多找幾個種子、多看幾年。
+        foreach (var seed in new ulong[] { 42, 7 }.Concat(Enumerable.Range(1, 60).Select(i => (ulong)i).Where(i => i is not (42 or 7))))
         {
             var world = new DemoObserverWorld(DemoScenario.Sample(seed), DemoWeeklyTempConfig.FrontierSample);
-            for (var day = 1; day <= 728; day++)
+            for (var day = 1; day <= 4 * 728; day++)
             {
                 world.AdvanceOneDay();
                 if (world.MigrationsInTransit().Count > 0 && world.Sites.Settlements.Any(s => s.IsFounded))
@@ -26,11 +27,11 @@ public sealed class DemoDirectSnapshotTests
     }
 
     [Fact]
-    public void NewSaves_AreVersion47()
+    public void NewSaves_AreVersion48()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
         world.AdvanceOneDay();
-        Assert.Equal(47, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
+        Assert.Equal(48, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
     }
 
     [Theory]

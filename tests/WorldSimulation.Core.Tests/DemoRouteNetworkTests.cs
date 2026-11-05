@@ -21,21 +21,29 @@ public sealed class DemoRouteNetworkTests
         {
             var map = DemoHexWorld.Generate(seed);
             var waterway = map.MainWaterway;
-            // 第 06-1 章：從北緣連續往南，河口接海。
-            Assert.Equal(Enumerable.Range(0, waterway.Count), waterway.Select(c => c.Row));
-            var mouth = map.GetCell(waterway[^1].Column, waterway[^1].Row);
-            Assert.Contains(DemoRouteNetwork.Directions, d => Neighbour(map, mouth, d.Dq, d.Dr) is { Sea: true });
+            // 第 06-1 章：從北緣連續往南（每一列都有河，第 08-18a 章斜走時同一列有兩格），河口接海。
+            var lastRow = waterway[^1].Row;
+            Assert.Equal(Enumerable.Range(0, lastRow + 1), waterway.Select(c => c.Row).Distinct());
+            Assert.Contains(waterway.Where(c => c.Row == lastRow), c => DemoRouteNetwork.Orthogonal.Any(d => Neighbour(map, map.GetCell(c.Column, c.Row), d.Dq, d.Dr) is { Sea: true }));
             Assert.All(waterway, c => Assert.False(map.GetCell(c.Column, c.Row).Sea));
             Assert.All(waterway, c => Assert.Equal(DemoTerrain.Water, map.GetCell(c.Column, c.Row).Terrain));
-            Assert.All(waterway.Zip(waterway.Skip(1)), p => Assert.True(DemoMigrationRoutes.AreAdjacent(p.First, p.Second)));
-            // 相鄰水道格之間是河流段（水上路線），不供陸路。
-            Assert.All(waterway.Zip(waterway.Skip(1)), p =>
+            // 第 08-18a 章：河道只走上下左右——每格都有上下左右相鄰的河道格。
+            if (waterway.Count > 1)
+                Assert.All(waterway, c => Assert.Contains(DemoRouteNetwork.Orthogonal, d => Neighbour(map, map.GetCell(c.Column, c.Row), d.Dq, d.Dr) is { MainWaterway: true }));
+            // 上下左右相鄰的水道格之間是河流段（水上路線），不供陸路；斜角相鄰的水道格之間沒有路線段。
+            foreach (var a in waterway)
+            foreach (var b in waterway.Where(b => DemoMigrationRoutes.AreAdjacent(a, b)))
             {
-                var segment = map.Routes.Between(p.First, p.Second);
+                var segment = map.Routes.Between(a, b);
+                if (a.Column != b.Column && a.Row != b.Row)
+                {
+                    Assert.Null(segment);
+                    continue;
+                }
                 Assert.NotNull(segment);
                 Assert.Equal(DemoRouteKind.River, segment!.Kind);
-                Assert.False(map.Routes.IsLandPassable(p.First, p.Second));
-            });
+                Assert.False(map.Routes.IsLandPassable(a, b));
+            }
         }
     }
 
@@ -112,8 +120,14 @@ public sealed class DemoRouteNetworkTests
                     // 陸地與一般水域（非渡口）之間永遠沒有陸路。
                     if (cell.Terrain != DemoTerrain.Water && next.Terrain == DemoTerrain.Water && map.Routes.Ford != Ref(next))
                         Assert.False(map.Routes.IsLandPassable(Ref(cell), Ref(next)));
-                    if (cell.Terrain != DemoTerrain.Water && next.Terrain != DemoTerrain.Water)
+                    // 第 08-18a 章：直走的兩格陸地一定有野地段；斜走要兩側的直鄰格也都是陸地。
+                    var diagonal = dq != 0 && dr != 0;
+                    var open = !diagonal || (Neighbour(map, cell, dq, 0) is { Terrain: not DemoTerrain.Water }
+                        && Neighbour(map, cell, 0, dr) is { Terrain: not DemoTerrain.Water });
+                    if (cell.Terrain != DemoTerrain.Water && next.Terrain != DemoTerrain.Water && open)
                         Assert.Equal(DemoRouteKind.Wild, segment!.Kind);
+                    else if (diagonal)
+                        Assert.Null(segment);
                 }
             }
         }
@@ -186,7 +200,12 @@ public sealed class DemoRouteNetworkTests
         Assert.Equal("TEMP", settings.Status);
         Assert.True(settings.WildCost > settings.RoadCost);
         var map = DemoHexWorld.Generate(42);
-        Assert.All(map.Routes.Segments, s => Assert.Equal(settings.CostOf(s.Kind), s.Cost));
+        // 第 08-18a 章：斜角段是直走的 1.5 倍（無條件進位）。
+        Assert.All(map.Routes.Segments, s => Assert.Equal(s.A.Column != s.B.Column && s.A.Row != s.B.Row
+            ? DemoRouteNetwork.DiagonalCost(settings.CostOf(s.Kind)) : settings.CostOf(s.Kind), s.Cost));
+        Assert.Contains(map.Routes.Segments, s => s.A.Column != s.B.Column && s.A.Row != s.B.Row);
+        Assert.Equal(3, DemoRouteNetwork.DiagonalCost(2));
+        Assert.Equal(2, DemoRouteNetwork.DiagonalCost(1));
     }
 
     [Fact]

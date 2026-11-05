@@ -588,16 +588,14 @@ public partial class DemoHexMap : Control
             var fill = color(owner);
             DrawShape(center, hex, new Color(fill, 0.55f));
             // 邊界：相鄰格不同家系（或沒有歸屬、在地圖外）時才畫這一條邊，同家系之間不畫線，看起來是一整片。
-            foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
+            foreach (var (dq, dr, _) in DemoRouteNetwork.Orthogonal)
             {
                 var neighbour = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
                 var same = neighbour is not null && Lineage.TryGetValue(new DemoCellRef(neighbour.Column, neighbour.Row), out var other)
                     && group(other) == group(owner);
                 if (same)
                     continue;
-                var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                DrawPolyline(EdgeOf(hex, edge), fill.Darkened(0.35f), 3f);
+                DrawPolyline(EdgeOf(hex, HexCoordinates.EdgeToward(dq, dr)), fill.Darkened(0.35f), 3f);
             }
         }
         foreach (var site in Sites!.Settlements)
@@ -773,11 +771,10 @@ public partial class DemoHexMap : Control
 
     private static Vector2[] HexUvs(Vector2[] vertices, Vector2 center, float radius)
     {
-        var halfWidth = Mathf.Sqrt(3f) * 0.5f * radius;
         var uvs = new Vector2[vertices.Length];
         for (var i = 0; i < vertices.Length; i++)
         {
-            var u = (vertices[i].X - center.X + halfWidth) / (2f * halfWidth);
+            var u = (vertices[i].X - center.X + radius) / (2f * radius);
             var v = (vertices[i].Y - center.Y + radius) / (2f * radius);
             // 往中心縮 TempTileInset：外圈的描邊不會畫出來。
             uvs[i] = new Vector2(0.5f + (u - 0.5f) * (1f - TempTileInset), 0.5f + (v - 0.5f) * (1f - TempTileInset));
@@ -885,15 +882,9 @@ public partial class DemoHexMap : Control
         if (_surface?.CellAtScreen(position) is int owner && owner >= 0)
             return World.GetCell(owner % World.Columns, owner / World.Columns);
         var (start, radius) = ViewLayout();
-        foreach (var cell in World.Cells)
-        {
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            if (center.DistanceSquaredTo(position) > radius * radius)
-                continue; // 外接圓之外不可能在格內
-            if (Geometry2D.IsPointInPolygon(position, HexCoordinates.Polygon(center, Mathf.Max(0.1f, radius - 1.4f))))
-                return cell;
-        }
-        return null;
+        // 第 08-18a 章：方格沒有縫隙，直接換算欄列。
+        var at = HexCoordinates.CellOf(position - start, radius);
+        return World.Contains(at.X, at.Y) ? World.GetCell(at.X, at.Y) : null;
     }
 
     /// <summary>
@@ -987,17 +978,17 @@ public partial class DemoHexMap : Control
     private (Vector2 Start, float Radius) Layout()
     {
         const float padding = 28f;
-        var sqrtThree = Mathf.Sqrt(3f);
         var columns = World?.Columns ?? DemoHexWorld.SmallColumns;
         var rows = World?.Rows ?? DemoHexWorld.SmallRows;
-        var widthUnits = sqrtThree * (columns + 0.5f);
-        var heightUnits = 1.5f * (rows - 1) + 2f;
+        // 第 08-18a 章：方格，一格邊長＝2×radius。
+        var widthUnits = 2f * columns;
+        var heightUnits = 2f * rows;
         var radius = Mathf.Max(4f, Mathf.Min(
             (Size.X - 2f * padding) / widthUnits,
             (Size.Y - 2f * padding) / heightUnits));
 
         var start = new Vector2(
-            (Size.X - widthUnits * radius) / 2f + sqrtThree * radius / 2f,
+            (Size.X - widthUnits * radius) / 2f + radius,
             (Size.Y - heightUnits * radius) / 2f + radius);
         return (start, radius);
     }

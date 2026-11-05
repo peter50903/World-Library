@@ -91,7 +91,7 @@ public static class DemoLandClearing
     /// <summary>【TEMP】第 08-11 章：無人維護的農田每週開發度下降（%）；與開墾速度相同，約一年變回草原。</summary>
     public const int TempDecayPercentPerWeek = 2;
 
-    /// <summary>格子相鄰（六鄰格）的聚落（含遺跡）。</summary>
+    /// <summary>格子相鄰（八鄰格）的聚落（含遺跡）。</summary>
     private static IEnumerable<DemoSettlement> Neighbours(DemoHexWorld map, DemoWorldSites sites, DemoCellRef cell)
     {
         var origin = map.GetCell(cell.Column, cell.Row);
@@ -100,7 +100,7 @@ public static class DemoLandClearing
                 yield return s;
     }
 
-    /// <summary>聚落六鄰格中可開墾的草原（未開發或開墾中）。</summary>
+    /// <summary>聚落八鄰格中可開墾的草原（未開發或開墾中）。</summary>
     public static IEnumerable<DemoCellRef> Candidates(
         DemoLandDevelopmentMap land, DemoHexWorld map, DemoWorldSites sites, DemoSettlement settlement, ISet<DemoCellRef> reserved)
     {

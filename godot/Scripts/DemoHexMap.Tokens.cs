@@ -53,13 +53,7 @@ public partial class DemoHexMap
             var list = new List<Token> { new(site.Id, TokenKind.Residents, people, home, home) };
             long Share(int percent) => Math.Max(1, people * percent / 100);
             var origin = World.GetCell(site.Column, site.Row);
-            IEnumerable<DemoHexCell> Near(int range)
-            {
-                for (var dq = -range; dq <= range; dq++)
-                    for (var dr = Math.Max(-range, -dq - range); dr <= Math.Min(range, -dq + range); dr++)
-                        if ((dq != 0 || dr != 0) && World.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c)
-                            yield return c;
-            }
+            IEnumerable<DemoHexCell> Near(int range) => World.Within(origin, range).Where(c => !ReferenceEquals(c, origin)); // 第 08-18a 章：方形範圍
             // 農民：最近的一塊自家農田。
             var farm = Near(2).Where(c => Land.StateOf(new DemoCellRef(c.Column, c.Row)) == DemoLandDevelopment.Farmland
                     && (!Lineage.TryGetValue(new DemoCellRef(c.Column, c.Row), out var o) || o.SettlementId == site.Id))

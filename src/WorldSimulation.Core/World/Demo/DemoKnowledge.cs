@@ -105,7 +105,7 @@ public static class DemoKnowledge
     /// <summary>【TEMP】鄰近傳播最多計入的已習得聚落數。</summary>
     public const int TempDiffusionMaxNeighbours = 5;
 
-    /// <summary>【TEMP】鄰近傳播的範圍（六角格距離；與開拓選址的 6 格相同，勢力範圍出現前的暫代）。以物易物的「有往來」也用它。</summary>
+    /// <summary>【TEMP】鄰近傳播的範圍（切比雪夫距離；與開拓選址的 6 格相同，勢力範圍出現前的暫代）。以物易物的「有往來」也用它。</summary>
     public const int TempDiffusionRange = 6;
 
     /// <summary>【TEMP】每個從已習得聚落抵達的人帶來的進度（門檻的百分比）。</summary>
@@ -232,7 +232,7 @@ public static class DemoKnowledge
     public static long CultureDiffusionPercent(IReadOnlyCollection<string> traits)
         => traits.Contains("CT_TRADITIONAL") ? 50 : traits.Contains("CT_OPEN") ? 200 : 100;
 
-    /// <summary>兩個聚落的六角格距離（軸向座標）。</summary>
+    /// <summary>兩個聚落的距離（切比雪夫）。</summary>
     public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
     {
         ArgumentNullException.ThrowIfNull(map);
@@ -253,7 +253,7 @@ public static class DemoKnowledge
 
     /// <summary>
     /// 【TEMP】第 08-12 章技術效果：來源每週供應加成。農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；
-    /// 河流與開放水域：結網漁撈＋20%。取相鄰（來源格或六鄰格）聚落在該週以前已習得者的最大加成。
+    /// 河流與開放水域：結網漁撈＋20%。取相鄰（來源格或八鄰格）聚落在該週以前已習得者的最大加成。
     /// </summary>
     public static readonly ImmutableArray<(DemoCatchmentSourceKind Kind, string TechId, long Percent)> TempSourceBonuses = ImmutableArray.Create(
         (DemoCatchmentSourceKind.Farmland, "TECH_IRRIGATION", 50L),
@@ -610,7 +610,7 @@ public static class DemoKnowledge
         return (next, events);
     }
 
-    /// <summary>聚落本格與六鄰格（地圖內）。</summary>
+    /// <summary>聚落本格與八鄰格（地圖內）。</summary>
     /// <summary>第 06-3 章：聚落 <see cref="TempOreRange"/> 格內有礦脈。</summary>
     /// 第 08-16 章第 14 節：挖空的礦脈（<paramref name="minedOut"/>）不算。
     public static bool NearOre(DemoHexWorld map, DemoSettlement settlement, IReadOnlySet<DemoCellRef>? extraOre = null,
@@ -634,7 +634,7 @@ public static class DemoKnowledge
             yield return cell;
     }
 
-    /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>
+    /// <summary>第 08-6 章 d 節：聚落本格或八鄰格有森林（木工的從業條件）。</summary>
     public static bool NearForest(DemoHexWorld map, DemoSettlement settlement)
         => Around(map, settlement).Any(c => c.Terrain == DemoTerrain.Forest);
 }

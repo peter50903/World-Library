@@ -639,7 +639,7 @@ public partial class ObserverRoot : Control
                 Pressed = true,
                 Position = _hexMap.CellCenter(cell)
             });
-            if (!_cellInfo.Text.Contains($"軸向座標 ({cell.AxialQ}, {cell.AxialR})", StringComparison.Ordinal)
+            if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal)
                 || !_cellInfo.Text.Contains(DemoCellQuery.TerrainName(cell), StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("Godot selection did not display Core's actual TEMP terrain data.");
@@ -765,18 +765,27 @@ public partial class ObserverRoot : Control
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = afterDrag
         });
-        if (!_cellInfo.Text.Contains($"偏移座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal))
+        if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal))
             throw new InvalidOperationException("Map click after panning selected the wrong Core cell.");
 
-        // Between adjacent visible hexes is a visual gap, never an invisible selectable cell.
-        _cellInfo.Text = "MAP_GAP_UNSELECTED";
+        // 第 08-18a 章：方格之間沒有縫——格邊稍偏一點就是隔壁那一格；地圖外點不到任何格。
         var seam = (_hexMap.CellCenter(cell) + _hexMap.CellCenter(neighbor)) * 0.5f;
+        var nudge = (_hexMap.CellCenter(neighbor) - _hexMap.CellCenter(cell)).Normalized() * 2f;
         _hexMap._GuiInput(new InputEventMouseButton
         {
-            ButtonIndex = MouseButton.Left, Pressed = true, Position = seam
+            ButtonIndex = MouseButton.Left, Pressed = true, Position = seam + nudge
         });
-        if (_cellInfo.Text != "MAP_GAP_UNSELECTED")
-            throw new InvalidOperationException("Map selected an invisible hex gap.");
+        if (!_cellInfo.Text.Contains($"座標 ({neighbor.Column}, {neighbor.Row})", StringComparison.Ordinal))
+            throw new InvalidOperationException("Map click just past a square edge did not select the next cell.");
+        _cellInfo.Text = "MAP_OUTSIDE_UNSELECTED";
+        var corner = _world.Map.GetCell(0, 0);
+        _hexMap._GuiInput(new InputEventMouseButton
+        {
+            ButtonIndex = MouseButton.Left, Pressed = true,
+            Position = _hexMap.CellCenter(corner) - (_hexMap.CellCenter(neighbor) - _hexMap.CellCenter(cell)) * 1.5f
+        });
+        if (_cellInfo.Text != "MAP_OUTSIDE_UNSELECTED")
+            throw new InvalidOperationException("Map selected a cell outside the map.");
 
         if (_world.Snapshot().DaysElapsed != dayBefore
             || !_world.RngState().SequenceEqual(rngBefore)

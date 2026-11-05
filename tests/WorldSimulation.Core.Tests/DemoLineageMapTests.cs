@@ -49,8 +49,7 @@ public sealed class DemoLineageMapTests
             var home = world.Map.GetCell(site.Column, site.Row);
             Assert.False(site.IsRuin);
             Assert.True(cell == new DemoCellRef(site.Column, site.Row) || hex.Terrain != DemoTerrain.Water);
-            var distance = (Math.Abs(hex.AxialQ - home.AxialQ) + Math.Abs(hex.AxialR - home.AxialR)
-                + Math.Abs(hex.AxialQ + hex.AxialR - home.AxialQ - home.AxialR)) / 2;
+            var distance = DemoHexWorld.Distance(hex, home); // 第 08-18a 章：切比雪夫距離
             Assert.InRange(distance, 0, 1);
             Assert.Equal(DemoLineageMap.LineageRoot(world.Sites, owner.SettlementId), owner.LineageRootId);
             Assert.Contains(owner.LineageRootId, roots);

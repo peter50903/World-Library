@@ -158,20 +158,19 @@ public static class DemoMigrationNews
 }
 
 /// <summary>
-/// V0-06A TEMP 路線：在 TEMP 六角格上找出發聚落到目的聚落的最短陸路。
+/// V0-06A TEMP 路線：在 TEMP 方格上找出發聚落到目的聚落的最短陸路。
 /// 這是暫代規則，不是正式的 RouteSegment 路網（02 C：畫面相鄰不代表連通，正式路網未定案）：
-/// 相鄰＝六角格六個鄰格；水域格不可通行（沒有橋梁／渡口資料），只有起點與終點聚落所在格例外。
+/// 相鄰＝八鄰格；水域格不可通行（沒有橋梁／渡口資料），只有起點與終點聚落所在格例外。
 /// 純函式、不抽亂數；鄰格依固定順序展開，所以同一張地圖永遠得到同一條路線。
 /// </summary>
 public static class DemoMigrationRoutes
 {
     // 第 08-18a 章：鄰格與距離改由地圖物件提供（DemoHexWorld.Neighbors／Distance）。
 
-    /// <summary>TEMP odd-r 偏移座標→軸向座標（與 DemoHexWorld 相同的換算）。</summary>
-    public static (int Q, int R) ToAxial(DemoCellRef cell)
-        => (cell.Column - (cell.Row - (cell.Row & 1)) / 2, cell.Row);
+    /// <summary>第 08-18a 章：方格的座標（q＝欄、r＝列，與 DemoHexWorld 相同）。</summary>
+    public static (int Q, int R) ToAxial(DemoCellRef cell) => (cell.Column, cell.Row);
 
-    /// <summary>兩格是否為六角格鄰格（不含同一格）。</summary>
+    /// <summary>兩格是否為八鄰格（不含同一格）。</summary>
     public static bool AreAdjacent(DemoCellRef a, DemoCellRef b)
     {
         return DemoHexWorld.Distance(a, b) == 1;
@@ -209,7 +208,7 @@ public static class DemoMigrationRoutes
     /// <summary>【TEMP】挑水時取水者要加倍（每名取水者供應的人數÷2）。</summary>
     public const long TempCarryWaterDivisor = 2;
 
-    /// <summary>TEMP 水源：格子本身不是水域，且至少一個六角鄰格是水域（45F SETTLE_NEW 的「水」）。</summary>
+    /// <summary>TEMP 水源：格子本身不是水域，且至少一個八鄰格是水域（45F SETTLE_NEW 的「水」）。</summary>
     public static bool HasWaterAccess(DemoHexWorld map, DemoCellRef cell)
     {
         ArgumentNullException.ThrowIfNull(map);
@@ -221,7 +220,7 @@ public static class DemoMigrationRoutes
 
     /// <summary>
     /// V0-06B TEMP 開拓選址（45F SETTLE_NEW／SETTLE_KNOW）：從 <paramref name="origin"/> 沿陸路
-    /// （與遷徙同一套 TEMP 規則：六鄰格、水域不可通行）走最多 <paramref name="maxSteps"/> 格，
+    /// （與遷徙同一套 TEMP 規則：八鄰格、水域不可通行）走最多 <paramref name="maxSteps"/> 格，
     /// 找第一個「陸地、沒有聚落、<paramref name="isFree"/> 允許、有 TEMP 水源」的空格；
     /// 回傳含起點與終點的路線，找不到回傳空陣列。只看出發聚落附近 TEMP 範圍內的地形（在地人知道的土地），
     /// 不全知地挑全世界最好的地點。廣度優先、鄰格固定順序，所以結果是決定性的；不抽亂數。

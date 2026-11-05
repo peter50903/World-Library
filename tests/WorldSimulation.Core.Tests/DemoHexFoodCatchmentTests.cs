@@ -20,11 +20,12 @@ public sealed class DemoHexFoodCatchmentTests
         => Map.Cells.Where(t => DemoHexFoodCatchment.IsInReach(c, t, false)).ToArray();
 
     [Fact]
-    public void AxialCoordinatesHaveAtMostSixNeighboursAndNeverReachTheSecondRing()
+    public void SquareCellsHaveAtMostEightNeighboursAndNeverReachTheSecondRing()
     {
+        // 第 08-18a 章：方格八鄰（角落 3 格、邊 5 格、內部 8 格）。
         foreach (var source in Map.Cells)
         {
-            Assert.InRange(Neighbours(source).Length, 2, 6);
+            Assert.InRange(Neighbours(source).Length, 3, 8);
             Assert.False(DemoHexFoodCatchment.IsInReach(source, source, false));
             Assert.True(DemoHexFoodCatchment.IsInReach(source, source, true));
             foreach (var remote in Map.Cells.Except(Neighbours(source)).Where(c => c != source))

@@ -198,7 +198,7 @@ public partial class DemoHexMap
     /// <summary>龍捲風路徑：依事件編號決定方向，從聚落前方 2 格掃到後方 2 格（只走陸地）。</summary>
     private List<DemoCellRef> TornadoPath(DisasterMark mark)
     {
-        var (dq, dr, _) = DemoRouteNetwork.Directions[(int)(mark.EventId % 6)];
+        var (dq, dr, _) = DemoRouteNetwork.Directions[(int)(mark.EventId % DemoRouteNetwork.Directions.Count)];
         var origin = World!.GetCell(mark.Center.Column, mark.Center.Row);
         var path = new List<DemoCellRef>();
         for (var k = -2; k <= 2; k++)

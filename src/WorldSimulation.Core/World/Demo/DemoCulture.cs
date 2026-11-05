@@ -225,7 +225,7 @@ public static class DemoCultures
     private static ulong Draw(RngRegistry registry, long entityId, ulong index)
         => EntityLocalRandom.Create(registry, EntityId.From((ulong)entityId), RngStreams.Religion, Namespace).GetUInt64(index);
 
-    /// <summary>某格本格與六鄰格的地形條件。</summary>
+    /// <summary>某格本格與八鄰格的地形條件。</summary>
     public static Origin OriginOf(DemoHexWorld map, IEnumerable<DemoSettlement> settlements, bool founded)
     {
         ArgumentNullException.ThrowIfNull(map);

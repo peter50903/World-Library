@@ -51,13 +51,13 @@ public static class DemoContinentGenerator
         var height = new long[count];
         var spacing = Math.Max(4, columns / 5) * Unit;
         var cx = (columns - 1) * Unit / 2;
-        var cy = (rows - 1) * 866L / 2;
+        var cy = (rows - 1) * Unit / 2;
         for (var row = 0; row < rows; row++)
         {
             for (var col = 0; col < columns; col++)
             {
-                var x = col * Unit + (row & 1) * Unit / 2;
-                var y = row * 866L; // 尖頂六角：列距＝√3/2 格寬
+                var x = col * Unit;
+                var y = row * Unit; // 第 08-18a 章：方格，列距＝欄距
                 var h = (4 * Noise(Draw, 0, x, y, spacing) + 2 * Noise(Draw, 1, x, y, Math.Max(2 * Unit, spacing / 2))
                     + Noise(Draw, 2, x, y, Math.Max(2 * Unit, spacing / 4))) / 7;
                 // 橢圓下壓：離中心越遠越低（d² 以 1000² 為單位，四邊中點＝1000000），海岸自然成圓弧而不是方框。
@@ -90,12 +90,15 @@ public static class DemoContinentGenerator
             for (var col = 0; col < columns; col++)
             {
                 var i = row * columns + col;
-                cells[i] = new DemoHexCell(col, row, col - (row - (row & 1)) / 2, row, terrain[i], Sea: !isLand[i]);
+                cells[i] = new DemoHexCell(col, row, col, row, terrain[i], Sea: !isLand[i]);
             }
 
         // ④ 河流與淺灘。
         var byAxial = cells.Select((c, i) => (c, i)).ToDictionary(x => (x.c.AxialQ, x.c.AxialR), x => x.i);
         int[] Neighbours(int i) => DemoRouteNetwork.Directions
+            .Select(d => byAxial.TryGetValue((cells[i].AxialQ + d.Dq, cells[i].AxialR + d.Dr), out var n) ? n : -1).ToArray();
+        // 第 08-18a 章：河道只走上下左右（順序：東、南、西、北）。
+        int[] Orthogonal(int i) => DemoRouteNetwork.Orthogonal
             .Select(d => byAxial.TryGetValue((cells[i].AxialQ + d.Dq, cells[i].AxialR + d.Dr), out var n) ? n : -1).ToArray();
         var hills = order.Take(hillCount).ToArray();
         var sources = new List<int>();
@@ -162,7 +165,7 @@ public static class DemoContinentGenerator
                 cells[i] = cells[i] with { Ore = true };
         return cells;
 
-        // 從源頭每步往最低的相鄰陸地走，到海（河口）或匯入別的河為止；源頭本身留著是丘陵。
+        // 從源頭每步往最低的上下左右陸地走，到海（河口）或匯入別的河為止；源頭本身留著是丘陵。
         List<int> Walk(int source)
         {
             var path = new List<int>();
@@ -170,7 +173,7 @@ public static class DemoContinentGenerator
             var at = source;
             for (var step = 0; step < count; step++)
             {
-                var around = Neighbours(at);
+                var around = Orthogonal(at);
                 if (path.Count > 0 && around.Any(n => n >= 0 && (cells[n].Sea || (cells[n].MainWaterway && !path.Contains(n)))))
                     break;
                 var next = around.Where(n => n >= 0 && !visited.Contains(n) && !cells[n].Sea && !cells[n].MainWaterway)
@@ -184,14 +187,14 @@ public static class DemoContinentGenerator
             return path;
         }
 
-        // 渡口：不臨海，兩岸（不相鄰的兩個方向）都有陸地——涉水過河才有意義。
+        // 渡口：不臨海，兩岸（東西兩側或南北兩側）都有陸地——涉水過河才有意義。
         bool IsCrossing(int i)
         {
-            var around = Neighbours(i);
-            if (around.Any(n => n >= 0 && cells[n].Sea))
+            if (Neighbours(i).Any(n => n >= 0 && cells[n].Sea))
                 return false;
-            var landDirs = Enumerable.Range(0, 6).Where(d => around[d] >= 0 && cells[around[d]].Terrain != DemoTerrain.Water).ToList();
-            return landDirs.Any(a => landDirs.Any(b => Math.Abs(a - b) is >= 2 and <= 4));
+            var around = Orthogonal(i); // 東、南、西、北
+            bool Land(int d) => around[d] >= 0 && cells[around[d]].Terrain != DemoTerrain.Water;
+            return (Land(0) && Land(2)) || (Land(1) && Land(3));
         }
     }
 

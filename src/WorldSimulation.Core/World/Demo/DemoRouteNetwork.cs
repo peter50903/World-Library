@@ -64,17 +64,26 @@ public sealed record DemoRouteTempSettings(
 
 /// <summary>
 /// 第 06 章 a 節：地圖的路線網（不可變，隨地圖一起由世界亂數產生、同種子可重現）。
-/// 規則：相鄰兩格陸地之間一條野地段；主水道相鄰格之間一條河流段（水上，不供陸路）；
-/// 主水道上一處渡口連接該水道格與所有鄰接陸地（過河的唯一陸路）；一般水域沒有陸路。
-/// 六邊出入口只由路線段衍生。
+/// 規則（第 08-18a 章方格）：八鄰的兩格陸地之間一條野地段；斜角段要兩側的兩個直鄰格都是陸地才有（不能從兩塊水之間的縫鑽過去），
+/// 成本是直走的 1.5 倍（無條件進位）【TEMP】。主水道上下左右相鄰的格之間一條河流段（水上，不供陸路）；
+/// 渡口連接該水道格與上下左右的陸地（過河的唯一陸路）；一般水域沒有陸路。出入口只由路線段衍生。
 /// </summary>
 public sealed class DemoRouteNetwork
 {
-    /// <summary>六個方向（軸向座標差），順序：東、東北、西北、西、西南、東南。</summary>
+    /// <summary>第 08-18a 章：八個方向（欄差、列差；列往下為南），順序：東、東南、南、西南、西、西北、北、東北。</summary>
     public static readonly IReadOnlyList<(int Dq, int Dr, string Name)> Directions = new[]
     {
-        (1, 0, "東"), (1, -1, "東北"), (0, -1, "西北"), (-1, 0, "西"), (-1, 1, "西南"), (0, 1, "東南")
+        (1, 0, "東"), (1, 1, "東南"), (0, 1, "南"), (-1, 1, "西南"), (-1, 0, "西"), (-1, -1, "西北"), (0, -1, "北"), (1, -1, "東北")
     };
+
+    /// <summary>第 08-18a 章：上下左右四個方向（河流、渡口只走這四個）。</summary>
+    public static readonly IReadOnlyList<(int Dq, int Dr, string Name)> Orthogonal = Directions.Where(d => d.Dq == 0 || d.Dr == 0).ToArray();
+
+    /// <summary>【TEMP】第 08-18a 章：斜角段的成本倍率（百分比，無條件進位）。</summary>
+    public const int TempDiagonalCostPercent = 150;
+
+    /// <summary>斜角段的成本：直走成本×1.5，無條件進位到整數。</summary>
+    public static int DiagonalCost(int cost) => (cost * TempDiagonalCostPercent + 99) / 100;
 
     private readonly Dictionary<(DemoCellRef, DemoCellRef), DemoRouteSegment> _byPair = new();
     private readonly Dictionary<DemoCellRef, List<DemoRouteSegment>> _byCell = new();
@@ -151,6 +160,16 @@ public sealed class DemoRouteNetwork
                 if (!byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next) || Order(next) <= Order(cell))
                     continue; // 每對只看一次
                 DemoRouteKind? kind = null;
+                var diagonal = dq != 0 && dr != 0;
+                bool Land(int q, int r) => byAxial.TryGetValue((q, r), out var c) && c.Terrain != DemoTerrain.Water;
+                if (diagonal)
+                {
+                    // 斜角只有野地段，而且兩側的直鄰格都要是陸地。
+                    if (cell.Terrain != DemoTerrain.Water && next.Terrain != DemoTerrain.Water
+                        && Land(cell.AxialQ + dq, cell.AxialR) && Land(cell.AxialQ, cell.AxialR + dr))
+                        segments.Add(new DemoRouteSegment(Ref(cell), Ref(next), DemoRouteKind.Wild, DiagonalCost(settings.CostOf(DemoRouteKind.Wild))));
+                    continue;
+                }
                 if (cell.Terrain != DemoTerrain.Water && next.Terrain != DemoTerrain.Water)
                     kind = DemoRouteKind.Wild;
                 else if (cell.MainWaterway && next.MainWaterway)

@@ -18,7 +18,7 @@ public enum DemoTerrain
 }
 
 /// <summary>
-/// 六角格（尖頂、odd-r 偏移＋軸向座標）。第 06 章 a 節加 <see cref="MainWaterway"/>：主水道格
+/// 方格（第 08-18a 章：欄、列兩個座標；<see cref="AxialQ"/>＝欄、<see cref="AxialR"/>＝列，只為相容舊呼叫保留）。第 06 章 a 節加 <see cref="MainWaterway"/>：主水道格
 /// （連續佔格的水域序列，禁止住宅與聚落）。跨格通行另見 <see cref="DemoRouteNetwork"/>。
 /// 第 06-1 章：水域分成<b>海洋</b>（<see cref="Sea"/>，只有深水）與<b>河流</b>（主水道，可有深淺）；
 /// <see cref="Shallow"/>＝河流淺灘（渡口，可涉水過河）。
@@ -34,8 +34,8 @@ public sealed record DemoHexCell(
     bool Shallow = false,
     bool Ore = false)
 {
-    /// <summary>第 06-1 章：畫面水平位置（odd-r：奇數列往右半格），判斷河的兩岸用。</summary>
-    public double ScreenX => Column + 0.5 * (Row & 1);
+    /// <summary>第 06-1 章：畫面水平位置（第 08-18a 章方格：就是欄），判斷河的兩岸用。</summary>
+    public double ScreenX => Column;
 }
 
 /// <summary>第 07-1 章 c 節：建立世界時選的地圖尺寸。</summary>
@@ -127,18 +127,16 @@ public sealed class DemoHexWorld
             {
                 for (var col = 0; col < columns; col++)
                 {
-                    var q = col - (row - (row & 1)) / 2;
                     int forest = 0, total = 0;
-                    void Count(int cq, int cr)
+                    void Count(int c, int cr)
                     {
-                        var c = cq + (cr - (cr & 1)) / 2;
                         if (cr < 0 || cr >= rows || c < 0 || c >= columns) return;
                         total++;
                         if (current[cr * columns + c] == DemoTerrain.Forest) forest++;
                     }
-                    Count(q, row);
+                    Count(col, row);
                     foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
-                        Count(q + dq, row + dr);
+                        Count(col + dq, row + dr);
                     var own = current[row * columns + col];
                     next[row * columns + col] = forest * 2 > total ? DemoTerrain.Forest
                         : forest * 2 < total ? DemoTerrain.Grassland : own;
@@ -177,16 +175,16 @@ public sealed class DemoHexWorld
     /// <summary>第 08-11 章：離水 2 格內的陸地（相鄰有水，或相鄰格相鄰有水）——不掘井也能挑水度日。</summary>
     public bool IsNearWater(DemoCellRef cell) => _nearWater.Contains(cell);
 
-    /// <summary>第 07-1 章 c 節：以軸向座標找格（地圖外回傳 null）。</summary>
+    /// <summary>第 07-1 章 c 節：以座標找格（第 08-18a 章：q＝欄、r＝列；地圖外回傳 null）。</summary>
     public DemoHexCell? AtAxial(int q, int r) => _byAxial.GetValueOrDefault((q, r));
 
     // ───────── 第 08-18a 章第 2 節：幾何集中在地圖物件（其他系統一律呼叫這三個方法，不自己算座標）─────────
 
-    /// <summary>鄰格（地圖內），依固定方向順序。</summary>
+    /// <summary>八鄰格（地圖內），依固定方向順序：東、東南、南、西南、西、西北、北、東北。</summary>
     public IReadOnlyList<DemoHexCell> Neighbors(DemoHexCell cell)
     {
         ArgumentNullException.ThrowIfNull(cell);
-        var list = new List<DemoHexCell>(6);
+        var list = new List<DemoHexCell>(8);
         foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
             if (_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var n))
                 list.Add(n);
@@ -201,22 +199,16 @@ public sealed class DemoHexWorld
         return Distance(new DemoCellRef(a.Column, a.Row), new DemoCellRef(b.Column, b.Row));
     }
 
-    /// <summary>兩格的距離（只看欄列，地圖外的格也能算）。</summary>
+    /// <summary>兩格的切比雪夫距離（第 08-18a 章：max(|Δ欄|, |Δ列|)；地圖外的格也能算）。</summary>
     public static int Distance(DemoCellRef a, DemoCellRef b)
-    {
-        var (aq, ar) = (a.Column - (a.Row - (a.Row & 1)) / 2, a.Row);
-        var (bq, br) = (b.Column - (b.Row - (b.Row & 1)) / 2, b.Row);
-        var dq = aq - bq;
-        var dr = ar - br;
-        return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
-    }
+        => Math.Max(Math.Abs(a.Column - b.Column), Math.Abs(a.Row - b.Row));
 
-    /// <summary><paramref name="range"/> 格內的所有格（含本格，地圖內），依固定順序。</summary>
+    /// <summary><paramref name="range"/> 格內的所有格（含本格，地圖內；邊長 2r＋1 的正方形），先列後欄。</summary>
     public IEnumerable<DemoHexCell> Within(DemoHexCell cell, int range)
     {
         ArgumentNullException.ThrowIfNull(cell);
-        for (var dq = -range; dq <= range; dq++)
-            for (var dr = Math.Max(-range, -dq - range); dr <= Math.Min(range, -dq + range); dr++)
+        for (var dr = -range; dr <= range; dr++)
+            for (var dq = -range; dq <= range; dq++)
                 if (_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var c))
                     yield return c;
     }
@@ -313,11 +305,8 @@ public sealed class DemoHexWorld
         {
             for (var col = 0; col < Columns; col++)
             {
-                // TEMP odd-r offset -> axial mapping. The final coordinate
-                // convention is still an open design decision.
-                var axialQ = col - (row - (row & 1)) / 2;
                 var terrain = (DemoTerrain)(rng.NextUInt64(RngStreams.Geography) % 2UL); // 草原或森林
-                cells[index++] = new DemoHexCell(col, row, axialQ, row, terrain);
+                cells[index++] = new DemoHexCell(col, row, col, row, terrain); // 第 08-18a 章：方格，q＝欄、r＝列
             }
         }
 
@@ -335,8 +324,8 @@ public sealed class DemoHexWorld
         }
 
         // ③ 河流——第 06-2 章：每 12 欄一條（小地圖 1 條，與之前相同）；第 k 條從北緣第 k 段欄位中隨機起點，
-        // 每往南一列走到兩個下方鄰格之一（odd-r：偶數列往 c-1／c，奇數列往 c／c+1），不出界；碰到海就停（河口接海），
-        // 碰到已有的河就停（成為支流匯入）。抽樣次數固定，停下後的抽樣不使用。
+        // 每往南一列抽一次：往西南、正南或東南（第 08-18a 章方格；不出界；正南機率較高）。河道只走上下左右，所以斜走時先在上一列
+        // 橫走一格再往南（兩格都是河）。碰到海就停（河口接海），碰到已有的河就停（成為支流匯入）。抽樣次數固定，停下後的抽樣不使用。
         // ④ 淺灘（渡口）：每條河每 8 列一段各抽一次，從抽到的位置往南找第一個兩岸（畫面左右）都有陸地鄰格、
         // 而且不臨海的河流格——涉水過河才有意義；都沒有就沒有渡口。
         var rivers = RiversFor(Columns);
@@ -350,10 +339,21 @@ public sealed class DemoHexWorld
                 waterway.Add((column, 0));
             for (var row = 1; row < Rows; row++)
             {
-                var options = ((row - 1) & 1) == 0 ? new[] { column - 1, column } : new[] { column, column + 1 };
+                // 【TEMP】正南 3/5、西南與東南各 1/5：直走的河段夠多，才找得到兩岸都是陸地的渡口（D08-18）。
+                var options = new[] { column - 1, column, column, column, column + 1 };
                 var inside = options.Where(c => c >= 0 && c < Columns).ToArray();
+                var previous = column;
                 column = inside[(int)(rng.NextUInt64(RngStreams.Geography) % (ulong)inside.Length)];
-                if (stopped || cells[row * Columns + column].Sea || cells[row * Columns + column].MainWaterway)
+                if (stopped)
+                    continue;
+                bool Ends(int c, int r) => cells[r * Columns + c].Sea || cells[r * Columns + c].MainWaterway || waterway.Contains((c, r));
+                if (column != previous)
+                {
+                    // 斜走：先在上一列橫走一格（四方向相連）。
+                    if (Ends(column, row - 1)) { stopped = true; continue; }
+                    waterway.Add((column, row - 1));
+                }
+                if (Ends(column, row))
                 {
                     stopped = true;
                     continue;
@@ -383,7 +383,8 @@ public sealed class DemoHexWorld
                 var neighbours = DemoRouteNetwork.Directions
                     .Select(d => byAxial.TryGetValue((here.AxialQ + d.Dq, here.AxialR + d.Dr), out var n) ? n : null)
                     .Where(n => n is not null).Select(n => n!).ToList();
-                var land = neighbours.Where(n => n.Terrain != DemoTerrain.Water).ToList();
+                // 第 08-18a 章：渡口只連上下左右，所以兩岸看東西兩側的直鄰格。
+                var land = neighbours.Where(n => n.Terrain != DemoTerrain.Water && n.Row == here.Row).ToList();
                 if (!neighbours.Any(n => n.Sea) && land.Any(n => n.ScreenX < here.ScreenX) && land.Any(n => n.ScreenX > here.ScreenX))
                 {
                     cells[r * Columns + c] = here with { Shallow = true };
