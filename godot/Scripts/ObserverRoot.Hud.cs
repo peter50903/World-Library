@@ -34,6 +34,8 @@ public partial class ObserverRoot
     private string _detailShown = string.Empty; // 第 08-11 章：目前詳情的全文（冒煙測試比對用）
     private bool _showDebugInfo; // 第 08-11 章：開發資訊頁開啟時才顯示座標、路線、供應量等數值
     private (int Column, int Row)? _detailCell;
+    private (bool Faith, int Id)? _detailBelief; // 第 08-16 章第 15 節：目前開著的是文化頁或信仰頁（null＝地點或聚落）
+    private Button _detailBack = null!;
     private int _detailWeek = -1;
     private PanelContainer _timePanel = null!;
     private Button _timePlay = null!;
@@ -258,6 +260,15 @@ public partial class ObserverRoot
         column.AddChild(header);
         _detailTitle = new Label { Text = "詳情", SizeFlagsHorizontal = SizeFlags.ExpandFill, ClipText = true };
         _detailTitle.AddThemeFontSizeOverride("font_size", 18);
+        // 第 08-16 章第 15 節：文化頁、信仰頁左上「返回」回到原本的聚落。
+        _detailBack = new Button { Text = "◂ 返回", TooltipText = "回到聚落詳情", Visible = false };
+        _detailBack.Pressed += () =>
+        {
+            if (_detailCell is { } back)
+                ShowDetailAt(back.Column, back.Row);
+        };
+        header.AddChild(_detailBack);
+        header.MoveChild(_detailBack, 0);
         header.AddChild(_detailTitle);
         var close = new Button { Text = "✕", TooltipText = "關閉（Esc）" };
         close.Pressed += HideDetail;
@@ -286,20 +297,41 @@ public partial class ObserverRoot
 
     private void ShowDetailAt(int column, int row)
     {
+        var keep = _detailBelief is null ? _detailTabs.CurrentTab : 0;
         _detailCell = (column, row);
+        _detailBelief = null;
         var detail = _world.PlayerDetail(column, row);
-        var keep = _detailTabs.CurrentTab;
-        foreach (var child in _detailTabs.GetChildren())
-        {
-            _detailTabs.RemoveChild(child);
-            child.QueueFree();
-        }
         var tabs = detail.Tabs.ToList();
         // 試玩回饋 2026-11-05 之 2：遭遇天災的地塊在詳情第一頁最上面寫明狀況。
         if (tabs.Count > 0 && _hexMap.DisasterStatus(column, row) is { Length: > 0 } status)
             tabs[0] = tabs[0] with { Lines = new[] { status, "" }.Concat(tabs[0].Lines).ToList() };
         if (_showDebugInfo)
             tabs.Add(new DemoDetailTab("除錯", _world.QueryCell(column, row).Lines));
+        RenderDetail(detail, tabs, keep);
+    }
+
+    /// <summary>第 08-16 章第 15 節：文化頁或信仰頁（十字軍之王式；從聚落現況的連結打開，「返回」回到聚落）。</summary>
+    private void ShowBeliefDetail(bool faith, int id)
+    {
+        var keep = _detailBelief == (faith, id) ? _detailTabs.CurrentTab : 0;
+        if ((faith ? _world.FaithDetail(id) : _world.CultureDetail(id)) is not { } detail)
+        {
+            if (_detailCell is { } back) // 換了世界、已不存在：回到原本的地點
+                ShowDetailAt(back.Column, back.Row);
+            return;
+        }
+        _detailBelief = (faith, id);
+        RenderDetail(detail, detail.Tabs.ToList(), keep);
+    }
+
+    private void RenderDetail(DemoPlayerDetail detail, List<DemoDetailTab> tabs, int keep)
+    {
+        foreach (var child in _detailTabs.GetChildren())
+        {
+            _detailTabs.RemoveChild(child);
+            child.QueueFree();
+        }
+        _detailBack.Visible = _detailBelief is not null && _detailCell is not null;
         foreach (var tab in tabs)
         {
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
@@ -307,7 +339,7 @@ public partial class ObserverRoot
                 scroll.AddChild(TechBadgeGrid(tab)); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
             else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
                 scroll.AddChild(peopleList); // 第 08-16 章：代表人物有人像
-            else if ((tab.Emblem is not null || tab.FaithSymbol is not null) && HeraldryHeader(tab) is { } header)
+            else if ((tab.Emblem is not null || tab.FaithSymbol is not null || tab.CultureId > 0) && HeraldryHeader(tab) is { } header)
                 scroll.AddChild(header); // 第 08-16 章：文化紋章與信仰符號
             else
                 scroll.AddChild(new Label
@@ -453,10 +485,29 @@ public partial class ObserverRoot
             disc.AddChild(Picture(sign, TempEmblemSize));
             icons.AddChild(disc);
         }
-        if (icons.GetChildCount() == 0)
+        // 第 08-16 章第 15 節：聚落現況上的「查看文化」「查看信仰」連結（只在聚落頁；文化頁、信仰頁本身不放）。
+        var links = new HBoxContainer();
+        if (tab.CultureId > 0 && _world.Culture.Culture(tab.CultureId) is { } culture)
+        {
+            var id = tab.CultureId;
+            var link = new Button { Text = $"文化：{culture.Name} ▸", Flat = true, TooltipText = "查看這個文化的傳統、分布與歷史" };
+            link.Pressed += () => ShowBeliefDetail(false, id);
+            links.AddChild(link);
+        }
+        if (tab.CultureId > 0 && tab.FaithId > 0 && _world.Culture.Faith.Faith(tab.FaithId) is { } faith)
+        {
+            var id = tab.FaithId;
+            var link = new Button { Text = $"信仰：{faith.Name} ▸", Flat = true, TooltipText = "查看這個信仰的信條、信徒與歷史" };
+            link.Pressed += () => ShowBeliefDetail(true, id);
+            links.AddChild(link);
+        }
+        if (icons.GetChildCount() == 0 && links.GetChildCount() == 0)
             return null;
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        column.AddChild(icons);
+        if (icons.GetChildCount() > 0)
+            column.AddChild(icons);
+        if (links.GetChildCount() > 0)
+            column.AddChild(links);
         column.AddChild(WrapLabel(string.Join("\n", tab.Lines)));
         return column;
     }
