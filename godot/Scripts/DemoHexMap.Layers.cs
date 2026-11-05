@@ -246,6 +246,20 @@ public partial class DemoHexMap
         {
             if (FadedRuins.Contains(site.Id) || (layer == ViewLayer.Strategic && site.IsRuin))
                 continue;
+            // 第 08-17 章第 5 節：有人的聚落改畫成居民棋（大小＝規模），在下面 DrawTokens 一起畫；遺跡照舊畫圖示。
+            if (!site.IsRuin && SettlementScale.TryGetValue(site.Id, out var people) && people.Item1 > 0)
+            {
+                if (layer == ViewLayer.Regional)
+                {
+                    var c = World!.GetCell(site.Column, site.Row);
+                    var at = start + HexCoordinates.Center(c.AxialQ, c.AxialR, radius);
+                    if (OnScreen(at, radius * 2f) && RecentDisasters.Contains(site.Id))
+                        DrawMarker(ArtAssets.IconDisaster, at + new Vector2(radius * 0.7f, -radius * 0.7f), radius * 0.8f);
+                    if (OnScreen(at, radius * 2f) && _mode == Mode.Faith && HolySites.Contains(site.Id))
+                        DrawMarker(ArtAssets.IconHolySite, at + new Vector2(-radius * 0.7f, -radius * 0.7f), radius * 0.9f);
+                }
+                continue;
+            }
             var cell = World!.GetCell(site.Column, site.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             if (!OnScreen(center, radius * 2f))
@@ -265,5 +279,6 @@ public partial class DemoHexMap
             if (_mode == Mode.Faith && HolySites.Contains(site.Id))
                 DrawMarker(ArtAssets.IconHolySite, center + new Vector2(-radius * 0.5f, -radius * 0.5f), radius * 0.9f);
         }
+        DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
     }
 }

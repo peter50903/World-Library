@@ -18,7 +18,8 @@ public partial class DemoHexMap
     private ulong _lastAnimatedMs;
 
     /// <summary>有動畫要播時（隊伍在走、火在燒、天災動畫中）限速重畫；在 _Process 呼叫。</summary>
-    private bool WantsAnimation => Migrants.Count > 0 || _hasFire || _impacts.Count > 0;
+    private bool WantsAnimation => Migrants.Count > 0 || _hasFire || _impacts.Count > 0
+        || (_tokensMoving && CurrentLayer == ViewLayer.Regional); // 第 08-17 章：區域層的指示物來回移動
 
     private void DrawMigrants(Vector2 start, float radius)
     {

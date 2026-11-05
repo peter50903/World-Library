@@ -310,7 +310,7 @@ public partial class DemoHexMap : Control
                 _surface.Size = Size;
             }
             if (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))
-                _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius);
+                _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius, _ground);
             else
                 _surface.Hide();
         }
@@ -409,7 +409,12 @@ public partial class DemoHexMap : Control
 
         // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
         if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
-            DrawFootprints(start, radius);
+        {
+            if (_surface is { Active: true })
+                DrawLayouts(start, radius); // 第 08-17 章：對齊方格的聚落版面
+            else
+                DrawFootprints(start, radius);
+        }
 
         // 第 05 章 b 節：糧食狀況模式——地形壓暗，聚落格塗上狀況色並加粗外框。
         if (_mode == Mode.Food && Sites is not null)
@@ -676,7 +681,6 @@ public partial class DemoHexMap : Control
     private const byte TempSettlementGround = TerrainSurface.SettlementGround;
 
     private readonly HashSet<DemoCellRef> _builtCells = new();
-    private (object?, object?, object?, object?) _builtKey;
     private byte[]? _surfaceCodes;
     private ulong _surfaceBuiltMs;
     private bool _surfaceStale;
@@ -704,20 +708,8 @@ public partial class DemoHexMap : Control
         }
         _surfaceStale = false;
         _surfaceBuiltMs = nowMs;
-        // 有房子的格只在聚落、等級或領域改變時重算（地表每幀都可能重算，聚落外觀不必）。
-        var builtKey = ((object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
-        if (!builtKey.Equals(_builtKey))
-        {
-            _builtKey = builtKey;
-            _builtCells.Clear();
-            if (Sites is not null)
-                foreach (var site in Sites.Settlements.Where(x => !x.IsRuin && !FadedRuins.Contains(x.Id)))
-                {
-                    _builtCells.Add(new DemoCellRef(site.Column, site.Row));
-                    foreach (var spot in FootprintOf(site).Buildings)
-                        _builtCells.Add(spot.Cell);
-                }
-        }
+        // 第 08-17 章：聚落版面（廣場、道路、建築地塊）決定哪些格是聚落地；只在版面條件改變時重算。
+        EnsureLayouts();
         var data = new byte[World!.Columns * World.Rows * 4];
         // 第 08-16 章第 14 節：伐木與採礦（每次先整理成依格查的表，不必每格掃一遍狀態表）。
         _logged.Clear();
