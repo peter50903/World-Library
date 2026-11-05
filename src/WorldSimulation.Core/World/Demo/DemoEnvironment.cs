@@ -52,7 +52,142 @@ public static class DemoEnvironment
     private const string Namespace = "TEMP-ENVIRONMENT-v1";
 
     public static bool IsSpell(DemoSettlementEventKind kind)
-        => kind is DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire;
+        => kind is DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
+            or DemoSettlementEventKind.Logging or DemoSettlementEventKind.MiningBegan; // 第 08-16 章第 14 節：伐木、採礦
+
+    /// <summary>各種環境狀態的固定持續週數（存檔驗證用）。</summary>
+    public static int Duration(DemoSettlementEventKind kind) => kind switch
+    {
+        DemoSettlementEventKind.Heatwave => TempHeatwaveWeeks,
+        DemoSettlementEventKind.Wildfire => TempWildfireWeeks,
+        DemoSettlementEventKind.Logging => TempLoggingWeeks,
+        DemoSettlementEventKind.MiningBegan => TempMiningWeeks,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "不是環境狀態。")
+    };
+
+    // ───────────── 第 08-16 章第 14 節：砍樹與挖礦（試玩回饋 2026-11-04 夜之 5） ─────────────
+
+    /// <summary>
+    /// 【TEMP】伐木：會基礎木工、住民至少 <see cref="TempLoggingMinResidents"/> 人的聚落，每年以「住民數 %」（最多 <see cref="TempLoggingMaxPercent"/>%）
+    /// 砍掉 <see cref="TempLoggingRange"/> 格內最近的一片森林；那片森林 <see cref="TempLoggingWeeks"/> 週內採集 <see cref="TempLoggedSourcePercent"/>%，
+    /// 畫面上先是樹樁、再長出幼樹，期滿長回森林。
+    /// </summary>
+    public const int TempLoggingMinResidents = 20;
+    public const int TempLoggingMaxPercent = 90;
+    public const int TempLoggingRange = 2;
+    public const int TempLoggingWeeks = 520;
+    public const long TempLoggedSourcePercent = -50;
+
+    /// <summary>【TEMP】伐木狀態結束這麼多週後從狀態表移除（近期週報最多保留約 156 週；伐木每年可能上百筆，不能像天災一樣永遠留著）。</summary>
+    public const int TempLoggingPruneWeeks = 260;
+
+    /// <summary>
+    /// 【TEMP】採礦：會探礦的聚落若 <see cref="DemoKnowledge.TempOreRange"/> 格內有還沒人開採的礦脈，就開採最近的一處（不抽亂數），
+    /// <see cref="TempMiningWeeks"/> 週後礦脈挖空、留下礦坑——不再算「勢力範圍內有礦脈」。一個聚落同時只開採一處。
+    /// </summary>
+    public const int TempMiningWeeks = 1560;
+
+    public const string LoggingTech = "TECH_BASIC_CARPENTRY";
+    public const string MiningTech = "TECH_PROSPECTING";
+
+    /// <summary>某週已挖空的礦脈格（開採狀態結束之後）。</summary>
+    public static IReadOnlySet<DemoCellRef> ExhaustedOre(IReadOnlyList<DemoEnvironmentSpell> spells, int week)
+        => spells.Where(x => x.Kind == DemoSettlementEventKind.MiningBegan && x.ToWeek < week).SelectMany(x => x.Cells).ToHashSet();
+
+    /// <summary>礦脈格某週的開採狀況：-1＝沒有人開採；0～1＝開採中的進度；2＝已挖空。</summary>
+    public static float MiningAt(IReadOnlyList<DemoEnvironmentSpell> spells, DemoCellRef cell, int week)
+    {
+        foreach (var x in spells)
+            if (x.Kind == DemoSettlementEventKind.MiningBegan && x.Cells.Contains(cell))
+                return week > x.ToWeek ? 2f : Math.Clamp((week - x.FromWeek) / (float)(x.ToWeek - x.FromWeek), 0f, 1f);
+        return -1f;
+    }
+
+    /// <summary>森林格某週的伐木狀況：-1＝沒有砍；0～1＝砍下之後長回的進度（0＝剛砍、只剩樹樁）。</summary>
+    public static float LoggedAt(IReadOnlyList<DemoEnvironmentSpell> spells, DemoCellRef cell, int week)
+    {
+        var best = -1f;
+        foreach (var x in spells)
+            if (x.Kind == DemoSettlementEventKind.Logging && week > x.FromWeek && week <= x.ToWeek && x.Cells.Contains(cell))
+                best = best < 0f ? (week - x.FromWeek) / (float)(x.ToWeek - x.FromWeek) : Math.Min(best, (week - x.FromWeek) / (float)(x.ToWeek - x.FromWeek));
+        return best;
+    }
+
+    /// <summary>聚落 <paramref name="range"/> 格內的格（含本格；只看範圍內，不掃全圖）。</summary>
+    private static IEnumerable<DemoHexCell> Ring(DemoHexWorld map, DemoSettlement s, int range)
+    {
+        var origin = map.GetCell(s.Column, s.Row);
+        for (var dq = -range; dq <= range; dq++)
+            for (var dr = Math.Max(-range, -dq - range); dr <= Math.Min(range, -dq + range); dr++)
+                if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c)
+                    yield return c;
+    }
+
+    private const string LoggingNamespace = "TEMP-LOGGING-v1";
+
+    private static long CellNumber(DemoHexWorld map, DemoCellRef c) => (long)c.Row * map.Columns + c.Column + 1;
+
+    /// <summary>
+    /// 年結算（天災週，熱浪野火之後）：結束到期的採礦（礦脈挖空）、會木工的聚落伐木、會探礦的聚落開始採礦。
+    /// 直接改 <paramref name="spells"/>；事件編號從 <paramref name="nextEventId"/> 起，回傳新事件。
+    /// </summary>
+    internal static List<DemoSettlementEvent> AdvanceWorks(List<DemoEnvironmentSpell> spells, int week, TimeSpan worldTime, DemoHexWorld map,
+        DemoWorldSites sites, IReadOnlyList<DemoSettlement> living, Func<int, long> residents, Func<int, bool> logs, Func<int, bool> mines,
+        IReadOnlySet<DemoCellRef>? extraOre, RngRegistry rng, ref long nextEventId)
+    {
+        var events = new List<DemoSettlementEvent>();
+        var year = week / DemoWildlife.TempYearWeeks;
+        // 伐木
+        var busy = spells.Where(x => x.Kind is DemoSettlementEventKind.Logging or DemoSettlementEventKind.Wildfire && week <= x.ToWeek)
+            .SelectMany(x => x.Cells).ToHashSet();
+        foreach (var s in living)
+        {
+            var people = residents(s.Id);
+            if (people < TempLoggingMinResidents || !logs(s.Id))
+                continue;
+            var random = EntityLocalRandom.Create(rng, EntityId.From(2UL), RngStreams.Event, LoggingNamespace);
+            var key = ((ulong)year << 32) | (uint)s.Id;
+            if ((long)(random.GetUInt64(key * 2) % 100UL) >= Math.Min(TempLoggingMaxPercent, people))
+                continue;
+            var origin = map.GetCell(s.Column, s.Row);
+            var forests = Ring(map, s, TempLoggingRange)
+                .Where(c => c.Terrain == DemoTerrain.Forest && sites.SettlementAt(c.Column, c.Row) is null && !busy.Contains(new DemoCellRef(c.Column, c.Row)))
+                .Select(c => (Cell: c, Distance: DemoWorldSites.HexDistance(origin, c))).ToList();
+            if (forests.Count == 0)
+                continue;
+            var nearest = forests.Min(f => f.Distance);
+            var pool = forests.Where(f => f.Distance == nearest).Select(f => f.Cell).OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
+            var pick = pool[(int)(random.GetUInt64(key * 2 + 1) % (ulong)pool.Count)];
+            var at = new DemoCellRef(pick.Column, pick.Row);
+            busy.Add(at);
+            var id = nextEventId++;
+            events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name, DemoSettlementEventKind.Logging, CellNumber(map, at),
+                "砍伐了附近一片森林（樹樁會慢慢長回幼樹，約十年後恢復成林）", EventId: id));
+            spells.Add(new DemoEnvironmentSpell(DemoSettlementEventKind.Logging, s.Id, week, week + TempLoggingWeeks, id, ImmutableList.Create(at)));
+        }
+        // 採礦（不抽亂數：最近的一處，同距離取列、欄小者）
+        var claimed = spells.Where(x => x.Kind == DemoSettlementEventKind.MiningBegan).SelectMany(x => x.Cells).ToHashSet();
+        var digging = spells.Where(x => x.Kind == DemoSettlementEventKind.MiningBegan && week <= x.ToWeek).Select(x => x.SettlementId).ToHashSet();
+        foreach (var s in living)
+        {
+            if (digging.Contains(s.Id) || !mines(s.Id))
+                continue;
+            var origin = map.GetCell(s.Column, s.Row);
+            var vein = Ring(map, s, DemoKnowledge.TempOreRange)
+                .Where(c => (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true) && !claimed.Contains(new DemoCellRef(c.Column, c.Row)))
+                .OrderBy(c => DemoWorldSites.HexDistance(origin, c)).ThenBy(c => c.Row).ThenBy(c => c.Column).FirstOrDefault();
+            if (vein is null)
+                continue;
+            var at = new DemoCellRef(vein.Column, vein.Row);
+            claimed.Add(at);
+            digging.Add(s.Id);
+            var id = nextEventId++;
+            events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name, DemoSettlementEventKind.MiningBegan, CellNumber(map, at),
+                $"開始在 ({at.Column},{at.Row}) 的礦脈採礦（約三十年後挖空）", EventId: id));
+            spells.Add(new DemoEnvironmentSpell(DemoSettlementEventKind.MiningBegan, s.Id, week, week + TempMiningWeeks, id, ImmutableList.Create(at)));
+        }
+        return events;
+    }
 
     private static ulong Draw(RngRegistry rng, int year, int k)
         => EntityLocalRandom.Create(rng, EntityId.From(2UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 16 + (ulong)k);
@@ -83,6 +218,8 @@ public static class DemoEnvironment
                 p = Math.Min(p, TempHeatwaveSourcePercent);
             if (spell.Kind == DemoSettlementEventKind.Wildfire && source.Kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage)
                 p = Math.Min(p, TempWildfireSourcePercent); // 第 08-13 章：燒過的草原也一樣
+            if (spell.Kind == DemoSettlementEventKind.Logging && source.Kind == DemoCatchmentSourceKind.Forest)
+                p = Math.Min(p, TempLoggedSourcePercent); // 第 08-16 章第 14 節：砍過的森林
         }
         return p;
     }
@@ -98,21 +235,32 @@ public static class DemoEnvironment
     /// 事件編號從 <paramref name="nextEventId"/> 起。
     /// </summary>
     public static (DemoWildlifeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(DemoWildlifeState state, int week, TimeSpan worldTime,
-        DemoEra era, DemoHexWorld map, DemoWorldSites sites, IEnumerable<int> livingIds, RngRegistry rng, long nextEventId)
+        DemoEra era, DemoHexWorld map, DemoWorldSites sites, IEnumerable<int> livingIds, RngRegistry rng, long nextEventId,
+        Func<int, long>? residents = null, Func<int, bool>? logs = null, Func<int, bool>? mines = null, IReadOnlySet<DemoCellRef>? extraOre = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(map);
         var events = new List<DemoSettlementEvent>();
         var spells = state.Spells.ToList();
-        foreach (var spell in spells.Where(x => x.ToWeek == week).OrderBy(x => x.EventId))
+        foreach (var spell in spells.Where(x => x.ToWeek == week && x.Kind != DemoSettlementEventKind.Logging).OrderBy(x => x.EventId))
         {
             var s = sites.Settlements.First(x => x.Id == spell.SettlementId);
+            if (spell.Kind == DemoSettlementEventKind.MiningBegan)
+            {
+                // 第 08-16 章第 14 節：礦脈挖空（伐木長回不記事件——每年上百筆，只在地圖上看得到）。
+                var at = spell.Cells[0];
+                events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name, DemoSettlementEventKind.OreExhausted, CellNumber(map, at),
+                    $"({at.Column},{at.Row}) 的礦脈挖空了，只剩一座廢棄的礦坑", EventId: nextEventId++, CauseEventId: spell.EventId));
+                continue;
+            }
             events.Add(new DemoSettlementEvent(week, worldTime, s.Id, s.Name,
                 spell.Kind == DemoSettlementEventKind.Heatwave ? DemoSettlementEventKind.HeatwaveEnded : DemoSettlementEventKind.ForestRegrown,
                 spell.Cells.Count, spell.Kind == DemoSettlementEventKind.Heatwave ? "熱浪退去，草原與田地恢復" : "燒毀的森林與草原重新長出",
                 EventId: nextEventId++, CauseEventId: spell.EventId));
         }
         // 結束的環境狀態仍保留（存檔近期週報要依它重算來源帳；每世紀約二十筆，不清除）。
+        // 第 08-16 章第 14 節：伐木結束夠久的才移除；採礦一律保留（挖空的礦脈由它推得）。
+        spells.RemoveAll(x => x.Kind == DemoSettlementEventKind.Logging && x.ToWeek < week - TempLoggingPruneWeeks);
         var prey = state.Prey;
         if (era != DemoEra.Hope && week % DemoWildlife.TempYearWeeks == DemoDisasters.TempYearWeek && !state.Prey.IsDefaultOrEmpty)
         {
@@ -154,6 +302,9 @@ public static class DemoEnvironment
                     prey = p.ToImmutable();
                 }
             }
+            // 第 08-16 章第 14 節：伐木與採礦（事件接在熱浪、野火之後）。
+            if (residents is not null && logs is not null && mines is not null)
+                events.AddRange(AdvanceWorks(spells, week, worldTime, map, sites, living, residents, logs, mines, extraOre, rng, ref nextEventId));
         }
         return (state with { Prey = prey, Spells = spells.OrderBy(x => x.EventId).ToImmutableList() }, events);
     }

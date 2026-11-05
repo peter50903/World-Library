@@ -467,7 +467,7 @@ public static class DemoKnowledge
         DemoKnowledgeState state, DemoWeekReport report, DemoCohortDemography population, DemoWorldSites sites, long nextEventId,
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null,
-        IReadOnlyList<DemoWeekReport>? earlierWeeks = null)
+        IReadOnlyList<DemoWeekReport>? earlierWeeks = null, IReadOnlySet<DemoCellRef>? minedOut = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -533,7 +533,7 @@ public static class DemoKnowledge
                 map is not null && Around(map, settlement).Any(c => farmland.Contains(new DemoCellRef(c.Column, c.Row))),
                 neighbours.Count > 0,
                 reps.Count(r => r.Role == DemoRepresentativeRole.Shaman),
-                map is not null && NearOre(map, settlement, extraOre),
+                map is not null && NearOre(map, settlement, extraOre, minedOut),
                 near.Contains(DemoTerrain.Hills));
             var roles = reps.Select(r => r.Role).ToList();
             var practice = new Practice(
@@ -617,7 +617,9 @@ public static class DemoKnowledge
 
     /// <summary>聚落本格與六鄰格（地圖內）。</summary>
     /// <summary>第 06-3 章：聚落 <see cref="TempOreRange"/> 格內有礦脈。</summary>
-    public static bool NearOre(DemoHexWorld map, DemoSettlement settlement, IReadOnlySet<DemoCellRef>? extraOre = null)
+    /// 第 08-16 章第 14 節：挖空的礦脈（<paramref name="minedOut"/>）不算。
+    public static bool NearOre(DemoHexWorld map, DemoSettlement settlement, IReadOnlySet<DemoCellRef>? extraOre = null,
+        IReadOnlySet<DemoCellRef>? minedOut = null)
     {
         ArgumentNullException.ThrowIfNull(map);
         var origin = map.GetCell(settlement.Column, settlement.Row);
@@ -625,7 +627,8 @@ public static class DemoKnowledge
         for (var dq = -TempOreRange; dq <= TempOreRange; dq++)
             for (var dr = Math.Max(-TempOreRange, -dq - TempOreRange); dr <= Math.Min(TempOreRange, -dq + TempOreRange); dr++)
                 if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c
-                    && (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true)) // 第 12-1 章：含隕石留下的礦脈
+                    && (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true) // 第 12-1 章：含隕石留下的礦脈
+                    && minedOut?.Contains(new DemoCellRef(c.Column, c.Row)) != true)
                     return true;
         return false;
     }

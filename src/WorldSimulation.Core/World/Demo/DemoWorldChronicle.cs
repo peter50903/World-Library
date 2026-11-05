@@ -156,6 +156,12 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Disaster, e.EventId,
                         Name(e.SettlementId), T(" 附近的" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.MiningBegan:
+                case DemoSettlementEventKind.OreExhausted:
+                    // 第 08-16 章第 14 節：採礦的開始與挖空是一般事件（伐木只在地圖上看得到，不進編年史）。
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Farmland, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.DungeonAppeared:
                     // 第 12-1 章 C4：地下城出現是重大事件。
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
