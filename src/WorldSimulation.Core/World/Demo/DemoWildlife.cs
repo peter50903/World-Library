@@ -94,9 +94,8 @@ public static class DemoWildlife
     {
         var origin = map.GetCell(s.Column, s.Row);
         yield return origin;
-        foreach (var d in DemoRouteNetwork.Directions)
-            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c)
-                yield return c;
+        foreach (var c in map.Neighbors(origin))
+            yield return c;
     }
 
     /// <summary>聚落附近獵物的程度：0＝稀少、1＝普通、2＝豐富（顯示用）。</summary>
@@ -190,10 +189,9 @@ public static class DemoWildlife
             {
                 if (overflow[i] == 0) continue;
                 var c = cells[i];
-                foreach (var d in DemoRouteNetwork.Directions)
+                foreach (var n in map.Neighbors(c))
                 {
                     if (overflow[i] == 0) break;
-                    if (map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is not { } n) continue;
                     var j = Index(map, n.Column, n.Row);
                     var room = capOf(n) - counts[j];
                     if (room <= 0) continue;

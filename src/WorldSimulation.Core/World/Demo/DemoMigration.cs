@@ -165,14 +165,7 @@ public static class DemoMigrationNews
 /// </summary>
 public static class DemoMigrationRoutes
 {
-    // 軸向座標的六個方向（固定順序 = 決定性）。
-    private static readonly (int Dq, int Dr)[] Directions =
-    {
-        (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
-    };
-
-    /// <summary>六個軸向方向（固定順序）。</summary>
-    internal static IReadOnlyList<(int Dq, int Dr)> AxialDirections => Directions;
+    // 第 08-18a 章：鄰格與距離改由地圖物件提供（DemoHexWorld.Neighbors／Distance）。
 
     /// <summary>TEMP odd-r 偏移座標→軸向座標（與 DemoHexWorld 相同的換算）。</summary>
     public static (int Q, int R) ToAxial(DemoCellRef cell)
@@ -181,11 +174,7 @@ public static class DemoMigrationRoutes
     /// <summary>兩格是否為六角格鄰格（不含同一格）。</summary>
     public static bool AreAdjacent(DemoCellRef a, DemoCellRef b)
     {
-        var (aq, ar) = ToAxial(a);
-        var (bq, br) = ToAxial(b);
-        var dq = bq - aq;
-        var dr = br - ar;
-        return Directions.Contains((dq, dr));
+        return DemoHexWorld.Distance(a, b) == 1;
     }
 
     /// <summary>
@@ -227,8 +216,7 @@ public static class DemoMigrationRoutes
         // 第 07-1 章 c 節：建圖時預先算好（原本每次掃全圖）；地圖外的格一律沒有水源。
         if (map.Contains(cell.Column, cell.Row))
             return map.HasWaterAccess(cell);
-        var (q, r) = ToAxial(cell);
-        return map.Cells.Any(c => c.Terrain == DemoTerrain.Water && Directions.Contains((c.AxialQ - q, c.AxialR - r)));
+        return map.Cells.Any(c => c.Terrain == DemoTerrain.Water && DemoHexWorld.Distance(new DemoCellRef(c.Column, c.Row), cell) == 1);
     }
 
     /// <summary>
@@ -282,10 +270,8 @@ public static class DemoMigrationRoutes
 
             if (depth[here] == maxSteps)
                 continue;
-            foreach (var (dq, dr) in Directions)
+            foreach (var next in map.Neighbors(cell))
             {
-                if (map.AtAxial(cell.AxialQ + dq, cell.AxialR + dr) is not { } next)
-                    continue;
                 var key = new DemoCellRef(next.Column, next.Row);
                 // 第 06 章 a 節：只沿陸路路線段（野地／道路／橋／渡口）走；相鄰但沒有路線段＝不可通行。
                 if (previous.ContainsKey(key) || !map.Routes.IsLandPassable(here, key))

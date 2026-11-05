@@ -81,10 +81,8 @@ public static class DemoHexFoodCatchment
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(target);
-        var dq = origin.AxialQ - target.AxialQ;
-        var dr = origin.AxialR - target.AxialR;
-        var hexDistance = Math.Max(Math.Abs(dq), Math.Max(Math.Abs(dr), Math.Abs(dq + dr)));
-        return hexDistance == 1 || (includeOrigin && hexDistance == 0);
+        var distance = DemoHexWorld.Distance(origin, target);
+        return distance == 1 || (includeOrigin && distance == 0);
     }
 
     /// <summary>Forest: self plus neighbours (including forest or grassland);
@@ -110,8 +108,7 @@ public static class DemoHexFoodCatchment
     {
         var origin = map.GetCell(source.Column, source.Row);
         // 第 07-1 章 c 節：只看本格與六個鄰格（原本逐格掃全圖，結果相同）。
-        var nearby = DemoRouteNetwork.Directions.Select(d => map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr))
-            .Where(c => c is not null).Select(c => c!).Prepend(origin);
+        var nearby = map.Neighbors(origin).Prepend(origin);
         return Array.AsReadOnly(nearby.Where(c =>
             c.Terrain != DemoTerrain.Water
             && IsInReach(origin, c,
@@ -173,8 +170,8 @@ public static class DemoHexFoodCatchment
             var found = new List<DemoCatchmentFoodClaim>(4);
             if (DemoCatchmentSourceKinds.IncludesOrigin(s.Kind) && claimAt.TryGetValue((origin.Column, origin.Row), out var self))
                 found.Add(self);
-            foreach (var d in DemoRouteNetwork.Directions)
-                if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } n && claimAt.TryGetValue((n.Column, n.Row), out var c))
+            foreach (var n in map.Neighbors(origin))
+                if (claimAt.TryGetValue((n.Column, n.Row), out var c))
                     found.Add(c);
             return found.OrderBy(c => c.SettlementId).ToArray();
         });

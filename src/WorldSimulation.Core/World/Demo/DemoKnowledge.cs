@@ -236,11 +236,7 @@ public static class DemoKnowledge
     public static int Distance(DemoHexWorld map, DemoSettlement a, DemoSettlement b)
     {
         ArgumentNullException.ThrowIfNull(map);
-        var x = map.GetCell(a.Column, a.Row);
-        var y = map.GetCell(b.Column, b.Row);
-        var dq = x.AxialQ - y.AxialQ;
-        var dr = x.AxialR - y.AxialR;
-        return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
+        return DemoHexWorld.Distance(map.GetCell(a.Column, a.Row), map.GetCell(b.Column, b.Row));
     }
 
     public static long ThresholdOf(DemoTechnology technology) => checked(technology.Node.ResearchTimeBase * TempResearchScale);
@@ -319,8 +315,8 @@ public static class DemoKnowledge
         var nearby = new List<DemoSettlement>(2);
         if (sites.SettlementAt(origin.Column, origin.Row) is { } own)
             nearby.Add(own);
-        foreach (var d in DemoRouteNetwork.Directions)
-            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c && sites.SettlementAt(c.Column, c.Row) is { } s)
+        foreach (var c in map.Neighbors(origin))
+            if (sites.SettlementAt(c.Column, c.Row) is { } s)
                 nearby.Add(s);
         if (nearby.Count == 0)
             return 0;
@@ -501,10 +497,9 @@ public static class DemoKnowledge
         {
             var found = new List<DemoSettlement>();
             var origin = map!.GetCell(settlement.Column, settlement.Row);
-            for (var dq = -TempDiffusionRange; dq <= TempDiffusionRange; dq++)
-                for (var dr = Math.Max(-TempDiffusionRange, -dq - TempDiffusionRange); dr <= Math.Min(TempDiffusionRange, -dq + TempDiffusionRange); dr++)
-                    if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c && livingAt.TryGetValue((c.Column, c.Row), out var here))
-                        found.AddRange(here.Where(o => o.Id != settlement.Id));
+            foreach (var c in map.Within(origin, TempDiffusionRange))
+                if (livingAt.TryGetValue((c.Column, c.Row), out var here))
+                    found.AddRange(here.Where(o => o.Id != settlement.Id));
             return found;
         }
         DemoPerf.Mark("知識：準備");
@@ -624,12 +619,10 @@ public static class DemoKnowledge
         ArgumentNullException.ThrowIfNull(map);
         var origin = map.GetCell(settlement.Column, settlement.Row);
         // 第 08-13 章第 5 節：只看範圍內的格（原本掃全圖；結果相同）。
-        for (var dq = -TempOreRange; dq <= TempOreRange; dq++)
-            for (var dr = Math.Max(-TempOreRange, -dq - TempOreRange); dr <= Math.Min(TempOreRange, -dq + TempOreRange); dr++)
-                if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c
-                    && (c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true) // 第 12-1 章：含隕石留下的礦脈
-                    && minedOut?.Contains(new DemoCellRef(c.Column, c.Row)) != true)
-                    return true;
+        foreach (var c in map.Within(origin, TempOreRange))
+            if ((c.Ore || extraOre?.Contains(new DemoCellRef(c.Column, c.Row)) == true) // 第 12-1 章：含隕石留下的礦脈
+                && minedOut?.Contains(new DemoCellRef(c.Column, c.Row)) != true)
+                return true;
         return false;
     }
 
@@ -637,9 +630,8 @@ public static class DemoKnowledge
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);
         yield return origin;
-        foreach (var d in DemoRouteNetwork.Directions)
-            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } cell)
-                yield return cell;
+        foreach (var cell in map.Neighbors(origin))
+            yield return cell;
     }
 
     /// <summary>第 08-6 章 d 節：聚落本格或六鄰格有森林（木工的從業條件）。</summary>

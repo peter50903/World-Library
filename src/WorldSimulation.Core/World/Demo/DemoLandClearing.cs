@@ -95,8 +95,8 @@ public static class DemoLandClearing
     private static IEnumerable<DemoSettlement> Neighbours(DemoHexWorld map, DemoWorldSites sites, DemoCellRef cell)
     {
         var origin = map.GetCell(cell.Column, cell.Row);
-        foreach (var d in DemoRouteNetwork.Directions)
-            if (map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr) is { } c && sites.SettlementAt(c.Column, c.Row) is { } s)
+        foreach (var c in map.Neighbors(origin))
+            if (sites.SettlementAt(c.Column, c.Row) is { } s)
                 yield return s;
     }
 
@@ -105,10 +105,9 @@ public static class DemoLandClearing
         DemoLandDevelopmentMap land, DemoHexWorld map, DemoWorldSites sites, DemoSettlement settlement, ISet<DemoCellRef> reserved)
     {
         var origin = map.GetCell(settlement.Column, settlement.Row);
-        foreach (var d in DemoRouteNetwork.Directions)
+        foreach (var c in map.Neighbors(origin))
         {
-            var c = map.AtAxial(origin.AxialQ + d.Dq, origin.AxialR + d.Dr);
-            if (c is null || c.Terrain != DemoTerrain.Grassland)
+            if (c.Terrain != DemoTerrain.Grassland)
                 continue;
             var cell = new DemoCellRef(c.Column, c.Row);
             if (sites.SettlementAt(c.Column, c.Row) is { IsRuin: false } || reserved.Contains(cell)

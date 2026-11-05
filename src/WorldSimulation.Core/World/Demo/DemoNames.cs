@@ -62,9 +62,7 @@ public sealed class DemoNames
     private static IReadOnlyList<string> SuffixFor(DemoHexWorld map, DemoSettlement settlement)
     {
         var cell = map.GetCell(settlement.Column, settlement.Row);
-        var neighbours = DemoRouteNetwork.Directions
-            .Select(d => map.AtAxial(cell.AxialQ + d.Dq, cell.AxialR + d.Dr))
-            .Where(c => c is not null).Select(c => c!).ToList();
+        var neighbours = map.Neighbors(cell);
         if (neighbours.Any(c => c.Sea)) return S.CoastSuffix;
         if (neighbours.Any(c => c.MainWaterway)) return S.RiverSuffix;
         return cell.Terrain == DemoTerrain.Forest ? S.ForestSuffix : S.GrasslandSuffix;
