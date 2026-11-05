@@ -15,7 +15,7 @@ public partial class DemoHexMap
     public readonly record struct Lot(int X, int Y, int W, int H, Building Kind);
 
     /// <summary>一個聚落的版面。<see cref="Wall"/>＝城牆或木柵圍住的方格範圍（沒有＝null）。</summary>
-    public sealed record Layout(int SettlementId, Rect2I Plaza, IReadOnlyList<Vector2I> Roads, IReadOnlyList<Lot> Lots, Rect2I? Wall, bool StoneWall,
+    public sealed record SettlementPlan(int SettlementId, Rect2I Plaza, IReadOnlyList<Vector2I> Roads, IReadOnlyList<Lot> Lots, Rect2I? Wall, bool StoneWall,
         IReadOnlyList<Vector2I> Gates);
 
     /// <summary>【TEMP】廣場邊長、道路長度（方格）。</summary>
@@ -45,7 +45,7 @@ public partial class DemoHexMap
         _ => (3, 2)
     };
 
-    private readonly Dictionary<int, Layout> _layouts = new();
+    private readonly Dictionary<int, SettlementPlan> _layouts = new();
     private readonly Dictionary<int, long> _layoutSignatures = new();
     private Dictionary<int, byte> _ground = new();
     private (object?, object?, object?, object?, object?, object?, object?) _layoutKey;
@@ -142,7 +142,7 @@ public partial class DemoHexMap
     private bool IsLand(int cell) => World!.Cells[cell].Terrain != DemoTerrain.Water;
 
     /// <summary>可以蓋東西的方格：屬於這個聚落的佔格、是陸地、不是田、還沒被別的聚落用掉。</summary>
-    private Layout ComputeLayout(DemoSettlement site)
+    private SettlementPlan ComputeLayout(DemoSettlement site)
     {
         var surface = _surface!;
         var (people, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
@@ -297,7 +297,7 @@ public partial class DemoHexMap
                 if (road.X == box.Position.X || road.X == box.End.X - 1 || road.Y == box.Position.Y || road.Y == box.End.Y - 1)
                     gates.Add(road);
         }
-        return new Layout(site.Id, plaza, roads, lots, wall, tier >= DemoSettlementTier.City, gates);
+        return new SettlementPlan(site.Id, plaza, roads, lots, wall, tier >= DemoSettlementTier.City, gates);
     }
 
     private static float LayoutHash(int a, int b, int c)
@@ -387,7 +387,7 @@ public partial class DemoHexMap
     /// 第 08-17 章第 3 節：城牆——上下兩側畫正面（素材橫向重複或程式畫的牆面與垛口），左右兩側只畫牆頂（一條窄帶），
     /// 四角與城門畫塔或門柱。上側與左右在建築之前畫（在後面），下側在建築之後畫（在前面）。
     /// </summary>
-    private void AddWall(List<(float Y, Action Draw)> items, Layout layout, Rect2I wall, Func<float, float, Vector2> screen, float radius)
+    private void AddWall(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius; // 一個圖像素的畫面大小
         var stone = layout.StoneWall;
