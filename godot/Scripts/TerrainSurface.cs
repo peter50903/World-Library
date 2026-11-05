@@ -3,13 +3,12 @@ using Godot;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// 試玩回饋 2026-11-04 之 3、5、7（森林破碎、地圖模糊、參考 WorldBox）：地表改成 WorldBox 式的像素地圖。
-/// 整張地圖預先烤成一張圖（每格半徑 <see cref="TempTexelsPerRadius"/> 個像素），放大時最近鄰取樣——邊緣清楚、不模糊；
-/// 畫面上每幀只貼這一張圖（原本每個螢幕像素都跑一次著色器）。
-/// 第 08-18b 章：每格 6×6 個方格、沿格邊切開（方格世界，不扭曲）；
-/// 顏色是固定的小調色盤（每種地形 2～3 個深淺，依位置雜訊挑），海依離岸距離分深淺、海邊一圈沙灘；
-/// 森林＝深綠底色＋一棵棵樹疊上去，丘陵＝底色＋小山頭，田地＝一塊塊田畦，開墾中依開發度從草地→泥土→田畦。
-/// 天災疊層（火、焦土、乾旱、洪水、礦脈）也烤進圖裡；只有改變的格重畫。只影響畫面；格的歸屬、點選、規則依方格（第 08-18a 章）。
+/// 第 08-18b 章：方格世界的像素地表（WorldBox 式，像素密度約為 WorldBox 的兩倍）。
+/// 一個規則格＝6×6 個畫面方格、每方格 16×16 圖像素（一格 96×96）；沿格邊切開、沒有扭曲。
+/// 自然交界（草原、森林、丘陵、海）的邊上可有一方格的參差（固定雜湊），只是裝飾，格的歸屬、點選仍依規則格。
+/// 生態區（溫帶、花原、乾草原、針葉林、紅葉林）只改畫面：同一種規則地形在不同生態區有不同的底色與樹。
+/// 效能：近景層依畫面範圍逐塊（512×512）烤圖、最近用過的塊留在快取；區域層與還沒烤好的塊用四分之一解析度的縮圖。
+/// 只影響畫面，不抽世界亂數、不存檔。
 /// </summary>
 public partial class TerrainSurface : Control
 {
@@ -22,36 +21,70 @@ public partial class TerrainSurface : Control
         Logged = 12, HillsMining = 13, MinePit = 14
     }
 
-    /// <summary>【TEMP】每格半徑幾個圖像素；地塊交界的扭曲幅度（格半徑的倍數）。</summary>
-    public const int TempTexelsPerRadius = 24;
+    /// <summary>【TEMP】第 08-18b 章：每格半徑幾個圖像素（一格邊長＝2 個半徑＝96 圖像素）。</summary>
+    public const int TempTexelsPerRadius = 48;
 
-    /// <summary>程式畫的底色與樹（素材到之前）每個「大像素」佔幾個圖像素。試玩回饋 2026-11-04：像素太低、放大沒細節——
-    /// 解析度由 10 提高到 24，像素零件素材以實際像素疊上；程式畫的部分維持原本的方塊大小。</summary>
-    private const int K = TempTexelsPerRadius / 10;
+    /// <summary>第四批像素零件與程式畫的建築的像素密度（每格半徑 24 圖像素）；疊進新地表時放大兩倍。</summary>
+    public const int TempArtTexelsPerRadius = 24;
 
-    /// <summary>【TEMP】圖分塊上傳（每塊邊長）：只有改變的塊重新上傳。</summary>
+    private const int ArtScale = TempTexelsPerRadius / TempArtTexelsPerRadius;
+
+    /// <summary>
+    /// 第 08-18b 章第 1 節：畫面方格的邊長（圖像素）。一個規則格＝6×6 方格；
+    /// 方格整塊屬於某一格（沿格邊切開），田地、房屋、道路對齊方格。
+    /// </summary>
+    public const int TempTile = 16;
+
+    /// <summary>一格幾個方格（每邊）。</summary>
+    public const int TilesPerCell = 2 * TempTexelsPerRadius / TempTile;
+
+    /// <summary>程式畫的樹、山頭每個「大像素」佔幾個圖像素。</summary>
+    private const int K = 4;
+
+    /// <summary>【TEMP】烤圖塊邊長、快取上限、每幀最多烤幾塊；格半徑至少幾像素才逐塊烤（以下只畫縮圖）；縮圖倍率。</summary>
     private const int TempChunk = 512;
+    private const int TempChunkCache = 64;
+    private const int TempChunksPerFrame = 4;
+    public const float TempChunkMinRadius = 24f;
+    private const int TempThumb = 4;
 
-    /// <summary>第 08-18a 章：方格世界，一格邊長＝2 個格半徑；地圖左上角（相對第 0 格中心，以格半徑為單位）。</summary>
-    private static readonly Vector2 Corner = new(-1f, -1f);
-
-    private ImageTexture?[,] _chunks = new ImageTexture?[0, 0];
-    private ImageTexture?[,] _detailChunks = new ImageTexture?[0, 0];
-    private bool[,] _dirty = new bool[0, 0];
-    private byte[]? _pixels;
-    private byte[]? _detail; // 試玩回饋 2026-11-05 之 6：草叢、野花、小石頭另一層，遠看不畫
-    private bool _toDetail;
+    /// <summary>【TEMP】自然交界的參差：邊上的方格有多少機率畫成隔壁格的地形。</summary>
+    private const float TempJitterChance = 0.35f;
 
     /// <summary>【TEMP】細節層（草叢、野花、小石頭）在格半徑至少幾像素時才畫；整體調色（飽和度、亮度倍率）。</summary>
     public const float TempDetailMinRadius = 26f;
     public const float TempSaturation = 0.78f;
     public const float TempBrightness = 0.9f;
+
+    /// <summary>地圖左上角（相對第 0 格中心，以格半徑為單位）。</summary>
+    private static readonly Vector2 Corner = new(-1f, -1f);
+
+    private sealed class Chunk
+    {
+        public ImageTexture? Base;
+        public ImageTexture? Detail;
+        public ulong Used;
+        public bool Dirty;
+    }
+
+    private readonly Dictionary<(int, int), Chunk> _chunks = new();
+    private ulong _frame;
+    private byte[] _buf = new byte[TempChunk * TempChunk * 4];
+    private byte[] _detailBuf = new byte[TempChunk * TempChunk * 4];
+    private int _bx, _by, _bw, _bh; // 正在烤的塊（圖像素範圍）
+    private bool _toDetail, _wroteDetail;
+
+    private ImageTexture? _thumb;
+    private byte[]? _thumbBytes;
+    private int _thumbW, _thumbH;
+
+    private byte[]? _codes;   // 目前每格四個位元組
     private byte[]? _uploaded;
-    private byte[]? _baked; // 上次烤圖時每格的四個位元組
-    private int[]? _owner; // 每個圖像素屬於哪一格（-1＝地圖外）
-    private byte[]? _seaDist; // 陸地像素離海幾格（最多 7）；水的像素離陸地幾格
-    private byte[]? _waterDist; // 陸地像素離任何水幾格
-    private int _columns, _rows, _width, _height;
+    private int[] _paint = Array.Empty<int>(); // 每方格畫成哪一格（參差後）
+    private byte[] _seaDist = Array.Empty<byte>(); // 陸地方格離海幾方格；水的方格離陸地幾方格
+    private byte[] _waterDist = Array.Empty<byte>(); // 陸地方格離任何水幾方格
+    private byte[] _biome = Array.Empty<byte>(); // 每格的生態區
+    private int _columns, _rows, _width, _height, _tilesX, _tilesY;
     private Vector2 _origin;
     private float _radius;
 
@@ -64,6 +97,8 @@ public partial class TerrainSurface : Control
         ShowBehindParent = true;
     }
 
+    public override void _Ready() => Resized += QueueRedraw;
+
     /// <summary>每次地圖重畫時呼叫：<paramref name="codes"/> 每格四個位元組（地表代碼、天災疊層、疊層強度、開發度），
     /// 依「列×欄數＋欄」排列；同一個陣列不重複處理，只重畫改變的格。</summary>
     public void Show(byte[] codes, int columns, int rows, Vector2 origin, float radius, IReadOnlyDictionary<int, byte>? ground = null)
@@ -71,7 +106,7 @@ public partial class TerrainSurface : Control
         ground ??= NoGround;
         if (!ReferenceEquals(codes, _uploaded) || columns != _columns || rows != _rows || !ReferenceEquals(ground, _ground))
         {
-            Bake(codes, columns, rows, ground);
+            Update(codes, columns, rows, ground);
             _uploaded = codes;
         }
         _origin = origin;
@@ -90,149 +125,131 @@ public partial class TerrainSurface : Control
         QueueRedraw();
     }
 
-    public override void _Ready() => Resized += QueueRedraw;
-
     public override void _Draw()
     {
-        if (!Active)
+        if (!Active || _thumb is null)
             return;
+        _frame++;
         var scale = _radius / TempTexelsPerRadius;
         var topLeft = _origin + Corner * _radius;
-        var view = new Rect2(Vector2.Zero, Size);
-        for (var cy = 0; cy < _chunks.GetLength(1); cy++)
-            for (var cx = 0; cx < _chunks.GetLength(0); cx++)
+        DrawTextureRect(_thumb, new Rect2(topLeft, new Vector2(_width, _height) * scale), false);
+        if (_radius < TempChunkMinRadius)
+            return;
+        // 畫面範圍內的塊：有就畫，沒有（或過期）就烤，每幀最多烤幾塊，其餘下一幀再烤（先看到縮圖）。
+        var x0 = Math.Max(0, (int)((0f - topLeft.X) / scale) / TempChunk);
+        var y0 = Math.Max(0, (int)((0f - topLeft.Y) / scale) / TempChunk);
+        var x1 = Math.Min((_width - 1) / TempChunk, (int)((Size.X - topLeft.X) / scale) / TempChunk);
+        var y1 = Math.Min((_height - 1) / TempChunk, (int)((Size.Y - topLeft.Y) / scale) / TempChunk);
+        var budget = TempChunksPerFrame;
+        var pending = false;
+        for (var cy = y0; cy <= y1; cy++)
+            for (var cx = x0; cx <= x1; cx++)
             {
-                if (_chunks[cx, cy] is not { } chunk)
+                if (!_chunks.TryGetValue((cx, cy), out var chunk))
+                    _chunks[(cx, cy)] = chunk = new Chunk { Dirty = true };
+                chunk.Used = _frame;
+                if (chunk.Dirty)
+                {
+                    if (budget > 0)
+                    {
+                        budget--;
+                        BakeChunk(cx, cy, chunk);
+                    }
+                    else
+                        pending = true;
+                }
+                if (chunk.Base is not { } texture)
                     continue;
-                var rect = new Rect2(topLeft + new Vector2(cx, cy) * TempChunk * scale, chunk.GetSize() * scale);
-                if (!rect.Intersects(view))
-                    continue;
-                DrawTextureRect(chunk, rect, false);
-                if (_radius >= TempDetailMinRadius && _detailChunks[cx, cy] is { } detail)
+                var rect = new Rect2(topLeft + new Vector2(cx, cy) * TempChunk * scale, texture.GetSize() * scale);
+                DrawTextureRect(texture, rect, false);
+                if (_radius >= TempDetailMinRadius && chunk.Detail is { } detail)
                     DrawTextureRect(detail, rect, false);
             }
+        Evict();
+        if (pending)
+            CallDeferred(CanvasItem.MethodName.QueueRedraw);
     }
 
-    // ───────────── 選取：沿像素邊緣 ─────────────
+    /// <summary>快取超過上限時丟掉最久沒畫的塊。</summary>
+    private void Evict()
+    {
+        if (_chunks.Count <= TempChunkCache)
+            return;
+        foreach (var (key, chunk) in _chunks.OrderBy(c => c.Value.Used).Take(_chunks.Count - TempChunkCache).ToList())
+        {
+            if (chunk.Used == _frame)
+                break;
+            chunk.Base?.Dispose();
+            chunk.Detail?.Dispose();
+            _chunks.Remove(key);
+        }
+    }
 
-    private readonly Dictionary<int, Vector2[]> _outlines = new();
+    // ───────────── 選取與座標 ─────────────
 
-    /// <summary>螢幕位置落在哪一格（依地表實際的像素歸屬；地表沒畫或在地圖外回傳 -1）。</summary>
+    /// <summary>螢幕位置落在哪一格（地表沒畫或在地圖外回傳 -1）。</summary>
     public int CellAtScreen(Vector2 screen)
     {
-        if (!Active || _owner is null)
+        if (!Active || _columns == 0)
             return -1;
         var t = (screen - (_origin + Corner * _radius)) / (_radius / TempTexelsPerRadius);
-        var x = Mathf.FloorToInt(t.X);
-        var y = Mathf.FloorToInt(t.Y);
-        return x < 0 || y < 0 || x >= _width || y >= _height ? -1 : _owner[y * _width + x];
+        var column = Mathf.FloorToInt(t.X / (2 * TempTexelsPerRadius));
+        var row = Mathf.FloorToInt(t.Y / (2 * TempTexelsPerRadius));
+        return column < 0 || row < 0 || column >= _columns || row >= _rows ? -1 : row * _columns + column;
     }
 
-    /// <summary>試玩回饋 2026-11-04 之 4：選取框沿這一格實際的像素邊緣（成對的端點，螢幕座標），不再是扭曲的六邊形。</summary>
+    /// <summary>選取框：這一格的四條邊（成對的端點，螢幕座標）。</summary>
     public Vector2[] OutlineOf(int cell)
     {
-        if (!Active || _owner is null)
+        if (!Active || _columns == 0 || cell < 0 || cell >= _columns * _rows)
             return Array.Empty<Vector2>();
-        if (!_outlines.TryGetValue(cell, out var segments))
-            _outlines[cell] = segments = BuildOutline(cell);
-        var scale = _radius / TempTexelsPerRadius;
-        var topLeft = _origin + Corner * _radius;
-        var screen = new Vector2[segments.Length];
-        for (var i = 0; i < segments.Length; i++)
-            screen[i] = topLeft + segments[i] * scale;
-        return screen;
+        var center = _origin + new Vector2(cell % _columns, cell / _columns) * 2f * _radius;
+        var a = center + new Vector2(-_radius, -_radius);
+        var b = center + new Vector2(_radius, -_radius);
+        var c = center + new Vector2(_radius, _radius);
+        var d = center + new Vector2(-_radius, _radius);
+        return new[] { a, b, b, c, c, d, d, a };
     }
 
-    private Vector2[] BuildOutline(int cell)
-    {
-        var c = TexelOf(CenterOf(cell % _columns, cell / _columns));
-        var reach = TempTexelsPerRadius * 2;
-        int x0 = Math.Max(0, (int)c.X - reach), x1 = Math.Min(_width, (int)c.X + reach);
-        int y0 = Math.Max(0, (int)c.Y - reach), y1 = Math.Min(_height, (int)c.Y + reach);
-        bool Own(int x, int y) => x >= 0 && y >= 0 && x < _width && y < _height && _owner![y * _width + x] == cell;
-        var points = new List<Vector2>();
-        // 橫邊：每列把連續的邊接成一段；直邊同理。
-        for (var y = y0; y <= y1; y++)
-        {
-            var run = -1;
-            for (var x = x0; x <= x1; x++)
-            {
-                var edge = x < x1 && Own(x, y) != Own(x, y - 1);
-                if (edge && run < 0)
-                    run = x;
-                else if (!edge && run >= 0)
-                {
-                    points.Add(new Vector2(run, y));
-                    points.Add(new Vector2(x, y));
-                    run = -1;
-                }
-            }
-        }
-        for (var x = x0; x <= x1; x++)
-        {
-            var run = -1;
-            for (var y = y0; y <= y1; y++)
-            {
-                var edge = y < y1 && Own(x, y) != Own(x - 1, y);
-                if (edge && run < 0)
-                    run = y;
-                else if (!edge && run >= 0)
-                {
-                    points.Add(new Vector2(x, run));
-                    points.Add(new Vector2(x, y));
-                    run = -1;
-                }
-            }
-        }
-        return points.ToArray();
-    }
-
-    // ───────────── 第 08-17 章：方格與聚落地面 ─────────────
+    // ───────────── 方格與聚落地面 ─────────────
 
     private static readonly IReadOnlyDictionary<int, byte> NoGround = new Dictionary<int, byte>();
     private IReadOnlyDictionary<int, byte> _ground = NoGround; // 方格編號（列×方格欄數＋欄）→ 聚落地面種類
-    private bool _gridChanged = true;
 
     /// <summary>聚落地面種類（第 08-17 章第 4 節）。</summary>
     public const byte GroundPlazaDirt = 1, GroundPlazaStone = 2, GroundRoad = 3, GroundYard = 4, GroundCobble = 5, GroundStreet = 6;
 
     /// <summary>方格欄數、列數。</summary>
-    public int TilesX => (_width + TempTile - 1) / TempTile;
-    public int TilesY => (_height + TempTile - 1) / TempTile;
+    public int TilesX => _tilesX;
+    public int TilesY => _tilesY;
 
-    /// <summary>依地圖大小建好方格歸屬（不需要地表代碼；聚落版面要先知道方格屬於哪一格）。</summary>
+    /// <summary>依地圖大小準備好方格（聚落版面要先知道方格屬於哪一格）。</summary>
     public void EnsureGrid(int columns, int rows)
     {
-        if (_owner is not null && columns == _columns && rows == _rows)
+        if (columns == _columns && rows == _rows)
             return;
         _columns = columns;
         _rows = rows;
-        _width = columns * 2 * TempTexelsPerRadius; // 第 08-18b 章：一格 6×6 方格、每方格 8×8 圖像素
-        _height = rows * 2 * TempTexelsPerRadius;
-        BuildOwners();
-        _gridChanged = true;
+        _tilesX = columns * TilesPerCell;
+        _tilesY = rows * TilesPerCell;
+        _width = _tilesX * TempTile;
+        _height = _tilesY * TempTile;
+        _codes = null;
     }
 
     /// <summary>方格屬於哪一格（地圖外 -1）。</summary>
     public int TileOwner(int tx, int ty)
-    {
-        var x = tx * TempTile + TempTile / 2;
-        var y = ty * TempTile + TempTile / 2;
-        return _owner is null || tx < 0 || ty < 0 || x >= _width || y >= _height ? -1 : _owner[y * _width + x];
-    }
+        => tx < 0 || ty < 0 || tx >= _tilesX || ty >= _tilesY ? -1 : ty / TilesPerCell * _columns + tx / TilesPerCell;
 
-    /// <summary>格中心所在的方格。</summary>
+    /// <summary>格中心所在的方格（一格 6×6 方格，中心在第 3 列第 3 欄）。</summary>
     public static Vector2I TileOfCell(int column, int row)
-    {
-        var t = TexelOf(CenterOf(column, row));
-        return new Vector2I((int)t.X / TempTile, (int)t.Y / TempTile);
-    }
+        => new(column * TilesPerCell + TilesPerCell / 2, row * TilesPerCell + TilesPerCell / 2);
 
     /// <summary>圖像素座標在畫面上的位置（<paramref name="origin"/>＝第 0 格中心的畫面位置）。</summary>
     public static Vector2 TexelToScreen(Vector2 texel, Vector2 origin, float radius)
         => origin + Corner * radius + texel * (radius / TempTexelsPerRadius);
 
-    private int TileIndexOf(int x, int y) => y / TempTile * TilesX + x / TempTile;
+    private int TileIndexOf(int x, int y) => y / TempTile * _tilesX + x / TempTile;
 
     private Color GroundColor(byte kind, int x, int y)
     {
@@ -241,7 +258,7 @@ public partial class TerrainSurface : Control
         var iy = y % TempTile;
         return kind switch
         {
-            GroundPlazaStone => (x / 4 + y / 4) % 2 == 0 ? Paving[0] : Paving[1], // 石板廣場（4×4 小石板交錯）
+            GroundPlazaStone => (x / 8 + y / 8) % 2 == 0 ? Paving[0] : Paving[1], // 石板廣場（8×8 小石板交錯）
             GroundCobble => ix == 0 || iy == 0 ? Paving[2] : Pick(Paving, h * 0.66f), // 城內石子路
             GroundStreet => h < 0.15f ? Paving[2] : Paving[1],
             GroundRoad => h < 0.12f ? Soil[0] : Pick(RoadDirt, h), // 土路
@@ -254,154 +271,114 @@ public partial class TerrainSurface : Control
     private static readonly Color[] RoadDirt = { new("a8875a"), new("b39263") };
     private static readonly Color[] Yard = { new("9c7c52"), new("a6865a"), new("94754c") };
 
-    // ───────────── 烤圖 ─────────────
+    // ───────────── 更新：參差、離岸距離、生態區、縮圖 ─────────────
 
     private static bool IsWater(byte code) => code is (byte)Code.Sea or (byte)Code.River or (byte)Code.Shallow;
 
-    /// <summary>格中心（以格半徑為單位，原點＝第 0 格中心）。</summary>
-    private static Vector2 CenterOf(int column, int row) => new(2f * column, 2f * row);
+    /// <summary>可以參差的自然地形（河、人造的地、天災中的地不參差）。</summary>
+    private static bool Natural(byte code) => code is (byte)Code.Grassland or (byte)Code.Forest or (byte)Code.Hills or (byte)Code.HillsOre or (byte)Code.Sea or (byte)Code.DryGrass;
 
-    private void Bake(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
+    private void Update(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
         EnsureGrid(columns, rows);
-        var full = _pixels is null || _baked is null || _gridChanged;
+        var old = _codes;
         var oldGround = _ground;
         _ground = ground;
+        _codes = codes;
+        var full = old is null || old.Length != codes.Length || _thumb is null;
+        if (!full)
+            for (var i = 0; i < columns * rows && !full; i++)
+                full = IsWater(codes[i * 4]) != IsWater(old![i * 4]);
+        BuildPaint();
         if (full)
         {
-            _gridChanged = false;
-            _pixels = new byte[_width * _height * 4];
-            _detail = new byte[_width * _height * 4];
-            foreach (var old in _chunks)
-                old?.Dispose();
-            foreach (var old in _detailChunks)
-                old?.Dispose();
-            _chunks = new ImageTexture?[(_width + TempChunk - 1) / TempChunk, (_height + TempChunk - 1) / TempChunk];
-            _detailChunks = new ImageTexture?[_chunks.GetLength(0), _chunks.GetLength(1)];
-            _dirty = new bool[_chunks.GetLength(0), _chunks.GetLength(1)];
-            _outlines.Clear();
+            BuildDistances();
+            BuildBiomes();
+            foreach (var chunk in _chunks.Values)
+                chunk.Dirty = true;
+            BuildThumb(0, 0, _thumbW = _width / TempThumb, _thumbH = _height / TempThumb, rebuild: true);
+            return;
         }
-        // 水陸分布變了（換地圖）才重算離岸距離並整張重畫；平常只重畫改變的格與周圍。
-        var waterChanged = full;
-        if (!full)
-            for (var i = 0; i < columns * rows && !waterChanged; i++)
-                waterChanged = IsWater(codes[i * 4]) != IsWater(_baked![i * 4]);
-        var painted = waterChanged;
-        if (waterChanged)
+        // 只重畫改變的格（含四周一格：參差與樹冠會跨格）。
+        var changed = new HashSet<int>();
+        for (var i = 0; i < columns * rows; i++)
+            if (codes[i * 4] != old![i * 4] || codes[i * 4 + 1] != old[i * 4 + 1] || codes[i * 4 + 2] != old[i * 4 + 2] || codes[i * 4 + 3] != old[i * 4 + 3])
+                changed.Add(i);
+        if (!ReferenceEquals(oldGround, ground))
         {
-            BuildDistances(codes);
-            PaintRect(codes, 0, 0, _width, _height);
+            foreach (var (tile, kind) in ground)
+                if (!oldGround.TryGetValue(tile, out var was) || was != kind)
+                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+            foreach (var tile in oldGround.Keys)
+                if (!ground.ContainsKey(tile))
+                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+            changed.Remove(-1);
         }
-        else
+        if (changed.Count == 0)
+            return;
+        if (changed.Count > columns * rows / 4)
         {
-            var margin = TempTexelsPerRadius * 3; // 第 08-17 章：田區跨格，重畫範圍多留一塊田的寬度
-            var changed = new HashSet<int>();
-            for (var i = 0; i < columns * rows; i++)
-                if (codes[i * 4] != _baked![i * 4] || codes[i * 4 + 1] != _baked[i * 4 + 1]
-                    || codes[i * 4 + 2] != _baked[i * 4 + 2] || codes[i * 4 + 3] != _baked[i * 4 + 3])
-                    changed.Add(i);
-            // 第 08-17 章：聚落地面改變的方格，重畫它所屬的格。
-            if (!ReferenceEquals(oldGround, ground))
+            foreach (var chunk in _chunks.Values)
+                chunk.Dirty = true;
+            BuildThumb(0, 0, _thumbW, _thumbH, rebuild: false);
+            return;
+        }
+        var cell = 2 * TempTexelsPerRadius;
+        foreach (var i in changed)
+        {
+            var x0 = (i % columns - 1) * cell;
+            var y0 = (i / columns - 1) * cell;
+            var x1 = (i % columns + 2) * cell;
+            var y1 = (i / columns + 2) * cell;
+            for (var cy = Math.Max(0, y0 / TempChunk); cy <= Math.Min((_height - 1) / TempChunk, y1 / TempChunk); cy++)
+                for (var cx = Math.Max(0, x0 / TempChunk); cx <= Math.Min((_width - 1) / TempChunk, x1 / TempChunk); cx++)
+                    if (_chunks.TryGetValue((cx, cy), out var chunk))
+                        chunk.Dirty = true;
+            BuildThumb(Math.Max(0, x0 / TempThumb), Math.Max(0, y0 / TempThumb), Math.Min(_thumbW, x1 / TempThumb), Math.Min(_thumbH, y1 / TempThumb), rebuild: false);
+        }
+        _thumb!.Update(Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes!));
+    }
+
+    /// <summary>每個方格畫成哪一格：預設是自己的格；自然交界邊上的方格依固定雜湊畫成隔壁格（一方格以內的參差）。</summary>
+    private void BuildPaint()
+    {
+        var count = _tilesX * _tilesY;
+        if (_paint.Length != count)
+            _paint = new int[count];
+        var last = TilesPerCell - 1;
+        for (var ty = 0; ty < _tilesY; ty++)
+            for (var tx = 0; tx < _tilesX; tx++)
             {
-                foreach (var (tile, kind) in ground)
-                    if (!oldGround.TryGetValue(tile, out var was) || was != kind)
-                        changed.Add(TileOwner(tile % TilesX, tile / TilesX));
-                foreach (var tile in oldGround.Keys)
-                    if (!ground.ContainsKey(tile))
-                        changed.Add(TileOwner(tile % TilesX, tile / TilesX));
-                changed.Remove(-1);
-            }
-            if (changed.Count > TempFullRepaintCells)
-                PaintRect(codes, 0, 0, _width, _height); // 一次改太多格（例如剛讀檔）時整張重畫比逐格快
-            else
-                foreach (var i in changed.OrderBy(i => i))
+                var own = TileOwner(tx, ty);
+                var paint = own;
+                int lx = tx % TilesPerCell, ly = ty % TilesPerCell;
+                var (nx, ny) = lx == 0 ? (tx - 1, ty) : lx == last ? (tx + 1, ty) : ly == 0 ? (tx, ty - 1) : ly == last ? (tx, ty + 1) : (-1, -1);
+                if (nx >= 0 && TileOwner(nx, ny) is var other and >= 0 && other != own)
                 {
-                    var c = TexelOf(CenterOf(i % columns, i / columns));
-                    PaintRect(codes, (int)c.X - margin, (int)c.Y - margin, (int)c.X + margin, (int)c.Y + margin);
+                    var a = _codes![own * 4];
+                    var b = _codes[other * 4];
+                    if (a != b && Natural(a) && Natural(b) && Hash(tx, ty, 77) < TempJitterChance)
+                        paint = other;
                 }
-            painted = changed.Count > 0;
-        }
-        _baked = (byte[])codes.Clone();
-        if (painted)
-            Upload();
-    }
-
-    /// <summary>只把重畫過的塊重新上傳。</summary>
-    private void Upload()
-    {
-        for (var cy = 0; cy < _dirty.GetLength(1); cy++)
-            for (var cx = 0; cx < _dirty.GetLength(0); cx++)
-            {
-                if (!_dirty[cx, cy])
-                    continue;
-                _dirty[cx, cy] = false;
-                var x0 = cx * TempChunk;
-                var y0 = cy * TempChunk;
-                var w = Math.Min(TempChunk, _width - x0);
-                var h = Math.Min(TempChunk, _height - y0);
-                UploadChunk(_pixels!, _chunks, cx, cy, x0, y0, w, h);
-                UploadChunk(_detail!, _detailChunks, cx, cy, x0, y0, w, h);
+                _paint[ty * _tilesX + tx] = paint;
             }
     }
 
-    private void UploadChunk(byte[] source, ImageTexture?[,] chunks, int cx, int cy, int x0, int y0, int w, int h)
+    private byte PaintCode(int tile) => _codes![_paint[tile] * 4];
+
+    /// <summary>離岸距離（以方格為單位，四方向擴散，最多 15）。</summary>
+    private void BuildDistances()
     {
-        var bytes = new byte[w * h * 4];
-        for (var y = 0; y < h; y++)
-            Array.Copy(source, ((y0 + y) * _width + x0) * 4, bytes, y * w * 4, w * 4);
-        using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
-        if (chunks[cx, cy] is { } chunk)
-            chunk.Update(image);
-        else
-            chunks[cx, cy] = ImageTexture.CreateFromImage(image);
-    }
-
-    private static Vector2 TexelOf(Vector2 world) => (world - Corner) * TempTexelsPerRadius;
-
-    private Vector2 WorldOf(int x, int y) => Corner + new Vector2(x + 0.5f, y + 0.5f) / TempTexelsPerRadius;
-
-    /// <summary>點落在哪一格（第 08-18a 章方格：沿格邊切開，沒有扭曲）；地圖外回傳 -1。</summary>
-    private int CellAt(Vector2 p)
-    {
-        var column = Mathf.FloorToInt((p.X + 1f) / 2f);
-        var row = Mathf.FloorToInt((p.Y + 1f) / 2f);
-        return column < 0 || column >= _columns || row < 0 || row >= _rows ? -1 : row * _columns + column;
-    }
-
-    /// <summary>
-    /// 第 08-18b 章第 1 節：畫面方格（正方形小格）的邊長（圖像素）。一個規則格＝6×6 方格；
-    /// 方格整塊屬於某一格（沿格邊切開，沒有扭曲），田地、房屋、道路對齊方格。
-    /// </summary>
-    public const int TempTile = 8;
-
-    private void BuildOwners()
-    {
-        _owner = new int[_width * _height];
-        for (var ty = 0; ty * TempTile < _height; ty++)
-            for (var tx = 0; tx * TempTile < _width; tx++)
-            {
-                // 第 08-18b 章：方格中心所在的規則格（不扭曲；自然交界的參差之後另做成裝飾，不改歸屬）。
-                var owner = CellAt(WorldOf(tx * TempTile + TempTile / 2, ty * TempTile + TempTile / 2));
-                for (var y = ty * TempTile; y < Math.Min(_height, (ty + 1) * TempTile); y++)
-                    for (var x = tx * TempTile; x < Math.Min(_width, (tx + 1) * TempTile); x++)
-                        _owner[y * _width + x] = owner;
-            }
-    }
-
-    /// <summary>離岸距離（四方向逐格擴散，最多 7）：陸地離海、陸地離水、水離陸地。</summary>
-    private void BuildDistances(byte[] codes)
-    {
-        var count = _width * _height;
+        var count = _tilesX * _tilesY;
         _seaDist = new byte[count];
         _waterDist = new byte[count];
         var landDist = new byte[count];
-        Spread(_seaDist, i => _owner![i] >= 0 && codes[_owner[i] * 4] == (byte)Code.Sea);
-        Spread(_waterDist, i => _owner![i] >= 0 && IsWater(codes[_owner[i] * 4]));
-        Spread(landDist, i => _owner![i] >= 0 && !IsWater(codes[_owner[i] * 4]));
-        // 水的像素存離陸地的距離（海的深淺）。
-        for (var i = 0; i < count; i++)
-            if (_owner![i] >= 0 && IsWater(codes[_owner[i] * 4]))
-                _seaDist[i] = landDist[i];
+        Spread(_seaDist, t => PaintCode(t) == (byte)Code.Sea);
+        Spread(_waterDist, t => IsWater(PaintCode(t)));
+        Spread(landDist, t => !IsWater(PaintCode(t)));
+        for (var t = 0; t < count; t++)
+            if (IsWater(PaintCode(t)))
+                _seaDist[t] = landDist[t]; // 水的方格存離陸地的距離（海的深淺）
     }
 
     private void Spread(byte[] dist, Func<int, bool> source)
@@ -419,7 +396,7 @@ public partial class TerrainSurface : Control
             var i = queue.Dequeue();
             if (dist[i] >= 14)
                 continue;
-            var x = i % _width;
+            var x = i % _tilesX;
             void Try(int n)
             {
                 if (dist[n] > dist[i] + 1)
@@ -429,100 +406,219 @@ public partial class TerrainSurface : Control
                 }
             }
             if (x > 0) Try(i - 1);
-            if (x < _width - 1) Try(i + 1);
-            if (i >= _width) Try(i - _width);
-            if (i < dist.Length - _width) Try(i + _width);
+            if (x < _tilesX - 1) Try(i + 1);
+            if (i >= _tilesX) Try(i - _tilesX);
+            if (i < dist.Length - _tilesX) Try(i + _tilesX);
         }
     }
 
-    /// <summary>【TEMP】一次改變超過這麼多格就整張重畫。</summary>
-    private const int TempFullRepaintCells = 400;
+    // ───────────── 生態區（只改畫面） ─────────────
 
-    /// <summary>重畫一塊矩形：先畫底色，再把中心在附近的格的樹、山頭疊上去（裁在矩形內，結果與整張重畫相同）。</summary>
-    private void PaintRect(byte[] codes, int x0, int y0, int x1, int y1)
+    private enum Biome : byte { Temperate = 0, Meadow = 1, Steppe = 2, Conifer = 3, Autumn = 4 }
+
+    /// <summary>【TEMP】生態區：以約 6 格為一片的平滑雜訊分區；草原離水 3 格以上、雜訊低的是乾草原，雜訊高的是花原；
+    /// 森林雜訊低的是針葉林、高的是紅葉林，其餘溫帶。</summary>
+    private void BuildBiomes()
     {
-        x0 = Math.Max(0, x0);
-        y0 = Math.Max(0, y0);
-        x1 = Math.Min(_width, x1);
-        y1 = Math.Min(_height, y1);
-        if (x0 >= x1 || y0 >= y1)
-            return;
-        for (var cy = y0 / TempChunk; cy <= (y1 - 1) / TempChunk; cy++)
-            for (var cx = x0 / TempChunk; cx <= (x1 - 1) / TempChunk; cx++)
-                _dirty[cx, cy] = true;
-        for (var y = y0; y < y1; y++)
-        {
-            Array.Clear(_detail!, (y * _width + x0) * 4, (x1 - x0) * 4);
-            for (var x = x0; x < x1; x++)
-                Put(x, y, Ground(codes, x, y));
-        }
-        var reach = TempTexelsPerRadius * 2;
+        _biome = new byte[_columns * _rows];
         for (var row = 0; row < _rows; row++)
-            for (var column = 0; column < _columns; column++)
+            for (var col = 0; col < _columns; col++)
             {
-                var c = TexelOf(CenterOf(column, row));
-                if (c.X < x0 - reach || c.X > x1 + reach || c.Y < y0 - reach || c.Y > y1 + reach)
-                    continue;
-                StampCell(codes, row * _columns + column, c, new Rect2I(x0, y0, x1 - x0, y1 - y0));
+                var i = row * _columns + col;
+                var center = TileOfCell(col, row);
+                var dry = _waterDist[center.Y * _tilesX + center.X] >= 3 * TilesPerCell / 2;
+                var grass = Noise(col / 6f, row / 6f, 71);
+                var wood = Noise(col / 5f, row / 5f, 83);
+                _biome[i] = (byte)(_codes![i * 4] switch
+                {
+                    (byte)Code.Forest or (byte)Code.Logged => wood < 0.36f ? Biome.Conifer : wood > 0.68f ? Biome.Autumn : Biome.Temperate,
+                    _ => grass < 0.36f && dry ? Biome.Steppe : grass > 0.66f ? Biome.Meadow : Biome.Temperate
+                });
             }
+    }
+
+    private Biome BiomeOfTile(int tile) => (Biome)_biome[_paint[tile]];
+
+    // ───────────── 縮圖（區域層、還沒烤好的塊） ─────────────
+
+    private void BuildThumb(int u0, int v0, int u1, int v1, bool rebuild)
+    {
+        if (rebuild || _thumbBytes is null || _thumbBytes.Length != _thumbW * _thumbH * 4)
+            _thumbBytes = new byte[_thumbW * _thumbH * 4];
+        for (var v = v0; v < v1; v++)
+            for (var u = u0; u < u1; u++)
+            {
+                var x = u * TempThumb + TempThumb / 2;
+                var y = v * TempThumb + TempThumb / 2;
+                var c = Adjust(Ground(x, y));
+                // 遠看時樹與山頭只剩色點（WorldBox 的遠景做法）：方格中央 2×2 縮圖像素畫成樹冠或岩石色。
+                var tile = TileIndexOf(x, y);
+                int lu = u % (TempTile / TempThumb), lv = v % (TempTile / TempThumb);
+                if (lu is 1 or 2 && lv is 1 or 2 && (_ground.Count == 0 || !_ground.ContainsKey(tile)))
+                {
+                    if (TreeAt(tile % _tilesX, tile / _tilesX) is { } tree)
+                        c = Adjust(tree.Shades[1]);
+                    else if (PeakAt(tile % _tilesX, tile / _tilesX) > 0)
+                        c = Adjust(RockShades[1]);
+                }
+                var o = (v * _thumbW + u) * 4;
+                _thumbBytes[o] = (byte)(c.R * 255f);
+                _thumbBytes[o + 1] = (byte)(c.G * 255f);
+                _thumbBytes[o + 2] = (byte)(c.B * 255f);
+                _thumbBytes[o + 3] = (byte)(c.A * 255f);
+            }
+        if (rebuild || _thumb is null)
+        {
+            using var image = Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes);
+            _thumb?.Dispose();
+            _thumb = ImageTexture.CreateFromImage(image);
+        }
+        else if (u0 == 0 && v0 == 0 && u1 == _thumbW && v1 == _thumbH)
+            _thumb.Update(Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes));
+    }
+
+    // ───────────── 烤一塊 ─────────────
+
+    private void BakeChunk(int cx, int cy, Chunk chunk)
+    {
+        chunk.Dirty = false;
+        _bx = cx * TempChunk;
+        _by = cy * TempChunk;
+        _bw = Math.Min(TempChunk, _width - _bx);
+        _bh = Math.Min(TempChunk, _height - _by);
+        Array.Clear(_detailBuf);
+        _wroteDetail = false;
+        for (var y = _by; y < _by + _bh; y++)
+            for (var x = _bx; x < _bx + _bw; x++)
+                Put(x, y, Ground(x, y));
+        // 疊上樹、山頭、礦石等零件：由上而下（下面的蓋住上面的）；零件會往上、往左右超出自己的方格，所以多看幾個方格。
+        var tx0 = Math.Max(0, _bx / TempTile - 2);
+        var tx1 = Math.Min(_tilesX - 1, (_bx + _bw) / TempTile + 2);
+        var ty0 = Math.Max(0, _by / TempTile - 1);
+        var ty1 = Math.Min(_tilesY - 1, (_by + _bh) / TempTile + 4);
+        for (var ty = ty0; ty <= ty1; ty++)
+            for (var tx = tx0; tx <= tx1; tx++)
+                StampTile(tx, ty);
+        chunk.Base = Upload(_buf, chunk.Base);
+        chunk.Detail = _wroteDetail ? Upload(_detailBuf, chunk.Detail) : null;
+    }
+
+    private ImageTexture Upload(byte[] source, ImageTexture? texture)
+    {
+        var bytes = source;
+        if (_bw != TempChunk || _bh != TempChunk)
+        {
+            bytes = new byte[_bw * _bh * 4];
+            for (var y = 0; y < _bh; y++)
+                Array.Copy(source, y * TempChunk * 4, bytes, y * _bw * 4, _bw * 4);
+        }
+        using var image = Image.CreateFromData(_bw, _bh, false, Image.Format.Rgba8, bytes);
+        if (texture is not null && texture.GetWidth() == _bw && texture.GetHeight() == _bh)
+        {
+            texture.Update(image);
+            return texture;
+        }
+        texture?.Dispose();
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    /// <summary>試玩回饋 2026-11-05 之 7（畫面刺眼）：自然景觀整體降飽和、略調暗；建築另外畫、保持原色。</summary>
+    private static Color Adjust(Color c)
+    {
+        var gray = 0.299f * c.R + 0.587f * c.G + 0.114f * c.B;
+        return new Color(Mathf.Lerp(gray, c.R, TempSaturation) * TempBrightness, Mathf.Lerp(gray, c.G, TempSaturation) * TempBrightness,
+            Mathf.Lerp(gray, c.B, TempSaturation) * TempBrightness, c.A);
     }
 
     private void Put(int x, int y, Color c)
     {
-        // 試玩回饋 2026-11-05 之 7（畫面刺眼）：自然景觀整體降飽和、略調暗；建築另外畫、保持原色，人類聚落因此更顯眼（之 8、13）。
-        var gray = 0.299f * c.R + 0.587f * c.G + 0.114f * c.B;
-        c = new Color(Mathf.Lerp(gray, c.R, TempSaturation) * TempBrightness, Mathf.Lerp(gray, c.G, TempSaturation) * TempBrightness,
-            Mathf.Lerp(gray, c.B, TempSaturation) * TempBrightness, c.A);
-        var i = (y * _width + x) * 4;
-        var target = _toDetail ? _detail! : _pixels!;
+        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
+            return;
+        c = Adjust(c);
+        var i = ((y - _by) * TempChunk + x - _bx) * 4;
+        var target = _toDetail ? _detailBuf : _buf;
+        _wroteDetail |= _toDetail;
         target[i] = (byte)(c.R * 255f);
         target[i + 1] = (byte)(c.G * 255f);
         target[i + 2] = (byte)(c.B * 255f);
         target[i + 3] = (byte)(c.A * 255f);
     }
 
-    // 【TEMP】WorldBox 式調色盤（亮、飽和、每種 2～3 個深淺）。
-    private static readonly Color[] Grass = { new("4f9a34"), new("5aa83c"), new("67b649") };
-    private static readonly Color[] ForestFloor = { new("2f6a26"), new("367429") };
+    /// <summary>把底圖上一個像素調暗（落地陰影）。</summary>
+    private void Shade(int x, int y, float amount)
+    {
+        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
+            return;
+        var i = ((y - _by) * TempChunk + x - _bx) * 4;
+        for (var k = 0; k < 3; k++)
+            _buf[i + k] = (byte)(_buf[i + k] * (1f - amount));
+    }
+
+    // 【TEMP】WorldBox 式調色盤（每種 2～3 個深淺）；生態區各有一組。
+    private static readonly Color[][] GrassBy =
+    {
+        new Color[] { new("4f9a34"), new("5aa83c"), new("67b649") },   // 溫帶
+        new Color[] { new("5aaa3e"), new("66b648"), new("73c152") },   // 花原
+        new Color[] { new("8c9f44"), new("98aa4c"), new("a4b456") },   // 乾草原
+        new Color[] { new("4f9a34"), new("5aa83c"), new("67b649") },
+        new Color[] { new("4f9a34"), new("5aa83c"), new("67b649") }
+    };
+    private static readonly Color[][] FloorBy =
+    {
+        new Color[] { new("2f6a26"), new("367429") },
+        new Color[] { new("2f6a26"), new("367429") },
+        new Color[] { new("2f6a26"), new("367429") },
+        new Color[] { new("27552a"), new("2d5f30") },   // 針葉林
+        new Color[] { new("5b6a2c"), new("677430") }    // 紅葉林
+    };
+    private static readonly Color[] LeafShades = { new("1f4f1f"), new("2e7a2c"), new("4fa03c") };
+    private static readonly Color[] PineShades = { new("1b4527"), new("2a6634"), new("438445") };
+    private static readonly Color[] AutumnShades = { new("7a3014"), new("b4501c"), new("e08a2a") };
+    private static readonly Color[] RockShades = { new("5c564c"), new("7b7468"), new("a59d8e") };
     private static readonly Color[] HillGround = { new("7d7150"), new("8a7d58"), new("978a62") };
-    private static readonly Color[] SeaShades = { new("6aaee0"), new("5793d0"), new("4a82c4"), new("3b72b8"), new("335fa6") };
+    private static readonly Color[] SeaShades = { new("6aaee0"), new("5a9ad2"), new("4a85c4"), new("3c72b6"), new("335fa6") };
     private static readonly Color[] RiverShades = { new("63a3dc"), new("4f8fd0") };
     private static readonly Color[] Sand = { new("d8c07a"), new("e3cf8a") };
     private static readonly Color[] Soil = { new("7a4e2a"), new("8a5a30"), new("94653a") };
     private static readonly Color[] Crops = { new("d8b84a"), new("8cbf3c"), new("c9a63c"), new("a5c94a") };
     private static readonly Color[] Dry = { new("a8923f"), new("b7a24f") };
     private static readonly Color[] Ash = { new("2c2624"), new("3b3330"), new("54504b") };
+    private static readonly Color[] Petals = { new("f2e15c"), new("e86a8a"), new("f4f1ea"), new("9a7be0") };
     private static readonly Color Ember = new("ff8a1e"), EmberDark = new("d9481a"), FloodWater = new("5b98d4"), OreSpeck = new("e0aa40");
-    private static readonly Color Stone = new("a7a596"), Stump = new("5a3a1e");
+    private static readonly Color Stone = new("a7a596"), Trunk = new("5a3a1e");
 
     private static Color Pick(Color[] shades, float t) => shades[Math.Clamp((int)(t * shades.Length), 0, shades.Length - 1)];
 
-    /// <summary>一個圖像素的底色（地形、離岸距離、開發度、天災疊層）。</summary>
-    private Color Ground(byte[] codes, int x, int y)
+    /// <summary>一個圖像素的底色（地形、生態區、離岸距離、開發度、天災疊層）。每個方格一個深淺，方格內只有零星變化。</summary>
+    private Color Ground(int x, int y)
     {
-        var i = y * _width + x;
-        var owner = _owner![i];
-        if (owner < 0)
-            return new Color(0, 0, 0, 0);
+        var tx = x / TempTile;
+        var ty = y / TempTile;
+        var tile = ty * _tilesX + tx;
+        var owner = _paint[tile];
+        var codes = _codes!;
         var code = codes[owner * 4];
         var overlay = codes[owner * 4 + 1];
         var amount = codes[owner * 4 + 2] / 255f;
         var dev = codes[owner * 4 + 3] / 255f;
-        // 第 08-17 章第 4 節：聚落的廣場、道路、屋前空地（對齊方格；天災疊層照樣蓋上去）。
-        var groundKind = _ground.Count > 0 && _ground.TryGetValue(TileIndexOf(x, y), out var gk) ? gk : (byte)0;
+        var groundKind = _ground.Count > 0 && _ground.TryGetValue(tile, out var gk) ? gk : (byte)0;
         var bx = x / K;
         var by = y / K;
         var h = Hash(bx, by, 1);
-        // 斑塊：大範圍平滑雜訊＋一點點逐像素變化（像素風的草地，不是噪點）。
-        var patch = Mathf.Clamp(Noise(bx / 9f, by / 9f, 3) * 0.85f + h * 0.3f - 0.07f, 0f, 0.999f);
+        var patch = Mathf.Clamp(Noise(tx / 5f, ty / 5f, 3) * 0.8f + Hash(tx, ty, 2) * 0.25f - 0.05f, 0f, 0.999f);
+        if (h < 0.06f)
+            patch = Mathf.Clamp(patch + (h < 0.03f ? -0.34f : 0.34f), 0f, 0.999f); // 方格內零星的深淺點
+        var biome = (int)BiomeOfTile(tile);
+        var sea = _seaDist[tile];
         Color c;
         switch ((Code)code)
         {
             case Code.Sea:
-                c = SeaShades[Math.Clamp((_seaDist![i] - 1) / K + (h < 0.08f ? -1 : 0), 0, SeaShades.Length - 1)];
+                // 海依離岸距離分圈：1、2、3～4、5～7、更遠。
+                c = SeaShades[sea switch { <= 1 => 0, 2 => 1, <= 4 => 2, <= 7 => 3, _ => 4 }];
                 break;
             case Code.River:
-                c = _seaDist![i] <= K ? RiverShades[0] : RiverShades[1];
+                c = sea <= 1 ? RiverShades[0] : RiverShades[1];
                 break;
             case Code.Shallow:
                 c = h < 0.12f ? Stone : RiverShades[0];
@@ -533,26 +629,25 @@ public partial class TerrainSurface : Control
                     c = GroundColor(groundKind, x, y);
                     break;
                 }
-                if (_seaDist![i] <= 2 * K && (_seaDist[i] <= K || h < 0.5f))
+                if (sea == 1 || sea == 2 && Hash(tx, ty, 4) < 0.4f)
                 {
-                    c = Pick(Sand, patch); // 海邊一圈沙灘
+                    c = Pick(Sand, patch); // 岸邊 1～2 方格沙灘
                     break;
                 }
                 c = (Code)code switch
                 {
-                    Code.Forest or Code.Logged => Pick(ForestFloor, patch),
+                    Code.Forest or Code.Logged => Pick(FloorBy[biome], patch),
                     Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Pick(HillGround, patch),
-                    // 第 08-17 章第 4 節：田地是對齊方格的長方形田區，相鄰的田連成大片（不再依六角形或雜訊切）。
-                    Code.Farmland => Plot(codes, x, y, 1f) ?? Pick(Grass, patch),
-                    Code.Clearing when codes[owner * 4 + 3] == SettlementGround => Pick(Grass, patch), // 第 08-17 章：聚落格裡廣場、道路、屋子以外是草地
-                    Code.Clearing => dev > 0f ? Plot(codes, x, y, dev) ?? Pick(Grass, patch) : Pick(Soil, patch),
+                    Code.Farmland => Plot(x, y) ?? Pick(GrassBy[biome], patch),
+                    Code.Clearing when codes[owner * 4 + 3] == SettlementGround => Pick(GrassBy[biome], patch), // 聚落格裡廣場、道路、屋子以外是草地
+                    Code.Clearing => dev > 0f ? Plot(x, y) ?? Pick(GrassBy[biome], patch) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
-                    _ => Pick(Grass, patch)
+                    _ => Pick(GrassBy[biome], patch)
                 };
-                if (_waterDist![i] is >= 1 and <= K && code != (byte)Code.Farmland)
-                    c = c.Darkened(0.12f); // 河岸一圈稍暗
-                if ((code == (byte)Code.HillsOre || code == (byte)Code.HillsMining && Hash(bx, by, 10) > dev) && Hash(bx, by, 9) < 0.05f)
+                if (_waterDist[tile] == 1 && code != (byte)Code.Farmland)
+                    c = c.Darkened(0.10f); // 河岸、海岸內一圈稍暗
+                if ((code == (byte)Code.HillsOre || code == (byte)Code.HillsMining && Hash(bx, by, 10) > dev) && Hash(bx, by, 9) < 0.04f)
                     c = OreSpeck;
                 break;
         }
@@ -572,7 +667,7 @@ public partial class TerrainSurface : Control
             case DemoHexMap.Overlay.Flood when hit:
                 c = FloodWater;
                 break;
-            case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.06f:
+            case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.05f:
                 c = OreSpeck;
                 break;
             case DemoHexMap.Overlay.Debris or DemoHexMap.Overlay.Cracks or DemoHexMap.Overlay.Crater when hit && Hash(bx, by, 8) < 0.4f:
@@ -588,13 +683,14 @@ public partial class TerrainSurface : Control
     /// <summary>
     /// 第 08-18b 章第 3 節：田區。全圖共用的田格——每 3×3 方格一區，其中 2×2 方格是田、右邊一行與下面一列是田埂；
     /// 一格（6×6 方格）剛好 2×2 塊田，相鄰的農田格連成大片。一塊田只在它的方格都屬於田（農田或開墾中）時才畫。
-    /// <paramref name="dev"/>＜1（開墾中）：依進度一塊塊從草地→翻土→播種→綠苗。作物顏色每塊一種，畦溝橫向深淺相間。
+    /// 開墾中：依進度一塊塊從草地→翻土→播種→綠苗。作物顏色每塊一種，畦溝橫向深淺相間。
     /// 回傳 null＝這個像素不是田也不是田埂（畫草地）。
     /// </summary>
-    public const int TempPlotTilesX = 3, TempPlotTilesY = 3; // 第 08-18b 章：一格 6×6 方格＝2×2 塊田（每塊 2×2 是田、右一行與下一列是田埂）
+    public const int TempPlotTilesX = 3, TempPlotTilesY = 3;
 
-    private Color? Plot(byte[] codes, int x, int y, float dev)
+    private Color? Plot(int x, int y)
     {
+        var codes = _codes!;
         var tx = x / TempTile;
         var ty = y / TempTile;
         var px = tx / TempPlotTilesX;
@@ -603,11 +699,7 @@ public partial class TerrainSurface : Control
         var ly = ty - py * TempPlotTilesY;
         bool FieldTile(int ax, int ay)
         {
-            var cx = ax * TempTile + TempTile / 2;
-            var cy = ay * TempTile + TempTile / 2;
-            if (cx >= _width || cy >= _height)
-                return false;
-            var o = _owner![cy * _width + cx];
+            var o = TileOwner(ax, ay);
             return o >= 0 && (codes[o * 4] == (byte)Code.Farmland
                 || codes[o * 4] == (byte)Code.Clearing && codes[o * 4 + 3] > 0 && codes[o * 4 + 3] != SettlementGround);
         }
@@ -627,15 +719,14 @@ public partial class TerrainSurface : Control
         }
         if (!Whole(px, py))
             return null;
-        // 一塊田只有一個階段：依田區左上方格所屬的格（跨兩格的田不會一半成熟、一半翻土）。
-        var first = _owner![(py * TempPlotTilesY * TempTile + TempTile / 2) * _width + px * TempPlotTilesX * TempTile + TempTile / 2];
-        dev = codes[first * 4] == (byte)Code.Farmland ? 1f : codes[first * 4 + 3] / 255f;
-        // 田區外框 1 像素（畦邊），內部依階段上色。
+        // 一塊田只有一個階段：依田區左上方格所屬的格。
+        var first = TileOwner(px * TempPlotTilesX, py * TempPlotTilesY);
+        var dev = codes[first * 4] == (byte)Code.Farmland ? 1f : codes[first * 4 + 3] / 255f;
         var ix = x - px * TempPlotTilesX * TempTile;
         var iy = y - py * TempPlotTilesY * TempTile;
-        var edge = ix == 0 || iy == 0 || ix == (TempPlotTilesX - 1) * TempTile - 1 || iy == (TempPlotTilesY - 1) * TempTile - 1;
+        var edge = ix <= 1 || iy <= 1 || ix >= (TempPlotTilesX - 1) * TempTile - 2 || iy >= (TempPlotTilesY - 1) * TempTile - 2;
         var p = Hash(px, py, 13);
-        var furrow = iy / 2 % 2 == 0;
+        var furrow = iy / 3 % 2 == 0;
         Color c;
         if (dev >= 1f)
         {
@@ -643,7 +734,7 @@ public partial class TerrainSurface : Control
             c = furrow ? crop : crop.Darkened(0.12f);
         }
         else if (p > dev * 1.6f)
-            return Pick(Grass, Hash(x / K, y / K, 3)); // 還沒開墾到這一塊
+            return null; // 還沒開墾到這一塊（畫草地）
         else if (dev < 0.5f)
             c = furrow ? Soil[1] : Soil[2]; // 翻土
         else if (dev < 0.8f)
@@ -655,196 +746,253 @@ public partial class TerrainSurface : Control
 
     private static readonly Color Ridge = new("6f8a3a");
 
-    // ───────────── 疊在底色上的樹與山頭 ─────────────
+    // ───────────── 疊在底色上的樹、山頭、礦石 ─────────────
 
-    // 圖樣：每列由上而下；. 空、d 暗、m 中、l 亮、t 樹幹、s 影。錨點＝底部中央。
+    // 圖樣：每列由上而下；. 空、d 暗、m 中、l 亮、t 樹幹。錨點＝底部中央。
     private static readonly string[] RoundTree = { ".mml.", "mmmll", "dmmml", "ddmmd", ".ddd.", "..t.." };
     private static readonly string[] PineTree = { "..l..", ".mml.", ".mmm.", "mmmlm", "ddmdd", "..t.." };
     private static readonly string[] Bush = { "mlm", "ddd" };
-    private static readonly string[] Peak = { "...l...", "..llm..", ".llmms.", "lmmmmss" };
-    private static readonly string[] BigPeak = { "....l....", "...llm...", "..lllms..", ".llmmmss.", "lmmmmmmss" };
+    private static readonly string[] Peak = { "...l...", "..llm..", ".llmmd.", "lmmmmdd" };
+    private static readonly string[] BigPeak = { "....l....", "...llm...", "..lllmd..", ".llmmmdd.", "lmmmmmmdd" };
 
-    private static readonly Color[] LeafShades = { new("1f4f1f"), new("2e7a2c"), new("4fa03c") };
-    private static readonly Color[] PineShades = { new("1b4527"), new("2a6634"), new("438445") };
-    private static readonly Color[] RockShades = { new("5c564c"), new("7b7468"), new("a59d8e") };
-    private static readonly Color Trunk = new("5a3a1e");
+    private readonly record struct Tree(bool Pine, bool Small, Color[] Shades);
 
-    private void StampCell(byte[] codes, int cell, Vector2 center, Rect2I clip)
+    /// <summary>這個方格有沒有樹（一方格最多一棵）：森林大多有、林緣變疏、草原偶有一棵。聚落地面上沒有樹。</summary>
+    private Tree? TreeAt(int tx, int ty)
     {
+        var tile = ty * _tilesX + tx;
+        if (_ground.Count > 0 && _ground.ContainsKey(tile) || _seaDist[tile] <= 1)
+            return null;
+        var cell = _paint[tile];
+        var code = (Code)_codes![cell * 4];
+        var h = Hash(tx, ty, 20);
+        var biome = (Biome)_biome[cell];
+        if (code == Code.Forest)
+        {
+            var edge = tx > 0 && PaintCode(tile - 1) != (byte)Code.Forest || tx < _tilesX - 1 && PaintCode(tile + 1) != (byte)Code.Forest
+                || ty > 0 && PaintCode(tile - _tilesX) != (byte)Code.Forest || ty < _tilesY - 1 && PaintCode(tile + _tilesX) != (byte)Code.Forest;
+            if (h > (edge ? 0.5f : 0.88f))
+                return null;
+        }
+        else if (code == Code.Logged)
+        {
+            // 砍過的森林：依長回進度（第 4 個位元組），長回的方格才有樹。
+            if (Hash(tx, ty, 21) * 0.5f > _codes[cell * 4 + 3] / 255f - 0.5f || h > 0.85f)
+                return null;
+        }
+        else if (code is Code.Grassland or Code.DryGrass)
+        {
+            if (h > 0.03f)
+                return null;
+        }
+        else
+            return null;
+        var kind = Hash(tx, ty, 23);
+        return biome switch
+        {
+            Biome.Conifer => new Tree(kind < 0.85f, kind > 0.93f, PineShades),
+            Biome.Autumn => new Tree(kind > 0.85f, kind > 0.93f, kind > 0.85f ? PineShades : AutumnShades),
+            _ => new Tree(kind > 0.8f, kind > 0.92f, kind > 0.8f ? PineShades : LeafShades)
+        };
+    }
+
+    /// <summary>丘陵的山頭：0 沒有、1 小、2 大（平均約每格一兩座，散布不排成格子）。</summary>
+    private int PeakAt(int tx, int ty)
+    {
+        var tile = ty * _tilesX + tx;
+        var code = (Code)PaintCode(tile);
+        if (code is not (Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit) || _seaDist[tile] <= 1
+            || _ground.Count > 0 && _ground.ContainsKey(tile))
+            return 0;
+        var h = Hash(tx, ty, 30);
+        return h < 0.05f ? 2 : h < 0.14f ? 1 : 0;
+    }
+
+    private void StampTile(int tx, int ty)
+    {
+        var tile = ty * _tilesX + tx;
+        var cell = _paint[tile];
+        var codes = _codes!;
         var code = (Code)codes[cell * 4];
         var overlay = (DemoHexMap.Overlay)codes[cell * 4 + 1];
         var amount = codes[cell * 4 + 2] / 255f;
-        bool Hit(int x, int y) => Hash(x / K, y / K, 5) < amount;
         var fire = overlay is DemoHexMap.Overlay.Fire or DemoHexMap.Overlay.Scorch;
-        bool Owned(int x, int y) => x >= 0 && y >= 0 && x < _width && y < _height && _owner![y * _width + x] == cell;
-        bool Dry(int x, int y) => Owned(x, y) && _seaDist![y * _width + x] > 2 * K && _waterDist![y * _width + x] > K
-            && (_ground.Count == 0 || !_ground.ContainsKey(TileIndexOf(x, y))); // 第 08-17 章：廣場、道路、屋子上不長樹與草叢
+        var groundTile = _ground.Count > 0 && _ground.ContainsKey(tile);
+        // 錨點：方格下緣附近、左右稍微錯開（固定雜湊）。
+        var ax = tx * TempTile + TempTile / 2 + (int)((Hash(tx, ty, 24) - 0.5f) * 6f);
+        var ay = ty * TempTile + TempTile - 2 - (int)(Hash(tx, ty, 25) * 3f);
+        var hit = Hash(tx, ty, 5) < amount;
 
-        // 散布點：交錯網格、隨機偏移，只取屬於本格、不在水邊的點（由上而下排序，前面的蓋住後面的）。
-        List<(int X, int Y, float H)> Scatter(int step, int salt)
+        if (TreeAt(tx, ty) is { } tree)
         {
-            var reach = TempTexelsPerRadius + 2 * K;
-            var spots = new List<(int X, int Y, float H)>();
-            for (var gy = (int)center.Y - reach; gy <= center.Y + reach; gy += step)
-                for (var gx = (int)center.X - reach + (gy / step & 1) * step / 2; gx <= center.X + reach; gx += step)
-                {
-                    var x = gx + (int)((Hash(gx, gy, salt + 1) - 0.5f) * step * 0.6f);
-                    var y = gy + (int)((Hash(gx, gy, salt + 2) - 0.5f) * step * 0.6f);
-                    if (Dry(x, y))
-                        spots.Add((x, y, Hash(gx, gy, salt)));
-                }
-            return spots.OrderBy(s => s.Y).ThenBy(s => s.X).ToList();
+            if (fire && hit)
+            {
+                if (PixelParts.Get(Hash(tx, ty, 26) < 0.6f ? "px_tree_burnt" : "px_stump") is { } burnt)
+                    StampSprite(burnt, ax, ay);
+                else
+                    Block(ax - K / 2, ay - 3 * K, K, 3 * K, Ash[0]);
+            }
+            else if (!(overlay == DemoHexMap.Overlay.Flood && hit))
+                DrawTree(tree, ax, ay, tx, ty);
+        }
+        else if (code == Code.Logged && !groundTile && _seaDist[tile] > 1)
+        {
+            // 砍過還沒長回的方格：樹樁或幼樹。
+            var stage = codes[cell * 4 + 3] / 255f - Hash(tx, ty, 21) * 0.5f;
+            var part = PixelParts.Get(stage > 0.1f ? "px_sapling" : "px_stump");
+            if (Hash(tx, ty, 27) < 0.6f)
+            {
+                if (part is not null)
+                    StampSprite(part, ax, ay);
+                else
+                    Block(ax - K / 2, ay - (stage > 0.1f ? 2 : 1) * K, K, (stage > 0.1f ? 2 : 1) * K, stage > 0.1f ? LeafShades[2] : Trunk);
+            }
         }
 
-        var trees = new[] { PixelParts.Get("px_tree_round_1"), PixelParts.Get("px_tree_round_2"), PixelParts.Get("px_tree_pine_1"), PixelParts.Get("px_tree_pine_2"), PixelParts.Get("px_bush") };
-        var art = trees.All(t => t is not null);
-        void Tree(int x, int y, float kind)
+        if (PeakAt(tx, ty) is var peak and > 0)
         {
-            // 燒過的地方：樹變成焦黑枯樹（火正大時）或只剩樹樁；淹水的地方不畫樹。
-            if (fire && Hit(x, y))
-            {
-                if (PixelParts.Get(kind < 0.6f ? "px_tree_burnt" : "px_stump") is { } burnt)
-                    StampSprite(burnt, x, y, clip);
-                return;
-            }
-            if (overlay == DemoHexMap.Overlay.Flood && Hit(x, y))
-                return;
-            if (art)
-                StampSprite(trees[kind < 0.3f ? 0 : kind < 0.55f ? 1 : kind < 0.75f ? 2 : kind < 0.92f ? 3 : 4]!, x, y, clip);
-            else if (kind < 0.55f)
-                Stamp(RoundTree, x, y, LeafShades, clip);
-            else if (kind < 0.88f)
-                Stamp(PineTree, x, y, PineShades, clip);
+            var art = PixelParts.Get(peak == 2 ? "px_mountain_1" : "px_mountain_2");
+            ShadowEllipse(ax + 2 * K, ay, peak == 2 ? 5 * K : 3 * K, K + 2);
+            if (art is not null)
+                StampSprite(art, ax, ay);
             else
-                Stamp(Bush, x, y, LeafShades, clip);
+                Stamp(peak == 2 ? BigPeak : Peak, ax, ay, RockShades, code is Code.HillsOre or Code.HillsMining);
         }
 
-        switch (code)
+        var lx = tx % TilesPerCell;
+        var ly = ty % TilesPerCell;
+        var center = lx == TilesPerCell / 2 && ly == TilesPerCell / 2 && _paint[tile] == TileOwner(tx, ty);
+        if (code is Code.HillsOre or Code.HillsMining && !groundTile && Hash(tx, ty, 34) < 0.22f * (code == Code.HillsMining ? 1f - codes[cell * 4 + 3] / 255f : 1f))
         {
-            case Code.Forest:
-                // 樹：素材樹寬約 17 像素，每 10 像素一棵、彼此交疊成林冠（程式畫的樹每 8 像素一棵）。
-                // 試玩回饋 2026-11-05 之 5：林緣（附近有不是森林的地）樹木漸疏，看不出六角形的邊。
-                foreach (var (x, y, h) in Scatter(art ? 10 : 4 * K, 20))
-                    if (!(NearOther(codes, x, y, cell, 12) && h < 0.5f))
-                        Tree(x, y, Hash(x / K, y / K, 23));
-                break;
-            case Code.Logged:
-            {
-                // 第 08-16 章第 14 節：砍過的森林——剛砍時是一片樹樁，之後長出幼樹，再一棵棵長回大樹（第 4 個位元組＝長回進度）。
-                var grown = codes[cell * 4 + 3] / 255f;
-                var stump = PixelParts.Get("px_stump");
-                var sapling = PixelParts.Get("px_sapling");
-                foreach (var (x, y, h) in Scatter(art ? 10 : 4 * K, 20))
-                {
-                    if (NearOther(codes, x, y, cell, 12) && h < 0.5f)
-                        continue;
-                    var stage = grown - h * 0.5f;
-                    if (stage > 0.5f)
-                        Tree(x, y, Hash(x / K, y / K, 23));
-                    else if (stage > 0.1f && sapling is not null)
-                        StampSprite(sapling, x, y, clip);
-                    else if (h > 0.4f && stump is not null)
-                        StampSprite(stump, x, y, clip);
-                }
-                break;
-            }
-            case Code.Grassland:
-            {
-                // 草原：草叢、野花（乾旱時是枯草）與零星幾棵樹。
-                var tufts = new[] { PixelParts.Get("px_grass_tuft_1"), PixelParts.Get("px_grass_tuft_2"), PixelParts.Get("px_flowers") };
-                if (tufts.All(t => t is not null))
-                    foreach (var (x, y, h) in Scatter(11, 40))
-                    {
-                        if (h > 0.22f)
-                            continue;
-                        var dry = overlay == DemoHexMap.Overlay.Dry && Hit(x, y);
-                        if (fire && Hit(x, y) || overlay == DemoHexMap.Overlay.Flood && Hit(x, y))
-                            continue;
-                        StampSprite(dry && PixelParts.Get("px_dry_tuft") is { } d ? d : tufts[(int)(h / 0.22f * 3f) % 3]!, x, y, clip, detail: true);
-                    }
-                foreach (var (x, y, h) in Scatter(4 * K, 20))
-                    if (h < 0.035f)
-                        Tree(x, y, Hash(x / K, y / K, 23));
-                break;
-            }
-            case Code.Hills:
-            case Code.HillsOre:
-            case Code.HillsMining:
-            case Code.MinePit:
-            {
-                // 試玩回饋 2026-11-05 之 1（山頭太密）：山頭改成隨機散布、平均每格一座左右（大小兩種），不再每格固定一大一小排成格子；
-                // 礦脈格散布兩三塊礦石（日後挖完就消失），一般丘陵偶有小石頭（細節層）。
-                var bigArt = PixelParts.Get("px_mountain_1");
-                var smallArt = PixelParts.Get("px_mountain_2");
-                var peaks = Scatter(22, 30).Where(p => p.H < 0.4f && _seaDist![p.Y * _width + p.X] > K).ToList();
-                foreach (var (x, y, h) in peaks)
-                {
-                    if (bigArt is not null && smallArt is not null)
-                        StampSprite(h < 0.18f ? bigArt : smallArt, x, y, clip);
-                    else
-                        Stamp(h < 0.18f ? BigPeak : Peak, x, y, RockShades, clip, code is Code.HillsOre or Code.HillsMining);
-                }
-                // 第 08-16 章第 14 節：開採中的礦脈礦石隨開採進度一塊塊減少、山腳多一座礦坑；挖空後只剩礦坑。
-                var mined = code == Code.HillsMining ? codes[cell * 4 + 3] / 255f : 0f;
-                if (code is Code.HillsMining or Code.MinePit && PixelParts.Get("px_mine_pit") is { } pit && Owned((int)center.X, (int)center.Y + 8))
-                    StampSprite(pit, (int)center.X, (int)center.Y + 8, clip);
-                foreach (var (x, y, h) in Scatter(14, 34))
-                {
-                    if (code == Code.HillsMining && h < 0.3f * (1f - mined) && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } left)
-                        StampSprite(left, x, y, clip);
-                    else if (code == Code.HillsOre && h < 0.3f && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } ore)
-                        StampSprite(ore, x, y, clip);
-                    else if (code == Code.Hills && h < 0.12f && PixelParts.Get(h < 0.06f ? "px_rock_1" : "px_rock_2") is { } rock)
-                        StampSprite(rock, x, y, clip, detail: true);
-                }
-                break;
-            }
+            if (PixelParts.Get(Hash(tx, ty, 35) < 0.5f ? "px_ore_1" : "px_ore_2") is { } ore)
+                StampSprite(ore, ax, ay);
+            else
+                Block(ax - K, ay - K, 2 * K, K, OreSpeck);
+        }
+        if (center && code is Code.HillsMining or Code.MinePit)
+        {
+            // 第 08-16 章第 14 節：礦坑在格中央。
+            if (PixelParts.Get("px_mine_pit") is { } pit)
+                StampSprite(pit, ax, ay);
+            else
+                Block(ax - 2 * K, ay - 2 * K, 4 * K, 2 * K, Ash[1]);
+        }
+        if (center && overlay == DemoHexMap.Overlay.Ore)
+        {
+            if (PixelParts.Get("px_ore_meteor") is { } meteor)
+                StampSprite(meteor, ax, ay);
+            else
+                Block(ax - K, ay - 2 * K, 2 * K, 2 * K, OreSpeck);
         }
 
-        // 天災留在地上的零件：隕石礦、焦土上的灰燼、洪水的波紋。
-        if (overlay == DemoHexMap.Overlay.Ore && PixelParts.Get("px_ore_meteor") is { } meteor && Owned((int)center.X, (int)center.Y + 6))
-            StampSprite(meteor, (int)center.X, (int)center.Y + 6, clip);
-        if (overlay == DemoHexMap.Overlay.Scorch && PixelParts.Get("px_ash") is { } ash)
-            foreach (var (x, y, h) in Scatter(12, 50))
-                if (h < 0.3f && Hit(x, y))
-                    StampSprite(ash, x, y, clip);
-        if (overlay == DemoHexMap.Overlay.Flood && PixelParts.Get("px_flood_ripple") is { } ripple)
-            foreach (var (x, y, h) in Scatter(12, 60))
-                if (h < 0.35f && Hit(x, y))
-                    StampSprite(ripple, x, y, clip);
+        // 細節層（遠看不畫）：草叢、野花、小石頭、天災留在地上的零件。
+        if (groundTile || _seaDist[tile] <= 1)
+            return;
+        var d = Hash(tx, ty, 40);
+        _toDetail = true;
+        if (code is Code.Grassland or Code.DryGrass && !(fire && hit) && !(overlay == DemoHexMap.Overlay.Flood && hit))
+        {
+            var meadow = BiomeOfTile(tile) == Biome.Meadow;
+            var dry = code == Code.DryGrass || overlay == DemoHexMap.Overlay.Dry && hit;
+            if (d < (meadow ? 0.35f : 0.12f) && !dry)
+                Flowers(tx, ty, meadow);
+            else if (d < 0.32f)
+            {
+                var tuft = PixelParts.Get(dry ? "px_dry_tuft" : d < 0.22f ? "px_grass_tuft_1" : "px_grass_tuft_2");
+                if (tuft is not null)
+                    StampSprite(tuft, ax, ay);
+                else
+                    Tuft(ax, ay, dry ? Dry[0] : GrassBy[(int)BiomeOfTile(tile)][0]);
+            }
+        }
+        else if (code == Code.Hills && d < 0.12f)
+        {
+            if (PixelParts.Get(d < 0.06f ? "px_rock_1" : "px_rock_2") is { } rock)
+                StampSprite(rock, ax, ay);
+            else
+                Block(ax - K / 2, ay - K, K + 2, K, RockShades[2]);
+        }
+        if (overlay == DemoHexMap.Overlay.Scorch && hit && d < 0.3f && PixelParts.Get("px_ash") is { } ash)
+            StampSprite(ash, ax, ay);
+        if (overlay == DemoHexMap.Overlay.Flood && hit && d < 0.35f && PixelParts.Get("px_flood_ripple") is { } ripple)
+            StampSprite(ripple, ax, ay);
+        _toDetail = false;
     }
 
-    /// <summary>上下左右 <paramref name="reach"/> 像素內有沒有屬於別種地形的格（森林旁的森林不算）。</summary>
-    private bool NearOther(byte[] codes, int x, int y, int cell, int reach)
+    /// <summary>一棵樹：右下落地陰影，再畫樹（有素材用素材，紅葉林把綠葉染成秋色；沒有就用程式畫的圖樣）。</summary>
+    private void DrawTree(Tree tree, int ax, int ay, int tx, int ty)
     {
-        bool Other(int px, int py)
-        {
-            if (px < 0 || py < 0 || px >= _width || py >= _height)
-                return false;
-            var o = _owner![py * _width + px];
-            return o >= 0 && o != cell && codes[o * 4] != codes[cell * 4];
-        }
-        return Other(x - reach, y) || Other(x + reach, y) || Other(x, y - reach) || Other(x, y + reach);
+        ShadowEllipse(ax + 2 * K, ay, tree.Small ? 2 * K : 3 * K, K);
+        var autumn = ReferenceEquals(tree.Shades, AutumnShades);
+        var name = tree.Small ? "px_bush" : tree.Pine ? (Hash(tx, ty, 28) < 0.5f ? "px_tree_pine_1" : "px_tree_pine_2")
+            : (Hash(tx, ty, 28) < 0.5f ? "px_tree_round_1" : "px_tree_round_2");
+        if (PixelParts.Get(name) is { } art)
+            StampSprite(art, ax, ay, autumn);
+        else
+            Stamp(tree.Small ? Bush : tree.Pine ? PineTree : RoundTree, ax, ay, tree.Shades);
     }
 
-    /// <summary>把像素零件疊進地表：底部置中在 (<paramref name="ax"/>, <paramref name="ay"/>)，只畫不透明的像素。</summary>
-    private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, Rect2I clip, bool detail = false)
+    private void ShadowEllipse(int cx, int cy, int rx, int ry)
     {
-        _toDetail = detail;
-        var left = ax - sprite.Width / 2;
-        var top = ay - sprite.Height + 1;
+        for (var y = -ry; y <= ry; y++)
+            for (var x = -rx; x <= rx; x++)
+                if (x * x * ry * ry + y * y * rx * rx <= rx * rx * ry * ry)
+                    Shade(cx + x, cy + y, 0.28f);
+    }
+
+    private void Block(int x, int y, int w, int h, Color c)
+    {
+        for (var j = 0; j < h; j++)
+            for (var i = 0; i < w; i++)
+                Put(x + i, y + j, c);
+    }
+
+    private void Flowers(int tx, int ty, bool meadow)
+    {
+        if (PixelParts.Get("px_flowers") is { } art && !meadow)
+        {
+            StampSprite(art, tx * TempTile + TempTile / 2, ty * TempTile + TempTile - 2);
+            return;
+        }
+        // 程式畫的小花：方格內幾個 2×2 色點（花原較多、顏色依位置）。
+        var n = meadow ? 4 : 2;
+        for (var k = 0; k < n; k++)
+        {
+            var x = tx * TempTile + 2 + (int)(Hash(tx, ty, 50 + k) * (TempTile - 4));
+            var y = ty * TempTile + 2 + (int)(Hash(tx, ty, 60 + k) * (TempTile - 4));
+            Block(x, y + 2, 1, 2, GrassBy[0][0]);
+            Block(x - 1, y, 2, 2, Petals[(int)(Hash(tx, ty, 70 + k) * Petals.Length) % Petals.Length]);
+        }
+    }
+
+    private void Tuft(int ax, int ay, Color c)
+    {
+        for (var k = -1; k <= 1; k++)
+            Block(ax + k * 3, ay - 4 - (k == 0 ? 2 : 0), 1, 4 + (k == 0 ? 2 : 0), c.Darkened(0.2f));
+    }
+
+    /// <summary>把像素零件疊進地表（第四批零件每像素放大兩倍）：底部置中在錨點，只畫不透明的像素；<paramref name="autumn"/>＝綠葉染成秋色。</summary>
+    private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, bool autumn = false)
+    {
+        var s = ArtScale;
+        var left = ax - sprite.Width * s / 2;
+        var top = ay - sprite.Height * s + 1;
         for (var y = 0; y < sprite.Height; y++)
             for (var x = 0; x < sprite.Width; x++)
             {
                 var c = sprite.At(x, y);
-                if (c.A < 0.5f || !clip.HasPoint(new Vector2I(left + x, top + y)))
+                if (c.A < 0.5f)
                     continue;
-                Put(left + x, top + y, new Color(c.R, c.G, c.B));
+                var color = new Color(c.R, c.G, c.B);
+                if (autumn && c.G > c.R && c.G > c.B)
+                    color = new Color(Mathf.Clamp(c.G * 1.35f, 0f, 1f), c.G * 0.62f, c.B * 0.35f);
+                for (var dy = 0; dy < s; dy++)
+                    for (var dx = 0; dx < s; dx++)
+                        Put(left + x * s + dx, top + y * s + dy, color);
             }
-        _toDetail = false;
     }
 
-    private void Stamp(string[] shape, int ax, int ay, Color[] shades, Rect2I clip, bool ore = false)
+    private void Stamp(string[] shape, int ax, int ay, Color[] shades, bool ore = false)
     {
         var height = shape.Length;
         for (var row = 0; row < height; row++)
@@ -859,16 +1007,11 @@ public partial class TerrainSurface : Control
                     'd' => shades[0],
                     'm' => ore && Hash(x, y, 33) < 0.18f ? OreSpeck : shades[1],
                     'l' => shades[2],
-                    's' => shades[0],
                     't' => Trunk,
                     _ => null
                 };
-                if (c is not { } color)
-                    continue;
-                for (var dy = 0; dy < K; dy++)
-                    for (var dx = 0; dx < K; dx++)
-                        if (clip.HasPoint(new Vector2I(x + dx, y + dy)))
-                            Put(x + dx, y + dy, color);
+                if (c is { } color)
+                    Block(x, y, K, K, color);
             }
         }
     }
