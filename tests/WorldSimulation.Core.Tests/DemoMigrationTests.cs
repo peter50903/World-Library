@@ -41,25 +41,22 @@ public sealed class DemoMigrationTests
         => world.Sites.PopGroups.Sum(p => (long)p.Size);
 
     [Fact]
-    public void HexAdjacencyFollowsTheTempOddRowLayout()
+    public void AdjacencyIsTheEightSquareNeighbours()
     {
-        var c = new DemoCellRef(4, 2); // 偶數列
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(5, 2)));
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(3, 2)));
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(3, 1)));
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(4, 1)));
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(3, 3)));
-        Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(4, 3)));
-        Assert.False(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(5, 1)));
+        // 第 08-18a 章：方格八鄰（含斜角），不再分奇偶列。
+        var c = new DemoCellRef(4, 2);
+        foreach (var (dc, dr) in new[] { (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1) })
+            Assert.True(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(4 + dc, 2 + dr)));
         Assert.False(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(6, 2)));
+        Assert.False(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(6, 3)));
+        Assert.False(DemoMigrationRoutes.AreAdjacent(c, new DemoCellRef(4, 4)));
         Assert.False(DemoMigrationRoutes.AreAdjacent(c, c));
 
-        var odd = new DemoCellRef(4, 3); // 奇數列
-        Assert.True(DemoMigrationRoutes.AreAdjacent(odd, new DemoCellRef(5, 2)));
+        var odd = new DemoCellRef(4, 3);
+        Assert.True(DemoMigrationRoutes.AreAdjacent(odd, new DemoCellRef(3, 2)));
         Assert.True(DemoMigrationRoutes.AreAdjacent(odd, new DemoCellRef(5, 4)));
-        Assert.False(DemoMigrationRoutes.AreAdjacent(odd, new DemoCellRef(3, 2)));
 
-        // 與 DemoHexWorld 的軸向座標一致。
+        // 與 DemoHexWorld 的座標一致（q＝欄、r＝列）。
         foreach (var cell in DemoHexWorld.Generate(42).Cells)
             Assert.Equal((cell.AxialQ, cell.AxialR), DemoMigrationRoutes.ToAxial(new DemoCellRef(cell.Column, cell.Row)));
     }

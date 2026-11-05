@@ -6,10 +6,10 @@ namespace WorldSimulation.GodotClient;
 /// 試玩回饋 2026-11-04 之 3、5、7（森林破碎、地圖模糊、參考 WorldBox）：地表改成 WorldBox 式的像素地圖。
 /// 整張地圖預先烤成一張圖（每格半徑 <see cref="TempTexelsPerRadius"/> 個像素），放大時最近鄰取樣——邊緣清楚、不模糊；
 /// 畫面上每幀只貼這一張圖（原本每個螢幕像素都跑一次著色器）。
-/// 每個圖像素依「扭曲後最近的格」取地形（海岸線、林緣是彎曲的像素邊，不是六角形）；
+/// 第 08-18b 章：每格 6×6 個方格、沿格邊切開（方格世界，不扭曲）；
 /// 顏色是固定的小調色盤（每種地形 2～3 個深淺，依位置雜訊挑），海依離岸距離分深淺、海邊一圈沙灘；
 /// 森林＝深綠底色＋一棵棵樹疊上去，丘陵＝底色＋小山頭，田地＝一塊塊田畦，開墾中依開發度從草地→泥土→田畦。
-/// 天災疊層（火、焦土、乾旱、洪水、礦脈）也烤進圖裡；只有改變的格重畫。只影響畫面；格的歸屬、點選、規則仍是六角格。
+/// 天災疊層（火、焦土、乾旱、洪水、礦脈）也烤進圖裡；只有改變的格重畫。只影響畫面；格的歸屬、點選、規則依方格（第 08-18a 章）。
 /// </summary>
 public partial class TerrainSurface : Control
 {
@@ -31,9 +31,9 @@ public partial class TerrainSurface : Control
 
     /// <summary>【TEMP】圖分塊上傳（每塊邊長）：只有改變的塊重新上傳。</summary>
     private const int TempChunk = 512;
-    public const float TempWarp = 0.38f;
 
-    private const float Sqrt3 = 1.7320508f;
+    /// <summary>第 08-18a 章：方格世界，一格邊長＝2 個格半徑；地圖左上角（相對第 0 格中心，以格半徑為單位）。</summary>
+    private static readonly Vector2 Corner = new(-1f, -1f);
 
     private ImageTexture?[,] _chunks = new ImageTexture?[0, 0];
     private ImageTexture?[,] _detailChunks = new ImageTexture?[0, 0];
@@ -97,7 +97,7 @@ public partial class TerrainSurface : Control
         if (!Active)
             return;
         var scale = _radius / TempTexelsPerRadius;
-        var topLeft = _origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius;
+        var topLeft = _origin + Corner * _radius;
         var view = new Rect2(Vector2.Zero, Size);
         for (var cy = 0; cy < _chunks.GetLength(1); cy++)
             for (var cx = 0; cx < _chunks.GetLength(0); cx++)
@@ -122,7 +122,7 @@ public partial class TerrainSurface : Control
     {
         if (!Active || _owner is null)
             return -1;
-        var t = (screen - (_origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius)) / (_radius / TempTexelsPerRadius);
+        var t = (screen - (_origin + Corner * _radius)) / (_radius / TempTexelsPerRadius);
         var x = Mathf.FloorToInt(t.X);
         var y = Mathf.FloorToInt(t.Y);
         return x < 0 || y < 0 || x >= _width || y >= _height ? -1 : _owner[y * _width + x];
@@ -136,7 +136,7 @@ public partial class TerrainSurface : Control
         if (!_outlines.TryGetValue(cell, out var segments))
             _outlines[cell] = segments = BuildOutline(cell);
         var scale = _radius / TempTexelsPerRadius;
-        var topLeft = _origin + new Vector2(-Sqrt3 / 2f, -1f) * _radius;
+        var topLeft = _origin + Corner * _radius;
         var screen = new Vector2[segments.Length];
         for (var i = 0; i < segments.Length; i++)
             screen[i] = topLeft + segments[i] * scale;
@@ -207,8 +207,8 @@ public partial class TerrainSurface : Control
             return;
         _columns = columns;
         _rows = rows;
-        _width = Mathf.CeilToInt((Sqrt3 * columns + Sqrt3 / 2f) * TempTexelsPerRadius);
-        _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
+        _width = columns * 2 * TempTexelsPerRadius; // 第 08-18b 章：一格 6×6 方格、每方格 8×8 圖像素
+        _height = rows * 2 * TempTexelsPerRadius;
         BuildOwners();
         _gridChanged = true;
     }
@@ -230,7 +230,7 @@ public partial class TerrainSurface : Control
 
     /// <summary>圖像素座標在畫面上的位置（<paramref name="origin"/>＝第 0 格中心的畫面位置）。</summary>
     public static Vector2 TexelToScreen(Vector2 texel, Vector2 origin, float radius)
-        => origin + new Vector2(-Sqrt3 / 2f, -1f) * radius + texel * (radius / TempTexelsPerRadius);
+        => origin + Corner * radius + texel * (radius / TempTexelsPerRadius);
 
     private int TileIndexOf(int x, int y) => y / TempTile * TilesX + x / TempTile;
 
@@ -259,7 +259,7 @@ public partial class TerrainSurface : Control
     private static bool IsWater(byte code) => code is (byte)Code.Sea or (byte)Code.River or (byte)Code.Shallow;
 
     /// <summary>格中心（以格半徑為單位，原點＝第 0 格中心）。</summary>
-    private static Vector2 CenterOf(int column, int row) => new(Sqrt3 * (column + (row & 1) * 0.5f), 1.5f * row);
+    private static Vector2 CenterOf(int column, int row) => new(2f * column, 2f * row);
 
     private void Bake(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
@@ -356,33 +356,21 @@ public partial class TerrainSurface : Control
             chunks[cx, cy] = ImageTexture.CreateFromImage(image);
     }
 
-    private static Vector2 TexelOf(Vector2 world) => (world - new Vector2(-Sqrt3 / 2f, -1f)) * TempTexelsPerRadius;
+    private static Vector2 TexelOf(Vector2 world) => (world - Corner) * TempTexelsPerRadius;
 
-    private Vector2 WorldOf(int x, int y) => new Vector2(-Sqrt3 / 2f, -1f) + new Vector2(x + 0.5f, y + 0.5f) / TempTexelsPerRadius;
+    private Vector2 WorldOf(int x, int y) => Corner + new Vector2(x + 0.5f, y + 0.5f) / TempTexelsPerRadius;
 
-    /// <summary>點落在哪一格（尖頂六角，odd-r 位移座標）；地圖外回傳 -1。</summary>
+    /// <summary>點落在哪一格（第 08-18a 章方格：沿格邊切開，沒有扭曲）；地圖外回傳 -1。</summary>
     private int CellAt(Vector2 p)
     {
-        var fq = Sqrt3 / 3f * p.X - p.Y / 3f;
-        var fr = 2f / 3f * p.Y;
-        var fs = -fq - fr;
-        var q = Mathf.RoundToInt(fq);
-        var r = Mathf.RoundToInt(fr);
-        var s = Mathf.RoundToInt(fs);
-        var dq = Mathf.Abs(q - fq);
-        var dr = Mathf.Abs(r - fr);
-        var ds = Mathf.Abs(s - fs);
-        if (dq > dr && dq > ds)
-            q = -r - s;
-        else if (dr > ds)
-            r = -q - s;
-        var column = q + (r - (r & 1)) / 2;
-        return column < 0 || column >= _columns || r < 0 || r >= _rows ? -1 : r * _columns + column;
+        var column = Mathf.FloorToInt((p.X + 1f) / 2f);
+        var row = Mathf.FloorToInt((p.Y + 1f) / 2f);
+        return column < 0 || column >= _columns || row < 0 || row >= _rows ? -1 : row * _columns + column;
     }
 
     /// <summary>
-    /// 第 08-17 章第 2 節：畫面方格（正方形小格）的邊長（圖像素）。一個六角格約 5×6 方格；
-    /// 地形歸屬以方格為單位（交界是沿平滑扭曲的方格階梯，WorldBox 式），田地、房屋、道路對齊方格。
+    /// 第 08-18b 章第 1 節：畫面方格（正方形小格）的邊長（圖像素）。一個規則格＝6×6 方格；
+    /// 方格整塊屬於某一格（沿格邊切開，沒有扭曲），田地、房屋、道路對齊方格。
     /// </summary>
     public const int TempTile = 8;
 
@@ -392,13 +380,8 @@ public partial class TerrainSurface : Control
         for (var ty = 0; ty * TempTile < _height; ty++)
             for (var tx = 0; tx * TempTile < _width; tx++)
             {
-                // 方格中心決定整個方格屬於哪一格（兩層平滑扭曲：交界彎曲，不是六角形）。
-                var p = WorldOf(tx * TempTile + TempTile / 2, ty * TempTile + TempTile / 2);
-                var w = p + new Vector2(Noise(p.X / 1.1f, p.Y / 1.1f, 11) - 0.5f, Noise(p.X / 1.1f, p.Y / 1.1f, 23) - 0.5f) * (2f * TempWarp)
-                          + new Vector2(Noise(p.X / 0.35f, p.Y / 0.35f, 37) - 0.5f, Noise(p.X / 0.35f, p.Y / 0.35f, 41) - 0.5f) * (0.5f * TempWarp);
-                var owner = CellAt(w);
-                if (owner < 0)
-                    owner = CellAt(p);
+                // 第 08-18b 章：方格中心所在的規則格（不扭曲；自然交界的參差之後另做成裝飾，不改歸屬）。
+                var owner = CellAt(WorldOf(tx * TempTile + TempTile / 2, ty * TempTile + TempTile / 2));
                 for (var y = ty * TempTile; y < Math.Min(_height, (ty + 1) * TempTile); y++)
                     for (var x = tx * TempTile; x < Math.Min(_width, (tx + 1) * TempTile); x++)
                         _owner[y * _width + x] = owner;
@@ -603,12 +586,12 @@ public partial class TerrainSurface : Control
     public const byte SettlementGround = 100;
 
     /// <summary>
-    /// 第 08-17 章第 4 節：田區。全圖共用的田格——每 4×3 方格一區，其中 3×2 方格是田、右邊一行與下面一列是田埂（相鄰的田連成大片）。
-    /// 一塊田只在它的 6 個方格都屬於田（農田或開墾中）時才畫，所以田區永遠是完整的長方形；其餘是草地或田埂。
+    /// 第 08-18b 章第 3 節：田區。全圖共用的田格——每 3×3 方格一區，其中 2×2 方格是田、右邊一行與下面一列是田埂；
+    /// 一格（6×6 方格）剛好 2×2 塊田，相鄰的農田格連成大片。一塊田只在它的方格都屬於田（農田或開墾中）時才畫。
     /// <paramref name="dev"/>＜1（開墾中）：依進度一塊塊從草地→翻土→播種→綠苗。作物顏色每塊一種，畦溝橫向深淺相間。
     /// 回傳 null＝這個像素不是田也不是田埂（畫草地）。
     /// </summary>
-    public const int TempPlotTilesX = 4, TempPlotTilesY = 3;
+    public const int TempPlotTilesX = 3, TempPlotTilesY = 3; // 第 08-18b 章：一格 6×6 方格＝2×2 塊田（每塊 2×2 是田、右一行與下一列是田埂）
 
     private Color? Plot(byte[] codes, int x, int y, float dev)
     {

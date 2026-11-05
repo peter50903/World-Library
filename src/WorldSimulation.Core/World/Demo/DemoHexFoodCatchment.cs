@@ -20,7 +20,7 @@ public enum DemoCatchmentSourceKind
 /// <summary>第 08-6 章 c 節：來源種類的可及規則。</summary>
 public static class DemoCatchmentSourceKinds
 {
-    /// <summary>陸地來源（森林、草原野採、農田）可餵本格與六鄰格；水域來源只餵相鄰陸地。</summary>
+    /// <summary>陸地來源（森林、草原野採、農田）可餵本格與八鄰格；水域來源只餵相鄰陸地。</summary>
     public static bool IncludesOrigin(DemoCatchmentSourceKind kind)
         => kind is DemoCatchmentSourceKind.Forest or DemoCatchmentSourceKind.GrasslandForage or DemoCatchmentSourceKind.Farmland;
 }
@@ -161,7 +161,7 @@ public static class DemoHexFoodCatchment
         var labour = claimList.ToDictionary(c => c.SettlementId, c => c.HarvestCapacity);
         var remainingSources = sourceList.ToDictionary(s => s.Id, s => s.FoodAvailable);
         var taken = new Dictionary<(int Source, int Settlement), long>();
-        // 第 08-13 章第 5 節：只看來源本格與六鄰格上的聚落（可及範圍就是這幾格），不再逐一比對全部聚落；
+        // 第 08-13 章第 5 節：只看來源本格與八鄰格上的聚落（可及範圍就是這幾格），不再逐一比對全部聚落；
         // 結果仍依聚落編號排序，與原本相同。
         var claimAt = claimList.ToDictionary(c => (c.Column, c.Row));
         var eligibleOf = sourceList.ToDictionary(s => s.Id, s =>

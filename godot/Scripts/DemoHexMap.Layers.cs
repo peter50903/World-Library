@@ -121,12 +121,7 @@ public partial class DemoHexMap
     }
 
     /// <summary>戰略圖的左上角相對於 (0,0) 格中心的位移與大小（以取樣半徑為單位，同 <see cref="Layout"/> 的外框）。</summary>
-    private (Vector2 Offset, Vector2 Size) StrategicFrame(float radius)
-    {
-        var sqrtThree = Mathf.Sqrt(3f);
-        return (new Vector2(-sqrtThree * radius / 2f, -radius),
-            new Vector2(sqrtThree * (World!.Columns + 0.5f), 1.5f * (World.Rows - 1) + 2f) * radius);
-    }
+    private (Vector2 Offset, Vector2 Size) StrategicFrame(float radius) => HexCoordinates.Frame(World!.Columns, World.Rows, radius);
 
     private ImageTexture StrategicTexture()
     {
@@ -143,24 +138,15 @@ public partial class DemoHexMap
         var width = Math.Max(1, (int)Mathf.Ceil(size.X));
         var height = Math.Max(1, (int)Mathf.Ceil(size.Y));
         var bytes = new byte[width * height * 4];
-        var index = new Dictionary<(int, int), int>(World!.Cells.Count);
-        for (var i = 0; i < World.Cells.Count; i++)
-            index[(World.Cells[i].AxialQ, World.Cells[i].AxialR)] = i;
-        var sqrtThree = Mathf.Sqrt(3f);
         for (var y = 0; y < height; y++)
         {
             for (var x = 0; x < width; x++)
             {
-                // 像素中心 → 軸向座標（Center 的反算）→ 立方座標取整。第 08-15 章第 3 節：先依位置扭曲取樣點，邊界不再是直線。
-                var (wx, wy) = Warp(x + 0.5f + offset.X, y + 0.5f + offset.Y, r);
-                var px = wx;
-                var py = wy;
-                var fr = py / (1.5f * r);
-                var fq = px / (sqrtThree * r) - fr / 2f;
-                var (q, rr) = CubeRound(fq, fr);
-                if (!index.TryGetValue((q, rr), out var cellIndex))
+                // 第 08-18b 章：一格一塊方形色塊（像素中心 → 欄列，不扭曲）。
+                var at = HexCoordinates.CellOf(new Vector2(x + 0.5f + offset.X, y + 0.5f + offset.Y), r);
+                if (!World!.Contains(at.X, at.Y))
                     continue;
-                var c = colors[cellIndex];
+                var c = colors[at.Y * World.Columns + at.X];
                 var o = (y * width + x) * 4;
                 bytes[o] = (byte)(Mathf.Clamp(c.R, 0f, 1f) * 255f);
                 bytes[o + 1] = (byte)(Mathf.Clamp(c.G, 0f, 1f) * 255f);
@@ -181,43 +167,6 @@ public partial class DemoHexMap
         _strategicStructure = structure;
         _strategicBuiltAt = now;
         return _strategicTexture;
-    }
-
-    /// <summary>【TEMP】戰略圖取樣扭曲：以格半徑為網格的平滑雜訊，位移最多約 0.35 格半徑（邊界彎曲但格的歸屬不跑遠）。</summary>
-    private static (float X, float Y) Warp(float x, float y, float r)
-    {
-        float Noise(float u, float v, int salt)
-        {
-            var iu = Mathf.FloorToInt(u);
-            var iv = Mathf.FloorToInt(v);
-            var fu = u - iu;
-            var fv = v - iv;
-            fu = fu * fu * (3f - 2f * fu);
-            fv = fv * fv * (3f - 2f * fv);
-            var a = Hash(iu, iv, salt);
-            var b = Hash(iu + 1, iv, salt);
-            var c = Hash(iu, iv + 1, salt);
-            var d = Hash(iu + 1, iv + 1, salt);
-            return Mathf.Lerp(Mathf.Lerp(a, b, fu), Mathf.Lerp(c, d, fu), fv);
-        }
-        var scale = 1f / (r * 0.9f);
-        return (x + Noise(x * scale, y * scale, 11) * r * 0.35f, y + Noise(x * scale, y * scale, 23) * r * 0.35f);
-    }
-
-    private static (int Q, int R) CubeRound(float fq, float fr)
-    {
-        var fs = -fq - fr;
-        var q = Mathf.RoundToInt(fq);
-        var r = Mathf.RoundToInt(fr);
-        var s = Mathf.RoundToInt(fs);
-        var dq = Mathf.Abs(q - fq);
-        var dr = Mathf.Abs(r - fr);
-        var ds = Mathf.Abs(s - fs);
-        if (dq > dr && dq > ds)
-            q = -r - s;
-        else if (dr > ds)
-            r = -q - s;
-        return (q, r);
     }
 
     /// <summary>戰略層與區域層的畫法（近景層用原本的完整畫法）。</summary>

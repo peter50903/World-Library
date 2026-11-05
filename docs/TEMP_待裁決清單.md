@@ -136,6 +136,14 @@
 | 伐木 | 開拓時代起每年第 26 週：會基礎木工、住民 ≥20 人的聚落以「住民數 %」（最多 90%）砍 2 格內最近的一片森林（非聚落格、非正在長回或燒毀的格）；十年內該格森林採集 −50%，畫面先樹樁、再幼樹、再一棵棵長回；不記長回事件；結束五年後從狀態表移除 | 使用者 2026-11-04：簡單的砍樹規則、砍掉要看得出來；−50% 讓大村莊附近的森林慢慢變疏，但不會讓採集斷炊；伐木每年可能上百筆，只記開始 |
 | 採礦 | 會探礦的聚落若 2 格內有沒人開採過的礦脈（含隕石礦脈），開採最近的一處（不抽亂數），一次一處；三十年後挖空、留下礦坑，不再算「勢力範圍內有礦脈」；開始與挖空都進編年史（一般事件） | 使用者 2026-11-04：簡單的挖礦規則、挖完要看得出來；三十年約一代人，礦業聚落得往外找新礦或靠隕石 |
 
+#### D08-18｜方格世界（第 08-18a 章，Claude 定案【TEMP】）
+
+| ID | 值 | 理由 |
+|---|---|---|
+| 斜角路線 | 斜角野地段要兩側的兩個直鄰格都是陸地才有；成本是直走的 1.5 倍、無條件進位（野地 3→5） | 不能從兩塊水之間的縫鑽過去；1.5 接近 √2，又是整數成本 |
+| 小地圖河流 | 每往南一列抽一次：西南、正南、東南三選一；斜走時先在上一列橫走一格（河道只走上下左右） | 方格上的河要四方向相連，畫面才不會斷；抽樣次數與六角版相同 |
+| 數值 | 範圍大約大了三分之一，先不改每格產量；依長測結果再調（第 08-18a 章第 4 節） | 先看人口曲線與 08-10c 基準差多少 |
+
 #### D12-1｜開拓時代野外威脅（第 12-1 章，Claude 定案【TEMP】）
 
 | ID | 值 | 理由 |
@@ -374,7 +382,7 @@
 |---|---|---|
 | 地圖尺寸 | 12×8 格（第 07-1 章 c 節起為小地圖，另見 D07-1c） | `DemoHexWorld.cs` |
 | 地形 | 草原／森林／水域各 1／3 機率 | `DemoHexWorld.cs:74` |
-| 偏移座標→軸向座標 | odd-r | `DemoHexWorld.cs:71-73`、`DemoMigration.cs:163`、`godot/Scripts/HexCoordinates.cs:14` |
+| 偏移座標→軸向座標 | 第 08-18a 章起取消：方格只有欄、列（q＝欄、r＝列） | `DemoHexWorld.cs`、`DemoMigration.cs` |
 | 聚落數量 | 2～4 | `DemoWorldSites.cs:55-56` |
 | 人口群體人數 | 3～8 | `DemoWorldSites.cs:57-58` |
 | 聚落名稱 | 示範聚落甲～丁 | `DemoWorldSites.cs:59` |
@@ -529,7 +537,7 @@
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
-| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 15 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 14 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 20 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-14 章遊戲中壓縮週期 104 週 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
@@ -557,8 +565,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 12 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
-| `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 2 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里） |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 11 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
+| `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 4 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里）；第 08-18a 章斜角成本 1.5 倍（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 27 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
@@ -569,9 +577,8 @@
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
 | `godot/Scripts/DemoHexMap.cs` | 21 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度 |
 | `godot/Scripts/DemoHexMap.Footprint.cs` | 4 | 第 08-13 章第 4 節聚落外觀：近看門檻、每屋人數、每格屋數、素材前色塊顏色 |
-| `godot/Scripts/DemoHexMap.Layers.cs` | 2 | 第 08-15 章視角分層：戰略層格半徑上限 6、戰略圖取樣半徑 4、重畫間隔 250 毫秒、各模式疊色比例；戰略圖取樣扭曲 0.35 格 |
+| `godot/Scripts/DemoHexMap.Layers.cs` | 1 | 第 08-15 章視角分層：戰略層格半徑上限 6、戰略圖取樣半徑 4、重畫間隔 250 毫秒、各模式疊色比例 |
 | `godot/Scripts/DemoHexMap.Shapes.cs` | 1 | 第 08-15 章第 3 節不規則邊界：角點抖動 0.10、邊中段抖動 0.11、每邊 4 段、圖塊取樣放大 1.22 |
-| `godot/Scripts/HexCoordinates.cs` | 1 | D7 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |

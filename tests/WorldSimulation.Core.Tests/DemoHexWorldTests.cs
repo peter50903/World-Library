@@ -27,8 +27,28 @@ public sealed class DemoHexWorldTests
             Assert.Equal(col, item.Column);
             Assert.Equal(row, item.Row);
             Assert.Equal(row, item.AxialR);
-            Assert.Equal(col - (row - (row & 1)) / 2, item.AxialQ);
+            Assert.Equal(col, item.AxialQ); // 第 08-18a 章：方格，q＝欄、r＝列
         }
+    }
+
+    /// <summary>第 08-18a 章：八鄰格（固定順序東、東南、南、西南、西、西北、北、東北）、切比雪夫距離、r 格內是正方形。</summary>
+    [Fact]
+    public void SquareGeometry_EightNeighboursChebyshevDistanceSquareRanges()
+    {
+        var map = DemoHexWorld.Generate(42);
+        var inner = map.GetCell(5, 4);
+        Assert.Equal(new[] { (6, 4), (6, 5), (5, 5), (4, 5), (4, 4), (4, 3), (5, 3), (6, 3) },
+            map.Neighbors(inner).Select(c => (c.Column, c.Row)).ToArray());
+        Assert.Equal(3, map.Neighbors(map.GetCell(0, 0)).Count); // 角落
+        Assert.Equal(5, map.Neighbors(map.GetCell(0, 3)).Count); // 邊
+        Assert.Equal(3, DemoHexWorld.Distance(new DemoCellRef(1, 1), new DemoCellRef(4, 3)));
+        Assert.Equal(2, DemoHexWorld.Distance(new DemoCellRef(2, 2), new DemoCellRef(4, 4)));
+        Assert.Equal(0, DemoHexWorld.Distance(new DemoCellRef(2, 2), new DemoCellRef(2, 2)));
+        Assert.Equal(9, map.Within(inner, 1).Count());
+        Assert.Equal(25, map.Within(inner, 2).Count());
+        Assert.All(map.Within(inner, 2), c => Assert.True(DemoHexWorld.Distance(inner, c) <= 2));
+        var order = map.Within(inner, 1).Select(c => (c.Row, c.Column)).ToArray();
+        Assert.Equal(order.OrderBy(x => x.Row).ThenBy(x => x.Column).ToArray(), order); // 先列後欄
     }
 
     [Fact]

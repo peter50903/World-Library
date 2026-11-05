@@ -5,7 +5,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// 每次查詢都由世界現況重算，不快取、不改權威狀態、不消耗亂數；Godot 與 CLI 只顯示 <see cref="Lines"/>。
 /// 觀察者可看世界真相（01 OBSERVER_WORLD_TRUTH），本查詢不做角色知識過濾。
 /// </summary>
-/// <param name="Cell">被查詢的 TEMP 六角格。</param>
+/// <param name="Cell">被查詢的 TEMP 方格。</param>
 /// <param name="IsMainRiver">是否為主河道格（只在共享採集情境為 true）。</param>
 /// <param name="SharedSource">此格若是共享採集來源（森林／河道），為該來源；否則 null。</param>
 /// <param name="FoodReachCells">共享來源的可採集範圍（畫面黃框）；非來源格為空。</param>
@@ -101,8 +101,7 @@ public static class DemoCellQuery
         var isMainRiver = world.IsMainRiverCell(cell.Column, cell.Row);
         var lines = new List<string>
         {
-            $"TEMP 六角格｜偏移座標 ({cell.Column}, {cell.Row})",
-            $"軸向座標 ({cell.AxialQ}, {cell.AxialR})",
+            $"TEMP 方格｜座標 ({cell.Column}, {cell.Row})",
             $"核心地形：{TerrainName(cell)}"
                 + (world.UsesSharedForaging && cell.Terrain == DemoTerrain.Grassland
                     && world.Land.StateOf(new DemoCellRef(cell.Column, cell.Row)) != DemoLandDevelopment.Farmland ? "（未開墾，農田糧食 0）" : "")

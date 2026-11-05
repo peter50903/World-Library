@@ -43,14 +43,14 @@ public sealed class DemoSourceStockTests
         var reach = DemoHexFoodCatchment.EligibleCells(map, river);
         Assert.DoesNotContain(reach, c => c.Column == river.Column && c.Row == river.Row);
         Assert.All(reach, c => Assert.True(DemoHexFoodCatchment.IsInReach(origin, c, includeOrigin: false)));
-        // 第二圈：不在六鄰的格子永遠不在範圍內。
+        // 第二圈：不在八鄰的格子永遠不在範圍內。
         var secondRing = map.Cells.Where(c => !DemoHexFoodCatchment.IsInReach(origin, c, true));
         Assert.All(secondRing, c => Assert.DoesNotContain(c, reach));
         // 被聚落佔用的格子不再是自然來源。
         Assert.All(world.Sites.Settlements, s => Assert.DoesNotContain(sources, x => x.Column == s.Column && x.Row == s.Row));
         // 主河道來源＝地圖主水道（除被佔用者，主水道上不會有聚落）。
-        Assert.Equal(map.MainWaterway.OrderBy(c => c.Row),
-            sources.Where(s => s.Kind == DemoCatchmentSourceKind.MainRiver).Select(s => new DemoCellRef(s.Column, s.Row)).OrderBy(c => c.Row));
+        Assert.Equal(map.MainWaterway.OrderBy(c => c.Row).ThenBy(c => c.Column),
+            sources.Where(s => s.Kind == DemoCatchmentSourceKind.MainRiver).Select(s => new DemoCellRef(s.Column, s.Row)).OrderBy(c => c.Row).ThenBy(c => c.Column));
     }
 
     // ── c 節：比例分配 ──

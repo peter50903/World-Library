@@ -42,9 +42,9 @@ public sealed class DemoContinentTests
         var map = DemoHexWorld.Generate(5, DemoMapSize.Large);
         DemoHexCell? At(DemoHexCell c, (int Dq, int Dr, string Name) d) => map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr);
         var river = map.Cells.Where(c => c.MainWaterway).ToList();
-        // 每個河流格都和另一個河流格或丘陵（源頭）相連；至少一個河口臨海。
-        Assert.All(river, c => Assert.Contains(DemoRouteNetwork.Directions, d => At(c, d) is { MainWaterway: true } or { Terrain: DemoTerrain.Hills }));
-        Assert.Contains(river, c => DemoRouteNetwork.Directions.Any(d => At(c, d) is { Sea: true }));
+        // 每個河流格都和另一個河流格或丘陵（源頭）上下左右相連（第 08-18a 章：河道只走四方向）；至少一個河口臨海。
+        Assert.All(river, c => Assert.Contains(DemoRouteNetwork.Orthogonal, d => At(c, d) is { MainWaterway: true } or { Terrain: DemoTerrain.Hills }));
+        Assert.Contains(river, c => DemoRouteNetwork.Orthogonal.Any(d => At(c, d) is { Sea: true }));
     }
 
     [Fact]

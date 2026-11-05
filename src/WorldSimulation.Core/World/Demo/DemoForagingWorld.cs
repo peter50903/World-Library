@@ -30,7 +30,7 @@ public static class DemoForagingWorld
 
     /// <summary>
     /// 第 08 章 a 節：農田格不再提供野採。第 08-6 章 c 節：農田格改為農田來源（同一格編號，供應較高），
-    /// 可及規則與草原野採相同（本格與六鄰格）。
+    /// 可及規則與草原野採相同（本格與八鄰格）。
     /// </summary>
     public static IReadOnlyList<DemoCatchmentFoodSource> Sources(DemoHexWorld map, DemoWorldSites? sites, DemoLandDevelopmentMap? land,
         Func<DemoCatchmentFoodSource, long>? percent = null)

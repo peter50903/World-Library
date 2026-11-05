@@ -73,7 +73,7 @@ public partial class DemoHexMap
             for (var dq = -ring; dq <= ring; dq++)
                 for (var dr = -ring; dr <= ring; dr++)
                 {
-                    var d = Math.Max(Math.Abs(dq), Math.Max(Math.Abs(dr), Math.Abs(dq + dr)));
+                    var d = Math.Max(Math.Abs(dq), Math.Abs(dr)); // 第 08-18a 章：切比雪夫距離
                     if (d == 0 || d > ring || World.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is not { } n || n.Terrain == DemoTerrain.Water)
                         continue;
                     var at = new DemoCellRef(n.Column, n.Row);
@@ -163,8 +163,6 @@ public partial class DemoHexMap
         return true;
     }
 
-    private static readonly (int Dq, int Dr)[] HexDirections = { (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1) };
-
     /// <summary>地形畫完之後畫全部聚落的建築與牆（由上而下排序，前面的屋子蓋住後面的）。</summary>
     private void DrawFootprints(Vector2 start, float radius)
     {
@@ -215,15 +213,13 @@ public partial class DemoHexMap
         {
             var cell = World!.GetCell(c.Column, c.Row);
             var center = centerOf(c);
-            var hex = ScreenShape(cell, center, radius * 0.97f); // 第 08-15 章第 3 節：沿不規則邊界
-            foreach (var (dq, dr) in HexDirections)
+            var hex = ScreenShape(cell, center, radius * 0.97f); // 第 08-18b 章：沿格邊（方格）
+            foreach (var (dq, dr, _) in DemoRouteNetwork.Orthogonal)
             {
                 var n = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
                 if (n is not null && inside.Contains(new DemoCellRef(n.Column, n.Row)))
                     continue;
-                var offset = HexCoordinates.Center(cell.AxialQ + dq, cell.AxialR + dr, radius) - HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                var edge = (int)Mathf.PosMod(Mathf.Round(Mathf.RadToDeg(offset.Angle()) / 60f), 6f);
-                var path = EdgeOf(hex, edge);
+                var path = EdgeOf(hex, HexCoordinates.EdgeToward(dq, dr));
                 for (var k = 0; k + 1 < path.Length; k++)
                 {
                     var (edgeStart, edgeEnd) = (path[k], path[k + 1]);
