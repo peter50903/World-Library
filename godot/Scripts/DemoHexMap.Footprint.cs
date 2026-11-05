@@ -30,7 +30,7 @@ public partial class DemoHexMap
     public const string SpritePalisade = "res://assets/sprites/palisade.png";
     public const string SpriteStoneWall = "res://assets/sprites/stone_wall.png";
 
-    public enum Building { Tent, Hut, House, StoneHouse, Market, Temple, Keep }
+    public enum Building { Tent, Hut, House, StoneHouse, Market, Temple, Keep, Well }
 
     /// <summary>一棟建築：在哪一格、什麼、相對格中心的位置（格半徑的倍數）。</summary>
     public readonly record struct BuildingSpot(DemoCellRef Cell, Building Kind, Vector2 Offset);
@@ -45,6 +45,14 @@ public partial class DemoHexMap
     {
         var own = new DemoCellRef(settlement.Column, settlement.Row);
         var (people, tier) = SettlementScale.TryGetValue(settlement.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+        var cells = FootprintCells(settlement, tier);
+        return FootprintFrom(settlement, own, people, tier, cells);
+    }
+
+    /// <summary>聚落佔哪些格（本格在第一個）；第 08-17 章的聚落版面也只蓋在這些格裡。</summary>
+    public List<DemoCellRef> FootprintCells(DemoSettlement settlement, DemoSettlementTier tier)
+    {
+        var own = new DemoCellRef(settlement.Column, settlement.Row);
         // 試玩回饋 2026-11-05（城市看起來跟村莊差不多大）：佔地依等級擴大，不再只限家系領域的鄰格——
         // 村莊最多 3 格、城鎮 5 格（一圈內）、城市 10 格、首都 16 格（兩圈內）；只蓋在陸地、不壓到別的聚落與別人的領域，
         // 近的先、田地最後（田照樣畫田）。
@@ -78,6 +86,11 @@ public partial class DemoHexMap
             cells.AddRange(around.OrderBy(c => c.Distance).ThenBy(c => c.Farm ? 1 : 0).ThenBy(c => c.Order)
                 .Take(maxCells - 1).Select(c => c.Cell));
         }
+        return cells;
+    }
+
+    private Footprint FootprintFrom(DemoSettlement settlement, DemoCellRef own, long people, DemoSettlementTier tier, List<DemoCellRef> cells)
+    {
 
         var buildings = new List<BuildingSpot>();
         var centerTaken = false;

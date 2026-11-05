@@ -1448,6 +1448,10 @@ public partial class ObserverRoot : Control
         _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
         _hexMap.SettlementScale = _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier)); // 第 08-11 章：五級
+        var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
+        var hunters = _world.Sites.Settlements.Where(s => !s.IsRuin && _world.Knowledge.Knows(s.Id, hunting)).Select(s => s.Id).ToHashSet();
+        if (!hunters.SetEquals(_hexMap.Hunters))
+            _hexMap.Hunters = hunters; // 第 08-17 章：獵人指示物（只在名單改變時換，指示物不必每次重算）
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。

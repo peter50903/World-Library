@@ -66,11 +66,12 @@ public partial class TerrainSurface : Control
 
     /// <summary>每次地圖重畫時呼叫：<paramref name="codes"/> 每格四個位元組（地表代碼、天災疊層、疊層強度、開發度），
     /// 依「列×欄數＋欄」排列；同一個陣列不重複處理，只重畫改變的格。</summary>
-    public void Show(byte[] codes, int columns, int rows, Vector2 origin, float radius)
+    public void Show(byte[] codes, int columns, int rows, Vector2 origin, float radius, IReadOnlyDictionary<int, byte>? ground = null)
     {
-        if (!ReferenceEquals(codes, _uploaded) || columns != _columns || rows != _rows)
+        ground ??= NoGround;
+        if (!ReferenceEquals(codes, _uploaded) || columns != _columns || rows != _rows || !ReferenceEquals(ground, _ground))
         {
-            Bake(codes, columns, rows);
+            Bake(codes, columns, rows, ground);
             _uploaded = codes;
         }
         _origin = origin;
@@ -186,6 +187,73 @@ public partial class TerrainSurface : Control
         return points.ToArray();
     }
 
+    // ───────────── 第 08-17 章：方格與聚落地面 ─────────────
+
+    private static readonly IReadOnlyDictionary<int, byte> NoGround = new Dictionary<int, byte>();
+    private IReadOnlyDictionary<int, byte> _ground = NoGround; // 方格編號（列×方格欄數＋欄）→ 聚落地面種類
+    private bool _gridChanged = true;
+
+    /// <summary>聚落地面種類（第 08-17 章第 4 節）。</summary>
+    public const byte GroundPlazaDirt = 1, GroundPlazaStone = 2, GroundRoad = 3, GroundYard = 4, GroundCobble = 5, GroundStreet = 6;
+
+    /// <summary>方格欄數、列數。</summary>
+    public int TilesX => (_width + TempTile - 1) / TempTile;
+    public int TilesY => (_height + TempTile - 1) / TempTile;
+
+    /// <summary>依地圖大小建好方格歸屬（不需要地表代碼；聚落版面要先知道方格屬於哪一格）。</summary>
+    public void EnsureGrid(int columns, int rows)
+    {
+        if (_owner is not null && columns == _columns && rows == _rows)
+            return;
+        _columns = columns;
+        _rows = rows;
+        _width = Mathf.CeilToInt((Sqrt3 * columns + Sqrt3 / 2f) * TempTexelsPerRadius);
+        _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
+        BuildOwners();
+        _gridChanged = true;
+    }
+
+    /// <summary>方格屬於哪一格（地圖外 -1）。</summary>
+    public int TileOwner(int tx, int ty)
+    {
+        var x = tx * TempTile + TempTile / 2;
+        var y = ty * TempTile + TempTile / 2;
+        return _owner is null || tx < 0 || ty < 0 || x >= _width || y >= _height ? -1 : _owner[y * _width + x];
+    }
+
+    /// <summary>格中心所在的方格。</summary>
+    public static Vector2I TileOfCell(int column, int row)
+    {
+        var t = TexelOf(CenterOf(column, row));
+        return new Vector2I((int)t.X / TempTile, (int)t.Y / TempTile);
+    }
+
+    /// <summary>圖像素座標在畫面上的位置（<paramref name="origin"/>＝第 0 格中心的畫面位置）。</summary>
+    public static Vector2 TexelToScreen(Vector2 texel, Vector2 origin, float radius)
+        => origin + new Vector2(-Sqrt3 / 2f, -1f) * radius + texel * (radius / TempTexelsPerRadius);
+
+    private int TileIndexOf(int x, int y) => y / TempTile * TilesX + x / TempTile;
+
+    private Color GroundColor(byte kind, int x, int y)
+    {
+        var h = Hash(x / K, y / K, 31);
+        var ix = x % TempTile;
+        var iy = y % TempTile;
+        return kind switch
+        {
+            GroundPlazaStone => (x / 4 + y / 4) % 2 == 0 ? Paving[0] : Paving[1], // 石板廣場（4×4 小石板交錯）
+            GroundCobble => ix == 0 || iy == 0 ? Paving[2] : Pick(Paving, h * 0.66f), // 城內石子路
+            GroundStreet => h < 0.15f ? Paving[2] : Paving[1],
+            GroundRoad => h < 0.12f ? Soil[0] : Pick(RoadDirt, h), // 土路
+            GroundYard => Pick(Yard, h),
+            _ => h < 0.1f ? Soil[1] : Pick(Yard, h) // 夯土廣場
+        };
+    }
+
+    private static readonly Color[] Paving = { new("b9b2a0"), new("a7a08f"), new("8c8576") };
+    private static readonly Color[] RoadDirt = { new("a8875a"), new("b39263") };
+    private static readonly Color[] Yard = { new("9c7c52"), new("a6865a"), new("94754c") };
+
     // ───────────── 烤圖 ─────────────
 
     private static bool IsWater(byte code) => code is (byte)Code.Sea or (byte)Code.River or (byte)Code.Shallow;
@@ -193,15 +261,15 @@ public partial class TerrainSurface : Control
     /// <summary>格中心（以格半徑為單位，原點＝第 0 格中心）。</summary>
     private static Vector2 CenterOf(int column, int row) => new(Sqrt3 * (column + (row & 1) * 0.5f), 1.5f * row);
 
-    private void Bake(byte[] codes, int columns, int rows)
+    private void Bake(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
-        var full = _pixels is null || _baked is null || columns != _columns || rows != _rows;
+        EnsureGrid(columns, rows);
+        var full = _pixels is null || _baked is null || _gridChanged;
+        var oldGround = _ground;
+        _ground = ground;
         if (full)
         {
-            _columns = columns;
-            _rows = rows;
-            _width = Mathf.CeilToInt((Sqrt3 * columns + Sqrt3 / 2f) * TempTexelsPerRadius);
-            _height = Mathf.CeilToInt((1.5f * (rows - 1) + 2f) * TempTexelsPerRadius);
+            _gridChanged = false;
             _pixels = new byte[_width * _height * 4];
             _detail = new byte[_width * _height * 4];
             foreach (var old in _chunks)
@@ -211,7 +279,6 @@ public partial class TerrainSurface : Control
             _chunks = new ImageTexture?[(_width + TempChunk - 1) / TempChunk, (_height + TempChunk - 1) / TempChunk];
             _detailChunks = new ImageTexture?[_chunks.GetLength(0), _chunks.GetLength(1)];
             _dirty = new bool[_chunks.GetLength(0), _chunks.GetLength(1)];
-            BuildOwners();
             _outlines.Clear();
         }
         // 水陸分布變了（換地圖）才重算離岸距離並整張重畫；平常只重畫改變的格與周圍。
@@ -228,15 +295,31 @@ public partial class TerrainSurface : Control
         else
         {
             var margin = TempTexelsPerRadius * 3; // 第 08-17 章：田區跨格，重畫範圍多留一塊田的寬度
+            var changed = new HashSet<int>();
             for (var i = 0; i < columns * rows; i++)
+                if (codes[i * 4] != _baked![i * 4] || codes[i * 4 + 1] != _baked[i * 4 + 1]
+                    || codes[i * 4 + 2] != _baked[i * 4 + 2] || codes[i * 4 + 3] != _baked[i * 4 + 3])
+                    changed.Add(i);
+            // 第 08-17 章：聚落地面改變的方格，重畫它所屬的格。
+            if (!ReferenceEquals(oldGround, ground))
             {
-                if (codes[i * 4] == _baked![i * 4] && codes[i * 4 + 1] == _baked[i * 4 + 1]
-                    && codes[i * 4 + 2] == _baked[i * 4 + 2] && codes[i * 4 + 3] == _baked[i * 4 + 3])
-                    continue;
-                var c = TexelOf(CenterOf(i % columns, i / columns));
-                painted = true;
-                PaintRect(codes, (int)c.X - margin, (int)c.Y - margin, (int)c.X + margin, (int)c.Y + margin);
+                foreach (var (tile, kind) in ground)
+                    if (!oldGround.TryGetValue(tile, out var was) || was != kind)
+                        changed.Add(TileOwner(tile % TilesX, tile / TilesX));
+                foreach (var tile in oldGround.Keys)
+                    if (!ground.ContainsKey(tile))
+                        changed.Add(TileOwner(tile % TilesX, tile / TilesX));
+                changed.Remove(-1);
             }
+            if (changed.Count > TempFullRepaintCells)
+                PaintRect(codes, 0, 0, _width, _height); // 一次改太多格（例如剛讀檔）時整張重畫比逐格快
+            else
+                foreach (var i in changed.OrderBy(i => i))
+                {
+                    var c = TexelOf(CenterOf(i % columns, i / columns));
+                    PaintRect(codes, (int)c.X - margin, (int)c.Y - margin, (int)c.X + margin, (int)c.Y + margin);
+                }
+            painted = changed.Count > 0;
         }
         _baked = (byte[])codes.Clone();
         if (painted)
@@ -369,6 +452,9 @@ public partial class TerrainSurface : Control
         }
     }
 
+    /// <summary>【TEMP】一次改變超過這麼多格就整張重畫。</summary>
+    private const int TempFullRepaintCells = 400;
+
     /// <summary>重畫一塊矩形：先畫底色，再把中心在附近的格的樹、山頭疊上去（裁在矩形內，結果與整張重畫相同）。</summary>
     private void PaintRect(byte[] codes, int x0, int y0, int x1, int y1)
     {
@@ -439,6 +525,8 @@ public partial class TerrainSurface : Control
         var overlay = codes[owner * 4 + 1];
         var amount = codes[owner * 4 + 2] / 255f;
         var dev = codes[owner * 4 + 3] / 255f;
+        // 第 08-17 章第 4 節：聚落的廣場、道路、屋前空地（對齊方格；天災疊層照樣蓋上去）。
+        var groundKind = _ground.Count > 0 && _ground.TryGetValue(TileIndexOf(x, y), out var gk) ? gk : (byte)0;
         var bx = x / K;
         var by = y / K;
         var h = Hash(bx, by, 1);
@@ -457,6 +545,11 @@ public partial class TerrainSurface : Control
                 c = h < 0.12f ? Stone : RiverShades[0];
                 break;
             default:
+                if (groundKind != 0)
+                {
+                    c = GroundColor(groundKind, x, y);
+                    break;
+                }
                 if (_seaDist![i] <= 2 * K && (_seaDist[i] <= K || h < 0.5f))
                 {
                     c = Pick(Sand, patch); // 海邊一圈沙灘
@@ -468,7 +561,7 @@ public partial class TerrainSurface : Control
                     Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Pick(HillGround, patch),
                     // 第 08-17 章第 4 節：田地是對齊方格的長方形田區，相鄰的田連成大片（不再依六角形或雜訊切）。
                     Code.Farmland => Plot(codes, x, y, 1f) ?? Pick(Grass, patch),
-                    Code.Clearing when codes[owner * 4 + 3] == SettlementGround => VillageGround(x, y, owner, patch),
+                    Code.Clearing when codes[owner * 4 + 3] == SettlementGround => Pick(Grass, patch), // 第 08-17 章：聚落格裡廣場、道路、屋子以外是草地
                     Code.Clearing => dev > 0f ? Plot(codes, x, y, dev) ?? Pick(Grass, patch) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
@@ -508,17 +601,6 @@ public partial class TerrainSurface : Control
 
     /// <summary>與 DemoHexMap 的 TempSettlementGround 相同：有房子的格（聚落空地）。</summary>
     public const byte SettlementGround = 100;
-
-    /// <summary>離格中心的距離（以格半徑為單位）。</summary>
-    private float CenterDistance(int x, int y, int cell)
-        => new Vector2(x, y).DistanceTo(TexelOf(CenterOf(cell % _columns, cell / _columns))) / TempTexelsPerRadius;
-
-    /// <summary>試玩回饋 2026-11-05 之 4、8、13：聚落的泥土空地——以格中心為圓心、邊緣參差的一片夯土，外圍是草地；
-    /// 建築站在空地上，不再浮在樹梢或草叢上，也不被背景吃掉。</summary>
-    private Color VillageGround(int x, int y, int cell, float patch)
-        => CenterDistance(x, y, cell) + (Noise(x / 10f, y / 10f, 8) - 0.5f) * 0.6f < 0.78f
-            ? Pick(Soil, Mathf.Clamp(Noise(x / 6f, y / 6f, 9) * 0.9f, 0f, 0.999f)).Lightened(0.08f)
-            : Pick(Grass, patch);
 
     /// <summary>
     /// 第 08-17 章第 4 節：田區。全圖共用的田格——每 4×3 方格一區，其中 3×2 方格是田、右邊一行與下面一列是田埂（相鄰的田連成大片）。
@@ -612,7 +694,8 @@ public partial class TerrainSurface : Control
         bool Hit(int x, int y) => Hash(x / K, y / K, 5) < amount;
         var fire = overlay is DemoHexMap.Overlay.Fire or DemoHexMap.Overlay.Scorch;
         bool Owned(int x, int y) => x >= 0 && y >= 0 && x < _width && y < _height && _owner![y * _width + x] == cell;
-        bool Dry(int x, int y) => Owned(x, y) && _seaDist![y * _width + x] > 2 * K && _waterDist![y * _width + x] > K;
+        bool Dry(int x, int y) => Owned(x, y) && _seaDist![y * _width + x] > 2 * K && _waterDist![y * _width + x] > K
+            && (_ground.Count == 0 || !_ground.ContainsKey(TileIndexOf(x, y))); // 第 08-17 章：廣場、道路、屋子上不長樹與草叢
 
         // 散布點：交錯網格、隨機偏移，只取屬於本格、不在水邊的點（由上而下排序，前面的蓋住後面的）。
         List<(int X, int Y, float H)> Scatter(int step, int salt)

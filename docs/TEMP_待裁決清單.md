@@ -538,7 +538,9 @@
 | `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 8 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1）；08-13 燃燒外觀週數；第 08-16 章第 14 節伐木與採礦的門檻、機率、範圍、長回與挖空週數、移除週數、亂數命名空間（D08-16-14） |
 | `godot/Scripts/DemoHexMap.Migrants.cs` | 1 | 第 08-16 章遷徙小人：幾人一個小人、最多幾個、步伐速度、動畫重畫間隔（D06-4） |
 | `godot/Scripts/DemoHexMap.Disasters.cs` | 3 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） ；火焰動畫格速、天災音效與火燒循環音量（-16／-26 dB）、同種音效間隔 8 秒、任兩音效間隔 1.5 秒 |
-| `godot/Scripts/TerrainSurface.cs` | 4 | 08-16 第 11 節 WorldBox 式像素地表：每格半徑 24 個圖像素、分塊上傳、交界扭曲 0.38 格、調色盤（D06-4） |
+| `godot/Scripts/TerrainSurface.cs` | 5 | 08-16 第 11 節 WorldBox 式像素地表：每格半徑 24 個圖像素、分塊上傳、交界扭曲 0.38 格、調色盤（D06-4）；第 08-17 章一次改變太多格時整張重畫的門檻 |
+| `godot/Scripts/DemoHexMap.Layout.cs` | 1 | 第 08-17 章聚落版面：廣場邊長、道路長度 |
+| `godot/Scripts/DemoHexMap.Tokens.cs` | 2 | 第 08-17 章指示物：各職業示意比例、每聚落最多枚數、往返秒數；人數是示意 |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 9 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數 |
 | `godot/Scripts/Heraldry.cs` | 1 | 第 08-16 章人像染色：膚色倍率、自然髮色 |
 | `src/WorldSimulation.Core/World/Demo/DemoHeraldry.cs` | 1 | 第 08-16 章人像：中年 40 歲、老年 60 歲（紋路與灰白髮） |
