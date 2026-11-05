@@ -229,5 +229,7 @@ public partial class DemoHexMap
                 DrawMarker(ArtAssets.IconHolySite, center + new Vector2(-radius * 0.5f, -radius * 0.5f), radius * 0.9f);
         }
         DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
+        if (layer == ViewLayer.Regional)
+            DrawNameplates(start, radius, DemoSettlementTier.Town); // 第 08-18b 章：區域層只標城鎮以上的名牌
     }
 }
