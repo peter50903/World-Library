@@ -100,8 +100,11 @@ public partial class DemoHexMap
             if (layout.Wall is { } wall && tier >= DemoSettlementTier.City)
                 for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
                     for (var x = wall.Position.X + 1; x < wall.End.X - 1; x++)
-                        if (_surface.TileOwner(x, y) is var o and >= 0 && IsLand(o) && !IsField(o))
+                    {
+                        var inside = _surface.TileOwner(x, y);
+                        if (inside >= 0 && IsLand(inside) && !IsField(inside))
                             ground.TryAdd(y * tx + x, TerrainSurface.GroundCobble); // 城內：石子地
+                    }
             foreach (var road in layout.Roads)
                 Mark(road.X, road.Y, tier >= DemoSettlementTier.City ? TerrainSurface.GroundStreet : TerrainSurface.GroundRoad);
             for (var y = layout.Plaza.Position.Y; y < layout.Plaza.End.Y; y++)
@@ -116,8 +119,11 @@ public partial class DemoHexMap
         // 有聚落地面的格（給地表代碼：聚落格不長樹）。
         _builtCells.Clear();
         foreach (var tile in ground.Keys)
-            if (_surface.TileOwner(tile % tx, tile / tx) is var o and >= 0)
-                _builtCells.Add(new DemoCellRef(o % World.Columns, o / World.Columns));
+        {
+            var cell = _surface.TileOwner(tile % tx, tile / tx);
+            if (cell >= 0)
+                _builtCells.Add(new DemoCellRef(cell % World.Columns, cell / World.Columns));
+        }
         foreach (var site in alive)
             _builtCells.Add(new DemoCellRef(site.Column, site.Row));
     }
