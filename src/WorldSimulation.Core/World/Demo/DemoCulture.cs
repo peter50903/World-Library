@@ -232,7 +232,7 @@ public static class DemoCultures
         var cells = settlements.SelectMany(s =>
         {
             var o = map.GetCell(s.Column, s.Row);
-            return DemoRouteNetwork.Directions.Select(d => map.AtAxial(o.AxialQ + d.Dq, o.AxialR + d.Dr)).Prepend(o).Where(c => c is not null).Select(c => c!);
+            return map.Neighbors(o).Prepend(o);
         }).ToList();
         return new Origin(cells.Any(c => c.Terrain == DemoTerrain.Forest), cells.Any(c => c.MainWaterway && !c.Sea),
             cells.Any(c => c.Sea), cells.Any(c => c.Terrain == DemoTerrain.Grassland), founded);

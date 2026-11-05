@@ -116,11 +116,7 @@ public static class DemoEnvironment
     /// <summary>聚落 <paramref name="range"/> 格內的格（含本格；只看範圍內，不掃全圖）。</summary>
     private static IEnumerable<DemoHexCell> Ring(DemoHexWorld map, DemoSettlement s, int range)
     {
-        var origin = map.GetCell(s.Column, s.Row);
-        for (var dq = -range; dq <= range; dq++)
-            for (var dr = Math.Max(-range, -dq - range); dr <= Math.Min(range, -dq + range); dr++)
-                if (map.AtAxial(origin.AxialQ + dq, origin.AxialR + dr) is { } c)
-                    yield return c;
+        return map.Within(map.GetCell(s.Column, s.Row), range);
     }
 
     private const string LoggingNamespace = "TEMP-LOGGING-v1";

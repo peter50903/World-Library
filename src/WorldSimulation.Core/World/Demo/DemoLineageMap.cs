@@ -44,11 +44,9 @@ public static class DemoLineageMap
         {
             var home = map.GetCell(s.Column, s.Row);
             Claim(new DemoCellRef(s.Column, s.Row), 0, s.Id);
-            foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
-            {
-                if (map.AtAxial(home.AxialQ + dq, home.AxialR + dr) is { Terrain: not DemoTerrain.Water } next)
+            foreach (var next in map.Neighbors(home))
+                if (next.Terrain != DemoTerrain.Water)
                     Claim(new DemoCellRef(next.Column, next.Row), 1, s.Id);
-            }
         }
 
         void Claim(DemoCellRef cell, int distance, int settlementId)

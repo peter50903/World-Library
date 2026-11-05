@@ -180,6 +180,47 @@ public sealed class DemoHexWorld
     /// <summary>第 07-1 章 c 節：以軸向座標找格（地圖外回傳 null）。</summary>
     public DemoHexCell? AtAxial(int q, int r) => _byAxial.GetValueOrDefault((q, r));
 
+    // ───────── 第 08-18a 章第 2 節：幾何集中在地圖物件（其他系統一律呼叫這三個方法，不自己算座標）─────────
+
+    /// <summary>鄰格（地圖內），依固定方向順序。</summary>
+    public IReadOnlyList<DemoHexCell> Neighbors(DemoHexCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        var list = new List<DemoHexCell>(6);
+        foreach (var (dq, dr, _) in DemoRouteNetwork.Directions)
+            if (_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var n))
+                list.Add(n);
+        return list;
+    }
+
+    /// <summary>兩格的距離（幾格）。</summary>
+    public static int Distance(DemoHexCell a, DemoHexCell b)
+    {
+        ArgumentNullException.ThrowIfNull(a);
+        ArgumentNullException.ThrowIfNull(b);
+        return Distance(new DemoCellRef(a.Column, a.Row), new DemoCellRef(b.Column, b.Row));
+    }
+
+    /// <summary>兩格的距離（只看欄列，地圖外的格也能算）。</summary>
+    public static int Distance(DemoCellRef a, DemoCellRef b)
+    {
+        var (aq, ar) = (a.Column - (a.Row - (a.Row & 1)) / 2, a.Row);
+        var (bq, br) = (b.Column - (b.Row - (b.Row & 1)) / 2, b.Row);
+        var dq = aq - bq;
+        var dr = ar - br;
+        return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
+    }
+
+    /// <summary><paramref name="range"/> 格內的所有格（含本格，地圖內），依固定順序。</summary>
+    public IEnumerable<DemoHexCell> Within(DemoHexCell cell, int range)
+    {
+        ArgumentNullException.ThrowIfNull(cell);
+        for (var dq = -range; dq <= range; dq++)
+            for (var dr = Math.Max(-range, -dq - range); dr <= Math.Min(range, -dq + range); dr++)
+                if (_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var c))
+                    yield return c;
+    }
+
     /// <summary>第 07-1 章 c 節：TEMP 水源（有水域鄰格；與原本逐次掃全圖的判斷相同），建圖時算好。</summary>
     public bool HasWaterAccess(DemoCellRef cell) => _waterAccess.Contains(cell);
 
@@ -200,10 +241,8 @@ public sealed class DemoHexWorld
         {
             var cell = queue.Dequeue();
             var here = new DemoCellRef(cell.Column, cell.Row);
-            foreach (var (dq, dr) in DemoMigrationRoutes.AxialDirections)
+            foreach (var next in Neighbors(cell))
             {
-                if (!_byAxial.TryGetValue((cell.AxialQ + dq, cell.AxialR + dr), out var next))
-                    continue;
                 var key = new DemoCellRef(next.Column, next.Row);
                 if (previous.ContainsKey(key) || !Routes.IsLandPassable(here, key))
                     continue;

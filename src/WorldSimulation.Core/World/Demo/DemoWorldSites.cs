@@ -132,13 +132,8 @@ public sealed class DemoWorldSites
         return supply;
     }
 
-    /// <summary>六角格距離（軸座標）。</summary>
-    public static int HexDistance(DemoHexCell a, DemoHexCell b)
-    {
-        var dq = a.AxialQ - b.AxialQ;
-        var dr = a.AxialR - b.AxialR;
-        return (Math.Abs(dq) + Math.Abs(dr) + Math.Abs(dq + dr)) / 2;
-    }
+    /// <summary>兩格的距離（第 08-18a 章：轉呼叫 <see cref="DemoHexWorld.Distance(DemoHexCell, DemoHexCell)"/>）。</summary>
+    public static int HexDistance(DemoHexCell a, DemoHexCell b) => DemoHexWorld.Distance(a, b);
 
     public static DemoWorldSites Generate(DemoHexWorld map, RngRegistry rng, DemoSitesTempConfig config,
         bool foragingOnly = false, bool spaced = false)
