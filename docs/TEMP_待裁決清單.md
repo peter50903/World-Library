@@ -141,7 +141,7 @@
 | ID | 值 | 理由 |
 |---|---|---|
 | 斜角路線 | 斜角野地段要兩側的兩個直鄰格都是陸地才有；成本是直走的 1.5 倍、無條件進位（野地 3→5） | 不能從兩塊水之間的縫鑽過去；1.5 接近 √2，又是整數成本 |
-| 小地圖河流 | 每往南一列抽一次：西南、正南、東南三選一；斜走時先在上一列橫走一格（河道只走上下左右） | 方格上的河要四方向相連，畫面才不會斷；抽樣次數與六角版相同 |
+| 小地圖河流 | 每往南一列抽一次：正南 3/5、西南與東南各 1/5（出界的選項去掉）；斜走時先在上一列橫走一格（河道只走上下左右） | 方格上的河要四方向相連，畫面才不會斷；直走的河段夠多才找得到渡口；抽樣次數與六角版相同 |
 | 數值 | 範圍大約大了三分之一，先不改每格產量；依長測結果再調（第 08-18a 章第 4 節） | 先看人口曲線與 08-10c 基準差多少 |
 
 #### D12-1｜開拓時代野外威脅（第 12-1 章，Claude 定案【TEMP】）
@@ -565,7 +565,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 11 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
+| `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 12 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 4 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里）；第 08-18a 章斜角成本 1.5 倍（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 27 | D1、D2、D3、D5、第 3 節 |

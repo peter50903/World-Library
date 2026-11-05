@@ -324,7 +324,7 @@ public sealed class DemoHexWorld
         }
 
         // ③ 河流——第 06-2 章：每 12 欄一條（小地圖 1 條，與之前相同）；第 k 條從北緣第 k 段欄位中隨機起點，
-        // 每往南一列抽一次：往西南、正南或東南（第 08-18a 章方格；不出界）。河道只走上下左右，所以斜走時先在上一列
+        // 每往南一列抽一次：往西南、正南或東南（第 08-18a 章方格；不出界；正南機率較高）。河道只走上下左右，所以斜走時先在上一列
         // 橫走一格再往南（兩格都是河）。碰到海就停（河口接海），碰到已有的河就停（成為支流匯入）。抽樣次數固定，停下後的抽樣不使用。
         // ④ 淺灘（渡口）：每條河每 8 列一段各抽一次，從抽到的位置往南找第一個兩岸（畫面左右）都有陸地鄰格、
         // 而且不臨海的河流格——涉水過河才有意義；都沒有就沒有渡口。
@@ -339,7 +339,8 @@ public sealed class DemoHexWorld
                 waterway.Add((column, 0));
             for (var row = 1; row < Rows; row++)
             {
-                var options = new[] { column - 1, column, column + 1 };
+                // 【TEMP】正南 3/5、西南與東南各 1/5：直走的河段夠多，才找得到兩岸都是陸地的渡口（D08-18）。
+                var options = new[] { column - 1, column, column, column, column + 1 };
                 var inside = options.Where(c => c >= 0 && c < Columns).ToArray();
                 var previous = column;
                 column = inside[(int)(rng.NextUInt64(RngStreams.Geography) % (ulong)inside.Length)];

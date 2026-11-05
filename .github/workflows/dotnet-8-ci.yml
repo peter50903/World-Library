@@ -507,4 +507,7 @@ jobs:
           if [ -f /tmp/observer-tests.log ]; then
             names="$(grep -E -A3 '^\s+Failed WorldSimulation' /tmp/observer-tests.log | grep -v 'Stack Trace' | sed 's/^ *//' | cut -c1-300 | head -80)"
             [ -z "$names" ] || echo "::error title=FAILED TESTS::$(printf '%s' "$names" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+            # 失敗的測試方法一覽（每個方法一行、附失敗次數；上面的明細只有前 80 行）。
+            methods="$(grep -oE '^\s+Failed WorldSimulation[^ (]*' /tmp/observer-tests.log | sed 's/^ *Failed //' | sort | uniq -c | head -60)"
+            [ -z "$methods" ] || echo "::error title=FAILED METHODS::$(printf '%s' "$methods" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
           fi
