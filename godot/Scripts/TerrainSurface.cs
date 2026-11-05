@@ -227,7 +227,7 @@ public partial class TerrainSurface : Control
         }
         else
         {
-            var margin = TempTexelsPerRadius * 2;
+            var margin = TempTexelsPerRadius * 3; // 第 08-17 章：田區跨格，重畫範圍多留一塊田的寬度
             for (var i = 0; i < columns * rows; i++)
             {
                 if (codes[i * 4] == _baked![i * 4] && codes[i * 4 + 1] == _baked[i * 4 + 1]
@@ -297,18 +297,28 @@ public partial class TerrainSurface : Control
         return column < 0 || column >= _columns || r < 0 || r >= _rows ? -1 : r * _columns + column;
     }
 
+    /// <summary>
+    /// 第 08-17 章第 2 節：畫面方格（正方形小格）的邊長（圖像素）。一個六角格約 5×6 方格；
+    /// 地形歸屬以方格為單位（交界是沿平滑扭曲的方格階梯，WorldBox 式），田地、房屋、道路對齊方格。
+    /// </summary>
+    public const int TempTile = 8;
+
     private void BuildOwners()
     {
         _owner = new int[_width * _height];
-        for (var y = 0; y < _height; y++)
-            for (var x = 0; x < _width; x++)
+        for (var ty = 0; ty * TempTile < _height; ty++)
+            for (var tx = 0; tx * TempTile < _width; tx++)
             {
-                var p = WorldOf(x, y);
-                // 兩層平滑扭曲：交界是彎曲的像素邊（WorldBox 的海岸線），不是六角形，也不是抖點。
+                // 方格中心決定整個方格屬於哪一格（兩層平滑扭曲：交界彎曲，不是六角形）。
+                var p = WorldOf(tx * TempTile + TempTile / 2, ty * TempTile + TempTile / 2);
                 var w = p + new Vector2(Noise(p.X / 1.1f, p.Y / 1.1f, 11) - 0.5f, Noise(p.X / 1.1f, p.Y / 1.1f, 23) - 0.5f) * (2f * TempWarp)
                           + new Vector2(Noise(p.X / 0.35f, p.Y / 0.35f, 37) - 0.5f, Noise(p.X / 0.35f, p.Y / 0.35f, 41) - 0.5f) * (0.5f * TempWarp);
                 var owner = CellAt(w);
-                _owner[y * _width + x] = owner >= 0 ? owner : CellAt(p);
+                if (owner < 0)
+                    owner = CellAt(p);
+                for (var y = ty * TempTile; y < Math.Min(_height, (ty + 1) * TempTile); y++)
+                    for (var x = tx * TempTile; x < Math.Min(_width, (tx + 1) * TempTile); x++)
+                        _owner[y * _width + x] = owner;
             }
     }
 
@@ -456,10 +466,10 @@ public partial class TerrainSurface : Control
                 {
                     Code.Forest or Code.Logged => Pick(ForestFloor, patch),
                     Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Pick(HillGround, patch),
-                    // 試玩回饋 2026-11-05 之 5：田不再填滿整格六角形——依平滑雜訊與離格邊遠近只留不規則的幾片，其餘是草地。
-                    Code.Farmland => FieldMask(x, y, owner) ? FieldArt(x, y, 1f) ?? Field(bx, by, 1f) : Pick(Grass, patch),
+                    // 第 08-17 章第 4 節：田地是對齊方格的長方形田區，相鄰的田連成大片（不再依六角形或雜訊切）。
+                    Code.Farmland => Plot(codes, x, y, 1f) ?? Pick(Grass, patch),
                     Code.Clearing when codes[owner * 4 + 3] == SettlementGround => VillageGround(x, y, owner, patch),
-                    Code.Clearing => dev > 0f ? (FieldMask(x, y, owner) ? FieldArt(x, y, dev) ?? Field(bx, by, dev) : Pick(Grass, patch)) : Pick(Soil, patch),
+                    Code.Clearing => dev > 0f ? Plot(codes, x, y, dev) ?? Pick(Grass, patch) : Pick(Soil, patch),
                     Code.DryGrass => Pick(Dry, patch),
                     Code.Burning or Code.Scorched => Pick(Ash, patch),
                     _ => Pick(Grass, patch)
@@ -496,20 +506,12 @@ public partial class TerrainSurface : Control
         return c;
     }
 
-    /// <summary>田畦：全圖共用的 4×3 田塊格（相鄰的田連成一片），每塊一種作物、隔行深淺；
-    /// <paramref name="dev"/>＜1 時依開發度從草地→翻開的泥土→田畦。</summary>
-    /// <summary>田塊素材（20×14）鋪成全圖共用的田格：成熟的田多半是麥田、間雜綠色作物；
-    /// 開墾中依開發度從草地→翻開的泥土→剛播種的田（素材缺少時回傳 null，改用程式畫的田畦）。</summary>
     /// <summary>與 DemoHexMap 的 TempSettlementGround 相同：有房子的格（聚落空地）。</summary>
     public const byte SettlementGround = 100;
 
     /// <summary>離格中心的距離（以格半徑為單位）。</summary>
     private float CenterDistance(int x, int y, int cell)
         => new Vector2(x, y).DistanceTo(TexelOf(CenterOf(cell % _columns, cell / _columns))) / TempTexelsPerRadius;
-
-    /// <summary>田塊的範圍：靠格中心的大致都是田，往外依平滑雜訊參差收邊（相鄰的田格仍會連成一片）。</summary>
-    private bool FieldMask(int x, int y, int cell)
-        => CenterDistance(x, y, cell) + (Noise(x / 16f, y / 16f, 7) - 0.5f) * 0.9f < 0.82f;
 
     /// <summary>試玩回饋 2026-11-05 之 4、8、13：聚落的泥土空地——以格中心為圓心、邊緣參差的一片夯土，外圍是草地；
     /// 建築站在空地上，不再浮在樹梢或草叢上，也不被背景吃掉。</summary>
@@ -518,43 +520,75 @@ public partial class TerrainSurface : Control
             ? Pick(Soil, Mathf.Clamp(Noise(x / 6f, y / 6f, 9) * 0.9f, 0f, 0.999f)).Lightened(0.08f)
             : Pick(Grass, patch);
 
-    private static Color? FieldArt(int x, int y, float dev)
+    /// <summary>
+    /// 第 08-17 章第 4 節：田區。全圖共用的田格——每 4×3 方格一區，其中 3×2 方格是田、右邊一行與下面一列是田埂（相鄰的田連成大片）。
+    /// 一塊田只在它的 6 個方格都屬於田（農田或開墾中）時才畫，所以田區永遠是完整的長方形；其餘是草地或田埂。
+    /// <paramref name="dev"/>＜1（開墾中）：依進度一塊塊從草地→翻土→播種→綠苗。作物顏色每塊一種，畦溝橫向深淺相間。
+    /// 回傳 null＝這個像素不是田也不是田埂（畫草地）。
+    /// </summary>
+    public const int TempPlotTilesX = 4, TempPlotTilesY = 3;
+
+    private Color? Plot(byte[] codes, int x, int y, float dev)
     {
-        if (PixelParts.Get("px_field_wheat") is not { } wheat || PixelParts.Get("px_field_green") is not { } green
-            || PixelParts.Get("px_field_young") is not { } young || PixelParts.Get("px_field_soil") is not { } soil)
+        var tx = x / TempTile;
+        var ty = y / TempTile;
+        var px = tx / TempPlotTilesX;
+        var py = ty / TempPlotTilesY;
+        var lx = tx - px * TempPlotTilesX;
+        var ly = ty - py * TempPlotTilesY;
+        bool FieldTile(int ax, int ay)
+        {
+            var cx = ax * TempTile + TempTile / 2;
+            var cy = ay * TempTile + TempTile / 2;
+            if (cx >= _width || cy >= _height)
+                return false;
+            var o = _owner![cy * _width + cx];
+            return o >= 0 && (codes[o * 4] == (byte)Code.Farmland
+                || codes[o * 4] == (byte)Code.Clearing && codes[o * 4 + 3] > 0 && codes[o * 4 + 3] != SettlementGround);
+        }
+        bool Whole(int bx, int by)
+        {
+            for (var j = 0; j < TempPlotTilesY - 1; j++)
+                for (var i = 0; i < TempPlotTilesX - 1; i++)
+                    if (!FieldTile(bx * TempPlotTilesX + i, by * TempPlotTilesY + j))
+                        return false;
+            return true;
+        }
+        if (lx == TempPlotTilesX - 1 || ly == TempPlotTilesY - 1)
+        {
+            // 田埂：本身在田裡、且兩旁至少有一塊完整的田才畫成田埂，否則是草地。
+            var beside = FieldTile(tx, ty) && (Whole(px, py) || lx == TempPlotTilesX - 1 && Whole(px + 1, py) || ly == TempPlotTilesY - 1 && Whole(px, py + 1));
+            return beside ? Ridge : null;
+        }
+        if (!Whole(px, py))
             return null;
-        var tx = x / wheat.Width;
-        var ty = y / wheat.Height;
-        var plot = Hash(tx, ty, 13);
-        var h = Hash(x / K, y / K, 2);
-        PixelParts.Sprite tile;
+        // 一塊田只有一個階段：依田區左上方格所屬的格（跨兩格的田不會一半成熟、一半翻土）。
+        var first = _owner![(py * TempPlotTilesY * TempTile + TempTile / 2) * _width + px * TempPlotTilesX * TempTile + TempTile / 2];
+        dev = codes[first * 4] == (byte)Code.Farmland ? 1f : codes[first * 4 + 3] / 255f;
+        // 田區外框 1 像素（畦邊），內部依階段上色。
+        var ix = x - px * TempPlotTilesX * TempTile;
+        var iy = y - py * TempPlotTilesY * TempTile;
+        var edge = ix == 0 || iy == 0 || ix == (TempPlotTilesX - 1) * TempTile - 1 || iy == (TempPlotTilesY - 1) * TempTile - 1;
+        var p = Hash(px, py, 13);
+        var furrow = iy / 2 % 2 == 0;
+        Color c;
         if (dev >= 1f)
-            tile = plot < 0.6f ? wheat : plot < 0.9f ? green : young;
-        else if (h > dev * 1.6f)
-            return Pick(Grass, Hash(x / K, y / K, 3));
+        {
+            var crop = p < 0.65f ? Crops[0] : p < 0.85f ? Crops[2] : Crops[1];
+            c = furrow ? crop : crop.Darkened(0.12f);
+        }
+        else if (p > dev * 1.6f)
+            return Pick(Grass, Hash(x / K, y / K, 3)); // 還沒開墾到這一塊
+        else if (dev < 0.5f)
+            c = furrow ? Soil[1] : Soil[2]; // 翻土
+        else if (dev < 0.8f)
+            c = furrow && Hash(x / K, y / K, 14) < 0.35f ? Crops[1] : (furrow ? Soil[1] : Soil[2]); // 播種、冒出嫩苗
         else
-            tile = dev >= 0.5f && plot < (dev - 0.5f) * 2f ? young : soil;
-        var c = tile.At(x % tile.Width, y % tile.Height);
-        return c.A < 0.5f ? Soil[0] : new Color(c.R, c.G, c.B);
+            c = furrow ? Crops[1] : Crops[1].Darkened(0.12f); // 綠苗
+        return edge ? c.Darkened(0.22f) : c;
     }
 
-    private static Color Field(int x, int y, float dev)
-    {
-        var h = Hash(x, y, 2);
-        if (dev < 1f)
-        {
-            // 開發度一半以前只有草地與泥土（森林聚落的空地停在約四成），過半才開始長作物。
-            if (h > dev * 1.6f)
-                return Pick(Grass, Hash(x, y, 3));
-            if (h > dev * 2f - 1f)
-                return Hash(x, y, 4) < 0.08f ? Stump : Pick(Soil, Hash(x, y, 4));
-        }
-        // 試玩回饋 2026-11-04 之 1 更正：農田不是太多，是圖案太大——田塊縮成 4×3、作物交錯深淺。
-        if (x % 4 == 0 || y % 3 == 0)
-            return Soil[0]; // 田埂
-        var crop = Crops[(int)(Hash(x / 4, y / 3, 12) * Crops.Length) % Crops.Length];
-        return (x + y) % 2 == 0 ? crop : crop.Darkened(0.1f);
-    }
+    private static readonly Color Ridge = new("6f8a3a");
 
     // ───────────── 疊在底色上的樹與山頭 ─────────────
 
