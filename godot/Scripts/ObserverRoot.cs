@@ -1397,7 +1397,10 @@ public partial class ObserverRoot : Control
             && _world.LatestWeek?.Week is { } week && week != _detailWeek)
         {
             _detailWeek = week;
-            ShowDetailAt(open.Column, open.Row);
+            if (_detailBelief is { } belief)
+                ShowBeliefDetail(belief.Faith, belief.Id); // 第 08-16 章第 15 節
+            else
+                ShowDetailAt(open.Column, open.Row);
         }
         _status.Text =
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".

@@ -325,6 +325,11 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-11 章：給玩家看的分頁詳情（不含座標、路線、供應量等數值）。</summary>
     public DemoPlayerDetail PlayerDetail(int column, int row) => DemoPlayerDetail.Of(this, column, row);
 
+    /// <summary>第 08-16 章第 15 節：文化頁、信仰頁（不存在＝null）。</summary>
+    public DemoPlayerDetail? CultureDetail(int cultureId) => DemoBeliefDetail.Culture(this, cultureId);
+
+    public DemoPlayerDetail? FaithDetail(int faithId) => DemoBeliefDetail.Faith(this, faithId);
+
     /// <summary>V0-06A: migrant batches currently travelling between settlements (detached copy).</summary>
     public IReadOnlyList<DemoMigrationBatch> MigrationsInTransit()
         => Array.AsReadOnly(_migrations.ToArray());
