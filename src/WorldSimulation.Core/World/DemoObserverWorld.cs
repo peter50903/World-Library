@@ -516,7 +516,8 @@ public sealed partial class DemoObserverWorld
                         .Concat(_culture.Faith.MainFaithOf(id) is { } f && _culture.Faith.Faith(f) is { } faith ? faith.Tenets : Enumerable.Empty<string>())
                         .ToArray(), // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
                     MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
-                    _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks)); // 第 08-14 章：最近一輪的週報
+                    _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
+                    DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week)); // 第 08-16 章第 14 節：挖空的礦脈不算
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
@@ -551,7 +552,12 @@ public sealed partial class DemoObserverWorld
                     id => lifecycle.Population.AdultsIn(id, DemoHumanLifecycle.Rules), id => knowledge.Knows(id, hunting));
                 var (wildlife, environmentEvents) = DemoEnvironment.Advance(yearly, report.Week, report.WorldTime, knowledge.Era, Map,
                     lifecycle.Outcome.Sites, lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
-                    _rng, checked(landNextId + cleared.Count + split.Count + faithEvents.Count));
+                    _rng, checked(landNextId + cleared.Count + split.Count + faithEvents.Count),
+                    // 第 08-16 章第 14 節：伐木（會基礎木工）、採礦（會探礦）
+                    residents: id => lifecycle.Population.ResidentsOf(id),
+                    logs: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.LoggingTech)),
+                    mines: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.MiningTech)),
+                    extraOre: MeteoriteOre);
                 DemoPerf.Mark("野生動物與環境");
                 var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome

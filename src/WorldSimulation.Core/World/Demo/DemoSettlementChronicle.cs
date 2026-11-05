@@ -93,7 +93,7 @@ public sealed record DemoSettlementChronicle(
             or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
             or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
-            or DemoSettlementEventKind.DungeonAppeared))
+            or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
@@ -106,6 +106,7 @@ public sealed record DemoSettlementChronicle(
                     or DemoSettlementEventKind.Flood => $"{DemoDisasters.Name(e.Kind)}：{DemoPlayerDetail.Clean(e.Cause)}", // 第 12-1 章 C3
                 DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.DungeonAppeared => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C4
                 DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C3b
+                DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted => DemoPlayerDetail.Clean(e.Cause), // 第 08-16 章第 14 節
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };

@@ -125,6 +125,18 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             lines.Add(parcel.State == DemoLandDevelopment.Farmland ? "農田" : $"開墾中（{parcel.DevelopmentPercent}%）");
         if (world.MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row)))
             lines.Add("隕石留下的礦脈"); // 第 12-1 章
+        // 第 08-16 章第 14 節：伐木與採礦。
+        var at = new DemoCellRef(cell.Column, cell.Row);
+        var week = world.CommittedWeeks;
+        var spells = world.Wildlife.Spells;
+        var mining = DemoEnvironment.MiningAt(spells, at, week);
+        if (mining > 1f)
+            lines.Add("礦脈已挖空，只剩廢棄的礦坑");
+        else if (mining >= 0f && spells.First(x => x.Kind == DemoSettlementEventKind.MiningBegan && x.Cells.Contains(at)) is var dig)
+            lines.Add($"{NameOf(world, dig.SettlementId)}正在開採這處礦脈（已開採 {(int)(mining * 100)}%）");
+        var logged = DemoEnvironment.LoggedAt(spells, at, week);
+        if (logged >= 0f)
+            lines.Add(logged < 0.5f ? "森林剛被砍伐，只剩樹樁與幼苗" : "砍過的森林，樹木正慢慢長回");
         if (world.Dungeons.FirstOrDefault(d => d.Cell.Column == cell.Column && d.Cell.Row == cell.Row) is { } dungeon)
             lines.Add($"地下城：{dungeon.Name}（{dungeon.Layers} 層，第 {DemoSettlementHistory.YearOfDay(checked(dungeon.AppearedWeek * 7))} 年出現）"); // 第 12-1 章 C4
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
@@ -133,6 +145,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             lines.Add($"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}：{batch.People} 人，從{batch.FromName}前往{batch.ToName}");
         return new DemoPlayerDetail(lines[0], new[] { new DemoDetailTab("地點", lines) }, null);
     }
+
+    private static string NameOf(DemoObserverWorld world, int settlementId)
+        => world.Sites.Settlements.FirstOrDefault(x => x.Id == settlementId)?.Name ?? "某聚落";
 
     private static DemoPlayerDetail Settlement(DemoObserverWorld world, DemoSettlement settlement)
     {

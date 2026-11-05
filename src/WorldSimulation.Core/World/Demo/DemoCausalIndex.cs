@@ -368,6 +368,14 @@ public sealed class DemoCausalIndex
                 return parent is null && e.Count > 0 ? null : "地下城出現是根因，事件人數欄必須是格編號";
             case DemoSettlementEventKind.FaithExtinct:
                 return parent is null && e.Count > 0 ? null : "信仰失傳是根因，事件人數欄必須是信仰編號";
+            case DemoSettlementEventKind.Logging:
+            case DemoSettlementEventKind.MiningBegan:
+                // 第 08-16 章第 14 節：根因；人數欄＝格編號。
+                return parent is null && e.Count > 0 ? null : "伐木、開始採礦是根因，事件人數欄必須是格編號";
+            case DemoSettlementEventKind.OreExhausted:
+                return parent is { Kind: DemoSettlementEventKind.MiningBegan } && e.Week == parent.Week + DemoEnvironment.TempMiningWeeks
+                    && e.Count == parent.Count
+                    ? null : "礦脈挖空的直接原因必須是同一格三十年前的開始採礦";
 
             default:
                 return "未知的事件種類";

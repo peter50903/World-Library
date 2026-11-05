@@ -122,11 +122,105 @@ public sealed class DemoEnvironmentTests
         var spells = world.Wildlife.Spells;
         Assert.NotEmpty(spells);
         var events = world.SettlementEvents();
-        foreach (var spell in spells.Where(x => x.ToWeek <= world.CommittedWeeks))
+        foreach (var spell in spells.Where(x => x.ToWeek <= world.CommittedWeeks
+            && x.Kind is DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire))
             Assert.Contains(events, e => e.CauseEventId == spell.EventId
                 && e.Kind is DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.ForestRegrown);
         Assert.Empty(world.BuildCausalIndex().Problems);
         var reloaded = DemoObserverWorld.ImportTempSave(world.ExportTempSave());
         Assert.Equal(world.ExportTempSave(), reloaded.ExportTempSave());
+    }
+}
+
+/// <summary>第 08-16 章第 14 節：砍樹與挖礦。</summary>
+public sealed class DemoLoggingMiningTests
+{
+    private static int YearWeek(int year) => year * DemoWildlife.TempYearWeeks + DemoDisasters.TempYearWeek;
+
+    [Fact]
+    public void LoggedForestYieldsLessUntilItGrowsBack()
+    {
+        var cell = new DemoCellRef(4, 4);
+        var cut = new DemoEnvironmentSpell(DemoSettlementEventKind.Logging, 1, 26, 26 + DemoEnvironment.TempLoggingWeeks, 600,
+            System.Collections.Immutable.ImmutableList.Create(cell));
+        var forest = new DemoCatchmentFoodSource(2, 4, 4, DemoCatchmentSourceKind.Forest, 20);
+        var grass = new DemoCatchmentFoodSource(3, 4, 4, DemoCatchmentSourceKind.GrasslandForage, 8);
+        var spells = new[] { cut };
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, forest, 26));
+        Assert.Equal(DemoEnvironment.TempLoggedSourcePercent, DemoEnvironment.SourcePercent(spells, forest, 27));
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, grass, 27));
+        Assert.Equal(0, DemoEnvironment.SourcePercent(spells, forest, 27 + DemoEnvironment.TempLoggingWeeks));
+        Assert.Equal(-1f, DemoEnvironment.LoggedAt(spells, cell, 26));
+        Assert.InRange(DemoEnvironment.LoggedAt(spells, cell, 30), 0f, 0.01f);
+        Assert.InRange(DemoEnvironment.LoggedAt(spells, cell, 26 + DemoEnvironment.TempLoggingWeeks), 0.99f, 1f);
+    }
+
+    [Fact]
+    public void SettlementsCutNearbyForestAndMineOreUntilItIsExhausted()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var s = world.Sites.Settlements.First();
+        var origin = world.Map.GetCell(s.Column, s.Row);
+        var vein = world.Map.Cells.First(c => DemoWorldSites.HexDistance(origin, c) == 1);
+        var ore = new HashSet<DemoCellRef> { new(vein.Column, vein.Row) };
+        var ids = new[] { s.Id };
+        var week = YearWeek(5);
+        var (state, events) = DemoEnvironment.Advance(world.Wildlife, week, TimeSpan.FromDays(week * 7), DemoEra.Pioneer, world.Map, world.Sites,
+            ids, RngRegistry.Create(3), 1000, residents: _ => 500, logs: _ => true, mines: _ => true, extraOre: ore);
+        var mining = Assert.Single(events, e => e.Kind == DemoSettlementEventKind.MiningBegan);
+        var at2 = DemoLandClearing.CellOf(world.Map, mining.Count); // 最近的礦脈（天然的或給的）
+        Assert.True(world.Map.GetCell(at2.Column, at2.Row).Ore || ore.Contains(at2));
+        var hasForest = world.Map.Cells.Any(c => c.Terrain == DemoTerrain.Forest && DemoWorldSites.HexDistance(origin, c) <= DemoEnvironment.TempLoggingRange
+            && world.Sites.SettlementAt(c.Column, c.Row) is null);
+        if (hasForest)
+        {
+            // 住民 500 人：每年 90% 會砍；十年內一定有。
+            var logging = Enumerable.Range(5, 10).SelectMany(y => DemoEnvironment.Advance(world.Wildlife, YearWeek(y), TimeSpan.FromDays(YearWeek(y) * 7),
+                DemoEra.Pioneer, world.Map, world.Sites, ids, RngRegistry.Create(3), 1000, residents: _ => 500, logs: _ => true, mines: _ => false).Events)
+                .First(e => e.Kind == DemoSettlementEventKind.Logging);
+            var at = DemoLandClearing.CellOf(world.Map, logging.Count);
+            Assert.Equal(DemoTerrain.Forest, world.Map.GetCell(at.Column, at.Row).Terrain);
+            Assert.InRange(DemoWorldSites.HexDistance(origin, world.Map.GetCell(at.Column, at.Row)), 1, DemoEnvironment.TempLoggingRange);
+        }
+        // 沒有會木工、探礦的聚落：什麼都不做。
+        Assert.DoesNotContain(DemoEnvironment.Advance(world.Wildlife, week, TimeSpan.FromDays(week * 7), DemoEra.Pioneer, world.Map, world.Sites,
+            ids, RngRegistry.Create(3), 1000, residents: _ => 500, logs: _ => false, mines: _ => false, extraOre: ore).Events,
+            e => e.Kind is DemoSettlementEventKind.Logging or DemoSettlementEventKind.MiningBegan);
+        // 開採中仍有礦脈；期滿挖空，挖空的不再算礦脈。
+        Assert.Empty(DemoEnvironment.ExhaustedOre(state.Spells, week + 1));
+        Assert.InRange(DemoEnvironment.MiningAt(state.Spells, at2, week + 1), 0f, 0.01f);
+        var end = week + DemoEnvironment.TempMiningWeeks;
+        var (after, endEvents) = DemoEnvironment.Advance(state, end, TimeSpan.FromDays(end * 7), DemoEra.Pioneer, world.Map, world.Sites,
+            ids, RngRegistry.Create(3), 2000, residents: _ => 500, logs: _ => true, mines: _ => true, extraOre: ore);
+        var done = Assert.Single(endEvents, e => e.Kind == DemoSettlementEventKind.OreExhausted);
+        Assert.Equal(mining.EventId, done.CauseEventId);
+        Assert.Contains(at2, DemoEnvironment.ExhaustedOre(after.Spells, end + 1));
+        Assert.Equal(2f, DemoEnvironment.MiningAt(after.Spells, at2, end + 1));
+        if (!world.Map.Cells.Any(c => c.Ore && DemoWorldSites.HexDistance(origin, c) <= DemoKnowledge.TempOreRange))
+        {
+            Assert.True(DemoKnowledge.NearOre(world.Map, s, ore));
+            Assert.False(DemoKnowledge.NearOre(world.Map, s, ore, DemoEnvironment.ExhaustedOre(after.Spells, end + 1)));
+        }
+        // 同一處礦脈不會再開採。
+        var nextYear = YearWeek(5 + DemoEnvironment.TempMiningWeeks / DemoWildlife.TempYearWeeks + 1);
+        Assert.DoesNotContain(DemoEnvironment.Advance(after, nextYear, TimeSpan.FromDays(nextYear * 7), DemoEra.Pioneer, world.Map, world.Sites,
+            ids, RngRegistry.Create(3), 3000, residents: _ => 500, logs: _ => true, mines: _ => true, extraOre: ore).Events,
+            e => e.Kind == DemoSettlementEventKind.MiningBegan && e.Count == mining.Count);
+    }
+
+    [Fact]
+    public void OldLoggingIsPrunedButMinesAreKept()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var s = world.Sites.Settlements.First();
+        var cut = new DemoEnvironmentSpell(DemoSettlementEventKind.Logging, s.Id, 26, 26 + DemoEnvironment.TempLoggingWeeks, 600,
+            System.Collections.Immutable.ImmutableList.Create(new DemoCellRef(1, 1)));
+        var mine = new DemoEnvironmentSpell(DemoSettlementEventKind.MiningBegan, s.Id, 26, 26 + DemoEnvironment.TempMiningWeeks, 601,
+            System.Collections.Immutable.ImmutableList.Create(new DemoCellRef(2, 2)));
+        var state = world.Wildlife with { Spells = System.Collections.Immutable.ImmutableList.Create(cut, mine) };
+        var week = 26 + DemoEnvironment.TempMiningWeeks + 1;
+        var (after, _) = DemoEnvironment.Advance(state, week, TimeSpan.FromDays(week * 7), DemoEra.Pioneer, world.Map, world.Sites,
+            Array.Empty<int>(), RngRegistry.Create(3), 1000);
+        Assert.Equal(new[] { DemoSettlementEventKind.MiningBegan }, after.Spells.Select(x => x.Kind));
     }
 }

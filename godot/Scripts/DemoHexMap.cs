@@ -719,10 +719,27 @@ public partial class DemoHexMap : Control
                 }
         }
         var data = new byte[World!.Columns * World.Rows * 4];
+        // 第 08-16 章第 14 節：伐木與採礦（每次先整理成依格查的表，不必每格掃一遍狀態表）。
+        _logged.Clear();
+        _mining.Clear();
+        foreach (var spell in Spells)
+            foreach (var c in spell.Cells)
+            {
+                if (spell.Kind == DemoSettlementEventKind.Logging && DemoEnvironment.LoggedAt(new[] { spell }, c, CurrentWeek) is var g and >= 0f)
+                    _logged[c] = _logged.TryGetValue(c, out var old) ? Math.Min(old, g) : g;
+                else if (spell.Kind == DemoSettlementEventKind.MiningBegan)
+                    _mining[c] = DemoEnvironment.MiningAt(new[] { spell }, c, CurrentWeek);
+            }
         foreach (var cell in World.Cells)
         {
             var at = (cell.Row * World.Columns + cell.Column) * 4;
             data[at] = (byte)SurfaceCode(cell);
+            var here = new DemoCellRef(cell.Column, cell.Row);
+            // 長回與開採進度分 16 階（每週都變，但只有跨階時那一格才重畫）。
+            if (data[at] == (byte)TerrainSurface.Code.Logged)
+                data[at + 3] = (byte)(Math.Clamp((int)(_logged[here] * 16f), 0, 15) * 17);
+            else if (data[at] == (byte)TerrainSurface.Code.HillsMining)
+                data[at + 3] = (byte)(Math.Clamp((int)(_mining[here] * 16f), 0, 15) * 17);
             // 第 08-16 章：開墾中與荒廢中的開發度（第 4 個位元組），地表依此從草地漸變到農田、或從農田漸變回草地。
             if (Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { State: DemoLandDevelopment.Clearing } parcel)
                 data[at + 3] = (byte)Math.Clamp(parcel.DevelopmentPercent * 255 / 100, 0, 255);
@@ -733,6 +750,9 @@ public partial class DemoHexMap : Control
         _surfaceKey = key;
         return _surfaceCodes = data;
     }
+
+    private readonly Dictionary<DemoCellRef, float> _logged = new();
+    private readonly Dictionary<DemoCellRef, float> _mining = new();
 
     private TerrainSurface.Code SurfaceCode(DemoHexCell cell)
     {
@@ -752,7 +772,8 @@ public partial class DemoHexMap : Control
             DemoTerrain.Water when cell.Sea => TerrainSurface.Code.Sea,
             DemoTerrain.Water when cell.Shallow => TerrainSurface.Code.Shallow,
             DemoTerrain.Water => TerrainSurface.Code.River,
-            DemoTerrain.Forest => TerrainSurface.Code.Forest,
+            DemoTerrain.Forest => _logged.ContainsKey(at) ? TerrainSurface.Code.Logged : TerrainSurface.Code.Forest,
+            DemoTerrain.Hills when _mining.TryGetValue(at, out var mined) => mined > 1f ? TerrainSurface.Code.MinePit : TerrainSurface.Code.HillsMining,
             DemoTerrain.Hills => cell.Ore || MeteoriteOre.Contains(at) ? TerrainSurface.Code.HillsOre : TerrainSurface.Code.Hills,
             _ => TerrainSurface.Code.Grassland
         };
@@ -912,6 +933,15 @@ public partial class DemoHexMap : Control
         foreach (var (c, k, _) in _decals)
             if (c.Column == column && c.Row == row)
                 kind = k;
+        // 第 08-16 章第 14 節：伐木、採礦的狀況（沒有天災時才顯示）。
+        if (kind == Overlay.None)
+            return (TerrainSurface.Code)data[i] switch
+            {
+                TerrainSurface.Code.Logged => data[i + 3] < 128 ? "🪓 森林剛被砍伐，只剩樹樁與幼苗" : "🪓 砍過的森林，樹木正慢慢長回",
+                TerrainSurface.Code.HillsMining => "⛏ 礦脈開採中",
+                TerrainSurface.Code.MinePit => "⛏ 礦脈已挖空，只剩廢棄的礦坑",
+                _ => ""
+            };
         return kind switch
         {
             Overlay.Fire => "🔥 野火正在燃燒，草木與屋舍陷入火海",

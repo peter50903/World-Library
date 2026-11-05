@@ -218,7 +218,7 @@ public sealed partial class DemoObserverWorld
                 // 第 12-1 章 C3b：環境狀態指向存在的聚落、期間正確、格在地圖內。
                 || wildlife.Spells is null
                 || wildlife.Spells.Any(x => x.Cells is null || !DemoEnvironment.IsSpell(x.Kind) || x.FromWeek < 0 || x.FromWeek > days / 7
-                    || x.ToWeek != x.FromWeek + (x.Kind == DemoSettlementEventKind.Heatwave ? DemoEnvironment.TempHeatwaveWeeks : DemoEnvironment.TempWildfireWeeks)
+                    || x.ToWeek != x.FromWeek + DemoEnvironment.Duration(x.Kind)
                     || sites.Settlements.All(s => s.Id != x.SettlementId)
                     || x.Cells.Any(c => c.Column < 0 || c.Row < 0 || c.Column >= map.Columns || c.Row >= map.Rows)))
                 Reject("野生動物狀態不合法");

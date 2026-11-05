@@ -48,7 +48,10 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.HeatwaveEnded] = new("TEMP_EV_HEATWAVE_ENDED", "熱浪結束", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.Wildfire] = new("TEMP_EV_WILDFIRE", "野火", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.ForestRegrown] = new("TEMP_EV_FOREST_REGROWN", "森林重生", CauseRootCategory.Disaster),
-        [DemoSettlementEventKind.DungeonAppeared] = new("TEMP_EV_DUNGEON_APPEARED", "地下城出現", CauseRootCategory.Disaster)
+        [DemoSettlementEventKind.DungeonAppeared] = new("TEMP_EV_DUNGEON_APPEARED", "地下城出現", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.Logging] = new("TEMP_EV_LOGGING", "伐木", CauseRootCategory.Resource),
+        [DemoSettlementEventKind.MiningBegan] = new("TEMP_EV_MINING_BEGAN", "開始採礦", CauseRootCategory.Resource),
+        [DemoSettlementEventKind.OreExhausted] = new("TEMP_EV_ORE_EXHAUSTED", "礦脈挖空", CauseRootCategory.Resource)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

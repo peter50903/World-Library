@@ -260,7 +260,14 @@ public enum DemoSettlementEventKind
     ForestRegrown = 26,
 
     /// <summary>第 12-1 章 C4：地下城出現（人數欄＝格編號；根因；掛在最近的有人聚落）。</summary>
-    DungeonAppeared = 27
+    DungeonAppeared = 27,
+
+    /// <summary>第 08-16 章第 14 節：伐木（人數欄＝格編號；根因）。約十年後長回，不另記事件。</summary>
+    Logging = 28,
+
+    /// <summary>第 08-16 章第 14 節：開始採礦（人數欄＝格編號；根因）與礦脈挖空（直接原因＝開始採礦）。</summary>
+    MiningBegan = 29,
+    OreExhausted = 30
 }
 
 /// <summary>
@@ -306,7 +313,8 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                 or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown
-                or DemoSettlementEventKind.DungeonAppeared
+                or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.Logging
+                or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

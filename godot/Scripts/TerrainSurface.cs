@@ -17,7 +17,9 @@ public partial class TerrainSurface : Control
     public enum Code : byte
     {
         Grassland = 0, Forest = 1, Hills = 2, HillsOre = 3, Sea = 4, River = 5, Shallow = 6,
-        Farmland = 7, Clearing = 8, Burning = 9, Scorched = 10, DryGrass = 11
+        Farmland = 7, Clearing = 8, Burning = 9, Scorched = 10, DryGrass = 11,
+        // 第 08-16 章第 14 節：砍過的森林（第 4 個位元組＝長回進度）、開採中的礦脈（＝開採進度）、挖空的礦坑。
+        Logged = 12, HillsMining = 13, MinePit = 14
     }
 
     /// <summary>【TEMP】每格半徑幾個圖像素；地塊交界的扭曲幅度（格半徑的倍數）。</summary>
@@ -452,8 +454,8 @@ public partial class TerrainSurface : Control
                 }
                 c = (Code)code switch
                 {
-                    Code.Forest => Pick(ForestFloor, patch),
-                    Code.Hills or Code.HillsOre => Pick(HillGround, patch),
+                    Code.Forest or Code.Logged => Pick(ForestFloor, patch),
+                    Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Pick(HillGround, patch),
                     // 試玩回饋 2026-11-05 之 5：田不再填滿整格六角形——依平滑雜訊與離格邊遠近只留不規則的幾片，其餘是草地。
                     Code.Farmland => FieldMask(x, y, owner) ? FieldArt(x, y, 1f) ?? Field(bx, by, 1f) : Pick(Grass, patch),
                     Code.Clearing when codes[owner * 4 + 3] == SettlementGround => VillageGround(x, y, owner, patch),
@@ -464,7 +466,7 @@ public partial class TerrainSurface : Control
                 };
                 if (_waterDist![i] is >= 1 and <= K && code != (byte)Code.Farmland)
                     c = c.Darkened(0.12f); // 河岸一圈稍暗
-                if (code == (byte)Code.HillsOre && Hash(bx, by, 9) < 0.05f)
+                if ((code == (byte)Code.HillsOre || code == (byte)Code.HillsMining && Hash(bx, by, 10) > dev) && Hash(bx, by, 9) < 0.05f)
                     c = OreSpeck;
                 break;
         }
@@ -626,6 +628,26 @@ public partial class TerrainSurface : Control
                     if (!(NearOther(codes, x, y, cell, 12) && h < 0.5f))
                         Tree(x, y, Hash(x / K, y / K, 23));
                 break;
+            case Code.Logged:
+            {
+                // 第 08-16 章第 14 節：砍過的森林——剛砍時是一片樹樁，之後長出幼樹，再一棵棵長回大樹（第 4 個位元組＝長回進度）。
+                var grown = codes[cell * 4 + 3] / 255f;
+                var stump = PixelParts.Get("px_stump");
+                var sapling = PixelParts.Get("px_sapling");
+                foreach (var (x, y, h) in Scatter(art ? 10 : 4 * K, 20))
+                {
+                    if (NearOther(codes, x, y, cell, 12) && h < 0.5f)
+                        continue;
+                    var stage = grown - h * 0.5f;
+                    if (stage > 0.5f)
+                        Tree(x, y, Hash(x / K, y / K, 23));
+                    else if (stage > 0.1f && sapling is not null)
+                        StampSprite(sapling, x, y, clip);
+                    else if (h > 0.4f && stump is not null)
+                        StampSprite(stump, x, y, clip);
+                }
+                break;
+            }
             case Code.Grassland:
             {
                 // 草原：草叢、野花（乾旱時是枯草）與零星幾棵樹。
@@ -647,6 +669,8 @@ public partial class TerrainSurface : Control
             }
             case Code.Hills:
             case Code.HillsOre:
+            case Code.HillsMining:
+            case Code.MinePit:
             {
                 // 試玩回饋 2026-11-05 之 1（山頭太密）：山頭改成隨機散布、平均每格一座左右（大小兩種），不再每格固定一大一小排成格子；
                 // 礦脈格散布兩三塊礦石（日後挖完就消失），一般丘陵偶有小石頭（細節層）。
@@ -658,11 +682,17 @@ public partial class TerrainSurface : Control
                     if (bigArt is not null && smallArt is not null)
                         StampSprite(h < 0.18f ? bigArt : smallArt, x, y, clip);
                     else
-                        Stamp(h < 0.18f ? BigPeak : Peak, x, y, RockShades, clip, code == Code.HillsOre);
+                        Stamp(h < 0.18f ? BigPeak : Peak, x, y, RockShades, clip, code is Code.HillsOre or Code.HillsMining);
                 }
+                // 第 08-16 章第 14 節：開採中的礦脈礦石隨開採進度一塊塊減少、山腳多一座礦坑；挖空後只剩礦坑。
+                var mined = code == Code.HillsMining ? codes[cell * 4 + 3] / 255f : 0f;
+                if (code is Code.HillsMining or Code.MinePit && PixelParts.Get("px_mine_pit") is { } pit && Owned((int)center.X, (int)center.Y + 8))
+                    StampSprite(pit, (int)center.X, (int)center.Y + 8, clip);
                 foreach (var (x, y, h) in Scatter(14, 34))
                 {
-                    if (code == Code.HillsOre && h < 0.3f && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } ore)
+                    if (code == Code.HillsMining && h < 0.3f * (1f - mined) && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } left)
+                        StampSprite(left, x, y, clip);
+                    else if (code == Code.HillsOre && h < 0.3f && PixelParts.Get(h < 0.15f ? "px_ore_1" : "px_ore_2") is { } ore)
                         StampSprite(ore, x, y, clip);
                     else if (code == Code.Hills && h < 0.12f && PixelParts.Get(h < 0.06f ? "px_rock_1" : "px_rock_2") is { } rock)
                         StampSprite(rock, x, y, clip, detail: true);

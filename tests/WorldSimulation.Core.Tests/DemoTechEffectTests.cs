@@ -46,6 +46,8 @@ public sealed class DemoTechEffectTests
         Assert.All(world.WeekReports().SelectMany(w => w.Sources), s => Assert.True(s.WeeklySupply > 0));
         // 第 12-1 章 C3b：野火期間的森林另有減產，不列入固定值比對。
         var burnt = world.Wildlife.Spells.Where(x => x.Kind == DemoSettlementEventKind.Wildfire).SelectMany(x => x.Cells).ToHashSet();
+        // 第 08-16 章第 14 節：砍過的森林也減產（舊的伐木狀態會移除，改由伐木事件找格）。
+        burnt.UnionWith(world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.Logging).Select(e => DemoLandClearing.CellOf(world.Map, e.Count)));
         Assert.All(world.WeekReports().SelectMany(w => w.Sources).Where(s => s.Kind == DemoCatchmentSourceKind.Forest
                 && !burnt.Contains(new DemoCellRef(s.Column, s.Row))),
             s => Assert.Contains(s.WeeklySupply, new[] // 第 08-8 章 B2：鄰近林地子民聚落＋10%
