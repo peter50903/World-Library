@@ -104,6 +104,48 @@ public static class ArtAssets
     public const string SfxEventAlert = "res://assets/audio/sfx_event_alert.ogg";
     public const string MusicObserverLoop = "res://assets/audio/music_observer_loop.ogg";
 
+    /// <summary>第 08-18d 章：第五、六批音樂與音效（res://assets/audio/music2、sfx2）。</summary>
+    public static string Sfx2(string name) => $"res://assets/audio/sfx2/{name}.ogg";
+    public static string Music2(string name) => $"res://assets/audio/music2/{name}.ogg";
+
+    /// <summary>新的音效有就用新的，沒有退回舊的。</summary>
+    public static string Prefer(string fresh, string old) => ResourceLoader.Exists(fresh) ? fresh : old;
+
+    /// <summary>第 08-18d 章：各時代的背景音樂（一首播完換下一首；開頭先播主題曲）。</summary>
+    public static IReadOnlyList<string> MusicFor(DemoEra era) => era switch
+    {
+        DemoEra.Hope => new[] { Music2("music_hope_1"), Music2("music_hope_2"), Music2("music_wonder") },
+        DemoEra.Pioneer => new[] { Music2("music_pioneer_1"), Music2("music_pioneer_2"), Music2("music_chronicle") },
+        _ => new[] { Music2("music_conquest_1"), Music2("music_conquest_2"), Music2("music_tension") }
+    };
+
+    public static string MusicTheme => Music2("music_theme");
+
+    /// <summary>事件音效（第五批；缺少時退回第四批）。</summary>
+    public static string EventSfx(DemoSettlementEventKind kind) => kind switch
+    {
+        DemoSettlementEventKind.Earthquake => Prefer(Sfx2("sfx_quake"), SfxEarthquake),
+        DemoSettlementEventKind.Meteorite => Prefer(Sfx2("sfx_meteor"), SfxMeteor),
+        DemoSettlementEventKind.Flood => Prefer(Sfx2("sfx_flood"), SfxFlood),
+        DemoSettlementEventKind.Tornado => Prefer(Sfx2("sfx_tornado"), SfxTornado),
+        DemoSettlementEventKind.SettlementFounded => Prefer(Sfx2("sfx_found_village"), SfxFounding),
+        DemoSettlementEventKind.EraBegan => Prefer(Sfx2("sfx_era"), SfxEra),
+        DemoSettlementEventKind.SettlementRuined => Sfx2("sfx_ruin"),
+        DemoSettlementEventKind.CultureSplit => Sfx2("sfx_culture_split"),
+        DemoSettlementEventKind.FaithFounded => Sfx2("sfx_faith"),
+        DemoSettlementEventKind.KnowledgeLearned => Sfx2("sfx_tech"),
+        DemoSettlementEventKind.BeastAttack => Sfx2("sfx_beast"),
+        _ => Prefer(Sfx2("sfx_tornado"), SfxTornado)
+    };
+
+    public static string FireLoop => Prefer(Sfx2("amb_fire"), SfxFire);
+    public static string UiClick => Prefer(Sfx2("ui_click"), SfxClick);
+
+    /// <summary>實際用到的第五、六批音訊（冒煙測試確認讀得到）。</summary>
+    private static IEnumerable<string> Batch5Audio => new[] { DemoEra.Hope, DemoEra.Pioneer, (DemoEra)2 }.SelectMany(MusicFor).Append(MusicTheme)
+        .Concat(new[] { "sfx_quake", "sfx_meteor", "sfx_flood", "sfx_tornado", "sfx_found_village", "sfx_era", "sfx_ruin", "sfx_culture_split",
+            "sfx_faith", "sfx_tech", "sfx_beast", "amb_fire", "ui_click" }.Select(Sfx2));
+
     /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
     public static readonly string[] Used =
     new[]
@@ -125,7 +167,9 @@ public static class ArtAssets
         DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
         DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
-    }.Concat(PixelParts.Names.Select(PixelParts.Path)) // 第 08-16 章第 12 節：像素零件
+    }.Concat(PixelParts.Names.Select(PixelParts.LegacyPath)) // 第 08-16 章第 12 節：像素零件
+        .Concat(PixelParts.Batch5.Select(PixelParts.Path)) // 第 08-18d 章：第五、六批像素素材
+        .Concat(Batch5Audio)
         .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
         .Concat(new[] { ObserverRoot.EraArt(DemoEra.Hope), ObserverRoot.EraArt(DemoEra.Pioneer), ObserverRoot.EraArt((DemoEra)2) }) // 第 08-16 章：時代插圖
         .ToArray();
@@ -157,6 +201,7 @@ public static class ArtAssets
     /// </summary>
     public static void ReleaseCache()
     {
+        PixelParts.ReleaseCache();
         foreach (var resource in Cache.Values.Where(r => r is not null).Concat(Created))
             resource!.Dispose();
         Cache.Clear();

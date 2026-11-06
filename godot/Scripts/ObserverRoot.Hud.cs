@@ -201,12 +201,20 @@ public partial class ObserverRoot
 
     private void BuildAudio()
     {
-        _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxClick), VolumeDb = TempClickVolumeDb };
+        _clickPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.UiClick), VolumeDb = TempClickVolumeDb };
         _alertPlayer = new AudioStreamPlayer { Stream = ArtAssets.Audio(ArtAssets.SfxEventAlert), VolumeDb = -4f };
-        var music = ArtAssets.Audio(ArtAssets.MusicObserverLoop);
-        if (music is AudioStreamOggVorbis ogg)
-            ogg.Loop = true;
+        // 第 08-18d 章：先播主題曲，之後依時代輪播（沒有第五批音樂時照舊循環舊曲）。
+        var music = ArtAssets.Audio(ArtAssets.MusicTheme);
+        if (music is AudioStreamOggVorbis theme)
+            theme.Loop = false;
+        if (music is null && ArtAssets.Audio(ArtAssets.MusicObserverLoop) is { } old)
+        {
+            if (old is AudioStreamOggVorbis ogg)
+                ogg.Loop = true;
+            music = old;
+        }
         _musicPlayer = new AudioStreamPlayer { Stream = music, VolumeDb = TempMusicVolumeDb };
+        _musicPlayer.Finished += NextTrack;
         AddChild(_clickPlayer);
         AddChild(_alertPlayer);
         AddChild(_musicPlayer);
@@ -241,6 +249,30 @@ public partial class ObserverRoot
         if (!_audioMuted && _alertPlayer.Stream is not null)
             _alertPlayer.Play();
     }
+
+    private int _track;
+
+    /// <summary>一首播完：換這個時代的下一首（第 08-18d 章）。</summary>
+    private void NextTrack()
+    {
+        if (_audioMuted || !_musicToggle.ButtonPressed)
+            return;
+        var list = ArtAssets.MusicFor(_musicEra);
+        for (var k = 0; k < list.Count; k++)
+        {
+            if (ArtAssets.Audio(list[_track++ % list.Count]) is not { } next)
+                continue;
+            if (next is AudioStreamOggVorbis ogg)
+                ogg.Loop = false;
+            _musicPlayer.Stream = next;
+            _musicPlayer.Play();
+            return;
+        }
+        _musicPlayer.Play(); // 只有舊曲：從頭再播
+    }
+
+    /// <summary>目前播放音樂所依的時代（每次刷新由主執行緒更新）。</summary>
+    private DemoEra _musicEra = DemoEra.Hope;
 
     private void OnMusicToggled(bool on)
     {

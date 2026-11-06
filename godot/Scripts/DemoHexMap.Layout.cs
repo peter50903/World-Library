@@ -392,17 +392,20 @@ public partial class DemoHexMap
                 var kind = lot.Kind;
                 var width = lot.W * t * radius / TerrainSurface.TempTexelsPerRadius;
                 if (lot.Construction)
-                    items.Add((bottom.Y, () => DrawConstruction(bottom, width, lot.H * t * radius / TerrainSurface.TempTexelsPerRadius, radius)));
+                    items.Add((bottom.Y, () => DrawConstruction(bottom, width, lot.H * t * radius / TerrainSurface.TempTexelsPerRadius, radius, lot.X * 31 + lot.Y * 17)));
                 else if (IsResidence(kind))
-                    items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius)));
+                    items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius, lot.X * 31 + lot.Y * 17)));
                 else
-                    items.Add((bottom.Y, () => DrawLotBuilding(kind, bottom, width, radius)));
+                    items.Add((bottom.Y, () => DrawLotBuilding(kind, bottom, width, radius, roof)));
             }
             // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。
-            var fire = Screen(layout.Plaza.Position.X + layout.Plaza.Size.X / 2f, layout.Plaza.Position.Y + layout.Plaza.Size.Y / 2f);
+            // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
+            var plaza = layout.Plaza;
+            var big = plaza.Size.X >= 3;
+            var fire = Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.Position.Y + (big ? 0.9f : plaza.Size.Y / 2f));
             items.Add((fire.Y, () => DrawCampfire(fire, radius)));
-            var store = Screen(layout.Plaza.Position.X + 0.5f, layout.Plaza.Position.Y + 1f);
-            items.Add((store.Y, () => DrawStockpile(store, radius)));
+            var store = big ? Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.End.Y) : Screen(plaza.Position.X + 0.5f, plaza.Position.Y + 1f);
+            items.Add((store.Y, () => DrawStockpile(store, radius, big)));
             if (ShowDisasterMarks && RecentDisasters.Contains(site.Id)) // 第 12-1 章 C3：一年內遭天災
             {
                 var mark = Screen(layout.Plaza.End.X + 0.5f, layout.Plaza.Position.Y - 0.5f);
@@ -420,8 +423,15 @@ public partial class DemoHexMap
         DrawNameplates(start, radius);
     }
 
-    private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius)
+    private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture)
     {
+        if (LotArt(kind, culture) is { } art)
+        {
+            // 第 08-18d 章：第五批大建築素材（篷布、屋頂、旗子染文化色）。
+            GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(art, radius).X) * 0.95f, 0.36f);
+            DrawArt(art, bottom, radius);
+            return;
+        }
         // 落地陰影（光源左上：陰影往右下）。
         DrawSetTransform(bottom + new Vector2(lotWidth * 0.06f, -lotWidth * 0.03f), 0f, new Vector2(1f, 0.3f));
         DrawCircle(Vector2.Zero, lotWidth * 0.55f, new Color(0.08f, 0.06f, 0.04f, 0.38f));
@@ -442,6 +452,13 @@ public partial class DemoHexMap
 
     private void DrawCampfire(Vector2 at, float radius)
     {
+        if (PixelParts.Texture("bld_bonfire") is { } bonfire)
+        {
+            // 第 08-18d 章：篝火素材（4 格動畫），以中心為準往下半張。
+            var size = PixelParts.ScreenSize(bonfire, radius, 4);
+            DrawArt(bonfire, at + new Vector2(0f, size.Y * 0.5f), radius, 4, (int)(Time.GetTicksMsec() / 150) % 4);
+            return;
+        }
         var p = radius / TerrainSurface.TempArtTexelsPerRadius;
         DrawCircle(at, 4f * p, new Color(0.30f, 0.26f, 0.22f));
         var flicker = 0.8f + 0.2f * Mathf.Sin(Time.GetTicksMsec() / 120f);
@@ -463,6 +480,11 @@ public partial class DemoHexMap
         var faceHeight = (stone ? 12f : 9f) * p;
         var gates = layout.Gates.ToHashSet();
         var sprite = PixelParts.Texture(stone ? "bld_stone_wall" : "bld_palisade", repeat: true);
+        if (stone && PixelParts.IsBatch5("wall_front") && PixelParts.Texture("wall_front", repeat: true) is { } front)
+        {
+            AddWallArt(items, layout, wall, screen, radius, front);
+            return;
+        }
 
         void Front(float y, float x0, float x1)
         {
@@ -549,5 +571,66 @@ public partial class DemoHexMap
                 Tower(screen(wall.End.X - 0.5f, bottomRow + 1), 4f);
             }
         }));
+    }
+
+    /// <summary>
+    /// 第 08-18d 章：第五批城牆素材——上下兩側是正面牆（wall_front 橫向重複），左右兩側只看得到牆頂（wall_top 一方格一張），
+    /// 四角是圓塔（尖頂染文化色），上下的城門是 wall_gate、左右的城門是 wall_gate_side。上側與左右在建築之前畫，下側在建築之後畫。
+    /// </summary>
+    private void AddWallArt(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius, CanvasTexture front)
+    {
+        var culture = CultureOf.TryGetValue(layout.SettlementId, out var id) ? CultureColor(id) : new Color(0.62f, 0.25f, 0.18f);
+        var tower = (Texture2D?)PixelParts.Tinted("wall_tower", culture, 0.5f) ?? PixelParts.Texture("wall_tower");
+        var gate = PixelParts.Texture("wall_gate");
+        var gateSide = PixelParts.Texture("wall_gate_side");
+        var top = PixelParts.Texture("wall_top");
+        var gates = layout.Gates.ToHashSet();
+        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var tile = TerrainSurface.TempTile * p;
+
+        void Row(int y)
+        {
+            var x0 = wall.Position.X;
+            for (var x = wall.Position.X; x <= wall.End.X; x++)
+            {
+                if (x < wall.End.X && !gates.Contains(new Vector2I(x, y)))
+                    continue;
+                var a = screen(x0, y + 1);
+                var b = screen(x, y + 1);
+                if (b.X - a.X > 0.5f)
+                {
+                    var h = front.GetHeight() * p;
+                    DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, front.GetHeight()));
+                }
+                if (x < wall.End.X && gate is not null)
+                    DrawArt(gate, screen(x + 0.5f, y + 1), radius);
+                x0 = x + 1;
+            }
+            if (tower is null)
+                return;
+            DrawArt(tower, screen(wall.Position.X + 0.5f, y + 1), radius);
+            DrawArt(tower, screen(wall.End.X - 0.5f, y + 1), radius);
+        }
+        void Side(int x)
+        {
+            for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
+            {
+                if (gates.Contains(new Vector2I(x, y)))
+                {
+                    if (gateSide is not null)
+                        DrawArt(gateSide, screen(x + 0.5f, y + 1), radius);
+                    continue;
+                }
+                if (top is not null)
+                    DrawTextureRect(top, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
+            }
+        }
+        items.Add((screen(0, wall.Position.Y + 1).Y - 0.01f, () =>
+        {
+            Side(wall.Position.X);
+            Side(wall.End.X - 1);
+            Row(wall.Position.Y);
+        }));
+        items.Add((screen(0, wall.End.Y).Y + 0.01f, () => Row(wall.End.Y - 1)));
     }
 }

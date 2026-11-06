@@ -35,7 +35,9 @@ public partial class DemoHexMap
             DrawRouteAhead(start, radius, batch, center);
             var heading = MigrantHeading(start, radius, batch);
             var walkers = Math.Clamp((int)((batch.People + TempPeoplePerWalker - 1) / TempPeoplePerWalker), 1, TempMaxWalkers);
-            if (ArtAssets.Texture(ArtAssets.FxMigrantsWalk) is { } sheet)
+            if (radius >= TempWalkerMinRadius && PixelParts.Tinted(batch.Founding ? "unit_settler" : "unit_migrant", MigrantTunic) is { } units)
+                DrawMigrantUnits(units, center, radius, heading, walkers, seconds + batch.Id * 0.37f);
+            else if (ArtAssets.Texture(ArtAssets.FxMigrantsWalk) is { } sheet)
                 DrawWalkSprite(sheet, center, radius, heading, seconds + batch.Id * 0.37f);
             else
                 DrawWalkers(center, radius, heading, walkers, seconds + batch.Id * 0.37f, batch.Founding);
@@ -81,6 +83,30 @@ public partial class DemoHexMap
         var a = MigrantMarkerCenter(start, radius, World!.GetCell(batch.Path[i].Column, batch.Path[i].Row));
         var b = MigrantMarkerCenter(start, radius, World.GetCell(batch.Path[i + 1].Column, batch.Path[i + 1].Row));
         return (b - a).Normalized();
+    }
+
+    private static readonly Color MigrantTunic = new(0.58f, 0.46f, 0.32f);
+
+    /// <summary>第 08-18d 章：近景的遷徙隊伍是一列第五批小人素材（遷徙者揹包袱、開拓隊扛小旗），往左走時翻轉。</summary>
+    private void DrawMigrantUnits(Texture2D sheet, Vector2 center, float radius, Vector2 heading, int walkers, float time)
+    {
+        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var dir = heading.LengthSquared() > 0f ? heading.Normalized() : Vector2.Right;
+        var lead = center + dir * 9f * p * (walkers - 1) / 2f;
+        var flip = dir.X < 0f;
+        var feet = new List<(Vector2 At, int Frame)>();
+        for (var k = 0; k < walkers; k++)
+        {
+            var side = new Vector2(-dir.Y, dir.X) * ((k % 2 == 0) ? 2f : -2f) * p;
+            feet.Add((lead - dir * 9f * p * k + side + new Vector2(0f, radius * 0.25f), (int)(time * 7f + k * 1.3f) % 4));
+        }
+        foreach (var (at, frame) in feet.OrderBy(f => f.At.Y))
+        {
+            DrawSetTransform(at + new Vector2(p, 0f), 0f, new Vector2(1f, 0.35f));
+            DrawCircle(Vector2.Zero, 5f * p, new Color(0f, 0f, 0f, 0.3f));
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+            DrawArt(sheet, at, radius, 4, frame, flip);
+        }
     }
 
     /// <summary>素材版：4 幀橫排，往左走時水平翻轉。</summary>

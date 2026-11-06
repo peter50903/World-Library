@@ -17,9 +17,10 @@ public partial class ObserverRoot
 
     public static string EraArt(DemoEra era) => era switch
     {
-        DemoEra.Hope => "res://assets/ui/era_hope.png",
-        DemoEra.Pioneer => "res://assets/ui/era_pioneer.png",
-        _ => "res://assets/ui/era_conquest.png"
+        // 第 08-18d 章：第五批時代插圖優先（缺少時用舊圖）。
+        DemoEra.Hope => ArtAssets.Prefer("res://assets/px2/ui_era_hope.png", "res://assets/ui/era_hope.png"),
+        DemoEra.Pioneer => ArtAssets.Prefer("res://assets/px2/ui_era_pioneer.png", "res://assets/ui/era_pioneer.png"),
+        _ => ArtAssets.Prefer("res://assets/px2/ui_era_conquest.png", "res://assets/ui/era_conquest.png")
     };
 
     private static string EraLine(DemoEra era) => era switch

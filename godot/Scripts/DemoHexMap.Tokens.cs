@@ -158,12 +158,25 @@ public partial class DemoHexMap
         var fill = residents ? new Color(0.93f, 0.78f, 0.42f) : kind is TokenKind.Migrants or TokenKind.Founders ? new Color(0.86f, 0.38f, 0.26f) : new Color(0.22f, 0.18f, 0.14f);
         var ink = residents ? new Color(0.20f, 0.12f, 0.05f) : Colors.White;
         DrawCircle(at + new Vector2(r * 0.18f, r * 0.22f), r * 1.05f, new Color(0f, 0f, 0f, 0.35f)); // 陰影
-        if (level >= 4)
-            DrawCircle(at, r + 2.5f, new Color(0.98f, 0.82f, 0.30f)); // 金邊
-        DrawCircle(at, r + 1.2f, rim ?? new Color(0.10f, 0.08f, 0.06f));
-        DrawCircle(at, r, fill);
         var font = ThemeDB.FallbackFont;
-        if (r >= 5.5f)
+        var tokenBase = PixelParts.IsBatch5("tok_base") ? PixelParts.Tinted("tok_base", rim ?? new Color(0.55f, 0.50f, 0.42f)) : null;
+        if (tokenBase is not null && PixelParts.Texture(TokenArt(kind, tier)) is { } icon)
+        {
+            // 第 08-18d 章：第五批棋子——木質底座（外圈染文化色）、職業或聚落層級圖示、最高一級加金邊；直徑照指示物的級距。
+            var d = 2f * (r + 1.2f);
+            if (level >= 4 && PixelParts.Texture("tok_rim_gold") is { } gold)
+                DrawTextureRect(gold, new Rect2(at - Vector2.One * d * 52f / 96f, Vector2.One * d * 52f / 48f), false);
+            DrawTextureRect(tokenBase, new Rect2(at - Vector2.One * d / 2f, Vector2.One * d), false);
+            DrawTextureRect(icon, new Rect2(at - Vector2.One * d / 3f, Vector2.One * d * 2f / 3f), false);
+        }
+        else
+        {
+            if (level >= 4)
+                DrawCircle(at, r + 2.5f, new Color(0.98f, 0.82f, 0.30f)); // 金邊
+            DrawCircle(at, r + 1.2f, rim ?? new Color(0.10f, 0.08f, 0.06f));
+            DrawCircle(at, r, fill);
+        }
+        if (tokenBase is null && r >= 5.5f)
         {
             var size = Math.Max(8, (int)(r * 1.25f));
             var glyph = TokenGlyph(kind, tier);
@@ -180,4 +193,24 @@ public partial class DemoHexMap
             DrawString(font, pos, text, HorizontalAlignment.Left, -1, size, Colors.White);
         }
     }
+
+    /// <summary>第 08-18d 章：棋子中央的圖示（居民棋依聚落層級，其他依職業）。</summary>
+    private static string TokenArt(TokenKind kind, DemoSettlementTier tier) => kind switch
+    {
+        TokenKind.Farmers => "tok_farmer",
+        TokenKind.Woodcutters => "tok_woodcutter",
+        TokenKind.Miners => "tok_miner",
+        TokenKind.Hunters => "tok_hunter",
+        TokenKind.Fishers => "tok_fisher",
+        TokenKind.Migrants => "tok_migrants",
+        TokenKind.Founders => "tok_settlers",
+        _ => tier switch
+        {
+            DemoSettlementTier.Camp => "tok_camp",
+            DemoSettlementTier.Village => "tok_village",
+            DemoSettlementTier.Town => "tok_town",
+            DemoSettlementTier.City => "tok_city",
+            _ => "tok_capital"
+        }
+    };
 }

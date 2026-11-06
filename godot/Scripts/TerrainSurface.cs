@@ -265,6 +265,18 @@ public partial class TerrainSurface : Control
 
     private Color GroundColor(byte kind, int x, int y)
     {
+        var tx = x / TempTile;
+        var ty = y / TempTile;
+        var art = kind switch
+        {
+            GroundPlazaStone => Tex(Art.PlazaStone, tx, ty, x, y),
+            GroundCobble or GroundStreet => Tex(Art.RoadCobble, tx, ty, x, y),
+            GroundRoad => Tex(Art.RoadDirt, tx, ty, x, y),
+            GroundYard => Tex(Art.Yard, tx, ty, x, y),
+            _ => Tex(Art.PlazaDirt, tx, ty, x, y)
+        };
+        if (art is { } c)
+            return c;
         var h = Hash(x / K, y / K, 31);
         var ix = x % TempTile;
         var iy = y % TempTile;
@@ -503,14 +515,16 @@ public partial class TerrainSurface : Control
             {
                 var x = u * TempThumb + TempThumb / 2;
                 var y = v * TempThumb + TempThumb / 2;
-                var c = Adjust(Ground(x, y));
+                var c = Ground(x, y);
+                if (!_groundRaw)
+                    c = Adjust(c);
                 // 遠看時樹與山頭只剩色點（WorldBox 的遠景做法）：方格中央 2×2 縮圖像素畫成樹冠或岩石色。
                 var tile = TileIndexOf(x, y);
                 int lu = u % (TempTile / TempThumb), lv = v % (TempTile / TempThumb);
                 if (lu is 1 or 2 && lv is 1 or 2 && (_ground.Count == 0 || !_ground.ContainsKey(tile)))
                 {
                     if (TreeAt(tile % _tilesX, tile / _tilesX) is { } tree)
-                        c = Adjust(tree.Shades[1]);
+                        c = Canopy(TreeArt(tree, BiomeOfTile(tile), tile % _tilesX, tile / _tilesX)) ?? Adjust(tree.Shades[1]);
                     else if (PeakAt(tile % _tilesX, tile / _tilesX) > 0)
                         c = Adjust(RockShades[1]);
                 }
@@ -548,7 +562,10 @@ public partial class TerrainSurface : Control
         _wroteDetail = false;
         for (var y = _by; y < _by + _bh; y++)
             for (var x = _bx; x < _bx + _bw; x++)
-                Put(x, y, Ground(x, y));
+            {
+                var c = Ground(x, y);
+                Put(x, y, c, _groundRaw);
+            }
         // 疊上樹、山頭、礦石等零件：由上而下（下面的蓋住上面的）；零件會往上、往左右超出自己的方格，所以多看幾個方格。
         var tx0 = Math.Max(0, _bx / TempTile - 2);
         var tx1 = Math.Min(_tilesX - 1, (_bx + _bw) / TempTile + 2);
@@ -588,11 +605,12 @@ public partial class TerrainSurface : Control
             Mathf.Lerp(gray, c.B, TempSaturation) * TempBrightness, c.A);
     }
 
-    private void Put(int x, int y, Color c)
+    private void Put(int x, int y, Color c, bool raw = false)
     {
         if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
             return;
-        c = Adjust(c);
+        if (!raw)
+            c = Adjust(c);
         var i = ((y - _by) * TempChunk + x - _bx) * 4;
         var target = _toDetail ? _detailBuf : _buf;
         _wroteDetail |= _toDetail;
@@ -668,18 +686,23 @@ public partial class TerrainSurface : Control
             patch = Mathf.Clamp(patch + (h < 0.03f ? -0.34f : 0.34f), 0f, 0.999f); // 方格內零星的深淺點
         var biome = (int)BiomeOfTile(tile);
         var sea = _seaDist[tile];
+        _groundRaw = false;
+        var art = Art;
         Color c;
         switch ((Code)code)
         {
             case Code.Sea:
-                // 海依離岸距離分圈：1、2、3～4、5～7、更遠。
-                c = SeaShades[sea switch { <= 1 => 0, 2 => 1, <= 4 => 2, <= 7 => 3, _ => 4 }];
+                // 海依離岸距離分圈：1～2 淺海、3～5 海、更遠深海（第五批素材；越遠越深）。缺素材時 1、2、3～4、5～7、更遠五圈色。
+                if (Tex(sea <= 2 ? art.SeaShallow : sea <= 5 ? art.Sea : art.SeaDeep, tx, ty, x, y) is { } seaArt)
+                    c = sea > 9 ? seaArt.Darkened(Math.Min(0.25f, (sea - 9) * 0.03f)) : seaArt;
+                else
+                    c = SeaShades[sea switch { <= 1 => 0, 2 => 1, <= 4 => 2, <= 7 => 3, _ => 4 }];
                 break;
             case Code.River:
-                c = sea <= 1 ? RiverShades[0] : RiverShades[1];
+                c = Tex(sea <= 1 ? art.RiverShallow : art.River, tx, ty, x, y) ?? (sea <= 1 ? RiverShades[0] : RiverShades[1]);
                 break;
             case Code.Shallow:
-                c = h < 0.12f ? Stone : RiverShades[0];
+                c = Tex(art.Ford, tx, ty, x, y) ?? (h < 0.12f ? Stone : RiverShades[0]);
                 break;
             default:
                 if (groundKind != 0)
@@ -689,10 +712,10 @@ public partial class TerrainSurface : Control
                 }
                 if (sea == 1 || sea == 2 && Hash(tx, ty, 4) < 0.4f)
                 {
-                    c = Pick(Sand, patch); // 岸邊 1～2 方格沙灘
+                    c = Tex(sea == 1 ? art.SandWet : art.Sand, tx, ty, x, y) ?? Pick(Sand, patch); // 岸邊 1～2 方格沙灘（貼水的是濕沙）
                     break;
                 }
-                c = (Code)code switch
+                c = LandArt((Code)code, codes[owner * 4 + 3], (Biome)biome, tx, ty, x, y) ?? (Code)code switch
                 {
                     Code.Forest or Code.Logged => Pick(FloorBy[biome], patch),
                     Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Pick(HillGround, patch),
@@ -714,16 +737,17 @@ public partial class TerrainSurface : Control
         switch ((DemoHexMap.Overlay)overlay)
         {
             case DemoHexMap.Overlay.Fire when hit:
+                _groundRaw = false;
                 c = Hash(bx, by, 6) < 0.25f ? (Hash(bx, by, 7) < 0.5f ? Ember : EmberDark) : Pick(Ash, patch);
                 break;
             case DemoHexMap.Overlay.Scorch when hit && !IsWater(code):
-                c = Pick(Ash, patch);
+                c = Tex(Art.Ash, tx, ty, x, y) ?? Pick(Ash, patch);
                 break;
             case DemoHexMap.Overlay.Dry when hit && !IsWater(code):
-                c = Pick(Dry, patch);
+                c = Tex(Art.GrassSteppe, tx, ty, x, y) ?? Pick(Dry, patch);
                 break;
             case DemoHexMap.Overlay.Flood when amount > 0.85f ? hit : Noise(x / 22f, y / 22f, 58) < amount * 0.7f:
-                c = FloodWater; // 高水位時一片汪洋；退水時剩下塊狀的積水（第 08-18b 章第 5 節）
+                c = Tex(Art.RiverShallow, tx, ty, x, y) ?? FloodWater; // 高水位時一片汪洋；退水時剩下塊狀的積水（第 08-18b 章第 5 節）
                 break;
             case DemoHexMap.Overlay.Scar when !IsWater(code) && Hash(tx, ty, 57) < amount * 0.8f:
                 c = c.Lerp(ScarredSoil, 0.55f); // 龍捲風刮淡的地面（以方格為單位，看得出一條掃過的帶子）
@@ -776,7 +800,7 @@ public partial class TerrainSurface : Control
         {
             // 田埂：本身在田裡、且兩旁至少有一塊完整的田才畫成田埂，否則是草地。
             var beside = FieldTile(tx, ty) && (Whole(px, py) || lx == TempPlotTilesX - 1 && Whole(px + 1, py) || ly == TempPlotTilesY - 1 && Whole(px, py + 1));
-            return beside ? Ridge : null;
+            return beside ? Tex(Art.Ridge, tx, ty, x, y) ?? Ridge : null;
         }
         if (!Whole(px, py))
             return null;
@@ -789,7 +813,13 @@ public partial class TerrainSurface : Control
         var p = Hash(px, py, 13);
         var furrow = iy / 3 % 2 == 0;
         Color c;
-        if (dev >= 1f)
+        if (FieldArt(dev, p, px, py, x, y) is { } fieldArt)
+        {
+            if (fieldArt.A <= 0f)
+                return null; // 還沒開墾到這一塊（畫草地）
+            c = fieldArt;
+        }
+        else if (dev >= 1f)
         {
             var crop = p < 0.65f ? Crops[0] : p < 0.85f ? Crops[2] : Crops[1];
             c = furrow ? crop : crop.Darkened(0.12f);
@@ -934,7 +964,8 @@ public partial class TerrainSurface : Control
                 DeadTree(ax, ay); // 第 08-18b 章第 5 節：龍捲風刮過，樹只剩枯枝
             else if (fire && hit)
             {
-                if (PixelParts.Get(Hash(tx, ty, 26) < 0.6f ? "px_tree_burnt" : "px_stump") is { } burnt)
+                if (((Hash(tx, ty, 26) < 0.6f ? PixelParts.Variant("px_tree_burnt", 2, Hash(tx, ty, 28)) : PixelParts.Variant("px_stump", 2, Hash(tx, ty, 28)))
+                    ?? PixelParts.Get(Hash(tx, ty, 26) < 0.6f ? "px_tree_burnt" : "px_stump")) is { } burnt)
                     StampSprite(burnt, ax, ay);
                 else
                     Block(ax - K / 2, ay - 3 * K, K, 3 * K, Ash[0]);
@@ -946,8 +977,10 @@ public partial class TerrainSurface : Control
         {
             // 砍過還沒長回的方格：樹樁或幼樹。
             var stage = codes[cell * 4 + 3] / 255f - Hash(tx, ty, 21) * 0.5f;
-            var part = PixelParts.Get(stage > 0.1f ? "px_sapling" : "px_stump");
-            if (Hash(tx, ty, 27) < 0.6f)
+            var part = PixelParts.Variant(stage > 0.1f ? "px_sapling" : "px_stump", 2, Hash(tx, ty, 28)) ?? PixelParts.Get(stage > 0.1f ? "px_sapling" : "px_stump");
+            if (stage <= 0.1f && Hash(tx, ty, 27) > 0.9f && PixelParts.Get("px_log") is { } log)
+                StampSprite(log, ax, ay); // 第 08-18d 章：砍下來還沒運走的原木
+            else if (Hash(tx, ty, 27) < 0.6f)
             {
                 if (part is not null)
                     StampSprite(part, ax, ay);
@@ -958,8 +991,9 @@ public partial class TerrainSurface : Control
 
         if (PeakAt(tx, ty) is var peak and > 0)
         {
-            var art = PixelParts.Get(peak == 2 ? "px_mountain_1" : "px_mountain_2");
-            ShadowEllipse(ax + 2 * K, ay, peak == 2 ? 5 * K : 3 * K, K + 2);
+            // 第 08-18d 章：第五批的丘陵山頭（四種）；大山頭用整張，小山頭只在缺素材時畫小的。
+            var art = PixelParts.Variant("px_hill", 4, Hash(tx, ty, 31)) ?? PixelParts.Get(peak == 2 ? "px_mountain_1" : "px_mountain_2");
+            ShadowEllipse(ax + 2 * K, ay, art is { Scale: 1 } ? art.Width / 2 - K : peak == 2 ? 5 * K : 3 * K, K + 2);
             if (art is not null)
                 StampSprite(art, ax, ay);
             else
@@ -971,7 +1005,7 @@ public partial class TerrainSurface : Control
         var center = lx == TilesPerCell / 2 && ly == TilesPerCell / 2 && _paint[tile] == TileOwner(tx, ty);
         if (code is Code.HillsOre or Code.HillsMining && !groundTile && Hash(tx, ty, 34) < 0.22f * (code == Code.HillsMining ? 1f - codes[cell * 4 + 3] / 255f : 1f))
         {
-            if (PixelParts.Get(Hash(tx, ty, 35) < 0.5f ? "px_ore_1" : "px_ore_2") is { } ore)
+            if (PixelParts.Variant("px_ore", 4, Hash(tx, ty, 35)) is { } ore)
                 StampSprite(ore, ax, ay);
             else
                 Block(ax - K, ay - K, 2 * K, K, OreSpeck);
@@ -979,7 +1013,7 @@ public partial class TerrainSurface : Control
         if (center && code is Code.HillsMining or Code.MinePit)
         {
             // 第 08-16 章第 14 節：礦坑在格中央。
-            if (PixelParts.Get("px_mine_pit") is { } pit)
+            if (((code == Code.HillsMining ? PixelParts.Get("px_mine_active") : null) ?? PixelParts.Get("px_mine_pit")) is { } pit)
                 StampSprite(pit, ax, ay);
             else
                 Block(ax - 2 * K, ay - 2 * K, 4 * K, 2 * K, Ash[1]);
@@ -1004,25 +1038,30 @@ public partial class TerrainSurface : Control
             // 試玩回饋 2026-11-06 之 1（花太多、太雜）：花原 7%、一般草原 1.5% 的方格有花，草叢 12%。
             if (d < (meadow ? 0.07f : 0.015f) && !dry)
                 Flowers(tx, ty, meadow);
+            else if (_waterDist[tile] == 1 && d < 0.3f && PixelParts.Variant("px_reed", 2, Hash(tx, ty, 41)) is { } reed)
+                StampSprite(reed, ax, ay); // 第 08-18d 章：水邊的蘆葦
             else if (d < 0.14f)
             {
-                var tuft = PixelParts.Get(dry ? "px_dry_tuft" : d < 0.22f ? "px_grass_tuft_1" : "px_grass_tuft_2");
+                var tuft = (dry ? PixelParts.Variant("px_dry_tuft", 2, Hash(tx, ty, 41)) : PixelParts.Variant("px_grass_tuft", 4, Hash(tx, ty, 41)))
+                    ?? PixelParts.Get(dry ? "px_dry_tuft" : d < 0.22f ? "px_grass_tuft_1" : "px_grass_tuft_2");
                 if (tuft is not null)
                     StampSprite(tuft, ax, ay);
                 else
                     Tuft(ax, ay, dry ? Dry[0] : GrassBy[(int)BiomeOfTile(tile)][0]);
             }
         }
+        else if (code is Code.Forest && d < 0.03f && TreeAt(tx, ty) is null && PixelParts.Variant("px_mushroom", 2, Hash(tx, ty, 41)) is { } mushroom)
+            StampSprite(mushroom, ax, ay); // 第 08-18d 章：林地上偶爾一叢蘑菇
         else if (code == Code.Hills && d < 0.12f)
         {
-            if (PixelParts.Get(d < 0.06f ? "px_rock_1" : "px_rock_2") is { } rock)
+            if ((d < 0.015f ? PixelParts.Variant("px_rock_big", 2, Hash(tx, ty, 41)) : PixelParts.Variant("px_rock", 4, Hash(tx, ty, 41))) is { } rock)
                 StampSprite(rock, ax, ay);
             else
                 Block(ax - K / 2, ay - K, K + 2, K, RockShades[2]);
         }
-        if (overlay == DemoHexMap.Overlay.Scorch && hit && d < 0.3f && PixelParts.Get("px_ash") is { } ash)
+        if (overlay == DemoHexMap.Overlay.Scorch && hit && d < 0.3f && (PixelParts.Get("dec_ash") ?? PixelParts.Get("px_ash")) is { } ash)
             StampSprite(ash, ax, ay);
-        if (overlay == DemoHexMap.Overlay.Flood && hit && d < 0.35f && PixelParts.Get("px_flood_ripple") is { } ripple)
+        if (overlay == DemoHexMap.Overlay.Flood && hit && d < 0.35f && (PixelParts.Get("dec_puddle") ?? PixelParts.Get("px_flood_ripple")) is { } ripple)
             StampSprite(ripple, ax, ay);
         _toDetail = false;
     }
@@ -1030,6 +1069,13 @@ public partial class TerrainSurface : Control
     /// <summary>一棵樹：右下落地陰影，再畫樹（有素材用素材，紅葉林把綠葉染成秋色；沒有就用程式畫的圖樣）。</summary>
     private void DrawTree(Tree tree, int ax, int ay, int tx, int ty)
     {
+        if (TreeArt(tree, BiomeOfTile(ty * _tilesX + tx), tx, ty) is { } fresh)
+        {
+            // 第 08-18d 章：第五批的樹（依生態區：闊葉、針葉、紅葉、金葉、白樺；小的是灌木）。
+            ShadowEllipse(ax + fresh.Width / 6, ay, fresh.Width * 3 / 8, K);
+            StampSprite(fresh, ax, ay);
+            return;
+        }
         ShadowEllipse(ax + 2 * K, ay, tree.Small ? 2 * K : 3 * K, K);
         var autumn = ReferenceEquals(tree.Shades, AutumnShades);
         var name = tree.Small ? "px_bush" : tree.Pine ? (Hash(tx, ty, 28) < 0.5f ? "px_tree_pine_1" : "px_tree_pine_2")
@@ -1043,6 +1089,12 @@ public partial class TerrainSurface : Control
     /// <summary>枯樹：光禿的樹幹與幾根枯枝（程式畫；第五批素材到了再換）。</summary>
     private void DeadTree(int ax, int ay)
     {
+        if (PixelParts.Variant("px_tree_dead", 2, Hash(ax, ay, 32)) is { } dead)
+        {
+            ShadowEllipse(ax + 2 * K, ay, 2 * K, K);
+            StampSprite(dead, ax, ay);
+            return;
+        }
         ShadowEllipse(ax + 2 * K, ay, 2 * K, K);
         var bark = new Color("4a3524");
         Block(ax - 2, ay - 5 * K, 4, 5 * K, bark);
@@ -1069,6 +1121,13 @@ public partial class TerrainSurface : Control
 
     private void Flowers(int tx, int ty, bool meadow)
     {
+        // 第 08-18d 章：第五批的花（六種小花；花原偶爾一叢大花）。
+        var flower = meadow && Hash(tx, ty, 42) < 0.25f ? PixelParts.Variant("px_flower_big", 3, Hash(tx, ty, 43)) : PixelParts.Variant("px_flower", 6, Hash(tx, ty, 43));
+        if (flower is not null)
+        {
+            StampSprite(flower, tx * TempTile + TempTile / 2, ty * TempTile + TempTile - 2);
+            return;
+        }
         if (PixelParts.Get("px_flowers") is { } art && !meadow)
         {
             StampSprite(art, tx * TempTile + TempTile / 2, ty * TempTile + TempTile - 2);
@@ -1094,7 +1153,8 @@ public partial class TerrainSurface : Control
     /// <summary>把像素零件疊進地表（第四批零件每像素放大兩倍）：底部置中在錨點，只畫不透明的像素；<paramref name="autumn"/>＝綠葉染成秋色。</summary>
     private void StampSprite(PixelParts.Sprite sprite, int ax, int ay, bool autumn = false)
     {
-        var s = ArtScale;
+        var s = sprite.Scale;
+        var raw = s == 1; // 第五批素材照原色，舊素材照舊降彩度
         var left = ax - sprite.Width * s / 2;
         var top = ay - sprite.Height * s + 1;
         for (var y = 0; y < sprite.Height; y++)
@@ -1108,7 +1168,7 @@ public partial class TerrainSurface : Control
                     color = new Color(Mathf.Clamp(c.G * 1.35f, 0f, 1f), c.G * 0.62f, c.B * 0.35f);
                 for (var dy = 0; dy < s; dy++)
                     for (var dx = 0; dx < s; dx++)
-                        Put(left + x * s + dx, top + y * s + dy, color);
+                        Put(left + x * s + dx, top + y * s + dy, color, raw);
             }
     }
 
