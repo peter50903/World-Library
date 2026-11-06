@@ -74,7 +74,7 @@ public partial class ObserverRoot
     private IReadOnlyList<(int Id, string Name, long Population, FoodStatus Food)> OutlinerEntries()
         => _world.Sites.Settlements
             .Where(s => !_hexMap.FadedRuins.Contains(s.Id)) // 第 08-11 章：已消失的遺跡不列
-            .Select(s => (s.Id, s.Name, _world.SettlementPopulation(s.Id),
+            .Select(s => (s.Id, Name: DemoSettlementHistory.TitledName(s, _world.ChronicleOf(s.Id).Tier), _world.SettlementPopulation(s.Id),
                 _hexMap.FoodStatuses.TryGetValue(s.Id, out var food) ? food : FoodStatus.Unsettled, s.IsRuin))
             .OrderBy(e => e.IsRuin)
             .ThenByDescending(e => e.Item3)

@@ -24,8 +24,6 @@ public partial class DemoHexMap
         _walkersDrawn = false;
         if (World is null || Sites is null || radius < TempWalkerMinRadius)
             return;
-        var t = TerrainSurface.TempTile;
-        Vector2 Screen(float tx, float ty) => TerrainSurface.TexelToScreen(new Vector2(tx * t, ty * t), start, radius);
         var seconds = Time.GetTicksMsec() / 1000f;
         var tokens = Tokens();
         var people = new List<(Vector2 At, float Y, Action Draw)>();
@@ -40,7 +38,6 @@ public partial class DemoHexMap
                 continue;
             var count = (int)Math.Clamp((scale.Item1 + TempPeoplePerVillager - 1) / TempPeoplePerVillager, 1, TempMaxVillagers);
             var houses = layout.Lots.Where(l => IsResidence(l.Kind) && !l.Construction).ToList();
-            var plaza = Screen(layout.Plaza.Position.X + layout.Plaza.Size.X / 2f, layout.Plaza.Position.Y + layout.Plaza.Size.Y / 2f + 0.5f);
             // 工作地：農田、伐木地、礦坑、獵場、水邊（與區域層的職業棋相同），再加廣場。
             var works = tokens.Where(k => k.SettlementId == site.Id && k.Kind != TokenKind.Residents)
                 .Select(k => (k.Kind, Cell: k.Work)).ToList();
@@ -49,19 +46,9 @@ public partial class DemoHexMap
             for (var i = 0; i < count; i++)
             {
                 var h = LayoutHash(site.Id, i, 91);
-                var door = houses.Count > 0
-                    ? Screen(houses[i % houses.Count].X + houses[i % houses.Count].W / 2f, houses[i % houses.Count].Y + houses[i % houses.Count].H + 0.3f)
-                    : plaza;
-                Vector2 target;
-                var working = works.Count > 0 && i % (works.Count + 1) < works.Count;
-                if (working)
-                {
-                    var cell = World.GetCell(works[i % (works.Count + 1)].Cell.Column, works[i % (works.Count + 1)].Cell.Row);
-                    target = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius)
-                        + new Vector2(LayoutHash(site.Id, i, 92) - 0.5f, LayoutHash(site.Id, i, 93) - 0.5f) * radius * 1.2f;
-                }
-                else
-                    target = plaza + new Vector2(LayoutHash(site.Id, i, 94) - 0.5f, LayoutHash(site.Id, i, 95) - 0.5f) * radius * 0.5f;
+                var (doorTile, targetTile, working) = WalkerTrip(site.Id, i, layout, houses, works);
+                var door = TileFeet(doorTile, start, radius);
+                var target = TileFeet(targetTile, start, radius);
                 // 一趟：出門走 35%、在工作地停 15%、走回 35%、在家停 15%（每人錯開時間、速度稍有不同）。
                 var period = TempWalkerTripSeconds * (0.8f + 0.4f * h);
                 var cycle = seconds / period + h * 7f;
@@ -102,6 +89,66 @@ public partial class DemoHexMap
         }
         foreach (var (_, _, draw) in people.OrderBy(x => x.Y))
             draw();
+    }
+
+    private readonly Dictionary<(int, int), (Vector2I, Vector2I, bool)> _trips = new();
+    private object? _tripKey;
+
+    /// <summary>
+    /// 一個小人的家門與目的地（方格）。試玩回饋 2026-11-06 之 4、5：兩端都站在空地上（陸地、不被樹擋住），
+    /// 漁民走到水邊而不是水裡；中間的直線會穿過水或樹林時改去廣場。結果依聚落版面與職業棋快取。
+    /// </summary>
+    private (Vector2I Door, Vector2I Target, bool Working) WalkerTrip(int siteId, int i, SettlementPlan layout, List<Lot> houses, List<(TokenKind Kind, DemoCellRef Cell)> works)
+    {
+        var key = (object)(_tokenKey, _ground);
+        if (!key.Equals(_tripKey))
+        {
+            _trips.Clear();
+            _tripKey = key;
+        }
+        if (_trips.TryGetValue((siteId, i), out var known))
+            return known;
+        var plaza = new Vector2I(layout.Plaza.Position.X + layout.Plaza.Size.X / 2, layout.Plaza.End.Y);
+        var door = houses.Count > 0
+            ? new Vector2I(houses[i % houses.Count].X + houses[i % houses.Count].W / 2, houses[i % houses.Count].Y + houses[i % houses.Count].H)
+            : plaza;
+        door = NearestOpen(door, 2, false) ?? plaza;
+        Vector2I? target = null;
+        var working = works.Count > 0 && i % (works.Count + 1) < works.Count;
+        if (working)
+        {
+            var (kind, cell) = works[i % (works.Count + 1)];
+            var center = TerrainSurface.TileOfCell(cell.Column, cell.Row)
+                + new Vector2I((int)(LayoutHash(siteId, i, 92) * 4f) - 2, (int)(LayoutHash(siteId, i, 93) * 4f) - 2);
+            target = NearestOpen(center, kind == TokenKind.Fishers ? 6 : 3, kind == TokenKind.Fishers);
+            if (target is { } t && !ClearPath(door, t))
+                target = null;
+        }
+        if (target is null)
+        {
+            working = false;
+            target = NearestOpen(plaza + new Vector2I((int)(LayoutHash(siteId, i, 94) * 3f) - 1, 0), 2, false) ?? door;
+        }
+        return _trips[(siteId, i)] = (door, target.Value, working);
+    }
+
+    /// <summary>離 <paramref name="from"/> 最近的空地方格（<paramref name="shore"/>＝要緊鄰水邊）；找不到回傳 null。</summary>
+    private Vector2I? NearestOpen(Vector2I from, int reach, bool shore)
+    {
+        for (var r = 0; r <= reach; r++)
+            for (var dy = -r; dy <= r; dy++)
+                for (var dx = -r; dx <= r; dx++)
+                {
+                    if (Math.Max(Math.Abs(dx), Math.Abs(dy)) != r)
+                        continue;
+                    var t = from + new Vector2I(dx, dy);
+                    if (!_surface!.OpenTile(t.X, t.Y))
+                        continue;
+                    if (shore && !(_surface.WaterTile(t.X + 1, t.Y) || _surface.WaterTile(t.X - 1, t.Y) || _surface.WaterTile(t.X, t.Y + 1) || _surface.WaterTile(t.X, t.Y - 1)))
+                        continue;
+                    return t;
+                }
+        return null;
     }
 
     /// <summary>一個小人（約 8×14 圖像素）：落地陰影、兩條腿（走路時交替）、文化色上衣、頭、偶爾一個想法泡泡（固定大小）。</summary>

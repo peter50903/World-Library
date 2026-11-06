@@ -108,6 +108,23 @@ public static class DemoSettlementHistory
 
     private static int YearOfWeek(int week) => YearOfDay(checked(week * 7));
 
+    /// <summary>試玩回饋 2026-11-06 之 9：名字後面帶層級的一個字（營、村、鎮、城、都）。</summary>
+    public static string TierSuffix(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Village => "村",
+        DemoSettlementTier.Town => "鎮",
+        DemoSettlementTier.City => "城",
+        DemoSettlementTier.Capital => "都",
+        _ => "營"
+    };
+
+    /// <summary>帶層級的名字：瑞文波營→瑞文波村→瑞文波鎮…；遺跡是「瑞文波遺跡」。</summary>
+    public static string TitledName(DemoSettlement settlement, DemoSettlementTier tier)
+    {
+        ArgumentNullException.ThrowIfNull(settlement);
+        return settlement.IsRuin ? settlement.Name + "遺跡" : settlement.Name + TierSuffix(tier);
+    }
+
     /// <summary>規模名稱（遺跡／村莊／聚落；第 08-6 章 d 節起依聚落小史記的等級）。</summary>
     public static string TierName(DemoSettlement settlement, DemoSettlementTier tier)
         => settlement.IsRuin ? "遺跡" : TierName(tier);

@@ -162,7 +162,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         // 現況
         var now = new List<string>
         {
-            $"{settlement.Name}（{tier}）",
+            $"{DemoSettlementHistory.TitledName(settlement, world.ChronicleOf(settlement.Id).Tier)}（{tier}）",
             settlement.IsFounded
                 ? $"第 {YearOfWeek(settlement.FoundedWeek)} 年由{names.GetValueOrDefault(settlement.FoundedFromSettlementId, "未知聚落")}的開拓隊建立"
                 : "開局時已有人定居",
@@ -269,7 +269,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             .Select(l => Clean(l.Trim()))
             .ToList();
 
-        return new DemoPlayerDetail($"{settlement.Name}（{tier}）", new[]
+        return new DemoPlayerDetail($"{DemoSettlementHistory.TitledName(settlement, world.ChronicleOf(settlement.Id).Tier)}（{tier}）", new[]
         {
             new DemoDetailTab("現況", now)
             {

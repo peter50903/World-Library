@@ -92,16 +92,19 @@ public partial class ObserverRoot
 
     private void AdvancePlayback(int days)
     {
+        // 試玩回饋 2026-11-06 之 8（巨大地圖快轉很卡）：實際遊玩時世界在背景執行緒推進，畫面照常每幀重畫（見 ObserverRoot.SimThread.cs）。
+        if (RealtimeThrottle)
+        {
+            QueueSimulation(days);
+            return;
+        }
         try
         {
             DemoDayAdvance? last = null;
             DemoSettlementEvent? alert = null;
             var advanced = 0;
-            var budget = System.Diagnostics.Stopwatch.StartNew();
             for (var i = 0; i < days; i++)
             {
-                if (RealtimeThrottle && advanced > 0 && budget.Elapsed.TotalMilliseconds > TempFrameBudgetMs)
-                    break;
                 last = _world.AdvanceOneDay();
                 advanced++;
                 var major = TakeNewMajorEvent();
@@ -111,7 +114,21 @@ public partial class ObserverRoot
                     break;
                 }
             }
+            AfterPlayback(advanced, last, alert);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
+        {
+            PausePlayback();
+            _notice.Text = $"推進失敗（無狀態偽造），已暫停：{ex.Message}";
+        }
+    }
 
+    /// <summary>一批推進之後（主執行緒）：沒有重大事件就更新地圖與面板，有就暫停並顯示提示。</summary>
+    private void AfterPlayback(int advanced, DemoDayAdvance? last, DemoSettlementEvent? alert)
+    {
+        if (advanced == 0 || last is null)
+            return;
+        {
             if (alert is null)
             {
                 if (RealtimeThrottle && _sinceRefresh.Elapsed.TotalMilliseconds < TempPanelRefreshMs)
@@ -123,7 +140,7 @@ public partial class ObserverRoot
                     return;
                 }
                 _sinceRefresh.Restart();
-                _notice.Text = $"{_playback.StatusText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
+                _notice.Text = $"{_playback.StatusText}{ActualSpeedText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
                 Refresh();
                 return;
             }
@@ -135,11 +152,6 @@ public partial class ObserverRoot
             PausePlayback(); // 會 Refresh。
             PlayAlert(); // b 節：重大事件警示音。
             _notice.Text = $"第 {last!.Day} 日發生重大事件 #{alert.EventId}（{DemoCausalIndex.KindText(alert.Kind)}），已自動暫停。";
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
-        {
-            PausePlayback();
-            _notice.Text = $"推進失敗（無狀態偽造），已暫停：{ex.Message}";
         }
     }
 

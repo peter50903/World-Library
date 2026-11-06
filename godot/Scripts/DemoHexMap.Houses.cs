@@ -145,7 +145,7 @@ public partial class DemoHexMap
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             if (!OnScreen(center, radius * 2f))
                 continue;
-            var name = site.Name;
+            var name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
             var people = TokenCount(scale.Item1);
             var nameWidth = font.GetStringSize(name, HorizontalAlignment.Left, -1, TempPlateFont).X;
             var countWidth = font.GetStringSize(people, HorizontalAlignment.Left, -1, TempPlateFont - 2).X;

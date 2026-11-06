@@ -4,9 +4,14 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// 第 08-18b 章第 4 節之 2：近景層的野生動物與怪物（使用者 2026-11-06：怪物、野獸也要有小人移動，或挑比較重要的顯示）。
-/// 數量依模擬裡每格實際的獵物與狼（第 12-1 章 C1）：狼是威脅，每一隻都畫；獵物很多，只挑著畫（每 3 隻一頭鹿，每格最多 2 頭）。
-/// 地下城門口有一隻怪物來回踱步。動物只在自己那一格裡遊走（位置只由時間與固定雜湊決定），不進模擬、不存檔。
+/// 第 08-18b 章第 4 節之 2：近景層的野生動物與怪物。數量來自模擬裡每格實際的獵物與狼（第 12-1 章 C1），但不是一隻一隻畫——
+/// 試玩回饋 2026-11-06 之 2、3（動物太多太雜、希望有習性）：每 4×4 格一個棲地，依棲地裡的總數挑著畫，而且有習性：
+/// <list type="bullet">
+/// <item>鹿（丘陵上是山羊）**成群**：棲地獵物夠多時一群 2～3 頭，一起慢慢遊走、一起低頭吃草；少的時候只有一頭獨行。</item>
+/// <item>狼**成群行動**：棲地裡狼夠多時一群 2～3 匹，頭狼在前、其他跟在後面，在巢穴格與隔壁的獵場格之間來回巡獵；只有一兩匹時是一匹**獨狼**在巢穴附近遊蕩。</item>
+/// <item>地下城門口有一隻怪物來回踱步。</item>
+/// </list>
+/// 動物只站在空地上（陸地、而且沒有被樹或山頭擋住；試玩回饋之 4、5：不會蓋住樹頂、不會走進水裡）。只是表現，不進模擬、不存檔。
 /// 區域層、戰略層不畫動物（地下城照舊是標記）。
 /// </summary>
 public partial class DemoHexMap
@@ -15,84 +20,198 @@ public partial class DemoHexMap
     public IReadOnlyList<int> Prey { get; set; } = Array.Empty<int>();
     public IReadOnlyList<int> Wolves { get; set; } = Array.Empty<int>();
 
-    /// <summary>【TEMP】每幾隻獵物畫一頭鹿、每格最多幾頭；格半徑至少幾像素才畫；遊走一圈的秒數。</summary>
-    private const int TempPreyPerDeer = 3;
-    private const int TempMaxDeer = 2;
+    /// <summary>【TEMP】棲地大小（格）、成群的門檻（棲地裡的獵物、狼總數）、格半徑至少幾像素才畫、遊走與巡獵一圈的秒數。</summary>
+    private const int TempHabitat = 4;
+    private const int TempHerdPrey = 16, TempLonePrey = 6, TempPackWolves = 3;
     private const float TempCreatureMinRadius = 18f;
-    private const float TempRoamSeconds = 20f;
+    private const float TempRoamSeconds = 24f, TempPatrolSeconds = 30f;
+
+    private enum Creature { Deer, Goat, Wolf }
+
+    /// <summary>一群（或一隻）動物：種類、幾隻、在哪幾個空地方格之間活動。</summary>
+    private sealed record Group(Creature Kind, int Count, Vector2I Den, Vector2I? Hunt, int Seed);
 
     private bool _creaturesDrawn;
+    private List<Group>? _groups;
+    private List<(Vector2I Tile, int Seed)>? _monsters;
+    private (object?, object?, object?, object?, object?) _groupKey;
+
+    /// <summary>依棲地裡的總數挑出要畫的動物群（狼、獵物、地下城、聚落地面或地圖改變時重算）。</summary>
+    private void EnsureGroups()
+    {
+        if (World is null || _surface is not { Active: true })
+            return; // 地表還沒畫（不知道哪裡是空地），下次再算
+        var key = ((object?)World, (object?)Prey, (object?)Wolves, (object?)_ground, (object?)Dungeons);
+        if (_groups is not null && key.Equals(_groupKey))
+            return;
+        _groupKey = key;
+        _groups = new List<Group>();
+        _monsters = new List<(Vector2I, int)>();
+        for (var by = 0; by < World.Rows; by += TempHabitat)
+            for (var bx = 0; bx < World.Columns; bx += TempHabitat)
+            {
+                int prey = 0, wolves = 0, bestPrey = -1, bestWolf = -1, preyCell = -1, wolfCell = -1;
+                for (var r = by; r < Math.Min(World.Rows, by + TempHabitat); r++)
+                    for (var c = bx; c < Math.Min(World.Columns, bx + TempHabitat); c++)
+                    {
+                        var i = r * World.Columns + c;
+                        var p = i < Prey.Count ? Prey[i] : 0;
+                        var w = i < Wolves.Count ? Wolves[i] : 0;
+                        prey += p;
+                        wolves += w;
+                        if (p > bestPrey) (bestPrey, preyCell) = (p, i);
+                        if (w > bestWolf) (bestWolf, wolfCell) = (w, i);
+                    }
+                var seed = by * 1000 + bx;
+                if (prey >= TempLonePrey && bestPrey > 0 && OpenTileIn(preyCell, seed) is { } pasture)
+                {
+                    var goat = World.Cells[preyCell].Terrain == DemoTerrain.Hills;
+                    var herd = prey >= TempHerdPrey ? (prey >= TempHerdPrey * 2 ? 3 : 2) : 1; // 成群或獨行
+                    _groups.Add(new Group(goat ? Creature.Goat : Creature.Deer, herd, pasture, null, seed));
+                }
+                if (wolves > 0 && bestWolf > 0 && OpenTileIn(wolfCell, seed + 7) is { } den)
+                {
+                    var pack = wolves >= TempPackWolves ? Math.Min(3, wolves) : 1; // 狼群或獨狼
+                    _groups.Add(new Group(Creature.Wolf, pack, den, pack > 1 ? HuntingGround(wolfCell, den, seed) : null, seed + 7));
+                }
+            }
+        foreach (var d in Dungeons)
+            if (World.Contains(d.Column, d.Row) && OpenTileIn(d.Row * World.Columns + d.Column, d.Column * 31 + d.Row) is { } gate)
+                _monsters.Add((gate, d.Column * 31 + d.Row));
+    }
+
+    /// <summary>一格裡的某個空地方格（依固定雜湊挑起點，找不到就回傳 null）。</summary>
+    private Vector2I? OpenTileIn(int cell, int seed)
+    {
+        var n = TerrainSurface.TilesPerCell;
+        var x0 = cell % World!.Columns * n;
+        var y0 = cell / World.Columns * n;
+        var start = (int)(LayoutHash(seed, cell, 111) * n * n);
+        for (var k = 0; k < n * n; k++)
+        {
+            var t = (start + k * 7) % (n * n);
+            var tile = new Vector2I(x0 + t % n, y0 + t / n);
+            if (_surface!.OpenTile(tile.X, tile.Y))
+                return tile;
+        }
+        return null;
+    }
+
+    /// <summary>狼群的獵場：巢穴格上下左右的陸地格裡獵物最多的一格，兩地之間一路都是空地才算。</summary>
+    private Vector2I? HuntingGround(int den, Vector2I from, int seed)
+    {
+        var column = den % World!.Columns;
+        var row = den / World.Columns;
+        var best = (Prey: -1, Tile: (Vector2I?)null);
+        foreach (var (dq, dr, _) in DemoRouteNetwork.Orthogonal)
+        {
+            if (!World.Contains(column + dq, row + dr) || World.GetCell(column + dq, row + dr).Terrain == DemoTerrain.Water)
+                continue;
+            var i = (row + dr) * World.Columns + column + dq;
+            var prey = i < Prey.Count ? Prey[i] : 0;
+            if (prey <= best.Prey || OpenTileIn(i, seed + 13) is not { } tile || !ClearPath(from, tile))
+                continue;
+            best = (prey, tile);
+        }
+        return best.Tile;
+    }
+
+    /// <summary>兩個方格之間的直線一路都是空地（不穿過水、不從樹上走過）。</summary>
+    private bool ClearPath(Vector2I a, Vector2I b)
+    {
+        var steps = Math.Max(Math.Abs(b.X - a.X), Math.Abs(b.Y - a.Y));
+        for (var k = 0; k <= steps; k++)
+        {
+            var t = steps == 0 ? 0f : k / (float)steps;
+            if (!_surface!.OpenTile(Mathf.RoundToInt(Mathf.Lerp(a.X, b.X, t)), Mathf.RoundToInt(Mathf.Lerp(a.Y, b.Y, t))))
+                return false;
+        }
+        return true;
+    }
+
+    /// <summary>方格裡站的位置（畫面座標，腳底）。</summary>
+    private static Vector2 TileFeet(Vector2 tile, Vector2 start, float radius)
+        => TerrainSurface.TexelToScreen(new Vector2((tile.X + 0.5f) * TerrainSurface.TempTile, (tile.Y + 0.85f) * TerrainSurface.TempTile), start, radius);
 
     private void DrawCreatures(Vector2 start, float radius)
     {
         _creaturesDrawn = false;
         if (World is null || radius < TempCreatureMinRadius)
             return;
+        EnsureGroups();
+        if (_groups is null)
+            return;
         var seconds = Time.GetTicksMsec() / 1000f;
         var items = new List<(float Y, Action Draw)>();
-        var count = World.Cells.Count;
-        for (var i = 0; i < count; i++)
+        foreach (var group in _groups)
         {
-            var prey = i < Prey.Count ? Prey[i] : 0;
-            var wolves = i < Wolves.Count ? Wolves[i] : 0;
-            if (prey <= 0 && wolves <= 0)
+            var home = TileFeet(group.Den, start, radius);
+            if (!OnScreen(home, radius * 3f))
                 continue;
-            var cell = World.Cells[i];
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            if (!OnScreen(center, radius * 1.5f))
-                continue;
-            var deer = Math.Min(TempMaxDeer, prey / TempPreyPerDeer + (prey > 0 && prey < TempPreyPerDeer ? 1 : 0));
-            for (var k = 0; k < deer + wolves; k++)
+            _creaturesDrawn = true;
+            var h = LayoutHash(group.Seed, 0, 120);
+            // 群體的中心：狼群在巢穴與獵場之間巡獵（中途停一下）；其他在棲地的空地附近慢慢遊走。
+            Vector2 center;
+            bool moving;
+            float facing;
+            if (group.Hunt is { } hunt)
             {
-                var wolf = k >= deer;
-                var (at, facing, moving) = Roam(center, radius, i, k, seconds, wolf ? 1.5f : 0.8f);
-                var hills = cell.Terrain == DemoTerrain.Hills;
+                var phase = Mathf.PosMod(seconds / TempPatrolSeconds + h, 1f);
+                var target = TileFeet(hunt, start, radius);
+                (center, moving, facing) = phase switch
+                {
+                    < 0.3f => (home.Lerp(target, phase / 0.3f), true, Mathf.Sign(target.X - home.X + 0.01f)),
+                    < 0.5f => (target, false, Mathf.Sign(target.X - home.X + 0.01f)),
+                    < 0.8f => (target.Lerp(home, (phase - 0.5f) / 0.3f), true, Mathf.Sign(home.X - target.X + 0.01f)),
+                    _ => (home, false, Mathf.Sign(home.X - target.X + 0.01f))
+                };
+            }
+            else
+            {
+                var speed = group.Kind == Creature.Wolf ? 1.4f : 0.7f;
+                var t = seconds * speed / TempRoamSeconds * Mathf.Tau + h * Mathf.Tau;
+                moving = Mathf.PosMod(t / Mathf.Tau, 1f) < 0.65f; // 三成多的時間停下來吃草、張望
+                var tt = moving ? t : Mathf.Floor(t / Mathf.Tau) * Mathf.Tau + 0.65f * Mathf.Tau;
+                // 只在巢穴方格附近半個方格內走動（那裡一定是空地）。
+                center = home + new Vector2(Mathf.Sin(tt), Mathf.Sin(tt * 2f) * 0.4f) * radius * 0.18f;
+                facing = Mathf.Cos(tt) >= 0f ? 1f : -1f;
+            }
+            for (var k = 0; k < group.Count; k++)
+            {
+                // 成員：狼群排成一列跟在頭狼後面；鹿群、山羊群散在中心旁邊。
+                var offset = group.Kind == Creature.Wolf
+                    ? new Vector2(-facing * k * radius * 0.22f, (k % 2 == 0 ? 1f : -1f) * k * radius * 0.05f)
+                    : new Vector2((LayoutHash(group.Seed, k, 121) - 0.5f) * radius * 0.35f, (LayoutHash(group.Seed, k, 122) - 0.5f) * radius * 0.18f);
+                var at = center + offset;
+                var kind = group.Kind;
+                var face = facing;
+                var walk = moving;
+                var lag = k * 0.37f;
                 items.Add((at.Y, () =>
                 {
-                    if (wolf)
-                        DrawWolf(at, radius, facing, moving, seconds);
+                    if (kind == Creature.Wolf)
+                        DrawWolf(at, radius, face, walk, seconds + lag);
                     else
-                        DrawDeer(at, radius, facing, moving, seconds, hills);
+                        DrawDeer(at, radius, face, walk, seconds + lag, kind == Creature.Goat);
                 }));
             }
-            _creaturesDrawn = true;
         }
-        // 地下城門口的怪物。
-        foreach (var d in Dungeons)
+        foreach (var (tile, seed) in _monsters!)
         {
-            if (!World.Contains(d.Column, d.Row))
+            var gate = TileFeet(tile, start, radius);
+            if (!OnScreen(gate, radius * 3f))
                 continue;
-            var cell = World.GetCell(d.Column, d.Row);
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            if (!OnScreen(center, radius * 1.5f))
-                continue;
-            var pace = Mathf.Sin(seconds * 0.8f + d.Column * 1.3f + d.Row);
-            var at = center + new Vector2(pace * radius * 0.45f, radius * 0.55f);
-            var facing = Mathf.Cos(seconds * 0.8f + d.Column * 1.3f + d.Row) >= 0f ? 1f : -1f;
-            items.Add((at.Y, () => DrawMonster(at, radius, facing, seconds)));
             _creaturesDrawn = true;
+            var pace = Mathf.Sin(seconds * 0.8f + seed);
+            var at = gate + new Vector2(pace * radius * 0.15f, 0f);
+            var facing = Mathf.Cos(seconds * 0.8f + seed) >= 0f ? 1f : -1f;
+            items.Add((at.Y, () => DrawMonster(at, radius, facing, seconds)));
         }
         foreach (var (_, draw) in items.OrderBy(x => x.Y))
             draw();
     }
 
-    /// <summary>在格內遊走：繞著格內一點慢慢走、偶爾停下吃草或張望（位置只看時間與固定雜湊）。</summary>
-    private static (Vector2 At, float Facing, bool Moving) Roam(Vector2 center, float radius, int cell, int k, float seconds, float speed)
-    {
-        var h1 = LayoutHash(cell, k, 101);
-        var h2 = LayoutHash(cell, k, 102);
-        var h3 = LayoutHash(cell, k, 103);
-        var home = center + new Vector2(h1 - 0.5f, h2 - 0.5f) * radius * 0.9f;
-        var t = seconds * speed / TempRoamSeconds * Mathf.Tau + h3 * Mathf.Tau;
-        // 每圈有一段停下來（吃草、張望）。
-        var pause = Mathf.PosMod(t / Mathf.Tau, 1f) > 0.7f;
-        var tt = pause ? Mathf.Floor(t / Mathf.Tau) * Mathf.Tau + 0.7f * Mathf.Tau : t;
-        var offset = new Vector2(Mathf.Sin(tt) * radius * 0.35f, Mathf.Sin(tt * 2f + h1 * 3f) * radius * 0.18f);
-        var velocity = Mathf.Cos(tt);
-        return (home + offset, velocity >= 0f ? 1f : -1f, !pause);
-    }
-
-    /// <summary>一頭鹿（丘陵上是山羊）：約 10×9 圖像素，走路時腿交替。</summary>
+    /// <summary>一頭鹿（丘陵上是山羊）：約 10×9 圖像素，走路時腿交替，停下時低頭吃草。</summary>
     private void DrawDeer(Vector2 feet, float radius, float facing, bool moving, float seconds, bool goat)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
@@ -104,7 +223,7 @@ public partial class DemoHexMap
         DrawRect(new Rect2(feet.X - 5f * p, feet.Y - 7f * p, 10f * p, 3f * p), coat);
         DrawRect(new Rect2(feet.X - 4f * p, feet.Y - 5f * p, 8f * p, p), goat ? coat.Darkened(0.1f) : new Color(0.90f, 0.82f, 0.66f)); // 肚子
         var headX = feet.X + facing * 5f * p - (facing < 0 ? 3f * p : 0f);
-        var grazing = !moving;
+        var grazing = !moving && Mathf.PosMod(seconds * 0.5f, 1f) < 0.7f;
         var headY = grazing ? feet.Y - 5f * p : feet.Y - 10f * p;
         DrawRect(new Rect2(headX, headY, 3f * p, 3f * p), coat);
         DrawRect(new Rect2(headX + (facing > 0 ? 2f : 0f) * p, headY + p, p, p), Ink);
@@ -116,7 +235,7 @@ public partial class DemoHexMap
         }
     }
 
-    /// <summary>一匹狼：灰色、尾巴、豎耳，約 11×7 圖像素；走得比鹿快。</summary>
+    /// <summary>一匹狼：灰色、尾巴、豎耳，約 11×7 圖像素。</summary>
     private void DrawWolf(Vector2 feet, float radius, float facing, bool moving, float seconds)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;

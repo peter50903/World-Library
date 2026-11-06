@@ -74,7 +74,11 @@ public partial class TerrainSurface : Control
     private int _bx, _by, _bw, _bh; // 正在烤的塊（圖像素範圍）
     private bool _toDetail, _wroteDetail;
 
-    private ImageTexture? _thumb;
+    // 試玩回饋 2026-11-06 之 8：縮圖切成 256×256 的小塊，改變時只重新上傳改到的塊（原本每次上傳整張 14 MB）。
+    private const int TempThumbTile = 256;
+    private ImageTexture?[,] _thumbTiles = new ImageTexture?[0, 0];
+    private bool[,] _thumbDirty = new bool[0, 0];
+    private bool _thumbReady;
     private byte[]? _thumbBytes;
     private int _thumbW, _thumbH;
 
@@ -127,12 +131,20 @@ public partial class TerrainSurface : Control
 
     public override void _Draw()
     {
-        if (!Active || _thumb is null)
+        if (!Active || !_thumbReady)
             return;
         _frame++;
         var scale = _radius / TempTexelsPerRadius;
         var topLeft = _origin + Corner * _radius;
-        DrawTextureRect(_thumb, new Rect2(topLeft, new Vector2(_width, _height) * scale), false);
+        var thumbScale = scale * TempThumb;
+        for (var ty = 0; ty < _thumbTiles.GetLength(1); ty++)
+            for (var tx = 0; tx < _thumbTiles.GetLength(0); tx++)
+                if (_thumbTiles[tx, ty] is { } part)
+                {
+                    var rect = new Rect2(topLeft + new Vector2(tx, ty) * TempThumbTile * thumbScale, part.GetSize() * thumbScale);
+                    if (rect.Intersects(new Rect2(Vector2.Zero, Size)))
+                        DrawTextureRect(part, rect, false);
+                }
         if (_radius < TempChunkMinRadius)
             return;
         // 畫面範圍內的塊：有就畫，沒有（或過期）就烤，每幀最多烤幾塊，其餘下一幀再烤（先看到縮圖）。
@@ -285,13 +297,16 @@ public partial class TerrainSurface : Control
         var oldGround = _ground;
         _ground = ground;
         _codes = codes;
-        var full = old is null || old.Length != codes.Length || _thumb is null;
+        var oldTreeless = _treeless;
+        if (!ReferenceEquals(oldGround, ground))
+            BuildTreeless();
+        var full = old is null || old.Length != codes.Length || !_thumbReady;
         if (!full)
             for (var i = 0; i < columns * rows && !full; i++)
                 full = IsWater(codes[i * 4]) != IsWater(old![i * 4]);
-        BuildPaint();
         if (full)
         {
+            BuildPaint(0, 0, _tilesX, _tilesY);
             BuildDistances();
             BuildBiomes();
             foreach (var chunk in _chunks.Values)
@@ -312,18 +327,28 @@ public partial class TerrainSurface : Control
             foreach (var tile in oldGround.Keys)
                 if (!ground.ContainsKey(tile))
                     changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+            foreach (var tile in _treeless)
+                if (!oldTreeless.Contains(tile))
+                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+            foreach (var tile in oldTreeless)
+                if (!_treeless.Contains(tile))
+                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
             changed.Remove(-1);
         }
         if (changed.Count == 0)
             return;
         if (changed.Count > columns * rows / 4)
         {
+            BuildPaint(0, 0, _tilesX, _tilesY);
             foreach (var chunk in _chunks.Values)
                 chunk.Dirty = true;
             BuildThumb(0, 0, _thumbW, _thumbH, rebuild: false);
+            UploadThumb();
             return;
         }
         var cell = 2 * TempTexelsPerRadius;
+        foreach (var i in changed) // 參差只看自己與隔壁格：重算改變的格與四周一格的方格
+            BuildPaint((i % columns - 1) * TilesPerCell, (i / columns - 1) * TilesPerCell, (i % columns + 2) * TilesPerCell, (i / columns + 2) * TilesPerCell);
         foreach (var i in changed)
         {
             var x0 = (i % columns - 1) * cell;
@@ -336,18 +361,46 @@ public partial class TerrainSurface : Control
                         chunk.Dirty = true;
             BuildThumb(Math.Max(0, x0 / TempThumb), Math.Max(0, y0 / TempThumb), Math.Min(_thumbW, x1 / TempThumb), Math.Min(_thumbH, y1 / TempThumb), rebuild: false);
         }
-        _thumb!.Update(Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes!));
+        UploadThumb();
+    }
+
+    /// <summary>只重新上傳改到的縮圖小塊。</summary>
+    private void UploadThumb()
+    {
+        for (var ty = 0; ty < _thumbDirty.GetLength(1); ty++)
+            for (var tx = 0; tx < _thumbDirty.GetLength(0); tx++)
+            {
+                if (!_thumbDirty[tx, ty])
+                    continue;
+                _thumbDirty[tx, ty] = false;
+                var u0 = tx * TempThumbTile;
+                var v0 = ty * TempThumbTile;
+                var w = Math.Min(TempThumbTile, _thumbW - u0);
+                var h = Math.Min(TempThumbTile, _thumbH - v0);
+                var bytes = new byte[w * h * 4];
+                for (var y = 0; y < h; y++)
+                    Array.Copy(_thumbBytes!, ((v0 + y) * _thumbW + u0) * 4, bytes, y * w * 4, w * 4);
+                using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
+                if (_thumbTiles[tx, ty] is { } part && part.GetWidth() == w && part.GetHeight() == h)
+                    part.Update(image);
+                else
+                {
+                    _thumbTiles[tx, ty]?.Dispose();
+                    _thumbTiles[tx, ty] = ImageTexture.CreateFromImage(image);
+                }
+            }
+        _thumbReady = true;
     }
 
     /// <summary>每個方格畫成哪一格：預設是自己的格；自然交界邊上的方格依固定雜湊畫成隔壁格（一方格以內的參差）。</summary>
-    private void BuildPaint()
+    private void BuildPaint(int tx0, int ty0, int tx1, int ty1)
     {
         var count = _tilesX * _tilesY;
         if (_paint.Length != count)
             _paint = new int[count];
         var last = TilesPerCell - 1;
-        for (var ty = 0; ty < _tilesY; ty++)
-            for (var tx = 0; tx < _tilesX; tx++)
+        for (var ty = Math.Max(0, ty0); ty < Math.Min(_tilesY, ty1); ty++)
+            for (var tx = Math.Max(0, tx0); tx < Math.Min(_tilesX, tx1); tx++)
             {
                 var own = TileOwner(tx, ty);
                 var paint = own;
@@ -467,14 +520,19 @@ public partial class TerrainSurface : Control
                 _thumbBytes[o + 2] = (byte)(c.B * 255f);
                 _thumbBytes[o + 3] = (byte)(c.A * 255f);
             }
-        if (rebuild || _thumb is null)
+        if (rebuild || _thumbTiles.GetLength(0) != (_thumbW + TempThumbTile - 1) / TempThumbTile || _thumbTiles.GetLength(1) != (_thumbH + TempThumbTile - 1) / TempThumbTile)
         {
-            using var image = Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes);
-            _thumb?.Dispose();
-            _thumb = ImageTexture.CreateFromImage(image);
+            foreach (var part in _thumbTiles)
+                part?.Dispose();
+            _thumbTiles = new ImageTexture?[(_thumbW + TempThumbTile - 1) / TempThumbTile, (_thumbH + TempThumbTile - 1) / TempThumbTile];
+            _thumbDirty = new bool[_thumbTiles.GetLength(0), _thumbTiles.GetLength(1)];
+            u0 = 0; v0 = 0; u1 = _thumbW; v1 = _thumbH;
         }
-        else if (u0 == 0 && v0 == 0 && u1 == _thumbW && v1 == _thumbH)
-            _thumb.Update(Image.CreateFromData(_thumbW, _thumbH, false, Image.Format.Rgba8, _thumbBytes));
+        for (var ty = Math.Max(0, v0) / TempThumbTile; ty <= Math.Min(_thumbH - 1, v1 - 1) / TempThumbTile && ty < _thumbDirty.GetLength(1); ty++)
+            for (var tx = Math.Max(0, u0) / TempThumbTile; tx <= Math.Min(_thumbW - 1, u1 - 1) / TempThumbTile && tx < _thumbDirty.GetLength(0); tx++)
+                _thumbDirty[tx, ty] = true;
+        if (rebuild)
+            UploadThumb();
     }
 
     // ───────────── 烤一塊 ─────────────
@@ -760,11 +818,54 @@ public partial class TerrainSurface : Control
 
     private readonly record struct Tree(bool Pine, bool Small, Color[] Shades);
 
+    /// <summary>試玩回饋 2026-11-06 之 4（物件蓋住樹頂，透視奇怪）：聚落地面四周不長樹——
+    /// 房子、城牆往上長出自己的方格，所以地面上方三方格、左右與下方一方格內也不長樹（樹不會被屋頂蓋住，也不會擋在房子前面）。</summary>
+    private HashSet<int> _treeless = new();
+
+    private void BuildTreeless()
+    {
+        _treeless = new HashSet<int>();
+        foreach (var tile in _ground.Keys)
+        {
+            var tx = tile % _tilesX;
+            var ty = tile / _tilesX;
+            for (var dy = -3; dy <= 1; dy++)
+                for (var dx = -1; dx <= 1; dx++)
+                    if (tx + dx >= 0 && tx + dx < _tilesX && ty + dy >= 0 && ty + dy < _tilesY)
+                        _treeless.Add((ty + dy) * _tilesX + tx + dx);
+        }
+    }
+
+    /// <summary>近景的小人與動物站在這個方格上會不會被樹或山頭擋住、或是站進水裡（試玩回饋 2026-11-06 之 4、5）：
+    /// 本格與下方兩列（左右各一方格）沒有樹與山頭，而且本格是陸地才算空地。</summary>
+    public bool OpenTile(int tx, int ty)
+    {
+        if (_codes is null || tx < 0 || ty < 0 || tx >= _tilesX || ty >= _tilesY)
+            return false;
+        if (IsWater(PaintCode(ty * _tilesX + tx)))
+            return false;
+        for (var dy = 0; dy <= 2; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                var x = tx + dx;
+                var y = ty + dy;
+                if (x < 0 || y < 0 || x >= _tilesX || y >= _tilesY)
+                    continue;
+                if (TreeAt(x, y) is not null || PeakAt(x, y) > 0)
+                    return false;
+            }
+        return true;
+    }
+
+    /// <summary>這個方格是不是水（畫面上的，含參差）。</summary>
+    public bool WaterTile(int tx, int ty)
+        => _codes is not null && tx >= 0 && ty >= 0 && tx < _tilesX && ty < _tilesY && IsWater(PaintCode(ty * _tilesX + tx));
+
     /// <summary>這個方格有沒有樹（一方格最多一棵）：森林大多有、林緣變疏、草原偶有一棵。聚落地面上沒有樹。</summary>
     private Tree? TreeAt(int tx, int ty)
     {
         var tile = ty * _tilesX + tx;
-        if (_ground.Count > 0 && _ground.ContainsKey(tile) || _seaDist[tile] <= 1)
+        if (_ground.Count > 0 && _ground.ContainsKey(tile) || _seaDist[tile] <= 1 || _treeless.Contains(tile))
             return null;
         var cell = _paint[tile];
         var code = (Code)_codes![cell * 4];
@@ -900,9 +1001,10 @@ public partial class TerrainSurface : Control
         {
             var meadow = BiomeOfTile(tile) == Biome.Meadow;
             var dry = code == Code.DryGrass || overlay == DemoHexMap.Overlay.Dry && hit;
-            if (d < (meadow ? 0.35f : 0.12f) && !dry)
+            // 試玩回饋 2026-11-06 之 1（花太多、太雜）：花原 7%、一般草原 1.5% 的方格有花，草叢 12%。
+            if (d < (meadow ? 0.07f : 0.015f) && !dry)
                 Flowers(tx, ty, meadow);
-            else if (d < 0.32f)
+            else if (d < 0.14f)
             {
                 var tuft = PixelParts.Get(dry ? "px_dry_tuft" : d < 0.22f ? "px_grass_tuft_1" : "px_grass_tuft_2");
                 if (tuft is not null)
@@ -973,7 +1075,7 @@ public partial class TerrainSurface : Control
             return;
         }
         // 程式畫的小花：方格內幾個 2×2 色點（花原較多、顏色依位置）。
-        var n = meadow ? 4 : 2;
+        var n = meadow ? 3 : 2;
         for (var k = 0; k < n; k++)
         {
             var x = tx * TempTile + 2 + (int)(Hash(tx, ty, 50 + k) * (TempTile - 4));

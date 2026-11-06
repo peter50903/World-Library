@@ -1294,6 +1294,8 @@ public partial class ObserverRoot : Control
     /// <summary>Each frame asks the clock how many whole days have elapsed and lets Core advance them one by one.</summary>
     public override void _Process(double delta)
     {
+        if (_simTask is { IsCompleted: true })
+            FinishSimulation(); // 背景算完的一批交給畫面（暫停後也要收尾）
         var days = _playback.Tick(delta);
         if (days > 0)
             AdvancePlayback(days); // #95: stops on the day a major event appears.
