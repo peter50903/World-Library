@@ -932,6 +932,7 @@ public partial class DemoHexMap : Control
             Overlay.Dry => fading ? "熱浪漸退，草木開始返青" : "熱浪：草木枯黃、水源減少",
             Overlay.Flood => fading ? "洪水退去中，田地泥濘" : "洪水淹沒了這一帶",
             Overlay.Debris => "龍捲風過境，四處散落殘骸",
+            Overlay.Scar => fading ? "龍捲風刮過的痕跡，草木正慢慢長回" : "龍捲風剛刮過：地面刮禿、樹木只剩枯枝",
             Overlay.Cracks => "地震撕開的裂縫",
             Overlay.Crater => "隕石墜落留下的大坑",
             Overlay.Ore => "隕石帶來的礦石",
