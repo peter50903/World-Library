@@ -202,7 +202,7 @@ public partial class DemoHexMap
                 {
                     var c = World!.GetCell(site.Column, site.Row);
                     var at = start + HexCoordinates.Center(c.AxialQ, c.AxialR, radius);
-                    if (OnScreen(at, radius * 2f) && RecentDisasters.Contains(site.Id))
+                    if (ShowDisasterMarks && OnScreen(at, radius * 2f) && RecentDisasters.Contains(site.Id))
                         DrawMarker(ArtAssets.IconDisaster, at + new Vector2(radius * 0.7f, -radius * 0.7f), radius * 0.8f);
                     if (OnScreen(at, radius * 2f) && _mode == Mode.Faith && HolySites.Contains(site.Id))
                         DrawMarker(ArtAssets.IconHolySite, at + new Vector2(-radius * 0.7f, -radius * 0.7f), radius * 0.9f);
@@ -223,7 +223,7 @@ public partial class DemoHexMap
                 continue;
             }
             DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-            if (RecentDisasters.Contains(site.Id))
+            if (ShowDisasterMarks && RecentDisasters.Contains(site.Id))
                 DrawMarker(ArtAssets.IconDisaster, center + new Vector2(radius * 0.5f, -radius * 0.5f), radius * 0.8f);
             if (_mode == Mode.Faith && HolySites.Contains(site.Id))
                 DrawMarker(ArtAssets.IconHolySite, center + new Vector2(-radius * 0.5f, -radius * 0.5f), radius * 0.9f);

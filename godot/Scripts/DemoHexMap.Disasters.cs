@@ -14,6 +14,9 @@ public sealed record DisasterMark(long EventId, DemoSettlementEventKind Kind, in
 /// </summary>
 public partial class DemoHexMap
 {
+    /// <summary>試玩回饋 2026-11-06 之 6（紅色警示符號很出戲）：地圖上不再疊天災標記；天災只看地表的痕跡與編年史。</summary>
+    private static bool ShowDisasterMarks => false;
+
     /// <summary>近一年的天災（由觀察者介面每次刷新時給）。</summary>
     public IReadOnlyList<DisasterMark> DisasterMarks
     {

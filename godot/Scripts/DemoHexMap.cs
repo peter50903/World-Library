@@ -397,7 +397,7 @@ public partial class DemoHexMap : Control
             else if (VisibleSite(cell) is { } settlement && !UseFootprints(radius))
             {
                 // 第 12-1 章 C3：一年內遭天災的聚落在右上角疊災害標記。
-                if (RecentDisasters.Contains(settlement.Id))
+                if (ShowDisasterMarks && RecentDisasters.Contains(settlement.Id))
                     DrawMarker(ArtAssets.IconDisaster, center + new Vector2(radius * 0.45f, -radius * 0.45f), radius * 0.8f);
                 DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
                 DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
@@ -895,6 +895,8 @@ public partial class DemoHexMap : Control
         if (World is null || CellAt(atPosition) is not { } cell)
             return "";
         var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
+        if (VisibleSite(cell) is { } site && SettlementScale.TryGetValue(site.Id, out var scale))
+            name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
         // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
         var status = DisasterStatus(cell.Column, cell.Row);
         if (status.Length > 0)

@@ -191,7 +191,7 @@ public partial class DemoHexMap
             // 試玩回饋 2026-11-05 之 12：不臨水的聚落（靠掘井才住得下）在村口畫一口井。
             if (!World.IsNearWater(new DemoCellRef(settlement.Column, settlement.Row)))
                 DrawWell(CenterOf(plan.Cells[0]) + new Vector2(-radius * 0.5f, radius * 0.45f), radius);
-            if (RecentDisasters.Contains(settlement.Id)) // 第 12-1 章 C3：一年內遭天災
+            if (ShowDisasterMarks && RecentDisasters.Contains(settlement.Id)) // 第 12-1 章 C3：一年內遭天災
             {
                 var mark = CenterOf(plan.Cells[0]) + new Vector2(radius * 0.55f, -radius * 0.6f);
                 if (!DrawPixelPart("px_icon_disaster", mark + new Vector2(0f, radius * 0.35f), radius))

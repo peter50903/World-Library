@@ -15,6 +15,7 @@ public partial class ObserverRoot
 {
     public override void _ExitTree()
     {
+        _simTask?.Wait(); // 關閉前等背景推進結束
         foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer })
             player?.Stop();
         ArtAssets.ReleaseCache();

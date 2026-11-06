@@ -403,7 +403,7 @@ public partial class DemoHexMap
             items.Add((fire.Y, () => DrawCampfire(fire, radius)));
             var store = Screen(layout.Plaza.Position.X + 0.5f, layout.Plaza.Position.Y + 1f);
             items.Add((store.Y, () => DrawStockpile(store, radius)));
-            if (RecentDisasters.Contains(site.Id)) // 第 12-1 章 C3：一年內遭天災
+            if (ShowDisasterMarks && RecentDisasters.Contains(site.Id)) // 第 12-1 章 C3：一年內遭天災
             {
                 var mark = Screen(layout.Plaza.End.X + 0.5f, layout.Plaza.Position.Y - 0.5f);
                 items.Add((float.MaxValue, () =>
