@@ -176,6 +176,11 @@ public partial class DemoHexMap
                 center = home + new Vector2(Mathf.Sin(tt), Mathf.Sin(tt * 2f) * 0.4f) * radius * 0.18f;
                 facing = Mathf.Cos(tt) >= 0f ? 1f : -1f;
             }
+            if (group.Kind == Creature.Wolf && PixelParts.Texture("ani_den") is { } den)
+            {
+                var denAt = home + new Vector2(radius * 0.12f, -radius * 0.04f);
+                items.Add((denAt.Y - 0.5f, () => DrawArt(den, denAt, radius))); // 第 08-18d 章：狼穴
+            }
             for (var k = 0; k < group.Count; k++)
             {
                 // 成員：狼群排成一列跟在頭狼後面；鹿群、山羊群散在中心旁邊。
@@ -187,12 +192,14 @@ public partial class DemoHexMap
                 var face = facing;
                 var walk = moving;
                 var lag = k * 0.37f;
+                var member = k;
+                var size = group.Count;
                 items.Add((at.Y, () =>
                 {
                     if (kind == Creature.Wolf)
-                        DrawWolf(at, radius, face, walk, seconds + lag);
+                        DrawWolf(at, radius, face, walk, seconds + lag, member, size);
                     else
-                        DrawDeer(at, radius, face, walk, seconds + lag, kind == Creature.Goat);
+                        DrawDeer(at, radius, face, walk, seconds + lag, kind == Creature.Goat, member);
                 }));
             }
         }
@@ -203,20 +210,33 @@ public partial class DemoHexMap
                 continue;
             _creaturesDrawn = true;
             var pace = Mathf.Sin(seconds * 0.8f + seed);
-            var at = gate + new Vector2(pace * radius * 0.15f, 0f);
+            var at = gate + new Vector2(pace * radius * 0.15f, radius * 0.06f);
             var facing = Mathf.Cos(seconds * 0.8f + seed) >= 0f ? 1f : -1f;
-            items.Add((at.Y, () => DrawMonster(at, radius, facing, seconds)));
+            // 第 08-18d 章：地下城入口（洞窟、古代石門、墓室三種）畫在怪物後面。
+            if (PixelParts.Texture(DungeonArt(seed)) is { } entrance)
+                items.Add((gate.Y - 0.5f, () => DrawArt(entrance, gate, radius)));
+            var kindSeed = seed;
+            items.Add((at.Y, () => DrawMonster(at, radius, facing, seconds, kindSeed)));
         }
         foreach (var (_, draw) in items.OrderBy(x => x.Y))
             draw();
     }
 
     /// <summary>一頭鹿（丘陵上是山羊）：約 10×9 圖像素，走路時腿交替，停下時低頭吃草。</summary>
-    private void DrawDeer(Vector2 feet, float radius, float facing, bool moving, float seconds, bool goat)
+    private void DrawDeer(Vector2 feet, float radius, float facing, bool moving, float seconds, bool goat, int member = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var coat = goat ? new Color(0.86f, 0.84f, 0.78f) : new Color(0.62f, 0.42f, 0.24f);
         Shadow(feet, 5f * p);
+        {
+            // 第 08-18d 章：第五、六批動物素材——鹿群是公鹿、母鹿、小鹿；停下時公鹿與山羊低頭吃草。
+            var eating = !moving && Mathf.PosMod(seconds * 0.5f, 1f) < 0.7f;
+            var name = goat ? (eating ? "ani_goat_graze" : "ani_goat_walk")
+                : member == 0 ? (eating ? "ani_deer_graze" : "ani_deer_walk") : member == 1 ? "ani_doe_walk" : "ani_fawn_walk";
+            var frame = moving ? (int)(seconds * 6f) % 4 : eating && (goat || member == 0) ? (int)(seconds * 2f) % 4 : 0;
+            if (DrawArt(name, feet, radius, 4, frame, facing < 0f))
+                return;
+        }
         var step = moving && (int)(seconds * 5f) % 2 == 0 ? p : 0f;
         DrawRect(new Rect2(feet.X - 4f * p, feet.Y - 4f * p + step, p, 4f * p - step), coat.Darkened(0.3f));
         DrawRect(new Rect2(feet.X + 3f * p, feet.Y - 4f * p + (p - step), p, 4f * p - (p - step)), coat.Darkened(0.3f));
@@ -236,11 +256,19 @@ public partial class DemoHexMap
     }
 
     /// <summary>一匹狼：灰色、尾巴、豎耳，約 11×7 圖像素。</summary>
-    private void DrawWolf(Vector2 feet, float radius, float facing, bool moving, float seconds)
+    private void DrawWolf(Vector2 feet, float radius, float facing, bool moving, float seconds, int member = 0, int pack = 1)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var fur = new Color(0.48f, 0.48f, 0.50f);
         Shadow(feet, 5.5f * p);
+        {
+            // 第 08-18d 章：狼群最前面是頭狼；停下時狼群趴著休息，獨狼不時仰頭嚎叫。
+            var name = moving ? (member == 0 && pack > 1 ? "ani_wolf_alpha_walk" : "ani_wolf_walk")
+                : pack == 1 && Mathf.PosMod(seconds * 0.15f, 1f) < 0.4f ? "ani_wolf_howl" : "ani_wolf_rest";
+            var frame = moving ? (int)(seconds * 8f) % 4 : (int)(seconds * 2f) % 4;
+            if (DrawArt(name, feet, radius, 4, frame, facing < 0f))
+                return;
+        }
         var step = moving && (int)(seconds * 7f) % 2 == 0 ? p : 0f;
         DrawRect(new Rect2(feet.X - 4f * p, feet.Y - 3f * p + step, p, 3f * p - step), fur.Darkened(0.35f));
         DrawRect(new Rect2(feet.X + 3f * p, feet.Y - 3f * p + (p - step), p, 3f * p - (p - step)), fur.Darkened(0.35f));
@@ -256,11 +284,14 @@ public partial class DemoHexMap
     }
 
     /// <summary>地下城的怪物：比小人大一倍的深色身影、角、發光的眼睛，在門口來回踱步。</summary>
-    private void DrawMonster(Vector2 feet, float radius, float facing, float seconds)
+    private void DrawMonster(Vector2 feet, float radius, float facing, float seconds, int seed = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var skin = new Color(0.30f, 0.22f, 0.34f);
         Shadow(feet, 8f * p);
+        // 第 08-18d 章：第六批怪物素材（哥布林、骷髏兵、巨魔、暗影，依地下城固定挑一種）。
+        if (DrawArt(MonsterArt(seed), feet, radius, 4, (int)(seconds * 5f) % 4, facing < 0f))
+            return;
         var bob = Mathf.Sin(seconds * 3f) > 0f ? p : 0f;
         DrawRect(new Rect2(feet.X - 5f * p, feet.Y - 6f * p, 3f * p, 6f * p), skin.Darkened(0.3f));
         DrawRect(new Rect2(feet.X + 2f * p, feet.Y - 6f * p, 3f * p, 6f * p), skin.Darkened(0.3f));
@@ -283,4 +314,19 @@ public partial class DemoHexMap
         DrawCircle(Vector2.Zero, width, new Color(0f, 0f, 0f, 0.28f));
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
     }
+
+    private static string DungeonArt(int seed) => (Math.Abs(seed) % 3) switch { 0 => "dun_cave", 1 => "dun_ruin_gate", _ => "dun_crypt" };
+
+    private static string MonsterArt(int seed) => (Math.Abs(seed / 3) % 4) switch
+    {
+        0 => "mon_goblin_walk",
+        1 => "mon_skeleton_walk",
+        2 => "mon_troll_walk",
+        _ => "mon_shadow_idle"
+    };
+
+    /// <summary>這個地下城在近景有沒有畫入口（有就不再畫地圖標記）。</summary>
+    private bool DungeonDrawn(int column, int row, float radius)
+        => radius >= TempCreatureMinRadius && _monsters is not null && _monsters.Any(m => m.Seed == column * 31 + row)
+            && PixelParts.Texture(DungeonArt(column * 31 + row)) is not null;
 }

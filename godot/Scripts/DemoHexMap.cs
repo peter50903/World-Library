@@ -543,7 +543,7 @@ public partial class DemoHexMap : Control
                     continue;
                 var cell = World.GetCell(d.Column, d.Row);
                 var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius))
+                if (!OnScreen(center, radius) || DungeonDrawn(d.Column, d.Row, radius)) // 第 08-18d 章：近景畫入口素材
                     continue;
                 if (!DrawMarker(ArtAssets.IconDungeon, center, Math.Max(radius * 1.3f, 14f)))
                 {

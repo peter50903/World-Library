@@ -1531,12 +1531,15 @@ public partial class ObserverRoot : Control
         }
         var fresh = _world.WeekReports().Where(w => w.Week > _soundWeek).SelectMany(w => w.Events).ToList();
         _soundWeek = latest;
+        _musicEra = _world.Era;
         if (fresh.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.EraBegan) is { } era)
         {
-            _hexMap.PlaySfx(ArtAssets.SfxEra);
+            _hexMap.PlaySfx(ArtAssets.EventSfx(DemoSettlementEventKind.EraBegan));
             ShowEraCard((DemoEra)era.Count); // 第 08-16 章：時代插圖
         }
-        else if (fresh.Any(e => e.Kind == DemoSettlementEventKind.SettlementFounded) && _hexMap.CurrentLayer != DemoHexMap.ViewLayer.Strategic)
-            _hexMap.PlaySfx(ArtAssets.SfxFounding); // 試玩回饋 2026-11-04 之 2：遠看全圖時不播建村聲
+        else if (_hexMap.CurrentLayer != DemoHexMap.ViewLayer.Strategic // 試玩回饋 2026-11-04 之 2：遠看全圖時不播聚落的聲音
+            && fresh.FirstOrDefault(e => e.Kind is DemoSettlementEventKind.SettlementFounded or DemoSettlementEventKind.SettlementRuined
+                or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded) is { } local)
+            _hexMap.PlaySfx(ArtAssets.EventSfx(local.Kind)); // 第 08-18d 章：建村、廢村、文化分裂、創立信仰
     }
 }

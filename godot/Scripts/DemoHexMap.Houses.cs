@@ -13,9 +13,16 @@ public partial class DemoHexMap
     private static readonly Color Ink = new(0.12f, 0.09f, 0.07f);
 
     /// <summary>一棟住屋：帳篷、木屋、房子、石屋（底部置中在 <paramref name="bottom"/>，地塊寬 <paramref name="lotWidth"/> 像素）。</summary>
-    private void DrawHouse(Building kind, Vector2 bottom, float lotWidth, Color culture, float radius)
+    private void DrawHouse(Building kind, Vector2 bottom, float lotWidth, Color culture, float radius, int seed = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
+        if (HouseArt(kind, seed, culture) is { } art)
+        {
+            // 第 08-18d 章：第五批住屋素材（屋頂染文化色）。
+            GroundShadow(bottom - new Vector2(0f, p * 2f), lotWidth * 0.85f);
+            DrawArt(art, bottom, radius);
+            return;
+        }
         // 落地陰影（光源左上：陰影往右下）。
         DrawSetTransform(bottom + new Vector2(lotWidth * 0.08f, -p * 2f), 0f, new Vector2(1f, 0.3f));
         DrawCircle(Vector2.Zero, lotWidth * 0.5f, new Color(0.08f, 0.06f, 0.04f, 0.35f));
@@ -92,9 +99,11 @@ public partial class DemoHexMap
     }
 
     /// <summary>建地：木樁圍出的輪廓、繩子與一堆木料（之後才變成房子）。</summary>
-    private void DrawConstruction(Vector2 bottom, float lotWidth, float lotDepth, float radius)
+    private void DrawConstruction(Vector2 bottom, float lotWidth, float lotDepth, float radius, int seed = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
+        if (PixelParts.VariantName("bld_site", 3, LayoutHash(seed, 0, 141)) is { } site && DrawArt(site, bottom, radius))
+            return; // 第 08-18d 章：第五批建地素材
         var half = lotWidth * 0.4f;
         var back = lotDepth * 0.7f;
         var stake = new Color(0.60f, 0.42f, 0.22f);
@@ -114,9 +123,15 @@ public partial class DemoHexMap
     }
 
     /// <summary>囤糧圍欄：一圈矮木欄圍著幾個木箱與糧袋（營地起就有，放在廣場角落）。</summary>
-    private void DrawStockpile(Vector2 bottom, float radius)
+    private void DrawStockpile(Vector2 bottom, float radius, bool art = false)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
+        if (art && PixelParts.IsBatch5("bld_stockpile") && PixelParts.Texture("bld_stockpile") is { } stockpile)
+        {
+            GroundShadow(bottom - new Vector2(0f, p), PixelParts.ScreenSize(stockpile, radius).X * 0.9f, 0.25f);
+            DrawArt(stockpile, bottom, radius);
+            return;
+        }
         var fence = new Color(0.52f, 0.36f, 0.20f);
         var box = new Rect2(bottom.X - 8f * p, bottom.Y - 9f * p, 16f * p, 8f * p);
         DrawRect(new Rect2(box.Position.X + 2f * p, box.Position.Y + 2f * p, 5f * p, 4f * p), new Color(0.70f, 0.52f, 0.28f)); // 木箱
@@ -153,23 +168,85 @@ public partial class DemoHexMap
                 people += $"｜屬{DemoSettlementHistory.TitledName(lord, lordScale.Item2)}";
             var nameWidth = font.GetStringSize(name, HorizontalAlignment.Left, -1, TempPlateFont).X;
             var countWidth = font.GetStringSize(people, HorizontalAlignment.Left, -1, TempPlateFont - 2).X;
-            var width = TempPlateEmblem + 6f + nameWidth + 8f + countWidth + 10f;
+            // 第 08-18d 章：名牌底板（ui_nameplate 九宮格）、名字前的層級徽章、隸屬時人數後的隸屬徽章。
+            var plate = PlateStyle();
+            var badge = PixelParts.Texture(TierBadge(scale.Item2));
+            var vassal = Territory.LiegeOf(site.Id) is not null ? PixelParts.Texture("terr_vassal_link") : null;
+            var extra = (badge is not null ? TempPlateEmblem + 3f : 0f) + (vassal is not null ? TempPlateEmblem + 2f : 0f) + (plate is not null ? 10f : 0f);
+            var width = TempPlateEmblem + 6f + nameWidth + 8f + countWidth + 10f + extra;
             var height = 20f;
             var anchor = center - new Vector2(0f, radius * (scale.Item2 >= DemoSettlementTier.City ? 1.25f : 1.05f) + height);
             var rect = new Rect2(anchor.X - width / 2f, anchor.Y, width, height);
             var culture = CultureOf.TryGetValue(site.Id, out var cultureId) ? CultureColor(cultureId) : new Color(0.5f, 0.5f, 0.5f);
-            DrawRect(rect, new Color(0.08f, 0.06f, 0.05f, 0.78f));
-            DrawRect(new Rect2(rect.Position, new Vector2(3f, height)), culture);
-            DrawRect(rect, culture.Darkened(0.3f), false, 1f);
+            if (plate is not null)
+            {
+                DrawStyleBox(plate, rect);
+                DrawRect(new Rect2(rect.Position + new Vector2(8f, 3f), new Vector2(2f, height - 6f)), culture);
+                rect = new Rect2(rect.Position + new Vector2(6f, 0f), rect.Size - new Vector2(10f, 0f));
+            }
+            else
+            {
+                DrawRect(rect, new Color(0.08f, 0.06f, 0.05f, 0.78f));
+                DrawRect(new Rect2(rect.Position, new Vector2(3f, height)), culture);
+                DrawRect(rect, culture.Darkened(0.3f), false, 1f);
+            }
             var emblemAt = new Rect2(rect.Position + new Vector2(5f, 2f), new Vector2(TempPlateEmblem, TempPlateEmblem));
             if (CultureEmblems.TryGetValue(cultureId, out var emblem) && Heraldry.Emblem(emblem, culture) is { } shield)
                 DrawTextureRect(shield, emblemAt, false);
             else
                 DrawRect(emblemAt, culture);
             var x = emblemAt.End.X + 5f;
+            if (badge is not null)
+            {
+                DrawTextureRect(badge, new Rect2(new Vector2(x - 2f, rect.Position.Y + 2f), new Vector2(TempPlateEmblem, TempPlateEmblem)), false);
+                x += TempPlateEmblem + 3f;
+            }
             DrawString(font, new Vector2(x, rect.Position.Y + 15f), name, HorizontalAlignment.Left, -1, TempPlateFont, Colors.White);
-            DrawString(font, new Vector2(x + nameWidth + 8f, rect.Position.Y + 15f), people, HorizontalAlignment.Left, -1, TempPlateFont - 2,
-                new Color(0.95f, 0.85f, 0.55f));
+            var countX = x + nameWidth + 8f;
+            if (vassal is not null)
+            {
+                var split = people.IndexOf('｜');
+                var head = split >= 0 ? people[..split] : people;
+                var tail = split >= 0 ? people[(split + 1)..] : "";
+                var headWidth = font.GetStringSize(head, HorizontalAlignment.Left, -1, TempPlateFont - 2).X;
+                DrawString(font, new Vector2(countX, rect.Position.Y + 15f), head, HorizontalAlignment.Left, -1, TempPlateFont - 2, new Color(0.95f, 0.85f, 0.55f));
+                var iconX = countX + headWidth + 3f;
+                DrawTextureRect(vassal, new Rect2(new Vector2(iconX, rect.Position.Y + 2f), new Vector2(TempPlateEmblem, TempPlateEmblem)), false);
+                DrawString(font, new Vector2(iconX + TempPlateEmblem + 2f, rect.Position.Y + 15f), tail, HorizontalAlignment.Left, -1, TempPlateFont - 2,
+                    new Color(0.95f, 0.85f, 0.55f));
+            }
+            else
+                DrawString(font, new Vector2(countX, rect.Position.Y + 15f), people, HorizontalAlignment.Left, -1, TempPlateFont - 2,
+                    new Color(0.95f, 0.85f, 0.55f));
         }
     }
+
+    private StyleBoxTexture? _plateStyle;
+    private bool _plateTried;
+
+    /// <summary>第 08-18d 章：名牌底板（ui_nameplate 的不透明部分，左右尖角不拉伸）；沒有素材回傳 null。</summary>
+    private StyleBoxTexture? PlateStyle()
+    {
+        if (_plateTried)
+            return _plateStyle;
+        _plateTried = true;
+        if (PixelParts.IsBatch5("ui_nameplate") && PixelParts.Texture("ui_nameplate") is { } texture)
+            _plateStyle = ArtAssets.Track(new StyleBoxTexture
+            {
+                Texture = texture,
+                RegionRect = new Rect2(4f, 7f, 120f, 18f), // 【TEMP】素材不透明部分
+                TextureMarginLeft = 12, TextureMarginRight = 12, TextureMarginTop = 6, TextureMarginBottom = 6
+            });
+        return _plateStyle;
+    }
+
+    /// <summary>第 08-18d 章：名牌上的層級徽章（營、村、鎮、城、都）。</summary>
+    private static string TierBadge(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => "tier_camp",
+        DemoSettlementTier.Village => "tier_village",
+        DemoSettlementTier.Town => "tier_town",
+        DemoSettlementTier.City => "tier_city",
+        _ => "tier_capital"
+    };
 }

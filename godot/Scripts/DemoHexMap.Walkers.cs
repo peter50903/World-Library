@@ -83,7 +83,11 @@ public partial class DemoHexMap
                 var frame = walking ? (int)(seconds * 4f + h * 4f) % 2 : 0;
                 var facing = heading.X < 0f ? -1f : 1f;
                 var color = tunic;
-                people.Add((at, at.Y, () => DrawWalker(at, radius, color, frame, facing, bubble)));
+                // 第 08-18d 章：小人素材依職業（工作中）或男女老少；走路時 4 格動畫。
+                var unit = UnitArt(working ? works[i % (works.Count + 1)].Kind : null, i);
+                var step = walking ? (int)(seconds * 7f + h * 4f) % 4 : 0;
+                var art = bubble is null ? null : BubbleArt(bubble, h);
+                people.Add((at, at.Y, () => DrawWalker(at, radius, color, frame, facing, bubble, unit, step, art)));
             }
             _walkersDrawn = true;
         }
@@ -152,9 +156,23 @@ public partial class DemoHexMap
     }
 
     /// <summary>一個小人（約 8×14 圖像素）：落地陰影、兩條腿（走路時交替）、文化色上衣、頭、偶爾一個想法泡泡（固定大小）。</summary>
-    private void DrawWalker(Vector2 feet, float radius, Color tunic, int frame, float facing, string? bubble)
+    private void DrawWalker(Vector2 feet, float radius, Color tunic, int frame, float facing, string? bubble, string? unit = null, int step = 0, string? bubbleArt = null)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
+        if (unit is not null && PixelParts.Tinted(unit, tunic) is { } sheet)
+        {
+            // 第 08-18d 章：第五批小人素材（衣服染文化色，面向右，往左走時翻轉）；泡泡用素材、至少 18 像素大。
+            DrawSetTransform(feet + new Vector2(p, 0f), 0f, new Vector2(1f, 0.35f));
+            DrawCircle(Vector2.Zero, 5f * p, new Color(0f, 0f, 0f, 0.3f));
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+            DrawArt(sheet, feet, radius, 4, step, facing < 0f);
+            if (bubbleArt is not null && PixelParts.Texture(bubbleArt) is { } icon)
+            {
+                var scale = Math.Max(1f, 18f / PixelParts.ScreenSize(icon, radius).Y);
+                DrawArt(icon, feet - new Vector2(0f, 22f * p), radius, scale: scale);
+            }
+            return;
+        }
         DrawSetTransform(feet + new Vector2(p, 0f), 0f, new Vector2(1f, 0.35f));
         DrawCircle(Vector2.Zero, 4f * p, new Color(0f, 0f, 0f, 0.3f));
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);

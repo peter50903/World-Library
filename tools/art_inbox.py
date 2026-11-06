@@ -6,6 +6,9 @@
 - 對不到的檔案只列出，不處理。
 - 動畫（類型含「動畫」，第 08-16 章）：原圖橫向等分 4 格，取 4 格共同的不透明範圍裁切，每格等比縮進規格的單格大小、底部置中（不拉伸變形）。
 - 地形紋理（類型＝地形紋理，第 06-4 章）：先縮到「規格÷4」的邏輯像素、把四邊接縫融合成可無縫拼接，再每像素放大 4 倍（保持像素風、不模糊）。
+- 地表方格（第 08-18b 章第五批）：直接縮到規格大小（每像素就是一個圖像素），融合四邊接縫成可無縫拼接。
+- 音樂、音效（.ogg）：照 manifest 的檔名原樣複製（不轉檔）。
+- 同一個檔名在舊批次與第五、六批都有時，用第五、六批的列（ID 開頭 B5_、B6_）。
 用法：python3 tools/art_inbox.py <收件匣資料夾>
 需要 Pillow。由 .github/workflows/art-inbox.yml 在 GitHub 上執行（雲端硬碟只能從 GitHub 下載）。
 """
@@ -28,7 +31,12 @@ def target_size(spec: str) -> tuple[int, int]:
     m = re.search(r"(\d+)\s*[×xX]\s*(\d+)", spec)
     if not m:
         raise ValueError(f"規格欄找不到尺寸：{spec}")
-    return int(m.group(1)), int(m.group(2))
+    w, h = int(m.group(1)), int(m.group(2))
+    # 第五、六批的動畫寫「單格 W×H，橫排 4 格」：整張寬＝單格寬×4。
+    if "單格" in spec:
+        frames = re.search(r"橫排\s*(\d+)\s*格", spec)
+        w *= int(frames.group(1)) if frames else 4
+    return w, h
 
 
 def seamless_pixel_texture(img: Image.Image, w: int, h: int, scale: int = 4) -> Image.Image:
@@ -73,8 +81,10 @@ def animation_strip(img: Image.Image, w: int, h: int, frames: int = 4) -> Image.
 
 def drop_flat_background(img: Image.Image) -> Image.Image:
     """GPT 沒給真正透明背景時：從四角把相近的底色往內填成透明。"""
-    if img.getchannel("A").getextrema()[0] < 250:
-        return img  # 已經有透明處
+    alpha = img.getchannel("A")
+    clear = sum(alpha.point(lambda a: 1 if a < 48 else 0).getdata())
+    if clear > alpha.width * alpha.height * 0.05:
+        return img  # 已經有真正透明的背景（只有一層半透明白底的不算）
     from PIL import ImageChops, ImageDraw
     probe = img.convert("RGB")
     sentinel = (255, 0, 255)
@@ -127,14 +137,24 @@ def main() -> int:
 
     done, unknown = [], []
     for f in sorted(inbox.rglob("*")):
-        if not f.is_file() or f.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+        if not f.is_file() or f.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".ogg"}:
             continue
-        row = by_flat.get(f.stem + ".png")
+        ext = ".ogg" if f.suffix.lower() == ".ogg" else ".png"
+        row = by_flat.get(f.stem + ext)
         if row is None:
-            candidates = by_base.get(f.stem + ".png", [])
-            row = candidates[0] if len(candidates) == 1 else None
+            candidates = by_base.get(f.stem + ext, [])
+            newest = [r for r in candidates if r["ID"].startswith(("B6_", "B5_"))]
+            row = (newest or candidates)[0] if len(newest or candidates) == 1 else None
         if row is None:
             unknown.append(f.name)
+            continue
+        if ext == ".ogg":
+            out = ASSET_DIR / row["檔名"]
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(f.read_bytes())
+            if row["狀態"] != "已套用":
+                row["狀態"] = "已交付"
+            done.append(f"{row['ID']} ← {f.name}（音訊）")
             continue
         w, h = target_size(row["規格"])
         transparent = "透明背景" in row["規格"]  # 「不透明」也含「透明」二字，要比對整個詞
@@ -143,6 +163,8 @@ def main() -> int:
             img = pixel_part(img, w, h, 4 if "動畫" in row["類型"] else 1)
         elif row["類型"].startswith("地形紋理"):
             img = seamless_pixel_texture(img, w, h)
+        elif row["類型"] == "地表方格":
+            img = seamless_pixel_texture(img, w, h, scale=1)
         elif "動畫" in row["類型"]:
             img = animation_strip(img, w, h)
         elif img.size != (w, h):

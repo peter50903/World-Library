@@ -25,6 +25,8 @@ public partial class DemoHexMap
         if (World is null || Territory.Cells.Count == 0)
             return;
         var width = Math.Clamp(radius * 0.12f, 1.5f, 4f);
+        // 第 08-18d 章：近景在勢力邊界上每隔幾格插一根界碑（頂端染勢力色）。
+        var posts = fill <= 0f && radius >= TempCreatureMinRadius && PixelParts.IsBatch5("terr_border_post") ? new List<(Vector2 At, Color Color)>() : null;
         foreach (var (at, owner) in Territory.Cells)
         {
             var cell = World.GetCell(at.Column, at.Row);
@@ -41,11 +43,20 @@ public partial class DemoHexMap
                 var other = Territory.Cells.TryGetValue(next, out var o) ? o : null;
                 var edge = EdgeOf(shape, HexCoordinates.EdgeToward(dq, dr));
                 if (other is null || other.RealmId != owner.RealmId)
+                {
                     DrawPolyline(edge, color.Darkened(0.2f), width); // 勢力之間的邊界
+                    if (posts is not null && edge.Length >= 2 && (at.Column * 3 + at.Row * 5 + dq + 2 * dr + 8) % 4 == 0)
+                        posts.Add(((edge[0] + edge[^1]) / 2f, color));
+                }
                 else if (inner && other.SettlementId != owner.SettlementId)
                     DrawPolyline(edge, new Color(color.Darkened(0.45f), 0.55f), Math.Max(1f, width * 0.4f)); // 同一勢力裡的直屬邊界
             }
         }
+        if (posts is null)
+            return;
+        foreach (var (post, color) in posts.OrderBy(x => x.At.Y))
+            if (((Texture2D?)PixelParts.Tinted("terr_border_post", color, 0.4f) ?? PixelParts.Texture("terr_border_post")) is { } texture)
+                DrawArt(texture, post + new Vector2(0f, radius * 0.08f), radius);
     }
 
     /// <summary>勢力模式的滑鼠提示：直屬哪個聚落、最上層是誰。</summary>

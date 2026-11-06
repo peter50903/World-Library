@@ -31,13 +31,7 @@ public partial class DemoHexMap
                 if (_seenDisasters.Add(mark.EventId) && mark.Week >= CurrentWeek - 1 && _disasterMarksPrimed)
                 {
                     _impacts.Add((mark, now));
-                    PlaySfx(mark.Kind switch
-                    {
-                        DemoSettlementEventKind.Earthquake => ArtAssets.SfxEarthquake,
-                        DemoSettlementEventKind.Meteorite => ArtAssets.SfxMeteor,
-                        DemoSettlementEventKind.Flood => ArtAssets.SfxFlood,
-                        _ => ArtAssets.SfxTornado
-                    });
+                    PlaySfx(ArtAssets.EventSfx(mark.Kind));
                 }
             }
             _disasterMarksPrimed = true;
@@ -269,7 +263,17 @@ public partial class DemoHexMap
                 if (dk < TempFireBurnWeeks)
                     _fireOnScreen = true;
                 // 美術素材（2026-11-04）：火焰動畫兩叢、煙霧貼圖；沒有素材時畫圓形的煙。
-                if (dk < TempFireBurnWeeks && PixelParts.Texture("px_fire") is { } pxFire)
+                if (dk < TempFireBurnWeeks && PixelParts.Texture("fx_fire") is { } fxFire)
+                {
+                    // 第 08-18d 章：第五批火焰（4 格動畫）：燒得最旺時中間一團大火，旁邊三叢小火。
+                    var frame = (int)(seconds * TempFireFps + k) % 4;
+                    if (dk < TempFireBurnWeeks * 0.6f && PixelParts.Texture("fx_fire_big") is { } big)
+                        DrawArt(big, center + new Vector2(0f, radius * 0.35f), radius, 4, (frame + 1) % 4);
+                    DrawArt(fxFire, center + new Vector2(-radius * 0.45f, radius * 0.45f), radius, 4, frame);
+                    DrawArt(fxFire, center + new Vector2(radius * 0.45f, radius * 0.2f), radius, 4, (frame + 2) % 4);
+                    DrawArt(fxFire, center + new Vector2(radius * 0.1f, radius * 0.7f), radius, 4, (frame + 3) % 4);
+                }
+                else if (dk < TempFireBurnWeeks && PixelParts.Texture("px_fire") is { } pxFire)
                 {
                     // 像素火焰（4 格動畫，原像素大小）：每格三叢。
                     var frame = (int)(seconds * TempFireFps + k) % 4;
@@ -284,13 +288,16 @@ public partial class DemoHexMap
                     DrawStripFrame(fire, frame, center + new Vector2(-radius * 0.3f, radius * 0.35f), radius * 0.9f);
                     DrawStripFrame(fire, (frame + 2) % 4, center + new Vector2(radius * 0.32f, radius * 0.1f), radius * 0.75f);
                 }
+                var smokeStrip = PixelParts.IsBatch5("fx_smoke") ? PixelParts.Texture("fx_smoke") : null;
                 var smoke = (Texture2D?)PixelParts.Texture("px_smoke") ?? ArtAssets.Texture(ArtAssets.FxSmoke);
                 for (var p = 0; p < 3; p++)
                 {
                     var phase = Mathf.PosMod(seconds * 0.4f + p / 3f + k * 0.17f, 1f);
                     var puff = center + new Vector2(Mathf.Sin(phase * 6f + k) * radius * 0.25f, -phase * radius * 1.6f);
                     var size = radius * (0.18f + phase * 0.3f);
-                    if (smoke is not null)
+                    if (smokeStrip is not null)
+                        DrawArt(smokeStrip, puff + new Vector2(0f, radius * 0.4f), radius, 4, (int)(phase * 4f) % 4, alpha: 0.8f * (1f - phase), scale: 0.8f + phase * 0.6f);
+                    else if (smoke is not null)
                         DrawTextureRect(smoke, new Rect2(puff - new Vector2(size, size) * 1.3f, new Vector2(size, size) * 2.6f), false, new Color(1, 1, 1, 0.7f * (1f - phase)));
                     else
                         DrawCircle(puff, size, new Color(0.25f, 0.23f, 0.22f, 0.45f * (1f - phase)));
@@ -328,6 +335,14 @@ public partial class DemoHexMap
                     var center = ScreenOf(start, radius, c);
                     if (!OnScreen(center, radius * 2f))
                         continue;
+                    // 第 08-18d 章：洪水浪頭素材（4 格動畫，每格一道、往右推）。
+                    if (PixelParts.Texture("fx_flood_wave") is { } wave)
+                    {
+                        var q = Mathf.PosMod(seconds * 0.3f + (c.Column * 7 + c.Row * 3) * 0.13f, 1f);
+                        DrawArt(wave, center + new Vector2(-radius * 0.4f + q * radius * 0.8f, radius * 0.5f), radius, 4,
+                            (int)(seconds * 6f + c.Column) % 4, alpha: Mathf.Sin(q * Mathf.Pi));
+                        continue;
+                    }
                     // 翻浪：每格三道往下游方向（右下）移動的白色浪花線。
                     for (var w = 0; w < 3; w++)
                     {
@@ -355,7 +370,9 @@ public partial class DemoHexMap
                     {
                         // 劃過天空：拖著尾巴的火球。
                         var head = from.Lerp(target, p / 0.45f);
-                        if (ArtAssets.Texture(ArtAssets.FxMeteor) is { } meteor)
+                        if (PixelParts.Texture("fx_meteor") is { } fxMeteor && PixelParts.IsBatch5("fx_meteor"))
+                            DrawArt(fxMeteor, head + new Vector2(0f, radius * 0.5f), radius, 4, (int)(seconds * 12f) % 4, scale: 1.5f);
+                        else if (ArtAssets.Texture(ArtAssets.FxMeteor) is { } meteor)
                         {
                             // 素材的火球在左下、尾巴在右上（與飛行方向一致）。
                             var size = radius * 3f;
@@ -372,6 +389,11 @@ public partial class DemoHexMap
                     {
                         // 撞擊閃光與衝擊波。
                         var q = (p - 0.45f) / 0.55f;
+                        if (PixelParts.Texture("fx_impact") is { } impact && PixelParts.IsBatch5("fx_impact"))
+                        {
+                            DrawArt(impact, target + new Vector2(0f, radius * 0.9f), radius, 4, Math.Min(3, (int)(q * 4f)), alpha: 1f - q * 0.5f);
+                            break;
+                        }
                         DrawCircle(target, radius * (0.4f + q * 1.2f), new Color(1f, 0.85f, 0.5f, 0.6f * (1f - q)));
                         DrawArc(target, radius * (0.6f + q * 2.4f), 0f, Mathf.Tau, 40, new Color(1f, 0.6f, 0.25f, 1f - q), Math.Max(1.5f, radius * 0.12f));
                     }
@@ -400,6 +422,11 @@ public partial class DemoHexMap
         DrawSetTransform(bottom + new Vector2(radius * 0.3f, 0f), 0f, new Vector2(1f, 0.32f));
         DrawCircle(Vector2.Zero, radius * 1.3f, new Color(0f, 0f, 0f, 0.28f)); // 落地陰影
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        if (PixelParts.IsBatch5("fx_tornado") && PixelParts.Texture("fx_tornado") is { } fresh)
+        {
+            DrawArt(fresh, bottom + new Vector2(0f, radius * 0.3f), radius, 4, (int)(seconds * 12f) % 4); // 第 08-18d 章：兩格寬、四格高
+            return;
+        }
         if (ArtAssets.Texture(ArtAssets.FxTornado) is { } art)
         {
             DrawStripFrame(art, (int)(seconds * 12f) % 4, bottom + new Vector2(0f, radius * 0.3f), radius * 3.2f);
@@ -438,9 +465,9 @@ public partial class DemoHexMap
 
     private static string PixelDecal(Overlay kind) => kind switch
     {
-        Overlay.Crater => "px_crater",
-        Overlay.Cracks => "px_crack",
-        _ => "px_debris"
+        Overlay.Crater => PixelParts.IsBatch5("dec_crater") ? "dec_crater" : "px_crater",
+        Overlay.Cracks => PixelParts.IsBatch5("dec_crack") ? "dec_crack" : "px_crack",
+        _ => PixelParts.IsBatch5("dec_debris") ? "dec_debris" : "px_debris"
     };
 
     private static string DecalPath(Overlay kind) => kind switch
@@ -494,7 +521,7 @@ public partial class DemoHexMap
     private void UpdateFireLoop()
     {
         var want = _hasFire && _fireOnScreen && !AudioMuted && CurrentLayer != ViewLayer.Strategic;
-        if (want && _fireLoop is null && ArtAssets.Audio(ArtAssets.SfxFire) is { } stream)
+        if (want && _fireLoop is null && ArtAssets.Audio(ArtAssets.FireLoop) is { } stream)
         {
             if (stream is AudioStreamOggVorbis ogg)
                 ogg.Loop = true;
