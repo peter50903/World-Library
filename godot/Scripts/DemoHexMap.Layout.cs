@@ -415,6 +415,7 @@ public partial class DemoHexMap
         }
         foreach (var (_, draw) in items.OrderBy(i => i.Y))
             draw();
+        DrawCreatures(start, radius); // 第 08-18b 章：野生動物與地下城怪物
         DrawWalkers(start, radius); // 第 08-18b 章第 4 節：近景小人
         DrawNameplates(start, radius);
     }
