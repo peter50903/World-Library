@@ -1459,7 +1459,10 @@ public partial class ObserverRoot : Control
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
-        _hexMap.Dungeons = _world.Dungeons.Select(d => d.Cell).ToArray(); // 第 12-1 章 C4
+        var dungeonCells = _world.Dungeons.Select(d => d.Cell).ToArray();
+        if (!dungeonCells.SequenceEqual(_hexMap.Dungeons))
+            _hexMap.Dungeons = dungeonCells; // 第 12-1 章 C4（沒變就沿用，地圖的生物快取才不會每次重算）
+        _hexMap.MonsterNests = _world.MonsterNests(_world.CommittedWeeks); // 第 12-2 章：怪物數與勢力範圍
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
         _hexMap.Prey = _world.Wildlife.Prey.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Prey; // 第 08-18b 章：近景的野生動物依每格實際數量
         _hexMap.Wolves = _world.Wildlife.Wolves.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Wolves;

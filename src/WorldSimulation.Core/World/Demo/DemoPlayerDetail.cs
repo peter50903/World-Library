@@ -141,7 +141,14 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         if (logged >= 0f)
             lines.Add(logged < 0.5f ? "森林剛被砍伐，只剩樹樁與幼苗" : "砍過的森林，樹木正慢慢長回");
         if (world.Dungeons.FirstOrDefault(d => d.Cell.Column == cell.Column && d.Cell.Row == cell.Row) is { } dungeon)
+        {
             lines.Add($"地下城：{dungeon.Name}（{dungeon.Layers} 層，第 {DemoSettlementHistory.YearOfDay(checked(dungeon.AppearedWeek * 7))} 年出現）"); // 第 12-1 章 C4
+            // 第 12-2 章：怪物數與勢力範圍（沉寂時寫還要多久再生）。
+            if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } nest)
+                lines.Add(nest.Dormant
+                    ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.TempDormantWeeks - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
+                    : $"怪物：{nest.Monsters} 隻｜勢力範圍：{nest.Radius} 格（會襲擊範圍內的聚落，也會被討伐）");
+        }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
@@ -184,6 +191,11 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             var nearDungeons = DemoDungeons.Near(world.Dungeons, world.Map, settlement).Select(d => d.Name).ToList();
             if (nearDungeons.Count > 0)
                 now.Add("附近有地下城：" + string.Join("、", nearDungeons));
+            // 第 12-2 章：在哪個地下城怪物的勢力範圍內。
+            var threats = world.MonsterNests(world.CommittedWeeks).Where(n => n.Radius > 0
+                && DemoHexWorld.Distance(n.Dungeon.Cell, new DemoCellRef(settlement.Column, settlement.Row)) <= n.Radius).Select(n => $"{n.Dungeon.Name}（{n.Monsters} 隻）").ToList();
+            if (threats.Count > 0)
+                now.Add("⚔ 位在怪物的勢力範圍內：" + string.Join("、", threats));
         }
         // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
         var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();

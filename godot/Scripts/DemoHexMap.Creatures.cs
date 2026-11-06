@@ -44,13 +44,14 @@ public partial class DemoHexMap
     {
         if (World is null || _surface is not { Active: true })
             return; // 地表還沒畫（不知道哪裡是空地），下次再算
-        var key = ((object?)World, (object?)Prey, (object?)Wolves, (object?)_ground, (object?)Dungeons);
+        // 試玩回饋 2026-11-07 之 5：不畫野生動物時不必依獵物與狼重算棲地。
+        var key = ((object?)World, ShowAnimals ? (object?)Prey : null, ShowAnimals ? (object?)Wolves : null, (object?)_ground, (object?)Dungeons);
         if (_groups is not null && key.Equals(_groupKey))
             return;
         _groupKey = key;
         _groups = new List<Group>();
         _monsters = new List<(Vector2I, int)>();
-        for (var by = 0; by < World.Rows; by += TempHabitat)
+        for (var by = 0; ShowAnimals && by < World.Rows; by += TempHabitat)
             for (var bx = 0; bx < World.Columns; bx += TempHabitat)
             {
                 int prey = 0, wolves = 0, bestPrey = -1, bestWolf = -1, preyCell = -1, wolfCell = -1;
@@ -66,6 +67,8 @@ public partial class DemoHexMap
                         if (w > bestWolf) (bestWolf, wolfCell) = (w, i);
                     }
                 var seed = by * 1000 + bx;
+                if (!ShowAnimals)
+                    continue;
                 if (prey >= TempLonePrey && bestPrey > 0 && OpenTileIn(preyCell, seed) is { } pasture)
                 {
                     var goat = World.Cells[preyCell].Terrain == DemoTerrain.Hills;
@@ -220,7 +223,14 @@ public partial class DemoHexMap
             if (PixelParts.Texture(DungeonArt(seed)) is { } entrance)
                 items.Add((gate.Y - 0.5f, () => DrawArt(entrance, gate, radius)));
             var kindSeed = seed;
-            items.Add((at.Y, () => DrawMonster(at, radius, facing, seconds, kindSeed)));
+            // 第 12-2 章：怪物數每 4 隻多畫一隻（最多 3 隻）；沉寂的地下城門口沒有怪物。
+            var shown = MonstersShownAt(tile);
+            for (var k = 0; k < shown; k++)
+            {
+                var spot = at + new Vector2((k - (shown - 1) / 2f) * radius * 0.28f, (k % 2) * radius * 0.08f);
+                var lag = k * 0.9f;
+                items.Add((spot.Y, () => DrawMonster(spot, radius, facing, seconds + lag, kindSeed)));
+            }
         }
         foreach (var (_, draw) in items.OrderBy(x => x.Y))
             draw();

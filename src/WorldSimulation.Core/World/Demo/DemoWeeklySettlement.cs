@@ -267,7 +267,18 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 08-16 章第 14 節：開始採礦（人數欄＝格編號；根因）與礦脈挖空（直接原因＝開始採礦）。</summary>
     MiningBegan = 29,
-    OreExhausted = 30
+    OreExhausted = 30,
+
+    /// <summary>第 12-2 章：怪物襲擊聚落、聚落出兵討伐（人數欄＝死亡人數，與天災同一欄週帳；根因）。</summary>
+    MonsterRaid = 31,
+    MonsterHunt = 32,
+
+    /// <summary>第 12-2 章：擊殺怪物（人數欄＝地下城格編號×1000＋擊殺數；根因）。</summary>
+    MonsterSlain = 33,
+
+    /// <summary>第 12-2 章：地下城的怪物被殺光而沉寂、沉寂期滿再生（人數欄＝格編號；根因）。</summary>
+    DungeonCleared = 34,
+    DungeonAwakened = 35
 }
 
 /// <summary>
@@ -315,6 +326,8 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown
                 or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.Logging
                 or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
+                or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSlain
+                or DemoSettlementEventKind.DungeonCleared or DemoSettlementEventKind.DungeonAwakened
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
@@ -1413,7 +1426,8 @@ internal static class DemoWeeklySettlement
                 .Where(e => e.SettlementId == ledger.SettlementId && e.MigrationBatchId == 0
                     && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
             // 第 12-1 章 C3：天災死亡對天災事件。
-            var disasterEvents = report.Events.Where(e => e.SettlementId == ledger.SettlementId && DemoDisasters.IsDisaster(e.Kind)).Sum(e => e.Count);
+            var disasterEvents = report.Events.Where(e => e.SettlementId == ledger.SettlementId
+                && (DemoDisasters.IsDisaster(e.Kind) || DemoMonsters.IsStrike(e.Kind))).Sum(e => e.Count); // 第 12-2 章：怪物襲擊、討伐陣亡同一欄
             if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths || disasterEvents != ledger.DisasterDeaths
                 || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId

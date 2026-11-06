@@ -443,6 +443,38 @@ public sealed partial class DemoObserverWorld
         }
     }
 
+    private DemoMonsters.Fold _monsterFold = new();
+    private object? _monsterFoldEarlier;
+    private int _monsterFoldWeek = int.MinValue;
+
+    /// <summary>
+    /// 第 12-2 章：每個地下城在第 <paramref name="week"/> 週結束時的怪物（由已提交的事件推得、不另存；依地下城出現順序）。
+    /// 快取方式同 <see cref="Dungeons"/>：讀檔或壓縮後從頭重算，之後只餵入新的週。
+    /// </summary>
+    public IReadOnlyList<DemoMonsterNest> MonsterNests(int week)
+    {
+        var nests = Dungeons.Select(d => (Cell: DemoLandClearing.CellId(Map, d.Cell), Dungeon: d)).ToList();
+        var byCell = nests.ToDictionary(n => n.Cell, n => n.Dungeon);
+        DemoDungeon? At(long cell) => byCell.GetValueOrDefault(cell);
+        var firstWeek = FirstRetainedWeek;
+        // 讀檔、壓縮或換了較早的週報（事件物件換了、或快取比目前提交的週還新）就從頭重算。
+        if (!ReferenceEquals(_monsterFoldEarlier, _earlierEvents) || _monsterFoldWeek < firstWeek - 1 || _monsterFoldWeek > CommittedWeeks)
+        {
+            _monsterFold = new DemoMonsters.Fold();
+            foreach (var e in _earlierEvents)
+                _monsterFold.Apply(e, At);
+            _monsterFoldEarlier = _earlierEvents;
+            _monsterFoldWeek = firstWeek - 1;
+        }
+        foreach (var w in _weeks.Where(w => w.Week > _monsterFoldWeek))
+        {
+            foreach (var e in w.Events)
+                _monsterFold.Apply(e, At);
+            _monsterFoldWeek = w.Week;
+        }
+        return nests.Select(n => _monsterFold.At(n.Dungeon, n.Cell, week)).ToList();
+    }
+
     /// <summary>
     /// 推進到下一個排程日，整天是一次原子提交（第 03 章 a 節，44F Stage 4～6）：
     /// <see cref="DemoWorldCommit"/> 依固定順序暫存 ①排程與時鐘 → ②亂數 → ③帳本（週結算）→ ④生死 → ⑤歷史（週報），
@@ -471,10 +503,17 @@ public sealed partial class DemoObserverWorld
         if (commit.SettlesWeek)
         {
             // 第 12-1 章 C3：本週的天災（天災週才有；希望時代沒有）。
-            var strikes = _demography is null || _knowledge.Era == DemoEra.Hope
+            var natural = _demography is null || _knowledge.Era == DemoEra.Hope
                 ? (IReadOnlyDictionary<int, DemoDisasterStrike>)new Dictionary<int, DemoDisasterStrike>()
                 : DemoDisasters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, WorldPopulation, Map, _sites,
                     _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
+            // 第 12-2 章：地下城的怪物襲擊與聚落討伐（天災優先；與天災同一欄週帳）。
+            var monsters = _demography is null || _knowledge.Era == DemoEra.Hope
+                ? DemoMonsters.Plan.Empty
+                : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
+                    MonsterNests(CommittedWeeks), natural.Keys.ToHashSet(), _rng);
+            var strikes = monsters.Strikes.Count == 0 ? natural
+                : natural.Concat(monsters.Strikes.Where(kv => !natural.ContainsKey(kv.Key))).ToDictionary(kv => kv.Key, kv => kv.Value);
             DemoPerf.Mark("排程與天災");
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
@@ -564,7 +603,10 @@ public sealed partial class DemoObserverWorld
                     mines: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.MiningTech)),
                     extraOre: MeteoriteOre);
                 DemoPerf.Mark("野生動物與環境");
-                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).ToArray();
+                // 第 12-2 章：擊殺怪物、地下城沉寂與再生（接在最後）。
+                var monsterEvents = DemoMonsters.Events(monsters, report.Week, report.WorldTime, lifecycle.Outcome.Sites,
+                    checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count));
+                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
