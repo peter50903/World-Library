@@ -11,8 +11,8 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>【TEMP】每幾人一個小人、每個聚落最多幾個、格半徑至少幾像素才畫；一趟來回的秒數。</summary>
-    private const int TempPeoplePerWalker = 10;
-    private const int TempMaxWalkers = 12;
+    private const int TempPeoplePerVillager = 10;
+    private const int TempMaxVillagers = 12;
     private const float TempWalkerMinRadius = 18f;
     private const float TempWalkerTripSeconds = 16f;
 
@@ -38,7 +38,7 @@ public partial class DemoHexMap
             var homeCenter = start + HexCoordinates.Center(home.AxialQ, home.AxialR, radius);
             if (!OnScreen(homeCenter, radius * 4f))
                 continue;
-            var count = (int)Math.Clamp((scale.Item1 + TempPeoplePerWalker - 1) / TempPeoplePerWalker, 1, TempMaxWalkers);
+            var count = (int)Math.Clamp((scale.Item1 + TempPeoplePerVillager - 1) / TempPeoplePerVillager, 1, TempMaxVillagers);
             var houses = layout.Lots.Where(l => IsResidence(l.Kind) && !l.Construction).ToList();
             var plaza = Screen(layout.Plaza.Position.X + layout.Plaza.Size.X / 2f, layout.Plaza.Position.Y + layout.Plaza.Size.Y / 2f + 0.5f);
             // 工作地：農田、伐木地、礦坑、獵場、水邊（與區域層的職業棋相同），再加廣場。
