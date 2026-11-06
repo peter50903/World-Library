@@ -175,7 +175,8 @@ public static class DemoWorldChronicle
                     break;
                 case DemoSettlementEventKind.DungeonCleared:
                 case DemoSettlementEventKind.DungeonAwakened:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
+                        Name(e.SettlementId), T(" 附近，" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.BeastAttack:
                     // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
