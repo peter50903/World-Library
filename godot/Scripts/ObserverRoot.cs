@@ -1442,6 +1442,8 @@ public partial class ObserverRoot : Control
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
         _hexMap.Dungeons = _world.Dungeons.Select(d => d.Cell).ToArray(); // 第 12-1 章 C4
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
+        _hexMap.Prey = _world.Wildlife.Prey.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Prey; // 第 08-18b 章：近景的野生動物依每格實際數量
+        _hexMap.Wolves = _world.Wildlife.Wolves.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Wolves;
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
