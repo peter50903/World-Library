@@ -41,7 +41,8 @@ public partial class DemoHexMap : Control
         Lineage, // 第 08-10a 章 V2：家系
         Knowledge, // 第 08-10a 章 V4：知識（已習得幾項技術）
         Culture, // 第 08-10a 章 V5、08-8 章 B1：文化（各聚落的主要文化）
-        Faith // 第 08-8 章 B3：信仰（各聚落的主要信仰；無信仰灰色，聖地標記）
+        Faith, // 第 08-8 章 B3：信仰（各聚落的主要信仰；無信仰灰色，聖地標記）
+        Realm // 第 08-19 章：勢力（勢力範圍與隸屬）
     }
 
     /// <summary>第 08-8 章 B3：聚落的主要信仰編號（沒有信徒的聚落不在表內）。</summary>
@@ -408,6 +409,11 @@ public partial class DemoHexMap : Control
         }
 
         // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
+        // 第 08-19 章：勢力邊界（地形模式只畫邊界、勢力模式整片著色）。
+        if (_mode == Mode.Terrain)
+            DrawRealms(start, radius, 0f, inner: false);
+        else if (_mode == Mode.Realm)
+            DrawRealms(start, radius, 0.45f, inner: true);
         if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
         {
             if (_surface is { Active: true })

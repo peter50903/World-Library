@@ -18,6 +18,7 @@ public partial class ObserverRoot
     private Button _mapLineageButton = null!; // 第 08-10a 章 V2
     private Button _mapCultureButton = null!; // 第 08-8 章 B1
     private Button _mapFaithButton = null!; // 第 08-8 章 B3
+    private Button? _mapRealmButton; // 第 08-19 章
     private Button _gridToggle = null!; // 第 06-2 章
     private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
     private string _foodLegendText = string.Empty;
@@ -80,6 +81,11 @@ public partial class ObserverRoot
             "地圖模式：信仰（聚落與採集範圍依主要信仰著色，灰色＝尚無信仰；石陣祭火標記＝信仰的創立地）");
         _mapFaithButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Faith);
         row.AddChild(_mapFaithButton);
+        // 第 08-19 章：勢力模式。
+        _mapRealmButton = ToolButton("", "勢力",
+            "地圖模式：勢力（每個聚落有自己的勢力範圍；落在城鎮範圍內的村莊隸屬城鎮、城鎮隸屬城市，以此類推。同一勢力一個顏色，細線分出各聚落直屬的地）");
+        _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
+        row.AddChild(_mapRealmButton);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
         _gridToggle.ToggleMode = true;
@@ -130,6 +136,8 @@ public partial class ObserverRoot
             _mapCultureButton.SelfModulate = mode == DemoHexMap.Mode.Culture ? Colors.White : new Color(1, 1, 1, 0.5f);
         if (_mapFaithButton is not null)
             _mapFaithButton.SelfModulate = mode == DemoHexMap.Mode.Faith ? Colors.White : new Color(1, 1, 1, 0.5f);
+        if (_mapRealmButton is not null)
+            _mapRealmButton.SelfModulate = mode == DemoHexMap.Mode.Realm ? Colors.White : new Color(1, 1, 1, 0.5f);
         // 第 08-10a 章 V4：圖例跟著模式換（糧食狀況／知識）。
         if (_foodLegend is not null)
             _foodLegend.Text = mode == DemoHexMap.Mode.Knowledge ? KnowledgeLegend() : _foodLegendText;

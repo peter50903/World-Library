@@ -147,6 +147,10 @@ public partial class DemoHexMap
                 continue;
             var name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
             var people = TokenCount(scale.Item1);
+            // 第 08-19 章：隸屬的聚落在人口後面寫「屬某某鎮」。
+            if (Territory.LiegeOf(site.Id) is { } liege && Sites.Settlements.FirstOrDefault(x => x.Id == liege) is { } lord
+                && SettlementScale.TryGetValue(liege, out var lordScale))
+                people += $"｜屬{DemoSettlementHistory.TitledName(lord, lordScale.Item2)}";
             var nameWidth = font.GetStringSize(name, HorizontalAlignment.Left, -1, TempPlateFont).X;
             var countWidth = font.GetStringSize(people, HorizontalAlignment.Left, -1, TempPlateFont - 2).X;
             var width = TempPlateEmblem + 6f + nameWidth + 8f + countWidth + 10f;
