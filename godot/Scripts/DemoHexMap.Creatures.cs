@@ -32,6 +32,9 @@ public partial class DemoHexMap
     private sealed record Group(Creature Kind, int Count, Vector2I Den, Vector2I? Hunt, int Seed);
 
     private bool _creaturesDrawn;
+
+    /// <summary>試玩回饋 2026-11-07 之 5：近景不畫野生動物（地下城怪物照畫）。</summary>
+    public static bool ShowAnimals { get; set; }
     private List<Group>? _groups;
     private List<(Vector2I Tile, int Seed)>? _monsters;
     private (object?, object?, object?, object?, object?) _groupKey;
@@ -143,7 +146,8 @@ public partial class DemoHexMap
             return;
         var seconds = Time.GetTicksMsec() / 1000f;
         var items = new List<(float Y, Action Draw)>();
-        foreach (var group in _groups)
+        // 試玩回饋 2026-11-07 之 5：野生動物只是在畫面中遊蕩、沒有實質作用，先不畫（模擬裡的獵物與狼照舊）。
+        foreach (var group in ShowAnimals ? _groups : new List<Group>())
         {
             var home = TileFeet(group.Den, start, radius);
             if (!OnScreen(home, radius * 3f))

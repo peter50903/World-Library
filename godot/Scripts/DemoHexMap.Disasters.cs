@@ -109,7 +109,8 @@ public partial class DemoHexMap
                 return;
             var i = (c.Row * columns + c.Column) * 4;
             data[i + 1] = (byte)kind;
-            data[i + 2] = (byte)Mathf.Clamp(Mathf.RoundToInt(amount * 255f), 0, 255);
+            // 試玩回饋 2026-11-07 之 3（5 倍速卡）：強度分 12 階，只有跨階時那一格才重烤地表（原本每 0.25 秒漸變一次就重烤）。
+            data[i + 2] = (byte)Mathf.Clamp(Mathf.CeilToInt(amount * TempOverlaySteps) * 255 / TempOverlaySteps, 0, 255);
             if (kind == Overlay.Fire)
                 _hasFire = true;
         }
@@ -459,6 +460,9 @@ public partial class DemoHexMap
             DrawRect(new Rect2(at, new Vector2(2f, 2f) * Math.Max(1f, radius * 0.05f)), bit % 2 == 0 ? new Color(0.45f, 0.30f, 0.16f) : new Color(0.40f, 0.55f, 0.25f));
         }
     }
+
+    /// <summary>【TEMP】天災疊層強度分幾階（地表只在跨階時重烤）。</summary>
+    private const int TempOverlaySteps = 12;
 
     /// <summary>【TEMP】火焰動畫每秒幾格。</summary>
     public const float TempFireFps = 8f;

@@ -39,7 +39,7 @@ public static partial class PixelParts
 
     private static readonly Dictionary<string, Sprite?> Sprites = new();
     private static readonly Dictionary<(string, bool), CanvasTexture?> Nearest = new();
-    private static readonly Dictionary<(string, uint), CanvasTexture?> TintedCache = new();
+    private static readonly Dictionary<(string, float, uint), CanvasTexture?> TintedCache = new();
 
     /// <summary>零件的像素（給地表烤圖用）；缺少時回傳 null。</summary>
     public static Sprite? Get(string name)
@@ -117,7 +117,7 @@ public static partial class PixelParts
     /// </summary>
     public static CanvasTexture? Tinted(string name, Color color, float top = 1f)
     {
-        var key = (name + "|" + top.ToString("0.00"), color.ToRgba32());
+        var key = (name, top, color.ToRgba32()); // 每幀呼叫很多次：不組字串
         if (TintedCache.TryGetValue(key, out var texture))
             return texture;
         texture = null;

@@ -104,4 +104,40 @@ public static class DemoTerritory
         var top = territory.RealmOf(settlementId);
         return $"勢力：隸屬於{Name(liege)}" + (top != liege ? $"（最上層：{Name(top)}）" : "") + under;
     }
+
+    /// <summary>
+    /// 試玩回饋 2026-11-07 之 4：勢力詳情（遠看點地圖時打開）。標題是最上層聚落的名字；「概況」寫層級、轄下聚落數、勢力人口與範圍；
+    /// 「隸屬」由上而下列出整棵隸屬樹（每層縮排，同層依層級高、人口多、編號小排列）。<paramref name="realmId"/> 不是最上層時改用它的最上層。
+    /// </summary>
+    public static DemoPlayerDetail Detail(DemoTerritoryMap territory, DemoWorldSites sites, int realmId, Func<int, DemoSettlementTier> tierOf, Func<int, long> peopleOf)
+    {
+        ArgumentNullException.ThrowIfNull(territory);
+        ArgumentNullException.ThrowIfNull(sites);
+        ArgumentNullException.ThrowIfNull(tierOf);
+        ArgumentNullException.ThrowIfNull(peopleOf);
+        var top = territory.RealmOf(realmId);
+        var byId = sites.Settlements.ToDictionary(s => s.Id);
+        string Name(int id) => byId.TryGetValue(id, out var s) ? DemoSettlementHistory.TitledName(s, tierOf(id)) : $"#{id}";
+        var members = territory.Realm.Where(kv => kv.Value == top).Select(kv => kv.Key).Append(top).Distinct().ToList();
+        var people = members.Sum(peopleOf);
+        var cells = territory.Cells.Values.Count(c => c.RealmId == top);
+        IEnumerable<int> Ordered(IEnumerable<int> ids) => ids.OrderByDescending(id => tierOf(id)).ThenByDescending(peopleOf).ThenBy(id => id);
+        var tree = new List<string>();
+        void Walk(int id, int depth)
+        {
+            tree.Add($"{new string('　', depth)}{(depth > 0 ? "└ " : "")}{Name(id)}（{DemoSettlementHistory.TierName(tierOf(id))}，人口 {peopleOf(id)}）");
+            foreach (var vassal in Ordered(territory.VassalsOf(id)))
+                Walk(vassal, depth + 1);
+        }
+        Walk(top, 0);
+        var direct = territory.VassalsOf(top).Count;
+        var summary = new List<string>
+        {
+            $"最上層：{Name(top)}",
+            $"轄下聚落：{members.Count - 1} 個（直屬 {direct} 個）",
+            $"勢力人口：{people}",
+            $"勢力範圍：{cells} 格"
+        };
+        return new DemoPlayerDetail($"{Name(top)}（勢力）", new[] { new DemoDetailTab("概況", summary), new DemoDetailTab("隸屬", tree) }, top);
+    }
 }

@@ -234,9 +234,12 @@ public partial class DemoHexMap
         }
         // 第 08-19 章：勢力邊界——區域層在地形模式畫邊界加淡色、勢力模式整片著色（戰略層已烤在色塊圖裡，只補邊界）。
         if (_mode is Mode.Terrain or Mode.Realm)
-            DrawRealms(start, radius, layer == ViewLayer.Regional ? (_mode == Mode.Realm ? 0.45f : 0.15f) : 0f, inner: _mode == Mode.Realm);
+            DrawRealms(start, radius, layer == ViewLayer.Regional ? (_mode == Mode.Realm ? 0.45f : 0.15f) : 0f, inner: false);
         DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
-        if (layer == ViewLayer.Regional)
+        // 試玩回饋 2026-11-07 之 4：遠看只標各勢力最上層的名字（區域層村莊以上、戰略層城鎮以上）。
+        if (_mode is Mode.Terrain or Mode.Realm)
+            DrawNameplates(start, radius, layer == ViewLayer.Regional ? DemoSettlementTier.Village : DemoSettlementTier.Town, realmsOnly: true);
+        else if (layer == ViewLayer.Regional)
             DrawNameplates(start, radius, DemoSettlementTier.Town); // 第 08-18b 章：區域層只標城鎮以上的名牌
     }
 }
