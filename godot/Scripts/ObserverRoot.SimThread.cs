@@ -1,4 +1,5 @@
 using Godot;
+using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 
 namespace WorldSimulation.GodotClient;
