@@ -142,7 +142,7 @@ public partial class DemoHexMap
     /// <summary>一口石井（程式畫，與像素地表同一像素密度：寬 9、高 8 個圖像素）。</summary>
     private void DrawWell(Vector2 bottom, float radius)
     {
-        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var p = radius / TerrainSurface.TempArtTexelsPerRadius; // 第四批零件的像素密度
         var left = bottom + new Vector2(-4.5f * p, -8f * p);
         void Px(float x, float y, float w, float h, Color c) => DrawRect(new Rect2(left + new Vector2(x, y) * p, new Vector2(w, h) * p), c);
         Px(0, 0, 9, 1, new Color(0.45f, 0.28f, 0.14f));   // 木頂
@@ -232,7 +232,7 @@ public partial class DemoHexMap
                         if (pixel is not null)
                         {
                             // 重複貼：以圖的原始像素尺寸為一段（DrawTextureRectRegion 的來源寬＝邊長換算成圖像素）。
-                            var scale = radius / TerrainSurface.TempTexelsPerRadius;
+                            var scale = radius / TerrainSurface.TempArtTexelsPerRadius;
                             DrawTextureRectRegion(pixel, new Rect2(0f, -height * 0.7f, length + 1f, height), new Rect2(0f, 0f, (length + 1f) / scale, pixel.GetHeight()));
                         }
                         else

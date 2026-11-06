@@ -5,7 +5,7 @@ namespace WorldSimulation.GodotClient;
 /// <summary>
 /// 第 08-16 章第 12 節：像素零件（GPT 畫、匯入工具縮成實際像素）。
 /// 地形零件（樹、草、山、礦、田、灰燼…）由 <see cref="TerrainSurface"/> 直接疊進像素地表；
-/// 建築、火焰、天災痕跡以同樣的像素密度（每格半徑 <see cref="TerrainSurface.TempTexelsPerRadius"/> 像素）、最近鄰取樣畫在地表上，透視與像素大小一致。
+/// 建築、火焰、天災痕跡以同樣的像素密度（第四批零件：每格半徑 <see cref="TerrainSurface.TempArtTexelsPerRadius"/> 像素，地表兩倍）、最近鄰取樣畫在地表上，透視與像素大小一致。
 /// 缺任何一張時該處退回程式畫的圖樣。
 /// </summary>
 public static class PixelParts
@@ -71,5 +71,5 @@ public static class PixelParts
 
     /// <summary>零件在畫面上的大小：圖像素數 × 每像素的螢幕大小（格半徑÷每格半徑的圖像素）。</summary>
     public static Vector2 ScreenSize(Texture2D texture, float radius, int frames = 1)
-        => new Vector2(texture.GetWidth() / (float)frames, texture.GetHeight()) * (radius / TerrainSurface.TempTexelsPerRadius);
+        => new Vector2(texture.GetWidth() / (float)frames, texture.GetHeight()) * (radius / TerrainSurface.TempArtTexelsPerRadius);
 }

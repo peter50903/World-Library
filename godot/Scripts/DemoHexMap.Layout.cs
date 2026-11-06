@@ -382,7 +382,7 @@ public partial class DemoHexMap
 
     private void DrawCampfire(Vector2 at, float radius)
     {
-        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var p = radius / TerrainSurface.TempArtTexelsPerRadius;
         DrawCircle(at, 4f * p, new Color(0.30f, 0.26f, 0.22f));
         var flicker = 0.8f + 0.2f * Mathf.Sin(Time.GetTicksMsec() / 120f);
         DrawCircle(at - new Vector2(0, 1.5f * p), 2.6f * p * flicker, new Color(0.98f, 0.55f, 0.15f));
@@ -395,7 +395,7 @@ public partial class DemoHexMap
     /// </summary>
     private void AddWall(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius)
     {
-        var p = radius / TerrainSurface.TempTexelsPerRadius; // 一個圖像素的畫面大小
+        var p = radius / TerrainSurface.TempArtTexelsPerRadius; // 一個（第四批零件）像素的畫面大小
         var stone = layout.StoneWall;
         var face = stone ? new Color(0.62f, 0.60f, 0.56f) : new Color(0.50f, 0.33f, 0.18f);
         var dark = face.Darkened(0.4f);
@@ -438,8 +438,8 @@ public partial class DemoHexMap
                     continue;
                 var a = screen(x + 0.5f, y);
                 var w = 3f * p;
-                DrawRect(new Rect2(a.X - w / 2f, a.Y, w, TerrainSurface.TempTile * p), dark);
-                DrawRect(new Rect2(a.X - w / 2f + p * 0.5f, a.Y, w - p, TerrainSurface.TempTile * p), top);
+                DrawRect(new Rect2(a.X - w / 2f, a.Y, w, TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius), dark);
+                DrawRect(new Rect2(a.X - w / 2f + p * 0.5f, a.Y, w - p, TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius), top);
             }
         }
         void Segments(int y)
