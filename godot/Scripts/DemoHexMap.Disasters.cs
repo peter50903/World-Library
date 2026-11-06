@@ -47,7 +47,15 @@ public partial class DemoHexMap
     private readonly List<(DisasterMark Mark, ulong StartMs)> _impacts = new();
 
     /// <summary>疊層種類（資料貼圖第二個位元組）。</summary>
-    public enum Overlay : byte { None = 0, Fire = 1, Scorch = 2, Dry = 3, Flood = 4, Debris = 5, Cracks = 6, Crater = 7, Ore = 8 }
+    public enum Overlay : byte { None = 0, Fire = 1, Scorch = 2, Dry = 3, Flood = 4, Debris = 5, Cracks = 6, Crater = 7, Ore = 8, Scar = 9 }
+
+    /// <summary>【TEMP】第 08-18b 章第 5 節：龍捲風走完路徑要幾週（遊戲時間）、留下的刮痕幾週淡去；洪水高水位維持幾週。</summary>
+    public const float TempTornadoWeeks = 1f;
+    public const float TempScarWeeks = 26f;
+    public const float TempFloodHighWeeks = 3f;
+
+    /// <summary>有正在移動的天災物體（龍捲風、漲水）——要持續重畫。</summary>
+    private bool _movingDisaster;
 
     /// <summary>【TEMP】動畫長度（毫秒）、野火每格延燒間隔（週）、各疊層的持續週數。</summary>
     public const ulong TempImpactMs = 2000;
@@ -86,6 +94,7 @@ public partial class DemoHexMap
         var t = GameWeeks;
         var columns = World!.Columns;
         _hasFire = false;
+        _movingDisaster = false;
         _decals.Clear();
         // 有素材的地面痕跡（坑、裂縫、殘骸）改畫成貼圖（DrawDisasterEffects），沒有才交給著色器。
         void Decal(DemoCellRef c, Overlay kind, float amount)
@@ -154,19 +163,24 @@ public partial class DemoHexMap
             {
                 case DemoSettlementEventKind.Flood:
                     // 河水漫上岸：半週淹滿、維持到第 3 週、之後退去。
-                    var flood = d < 0.5f ? d / 0.5f : d < 3f ? 1f : 1f - (d - 3f) / (TempFloodWeeks - 3f);
+                    // 退水時剩下一灘灘積水（地表依強度畫成塊狀的水窪，第 08-18b 章第 5 節）。
+                    var flood = d < 0.5f ? d / 0.5f : d < TempFloodHighWeeks ? 1f : 1f - (d - TempFloodHighWeeks) / (TempFloodWeeks - TempFloodHighWeeks);
                     foreach (var c in FloodCells(mark))
                         Set(c, Overlay.Flood, flood);
+                    if (d < TempFloodHighWeeks)
+                        _movingDisaster = true;
                     break;
                 case DemoSettlementEventKind.Tornado:
+                    // 第 08-18b 章第 5 節：龍捲風沿路徑走過，經過的格留下刮痕（地面刮淡、樹變枯枝），半年內淡去。
                     var path = TornadoPath(mark);
                     for (var k = 0; k < path.Count; k++)
                     {
-                        var reached = d * path.Count; // 一週內沿路徑掃過
-                        if (reached < k)
+                        if (d / TempTornadoWeeks * path.Count < k)
                             break;
-                        Decal(path[k], Overlay.Debris, d < 2f ? 1f : 1f - (d - 2f) / (TempDebrisWeeks - 2f));
+                        Set(path[k], Overlay.Scar, d < 2f ? 1f : 1f - (d - 2f) / (TempScarWeeks - 2f));
                     }
+                    if (d < TempTornadoWeeks)
+                        _movingDisaster = true;
                     break;
                 case DemoSettlementEventKind.Earthquake:
                     foreach (var c in Ring(mark.Center, 1, landOnly: true))
@@ -281,6 +295,47 @@ public partial class DemoHexMap
             }
         }
 
+        // 第 08-18b 章第 5 節：比格子大的會動物體——龍捲風沿路徑走（遊戲時間一週走完，剛發生時也照真實時間播一次）、洪水高水位時水面翻浪。
+        foreach (var mark in _disasterMarks)
+        {
+            var d = GameWeeks - mark.Week;
+            if (d < 0f)
+                continue;
+            if (mark.Kind == DemoSettlementEventKind.Tornado)
+            {
+                var progress = d / TempTornadoWeeks;
+                foreach (var (impact, startMs) in _impacts)
+                    if (impact.EventId == mark.EventId)
+                        progress = Math.Min(progress, (now - startMs) / (float)TempImpactMs);
+                if (progress >= 1f)
+                    continue;
+                var path = TornadoPath(mark);
+                if (path.Count == 0)
+                    continue;
+                var along = Mathf.Clamp(progress, 0f, 1f) * (path.Count - 1);
+                var k = Math.Max(0, Math.Min(path.Count - 2, (int)along));
+                var pos = path.Count == 1 ? ScreenOf(start, radius, path[0])
+                    : ScreenOf(start, radius, path[k]).Lerp(ScreenOf(start, radius, path[k + 1]), along - k);
+                if (OnScreen(pos, radius * 4f))
+                    DrawTornado(pos, radius, seconds);
+            }
+            else if (mark.Kind == DemoSettlementEventKind.Flood && d < TempFloodHighWeeks)
+                foreach (var c in FloodCells(mark))
+                {
+                    var center = ScreenOf(start, radius, c);
+                    if (!OnScreen(center, radius * 2f))
+                        continue;
+                    // 翻浪：每格三道往下游方向（右下）移動的白色浪花線。
+                    for (var w = 0; w < 3; w++)
+                    {
+                        var q = Mathf.PosMod(seconds * 0.35f + w / 3f + (c.Column * 7 + c.Row * 3) * 0.13f, 1f);
+                        var a = center + new Vector2(-radius * 0.8f + q * radius * 1.2f, -radius * 0.6f + w * radius * 0.55f);
+                        DrawLine(a, a + new Vector2(radius * 0.45f, radius * 0.08f), new Color(0.92f, 0.97f, 1f, 0.75f * Mathf.Sin(q * Mathf.Pi)),
+                            Math.Max(1.5f, radius * 0.06f));
+                    }
+                }
+        }
+
         foreach (var (mark, startMs) in _impacts)
         {
             if (!World!.Contains(mark.Center.Column, mark.Center.Row))
@@ -319,31 +374,6 @@ public partial class DemoHexMap
                     }
                     break;
                 }
-                case DemoSettlementEventKind.Tornado:
-                {
-                    var path = TornadoPath(mark);
-                    if (path.Count == 0)
-                        break;
-                    var along = p * (path.Count - 1);
-                    var k = Math.Min(path.Count - 2, (int)along);
-                    var pos = path.Count == 1 ? ScreenOf(start, radius, path[0])
-                        : ScreenOf(start, radius, path[Math.Max(0, k)]).Lerp(ScreenOf(start, radius, path[k + 1]), along - k);
-                    if (ArtAssets.Texture(ArtAssets.FxTornado) is { } tornado)
-                    {
-                        DrawStripFrame(tornado, (int)(seconds * 12f) % 4, pos + new Vector2(0, radius * 0.4f), radius * 1.6f);
-                        break;
-                    }
-                    // 漏斗：由下往上越來越寬的旋轉橢圓。
-                    for (var layer = 0; layer < 6; layer++)
-                    {
-                        var h = layer / 5f;
-                        var sway = Mathf.Sin(seconds * 9f + layer) * radius * 0.08f * (1f + h);
-                        var c = pos + new Vector2(sway, -h * radius * 1.8f);
-                        DrawArc(c, radius * (0.12f + h * 0.45f), 0f, Mathf.Tau, 20, new Color(0.62f, 0.62f, 0.60f, 0.85f - h * 0.35f),
-                            Math.Max(1.5f, radius * 0.1f));
-                    }
-                    break;
-                }
                 case DemoSettlementEventKind.Flood:
                 case DemoSettlementEventKind.Earthquake:
                 {
@@ -360,6 +390,45 @@ public partial class DemoHexMap
     }
 
     private readonly List<(DemoCellRef Cell, Overlay Kind, float Amount)> _decals = new();
+
+    /// <summary>龍捲風：比格子大很多的旋轉漏斗（約兩格高），底部揚起塵土、周圍繞著碎屑；有素材時用素材（放大到兩格寬）。</summary>
+    private void DrawTornado(Vector2 bottom, float radius, float seconds)
+    {
+        DrawSetTransform(bottom + new Vector2(radius * 0.3f, 0f), 0f, new Vector2(1f, 0.32f));
+        DrawCircle(Vector2.Zero, radius * 1.3f, new Color(0f, 0f, 0f, 0.28f)); // 落地陰影
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        if (ArtAssets.Texture(ArtAssets.FxTornado) is { } art)
+        {
+            DrawStripFrame(art, (int)(seconds * 12f) % 4, bottom + new Vector2(0f, radius * 0.3f), radius * 3.2f);
+            return;
+        }
+        for (var ring = 0; ring < 3; ring++) // 底部塵土圈
+        {
+            var q = Mathf.PosMod(seconds * 1.2f + ring / 3f, 1f);
+            DrawSetTransform(bottom, 0f, new Vector2(1f, 0.35f));
+            DrawArc(Vector2.Zero, radius * (0.5f + q * 1.1f), 0f, Mathf.Tau, 28, new Color(0.62f, 0.54f, 0.42f, 0.6f * (1f - q)), Math.Max(2f, radius * 0.12f));
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        }
+        const int layers = 12;
+        for (var layer = 0; layer < layers; layer++)
+        {
+            var h = layer / (layers - 1f);
+            var sway = Mathf.Sin(seconds * 6f + h * 3.5f) * radius * 0.25f * h;
+            var c = bottom + new Vector2(sway, -h * radius * 4f);
+            var w = radius * (0.15f + h * h * 1.0f + h * 0.25f);
+            DrawSetTransform(c, 0f, new Vector2(1f, 0.32f));
+            DrawCircle(Vector2.Zero, w, new Color(0.55f, 0.56f, 0.58f, 0.55f - h * 0.2f));
+            DrawArc(Vector2.Zero, w, seconds * 8f + layer, seconds * 8f + layer + Mathf.Pi * 1.2f, 16, new Color(0.85f, 0.86f, 0.88f, 0.7f), Math.Max(1.5f, radius * 0.08f));
+            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        }
+        for (var bit = 0; bit < 8; bit++) // 繞著飛的碎屑（木片、草）
+        {
+            var angle = seconds * 5f + bit * Mathf.Tau / 8f;
+            var hgt = (bit % 4 + 1) / 5f;
+            var at = bottom + new Vector2(Mathf.Cos(angle) * radius * (0.5f + hgt * 0.8f), -hgt * radius * 3f + Mathf.Sin(angle) * radius * 0.2f);
+            DrawRect(new Rect2(at, new Vector2(2f, 2f) * Math.Max(1f, radius * 0.05f)), bit % 2 == 0 ? new Color(0.45f, 0.30f, 0.16f) : new Color(0.40f, 0.55f, 0.25f));
+        }
+    }
 
     /// <summary>【TEMP】火焰動畫每秒幾格。</summary>
     public const float TempFireFps = 8f;

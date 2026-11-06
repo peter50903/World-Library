@@ -585,7 +585,7 @@ public partial class TerrainSurface : Control
     private static readonly Color[] Ash = { new("2c2624"), new("3b3330"), new("54504b") };
     private static readonly Color[] Petals = { new("f2e15c"), new("e86a8a"), new("f4f1ea"), new("9a7be0") };
     private static readonly Color Ember = new("ff8a1e"), EmberDark = new("d9481a"), FloodWater = new("5b98d4"), OreSpeck = new("e0aa40");
-    private static readonly Color Stone = new("a7a596"), Trunk = new("5a3a1e");
+    private static readonly Color Stone = new("a7a596"), Trunk = new("5a3a1e"), ScarredSoil = new("b7a582");
 
     private static Color Pick(Color[] shades, float t) => shades[Math.Clamp((int)(t * shades.Length), 0, shades.Length - 1)];
 
@@ -664,8 +664,11 @@ public partial class TerrainSurface : Control
             case DemoHexMap.Overlay.Dry when hit && !IsWater(code):
                 c = Pick(Dry, patch);
                 break;
-            case DemoHexMap.Overlay.Flood when hit:
-                c = FloodWater;
+            case DemoHexMap.Overlay.Flood when amount > 0.85f ? hit : Noise(x / 22f, y / 22f, 58) < amount * 0.7f:
+                c = FloodWater; // 高水位時一片汪洋；退水時剩下塊狀的積水（第 08-18b 章第 5 節）
+                break;
+            case DemoHexMap.Overlay.Scar when !IsWater(code) && Hash(tx, ty, 57) < amount * 0.8f:
+                c = c.Lerp(ScarredSoil, 0.55f); // 龍捲風刮淡的地面（以方格為單位，看得出一條掃過的帶子）
                 break;
             case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.05f:
                 c = OreSpeck;
@@ -823,9 +826,12 @@ public partial class TerrainSurface : Control
         var ay = ty * TempTile + TempTile - 2 - (int)(Hash(tx, ty, 25) * 3f);
         var hit = Hash(tx, ty, 5) < amount;
 
+        var scarred = overlay == DemoHexMap.Overlay.Scar && Hash(tx, ty, 57) < amount * 0.8f;
         if (TreeAt(tx, ty) is { } tree)
         {
-            if (fire && hit)
+            if (scarred)
+                DeadTree(ax, ay); // 第 08-18b 章第 5 節：龍捲風刮過，樹只剩枯枝
+            else if (fire && hit)
             {
                 if (PixelParts.Get(Hash(tx, ty, 26) < 0.6f ? "px_tree_burnt" : "px_stump") is { } burnt)
                     StampSprite(burnt, ax, ay);
@@ -930,6 +936,18 @@ public partial class TerrainSurface : Control
             StampSprite(art, ax, ay, autumn);
         else
             Stamp(tree.Small ? Bush : tree.Pine ? PineTree : RoundTree, ax, ay, tree.Shades);
+    }
+
+    /// <summary>枯樹：光禿的樹幹與幾根枯枝（程式畫；第五批素材到了再換）。</summary>
+    private void DeadTree(int ax, int ay)
+    {
+        ShadowEllipse(ax + 2 * K, ay, 2 * K, K);
+        var bark = new Color("4a3524");
+        Block(ax - 2, ay - 5 * K, 4, 5 * K, bark);
+        Block(ax - 3 * K, ay - 4 * K, 3 * K, 2, bark);
+        Block(ax, ay - 3 * K - 2, 3 * K, 2, bark);
+        Block(ax - 3 * K, ay - 5 * K, 2, K, bark);
+        Block(ax + 3 * K - 2, ay - 4 * K - 2, 2, K, bark);
     }
 
     private void ShadowEllipse(int cx, int cy, int rx, int ry)
