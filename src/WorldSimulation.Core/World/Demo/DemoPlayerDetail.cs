@@ -170,6 +170,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         };
         if (!settlement.IsRuin)
         {
+            // 第 08-19 章：勢力（獨立或隸屬於誰、轄下有哪些聚落）。
+            DemoSettlementTier TierOf(int id) => world.ChronicleOf(id).Tier;
+            now.Add(DemoTerritory.Describe(DemoTerritory.Compute(world.Map, world.Sites, TierOf), world.Sites, settlement.Id, TierOf));
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");

@@ -29,7 +29,7 @@ public partial class DemoHexMap
 
     // 每格的平面顏色（依格的索引）與戰略圖；鍵變了才重算。
     private Color[]? _flatColors;
-    private (DemoHexWorld? World, Mode Mode, int Week, DemoWorldSites? Sites, object? Lineage, object? Land, object? Food, object? Culture, object? Faith, object? Knowledge) _flatKey;
+    private (DemoHexWorld? World, Mode Mode, int Week, DemoWorldSites? Sites, object? Lineage, object? Land, object? Food, object? Culture, object? Faith, object? Knowledge, object? Territory) _flatKey;
     private ImageTexture? _strategicTexture;
     private Color[]? _strategicColors;
     private (DemoHexWorld? World, Mode Mode) _strategicStructure;
@@ -43,6 +43,8 @@ public partial class DemoHexMap
     public string ColorMeaning(DemoHexCell cell)
     {
         var at = new DemoCellRef(cell.Column, cell.Row);
+        if (_mode is Mode.Realm or Mode.Terrain)
+            return RealmMeaning(at); // 第 08-19 章
         string SiteName(int id) => Sites?.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
         if (!Lineage.TryGetValue(at, out var owner))
             return _mode == Mode.Food ? "糧食：沒有聚落" : "無人之地";
@@ -71,7 +73,7 @@ public partial class DemoHexMap
     /// <summary>每格的平面顏色（地形＋模式疊色）；世界資料換了才重算（每週一次左右）。</summary>
     private Color[] FlatColors()
     {
-        var key = (World, _mode, CurrentWeek, Sites, (object?)Lineage, (object?)Land, (object?)FoodStatuses, (object?)CultureOf, (object?)FaithOf, (object?)KnowledgeCounts);
+        var key = (World, _mode, CurrentWeek, Sites, (object?)Lineage, (object?)Land, (object?)FoodStatuses, (object?)CultureOf, (object?)FaithOf, (object?)KnowledgeCounts, (object?)Territory);
         if (_flatColors is not null && key.Equals(_flatKey))
             return _flatColors;
         var cells = World!.Cells;
@@ -105,9 +107,11 @@ public partial class DemoHexMap
             _ => baseColor
         };
         var owned = Lineage.TryGetValue(at, out var owner);
+        var realm = Territory.Cells.TryGetValue(at, out var held) ? held : null;
         return _mode switch
         {
-            Mode.Terrain => owned ? baseColor.Lerp(LineageColor(owner!.LineageRootId), 0.35f) : baseColor,
+            Mode.Terrain => realm is not null ? baseColor.Lerp(RealmColor(realm.RealmId), 0.3f) : baseColor, // 第 08-19 章：戰略層淡淡罩上勢力色
+            Mode.Realm => realm is not null ? baseColor.Darkened(0.3f).Lerp(RealmColor(realm.RealmId), 0.7f) : baseColor.Darkened(0.45f),
             Mode.Food => Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: false } site
                 ? FoodStatusColor(FoodStatuses.TryGetValue(site.Id, out var s) ? s : FoodStatus.Unsettled)
                 : baseColor.Darkened(0.45f),
@@ -228,6 +232,9 @@ public partial class DemoHexMap
             if (_mode == Mode.Faith && HolySites.Contains(site.Id))
                 DrawMarker(ArtAssets.IconHolySite, center + new Vector2(-radius * 0.5f, -radius * 0.5f), radius * 0.9f);
         }
+        // 第 08-19 章：勢力邊界——區域層在地形模式畫邊界加淡色、勢力模式整片著色（戰略層已烤在色塊圖裡，只補邊界）。
+        if (_mode is Mode.Terrain or Mode.Realm)
+            DrawRealms(start, radius, layer == ViewLayer.Regional ? (_mode == Mode.Realm ? 0.45f : 0.15f) : 0f, inner: _mode == Mode.Realm);
         DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
         if (layer == ViewLayer.Regional)
             DrawNameplates(start, radius, DemoSettlementTier.Town); // 第 08-18b 章：區域層只標城鎮以上的名牌

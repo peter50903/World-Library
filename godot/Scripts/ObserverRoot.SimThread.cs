@@ -27,6 +27,10 @@ public partial class ObserverRoot
 
     private bool SimBusy => _simTask is { IsCompleted: false };
 
+    // 第 08-19 章：勢力範圍的快取（聚落與層級沒變就不重算）。
+    private object? _territorySites;
+    private string _territoryTiers = "";
+
     /// <summary>每幀：把這一幀累積的日子排進下一批；上一批算完了就先交給畫面，再開始下一批。</summary>
     private void QueueSimulation(int days)
     {
