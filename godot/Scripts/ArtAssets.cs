@@ -144,7 +144,7 @@ public static class ArtAssets
     /// <summary>實際用到的第五、六批音訊（冒煙測試確認讀得到）。</summary>
     private static IEnumerable<string> Batch5Audio => new[] { DemoEra.Hope, DemoEra.Pioneer, (DemoEra)2 }.SelectMany(MusicFor).Append(MusicTheme)
         .Concat(new[] { "sfx_quake", "sfx_meteor", "sfx_flood", "sfx_tornado", "sfx_found_village", "sfx_era", "sfx_ruin", "sfx_culture_split",
-            "sfx_faith", "sfx_tech", "sfx_beast", "amb_fire", "ui_click" }.Select(Sfx2));
+            "sfx_faith", "sfx_tech", "sfx_beast", "amb_fire", "ui_click", "ui_open", "ui_close", "ui_tab" }.Select(Sfx2));
 
     /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
     public static readonly string[] Used =

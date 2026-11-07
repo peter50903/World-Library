@@ -16,7 +16,7 @@ public partial class ObserverRoot
     public override void _ExitTree()
     {
         _simTask?.Wait(); // 關閉前等背景推進結束
-        foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer })
+        foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer, _uiPlayer })
             player?.Stop();
         ArtAssets.ReleaseCache();
         base._ExitTree();
@@ -238,6 +238,23 @@ public partial class ObserverRoot
         }
     }
 
+    private bool _tabSoundMuted;
+    private AudioStreamPlayer? _uiPlayer;
+
+    /// <summary>第 08-18d 章：介面音效（打開、關閉詳情、切換分頁；第五批 sfx2/ui_*）；無畫面模式靜音、素材缺少時不播。</summary>
+    private void PlayUi(string name)
+    {
+        if (_audioMuted || ArtAssets.Audio(ArtAssets.Sfx2(name)) is not { } stream)
+            return;
+        if (_uiPlayer is null)
+        {
+            _uiPlayer = new AudioStreamPlayer { VolumeDb = TempClickVolumeDb };
+            AddChild(_uiPlayer);
+        }
+        _uiPlayer.Stream = stream;
+        _uiPlayer.Play();
+    }
+
     private void PlayClick()
     {
         if (!_audioMuted && _clickPlayer.Stream is not null)
@@ -312,6 +329,11 @@ public partial class ObserverRoot
         column.AddChild(_detailTabs);
         // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
         _detailTabs.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        _detailTabs.TabChanged += _ =>
+        {
+            if (!_tabSoundMuted)
+                PlayUi("ui_tab");
+        };
         var parchment = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
         StyleBoxFlat TabStyle(float alpha) => ArtAssets.Track(new StyleBoxFlat
         {
@@ -402,10 +424,14 @@ public partial class ObserverRoot
                 });
             _detailTabs.AddChild(scroll);
         }
+        _tabSoundMuted = true; // 程式切的分頁不播音效
         if (keep >= 0 && keep < tabs.Count)
             _detailTabs.CurrentTab = keep;
+        _tabSoundMuted = false;
         _detailTitle.Text = detail.Title;
         _detailShown = detail.Text;
+        if (!_detailOpen)
+            PlayUi("ui_open"); // 第 08-18d 章：介面音效
         _detailOpen = true;
         ApplyHudLayout();
     }
@@ -660,6 +686,8 @@ public partial class ObserverRoot
 
     private void HideDetail()
     {
+        if (_detailOpen)
+            PlayUi("ui_close"); // 第 08-18d 章：介面音效
         _detailOpen = false;
         if (_hexMap is not null)
             _hexMap.Highlight = null; // 第 08-5 章：關閉詳情時一併取消地圖上的框
