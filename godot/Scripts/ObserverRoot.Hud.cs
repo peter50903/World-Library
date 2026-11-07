@@ -37,6 +37,7 @@ public partial class ObserverRoot
     private (int Column, int Row)? _detailCell;
     private (bool Faith, int Id)? _detailBelief; // 第 08-16 章第 15 節：目前開著的是文化頁或信仰頁（null＝地點或聚落）
     private Button _detailBack = null!;
+    private int? _detailRealm; // 試玩回饋 2026-11-07 之 4：目前開著的是勢力詳情（最上層聚落編號）
     private int _detailWeek = -1;
     private PanelContainer _timePanel = null!;
     private Button _timePlay = null!;
@@ -330,9 +331,10 @@ public partial class ObserverRoot
 
     private void ShowDetailAt(int column, int row)
     {
-        var keep = _detailBelief is null ? _detailTabs.CurrentTab : 0;
+        var keep = _detailBelief is null && _detailRealm is null ? _detailTabs.CurrentTab : 0;
         _detailCell = (column, row);
         _detailBelief = null;
+        _detailRealm = null;
         var detail = _world.PlayerDetail(column, row);
         var tabs = detail.Tabs.ToList();
         // 試玩回饋 2026-11-05 之 2：遭遇天災的地塊在詳情第一頁最上面寫明狀況。
@@ -354,6 +356,23 @@ public partial class ObserverRoot
             return;
         }
         _detailBelief = (faith, id);
+        _detailRealm = null;
+        RenderDetail(detail, detail.Tabs.ToList(), keep);
+    }
+
+    /// <summary>試玩回饋 2026-11-07 之 2、4：勢力詳情（遠看點地圖）——最上層聚落、轄下聚落數、人口、範圍與整棵隸屬樹（Core 產生）。</summary>
+    private void ShowRealmDetail(int realmId)
+    {
+        var scale = _hexMap.SettlementScale;
+        var top = _hexMap.Territory.RealmOf(realmId);
+        var keep = _detailRealm == top ? _detailTabs.CurrentTab : 0;
+        var detail = DemoTerritory.Detail(_hexMap.Territory, _world.Sites, top,
+            id => scale.TryGetValue(id, out var s) ? s.Tier : DemoSettlementTier.Camp,
+            id => scale.TryGetValue(id, out var s) ? s.Population : 0L);
+        _detailBelief = null;
+        _detailRealm = top;
+        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is { } capital)
+            _detailCell = (capital.Column, capital.Row); // 「返回」與刷新時用
         RenderDetail(detail, detail.Tabs.ToList(), keep);
     }
 

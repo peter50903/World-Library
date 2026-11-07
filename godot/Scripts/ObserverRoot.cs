@@ -210,6 +210,9 @@ public partial class ObserverRoot : Control
         _hexMap = new DemoHexMap { World = _world.Map, Sites = _world.Sites,
             MainRiverTiles = _world.UsesSharedForaging ? DemoForagingWorld.MainRiverTiles(_world.Map) : Array.Empty<DemoCellRef>() };
         _hexMap.CellSelected += OnCellSelected;
+        _hexMap.RealmSelected += ShowRealmDetail; // 試玩回饋 2026-11-07 之 2、4：遠看點到勢力
+        _hexMap.CultureSelected += id => ShowBeliefDetail(false, id);
+        _hexMap.FaithSelected += id => ShowBeliefDetail(true, id);
         mapPanel.AddChild(_hexMap);
 
         _hud = new Control { MouseFilter = MouseFilterEnum.Ignore };
@@ -1400,6 +1403,12 @@ public partial class ObserverRoot : Control
         GD.Print($"WORLD_SIM_PLAYBACK_OK: Played={played} Paused={played} SaveAutoPaused=1 LoadAutoPaused=1 Capped={capped}");
     }
 
+    private object? _lineageSites, _lineageMap;
+
+    /// <summary>試玩回饋 2026-11-07 之 3：內容沒變就沿用舊的字典（地圖各種快取以物件是否相同判斷要不要重算）。</summary>
+    private static IReadOnlyDictionary<TKey, TValue> Same<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> old, Dictionary<TKey, TValue> fresh) where TKey : notnull
+        => old.Count == fresh.Count && fresh.All(kv => old.TryGetValue(kv.Key, out var v) && EqualityComparer<TValue>.Default.Equals(v, kv.Value)) ? old : fresh;
+
     private void Refresh()
     {
         var snapshot = _world.Snapshot();
@@ -1408,7 +1417,9 @@ public partial class ObserverRoot : Control
             && _world.LatestWeek?.Week is { } week && week != _detailWeek)
         {
             _detailWeek = week;
-            if (_detailBelief is { } belief)
+            if (_detailRealm is { } realm)
+                ShowRealmDetail(realm); // 試玩回饋 2026-11-07 之 4
+            else if (_detailBelief is { } belief)
                 ShowBeliefDetail(belief.Faith, belief.Id); // 第 08-16 章第 15 節
             else
                 ShowDetailAt(open.Column, open.Row);
@@ -1433,8 +1444,14 @@ public partial class ObserverRoot : Control
         _hexMap.Land = _world.Land;
         _hexMap.FoodStatuses = MapFoodStatus.ForWeek(_world.LatestWeek?.Settlements); // 第 05 章 b 節：糧食狀況地圖模式。
         // 第 08-10a 章 V2：家系地圖與聚落圖示大小（人口、是否為村莊）。
-        _hexMap.Lineage = DemoLineageMap.Compute(_world.Map, _world.Sites);
-        _hexMap.LineageRoots = DemoLineageMap.Roots(_world.Sites);
+        // 試玩回饋 2026-11-07 之 3：家系地圖只在聚落改變時重算（同一份地圖物件不變，地圖的版面、指示物、地表快取才不會每次失效）。
+        if (!ReferenceEquals(_lineageSites, _world.Sites) || !ReferenceEquals(_lineageMap, _world.Map))
+        {
+            _lineageSites = _world.Sites;
+            _lineageMap = _world.Map;
+            _hexMap.Lineage = DemoLineageMap.Compute(_world.Map, _world.Sites);
+            _hexMap.LineageRoots = DemoLineageMap.Roots(_world.Sites);
+        }
         _hexMap.KnowledgeCounts = _world.Sites.Settlements.ToDictionary(s => s.Id, s => _world.Knowledge.KnownBy(s.Id).Count); // 第 08-10a 章 V4
         _hexMap.KnowledgeDomain = _world.Sites.Settlements.Where(s => _world.Knowledge.LeadingDomain(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Knowledge.LeadingDomain(s.Id)!); // 第 08-13 章：擅長領域
@@ -1442,7 +1459,10 @@ public partial class ObserverRoot : Control
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
-        _hexMap.Dungeons = _world.Dungeons.Select(d => d.Cell).ToArray(); // 第 12-1 章 C4
+        var dungeonCells = _world.Dungeons.Select(d => d.Cell).ToArray();
+        if (!dungeonCells.SequenceEqual(_hexMap.Dungeons))
+            _hexMap.Dungeons = dungeonCells; // 第 12-1 章 C4（沒變就沿用，地圖的生物快取才不會每次重算）
+        _hexMap.MonsterNests = _world.MonsterNests(_world.CommittedWeeks); // 第 12-2 章：怪物數與勢力範圍
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
         _hexMap.Prey = _world.Wildlife.Prey.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Prey; // 第 08-18b 章：近景的野生動物依每格實際數量
         _hexMap.Wolves = _world.Wildlife.Wolves.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Wolves;
@@ -1450,20 +1470,20 @@ public partial class ObserverRoot : Control
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
         PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
-        _hexMap.CultureOf = _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
-            .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value); // 第 08-8 章 B1
+        _hexMap.CultureOf = Same(_hexMap.CultureOf, _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
+            .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value)); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
         _hexMap.CultureNames = _world.Culture.Cultures.ToDictionary(c => c.Id, c => c.Name); // 第 08-15 章：色塊層提示
         _hexMap.FaithNames = _world.Culture.Faith.Faiths.ToDictionary(f => f.Id, f => f.Name);
         _hexMap.CultureEmblems = _world.Culture.Cultures.ToDictionary(c => c.Id, DemoHeraldry.EmblemOf); // 第 08-16 章
         _hexMap.FaithSymbolsById = _world.Culture.Faith.Faiths.ToDictionary(f => f.Id, DemoHeraldry.FaithSymbolOf);
         // 第 08-8 章 B3：信仰模式。
-        _hexMap.FaithOf = _world.Sites.Settlements.Where(s => _world.Culture.Faith.MainFaithOf(s.Id) is not null)
-            .ToDictionary(s => s.Id, s => _world.Culture.Faith.MainFaithOf(s.Id)!.Value);
+        _hexMap.FaithOf = Same(_hexMap.FaithOf, _world.Sites.Settlements.Where(s => _world.Culture.Faith.MainFaithOf(s.Id) is not null)
+            .ToDictionary(s => s.Id, s => _world.Culture.Faith.MainFaithOf(s.Id)!.Value));
         _hexMap.FaithOrder = _world.Culture.Faith.Faiths.Select(f => f.Id).ToList();
         _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
-        _hexMap.SettlementScale = _world.Sites.Settlements.ToDictionary(s => s.Id,
-            s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier)); // 第 08-11 章：五級
+        _hexMap.SettlementScale = Same(_hexMap.SettlementScale, _world.Sites.Settlements.ToDictionary(s => s.Id,
+            s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier))); // 第 08-11 章：五級
         // 第 08-19 章：勢力範圍與隸屬（聚落或層級改變時才重算）。
         var scale = _hexMap.SettlementScale;
         var tierKey = string.Join(",", _world.Sites.Settlements.Where(s => !s.IsRuin).Select(s => $"{s.Id}:{(int)scale[s.Id].Item2}"));

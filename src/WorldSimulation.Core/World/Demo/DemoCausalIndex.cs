@@ -363,6 +363,15 @@ public sealed class DemoCausalIndex
                 // 第 12-1 章：直接原因＝同週同聚落的隕石事件；人數欄＝格編號。
                 return parent is { Kind: DemoSettlementEventKind.Meteorite } && parent.Week == e.Week && parent.SettlementId == e.SettlementId && e.Count > 0
                     ? null : "隕石礦脈的直接原因必須是同週同聚落的隕石事件";
+            case DemoSettlementEventKind.MonsterRaid:
+            case DemoSettlementEventKind.MonsterHunt:
+                // 第 12-2 章：根因；人數欄＝死亡人數（與天災同一欄週帳）。
+                return parent is null && e.Count >= 0 ? null : "怪物襲擊、討伐是根因，事件人數欄是死亡人數";
+            case DemoSettlementEventKind.MonsterSlain:
+                return parent is null && DemoMonsters.DecodeKills(e.Count) is { CellId: > 0, Kills: > 0 } ? null : "擊殺怪物是根因，事件人數欄是格編號×1000＋擊殺數";
+            case DemoSettlementEventKind.DungeonCleared:
+            case DemoSettlementEventKind.DungeonAwakened:
+                return parent is null && e.Count > 0 ? null : "地下城沉寂、怪物再生是根因，事件人數欄必須是格編號";
             case DemoSettlementEventKind.DungeonAppeared:
                 // 第 12-1 章 C4：根因；人數欄＝格編號。
                 return parent is null && e.Count > 0 ? null : "地下城出現是根因，事件人數欄必須是格編號";

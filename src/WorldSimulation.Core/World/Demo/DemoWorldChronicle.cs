@@ -167,6 +167,17 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.MonsterRaid:
+                case DemoSettlementEventKind.MonsterHunt:
+                    // 第 12-2 章：怪物襲擊、討伐是一般事件；地下城沉寂、怪物再生是重大事件（擊殺數已寫在襲擊與討伐裡，不另記）。
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Wilds, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.DungeonCleared:
+                case DemoSettlementEventKind.DungeonAwakened:
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
+                        Name(e.SettlementId), T(" 附近，" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.BeastAttack:
                     // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。
                     Add(e.Week, DemoChronicleLevel.Normal,

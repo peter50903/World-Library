@@ -147,31 +147,41 @@ public partial class DemoHexMap
     private const float TempPlateEmblem = 16f;
 
     /// <summary>聚落名牌：紋章、名字、人口，畫在聚落上方，大小固定（WorldBox 式）。</summary>
-    private void DrawNameplates(Vector2 start, float radius, DemoSettlementTier minimum = DemoSettlementTier.Camp)
+    /// <summary>試玩回饋 2026-11-07 之 4：<paramref name="realmsOnly"/>＝遠看時只標各勢力最上層的聚落（人數是整個勢力的人口），
+    /// 近看時每個聚落標自己的名字（不再寫「屬某某鎮」，隸屬看詳情）。</summary>
+    private void DrawNameplates(Vector2 start, float radius, DemoSettlementTier minimum = DemoSettlementTier.Camp, bool realmsOnly = false)
     {
         if (World is null || Sites is null)
             return;
         var font = ThemeDB.FallbackFont;
+        Dictionary<int, long>? realmPeople = null;
+        if (realmsOnly)
+        {
+            realmPeople = new Dictionary<int, long>();
+            foreach (var (id, (people, _)) in SettlementScale)
+            {
+                var top = Territory.RealmOf(id);
+                realmPeople[top] = realmPeople.GetValueOrDefault(top) + people;
+            }
+        }
         foreach (var site in Sites.Settlements)
         {
             if (site.IsRuin || FadedRuins.Contains(site.Id) || !SettlementScale.TryGetValue(site.Id, out var scale) || scale.Item1 <= 0 || scale.Item2 < minimum)
+                continue;
+            if (realmsOnly && Territory.LiegeOf(site.Id) is not null)
                 continue;
             var cell = World.GetCell(site.Column, site.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             if (!OnScreen(center, radius * 2f))
                 continue;
             var name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
-            var people = TokenCount(scale.Item1);
-            // 第 08-19 章：隸屬的聚落在人口後面寫「屬某某鎮」。
-            if (Territory.LiegeOf(site.Id) is { } liege && Sites.Settlements.FirstOrDefault(x => x.Id == liege) is { } lord
-                && SettlementScale.TryGetValue(liege, out var lordScale))
-                people += $"｜屬{DemoSettlementHistory.TitledName(lord, lordScale.Item2)}";
+            var people = TokenCount(realmPeople?.GetValueOrDefault(site.Id, scale.Item1) ?? scale.Item1);
             var nameWidth = font.GetStringSize(name, HorizontalAlignment.Left, -1, TempPlateFont).X;
             var countWidth = font.GetStringSize(people, HorizontalAlignment.Left, -1, TempPlateFont - 2).X;
             // 第 08-18d 章：名牌底板（ui_nameplate 九宮格）、名字前的層級徽章、隸屬時人數後的隸屬徽章。
             var plate = PlateStyle();
             var badge = PixelParts.Texture(TierBadge(scale.Item2));
-            var vassal = Territory.LiegeOf(site.Id) is not null ? PixelParts.Texture("terr_vassal_link") : null;
+            CanvasTexture? vassal = null; // 試玩回饋 2026-11-07 之 4：名牌不再標隸屬
             var extra = (badge is not null ? TempPlateEmblem + 3f : 0f) + (vassal is not null ? TempPlateEmblem + 2f : 0f) + (plate is not null ? 10f : 0f);
             var width = TempPlateEmblem + 6f + nameWidth + 8f + countWidth + 10f + extra;
             var height = 20f;

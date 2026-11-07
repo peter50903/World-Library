@@ -22,6 +22,7 @@ public partial class DemoHexMap
     private void DrawWalkers(Vector2 start, float radius)
     {
         _walkersDrawn = false;
+        _walkerHits.Clear();
         if (World is null || Sites is null || radius < TempWalkerMinRadius)
             return;
         var seconds = Time.GetTicksMsec() / 1000f;
@@ -88,6 +89,7 @@ public partial class DemoHexMap
                 var step = walking ? (int)(seconds * 7f + h * 4f) % 4 : 0;
                 var art = bubble is null ? null : BubbleArt(bubble, h);
                 people.Add((at, at.Y, () => DrawWalker(at, radius, color, frame, facing, bubble, unit, step, art)));
+                _walkerHits.Add((at, site.Id));
             }
             _walkersDrawn = true;
         }

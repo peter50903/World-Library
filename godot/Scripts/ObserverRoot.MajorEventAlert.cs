@@ -83,7 +83,7 @@ public partial class ObserverRoot
     /// 讓拖曳、縮放地圖保持順暢；面板文字每 <see cref="TempPanelRefreshMs"/> 毫秒才重算一次（地圖照常每幀重畫）。
     /// CI 冒煙（任何 WORLD_SIM_*_SMOKE）時不節流，逐幀行為與以前相同。
     /// </summary>
-    private const double TempFrameBudgetMs = 10, TempPanelRefreshMs = 250;
+    private const double TempFrameBudgetMs = 10, TempPanelRefreshMs = 500; // 試玩回饋 2026-11-07 之 3：快轉時面板每半秒更新一次
 
     private static readonly bool RealtimeThrottle = !System.Environment.GetEnvironmentVariables().Keys.Cast<object>()
         .Select(k => k.ToString() ?? string.Empty).Any(k => k.StartsWith("WORLD_SIM_", StringComparison.Ordinal) && k.EndsWith("_SMOKE", StringComparison.Ordinal));

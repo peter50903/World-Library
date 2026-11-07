@@ -74,4 +74,33 @@ public sealed class DemoTerritoryTests
         Assert.StartsWith("勢力：", DemoTerritory.Describe(map, world.Sites, s.Id, id => world.ChronicleOf(id).Tier), StringComparison.Ordinal);
         Assert.Contains(DemoPlayerDetail.Of(world, s.Column, s.Row).Tabs[0].Lines, l => l.StartsWith("勢力：", StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData(1UL)]
+    [InlineData(4UL)]
+    public void RealmDetailListsTheWholeVassalTreeUnderTheTopSettlement(ulong seed)
+    {
+        var world = World(seed);
+        var alive = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
+        DemoSettlementTier Tier(int id) => id == alive[0].Id ? DemoSettlementTier.Capital : id == alive[1].Id ? DemoSettlementTier.Town : DemoSettlementTier.Camp;
+        var map = DemoTerritory.Compute(world.Map, world.Sites, Tier);
+        long People(int id) => 10 + id;
+        foreach (var s in alive)
+        {
+            // 從任何一個成員打開，都是它最上層的勢力詳情。
+            var detail = DemoTerritory.Detail(map, world.Sites, s.Id, Tier, People);
+            var top = map.RealmOf(s.Id);
+            Assert.Equal(top, detail.SettlementId);
+            var members = alive.Where(x => map.RealmOf(x.Id) == top).ToList();
+            Assert.StartsWith(DemoSettlementHistory.TitledName(alive.First(x => x.Id == top), Tier(top)), detail.Title, StringComparison.Ordinal);
+            Assert.Contains($"轄下聚落：{members.Count - 1} 個（直屬 {map.VassalsOf(top).Count} 個）", detail.Tabs[0].Lines);
+            Assert.Contains($"勢力人口：{members.Sum(x => People(x.Id))}", detail.Tabs[0].Lines);
+            // 隸屬樹：第一行是最上層，每個成員剛好一行，下級比上級多縮排一層。
+            var tree = detail.Tabs[1].Lines;
+            Assert.Equal(members.Count, tree.Count);
+            Assert.DoesNotContain("└", tree[0], StringComparison.Ordinal);
+            foreach (var m in members.Where(x => x.Id != top))
+                Assert.Single(tree, line => line.TrimStart('　', '└', ' ').StartsWith(DemoSettlementHistory.TitledName(m, Tier(m.Id)) + "（", StringComparison.Ordinal));
+        }
+    }
 }

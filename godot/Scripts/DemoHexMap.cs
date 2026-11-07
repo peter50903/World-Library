@@ -411,9 +411,12 @@ public partial class DemoHexMap : Control
         // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
         // 第 08-19 章：勢力邊界（地形模式只畫邊界、勢力模式整片著色）。
         if (_mode == Mode.Terrain)
+        {
             DrawRealms(start, radius, 0f, inner: false);
+            DrawMonsterRealms(start, radius, fill: true); // 第 12-2 章：怪物的勢力範圍
+        }
         else if (_mode == Mode.Realm)
-            DrawRealms(start, radius, 0.45f, inner: true);
+            DrawRealms(start, radius, 0.45f, inner: false); // 試玩回饋 2026-11-07 之 4：同一勢力不畫內部分界
         if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
         {
             if (_surface is { Active: true })
@@ -738,7 +741,7 @@ public partial class DemoHexMap : Control
                 data[at + 3] = (byte)(Math.Clamp((int)(_mining[here] * 16f), 0, 15) * 17);
             // 第 08-16 章：開墾中與荒廢中的開發度（第 4 個位元組），地表依此從草地漸變到農田、或從農田漸變回草地。
             if (Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { State: DemoLandDevelopment.Clearing } parcel)
-                data[at + 3] = (byte)Math.Clamp(parcel.DevelopmentPercent * 255 / 100, 0, 255);
+                data[at + 3] = (byte)Math.Clamp((parcel.DevelopmentPercent + 9) / 10 * 255 / 10, 0, 255); // 分 10 階（只在跨階時重烤）
             else if (data[at] == (byte)TerrainSurface.Code.Clearing)
                 data[at + 3] = TempSettlementGround; // 森林裡的聚落：砍出的空地（泥土夾草）
         }
@@ -872,9 +875,8 @@ public partial class DemoHexMap : Control
         if (CellAt(button.Position) is { } hit)
         {
             // 第 08-5 章（使用者 2026-10-23）：點格查看詳情時，地圖上的這一格以框標示。
-            Highlight = (hit.Column, hit.Row);
-            QueueRedraw();
-            CellSelected?.Invoke(hit);
+            // 試玩回饋 2026-11-07 之 2：依遠近點到勢力、文化、信仰或聚落、格，並把選到的移到畫面中央（DemoHexMap.Select.cs）。
+            Select(button.Position, hit);
             AcceptEvent();
         }
     }

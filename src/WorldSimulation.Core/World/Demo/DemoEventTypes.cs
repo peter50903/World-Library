@@ -51,7 +51,12 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.DungeonAppeared] = new("TEMP_EV_DUNGEON_APPEARED", "地下城出現", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.Logging] = new("TEMP_EV_LOGGING", "伐木", CauseRootCategory.Resource),
         [DemoSettlementEventKind.MiningBegan] = new("TEMP_EV_MINING_BEGAN", "開始採礦", CauseRootCategory.Resource),
-        [DemoSettlementEventKind.OreExhausted] = new("TEMP_EV_ORE_EXHAUSTED", "礦脈挖空", CauseRootCategory.Resource)
+        [DemoSettlementEventKind.OreExhausted] = new("TEMP_EV_ORE_EXHAUSTED", "礦脈挖空", CauseRootCategory.Resource),
+        [DemoSettlementEventKind.MonsterRaid] = new("TEMP_EV_MONSTER_RAID", "怪物襲擊", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.MonsterHunt] = new("TEMP_EV_MONSTER_HUNT", "討伐怪物", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.MonsterSlain] = new("TEMP_EV_MONSTER_SLAIN", "擊殺怪物", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.DungeonCleared] = new("TEMP_EV_DUNGEON_CLEARED", "地下城沉寂", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.DungeonAwakened] = new("TEMP_EV_DUNGEON_AWAKENED", "怪物再生", CauseRootCategory.Disaster)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

@@ -129,7 +129,7 @@ public sealed class DemoChangeTracker
                     case DemoSettlementEventKind.FarmlandCleared: _farmland++; break;
                     case DemoSettlementEventKind.CultureSplit: _splits++; break;
                     case DemoSettlementEventKind.FaithFounded: _faiths++; break;
-                    case DemoSettlementEventKind.BeastAttack: _attacks++; break;
+                    case DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.MonsterRaid: _attacks++; break; // 第 12-2 章：怪物襲擊也算
                     case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                         or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
                         or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire: _disasters++; break; // 第 12-1 章 C3b

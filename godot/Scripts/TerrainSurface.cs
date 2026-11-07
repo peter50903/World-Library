@@ -41,10 +41,12 @@ public partial class TerrainSurface : Control
     /// <summary>程式畫的樹、山頭每個「大像素」佔幾個圖像素。</summary>
     private const int K = 4;
 
-    /// <summary>【TEMP】烤圖塊邊長、快取上限、每幀最多烤幾塊；格半徑至少幾像素才逐塊烤（以下只畫縮圖）；縮圖倍率。</summary>
-    private const int TempChunk = 512;
-    private const int TempChunkCache = 64;
-    private const int TempChunksPerFrame = 4;
+    /// <summary>【TEMP】烤圖塊邊長、快取上限、每幀最多烤幾塊；格半徑至少幾像素才逐塊烤（以下只畫縮圖）；縮圖倍率。
+    /// 試玩回饋 2026-11-07 之 3（5 倍速卡）：塊改成 256（一格改變只重烤小塊），每幀烤圖最多花 <see cref="TempBakeMsPerFrame"/> 毫秒（至少一塊）。</summary>
+    private const int TempChunk = 256;
+    private const int TempChunkCache = 256;
+    private const int TempChunksPerFrame = 16;
+    private const double TempBakeMsPerFrame = 5;
     public const float TempChunkMinRadius = 24f;
     private const int TempThumb = 4;
 
@@ -154,6 +156,7 @@ public partial class TerrainSurface : Control
         var y1 = Math.Min((_height - 1) / TempChunk, (int)((Size.Y - topLeft.Y) / scale) / TempChunk);
         var budget = TempChunksPerFrame;
         var pending = false;
+        var bakeWatch = System.Diagnostics.Stopwatch.StartNew();
         for (var cy = y0; cy <= y1; cy++)
             for (var cx = x0; cx <= x1; cx++)
             {
@@ -162,7 +165,7 @@ public partial class TerrainSurface : Control
                 chunk.Used = _frame;
                 if (chunk.Dirty)
                 {
-                    if (budget > 0)
+                    if (budget > 0 && (budget == TempChunksPerFrame || bakeWatch.Elapsed.TotalMilliseconds < TempBakeMsPerFrame))
                     {
                         budget--;
                         BakeChunk(cx, cy, chunk);
@@ -363,10 +366,11 @@ public partial class TerrainSurface : Control
             BuildPaint((i % columns - 1) * TilesPerCell, (i / columns - 1) * TilesPerCell, (i % columns + 2) * TilesPerCell, (i / columns + 2) * TilesPerCell);
         foreach (var i in changed)
         {
-            var x0 = (i % columns - 1) * cell;
-            var y0 = (i / columns - 1) * cell;
-            var x1 = (i % columns + 2) * cell;
-            var y1 = (i / columns + 2) * cell;
+            // 參差一方格、零件往上最多約四方格、左右兩方格：只重烤這個範圍碰到的塊。
+            var x0 = i % columns * cell - 2 * TempTile;
+            var y0 = i / columns * cell - 4 * TempTile;
+            var x1 = (i % columns + 1) * cell + 2 * TempTile;
+            var y1 = (i / columns + 1) * cell + TempTile;
             for (var cy = Math.Max(0, y0 / TempChunk); cy <= Math.Min((_height - 1) / TempChunk, y1 / TempChunk); cy++)
                 for (var cx = Math.Max(0, x0 / TempChunk); cx <= Math.Min((_width - 1) / TempChunk, x1 / TempChunk); cx++)
                     if (_chunks.TryGetValue((cx, cy), out var chunk))
@@ -728,8 +732,8 @@ public partial class TerrainSurface : Control
                 };
                 if (_waterDist[tile] == 1 && code != (byte)Code.Farmland)
                     c = c.Darkened(0.10f); // 河岸、海岸內一圈稍暗
-                if ((code == (byte)Code.HillsOre || code == (byte)Code.HillsMining && Hash(bx, by, 10) > dev) && Hash(bx, by, 9) < 0.04f)
-                    c = OreSpeck;
+                if ((code == (byte)Code.HillsOre || code == (byte)Code.HillsMining && Hash(bx, by, 10) > dev) && Hash(bx, by, 9) < 0.04f && !_groundRaw)
+                    c = OreSpeck; // 有素材時不再撒黃色礦點（試玩回饋 2026-11-07 之 1）
                 break;
         }
         // 天災疊層：依強度把一部分像素換掉（像素風的漸變）。
@@ -752,7 +756,7 @@ public partial class TerrainSurface : Control
             case DemoHexMap.Overlay.Scar when !IsWater(code) && Hash(tx, ty, 57) < amount * 0.8f:
                 c = c.Lerp(ScarredSoil, 0.55f); // 龍捲風刮淡的地面（以方格為單位，看得出一條掃過的帶子）
                 break;
-            case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.05f:
+            case DemoHexMap.Overlay.Ore when Hash(bx, by, 9) < 0.05f && !_groundRaw:
                 c = OreSpeck;
                 break;
             case DemoHexMap.Overlay.Debris or DemoHexMap.Overlay.Cracks or DemoHexMap.Overlay.Crater when hit && Hash(bx, by, 8) < 0.4f:
@@ -938,8 +942,22 @@ public partial class TerrainSurface : Control
         if (code is not (Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit) || _seaDist[tile] <= 1
             || _ground.Count > 0 && _ground.ContainsKey(tile))
             return 0;
+        // 試玩回饋 2026-11-07 之 1（礦石、山頭、岩石混在一起很亂）：山頭只長在每 3×3 方格一個的位置（左右錯開一方格），
+        // 約一半的位置有山頭：排成一片片山脈、彼此不疊在一起。
+        if (tx % 3 != 1 || ty % 3 != (Hash(tx / 3, ty / 3, 36) < 0.5f ? 0 : 1))
+            return 0;
         var h = Hash(tx, ty, 30);
-        return h < 0.05f ? 2 : h < 0.14f ? 1 : 0;
+        return h < 0.18f ? 2 : h < 0.5f ? 1 : 0;
+    }
+
+    /// <summary>兩方格內有沒有山頭（岩石不放在山腳下）。</summary>
+    private bool NearPeak(int tx, int ty)
+    {
+        for (var dy = -2; dy <= 2; dy++)
+            for (var dx = -2; dx <= 2; dx++)
+                if (tx + dx >= 0 && ty + dy >= 0 && tx + dx < _tilesX && ty + dy < _tilesY && PeakAt(tx + dx, ty + dy) > 0)
+                    return true;
+        return false;
     }
 
     private void StampTile(int tx, int ty)
@@ -1003,7 +1021,8 @@ public partial class TerrainSurface : Control
         var lx = tx % TilesPerCell;
         var ly = ty % TilesPerCell;
         var center = lx == TilesPerCell / 2 && ly == TilesPerCell / 2 && _paint[tile] == TileOwner(tx, ty);
-        if (code is Code.HillsOre or Code.HillsMining && !groundTile && Hash(tx, ty, 34) < 0.22f * (code == Code.HillsMining ? 1f - codes[cell * 4 + 3] / 255f : 1f))
+        // 試玩回饋 2026-11-07 之 1：礦石只在礦脈格中央 2×2 方格、而且不在山頭上（一格一兩塊，聚在一起）；開採中的格只剩礦坑。
+        if (code == Code.HillsOre && !groundTile && lx is 2 or 3 && ly is 2 or 3 && PeakAt(tx, ty) == 0 && Hash(tx, ty, 34) < 0.5f)
         {
             if (PixelParts.Variant("px_ore", 4, Hash(tx, ty, 35)) is { } ore)
                 StampSprite(ore, ax, ay);
@@ -1052,7 +1071,7 @@ public partial class TerrainSurface : Control
         }
         else if (code is Code.Forest && d < 0.03f && TreeAt(tx, ty) is null && PixelParts.Variant("px_mushroom", 2, Hash(tx, ty, 41)) is { } mushroom)
             StampSprite(mushroom, ax, ay); // 第 08-18d 章：林地上偶爾一叢蘑菇
-        else if (code == Code.Hills && d < 0.12f)
+        else if (code == Code.Hills && d < 0.025f && !NearPeak(tx, ty))
         {
             if ((d < 0.015f ? PixelParts.Variant("px_rock_big", 2, Hash(tx, ty, 41)) : PixelParts.Variant("px_rock", 4, Hash(tx, ty, 41))) is { } rock)
                 StampSprite(rock, ax, ay);
