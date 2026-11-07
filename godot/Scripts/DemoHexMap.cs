@@ -907,9 +907,14 @@ public partial class DemoHexMap : Control
             name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
         // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
         var status = DisasterStatus(cell.Column, cell.Row);
+        BuildTipRows(cell, name, status); // 第 08-18b 章第 5 節：圖示＋數字的提示
         if (status.Length > 0)
             name += "\n" + status;
-        return LayerFor(ViewLayout().Radius) == ViewLayer.Local ? name : $"{name}\n{ColorMeaning(cell)}";
+        if (LayerFor(ViewLayout().Radius) == ViewLayer.Local)
+            return name;
+        var meaning = ColorMeaning(cell);
+        _tipRows.Insert(0, (IcPlace, meaning)); // 色塊層：這一格的顏色代表什麼
+        return $"{name}\n{meaning}";
     }
 
     /// <summary>試玩回饋 2026-11-05 之 2：這一格目前的天災狀況（依地表疊層；沒有回傳空字串）。</summary>

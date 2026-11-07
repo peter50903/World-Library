@@ -567,6 +567,7 @@
 | `godot/Scripts/DemoHexMap.Creatures.cs` | 1 | 第 08-18c 章近景動物：棲地大小、成群門檻、門檻半徑、遊走與巡獵週期（D08-18） |
 | `godot/Scripts/ObserverRoot.SimThread.cs` | 1 | 第 08-18c 章背景推進一批最多 250 毫秒（D08-18） |
 | `godot/Scripts/DemoHexMap.Houses.cs` | 2 | 第 08-18b 章名牌字級與紋章大小；第 08-18d 章名牌底板素材的不透明範圍（D08-18） |
+| `godot/Scripts/DemoHexMap.Tooltip.cs` | 1 | 第 08-18b 章第 5 節滑鼠提示底框素材的範圍（D08-18） |
 | `godot/Scripts/PixelParts.cs` | 1 | 第 08-18d 章灰階染色的判斷門檻（D08-18） |
 | `godot/Scripts/DemoHexMap.Tokens.cs` | 2 | 第 08-17 章指示物：各職業示意比例、每聚落最多枚數、往返秒數；人數是示意 |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 9 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數 |
