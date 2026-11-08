@@ -25,35 +25,47 @@ public partial class DemoHexMap
     private void DrawMonsterRealms(Vector2 start, float radius, bool fill)
         => DrawMonsterRealms(start, radius, fill ? (_mode == Mode.Realm ? 0.42f : 0.16f) : 0f);
 
-    /// <summary>試玩回饋 2026-11-08 之 2：勢力模式裡怪物的範圍也是一個勢力（較濃的暗紫色），地形模式淡淡一層。</summary>
+    /// <summary>試玩回饋 2026-11-08 之 2：勢力模式裡怪物的範圍也是一個勢力（較濃的暗紫色），地形模式淡淡一層。
+    /// 第 12-2a 節：範圍是怪物實際佔據的格（Core 算好的 <see cref="DemoMonsterNest.Cells"/>），沿格邊畫外框。</summary>
     private void DrawMonsterRealms(Vector2 start, float radius, float fill)
     {
         if (World is null || MonsterNests.Count == 0)
             return;
         var font = ThemeDB.FallbackFont;
+        var width = Math.Clamp(radius * 0.1f, 1.5f, 3f);
         foreach (var nest in MonsterNests)
         {
-            if (nest.Radius <= 0 || !World.Contains(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row))
+            if (nest.Cells.Count == 0)
                 continue;
-            var c = nest.Dungeon.Cell;
-            var x0 = Math.Max(0, c.Column - nest.Radius);
-            var y0 = Math.Max(0, c.Row - nest.Radius);
-            var x1 = Math.Min(World.Columns - 1, c.Column + nest.Radius);
-            var y1 = Math.Min(World.Rows - 1, c.Row + nest.Radius);
-            var a = start + HexCoordinates.Center(World.GetCell(x0, y0).AxialQ, World.GetCell(x0, y0).AxialR, radius) - Vector2.One * radius;
-            var b = start + HexCoordinates.Center(World.GetCell(x1, y1).AxialQ, World.GetCell(x1, y1).AxialR, radius) + Vector2.One * radius;
-            var rect = new Rect2(a, b - a);
-            if (!rect.Intersects(new Rect2(Vector2.Zero, Size)))
+            var owned = nest.Cells.ToHashSet();
+            var top = float.MaxValue;
+            float left = float.MaxValue, right = float.MinValue;
+            foreach (var at in nest.Cells)
+            {
+                if (!World.Contains(at.Column, at.Row))
+                    continue;
+                var cell = World.GetCell(at.Column, at.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                top = Math.Min(top, center.Y - radius);
+                left = Math.Min(left, center.X - radius);
+                right = Math.Max(right, center.X + radius);
+                if (!OnScreen(center, radius))
+                    continue;
+                var shape = ScreenShape(cell, center, radius);
+                if (fill > 0f)
+                    DrawShape(center, shape, new Color(MonsterColor, fill));
+                foreach (var (dq, dr, _) in DemoRouteNetwork.Orthogonal)
+                    if (!owned.Contains(new DemoCellRef(at.Column + dq, at.Row + dr)))
+                        DrawPolyline(EdgeOf(shape, HexCoordinates.EdgeToward(dq, dr)), new Color(MonsterColor.Darkened(0.2f), 0.9f), width);
+            }
+            if (top == float.MaxValue || !new Rect2(left, top, right - left, radius * 2f).Intersects(new Rect2(Vector2.Zero, Size)))
                 continue;
-            if (fill > 0f)
-                DrawRect(rect, new Color(MonsterColor, fill));
-            DrawRect(rect, new Color(MonsterColor.Darkened(0.2f), 0.85f), false, Math.Clamp(radius * 0.1f, 1.5f, 3f));
             var label = $"{nest.Dungeon.Name}｜怪物 {nest.Monsters}";
-            var size = 12;
-            var width = font.GetStringSize(label, HorizontalAlignment.Left, -1, size).X;
-            var at = new Vector2(rect.Position.X + rect.Size.X / 2f - width / 2f, rect.Position.Y + 16f);
-            DrawRect(new Rect2(at - new Vector2(4f, 13f), new Vector2(width + 8f, 17f)), new Color(0.12f, 0.04f, 0.14f, 0.8f));
-            DrawString(font, at, label, HorizontalAlignment.Left, -1, size, new Color(0.95f, 0.80f, 1f));
+            const int size = 12;
+            var labelWidth = font.GetStringSize(label, HorizontalAlignment.Left, -1, size).X;
+            var pos = new Vector2((left + right) / 2f - labelWidth / 2f, top + 16f);
+            DrawRect(new Rect2(pos - new Vector2(4f, 13f), new Vector2(labelWidth + 8f, 17f)), new Color(0.12f, 0.04f, 0.14f, 0.8f));
+            DrawString(font, pos, label, HorizontalAlignment.Left, -1, size, new Color(0.95f, 0.80f, 1f));
         }
     }
 }

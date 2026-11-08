@@ -23,7 +23,7 @@ public partial class DemoHexMap
     private readonly List<(Vector2 At, int SiteId)> _walkerHits = new();
 
     /// <summary>試玩回饋 2026-11-08 之 6：地圖上可以點的角色——聚落的領袖、工作團體、遷徙隊伍、地下城的怪物。</summary>
-    public enum ActorKind { Leader, WorkGroup, Migrants, Monster }
+    public enum ActorKind { Leader, WorkGroup, Migrants, Monster, Settlement }
 
     /// <summary>一個可以點的角色：種類、所屬聚落、職業（工作團體）、人數、所在或工作的格、隊伍編號、地下城事件編號。</summary>
     public sealed record MapActor(ActorKind Kind, int SettlementId, TokenKind Work, long People, DemoCellRef Cell, int BatchId = 0, long DungeonEventId = 0);
@@ -31,74 +31,99 @@ public partial class DemoHexMap
     /// <summary>近景點到角色時通知觀察者介面。</summary>
     public event Action<MapActor>? ActorSelected;
 
-    /// <summary>這一幀畫出來的角色（腳的位置），供點選。</summary>
-    private readonly List<(Vector2 Feet, MapActor Actor)> _actorHits = new();
+    /// <summary>這一幀畫出來的角色（點得到的範圍），供點選；每次重畫地圖時清空。</summary>
+    private readonly List<(Rect2 Box, MapActor Actor)> _actorHits = new();
 
-    /// <summary>滑鼠下的角色（腳下兩個圖像素到頭上約 22 個圖像素、左右 9 個圖像素；最靠前的優先）。</summary>
-    private MapActor? ActorUnder(Vector2 position, float radius)
+    /// <summary>【TEMP】角色的點選範圍至少多大（螢幕像素）：小人只有十幾個像素，又在走動，點選範圍要比圖大。</summary>
+    private const float TempActorMinWidth = 22f, TempActorMinHeight = 30f;
+
+    /// <summary>登記一個站在 <paramref name="feet"/> 的角色（高 <paramref name="texels"/> 個圖像素）。</summary>
+    private void AddActor(Vector2 feet, float radius, MapActor actor, float texels = 22f)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
-        return _actorHits.Where(a => Mathf.Abs(position.X - a.Feet.X) <= 9f * p && position.Y <= a.Feet.Y + 2f * p
-                && position.Y >= a.Feet.Y - (a.Actor.Kind == ActorKind.Monster ? 34f : 22f) * p)
-            .OrderByDescending(a => a.Feet.Y).Select(a => a.Actor).FirstOrDefault();
+        var w = Math.Max(TempActorMinWidth, 18f * p);
+        var h = Math.Max(TempActorMinHeight, (texels + 4f) * p);
+        _actorHits.Add((new Rect2(feet.X - w / 2f, feet.Y + 4f - h, w, h), actor));
     }
 
+    /// <summary>滑鼠下的角色（範圍內離中心最近的；同樣近時畫在前面的優先）。</summary>
+    private MapActor? ActorUnder(Vector2 position)
+        => _actorHits.Where(a => a.Box.HasPoint(position))
+            .OrderBy(a => a.Box.GetCenter().DistanceSquaredTo(position)).ThenByDescending(a => a.Box.End.Y)
+            .Select(a => a.Actor).FirstOrDefault();
+
+    /// <summary>
+    /// 試玩回饋 2026-11-08 第二次之 2：點選只有三層，由小到大、先點到的先算（各種地圖模式、各種遠近都一樣）：
+    /// <list type="number">
+    /// <item><b>角色</b>：近景的領袖、工作團體、遷徙隊伍、怪物；遠看的棋子（居民棋＝聚落、職業棋＝工作團體、遷徙棋＝隊伍）。</item>
+    /// <item><b>聚落</b>：聚落所在的格；近景再加建築、廣場。</item>
+    /// <item><b>區域</b>（空地）：看目前的地圖模式——地形＝地塊、勢力＝勢力（最上層聚落的「勢力」頁）、文化＝文化、信仰＝信仰、
+    ///   其他＝所屬聚落；怪物的勢力範圍＝地下城。</item>
+    /// </list>
+    /// 詳情上方有一列「往上一層」的連結（地塊→聚落→勢力、文化、信仰），點過去不必回到地圖。點了之後選到的移到畫面中央並框起來。
+    /// </summary>
     private void Select(Vector2 position, DemoHexCell hit)
     {
         var (start, radius) = ViewLayout();
         var at = new DemoCellRef(hit.Column, hit.Row);
+        // ① 角色
+        if (ActorUnder(position) is { } actor)
+        {
+            if (World!.Contains(actor.Cell.Column, actor.Cell.Row))
+                FocusCell(World.GetCell(actor.Cell.Column, actor.Cell.Row));
+            if (actor.Kind == ActorKind.Settlement && SiteCell(actor.SettlementId) is { } home)
+            {
+                FocusCell(home);
+                CellSelected?.Invoke(home);
+            }
+            else
+                ActorSelected?.Invoke(actor);
+            return;
+        }
+        // ② 聚落
+        if (VisibleSite(hit) is not null)
+        {
+            FocusCell(hit);
+            CellSelected?.Invoke(hit);
+            return;
+        }
+        if (LayerFor(radius) == ViewLayer.Local && SettlementUnder(position, start, radius) is { } building)
+        {
+            FocusCell(building);
+            CellSelected?.Invoke(building);
+            return;
+        }
+        // ③ 區域：依地圖模式
         var owner = Territory.Cells.TryGetValue(at, out var o) ? o : null;
         var site = owner?.SettlementId ?? (Lineage.TryGetValue(at, out var line) ? (int?)line.SettlementId : null);
-        // 試玩回饋 2026-11-08 之 1：點到什麼依目前的地圖模式（不再依遠近）。
-        switch (_mode)
-        {
-            case Mode.Realm:
-                // 勢力模式：點到勢力就開勢力最上層聚落的介紹（含勢力分頁）；怪物的勢力範圍開地下城。
-                if (owner is not null && RealmSelected is not null && SiteCell(owner.RealmId) is { } capital)
-                {
+        if (MonsterNestAt(at) is { } nest && _mode is Mode.Terrain or Mode.Realm && World!.Contains(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row))
+            hit = World.GetCell(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row);
+        else
+            switch (_mode)
+            {
+                case Mode.Realm when owner is not null && RealmSelected is not null && SiteCell(owner.RealmId) is { } capital:
                     FocusCell(capital);
                     RealmSelected(owner.RealmId);
                     return;
-                }
-                if (MonsterNestAt(at) is { } nest && World!.Contains(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row))
-                    hit = World.GetCell(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row);
-                break;
-            case Mode.Culture when site is { } c && CultureOf.TryGetValue(c, out var culture) && CultureSelected is not null:
-                FocusCell(hit);
-                CultureSelected(culture);
-                return;
-            case Mode.Faith when site is { } f && FaithOf.TryGetValue(f, out var faith) && FaithSelected is not null:
-                FocusCell(hit);
-                FaithSelected(faith);
-                return;
-            case Mode.Terrain:
-                // 地形模式：點地塊；近景點到人物、團體、怪物就開他們的詳情，點到建築開那個聚落。
-                if (LayerFor(radius) == ViewLayer.Local)
-                {
-                    if (ActorUnder(position, radius) is { } actor)
-                    {
-                        if (World!.Contains(actor.Cell.Column, actor.Cell.Row))
-                            FocusCell(World.GetCell(actor.Cell.Column, actor.Cell.Row));
-                        ActorSelected?.Invoke(actor);
-                        return;
-                    }
-                    if (SettlementUnder(position, start, radius) is { } home)
-                        hit = home;
-                }
-                break;
-            default:
-                // 糧食、家系、知識模式：點到的格屬於哪個聚落就開那個聚落。
-                if (site is { } s && SiteCell(s) is { } settlement)
+                case Mode.Culture when site is { } c && CultureOf.TryGetValue(c, out var culture) && CultureSelected is not null:
+                    FocusCell(hit);
+                    CultureSelected(culture);
+                    return;
+                case Mode.Faith when site is { } f && FaithOf.TryGetValue(f, out var faith) && FaithSelected is not null:
+                    FocusCell(hit);
+                    FaithSelected(faith);
+                    return;
+                case Mode.Food or Mode.Lineage or Mode.Knowledge when site is { } s && SiteCell(s) is { } settlement:
                     hit = settlement;
-                break;
-        }
+                    break;
+            }
         FocusCell(hit);
         CellSelected?.Invoke(hit);
     }
 
     /// <summary>這一格在哪個地下城怪物的勢力範圍內（最近的；沒有回傳 null）。</summary>
     private DemoMonsterNest? MonsterNestAt(DemoCellRef at)
-        => MonsterNests.Where(n => n.Radius > 0 && DemoHexWorld.Distance(n.Dungeon.Cell, at) <= n.Radius)
+        => MonsterNests.Where(n => n.Cells.Contains(at))
             .OrderBy(n => DemoHexWorld.Distance(n.Dungeon.Cell, at)).ThenBy(n => n.Dungeon.EventId).FirstOrDefault();
 
     private DemoHexCell? SiteCell(int siteId)

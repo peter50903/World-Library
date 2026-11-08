@@ -3,12 +3,28 @@ using WorldSimulation.Core.Rng;
 
 namespace WorldSimulation.Core.World.Demo;
 
-/// <summary>第 12-2 章：一個地下城的怪物（由事件推得，不另存）。<see cref="Radius"/>＝怪物的勢力範圍（切比雪夫格數；沉寂時 0）。</summary>
+/// <summary>
+/// 第 12-2 章：一個地下城的怪物（由事件推得，不另存）。<see cref="Cells"/>＝怪物實際佔據、巡遊的格（第 12-2a 節：從地下城往外一格一格佔，
+/// 不進人類的勢力範圍與水；沒算時是空的）。<see cref="Radius"/>＝範圍離地下城最遠幾格（沉寂時 0）。
+/// </summary>
 public sealed record DemoMonsterNest(DemoDungeon Dungeon, int Monsters, bool Dormant, int DormantSinceWeek)
 {
-    public int Radius => DemoMonsters.Radius(Monsters);
-
     public long CellId { get; init; }
+
+    public IReadOnlyList<DemoCellRef> Cells { get; init; } = Array.Empty<DemoCellRef>();
+
+    public int Radius => Monsters <= 0 ? 0
+        : Cells.Count > 0 ? Cells.Max(c => DemoHexWorld.Distance(c, Dungeon.Cell)) : DemoMonsters.Radius(Monsters);
+
+    /// <summary>怪物的範圍：已算好的佔據格；沒算時以舊規則的方形近似。</summary>
+    public IEnumerable<DemoCellRef> Area()
+    {
+        if (Cells.Count > 0 || Monsters <= 0)
+            return Cells;
+        var r = Radius;
+        var c = Dungeon.Cell;
+        return Enumerable.Range(-r, 2 * r + 1).SelectMany(dr => Enumerable.Range(-r, 2 * r + 1).Select(dc => new DemoCellRef(c.Column + dc, c.Row + dr)));
+    }
 }
 
 /// <summary>
@@ -40,7 +56,7 @@ public static class DemoMonsters
     public const int TempRaidPercentPerMonster = 3, TempMaxRaidPercent = 25;
 
     /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格。</summary>
-    public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 2;
+    public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3;
 
     /// <summary>【TEMP】擊殺數：襲擊時居民每 30 人多殺 1 隻、討伐時每 25 人多殺 1 隻。</summary>
     public const int TempDefendersPerKill = 30, TempHuntersPerKill = 25;
@@ -51,8 +67,45 @@ public static class DemoMonsters
 
     public static int Cap(DemoDungeon dungeon) => dungeon.Layers * TempCapPerLayer;
 
-    /// <summary>【TEMP】勢力範圍：2＋怪物數÷4 格，最多 4 格；沒有怪物＝0。</summary>
+    /// <summary>【TEMP】舊規則的勢力範圍：2＋怪物數÷4 格，最多 4 格；沒有怪物＝0（還沒算佔據格時的近似）。</summary>
     public static int Radius(int monsters) => monsters <= 0 ? 0 : Math.Min(4, 2 + monsters / 4);
+
+    /// <summary>【TEMP】第 12-2a 節：每隻怪物佔幾格、離地下城最遠幾格；離範圍幾格內的聚落會被襲擊。</summary>
+    public const int TempCellsPerMonster = 1, TempMaxReach = 4, TempRaidReach = 1;
+
+    /// <summary>
+    /// 第 12-2a 節（使用者 2026-11-08：地下城的勢力範圍只限怪物出去後移動、控制的範圍；範圍內不可以有人類居住，除非被討伐完畢）：
+    /// 怪物佔據的格——從地下城所在格開始，往外（八方向）一格一格佔：離地下城近的先、同距離依列、欄排序；
+    /// 不進水、不進人類的勢力範圍（<paramref name="human"/>）、離地下城最多 <see cref="TempMaxReach"/> 格；
+    /// 佔的格數＝怪物數×<see cref="TempCellsPerMonster"/>。被人類圍住時範圍就小。沒有怪物＝空。
+    /// </summary>
+    public static IReadOnlyList<DemoCellRef> Claim(DemoHexWorld map, DemoCellRef dungeon, int monsters, Func<DemoCellRef, bool> human)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(human);
+        var cells = new List<DemoCellRef>();
+        if (monsters <= 0 || !map.Contains(dungeon.Column, dungeon.Row))
+            return cells;
+        var want = monsters * TempCellsPerMonster;
+        var seen = new HashSet<DemoCellRef> { dungeon };
+        var frontier = new List<DemoCellRef> { dungeon };
+        while (frontier.Count > 0 && cells.Count < want)
+        {
+            var next = frontier.OrderBy(c => DemoHexWorld.Distance(c, dungeon)).ThenBy(c => c.Row).ThenBy(c => c.Column).First();
+            frontier.Remove(next);
+            cells.Add(next);
+            for (var dr = -1; dr <= 1; dr++)
+                for (var dc = -1; dc <= 1; dc++)
+                {
+                    var n = new DemoCellRef(next.Column + dc, next.Row + dr);
+                    if (!map.Contains(n.Column, n.Row) || !seen.Add(n) || DemoHexWorld.Distance(n, dungeon) > TempMaxReach
+                        || map.GetCell(n.Column, n.Row).Terrain == DemoTerrain.Water || human(n))
+                        continue;
+                    frontier.Add(n);
+                }
+        }
+        return cells;
+    }
 
     public static long EncodeKills(long cellId, int kills) => checked(cellId * 1000 + kills);
 
@@ -152,12 +205,16 @@ public static class DemoMonsters
             var monsters = nest.Monsters;
             if (monsters <= 0)
                 continue;
-            var at = nest.Dungeon.Cell;
-            int Distance(DemoSettlement s) => DemoHexWorld.Distance(new DemoCellRef(s.Column, s.Row), at);
-            var radius = Radius(monsters);
+            // 第 12-2a 節：距離量到怪物佔據的範圍（最近的一格）；範圍內不會有聚落（人類的勢力範圍不被佔）。
+            var area = nest.Area().ToList();
+            int Distance(DemoSettlement s)
+            {
+                var home = new DemoCellRef(s.Column, s.Row);
+                return area.Count == 0 ? int.MaxValue : area.Min(c => DemoHexWorld.Distance(c, home));
+            }
             var left = monsters;
-            // 襲擊：範圍內最近的有人聚落。
-            var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= radius)
+            // 襲擊：離範圍一格內最近的有人聚落。
+            var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach)
                 .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
             if (target is not null && (int)(Draw(rng, week, slot, 0) % 100UL) < Math.Min(TempMaxRaidPercent, monsters * TempRaidPercentPerMonster))
             {
@@ -168,9 +225,9 @@ public static class DemoMonsters
                     $"{nest.Dungeon.Name}的怪物來襲，居民擊殺 {slain} 隻");
                 kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
             }
-            // 討伐：範圍外再兩格以內、人夠多的聚落出兵（居民最多的先）。
+            // 討伐：離範圍 TempHuntReach 格內、人夠多的聚落出兵（居民最多的先）。
             var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
-                    && Distance(s) <= radius + TempHuntReach && residents(s.Id) >= TempHuntMinResidents)
+                    && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents)
                 .OrderByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
             {

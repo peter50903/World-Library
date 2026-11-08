@@ -568,6 +568,7 @@
 | `godot/Scripts/ObserverRoot.SimThread.cs` | 1 | 第 08-18c 章背景推進一批最多 250 毫秒（D08-18） |
 | `godot/Scripts/DemoHexMap.Houses.cs` | 2 | 第 08-18b 章名牌字級與紋章大小；第 08-18d 章名牌底板素材的不透明範圍（D08-18） |
 | `godot/Scripts/DemoHexMap.Tooltip.cs` | 1 | 第 08-18b 章第 5 節滑鼠提示底框素材的範圍（D08-18） |
+| `godot/Scripts/DemoHexMap.Select.cs` | 1 | 試玩回饋 2026-11-08 第二次之 1 角色點選範圍的最小寬高（D08-18） |
 | `godot/Scripts/PixelParts.cs` | 1 | 第 08-18d 章灰階染色的判斷門檻（D08-18） |
 | `godot/Scripts/DemoHexMap.Tokens.cs` | 2 | 第 08-17 章指示物：各職業示意比例、每聚落最多枚數、往返秒數；人數是示意 |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 9 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數 |
@@ -577,7 +578,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 10 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2） |
+| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 11 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離 |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8） |

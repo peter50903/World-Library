@@ -28,15 +28,14 @@ public partial class DemoHexMap
     {
         var font = ThemeDB.FallbackFont;
         var seconds = Time.GetTicksMsec() / 1000f;
-        _actorHits.RemoveAll(a => a.Actor.Kind == ActorKind.Migrants);
         foreach (var batch in Migrants)
         {
             var center = MigrantPosition(start, radius, batch);
             if (!OnScreen(center, radius * 3f))
                 continue;
             // 試玩回饋 2026-11-08 之 6：遷徙隊伍可以點。
-            _actorHits.Add((center + new Vector2(0f, radius * 0.25f), new MapActor(ActorKind.Migrants, batch.FromSettlementId, TokenKind.Migrants,
-                batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id)));
+            AddActor(center + new Vector2(0f, radius * 0.25f), radius, new MapActor(ActorKind.Migrants, batch.FromSettlementId, TokenKind.Migrants,
+                batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id), 26f);
             DrawRouteAhead(start, radius, batch, center);
             var heading = MigrantHeading(start, radius, batch);
             var walkers = Math.Clamp((int)((batch.People + TempPeoplePerWalker - 1) / TempPeoplePerWalker), 1, TempMaxWalkers);

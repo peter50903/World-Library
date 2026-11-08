@@ -136,6 +136,11 @@ public partial class DemoHexMap
             var tier = SettlementScale.TryGetValue(token.SettlementId, out var scale) ? scale.Item2 : DemoSettlementTier.Camp;
             var showCount = regional || TokenLevel(token.People) >= 2;
             DrawToken(at, radius, token.Kind, token.People, tier, CultureOf.TryGetValue(token.SettlementId, out var culture) ? CultureColor(culture) : (Color?)null, showCount);
+            // 遠看的棋子也是角色：居民棋點了開聚落，職業棋開工作團體。
+            var tokenRadius = Math.Max(10f, TokenRadius(radius, TokenLevel(token.People)) + 2f);
+            _actorHits.Add((new Rect2(at - Vector2.One * tokenRadius, Vector2.One * tokenRadius * 2f),
+                new MapActor(token.Kind == TokenKind.Residents ? ActorKind.Settlement : ActorKind.WorkGroup, token.SettlementId, token.Kind, token.People,
+                    token.Kind == TokenKind.Residents ? token.Home : token.Work)));
         }
         if (work)
             foreach (var batch in Migrants)
@@ -144,6 +149,9 @@ public partial class DemoHexMap
                 if (!OnScreen(at, radius * 3f))
                     continue;
                 DrawToken(at, radius, batch.Founding ? TokenKind.Founders : TokenKind.Migrants, batch.People, DemoSettlementTier.Camp, null, true);
+                var migrantRadius = Math.Max(10f, TokenRadius(radius, TokenLevel(batch.People)) + 2f);
+                _actorHits.Add((new Rect2(at - Vector2.One * migrantRadius, Vector2.One * migrantRadius * 2f),
+                    new MapActor(ActorKind.Migrants, batch.FromSettlementId, TokenKind.Migrants, batch.People, CellOfScreen(at) ?? new DemoCellRef(0, 0), batch.Id)));
                 moving = true;
             }
         _tokensMoving = moving;

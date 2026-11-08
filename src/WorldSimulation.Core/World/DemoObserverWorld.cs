@@ -444,6 +444,9 @@ public sealed partial class DemoObserverWorld
     }
 
     private DemoMonsters.Fold _monsterFold = new();
+    private IReadOnlyDictionary<DemoCellRef, DemoTerritoryCell> _humanTerritory = new Dictionary<DemoCellRef, DemoTerritoryCell>();
+    private object? _humanTerritorySites;
+    private int _humanTerritoryWeek = -1;
     private object? _monsterFoldEarlier;
     private int _monsterFoldWeek = int.MinValue;
 
@@ -472,7 +475,21 @@ public sealed partial class DemoObserverWorld
                 _monsterFold.Apply(e, At);
             _monsterFoldWeek = w.Week;
         }
-        return nests.Select(n => _monsterFold.At(n.Dungeon, n.Cell, week)).ToList();
+        // 第 12-2a 節：怪物佔據的格（不進人類的勢力範圍）；人類的勢力範圍依目前的聚落與層級，同一週沿用。
+        if (nests.Count == 0)
+            return Array.Empty<DemoMonsterNest>();
+        if (!ReferenceEquals(_humanTerritorySites, _sites) || _humanTerritoryWeek != CommittedWeeks)
+        {
+            _humanTerritory = DemoTerritory.Compute(Map, _sites, id => ChronicleOf(id).Tier).Cells;
+            _humanTerritorySites = _sites;
+            _humanTerritoryWeek = CommittedWeeks;
+        }
+        var human = _humanTerritory;
+        return nests.Select(n =>
+        {
+            var nest = _monsterFold.At(n.Dungeon, n.Cell, week);
+            return nest with { Cells = DemoMonsters.Claim(Map, nest.Dungeon.Cell, nest.Dormant ? 0 : nest.Monsters, c => human.ContainsKey(c)) };
+        }).ToList();
     }
 
     /// <summary>
@@ -508,10 +525,13 @@ public sealed partial class DemoObserverWorld
                 : DemoDisasters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, WorldPopulation, Map, _sites,
                     _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
             // 第 12-2 章：地下城的怪物襲擊與聚落討伐（天災優先；與天災同一欄週帳）。
-            var monsters = _demography is null || _knowledge.Era == DemoEra.Hope
+            var nestsNow = _demography is null || _knowledge.Era == DemoEra.Hope ? Array.Empty<DemoMonsterNest>() : MonsterNests(CommittedWeeks);
+            var monsters = nestsNow.Count == 0
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
-                    MonsterNests(CommittedWeeks), natural.Keys.ToHashSet(), _rng);
+                    nestsNow, natural.Keys.ToHashSet(), _rng);
+            // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
+            var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
                 : natural.Concat(monsters.Strikes.Where(kv => !natural.ContainsKey(kv.Key))).ToDictionary(kv => kv.Key, kv => kv.Value);
             DemoPerf.Mark("排程與天災");
@@ -539,6 +559,7 @@ public sealed partial class DemoObserverWorld
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
                 hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1)), // C3b
                 cultureTraits: _demography is null ? null : id => _culture.TraitsAt(id, checked(CommittedWeeks + 1)), // 第 08-8 章 B2：遷徙之民、守土
+                forbiddenSite: monsterLand.Count == 0 ? null : c => monsterLand.Contains(c), // 第 12-2a 節
                 verify: _demography is null); // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
