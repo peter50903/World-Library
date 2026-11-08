@@ -26,6 +26,15 @@ public partial class ObserverRoot
     private PanelContainer _consolePanel = null!;
     private PanelContainer _topBar = null!;
     private Label _topWorld = null!;
+
+    /// <summary>第 08-19d 章：時代進度條與它上次更新的週、世界、最接近的聚落。</summary>
+    private ProgressBar _eraBar = null!;
+    private int _eraBarWeek = -1;
+    private object? _eraBarWorld;
+    private int _eraLeader;
+
+    /// <summary>【TEMP】時代進度條寬度。</summary>
+    private const float TempEraBarWidth = 90f;
     private Label _topStats = null!;
     private Label _topDate = null!;
     private Button _consoleToggle = null!;
@@ -155,6 +164,25 @@ public partial class ObserverRoot
         _topWorld = new Label { VerticalAlignment = VerticalAlignment.Center };
         _topWorld.AddThemeColorOverride("font_color", TempGold);
         row.AddChild(_topWorld);
+        // 第 08-19d 章：時代進度條（滑鼠移上去看條件與最接近的聚落；點一下定位那個聚落）。
+        _eraBar = new ProgressBar
+        {
+            MinValue = 0, MaxValue = 100, ShowPercentage = false, CustomMinimumSize = new Vector2(TempEraBarWidth, 10),
+            SizeFlagsVertical = SizeFlags.ShrinkCenter, MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.PointingHand
+        };
+        _eraBar.AddThemeStyleboxOverride("background", new StyleBoxFlat { BgColor = new Color(0.10f, 0.08f, 0.06f, 0.9f), BorderColor = TempGold,
+            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1 });
+        _eraBar.AddThemeStyleboxOverride("fill", new StyleBoxFlat { BgColor = TempGold });
+        _eraBar.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } && _eraLeader != 0
+                && _world.Sites.Settlements.FirstOrDefault(x => x.Id == _eraLeader) is { } leader)
+            {
+                _hexMap.FocusCell(_world.Map.GetCell(leader.Column, leader.Row));
+                ShowDetailAt(leader.Column, leader.Row);
+            }
+        };
+        row.AddChild(_eraBar);
         _topStats = LightLabel();
         _topStats.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _topStats.HorizontalAlignment = HorizontalAlignment.Center;
@@ -977,6 +1005,17 @@ public partial class ObserverRoot
         // 試玩回饋 2026-11-08 之 3（參考 WorldBox、十字軍之王）：頂部只留時代、人口、聚落、勢力與日期；
         // 天數、糧食庫存、本週出生與死亡只在開發資訊開啟時顯示。
         _topWorld.Text = _showDebugInfo ? $"【TEMP 示範】{_world.TempScenarioDisplayName}" : DemoKnowledge.EraName(_world.Era);
+        if (_eraBarWeek != _world.CommittedWeeks || !ReferenceEquals(_eraBarWorld, _world))
+        {
+            // 第 08-19d 章：時代進度每週算一次。
+            _eraBarWeek = _world.CommittedWeeks;
+            _eraBarWorld = _world;
+            var progress = _world.EraProgress();
+            _eraBar.Value = progress.Percent;
+            _eraBar.Visible = progress.Next is not null;
+            _eraBar.TooltipText = string.Join("\n", progress.Lines(_world)) + (progress.Leader != 0 ? "\n（點一下定位最接近的聚落）" : "");
+            _eraLeader = progress.Leader;
+        }
         var food = _world.Sites.Settlements.Sum(s => _world.SettlementFood(s.Id));
         var realms = _hexMap.Territory.Realm.Values.Distinct().Count();
         _topStats.Text = string.Create(CultureInfo.InvariantCulture,

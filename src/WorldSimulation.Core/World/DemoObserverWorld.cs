@@ -495,6 +495,9 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 12-2c 節：聚落詳情用的人力。</summary>
     public DemoCombatForce CombatForceOf(int settlementId) => CombatForces(MonsterNests(CommittedWeeks))(settlementId);
 
+    /// <summary>第 08-19d 章：時代進度條（只讀）。</summary>
+    public DemoEraProgress EraProgress() => DemoEraProgress.Of(this);
+
     /// <summary>第 08-19b 章：算忠誠度與兵力用的世界狀態。</summary>
     private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture)
         => new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
@@ -721,7 +724,22 @@ public sealed partial class DemoObserverWorld
                         RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
                         DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng, laws.Rebellions,
                         checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count));
-                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).ToArray();
+                // 第 08-19d 章：第一個王國成立時世界進入征服時代（接在最後）。
+                var eraEvents = new List<DemoSettlementEvent>();
+                if (knowledge.Era == DemoEra.Pioneer)
+                {
+                    var kingship = DemoTechnology.Of(DemoSettlementHistory.CapitalTechId);
+                    var alive = lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id);
+                    if (DemoEraProgress.Kingdom(Realms().Liege, alive, id => ChronicleOf(id).Tier, id => knowledge.Knows(id, kingship)) is { } king)
+                    {
+                        var site = lifecycle.Outcome.Sites.Settlements.First(s => s.Id == king);
+                        eraEvents.Add(new DemoSettlementEvent(report.Week, report.WorldTime, king, site.Name, DemoSettlementEventKind.EraBegan, (long)DemoEra.Conquest,
+                            $"{site.Name}建立了第一個王國，世界進入{DemoKnowledge.EraName(DemoEra.Conquest)}【TEMP】",
+                            EventId: checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count + realmEvents.Count)));
+                        knowledge = knowledge with { Era = DemoEra.Conquest, EraWeek = report.Week };
+                    }
+                }
+                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).Concat(eraEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);

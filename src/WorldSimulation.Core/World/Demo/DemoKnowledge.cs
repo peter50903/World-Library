@@ -9,7 +9,10 @@ public enum DemoEra
     Hope = 0,
 
     /// <summary>開拓時代：任一聚落習得知識樹上任一技術時開始。</summary>
-    Pioneer = 1
+    Pioneer = 1,
+
+    /// <summary>第 08-19d 章 征服時代：第一個王國成立（會王權的首都、不隸屬他人、統領兩個以上臣屬聚落）。</summary>
+    Conquest = 2
 }
 
 /// <summary>
@@ -359,6 +362,7 @@ public static class DemoKnowledge
     {
         DemoEra.Hope => "希望時代",
         DemoEra.Pioneer => "開拓時代",
+        DemoEra.Conquest => "征服時代",
         _ => era.ToString()
     };
 
