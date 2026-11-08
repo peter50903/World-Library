@@ -587,7 +587,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoTerritory.cs` | 2 | 第 08-19 章勢力範圍半徑：營地 1、村莊 2、城鎮 4、城市 6、首都 8 格（D08-19） |
+| `src/WorldSimulation.Core/World/Demo/DemoTerritory.cs` | 3 | 第 08-19 章勢力範圍半徑：營地 1、村莊 2、城鎮 4、城市 6、首都 8 格（D08-19）；第 08-19a 章建築佔幾格、建築與工作地的最遠距離 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 12 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 4 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里）；第 08-18a 章斜角成本 1.5 倍（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |

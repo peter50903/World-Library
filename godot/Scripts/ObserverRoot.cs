@@ -1485,15 +1485,9 @@ public partial class ObserverRoot : Control
         _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
         _hexMap.SettlementScale = Same(_hexMap.SettlementScale, _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier))); // 第 08-11 章：五級
-        // 第 08-19 章：勢力範圍與隸屬（聚落或層級改變時才重算）。
-        var scale = _hexMap.SettlementScale;
-        var tierKey = string.Join(",", _world.Sites.Settlements.Where(s => !s.IsRuin).Select(s => $"{s.Id}:{(int)scale[s.Id].Item2}"));
-        if (!ReferenceEquals(_territorySites, _world.Sites) || tierKey != _territoryTiers)
-        {
-            _territorySites = _world.Sites;
-            _territoryTiers = tierKey;
-            _hexMap.Territory = DemoTerritory.Compute(_world.Map, _world.Sites, id => scale[id].Item2);
-        }
+        // 第 08-19 章、第 08-19a 章：勢力範圍與隸屬由 Core 依建築、工作地與人走的路推得（同一週沿用）。
+        if (!ReferenceEquals(_hexMap.Territory, _world.Territory()))
+            _hexMap.Territory = _world.Territory();
         var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
         var hunters = _world.Sites.Settlements.Where(s => !s.IsRuin && _world.Knowledge.Knows(s.Id, hunting)).Select(s => s.Id).ToHashSet();
         if (!hunters.SetEquals(_hexMap.Hunters))

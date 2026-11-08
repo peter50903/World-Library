@@ -444,9 +444,25 @@ public sealed partial class DemoObserverWorld
     }
 
     private DemoMonsters.Fold _monsterFold = new();
-    private IReadOnlyDictionary<DemoCellRef, DemoTerritoryCell> _humanTerritory = new Dictionary<DemoCellRef, DemoTerritoryCell>();
-    private object? _humanTerritorySites;
-    private int _humanTerritoryWeek = -1;
+    private DemoTerritoryMap? _territory;
+    private object? _territorySites;
+    private int _territoryWeek = -1;
+
+    /// <summary>
+    /// 第 08-19 章、第 08-19a 章：目前的勢力範圍與隸屬——格的歸屬依聚落的建築、工作地與人走的路（農田與開墾地、伐木、採礦、獵場），
+    /// 隸屬依層級的影響範圍。同一週、同一份聚落沿用。不存檔（由世界狀態推得）。
+    /// </summary>
+    public DemoTerritoryMap Territory()
+    {
+        if (_territory is not null && ReferenceEquals(_territorySites, _sites) && _territoryWeek == CommittedWeeks)
+            return _territory;
+        var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
+        _territory = DemoTerritory.Compute(Map, _sites, id => ChronicleOf(id).Tier,
+            new DemoTerritoryWork(_land, _wildlife.Spells, CommittedWeeks, id => _knowledge.Knows(id, hunting)));
+        _territorySites = _sites;
+        _territoryWeek = CommittedWeeks;
+        return _territory;
+    }
     private object? _monsterFoldEarlier;
     private int _monsterFoldWeek = int.MinValue;
 
@@ -478,13 +494,7 @@ public sealed partial class DemoObserverWorld
         // 第 12-2a 節：怪物佔據的格（不進人類的勢力範圍）；人類的勢力範圍依目前的聚落與層級，同一週沿用。
         if (nests.Count == 0)
             return Array.Empty<DemoMonsterNest>();
-        if (!ReferenceEquals(_humanTerritorySites, _sites) || _humanTerritoryWeek != CommittedWeeks)
-        {
-            _humanTerritory = DemoTerritory.Compute(Map, _sites, id => ChronicleOf(id).Tier).Cells;
-            _humanTerritorySites = _sites;
-            _humanTerritoryWeek = CommittedWeeks;
-        }
-        var human = _humanTerritory;
+        var human = Territory().Cells;
         return nests.Select(n =>
         {
             var nest = _monsterFold.At(n.Dungeon, n.Cell, week);
