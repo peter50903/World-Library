@@ -56,6 +56,10 @@ public partial class ObserverRoot
 
     // 羊皮紙面板上的文字用深褐色墨水；頂部木條上用淺色（TEMP 顯示配色）。
     private static readonly Color TempInk = new(0.22f, 0.15f, 0.08f);
+
+    /// <summary>【TEMP】詳情頁內文的顏色（接近黑的深褐）與字級。</summary>
+    private static readonly Color TempDetailInk = new(0.08f, 0.05f, 0.03f);
+    private const int TempDetailFontSize = 15;
     private static readonly Color TempParchmentText = new(0.95f, 0.89f, 0.74f);
     private const float TempMusicVolumeDb = -16f; // TEMP：背景音樂音量
     private const float TempClickVolumeDb = -20f; // TEMP：按鍵音量（第 08-5 章：使用者 2026-10-23 嫌太大聲，原 -6 dB）
@@ -334,7 +338,23 @@ public partial class ObserverRoot
         _detailTabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddChild(_detailTabs);
         // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
-        _detailTabs.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        // 試玩回饋 2026-11-08 第四次之 5（詳情頁文字不明顯、看不清楚）：分頁內容墊一層不透明的淺色紙底，
+        // 字改成接近黑色、大一號，與花紋底框分開，不會被底圖的紋路干擾。
+        _detailTabs.AddThemeStyleboxOverride("panel", ArtAssets.Track(new StyleBoxFlat
+        {
+            BgColor = new Color(0.97f, 0.94f, 0.86f, 0.97f),
+            BorderColor = new Color(0.55f, 0.42f, 0.25f),
+            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+            CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4, CornerRadiusTopRight = 4,
+            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 8, ContentMarginBottom = 8
+        }));
+        var readable = ArtAssets.Track(new Theme());
+        readable.SetColor("font_color", "Label", TempDetailInk);
+        readable.SetFontSize("font_size", "Label", TempDetailFontSize);
+        readable.SetColor("font_color", "Button", TempDetailInk);
+        readable.SetColor("font_hover_color", "Button", new Color(0.45f, 0.20f, 0.05f));
+        readable.SetColor("font_color", "TooltipLabel", TempParchmentText);
+        _detailPanel.Theme = readable;
         _detailTabs.TabChanged += _ =>
         {
             if (!_tabSoundMuted)
@@ -351,7 +371,7 @@ public partial class ObserverRoot
         _detailTabs.AddThemeStyleboxOverride("tab_unselected", TabStyle(0.15f));
         _detailTabs.AddThemeStyleboxOverride("tab_hovered", TabStyle(0.30f));
         _detailTabs.AddThemeStyleboxOverride("tabbar_background", new StyleBoxEmpty());
-        var ink = parchment ? TempInk : TempParchmentText;
+        var ink = TempDetailInk;
         _detailTabs.AddThemeColorOverride("font_selected_color", ink);
         _detailTabs.AddThemeColorOverride("font_unselected_color", ink with { A = 0.7f });
         _detailTabs.AddThemeColorOverride("font_hovered_color", ink);
@@ -452,8 +472,19 @@ public partial class ObserverRoot
         var realm = DemoTerritory.Detail(_hexMap.Territory, _world.Sites, settlementId,
             id => scale.TryGetValue(id, out var s) ? s.Tier : DemoSettlementTier.Camp,
             id => scale.TryGetValue(id, out var s) ? s.Population : 0L);
-        return new DemoDetailTab("勢力", realm.Tabs[0].Lines.Append("").Concat(realm.Tabs[1].Lines).ToList());
+        // 第 08-19b 章：勢力裡進行中的脫離鬥爭。
+        var top = _hexMap.Territory.RealmOf(settlementId);
+        var week = _world.CommittedWeeks;
+        var fights = _struggles.Where(x => _hexMap.Territory.RealmOf(x.LiegeId) == top || x.VassalId == settlementId)
+            .Select(x => DemoRealms.Describe(x, _world.Sites, week)).OfType<string>().ToList();
+        var lines = realm.Tabs[0].Lines.ToList();
+        if (fights.Count > 0)
+            lines = lines.Append("").Append("分裂鬥爭：").Concat(fights).ToList();
+        return new DemoDetailTab("勢力", lines.Append("").Concat(realm.Tabs[1].Lines).ToList());
     }
+
+    /// <summary>第 08-19b 章：最近一次刷新時進行中的脫離鬥爭。</summary>
+    private IReadOnlyList<DemoSecession> _struggles = Array.Empty<DemoSecession>();
 
     /// <summary>
     /// 試玩回饋 2026-11-08 之 6：點到地圖上的角色。領袖開聚落的「代表人物」頁；工作團體、遷徙隊伍開它們自己的詳情；怪物開地下城。

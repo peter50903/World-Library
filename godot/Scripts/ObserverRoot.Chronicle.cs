@@ -45,6 +45,7 @@ public partial class ObserverRoot
         DemoChronicleCategory.Faith => "信仰",
         DemoChronicleCategory.Wilds => "野外",
         DemoChronicleCategory.Disaster => "天災",
+        DemoChronicleCategory.Realm => "勢力",
         _ => category.ToString()
     };
 

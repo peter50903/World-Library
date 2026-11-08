@@ -248,6 +248,7 @@ public static class DemoCenturyRun
                         case DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                             or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: // 第 12-1 章 C3
                         case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt: // 第 12-2 章
+                        case DemoSettlementEventKind.SecessionBattle: // 第 08-19b 章
                         case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2
                             deathsInEvents = checked(deathsInEvents + e.Count);
                             break;

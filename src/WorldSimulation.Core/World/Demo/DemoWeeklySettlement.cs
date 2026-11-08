@@ -278,7 +278,21 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 12-2 章：地下城的怪物被殺光而沉寂、沉寂期滿再生（人數欄＝格編號；根因）。</summary>
     DungeonCleared = 34,
-    DungeonAwakened = 35
+    DungeonAwakened = 35,
+
+    /// <summary>第 08-19b 章：歸附上級（人數欄＝上級聚落編號；根因）。</summary>
+    VassalJoined = 36,
+
+    /// <summary>第 08-19b 章：開始武力抗爭、非武力請願以脫離上級（人數欄＝上級聚落編號；根因）。</summary>
+    SecessionArmed = 37,
+    SecessionPeaceful = 38,
+
+    /// <summary>第 08-19b 章：武力抗爭的交戰（人數欄＝死亡人數，與天災同一欄週帳；根因）。</summary>
+    SecessionBattle = 39,
+
+    /// <summary>第 08-19b 章：獨立、脫離失敗（人數欄＝原上級聚落編號；根因）。</summary>
+    Independence = 40,
+    SecessionFailed = 41
 }
 
 /// <summary>
@@ -328,6 +342,8 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
                 or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSlain
                 or DemoSettlementEventKind.DungeonCleared or DemoSettlementEventKind.DungeonAwakened
+                or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
+                or DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
@@ -1429,7 +1445,7 @@ internal static class DemoWeeklySettlement
                     && e.Kind == DemoSettlementEventKind.Birth).Sum(e => e.Count);
             // 第 12-1 章 C3：天災死亡對天災事件。
             var disasterEvents = report.Events.Where(e => e.SettlementId == ledger.SettlementId
-                && (DemoDisasters.IsDisaster(e.Kind) || DemoMonsters.IsStrike(e.Kind))).Sum(e => e.Count); // 第 12-2 章：怪物襲擊、討伐陣亡同一欄
+                && (DemoDisasters.IsDisaster(e.Kind) || DemoMonsters.IsStrike(e.Kind) || DemoRealms.IsBattle(e.Kind))).Sum(e => e.Count); // 第 12-2 章：怪物襲擊、討伐陣亡同一欄
             if (deathEvents != ledger.Deaths || naturalEvents != ledger.NaturalDeaths || disasterEvents != ledger.DisasterDeaths
                 || birthEvents != ledger.Births
                 || report.Events.Any(e => e.SettlementId == ledger.SettlementId

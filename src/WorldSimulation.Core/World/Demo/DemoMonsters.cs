@@ -58,8 +58,17 @@ public static class DemoMonsters
     /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格。</summary>
     public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3;
 
-    /// <summary>【TEMP】擊殺數：襲擊時居民每 30 人多殺 1 隻、討伐時每 25 人多殺 1 隻。</summary>
-    public const int TempDefendersPerKill = 30, TempHuntersPerKill = 25;
+    /// <summary>【TEMP】擊殺數：襲擊時居民每 60 人多殺 1 隻、討伐時每 50 人多殺 1 隻（第 12-2b 節：一般人只能壓制）。</summary>
+    public const int TempDefendersPerKill = 60, TempHuntersPerKill = 50;
+
+    /// <summary>
+    /// 【TEMP】第 12-2b 節（使用者 2026-11-08：平常只能壓制或放任怪物擴張，只有出現軍隊時才會完全壓制地下城）：
+    /// 居民的抵抗與討伐最多把怪物壓到每層 <see cref="TempSuppressFloorPerLayer"/> 隻，殺不光；殺光（地下城沉寂）要等之後的軍隊。
+    /// </summary>
+    public const int TempSuppressFloorPerLayer = 1;
+
+    /// <summary>居民殺不到這個數以下（之後有軍隊時才能殺光）。</summary>
+    public static int SuppressFloor(DemoDungeon dungeon) => dungeon.Layers * TempSuppressFloorPerLayer;
 
     private const string Namespace = "TEMP-MONSTER-v1";
 
@@ -219,19 +228,19 @@ public static class DemoMonsters
             if (target is not null && (int)(Draw(rng, week, slot, 0) % 100UL) < Math.Min(TempMaxRaidPercent, monsters * TempRaidPercentPerMonster))
             {
                 var deaths = 1 + monsters / 5;
-                var slain = (int)Math.Min(left, 1 + residents(target.Id) / TempDefendersPerKill);
+                var slain = (int)Math.Clamp(1 + residents(target.Id) / TempDefendersPerKill, 0, Math.Max(0, left - SuppressFloor(nest.Dungeon)));
                 left -= slain;
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
-                    $"{nest.Dungeon.Name}的怪物來襲，居民擊殺 {slain} 隻");
+                    slain > 0 ? $"{nest.Dungeon.Name}的怪物來襲，居民擊殺 {slain} 隻" : $"{nest.Dungeon.Name}的怪物來襲，居民只能守住村子");
                 kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
             }
             // 討伐：離範圍 TempHuntReach 格內、人夠多的聚落出兵（居民最多的先）。
-            var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
+            var hunter = left <= SuppressFloor(nest.Dungeon) ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
                     && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents)
                 .OrderByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
             {
-                var slain = (int)Math.Min(left, 1 + residents(hunter.Id) / TempHuntersPerKill);
+                var slain = (int)Math.Clamp(1 + residents(hunter.Id) / TempHuntersPerKill, 0, Math.Max(0, left - SuppressFloor(nest.Dungeon)));
                 var deaths = (long)(Draw(rng, week, slot, 2) % (ulong)(1 + monsters / 4));
                 left -= slain;
                 strikes[hunter.Id] = new DemoDisasterStrike(hunter.Id, DemoSettlementEventKind.MonsterHunt, deaths,
@@ -239,7 +248,7 @@ public static class DemoMonsters
                 kills.Add((hunter.Id, nest.CellId, slain, $"討伐{nest.Dungeon.Name}，殺死 {slain} 隻怪物（剩 {left} 隻）"));
             }
             if (left <= 0)
-                cleared.Add(nest);
+                cleared.Add(nest); // 第 12-2b 節：居民殺不光（壓制下限），只有之後的軍隊會走到這裡
         }
         return new Plan(strikes, kills, cleared, awakened);
     }

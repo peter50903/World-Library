@@ -561,6 +561,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 8 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1）；08-13 燃燒外觀週數；第 08-16 章第 14 節伐木與採礦的門檻、機率、範圍、長回與挖空週數、移除週數、亂數命名空間（D08-16-14） |
 | `godot/Scripts/DemoHexMap.Migrants.cs` | 1 | 第 08-16 章遷徙小人：幾人一個小人、最多幾個、步伐速度、動畫重畫間隔（D06-4） |
 | `godot/Scripts/DemoHexMap.Disasters.cs` | 6 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） ；火焰動畫格速、天災音效與火燒循環音量（-16／-26 dB）、同種音效間隔 8 秒、任兩音效間隔 1.5 秒；第 08-18b 章龍捲風走完路徑的週數、刮痕淡去週數、洪水高水位週數；試玩回饋 2026-11-07 之 3 疊層強度分 12 階（D08-18）；試玩回饋 2026-11-08 之 4 天災過程照真實時間播的速度（每週 700 毫秒） |
+| `godot/Scripts/DemoHexMap.Battles.cs` | 3 | 第 08-18h 章戰鬥動畫：長度 4 秒（行軍佔 55%）、只畫 ⚔ 的格半徑門檻 14、同時最多 8 場 |
 | `godot/Scripts/TerrainSurface.cs` | 7 | 第 08-18b 章方格地表：每格半徑 48 圖像素（一格 6×6 方格、每方格 16）、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
 | `godot/Scripts/DemoHexMap.Layout.cs` | 4 | 第 08-17 章聚落版面：廣場邊長、道路長度；第 08-18b 章支路間距與機率、建地門檻（D08-18）；試玩回饋 2026-11-08 第三次 建築高出地塊的方格數（屋地往上多鋪） |
 | `godot/Scripts/DemoHexMap.Walkers.cs` | 1 | 第 08-18b 章近景小人：每幾人一個、上限、門檻、一趟秒數（D08-18） |
@@ -578,7 +579,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 11 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離 |
+| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 12 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章擊殺換算改每 60／50 人一隻、居民壓制下限每層 1 隻 |
+| `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 6 | 第 08-19b 章脫離鬥爭：武力 8 週、非武力 26 週、失敗冷卻 104 週；文化相同走武力 30%、武力勝率 15～85%、非武力勝率 35%＋文化不同 20%；交戰傷亡每 80／150 人一人；亂數命名空間 |
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationPyramid.cs` | 1 | 第 08-18b 章第 5 節人口金字塔每幾歲一層、幾歲以上併成一層（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
@@ -608,7 +610,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 11 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列）；第 08-3 章功能列置底、移除事件列 |
-| `godot/Scripts/ObserverRoot.Hud.cs` | 10 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色 |
+| `godot/Scripts/ObserverRoot.Hud.cs` | 11 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色；第 08-18h 章詳情頁內文顏色與字級（15） |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
@@ -619,7 +621,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 40 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 46 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、武力抗爭、請願抗議、抗爭交戰、獨立、脫離失敗六種 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

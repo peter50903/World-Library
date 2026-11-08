@@ -22,7 +22,8 @@ public partial class DemoHexMap
         || (_tokensMoving && CurrentLayer == ViewLayer.Regional) // 第 08-17 章：區域層的指示物來回移動
         || ((_walkersDrawn || _creaturesDrawn) && CurrentLayer == ViewLayer.Local) // 第 08-18b 章：近景小人、動物走動
         || _movingDisaster // 第 08-18b 章第 5 節：龍捲風、漲水
-        || _disasterAnimating; // 試玩回饋 2026-11-08 之 4：天災過程照真實時間播
+        || _disasterAnimating // 試玩回饋 2026-11-08 之 4：天災過程照真實時間播
+        || _battleAnimating; // 第 08-18h 章：戰鬥動畫
 
     private void DrawMigrants(Vector2 start, float radius)
     {

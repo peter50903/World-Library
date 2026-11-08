@@ -112,16 +112,14 @@ public static class DemoTerritory
         return cells;
     }
 
-    public static DemoTerritoryMap Compute(DemoHexWorld map, DemoWorldSites sites, Func<int, DemoSettlementTier> tierOf, DemoTerritoryWork? work = null)
+    /// <summary>自然上級：層級更高、範圍涵蓋本聚落的聚落裡，層級最接近、最近、編號小的（第 08-19 章）。</summary>
+    public static IReadOnlyDictionary<int, int> NaturalLieges(DemoWorldSites sites, Func<int, DemoSettlementTier> tierOf)
     {
-        ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(tierOf);
         var alive = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
         var tiers = alive.ToDictionary(s => s.Id, s => tierOf(s.Id));
         DemoCellRef At(DemoSettlement s) => new(s.Column, s.Row);
-
-        // 隸屬：層級更高、範圍涵蓋本聚落的聚落裡，層級最接近、最近、編號小的。
         var liege = new Dictionary<int, int>();
         foreach (var s in alive)
         {
@@ -131,11 +129,32 @@ public static class DemoTerritory
             if (best is not null)
                 liege[s.Id] = best.Id;
         }
+        return liege;
+    }
+
+    /// <summary>
+    /// <paramref name="lieges"/>＝第 08-19b 章由事件推得的實際隸屬（歸附、獨立）；null 時用自然上級。
+    /// </summary>
+    public static DemoTerritoryMap Compute(DemoHexWorld map, DemoWorldSites sites, Func<int, DemoSettlementTier> tierOf, DemoTerritoryWork? work = null,
+        IReadOnlyDictionary<int, int>? lieges = null)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(sites);
+        ArgumentNullException.ThrowIfNull(tierOf);
+        var alive = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        var tiers = alive.ToDictionary(s => s.Id, s => tierOf(s.Id));
+        DemoCellRef At(DemoSettlement s) => new(s.Column, s.Row);
+
+        var liege = new Dictionary<int, int>();
+        foreach (var kv in lieges ?? NaturalLieges(sites, tierOf))
+            if (tiers.ContainsKey(kv.Key) && tiers.ContainsKey(kv.Value) && kv.Key != kv.Value)
+                liege[kv.Key] = kv.Value;
         var realm = new Dictionary<int, int>();
         int Top(int id)
         {
             if (realm.TryGetValue(id, out var known))
                 return known;
+            realm[id] = id; // 防繞圈
             return realm[id] = liege.TryGetValue(id, out var up) ? Top(up) : id;
         }
         foreach (var s in alive)

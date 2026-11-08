@@ -78,9 +78,9 @@ public sealed class DemoMonsterTests
                     Assert.InRange(strike.Deaths, 0, 12 / 4);
                 }
             }
-            // 擊殺不超過怪物數，殺光才沉寂；一個聚落一週只承受一件。
-            Assert.InRange(plan.Kills.Sum(k => k.Kills), 0, 12);
-            Assert.Equal(plan.Kills.Sum(k => k.Kills) >= 12, plan.Cleared.Count == 1);
+            // 第 12-2b 節：居民只能把怪物壓到下限（每層 1 隻），殺不光、地下城不會沉寂；一個聚落一週只承受一件。
+            Assert.InRange(plan.Kills.Sum(k => k.Kills), 0, 12 - DemoMonsters.SuppressFloor(dungeon));
+            Assert.Empty(plan.Cleared);
             Assert.Equal(plan.Strikes.Count, plan.Kills.Count);
             // 已經有天災的聚落不再承受怪物。
             var taken = world.Sites.Settlements.Select(s => s.Id).ToHashSet();
@@ -97,6 +97,28 @@ public sealed class DemoMonsterTests
         Assert.Equal(DemoSettlementEventKind.DungeonAwakened, Assert.Single(events).Kind);
         Assert.Equal(nest.CellId, events[0].Count);
         Assert.Equal(500, events[0].EventId);
+    }
+
+    [Fact]
+    public void ResidentsOnlySuppressMonstersDownToTheFloor()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var home = world.Sites.Settlements.First(s => !s.IsRuin);
+        var dungeon = new DemoDungeon(new DemoCellRef(home.Column, home.Row), "測試洞窟", 2, 0, 99, home.Id);
+        var floor = DemoMonsters.SuppressFloor(dungeon);
+        Assert.Equal(2 * DemoMonsters.TempSuppressFloorPerLayer, floor);
+        var rng = RngRegistry.Create(5);
+        var none = new HashSet<int>();
+        // 已經壓到下限：大村子也不出兵討伐，被襲擊時一隻也殺不掉、地下城不沉寂。
+        var low = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        for (var week = 1; week <= 300; week++)
+        {
+            var plan = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 5000, new[] { low }, none, rng);
+            Assert.DoesNotContain(plan.Strikes.Values, s => s.Kind == DemoSettlementEventKind.MonsterHunt);
+            Assert.All(plan.Kills, k => Assert.Equal(0, k.Kills));
+            Assert.Empty(plan.Cleared);
+            Assert.DoesNotContain(DemoMonsters.Events(plan, week, TimeSpan.Zero, world.Sites, 1), e => e.Kind == DemoSettlementEventKind.MonsterSlain);
+        }
     }
 
     [Fact]
