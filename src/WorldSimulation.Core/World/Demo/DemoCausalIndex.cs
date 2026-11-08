@@ -326,6 +326,9 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.KnowledgeLearned:
                 // 第 08-6 章：根因（經驗累積或遷入者帶來；進度另存於知識狀態）。
                 return parent is null && DemoTechnology.IsDefined(e.Count) && !DemoKnowledge.IsOpening((DemoTechnology)e.Count) ? null : "習得技術是根因，事件人數欄必須是已登錄的技術";
+            case DemoSettlementEventKind.EraBegan when e.Count == (long)DemoEra.Conquest:
+                // 第 08-19d 章：征服時代（第一個王國成立）是根因。
+                return parent is null ? null : "征服時代開始是根因";
             case DemoSettlementEventKind.EraBegan:
                 return parent is { Kind: DemoSettlementEventKind.KnowledgeLearned } && parent.Week == e.Week
                     && parent.SettlementId == e.SettlementId && Enum.IsDefined((DemoEra)e.Count)
