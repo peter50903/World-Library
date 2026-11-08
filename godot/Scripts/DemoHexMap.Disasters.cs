@@ -85,6 +85,34 @@ public partial class DemoHexMap
 
     private bool _hasFire;
 
+    /// <summary>
+    /// 試玩回饋 2026-11-08 之 4（5 倍速下火災一下就變黑又恢復，看不出過程）：天災的「發生過程」至少照真實時間播——
+    /// 每一件天災第一次看到時記下真實時間，過程中的遊戲週數取「遊戲實際經過」與「真實時間換算（每週 <see cref="TempRealMsPerWeek"/> 毫秒）」較小的；
+    /// 過程播完後才照遊戲時間（焦土慢慢長回、積水淡去）。慢速時遊戲時間本來就比較慢，不受影響。
+    /// 讀檔或換世界時已經存在的天災不重播。【TEMP】每週 700 毫秒。
+    /// </summary>
+    public const float TempRealMsPerWeek = 700f;
+
+    private readonly Dictionary<long, ulong> _disasterSeenMs = new();
+    private bool _disasterSeenPrimed;
+    private bool _disasterAnimating;
+    private object? _disasterSeenWorld;
+
+    /// <summary>某件天災在畫面上經過了幾週（過程 <paramref name="activeWeeks"/> 週以內照真實時間放慢）。</summary>
+    private float VisualWeeks(long eventId, float gameWeeks, float activeWeeks)
+    {
+        var now = Time.GetTicksMsec();
+        if (!_disasterSeenMs.TryGetValue(eventId, out var seen))
+            _disasterSeenMs[eventId] = seen = _disasterSeenPrimed ? now : 0UL;
+        if (seen == 0UL || gameWeeks <= 0f)
+            return gameWeeks;
+        var real = (now - seen) / TempRealMsPerWeek;
+        if (real >= activeWeeks)
+            return gameWeeks;
+        _disasterAnimating = true;
+        return Mathf.Min(gameWeeks, real);
+    }
+
     /// <summary>每格的疊層（種類、強度 0～1）；依格的索引（列×欄數＋欄）。</summary>
     private void FillOverlays(byte[] data)
     {
@@ -92,6 +120,14 @@ public partial class DemoHexMap
         var columns = World!.Columns;
         _hasFire = false;
         _movingDisaster = false;
+        _disasterAnimating = false;
+        if (!ReferenceEquals(_disasterSeenWorld, World))
+        {
+            // 換了世界（讀檔、新世界）：已經存在的天災不重播。
+            _disasterSeenWorld = World;
+            _disasterSeenMs.Clear();
+            _disasterSeenPrimed = false;
+        }
         _decals.Clear();
         // 有素材的地面痕跡（坑、裂縫、殘骸）改畫成貼圖（DrawDisasterEffects），沒有才交給著色器。
         void Decal(DemoCellRef c, Overlay kind, float amount)
@@ -127,6 +163,7 @@ public partial class DemoHexMap
                 continue;
             if (spell.Kind == DemoSettlementEventKind.Wildfire)
             {
+                d = VisualWeeks(spell.EventId, d, spell.Cells.Count * TempFireSpreadWeeks + TempFireBurnWeeks + 1f);
                 // 逐格延燒：第 k 格晚 k×0.6 週點燃，燒約 3.5 週後熄成焦土；一年後兩年內慢慢長回（結束時剛好恢復）。
                 for (var k = 0; k < spell.Cells.Count; k++)
                 {
@@ -144,6 +181,7 @@ public partial class DemoHexMap
             }
             else if (spell.Kind == DemoSettlementEventKind.Heatwave)
             {
+                d = VisualWeeks(spell.EventId, d, TempDryRampWeeks);
                 var amount = Mathf.Min(1f, Mathf.Min(d / TempDryRampWeeks, (spell.ToWeek - t) / TempDryRampWeeks));
                 foreach (var c in spell.Cells)
                     if (World.Contains(c.Column, c.Row) && (World.GetCell(c.Column, c.Row).Terrain == DemoTerrain.Grassland
@@ -157,6 +195,8 @@ public partial class DemoHexMap
             var d = t - mark.Week;
             if (d < 0f)
                 continue;
+            if (mark.Kind is DemoSettlementEventKind.Flood or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Meteorite)
+                d = VisualWeeks(mark.EventId, d, mark.Kind == DemoSettlementEventKind.Flood ? TempFloodWeeks : 4f);
             switch (mark.Kind)
             {
                 case DemoSettlementEventKind.Flood:
@@ -189,6 +229,7 @@ public partial class DemoHexMap
                     break;
             }
         }
+        _disasterSeenPrimed = true;
     }
 
     private IEnumerable<DemoCellRef> Ring(DemoCellRef center, int range, bool landOnly)
@@ -252,7 +293,7 @@ public partial class DemoHexMap
         // 燃燒處冒煙：每格三團往上飄、漸淡的灰煙。
         foreach (var spell in Spells.Where(s => s.Kind == DemoSettlementEventKind.Wildfire))
         {
-            var d = GameWeeks - spell.FromWeek;
+            var d = VisualWeeks(spell.EventId, GameWeeks - spell.FromWeek, spell.Cells.Count * TempFireSpreadWeeks + TempFireBurnWeeks + 1f);
             for (var k = 0; k < spell.Cells.Count; k++)
             {
                 var dk = d - k * TempFireSpreadWeeks;

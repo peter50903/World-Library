@@ -15,19 +15,18 @@ public partial class DemoHexMap
 
     private static readonly Color MonsterColor = new(0.36f, 0.12f, 0.42f);
 
-    /// <summary>近景門口要畫幾隻怪物：每 4 隻一隻、最多 3 隻；沉寂 0；沒有資料（舊畫面）畫 1 隻。</summary>
-    private int MonstersShownAt(Vector2I gate)
+    /// <summary>門口在這個方格的地下城（沒有資料回傳 null）。</summary>
+    private DemoMonsterNest? NestAtGate(Vector2I gate)
     {
-        if (World is null)
-            return 1;
         var n = TerrainSurface.TilesPerCell;
-        foreach (var nest in MonsterNests)
-            if (nest.Dungeon.Cell.Column == gate.X / n && nest.Dungeon.Cell.Row == gate.Y / n)
-                return nest.Monsters <= 0 ? 0 : Math.Clamp((nest.Monsters + 3) / 4, 1, 3);
-        return 1;
+        return MonsterNests.FirstOrDefault(nest => nest.Dungeon.Cell.Column == gate.X / n && nest.Dungeon.Cell.Row == gate.Y / n);
     }
 
     private void DrawMonsterRealms(Vector2 start, float radius, bool fill)
+        => DrawMonsterRealms(start, radius, fill ? (_mode == Mode.Realm ? 0.42f : 0.16f) : 0f);
+
+    /// <summary>試玩回饋 2026-11-08 之 2：勢力模式裡怪物的範圍也是一個勢力（較濃的暗紫色），地形模式淡淡一層。</summary>
+    private void DrawMonsterRealms(Vector2 start, float radius, float fill)
     {
         if (World is null || MonsterNests.Count == 0)
             return;
@@ -46,8 +45,8 @@ public partial class DemoHexMap
             var rect = new Rect2(a, b - a);
             if (!rect.Intersects(new Rect2(Vector2.Zero, Size)))
                 continue;
-            if (fill)
-                DrawRect(rect, new Color(MonsterColor, 0.16f));
+            if (fill > 0f)
+                DrawRect(rect, new Color(MonsterColor, fill));
             DrawRect(rect, new Color(MonsterColor.Darkened(0.2f), 0.85f), false, Math.Clamp(radius * 0.1f, 1.5f, 3f));
             var label = $"{nest.Dungeon.Name}｜怪物 {nest.Monsters}";
             var size = 12;
