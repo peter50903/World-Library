@@ -74,6 +74,14 @@ public partial class DemoHexMap
         _ => (3, 2)
     };
 
+    /// <summary>【TEMP】建築素材高出地塊幾方格（屋地往上多鋪幾列，讓整棟房子站在泥土地上）。</summary>
+    private static int LotOverhang(Building kind) => kind switch
+    {
+        Building.Temple or Building.Keep => 2,
+        Building.Tent or Building.Well => 0,
+        _ => 1
+    };
+
     private readonly Dictionary<int, SettlementPlan> _layouts = new();
     private readonly Dictionary<int, long> _layoutSignatures = new();
     private Dictionary<int, byte> _ground = new();
@@ -143,6 +151,16 @@ public partial class DemoHexMap
                 for (var y = lot.Y; y < lot.Y + lot.H; y++)
                     for (var x = lot.X; x < lot.X + lot.W; x++)
                         Mark(x, y, TerrainSurface.GroundYard);
+            // 試玩回饋 2026-11-08 第三次（房子下方的地板沒有完全包覆住圖案）：屋地往外多鋪——左右與下方各一方格、
+            // 上方依建築高出地塊的方格數（房子一格、神殿與主樓兩格），不蓋掉道路與廣場。
+            foreach (var lot in layout.Lots)
+            {
+                var above = LotOverhang(lot.Kind);
+                for (var y = lot.Y - above; y <= lot.Y + lot.H; y++)
+                    for (var x = lot.X - 1; x <= lot.X + lot.W; x++)
+                        if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var inside and >= 0 && IsLand(inside) && !IsField(inside))
+                            ground.TryAdd(y * tx + x, TerrainSurface.GroundYard);
+            }
         }
         _ground = ground;
         // 有聚落地面的格（給地表代碼：聚落格不長樹）。

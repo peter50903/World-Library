@@ -574,6 +574,8 @@ public partial class DemoHexMap : Control
                 DrawPolyline(Closed(ScreenShape(cell, center, radius - 1.4f)), new Color(1f, 0.95f, 0.35f), 3.5f);
         }
 
+        // 第 08-18h 章：怪物襲擊、討伐與脫離抗爭的交戰（各視角層；遠看只畫 ⚔）。
+        DrawBattles(start, radius);
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
         if (!migrants)
             return;

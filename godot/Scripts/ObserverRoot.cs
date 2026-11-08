@@ -1470,6 +1470,8 @@ public partial class ObserverRoot : Control
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
+        _struggles = _world.Realms().Struggles.Values.ToList(); // 第 08-19b 章：進行中的脫離鬥爭（勢力頁與地圖交戰用）
+        _hexMap.BattleMarks = BattleMarks(); // 第 08-18h 章：戰鬥畫在地圖上
         PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
         _hexMap.CultureOf = Same(_hexMap.CultureOf, _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value)); // 第 08-8 章 B1
@@ -1485,15 +1487,9 @@ public partial class ObserverRoot : Control
         _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
         _hexMap.SettlementScale = Same(_hexMap.SettlementScale, _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier))); // 第 08-11 章：五級
-        // 第 08-19 章：勢力範圍與隸屬（聚落或層級改變時才重算）。
-        var scale = _hexMap.SettlementScale;
-        var tierKey = string.Join(",", _world.Sites.Settlements.Where(s => !s.IsRuin).Select(s => $"{s.Id}:{(int)scale[s.Id].Item2}"));
-        if (!ReferenceEquals(_territorySites, _world.Sites) || tierKey != _territoryTiers)
-        {
-            _territorySites = _world.Sites;
-            _territoryTiers = tierKey;
-            _hexMap.Territory = DemoTerritory.Compute(_world.Map, _world.Sites, id => scale[id].Item2);
-        }
+        // 第 08-19 章、第 08-19a 章：勢力範圍與隸屬由 Core 依建築、工作地與人走的路推得（同一週沿用）。
+        if (!ReferenceEquals(_hexMap.Territory, _world.Territory()))
+            _hexMap.Territory = _world.Territory();
         var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
         var hunters = _world.Sites.Settlements.Where(s => !s.IsRuin && _world.Knowledge.Knows(s.Id, hunting)).Select(s => s.Id).ToHashSet();
         if (!hunters.SetEquals(_hexMap.Hunters))
@@ -1534,6 +1530,48 @@ public partial class ObserverRoot : Control
                 events.FirstOrDefault(o => o.Kind == DemoSettlementEventKind.MeteoriteOre && o.CauseEventId == e.EventId) is { } ore
                     ? DemoLandClearing.CellOf(_world.Map, ore.Count) : (DemoCellRef?)null))
             .ToList();
+    }
+
+    /// <summary>
+    /// 第 08-18h 章：近兩週的戰鬥。怪物襲擊＝怪物從最近的地下城衝向聚落；討伐＝村民走向最近的地下城；
+    /// 脫離抗爭＝上級出兵走向叛離的聚落（叛離方守在自己的聚落）。
+    /// </summary>
+    private IReadOnlyList<BattleMark> BattleMarks()
+    {
+        var reports = _world.WeekReports();
+        var events = reports.Where(w => w.Week >= _world.CommittedWeeks - 1).SelectMany(w => w.Events)
+            .Where(e => e.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.SecessionBattle)
+            .ToList();
+        if (events.Count == 0)
+            return Array.Empty<BattleMark>();
+        var cells = _world.Sites.Settlements.ToDictionary(s => s.Id, s => new DemoCellRef(s.Column, s.Row));
+        var gates = _world.Dungeons.Select(d => d.Cell).ToList();
+        DemoCellRef? Gate(DemoCellRef near) => gates.Count == 0 ? null
+            : gates.OrderBy(g => DemoHexWorld.Distance(g, near)).ThenBy(g => g.Row).ThenBy(g => g.Column).First();
+        int Seed(DemoCellRef? c) => c is { } g ? g.Column * 31 + g.Row : 0;
+        var marks = new List<BattleMark>();
+        foreach (var e in events)
+        {
+            if (!cells.TryGetValue(e.SettlementId, out var home))
+                continue;
+            switch (e.Kind)
+            {
+                case DemoSettlementEventKind.MonsterRaid:
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home))));
+                    break;
+                case DemoSettlementEventKind.MonsterHunt when Gate(home) is { } gate:
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate)));
+                    break;
+                case DemoSettlementEventKind.SecessionBattle:
+                    // 上級那一筆：從上級出兵走到叛離的聚落；叛離方那一筆：守在自己的聚落。
+                    var asLiege = _struggles.FirstOrDefault(x => x.LiegeId == e.SettlementId && cells.ContainsKey(x.VassalId));
+                    marks.Add(asLiege is not null
+                        ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0)
+                        : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0));
+                    break;
+            }
+        }
+        return marks;
     }
 
     private int _soundWeek = -1;

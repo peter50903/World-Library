@@ -60,7 +60,8 @@ public partial class DemoHexMap
     /// <item><b>區域</b>（空地）：看目前的地圖模式——地形＝地塊、勢力＝勢力（最上層聚落的「勢力」頁）、文化＝文化、信仰＝信仰、
     ///   其他＝所屬聚落；怪物的勢力範圍＝地下城。</item>
     /// </list>
-    /// 詳情上方有一列「往上一層」的連結（地塊→聚落→勢力、文化、信仰），點過去不必回到地圖。點了之後選到的移到畫面中央並框起來。
+    /// 詳情上方有一列「往上一層」的連結（地塊→聚落→勢力、文化、信仰），點過去不必回到地圖。
+    /// 試玩回饋 2026-11-08 第四次之 1：在地圖上點選時鏡頭不動，只把選到的框起來（從清單、編年史、連結打開時才移到畫面中央）。
     /// </summary>
     private void Select(Vector2 position, DemoHexCell hit)
     {
@@ -70,10 +71,10 @@ public partial class DemoHexMap
         if (ActorUnder(position) is { } actor)
         {
             if (World!.Contains(actor.Cell.Column, actor.Cell.Row))
-                FocusCell(World.GetCell(actor.Cell.Column, actor.Cell.Row));
+                MarkCell(World.GetCell(actor.Cell.Column, actor.Cell.Row));
             if (actor.Kind == ActorKind.Settlement && SiteCell(actor.SettlementId) is { } home)
             {
-                FocusCell(home);
+                MarkCell(home);
                 CellSelected?.Invoke(home);
             }
             else
@@ -83,13 +84,13 @@ public partial class DemoHexMap
         // ② 聚落
         if (VisibleSite(hit) is not null)
         {
-            FocusCell(hit);
+            MarkCell(hit);
             CellSelected?.Invoke(hit);
             return;
         }
         if (LayerFor(radius) == ViewLayer.Local && SettlementUnder(position, start, radius) is { } building)
         {
-            FocusCell(building);
+            MarkCell(building);
             CellSelected?.Invoke(building);
             return;
         }
@@ -102,22 +103,22 @@ public partial class DemoHexMap
             switch (_mode)
             {
                 case Mode.Realm when owner is not null && RealmSelected is not null && SiteCell(owner.RealmId) is { } capital:
-                    FocusCell(capital);
+                    MarkCell(capital);
                     RealmSelected(owner.RealmId);
                     return;
                 case Mode.Culture when site is { } c && CultureOf.TryGetValue(c, out var culture) && CultureSelected is not null:
-                    FocusCell(hit);
+                    MarkCell(hit);
                     CultureSelected(culture);
                     return;
                 case Mode.Faith when site is { } f && FaithOf.TryGetValue(f, out var faith) && FaithSelected is not null:
-                    FocusCell(hit);
+                    MarkCell(hit);
                     FaithSelected(faith);
                     return;
                 case Mode.Food or Mode.Lineage or Mode.Knowledge when site is { } s && SiteCell(s) is { } settlement:
                     hit = settlement;
                     break;
             }
-        FocusCell(hit);
+        MarkCell(hit);
         CellSelected?.Invoke(hit);
     }
 
@@ -145,5 +146,12 @@ public partial class DemoHexMap
                     return SiteCell(siteId);
         }
         return null;
+    }
+
+    /// <summary>框起選到的格，鏡頭不動。</summary>
+    private void MarkCell(DemoHexCell cell)
+    {
+        Highlight = (cell.Column, cell.Row);
+        QueueRedraw();
     }
 }

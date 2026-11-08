@@ -58,8 +58,16 @@ public static class DemoMonsters
     /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格。</summary>
     public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3;
 
-    /// <summary>【TEMP】擊殺數：襲擊時居民每 30 人多殺 1 隻、討伐時每 25 人多殺 1 隻。</summary>
-    public const int TempDefendersPerKill = 30, TempHuntersPerKill = 25;
+    // 第 12-2c 節：擊殺數與傷亡改由戰鬥人員、非戰鬥人員與雙方等級決定（DemoCombat）。
+
+    /// <summary>
+    /// 【TEMP】第 12-2b 節（使用者 2026-11-08：平常只能壓制或放任怪物擴張，只有出現軍隊時才會完全壓制地下城）：
+    /// 居民的抵抗與討伐最多把怪物壓到每層 <see cref="TempSuppressFloorPerLayer"/> 隻，殺不光；第 12-2c 節：有等級不低於怪物的戰鬥人員（士兵、冒險者）才殺得光（地下城沉寂）。
+    /// </summary>
+    public const int TempSuppressFloorPerLayer = 1;
+
+    /// <summary>沒有夠強的戰鬥人員時殺不到這個數以下。</summary>
+    public static int SuppressFloor(DemoDungeon dungeon) => dungeon.Layers * TempSuppressFloorPerLayer;
 
     private const string Namespace = "TEMP-MONSTER-v1";
 
@@ -120,6 +128,10 @@ public static class DemoMonsters
     public sealed class Fold
     {
         private readonly Dictionary<long, (int Week, int Count, bool Dormant)> _base = new();
+        private readonly Dictionary<int, long> _killsBy = new();
+
+        /// <summary>第 12-2c 節：這個聚落累計殺了幾隻怪物（冒險者的經驗）。</summary>
+        public long KillsBy(int settlementId) => _killsBy.GetValueOrDefault(settlementId);
 
         /// <summary>餵入一筆事件（地下城清單要已包含它所屬的地下城）。</summary>
         public void Apply(DemoSettlementEvent e, Func<long, DemoDungeon?> dungeonAt)
@@ -132,6 +144,7 @@ public static class DemoMonsters
                     if (dungeonAt(cell) is not { } d)
                         return;
                     var now = Count(d, cell, e.Week);
+                    _killsBy[e.SettlementId] = _killsBy.GetValueOrDefault(e.SettlementId) + kills;
                     _base[cell] = (e.Week, Math.Max(0, now - kills), false);
                     break;
                 }
@@ -179,8 +192,10 @@ public static class DemoMonsters
     /// 希望時代、沒有地下城＝空。
     /// </summary>
     public static Plan Roll(int week, DemoEra era, DemoHexWorld map, DemoWorldSites sites, Func<int, long> residents,
-        IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng)
+        IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null)
     {
+        // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
+        force ??= id => new DemoCombatForce(0, 0, 0, 0, residents(id));
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(residents);
@@ -213,35 +228,56 @@ public static class DemoMonsters
                 return area.Count == 0 ? int.MaxValue : area.Min(c => DemoHexWorld.Distance(c, home));
             }
             var left = monsters;
-            // 襲擊：離範圍一格內最近的有人聚落。
+            var level = DemoCombat.MonsterLevel(nest.Dungeon);
+            // 第 12-2b、12-2c 節：沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限。
+            int Room(DemoCombatForce f) => DemoCombat.CanClear(f, level) ? left : Math.Max(0, left - SuppressFloor(nest.Dungeon));
+            // 襲擊：離範圍一格內最近的有人聚落；約一半的怪物出擊，全村（戰鬥與非戰鬥人員）守村。
             var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach)
                 .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
             if (target is not null && (int)(Draw(rng, week, slot, 0) % 100UL) < Math.Min(TempMaxRaidPercent, monsters * TempRaidPercentPerMonster))
             {
-                var deaths = 1 + monsters / 5;
-                var slain = (int)Math.Min(left, 1 + residents(target.Id) / TempDefendersPerKill);
+                var guard = force(target.Id);
+                var (hit, fallen) = DemoCombat.Clash(Math.Max(1, monsters / 2), level, guard, defending: true, (int)(Draw(rng, week, slot, 3) % 100UL));
+                var slain = Math.Min(hit, Room(guard));
+                var deaths = Math.Min(Math.Max(1L, fallen), Math.Max(0L, residents(target.Id) - 1));
                 left -= slain;
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
-                    $"{nest.Dungeon.Name}的怪物來襲，居民擊殺 {slain} 隻");
+                    slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}擊殺 {slain} 隻" : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能守住村子");
                 kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
             }
-            // 討伐：離範圍 TempHuntReach 格內、人夠多的聚落出兵（居民最多的先）。
+            // 討伐：離範圍 TempHuntReach 格內的聚落出兵——有戰鬥人員的先（戰力高的先），沒有才由人多的聚落組民兵。
             var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
-                    && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents)
-                .OrderByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
+                    && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents
+                    && (force(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
+                .OrderByDescending(s => force(s.Id).Soldiers * force(s.Id).SoldierLevel + force(s.Id).Adventurers * force(s.Id).AdventurerLevel)
+                .ThenByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
             {
-                var slain = (int)Math.Min(left, 1 + residents(hunter.Id) / TempHuntersPerKill);
-                var deaths = (long)(Draw(rng, week, slot, 2) % (ulong)(1 + monsters / 4));
+                var party = force(hunter.Id);
+                var (hit, fallen) = DemoCombat.Clash(left, level, party, defending: false, (int)(Draw(rng, week, slot, 2) % 100UL));
+                var slain = Math.Min(hit, Room(party));
+                var deaths = Math.Min(fallen, Math.Max(0L, residents(hunter.Id) - 1));
                 left -= slain;
                 strikes[hunter.Id] = new DemoDisasterStrike(hunter.Id, DemoSettlementEventKind.MonsterHunt, deaths,
-                    $"出兵討伐{nest.Dungeon.Name}，殺死 {slain} 隻怪物");
+                    $"派{Party(party)}討伐{nest.Dungeon.Name}的 {level} 級怪物，殺死 {slain} 隻");
                 kills.Add((hunter.Id, nest.CellId, slain, $"討伐{nest.Dungeon.Name}，殺死 {slain} 隻怪物（剩 {left} 隻）"));
             }
             if (left <= 0)
-                cleared.Add(nest);
+                cleared.Add(nest); // 第 12-2c 節：只有等級不低於怪物的戰鬥人員殺得光
         }
         return new Plan(strikes, kills, cleared, awakened);
+    }
+
+    private static string Defenders(DemoCombatForce f) => f.Fighters > 0 ? $"{Party(f)}帶著村民" : "村民";
+
+    private static string Party(DemoCombatForce f)
+    {
+        var parts = new List<string>();
+        if (f.Soldiers > 0)
+            parts.Add($"{f.SoldierLevel} 級士兵 {f.Soldiers} 人");
+        if (f.Adventurers > 0)
+            parts.Add($"{f.AdventurerLevel} 級冒險者 {f.Adventurers} 人");
+        return parts.Count == 0 ? "民兵" : string.Join("與", parts);
     }
 
     /// <summary>本週怪物的擊殺、沉寂、再生事件（接在本週其他事件之後，編號從 <paramref name="nextEventId"/> 起）。</summary>

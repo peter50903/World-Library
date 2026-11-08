@@ -68,19 +68,19 @@ public sealed class DemoMonsterTests
                 {
                     raids++;
                     Assert.True(distance <= nest.Radius + DemoMonsters.TempRaidReach);
-                    Assert.Equal(1 + 12 / 5, strike.Deaths);
+                    Assert.InRange(strike.Deaths, 1, 59); // 第 12-2c 節：依雙方戰力，至少留一人
                 }
                 else
                 {
                     Assert.Equal(DemoSettlementEventKind.MonsterHunt, strike.Kind);
                     hunts++;
                     Assert.True(distance <= nest.Radius + DemoMonsters.TempHuntReach);
-                    Assert.InRange(strike.Deaths, 0, 12 / 4);
+                    Assert.InRange(strike.Deaths, 0, 59);
                 }
             }
-            // 擊殺不超過怪物數，殺光才沉寂；一個聚落一週只承受一件。
-            Assert.InRange(plan.Kills.Sum(k => k.Kills), 0, 12);
-            Assert.Equal(plan.Kills.Sum(k => k.Kills) >= 12, plan.Cleared.Count == 1);
+            // 第 12-2b 節：居民只能把怪物壓到下限（每層 1 隻），殺不光、地下城不會沉寂；一個聚落一週只承受一件。
+            Assert.InRange(plan.Kills.Sum(k => k.Kills), 0, 12 - DemoMonsters.SuppressFloor(dungeon));
+            Assert.Empty(plan.Cleared);
             Assert.Equal(plan.Strikes.Count, plan.Kills.Count);
             // 已經有天災的聚落不再承受怪物。
             var taken = world.Sites.Settlements.Select(s => s.Id).ToHashSet();
@@ -97,6 +97,80 @@ public sealed class DemoMonsterTests
         Assert.Equal(DemoSettlementEventKind.DungeonAwakened, Assert.Single(events).Kind);
         Assert.Equal(nest.CellId, events[0].Count);
         Assert.Equal(500, events[0].EventId);
+    }
+
+    [Fact]
+    public void ResidentsOnlySuppressMonstersDownToTheFloor()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var home = world.Sites.Settlements.First(s => !s.IsRuin);
+        var dungeon = new DemoDungeon(new DemoCellRef(home.Column, home.Row), "測試洞窟", 2, 0, 99, home.Id);
+        var floor = DemoMonsters.SuppressFloor(dungeon);
+        Assert.Equal(2 * DemoMonsters.TempSuppressFloorPerLayer, floor);
+        var rng = RngRegistry.Create(5);
+        var none = new HashSet<int>();
+        // 已經壓到下限：大村子也不出兵討伐，被襲擊時一隻也殺不掉、地下城不沉寂。
+        var low = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        for (var week = 1; week <= 300; week++)
+        {
+            var plan = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 5000, new[] { low }, none, rng);
+            Assert.DoesNotContain(plan.Strikes.Values, s => s.Kind == DemoSettlementEventKind.MonsterHunt);
+            Assert.All(plan.Kills, k => Assert.Equal(0, k.Kills));
+            Assert.Empty(plan.Cleared);
+            Assert.DoesNotContain(DemoMonsters.Events(plan, week, TimeSpan.Zero, world.Sites, 1), e => e.Kind == DemoSettlementEventKind.MonsterSlain);
+        }
+    }
+
+    [Fact]
+    public void OnlyFightersOfEqualOrHigherLevelMatchMonsters()
+    {
+        var dungeon = new DemoDungeon(new DemoCellRef(0, 0), "測試洞窟", 2, 0, 99, 1);
+        var level = DemoCombat.MonsterLevel(dungeon);
+        Assert.Equal(3, level);
+        // 人力：村莊沒有士兵；鎮有駐軍；靠近怪物有冒險者，擊殺越多等級越高。
+        bool None(string _) => false;
+        Assert.Equal(new DemoCombatForce(0, 0, 0, 0, 300), DemoCombat.Force(300, DemoSettlementTier.Village, None, 0, false));
+        var town = DemoCombat.Force(1000, DemoSettlementTier.Town, t => t is "TECH_ARCHERY" or "TECH_WEAPON_SMITHING", 45, true);
+        Assert.Equal((30L, 3, 20L, 4, 950L), (town.Soldiers, town.SoldierLevel, town.Adventurers, town.AdventurerLevel, town.Civilians));
+        Assert.Equal(4, town.BestLevel);
+        Assert.True(DemoCombat.CanClear(town, level));
+        // 非戰鬥人員再多人，每人戰力也遠低於怪物：擊殺占交戰怪物的比例很低、死傷多。
+        var farmers = new DemoCombatForce(0, 0, 0, 0, 10_000);
+        Assert.False(DemoCombat.CanClear(farmers, level));
+        // 同數量、同等級的戰鬥人員勢均力敵；等級高就佔優勢。
+        var equal = new DemoCombatForce(0, 0, 10, level, 0);
+        var stronger = new DemoCombatForce(0, 0, 10, level + 2, 0);
+        int civilianKills = 0, equalKills = 0, strongKills = 0;
+        long civilianDeaths = 0, equalDeaths = 0, strongDeaths = 0;
+        for (var luck = 0; luck < 100; luck++)
+        {
+            var c = DemoCombat.Clash(10, level, farmers, defending: true, luck);
+            var e = DemoCombat.Clash(10, level, equal, defending: false, luck);
+            var h = DemoCombat.Clash(10, level, stronger, defending: false, luck);
+            Assert.InRange(c.Kills, 0, 10);
+            civilianKills += c.Kills; equalKills += e.Kills; strongKills += h.Kills;
+            civilianDeaths += c.Deaths; equalDeaths += e.Deaths; strongDeaths += h.Deaths;
+        }
+        Assert.True(civilianKills < equalKills && equalKills < strongKills);
+        Assert.True(civilianDeaths > equalDeaths && equalDeaths > strongDeaths);
+        Assert.InRange(equalKills, 250, 350); // 勢均力敵：約 10 × 0.5 × 0.6 ＝ 3 隻
+        Assert.Equal((0, 0L), DemoCombat.Clash(0, level, equal, false, 50));
+        Assert.Contains("只能壓制", DemoCombat.Describe(farmers));
+    }
+
+    [Fact]
+    public void StrongFightersCanClearTheDungeon()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var home = world.Sites.Settlements.First(s => !s.IsRuin);
+        var dungeon = new DemoDungeon(new DemoCellRef(home.Column, home.Row), "測試洞窟", 1, 0, 99, home.Id);
+        var nest = new DemoMonsterNest(dungeon, 1, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        var heroes = new DemoCombatForce(0, 0, 20, DemoCombat.TempMaxLevel, 100);
+        var rng = RngRegistry.Create(8);
+        var cleared = false;
+        for (var week = 1; week <= 300 && !cleared; week++)
+            cleared = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 120, new[] { nest }, new HashSet<int>(), rng, _ => heroes).Cleared.Count == 1;
+        Assert.True(cleared);
     }
 
     [Fact]

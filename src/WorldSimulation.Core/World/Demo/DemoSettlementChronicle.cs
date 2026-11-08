@@ -94,7 +94,9 @@ public sealed record DemoSettlementChronicle(
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
             or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
             or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
-            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt))
+            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt
+            or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
+            or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
@@ -109,6 +111,8 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C3b
                 DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted => DemoPlayerDetail.Clean(e.Cause), // 第 08-16 章第 14 節
                 DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
+                DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
+                    or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined => DemoPlayerDetail.Clean(e.Cause), // 第 08-19b 章
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };

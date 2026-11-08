@@ -22,7 +22,7 @@ public sealed class DemoPlayerDetailTests
         foreach (var s in world.Sites.Settlements)
         {
             var detail = world.PlayerDetail(s.Column, s.Row);
-            Assert.Equal(new[] { "現況", "代表人物", "技術", "研究", "歷史" }, detail.Tabs.Select(t => t.Title));
+            Assert.Equal(new[] { "現況", "代表人物", "技術", "研究", "歷史", "人口" }, detail.Tabs.Select(t => t.Title));
             Assert.Equal(s.Id, detail.SettlementId);
             Assert.StartsWith(s.Name, detail.Title, StringComparison.Ordinal);
             foreach (var word in new[] { "TEMP", "座標", "路線", "實體 ID", "供糧", "資源點" })
@@ -99,5 +99,30 @@ public sealed class DemoPlayerDetailTests
         Assert.Equal("地點", Assert.Single(detail.Tabs).Title);
         Assert.Equal(DemoCellQuery.ShortName(world.Map, world.Sites, cell), detail.Title);
         Assert.DoesNotContain("座標", detail.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void PopulationTabRanksTheSettlementAndItsPyramidAddsUpToItsResidents()
+    {
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 60; d++)
+            world.AdvanceOneDay();
+        var living = world.Sites.Settlements.Where(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0).ToList();
+        Assert.NotEmpty(living);
+        foreach (var s in living)
+        {
+            var tab = world.PlayerDetail(s.Column, s.Row).Tabs.Single(t => t.Title == "人口");
+            Assert.StartsWith("人口：全世界第 ", tab.Lines[0], StringComparison.Ordinal);
+            Assert.Contains($"共 {living.Count} 個聚落", tab.Lines[0], StringComparison.Ordinal);
+            // 金字塔：由年輕到年老，男女加起來＝住在聚落裡的人（不含路上的隊伍）。
+            if (world.HumanPopulationSnapshot is not { } snapshot)
+                continue;
+            Assert.Equal(DemoPopulationPyramid.TempTopBand / DemoPopulationPyramid.TempBandYears + 1, tab.Pyramid.Count);
+            var residents = snapshot.Groups.Where(g => g.SettlementId == s.Id && g.BatchId == 0).Sum(g => g.Count);
+            Assert.Equal(residents, tab.Pyramid.Sum(b => b.Total));
+        }
+        // 人口最多的聚落是第 1 名。
+        var top = living.OrderByDescending(s => world.SettlementPopulation(s.Id)).First();
+        Assert.StartsWith("人口：全世界第 1 名", world.PlayerDetail(top.Column, top.Row).Tabs.Single(t => t.Title == "人口").Lines[0], StringComparison.Ordinal);
     }
 }

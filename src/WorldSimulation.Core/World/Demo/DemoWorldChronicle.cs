@@ -24,7 +24,8 @@ public enum DemoChronicleCategory
     Culture = 11,
     Faith = 12,
     Wilds = 13,
-    Disaster = 14
+    Disaster = 14,
+    Realm = 15
 }
 
 /// <summary>條目文字的一段；<see cref="SettlementId"/>＞0 的段落是可點擊的聚落名稱（參考 CK3 名稱底線）。</summary>
@@ -177,6 +178,20 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.DungeonAwakened:
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
                         Name(e.SettlementId), T(" 附近，" + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.SecessionArmed:
+                case DemoSettlementEventKind.SecessionPeaceful:
+                case DemoSettlementEventKind.Independence:
+                    // 第 08-19b 章：獨立戰爭、請願的開始與獨立是重大事件；歸附、加入派系、交戰、失敗是一般事件（退出派系不記）。
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Realm, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.VassalJoined:
+                case DemoSettlementEventKind.SecessionBattle:
+                case DemoSettlementEventKind.SecessionFailed:
+                case DemoSettlementEventKind.FactionJoined:
+                    Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.BeastAttack:
                     // 第 12-1 章 C2：獸襲為一般事件（攻擊至少留一人）。

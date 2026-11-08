@@ -444,9 +444,86 @@ public sealed partial class DemoObserverWorld
     }
 
     private DemoMonsters.Fold _monsterFold = new();
-    private IReadOnlyDictionary<DemoCellRef, DemoTerritoryCell> _humanTerritory = new Dictionary<DemoCellRef, DemoTerritoryCell>();
-    private object? _humanTerritorySites;
-    private int _humanTerritoryWeek = -1;
+    private DemoTerritoryMap? _territory;
+    private object? _territorySites;
+    private int _territoryWeek = -1;
+
+    /// <summary>
+    /// 第 08-19 章、第 08-19a 章：目前的勢力範圍與隸屬——格的歸屬依聚落的建築、工作地與人走的路（農田與開墾地、伐木、採礦、獵場），
+    /// 隸屬依層級的影響範圍。同一週、同一份聚落沿用。不存檔（由世界狀態推得）。
+    /// </summary>
+    public DemoTerritoryMap Territory()
+    {
+        if (_territory is not null && ReferenceEquals(_territorySites, _sites) && _territoryWeek == CommittedWeeks)
+            return _territory;
+        var hunting = DemoTechnology.Of(DemoWildlife.HuntingTech);
+        _territory = DemoTerritory.Compute(Map, _sites, id => ChronicleOf(id).Tier,
+            new DemoTerritoryWork(_land, _wildlife.Spells, CommittedWeeks, id => _knowledge.Knows(id, hunting)),
+            _demography is null ? null : Realms().Liege); // 第 08-19b 章：隸屬由歸附、獨立事件推得
+        _territorySites = _sites;
+        _territoryWeek = CommittedWeeks;
+        return _territory;
+    }
+
+    /// <summary>第 12-2c 節：各聚落對付怪物的人力（士兵、冒險者與等級、非戰鬥人員；同一次查詢內沿用）。</summary>
+    private Func<int, DemoCombatForce> CombatForces(IReadOnlyList<DemoMonsterNest> nests)
+    {
+        var cache = new Dictionary<int, DemoCombatForce>();
+        var areas = nests.Where(n => !n.Dormant && n.Monsters > 0).Select(n => n.Area().ToList()).ToList();
+        return id =>
+        {
+            if (cache.TryGetValue(id, out var known))
+                return known;
+            var site = _sites.Settlements.FirstOrDefault(s => s.Id == id);
+            if (_demography is null || site is null || site.IsRuin)
+                return cache[id] = DemoCombatForce.None;
+            var here = new DemoCellRef(site.Column, site.Row);
+            var near = areas.Any(a => a.Count > 0 && a.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempHuntReach);
+            return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
+                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)), _monsterFold.KillsBy(id), near);
+        };
+    }
+
+    /// <summary>第 12-2c 節：聚落詳情用的人力。</summary>
+    public DemoCombatForce CombatForceOf(int settlementId) => CombatForces(MonsterNests(CommittedWeeks))(settlementId);
+
+    /// <summary>第 08-19b 章：算忠誠度與兵力用的世界狀態。</summary>
+    private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture)
+        => new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
+            id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true);
+
+    /// <summary>第 08-19b 章：聚落詳情的忠誠度明細（沒有上級回傳空）。</summary>
+    public IReadOnlyList<string> LoyaltyLines(int settlementId)
+        => _demography is null ? Array.Empty<string>()
+            : DemoRealms.LoyaltyLines(settlementId, CommittedWeeks, Realms(), RealmContext(_sites, id => _population.GetValueOrDefault(id), _culture));
+
+    private DemoRealms.Fold _realmFold = new();
+    private object? _realmFoldEarlier;
+    private int _realmFoldWeek = int.MinValue;
+
+    /// <summary>
+    /// 第 08-19b 章：目前的隸屬、進行中的脫離鬥爭與冷卻（由已提交的事件推得、不另存）。快取方式同 <see cref="MonsterNests"/>。
+    /// </summary>
+    public DemoRealms.Fold Realms()
+    {
+        var firstWeek = FirstRetainedWeek;
+        if (!ReferenceEquals(_realmFoldEarlier, _earlierEvents) || _realmFoldWeek < firstWeek - 1 || _realmFoldWeek > CommittedWeeks)
+        {
+            _realmFold = new DemoRealms.Fold();
+            foreach (var e in _earlierEvents)
+                _realmFold.Apply(e);
+            _realmFoldEarlier = _earlierEvents;
+            _realmFoldWeek = firstWeek - 1;
+        }
+        foreach (var w in _weeks.Where(w => w.Week > _realmFoldWeek))
+        {
+            foreach (var e in w.Events)
+                _realmFold.Apply(e);
+            _realmFoldWeek = w.Week;
+        }
+        return _realmFold;
+    }
+
     private object? _monsterFoldEarlier;
     private int _monsterFoldWeek = int.MinValue;
 
@@ -478,13 +555,7 @@ public sealed partial class DemoObserverWorld
         // 第 12-2a 節：怪物佔據的格（不進人類的勢力範圍）；人類的勢力範圍依目前的聚落與層級，同一週沿用。
         if (nests.Count == 0)
             return Array.Empty<DemoMonsterNest>();
-        if (!ReferenceEquals(_humanTerritorySites, _sites) || _humanTerritoryWeek != CommittedWeeks)
-        {
-            _humanTerritory = DemoTerritory.Compute(Map, _sites, id => ChronicleOf(id).Tier).Cells;
-            _humanTerritorySites = _sites;
-            _humanTerritoryWeek = CommittedWeeks;
-        }
-        var human = _humanTerritory;
+        var human = Territory().Cells;
         return nests.Select(n =>
         {
             var nest = _monsterFold.At(n.Dungeon, n.Cell, week);
@@ -529,11 +600,18 @@ public sealed partial class DemoObserverWorld
             var monsters = nestsNow.Count == 0
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
-                    nestsNow, natural.Keys.ToHashSet(), _rng);
+                    nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow)); // 第 12-2c 節：戰鬥人員與非戰鬥人員
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
                 : natural.Concat(monsters.Strikes.Where(kv => !natural.ContainsKey(kv.Key))).ToDictionary(kv => kv.Key, kv => kv.Value);
+            // 第 08-19b 章：武力抗爭的交戰（天災、怪物優先；與天災同一欄週帳）。
+            if (_demography is not null && _knowledge.Era != DemoEra.Hope)
+            {
+                var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng);
+                if (battles.Count > 0)
+                    strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
+            }
             DemoPerf.Mark("排程與天災");
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
@@ -627,7 +705,13 @@ public sealed partial class DemoObserverWorld
                 // 第 12-2 章：擊殺怪物、地下城沉寂與再生（接在最後）。
                 var monsterEvents = DemoMonsters.Events(monsters, report.Week, report.WorldTime, lifecycle.Outcome.Sites,
                     checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count));
-                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).ToArray();
+                // 第 08-19b 章：歸附、脫離鬥爭與獨立（接在最後；希望時代沒有）。
+                var realmEvents = _knowledge.Era == DemoEra.Hope ? (IReadOnlyList<DemoSettlementEvent>)Array.Empty<DemoSettlementEvent>()
+                    : DemoRealms.Advance(report.Week, report.WorldTime, Realms(),
+                        RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
+                        DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng,
+                        checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count));
+                var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
                 commit.StagePopulation(withKnowledge, lifecycle.Population);

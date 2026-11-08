@@ -16,6 +16,9 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
     /// <summary>第 08-16 章：代表人物分頁的每一人（人像＋文字）；介面有素材就畫人像。</summary>
     public IReadOnlyList<DemoPersonEntry> People { get; init; } = Array.Empty<DemoPersonEntry>();
 
+    /// <summary>第 08-18b 章第 5 節：人口金字塔（由年輕到年老；沒有＝不畫）。</summary>
+    public IReadOnlyList<DemoPyramidBand> Pyramid { get; init; } = Array.Empty<DemoPyramidBand>();
+
     /// <summary>第 08-16 章：現況分頁上方的文化紋章與信仰符號（沒有＝null）。</summary>
     public DemoEmblem? Emblem { get; init; }
 
@@ -147,7 +150,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } nest)
                 lines.Add(nest.Dormant
                     ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.TempDormantWeeks - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
-                    : $"怪物：{nest.Monsters} 隻｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
+                    : $"怪物：{nest.Monsters} 隻（{DemoCombat.MonsterLevel(nest.Dungeon)} 級）｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
         }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
@@ -179,7 +182,12 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         {
             // 第 08-19 章：勢力（獨立或隸屬於誰、轄下有哪些聚落）。
             DemoSettlementTier TierOf(int id) => world.ChronicleOf(id).Tier;
-            now.Add(DemoTerritory.Describe(DemoTerritory.Compute(world.Map, world.Sites, TierOf), world.Sites, settlement.Id, TierOf));
+            now.Add(DemoTerritory.Describe(world.Territory(), world.Sites, settlement.Id, TierOf));
+            // 第 08-19b 章：對上級的忠誠度明細（WorldBox 的城市忠誠）、派系與進行中的鬥爭。
+            now.AddRange(world.LoyaltyLines(settlement.Id));
+            if (world.Realms().StruggleOf(settlement.Id) is { } struggle)
+                now.Add(DemoRealms.Describe(struggle, world.Sites, world.CommittedWeeks));
+            now.Add(DemoCombat.Describe(world.CombatForceOf(settlement.Id))); // 第 12-2c 節
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");
@@ -297,7 +305,26 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             new DemoDetailTab("代表人物", people) { People = entries },
             new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
-            new DemoDetailTab("歷史", history)
+            new DemoDetailTab("歷史", history),
+            PopulationTab(world, settlement)
         }, settlement.Id);
+    }
+
+    /// <summary>第 08-18b 章第 5 節介面第二批：「人口」頁——排行與人口金字塔（有年齡群時；畫面另畫成橫條圖）。</summary>
+    private static DemoDetailTab PopulationTab(DemoObserverWorld world, DemoSettlement settlement)
+    {
+        var lines = DemoPopulationPyramid.Rankings(world, settlement.Id).ToList();
+        var pyramid = world.HumanPopulationSnapshot is { } snapshot
+            ? DemoPopulationPyramid.Of(snapshot.Groups, settlement.Id, world.Snapshot().DaysElapsed)
+            : Array.Empty<DemoPyramidBand>();
+        if (pyramid.Any(b => b.Total > 0))
+        {
+            lines.Add("");
+            lines.Add("人口金字塔（男｜女）");
+            lines.AddRange(Enumerable.Reverse(pyramid).Select(b => $"{b.Label}：{b.Male}｜{b.Female}"));
+        }
+        if (lines.Count == 0)
+            lines.Add(settlement.IsRuin ? "已無人居住" : "還沒有人口資料");
+        return new DemoDetailTab("人口", lines) { Pyramid = pyramid };
     }
 }
