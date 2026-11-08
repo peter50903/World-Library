@@ -1117,7 +1117,7 @@ internal static class DemoWeeklySettlement
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                         DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
                         wells?.Invoke(settlement.Id) ?? false);
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths + disasterDeaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -1149,7 +1149,7 @@ internal static class DemoWeeklySettlement
             }
             else if (target is { } chosen)
             {
-                emigrants = PlanEmigrants(settlement.Id, deaths,
+                emigrants = PlanEmigrants(settlement.Id, deaths + disasterDeaths,
                     joining ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor);
                 if (emigrants > 0)
                 {
@@ -1209,7 +1209,7 @@ internal static class DemoWeeklySettlement
                         mateTarget = (candidate, route);
                 }
 
-                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths, 1, DemoEmigrationMode.Mate) == 1)
+                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths + disasterDeaths, 1, DemoEmigrationMode.Mate) == 1)
                 {
                     emigrants = 1;
                     // 路糧：帶足全程（每格一週份，TEMP），存糧不夠就帶光。
