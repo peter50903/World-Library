@@ -27,7 +27,7 @@ public sealed class DemoRealmTests
             .ToList();
         foreach (var e in battles)
             fold.Apply(e);
-        var events = DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold, ctx, natural, rng, week * 100 + 50);
+        var events = DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold, ctx, natural, rng, true, week * 100 + 50);
         foreach (var e in events)
             fold.Apply(e);
         return battles.Concat(events).ToList();
@@ -143,9 +143,9 @@ public sealed class DemoRealmTests
         Assert.False(fold.Liege.ContainsKey(b));
         // 互為自然上級時只歸附一邊；同樣的輸入、同樣的結果。
         var cyc = new Dictionary<int, int> { [a] = b, [b] = a };
-        var events = DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), 10);
+        var events = DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10);
         Assert.Single(events);
-        Assert.Equal(events, DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), 10));
+        Assert.Equal(events, DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10));
     }
 
     [Fact]

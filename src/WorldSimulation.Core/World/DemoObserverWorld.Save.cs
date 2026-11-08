@@ -103,6 +103,7 @@ public sealed partial class DemoObserverWorld
             Knowledge = _knowledge, // 第 08-6 章
             Culture = _culture, // 第 08-8 章 B1
             Wildlife = _wildlife, // 第 12-1 章 C1
+            Laws = _laws, // 第 08-19c 章：世界法則
             Reserves = _reserves,
             SettlementFood = _settlementFood,
             Population = _population,

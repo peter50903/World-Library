@@ -168,6 +168,10 @@ public partial class ObserverRoot
         _toolChart = ToolButton(ArtAssets.UiChart, "圖表", "年度圖表：人口、出生死亡、遷徙、糧食採收與缺口（點某年看該年事件）");
         _toolChart.Pressed += () => ToggleModal("chart");
         row.AddChild(_toolChart);
+        // 第 08-19c 章：世界法則（WorldBox 式的規則開關）。
+        var laws = ToolButton(ArtAssets.UiLaws, "法則", "世界法則：開關天災、地下城與怪物、叛亂與獨立、野獸襲擊");
+        laws.Pressed += () => ToggleModal("laws");
+        row.AddChild(laws);
         // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
@@ -177,6 +181,7 @@ public partial class ObserverRoot
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
         AddModalPage("chart", "年度圖表", BuildYearChartPage());
+        AddModalPage("laws", "世界法則", _lawsPage);
         AddModalPage("dev", "開發資訊", devPage);
         AddModalPage("help", "說明", new Label
         {
@@ -267,6 +272,39 @@ public partial class ObserverRoot
             RefreshSlots();
         if (key == "chart")
             RefreshYearChart();
+        if (key == "laws")
+            RefreshLaws();
+    }
+
+    /// <summary>第 08-19c 章：世界法則頁（每條法則一個勾選框；改了從下一個結算週起生效）。</summary>
+    private readonly VBoxContainer _lawsPage = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+
+    private void RefreshLaws()
+    {
+        foreach (var child in _lawsPage.GetChildren())
+        {
+            _lawsPage.RemoveChild(child);
+            child.QueueFree();
+        }
+        _lawsPage.AddChild(new Label
+        {
+            Text = "勾選的法則會在世界裡發生。改了之後從下一個結算週起生效，存檔會記下目前的法則。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        });
+        foreach (var (key, name, description, on) in _world.Laws.Entries)
+        {
+            var box = new CheckBox { Text = name, ButtonPressed = on, FocusMode = FocusModeEnum.None };
+            box.Toggled += pressed =>
+            {
+                _world.Laws = _world.Laws.With(key, pressed);
+                PlayUi(pressed ? "ui_toggle_on" : "ui_toggle_off");
+            };
+            _lawsPage.AddChild(box);
+            var hint = new Label { Text = "　" + description, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            hint.AddThemeColorOverride("font_color", new Color(0.75f, 0.70f, 0.60f));
+            _lawsPage.AddChild(hint);
+        }
     }
 
     private void CloseModal()

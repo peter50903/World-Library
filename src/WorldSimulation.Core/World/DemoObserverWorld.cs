@@ -79,6 +79,14 @@ public sealed partial class DemoObserverWorld
     private DemoKnowledgeState _knowledge = DemoKnowledgeState.Initial; // 第 08-6 章：知識樹與時代
     private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-8 章 B1：文化
     private DemoWildlifeState _wildlife = DemoWildlifeState.Empty; // 第 12-1 章 C1：野生動物
+    private DemoWorldLaws _laws = DemoWorldLaws.Default; // 第 08-19c 章：世界法則
+
+    /// <summary>第 08-19c 章：世界法則（介面隨時可改；從下一個結算週起生效；存檔記下）。</summary>
+    public DemoWorldLaws Laws
+    {
+        get => _laws;
+        set => _laws = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -591,12 +599,13 @@ public sealed partial class DemoObserverWorld
         if (commit.SettlesWeek)
         {
             // 第 12-1 章 C3：本週的天災（天災週才有；希望時代沒有）。
-            var natural = _demography is null || _knowledge.Era == DemoEra.Hope
+            var laws = _laws; // 第 08-19c 章：本週照這份法則（介面同時改也不影響本週）
+            var natural = _demography is null || _knowledge.Era == DemoEra.Hope || !laws.Disasters
                 ? (IReadOnlyDictionary<int, DemoDisasterStrike>)new Dictionary<int, DemoDisasterStrike>()
                 : DemoDisasters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, WorldPopulation, Map, _sites,
                     _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).Select(s => s.Id), _rng);
             // 第 12-2 章：地下城的怪物襲擊與聚落討伐（天災優先；與天災同一欄週帳）。
-            var nestsNow = _demography is null || _knowledge.Era == DemoEra.Hope ? Array.Empty<DemoMonsterNest>() : MonsterNests(CommittedWeeks);
+            var nestsNow = _demography is null || _knowledge.Era == DemoEra.Hope || !laws.Monsters ? Array.Empty<DemoMonsterNest>() : MonsterNests(CommittedWeeks);
             var monsters = nestsNow.Count == 0
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
@@ -608,6 +617,7 @@ public sealed partial class DemoObserverWorld
             // 第 08-19b 章：武力抗爭的交戰（天災、怪物優先；與天災同一欄週帳）。
             if (_demography is not null && _knowledge.Era != DemoEra.Hope)
             {
+                // 進行中的獨立戰爭照常打完（關掉叛亂只擋新的派系與鬥爭）。
                 var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng);
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -632,7 +642,7 @@ public sealed partial class DemoObserverWorld
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => checked(CachedBoost(s, checked(CommittedWeeks + 1))
                     + DemoEnvironment.SourcePercent(_wildlife.Spells, s, checked(CommittedWeeks + 1))), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
-                beastAttack: b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
+                beastAttack: !laws.BeastAttacks ? (Func<DemoMigrationBatch, long>?)null : b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
                 hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1)), // C3b
@@ -673,7 +683,7 @@ public sealed partial class DemoObserverWorld
                 var ore = DemoDisasters.MeteoriteOre(strikes, report.Events, Map, lifecycle.Outcome.Sites, MeteoriteOre, report.Week, report.WorldTime, _rng,
                     checked(landNextId + clearedOnly.Count + ruined.Count));
                 // 第 12-1 章 C4：地下城出現（事件接在隕石礦脈之後；用本週習得後的時代）。
-                var dungeon = DemoDungeons.Roll(report.Week, report.WorldTime, knowledge.Era, Map, lifecycle.Outcome.Sites,
+                var dungeon = !laws.Monsters ? Array.Empty<DemoSettlementEvent>() : DemoDungeons.Roll(report.Week, report.WorldTime, knowledge.Era, Map, lifecycle.Outcome.Sites,
                     lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
                     Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count));
                 var cleared = clearedOnly.Concat(ruined).Concat(ore).Concat(dungeon).ToList();
@@ -709,7 +719,7 @@ public sealed partial class DemoObserverWorld
                 var realmEvents = _knowledge.Era == DemoEra.Hope ? (IReadOnlyList<DemoSettlementEvent>)Array.Empty<DemoSettlementEvent>()
                     : DemoRealms.Advance(report.Week, report.WorldTime, Realms(),
                         RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
-                        DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng,
+                        DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng, laws.Rebellions,
                         checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count));
                 var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
@@ -818,6 +828,8 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
+        if (!_laws.IsDefault)
+            sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

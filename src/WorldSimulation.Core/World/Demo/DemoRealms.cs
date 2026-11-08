@@ -226,7 +226,7 @@ public static class DemoRealms
     /// 事件編號從 <paramref name="nextEventId"/> 起。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Advance(int week, TimeSpan worldTime, Fold fold, DemoRealmContext ctx,
-        IReadOnlyDictionary<int, int> natural, RngRegistry rng, long nextEventId)
+        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId)
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(ctx);
@@ -339,7 +339,7 @@ public static class DemoRealms
                 continue;
             var loyalty = LoyaltyValue(id, liege, week, fold, ctx);
             var inFaction = faction.TryGetValue(id, out var member) && member.Liege == liege;
-            if (!inFaction && loyalty < 0 && !fold.Calm(id, week))
+            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && rebellions) // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
             {
                 Add(id, DemoSettlementEventKind.FactionJoined, liege, $"{Name(id)}對{Name(liege)}不滿（忠誠 {loyalty}），加入獨立派系");
                 faction[id] = (liege, week);
@@ -352,7 +352,7 @@ public static class DemoRealms
         }
 
         // ③ 派系行動：首領（人口最多的成員）加入滿半年就請願或下通牒（只看上週以前就加入的成員）。
-        foreach (var group in faction.Where(kv => fold.Faction.ContainsKey(kv.Key)).GroupBy(kv => kv.Value.Liege).OrderBy(g => g.Key))
+        foreach (var group in faction.Where(kv => rebellions && fold.Faction.ContainsKey(kv.Key)).GroupBy(kv => kv.Value.Liege).OrderBy(g => g.Key))
         {
             var liege = group.Key;
             if (!Alive(liege) || busy.Contains(liege) || fold.Struggles.Values.Any(x => x.LiegeId == liege))
