@@ -103,4 +103,41 @@ public sealed class DemoTerritoryTests
                 Assert.Single(tree, line => line.TrimStart('　', '└', ' ').StartsWith(DemoSettlementHistory.TitledName(m, Tier(m.Id)) + "（", StringComparison.Ordinal));
         }
     }
+
+    [Theory]
+    [InlineData(1UL)]
+    [InlineData(4UL)]
+    public void FootprintCoversBuildingsWorkplacesAndThePathsPeopleWalk(ulong seed)
+    {
+        var world = World(seed);
+        var map = world.Map;
+        foreach (var s in world.Sites.Settlements.Where(x => !x.IsRuin).Take(4))
+        {
+            var home = new DemoCellRef(s.Column, s.Row);
+            var buildings = DemoTerritory.Footprint(map, world.Sites, s, DemoSettlementTier.Town, null);
+            // 建築：聚落格在第一個，最多 5 格，都是陸地、不跨別的聚落、離聚落不超過建築距離。
+            Assert.Equal(home, buildings[0]);
+            Assert.InRange(buildings.Count, 1, DemoTerritory.TempBuildingCells(DemoSettlementTier.Town));
+            Assert.All(buildings.Skip(1), c =>
+            {
+                Assert.NotEqual(DemoTerrain.Water, map.GetCell(c.Column, c.Row).Terrain);
+                Assert.Null(world.Sites.SettlementAt(c.Column, c.Row));
+                Assert.InRange(DemoHexWorld.Distance(c, home), 1, DemoTerritory.TempBuildingReach);
+            });
+            // 會狩獵時，最近的森林與走過去的路也算；都在工作距離內。
+            var work = new DemoTerritoryWork(world.Land, world.Wildlife.Spells, world.CommittedWeeks, _ => true);
+            var used = DemoTerritory.Footprint(map, world.Sites, s, DemoSettlementTier.Town, work);
+            Assert.Equal(buildings, used.Take(buildings.Count));
+            var forest = map.Within(map.GetCell(s.Column, s.Row), DemoTerritory.TempBuildingReach).Where(c => c.Terrain == DemoTerrain.Forest)
+                .OrderBy(c => DemoHexWorld.Distance(c, map.GetCell(s.Column, s.Row))).ThenBy(c => c.Row).ThenBy(c => c.Column).FirstOrDefault();
+            if (forest is not null)
+                Assert.Contains(new DemoCellRef(forest.Column, forest.Row), used);
+            Assert.All(used, c => Assert.InRange(DemoHexWorld.Distance(c, home), 0, DemoTerritory.TempWorkReach));
+            Assert.Equal(used.Count, used.Distinct().Count());
+        }
+        // 整張地圖：每個聚落格都屬於自己。
+        var map2 = world.Territory();
+        foreach (var s in world.Sites.Settlements.Where(x => !x.IsRuin))
+            Assert.Equal(s.Id, map2.Cells[new DemoCellRef(s.Column, s.Row)].SettlementId);
+    }
 }

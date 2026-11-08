@@ -562,7 +562,7 @@
 | `godot/Scripts/DemoHexMap.Migrants.cs` | 1 | 第 08-16 章遷徙小人：幾人一個小人、最多幾個、步伐速度、動畫重畫間隔（D06-4） |
 | `godot/Scripts/DemoHexMap.Disasters.cs` | 6 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） ；火焰動畫格速、天災音效與火燒循環音量（-16／-26 dB）、同種音效間隔 8 秒、任兩音效間隔 1.5 秒；第 08-18b 章龍捲風走完路徑的週數、刮痕淡去週數、洪水高水位週數；試玩回饋 2026-11-07 之 3 疊層強度分 12 階（D08-18）；試玩回饋 2026-11-08 之 4 天災過程照真實時間播的速度（每週 700 毫秒） |
 | `godot/Scripts/TerrainSurface.cs` | 7 | 第 08-18b 章方格地表：每格半徑 48 圖像素（一格 6×6 方格、每方格 16）、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
-| `godot/Scripts/DemoHexMap.Layout.cs` | 3 | 第 08-17 章聚落版面：廣場邊長、道路長度；第 08-18b 章支路間距與機率、建地門檻（D08-18） |
+| `godot/Scripts/DemoHexMap.Layout.cs` | 4 | 第 08-17 章聚落版面：廣場邊長、道路長度；第 08-18b 章支路間距與機率、建地門檻（D08-18）；試玩回饋 2026-11-08 第三次 建築高出地塊的方格數（屋地往上多鋪） |
 | `godot/Scripts/DemoHexMap.Walkers.cs` | 1 | 第 08-18b 章近景小人：每幾人一個、上限、門檻、一趟秒數（D08-18） |
 | `godot/Scripts/DemoHexMap.Creatures.cs` | 2 | 第 08-18c 章近景動物：棲地大小、成群門檻、門檻半徑、遊走與巡獵週期（D08-18）；試玩回饋 2026-11-08 之 2 怪物巡遊一趟的秒數、每幾隻畫一隻與上限 |
 | `godot/Scripts/ObserverRoot.SimThread.cs` | 1 | 第 08-18c 章背景推進一批最多 250 毫秒（D08-18） |
@@ -587,7 +587,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
-| `src/WorldSimulation.Core/World/Demo/DemoTerritory.cs` | 2 | 第 08-19 章勢力範圍半徑：營地 1、村莊 2、城鎮 4、城市 6、首都 8 格（D08-19） |
+| `src/WorldSimulation.Core/World/Demo/DemoTerritory.cs` | 3 | 第 08-19 章勢力範圍半徑：營地 1、村莊 2、城鎮 4、城市 6、首都 8 格（D08-19）；第 08-19a 章建築佔幾格、建築與工作地的最遠距離 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs` | 12 | D7；第 06-1 章海洋與河流、淺灘；第 07-1 章 c 節地圖尺寸；第 06-2 章陸地平滑輪數與每 12 欄一條河（D06-2）；第 06-3 章丘陵帶與礦脈 |
 | `src/WorldSimulation.Core/World/Demo/DemoRouteNetwork.cs` | 4 | 第 06 章 a 節 TEMP 路線成本與單格尺度（config/demo/map-routes-temp.json：野地 3、道路 1、橋 1、渡口 4、河流／水路 2、每格 10 公里）；第 08-18a 章斜角成本 1.5 倍（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |
