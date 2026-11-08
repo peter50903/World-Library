@@ -535,6 +535,34 @@ public partial class ObserverRoot
         _ => ""
     };
 
+    /// <summary>
+    /// 第 08-18b 章第 5 節介面第二批：「人口」頁——上面是排行，下面是人口金字塔（由上到下是年老到年輕；
+    /// 中間是年齡段，左邊藍色是男、右邊紅色是女，長度依最多的那一段等比例）。
+    /// </summary>
+    private Control PyramidView(DemoDetailTab tab)
+    {
+        var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var line in tab.Lines.TakeWhile(l => l.Length > 0))
+            column.AddChild(new Label { Text = line, AutowrapMode = TextServer.AutowrapMode.WordSmart });
+        column.AddChild(new Label { Text = "人口金字塔（男｜女）" });
+        var max = Math.Max(1L, tab.Pyramid.Max(b => Math.Max(b.Male, b.Female)));
+        const float barWidth = 110f;
+        foreach (var band in tab.Pyramid.Reverse())
+        {
+            var row = new HBoxContainer();
+            row.AddThemeConstantOverride("separation", 4);
+            var male = new HBoxContainer { CustomMinimumSize = new Vector2(barWidth, 14), Alignment = BoxContainer.AlignmentMode.End };
+            male.AddChild(new ColorRect { Color = new Color(0.30f, 0.50f, 0.80f), CustomMinimumSize = new Vector2(barWidth * band.Male / max, 12), TooltipText = $"男 {band.Male}" });
+            row.AddChild(male);
+            var label = new Label { Text = band.Label, CustomMinimumSize = new Vector2(78, 0), HorizontalAlignment = HorizontalAlignment.Center };
+            label.AddThemeFontSizeOverride("font_size", 12);
+            row.AddChild(label);
+            row.AddChild(new ColorRect { Color = new Color(0.82f, 0.36f, 0.36f), CustomMinimumSize = new Vector2(barWidth * band.Female / max, 12), TooltipText = $"女 {band.Female}" });
+            column.AddChild(row);
+        }
+        return column;
+    }
+
     /// <summary>切到標題相符的分頁（沒有就不動）。</summary>
     private void SelectDetailTab(string title)
     {
@@ -559,6 +587,8 @@ public partial class ObserverRoot
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             if (tab.Badges.Count > 0)
                 scroll.AddChild(TechBadgeGrid(tab)); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
+            else if (tab.Pyramid.Any(b => b.Total > 0))
+                scroll.AddChild(PyramidView(tab)); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
             else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
                 scroll.AddChild(peopleList); // 第 08-16 章：代表人物有人像
             else if ((tab.Emblem is not null || tab.FaithSymbol is not null || tab.CultureId > 0) && HeraldryHeader(tab) is { } header)
