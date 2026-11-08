@@ -175,20 +175,20 @@ public partial class YearChart : Control
 
         // 圖例。第 08-18i 章（GPT 試玩回饋 13：圖例文字重疊）：放不下就換行，圖表往下讓出空間。
         var x = TempLeft;
-        var y = 8f;
+        var legendY = 8f;
         foreach (var bar in series.Bars)
         {
             var w = 24 + font.GetStringSize(bar.Label, HorizontalAlignment.Left, -1, fontSize).X;
             if (x + w > Size.X - TempRight && x > TempLeft)
             {
                 x = TempLeft;
-                y += 18f;
+                legendY += 18f;
             }
-            DrawRect(new Rect2(x, y, 12, 12), bar.Color);
-            DrawString(font, new Vector2(x + 16, y + 11), bar.Label, HorizontalAlignment.Left, -1, fontSize, ink);
+            DrawRect(new Rect2(x, legendY, 12, 12), bar.Color);
+            DrawString(font, new Vector2(x + 16, legendY + 11), bar.Label, HorizontalAlignment.Left, -1, fontSize, ink);
             x += w;
         }
-        _top = TempTop + (y - 8f);
+        _top = TempTop + (legendY - 8f);
         var plot = new Rect2(TempLeft, _top, Math.Max(1f, Size.X - TempLeft - TempRight), Math.Max(1f, Size.Y - _top - TempBottom));
 
         DrawLine(plot.Position + new Vector2(0, plot.Size.Y), plot.End, ink, 1.5f);
