@@ -291,6 +291,7 @@ public partial class DemoHexMap : Control
     public override void _Draw()
     {
         _actorHits.Clear(); // 試玩回饋 2026-11-08 第二次之 1：這一幀畫了哪些角色，由各畫法重新登記
+        _plateHits.Clear(); // 第 08-18i 章：名牌的點選範圍
         if (World is null)
         {
             _surface?.Hide();
@@ -844,6 +845,14 @@ public partial class DemoHexMap : Control
                 QueueRedraw();
                 AcceptEvent();
             }
+            // 第 08-18i 章：滑鼠移到名牌上時整條加亮（看得出可以點）。
+            var plate = PlateUnder(motion.Position);
+            if (plate != _hoverPlate)
+            {
+                _hoverPlate = plate;
+                MouseDefaultCursorShape = plate is null ? CursorShape.Arrow : CursorShape.PointingHand;
+                QueueRedraw();
+            }
             return;
         }
 
@@ -912,6 +921,8 @@ public partial class DemoHexMap : Control
             name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
         // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
         var status = DisasterStatus(cell.Column, cell.Row);
+        if (BattleTip(cell.Column, cell.Row) is { Length: > 0 } battle)
+            name = battle + "\n" + name; // 第 08-18i 章：戰鬥寫在提示第一行
         BuildTipRows(cell, name, status); // 第 08-18b 章第 5 節：圖示＋數字的提示
         if (status.Length > 0)
             name += "\n" + status;

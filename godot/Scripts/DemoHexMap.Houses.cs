@@ -147,6 +147,20 @@ public partial class DemoHexMap
     private const float TempPlateEmblem = 16f;
 
     /// <summary>聚落名牌：紋章、名字、人口，畫在聚落上方，大小固定（WorldBox 式）。</summary>
+    /// <summary>第 08-18i 章（GPT 試玩回饋 01：點名牌卻選到底下的草原）：這一幀畫出的名牌（範圍、聚落），點選時最先算。</summary>
+    private readonly List<(Rect2 Box, int SiteId)> _plateHits = new();
+
+    /// <summary>滑鼠所在的名牌（最後畫的在最上面）；沒有回傳 null。</summary>
+    private int? PlateUnder(Vector2 position)
+    {
+        for (var i = _plateHits.Count - 1; i >= 0; i--)
+            if (_plateHits[i].Box.HasPoint(position))
+                return _plateHits[i].SiteId;
+        return null;
+    }
+
+    private int? _hoverPlate;
+
     /// <summary>試玩回饋 2026-11-07 之 4：<paramref name="realmsOnly"/>＝遠看時只標各勢力最上層的聚落（人數是整個勢力的人口），
     /// 近看時每個聚落標自己的名字（不再寫「屬某某鎮」，隸屬看詳情）。</summary>
     private void DrawNameplates(Vector2 start, float radius, DemoSettlementTier minimum = DemoSettlementTier.Camp, bool realmsOnly = false)
@@ -188,6 +202,9 @@ public partial class DemoHexMap
             var anchor = center - new Vector2(0f, radius * (scale.Item2 >= DemoSettlementTier.City ? 1.25f : 1.05f) + height);
             var rect = new Rect2(anchor.X - width / 2f, anchor.Y, width, height);
             var culture = CultureOf.TryGetValue(site.Id, out var cultureId) ? CultureColor(cultureId) : new Color(0.5f, 0.5f, 0.5f);
+            _plateHits.Add((rect.Grow(2f), site.Id)); // 第 08-18i 章：整條名牌都可以點（固定開聚落）
+            if (_hoverPlate == site.Id)
+                DrawRect(rect.Grow(2f), new Color(1f, 0.92f, 0.55f, 0.95f), false, 2f);
             if (plate is not null)
             {
                 DrawStyleBox(plate, rect);

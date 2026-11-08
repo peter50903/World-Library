@@ -14,6 +14,9 @@ public sealed record DemoSecession(int VassalId, int LiegeId, bool Armed, int St
     /// <summary>戰爭中叛軍（首領）、上級的累計死亡（由交戰事件推得）。</summary>
     public long RebelLosses { get; init; }
     public long LoyalLosses { get; init; }
+
+    /// <summary>第 08-18i 章：起因（開始鬥爭那筆事件的原因文字）。</summary>
+    public string Cause { get; init; } = "";
 }
 
 /// <summary>忠誠度的一項因素（給詳情頁列明細）。</summary>
@@ -107,7 +110,10 @@ public static class DemoRealms
                     break;
                 case DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful:
                     var members = _faction.Where(kv => kv.Value.Liege == (int)e.Count).Select(kv => kv.Key).Append(id).Distinct().OrderBy(x => x).ToList();
-                    _struggles[id] = new DemoSecession(id, (int)e.Count, e.Kind == DemoSettlementEventKind.SecessionArmed, e.Week, members);
+                    _struggles[id] = new DemoSecession(id, (int)e.Count, e.Kind == DemoSettlementEventKind.SecessionArmed, e.Week, members)
+                    {
+                        Cause = DemoPlayerDetail.Clean(e.Cause)
+                    };
                     break;
                 case DemoSettlementEventKind.SecessionBattle:
                     foreach (var (leader, s) in _struggles.Where(kv => kv.Value.Armed).OrderBy(kv => kv.Key).ToList())
@@ -384,9 +390,11 @@ public static class DemoRealms
         ArgumentNullException.ThrowIfNull(sites);
         string Name(int id) => sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
         var who = struggle.Members.Count <= 1 ? Name(struggle.VassalId) : $"{Name(struggle.VassalId)}等 {struggle.Members.Count} 個聚落";
+        // 第 08-18i 章（GPT 試玩回饋 09：先知道「在爭什麼」）：雙方與種類 → 起因 → 進展 → 損失。
+        var cause = struggle.Cause.Length > 0 ? $"｜起因：{struggle.Cause}" : "";
         return struggle.Armed
-            ? $"⚔ {who}正與{Name(struggle.LiegeId)}打獨立戰爭（第 {Math.Max(0, week - struggle.StartWeek)} 週；叛軍死 {struggle.RebelLosses}、上級死 {struggle.LoyalLosses}）"
-            : $"✊ {who}正向{Name(struggle.LiegeId)}請願抗議（約 {Math.Max(0, struggle.EndWeek - week)} 週後有結果）";
+            ? $"⚔ {who}對{Name(struggle.LiegeId)}：獨立戰爭{cause}｜第 {Math.Max(0, week - struggle.StartWeek)} 週｜叛軍死 {struggle.RebelLosses}、上級死 {struggle.LoyalLosses}"
+            : $"✊ {who}對{Name(struggle.LiegeId)}：請願抗議{cause}｜約 {Math.Max(0, struggle.EndWeek - week)} 週後有結果";
     }
 
     /// <summary>聚落詳情的忠誠度明細與派系狀態（沒有上級回傳空）。</summary>

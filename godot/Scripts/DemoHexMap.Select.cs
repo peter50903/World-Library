@@ -67,6 +67,13 @@ public partial class DemoHexMap
     {
         var (start, radius) = ViewLayout();
         var at = new DemoCellRef(hit.Column, hit.Row);
+        // ⓪ 第 08-18i 章：名牌（整條都算）固定開聚落。
+        if (PlateUnder(position) is { } plateSite && SiteCell(plateSite) is { } plated)
+        {
+            MarkCell(plated);
+            CellSelected?.Invoke(plated);
+            return;
+        }
         // ① 角色
         if (ActorUnder(position) is { } actor)
         {

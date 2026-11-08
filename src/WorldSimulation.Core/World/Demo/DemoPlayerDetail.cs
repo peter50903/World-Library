@@ -159,6 +159,51 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         return new DemoPlayerDetail(lines[0], new[] { new DemoDetailTab("地點", lines) }, null);
     }
 
+    /// <summary>
+    /// 第 08-18i 章：聚落現況的頁首四塊（RimWorld 的狀態列、十字軍之王的主要數值）：
+    /// 人口與近一年的增減（出生、死亡、遷入遷出）、糧食、隸屬、危機（挨餓、戰爭與請願、獨立派系、怪物、近一年的天災；沒有寫「無」）。
+    /// </summary>
+    public static IReadOnlyList<string> Glance(DemoObserverWorld world, DemoSettlement settlement)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(settlement);
+        var id = settlement.Id;
+        var recent = world.WeekReports().Where(w => w.Week > world.CommittedWeeks - 52).ToList();
+        var ledgers = recent.SelectMany(w => w.Settlements).Where(l => l.SettlementId == id).ToList();
+        var births = ledgers.Sum(l => l.Births);
+        var deaths = ledgers.Sum(l => l.Deaths + l.DisasterDeaths);
+        var moved = ledgers.Sum(l => l.Immigrants - l.Emigrants);
+        var net = births - deaths + moved;
+        string Signed(long v) => v > 0 ? $"+{v}" : v.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var lines = new List<string>
+        {
+            $"【人口】{world.SettlementPopulation(id)}（近一年 {Signed(net)}：出生 {births}、死亡 {deaths}、遷徙 {Signed(moved)}）",
+            world.IsStarving(id) ? $"【糧食】短缺，有人挨餓（存糧 {world.SettlementFood(id)}）" : $"【糧食】充足（存糧 {world.SettlementFood(id)}）"
+        };
+        var territory = world.Territory();
+        string Name(int x) => world.Sites.Settlements.FirstOrDefault(s => s.Id == x) is { } s ? DemoSettlementHistory.TitledName(s, world.ChronicleOf(x).Tier) : $"#{x}";
+        var vassals = territory.VassalsOf(id).Count;
+        lines.Add(territory.LiegeOf(id) is { } liege
+            ? $"【隸屬】{Name(liege)}" + (vassals > 0 ? $"（轄下 {vassals} 個聚落）" : "")
+            : vassals > 0 ? $"【隸屬】獨立，統領 {vassals} 個聚落" : "【隸屬】獨立");
+        var crises = new List<string>();
+        if (world.IsStarving(id))
+            crises.Add("挨餓");
+        if (world.Realms().StruggleOf(id) is { } struggle)
+            crises.Add(struggle.Armed ? "獨立戰爭" : "請願抗議");
+        else if (world.Realms().Faction.ContainsKey(id))
+            crises.Add("加入了獨立派系");
+        var here = new DemoCellRef(settlement.Column, settlement.Row);
+        if (world.MonsterNests(world.CommittedWeeks).Any(n => n.Cells.Count > 0 && n.Cells.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempRaidReach))
+            crises.Add("緊鄰怪物地盤");
+        var disasters = recent.SelectMany(w => w.Events).Where(e => e.SettlementId == id && DemoDisasters.IsDisaster(e.Kind))
+            .Select(e => DemoDisasters.Name(e.Kind)).Distinct().ToList();
+        if (disasters.Count > 0)
+            crises.Add("近一年遭遇" + string.Join("、", disasters));
+        lines.Add(crises.Count == 0 ? "【危機】無" : "【危機】" + string.Join("、", crises));
+        return lines;
+    }
+
     private static string NameOf(DemoObserverWorld world, int settlementId)
         => world.Sites.Settlements.FirstOrDefault(x => x.Id == settlementId)?.Name ?? "某聚落";
 
@@ -180,6 +225,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         };
         if (!settlement.IsRuin)
         {
+            // 第 08-18i 章（GPT 試玩回饋 03：先回答「過得好不好」）：頁首四塊——人口與一年增減、糧食、隸屬、危機；其餘是細節。
+            now.InsertRange(1, Glance(world, settlement));
+            now.Add("── 詳細 ──");
             // 第 08-19 章：勢力（獨立或隸屬於誰、轄下有哪些聚落）。
             DemoSettlementTier TierOf(int id) => world.ChronicleOf(id).Tier;
             now.Add(DemoTerritory.Describe(world.Territory(), world.Sites, settlement.Id, TierOf));
@@ -211,17 +259,11 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         if (shares.Count > 0)
         {
             now.Add("文化：" + string.Join("、", shares.Select(s => $"{world.Culture.Culture(s.CultureId)?.Name ?? "？"} {(s.Permille + 5) / 10}%")));
-            if (world.Culture.Culture(shares[0].CultureId) is { } main)
-                now.Add($"{main.Name}的傳統：" + string.Join("、", main.Traits.Select(DemoCultures.TraitName)));
+            // 第 08-18i 章：完整的傳統、信條與教義收到文化頁、信仰頁（現況上方有「查看文化」「查看信仰」連結）。
             // 第 08-8 章 B3：信仰比例與主要信仰的信條、教義。
             var faith = world.Culture.Faith;
             now.Add("信仰：" + string.Join("、", faith.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId)
                 .Select(s => $"{(s.CultureId == 0 ? "無信仰" : faith.Faith(s.CultureId)?.Name ?? "？")} {(s.Permille + 5) / 10}%")));
-            if (faith.MainFaithOf(settlement.Id) is { } mf && faith.Faith(mf) is { } f)
-            {
-                now.Add($"{f.Name}的信條：" + string.Join("、", f.Tenets.Select(DemoFaiths.EntryName)));
-                now.Add($"{f.Name}的教義：" + string.Join("、", f.Doctrines.Select(DemoFaiths.EntryName)));
-            }
         }
         else
         {
