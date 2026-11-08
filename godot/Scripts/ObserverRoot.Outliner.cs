@@ -153,7 +153,11 @@ public partial class ObserverRoot
             if (ruin)
                 line.Modulate = new Color(1, 1, 1, 0.6f);
             var id = entry.Id;
-            row.Pressed += () => FocusSettlement(id);
+            row.Pressed += () =>
+            {
+                FocusSettlement(id);
+                CollapseRightForDetail(); // 第 08-18i 章（GPT 試玩回饋 02）
+            };
             row.Pressed += PlayClick;
             line.AddChild(row);
             _outlinerRows.AddChild(line);
@@ -192,9 +196,38 @@ public partial class ObserverRoot
         OnCellSelected(cell);
     }
 
+    /// <summary>
+    /// 第 08-18i 章（GPT 試玩回饋 02：左右兩個大面板把地圖夾在中間）：從右側清單打開詳情時，右側面板先收起來，
+    /// 關掉詳情時再打開（中途自己按過右側分頁就不再自動恢復）。
+    /// </summary>
+    private void CollapseRightForDetail()
+    {
+        if (_rightView == RightView.None || !_detailOpen)
+            return;
+        _restoreRight = _rightView;
+        _rightView = RightView.None;
+        ApplyHudLayout();
+    }
+
+    private RightView? _restoreRight;
+
+    /// <summary>關掉詳情時恢復被自動收起的右側面板。</summary>
+    private void RestoreRightAfterDetail()
+    {
+        if (_restoreRight is not { } view || _rightView != RightView.None)
+        {
+            _restoreRight = null;
+            return;
+        }
+        _restoreRight = null;
+        _rightView = view;
+        ApplyHudLayout();
+    }
+
     /// <summary>頂部「聚落清單」「世界控制台」：按另一個就切換，按目前這個就收合。</summary>
     private void SetRightView(RightView view)
     {
+        _restoreRight = null;
         _rightView = _rightView == view ? RightView.None : view;
         ApplyHudLayout();
         RefreshChronicle(); // 第 08-10b 章：切到編年史時立刻依目前世界重算。

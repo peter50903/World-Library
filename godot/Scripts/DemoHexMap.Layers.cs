@@ -32,7 +32,7 @@ public partial class DemoHexMap
     private (DemoHexWorld? World, Mode Mode, int Week, DemoWorldSites? Sites, object? Lineage, object? Land, object? Food, object? Culture, object? Faith, object? Knowledge, object? Territory) _flatKey;
     private ImageTexture? _strategicTexture;
     private Color[]? _strategicColors;
-    private (DemoHexWorld? World, Mode Mode) _strategicStructure;
+    private (DemoHexWorld? World, Mode Mode, int? Focus) _strategicStructure;
     private ulong _strategicBuiltAt;
 
     /// <summary>第 08-15 章：文化、信仰的名稱（色塊層的滑鼠提示用；ObserverRoot 刷新時注入）。</summary>
@@ -74,7 +74,7 @@ public partial class DemoHexMap
     private Color[] FlatColors()
     {
         var key = (World, _mode, CurrentWeek, Sites, (object?)Lineage, (object?)Land, (object?)FoodStatuses, (object?)CultureOf, (object?)FaithOf, (object?)KnowledgeCounts, (object?)Territory);
-        if (_flatColors is not null && key.Equals(_flatKey))
+        if (_flatColors is not null && key.Equals(_flatKey) && _flatFocus == FocusGroup)
             return _flatColors;
         var cells = World!.Cells;
         var colors = new Color[cells.Count];
@@ -82,10 +82,51 @@ public partial class DemoHexMap
             colors[i] = FlatColor(cells[i]);
         _flatColors = colors;
         _flatKey = key;
+        _flatFocus = FocusGroup;
         return colors;
     }
 
+    /// <summary>
+    /// 第 08-18i 章（GPT 試玩回饋 06：點圖例某一項時其他淡化）：目前模式下要突顯的那一群（勢力＝最上層聚落、家系＝源頭聚落、文化、信仰的編號；null＝不突顯）。
+    /// </summary>
+    public int? FocusGroup
+    {
+        get => _focusGroup;
+        set
+        {
+            if (_focusGroup == value)
+                return;
+            _focusGroup = value;
+            QueueRedraw();
+        }
+    }
+
+    private int? _focusGroup;
+    private int? _flatFocus;
+
+    /// <summary>這一格在目前模式下屬於哪一群（沒有＝null）。</summary>
+    private int? GroupOf(DemoCellRef at)
+    {
+        var owned = Lineage.TryGetValue(at, out var owner);
+        return _mode switch
+        {
+            Mode.Realm => Territory.Cells.TryGetValue(at, out var held) ? held.RealmId : null,
+            Mode.Lineage when owned => owner!.LineageRootId,
+            Mode.Culture when owned && CultureOf.TryGetValue(owner!.SettlementId, out var c) => c,
+            Mode.Faith when owned && FaithOf.TryGetValue(owner!.SettlementId, out var f) => f,
+            _ => null
+        };
+    }
+
     private Color FlatColor(DemoHexCell cell)
+    {
+        var color = FlatColorCore(cell);
+        if (FocusGroup is { } focus && GroupOf(new DemoCellRef(cell.Column, cell.Row)) != focus)
+            color = color.Darkened(0.55f).Lerp(new Color(0.35f, 0.35f, 0.35f), 0.4f); // 其他群淡化
+        return color;
+    }
+
+    private Color FlatColorCore(DemoHexCell cell)
     {
         var at = new DemoCellRef(cell.Column, cell.Row);
         var land = Land.StateOf(at);
@@ -131,7 +172,7 @@ public partial class DemoHexMap
     {
         var colors = FlatColors();
         var now = Time.GetTicksMsec();
-        var structure = (World, _mode);
+        var structure = (World, _mode, FocusGroup); // 第 08-18i 章：突顯的群換了立刻重畫
         // 換世界或模式立刻重畫；同一世界的每週變化最多每 TempStrategicRebuildMs 重畫一次（快轉時不每幀重畫）。
         if (_strategicTexture is not null && ReferenceEquals(_strategicColors, colors))
             return _strategicTexture;

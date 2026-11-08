@@ -18,6 +18,8 @@ public partial class ObserverRoot
     private YearChart _yearChart = null!;
     private OptionButton _chartSeries = null!;
     private Label _chartYearInfo = null!;
+    private Label _chartYearSummary = null!;
+    private Button _chartYearToggle = null!;
     private Button _chartShowEvents = null!;
     private IReadOnlyList<DemoYearSummary> _chartRows = Array.Empty<DemoYearSummary>();
     private DemoObserverWorld? _chartWorld;
@@ -54,11 +56,28 @@ public partial class ObserverRoot
         _yearChart.YearSelected += OnChartYearSelected;
         frame.AddChild(_yearChart);
 
-        _chartYearInfo = new Label
+        // 第 08-18i 章（GPT 試玩回饋 13：點年份後是一大段統計）：先只寫人口增減、出生、死亡、遷徙；完整年報收在「明細」裡。
+        _chartYearSummary = new Label
         {
             Text = "點圖上的某一年查看年報。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
+        };
+        _chartYearSummary.AddThemeFontSizeOverride("font_size", 16);
+        page.AddChild(_chartYearSummary);
+        _chartYearToggle = new Button { Text = "明細 ▸", Flat = true, Alignment = HorizontalAlignment.Left, Disabled = true };
+        _chartYearToggle.Pressed += () =>
+        {
+            _chartYearInfo.Visible = !_chartYearInfo.Visible;
+            _chartYearToggle.Text = _chartYearInfo.Visible ? "明細 ▾" : "明細 ▸";
+        };
+        page.AddChild(_chartYearToggle);
+        _chartYearInfo = new Label
+        {
+            Text = "點圖上的某一年查看年報。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            Visible = false
         };
         page.AddChild(_chartYearInfo);
         _chartShowEvents = new Button { Text = "看這一年的事件", Disabled = true, TooltipText = "世界紀錄只列出這一年的事件；點事件看原因並定位地圖" };
@@ -77,6 +96,7 @@ public partial class ObserverRoot
             _chartWorld = _world;
             _chartShowEvents.Disabled = true;
             _chartYearInfo.Text = "點圖上的某一年查看年報。";
+            _chartYearSummary.Text = "點圖上的某一年查看年報。";
         }
 
         _chartRows = _calendar is null
@@ -110,6 +130,10 @@ public partial class ObserverRoot
             return;
         var progress = DemoYearLedger.IsComplete(row, _calendar.DaysPerYear) ? string.Empty : "（進行中）";
         _chartYearInfo.Text = $"{row.Describe()}{progress}｜年末 {_calendar.Format(row.LastDay)}";
+        var net = row.PopulationClosing - row.PopulationOpening;
+        _chartYearSummary.Text = $"第 {row.Year} 年{progress}：人口 {row.PopulationClosing}（{(net >= 0 ? "+" : "")}{net}）｜出生 {row.Births}｜死亡 {row.Deaths}"
+            + $"｜遷出 {row.Emigrants}、遷入 {row.Immigrants}";
+        _chartYearToggle.Disabled = false;
         _chartShowEvents.Disabled = false;
     }
 

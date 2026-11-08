@@ -976,8 +976,40 @@ public partial class DemoHexMap : Control
     /// </summary>
     public void FocusCell(DemoHexCell cell)
     {
+        RememberView();
         _pan += Size * 0.5f - CellCenter(cell);
         Highlight = (cell.Column, cell.Row);
+        QueueRedraw();
+    }
+
+    /// <summary>第 08-18i 章（GPT 試玩回饋 12：縮到最小時沒有方向感）：定位前的鏡頭（「回上一個位置」用；沒有＝null）。</summary>
+    private (float Zoom, Vector2 Pan)? _previousView;
+
+    public bool HasPreviousView => _previousView is not null;
+
+    private void RememberView() => _previousView = (_zoom, _pan);
+
+    /// <summary>一鍵看全世界：整張地圖置中放進畫面（第 08-13 章的基準大小）。</summary>
+    public void ShowWholeWorld()
+    {
+        RememberView();
+        // 大地圖的基準格可能比放得下的還大（基準至少 4 像素）：縮到真的整張放得進畫面。
+        var (_, baseRadius) = Layout();
+        var columns = World?.Columns ?? DemoHexWorld.SmallColumns;
+        var rows = World?.Rows ?? DemoHexWorld.SmallRows;
+        var fit = Mathf.Min((Size.X - 56f) / (2f * columns), (Size.Y - 56f) / (2f * rows));
+        _zoom = Mathf.Min(1f, Mathf.Max(0.05f, fit / baseRadius));
+        _pan = Vector2.Zero;
+        QueueRedraw();
+    }
+
+    /// <summary>回到定位或看全世界之前的鏡頭。</summary>
+    public void ReturnToPreviousView()
+    {
+        if (_previousView is not { } view)
+            return;
+        _previousView = (_zoom, _pan);
+        (_zoom, _pan) = view;
         QueueRedraw();
     }
 
