@@ -460,6 +460,7 @@ public partial class ObserverRoot : Control
         BuildDetailPanel();
         BuildTimeControls();
         BuildToolbar(scenarioBox, saveBox, sidebarScroll);
+        BuildLetters(); // 第 08-18i 章：重大事件通知
         BuildAudio();
         _hud.Resized += ApplyHudLayout;
         ApplyHudLayout();
@@ -996,6 +997,8 @@ public partial class ObserverRoot : Control
         world.CompactHistory = true; // 第 08-14 章第 3 節：遊戲中舊週報壓成年帳（與存檔相同）
         _world = world;
         ResetMajorEventAlert(); // #95: no stale alert from the previous world.
+        ResetLetters(); // 第 08-18i 章
+        ResetTracked();
         _pendingScenario = null;
         _pendingRecipe = null;
         _confirmRow.Visible = false;
@@ -1494,6 +1497,9 @@ public partial class ObserverRoot : Control
         var hunters = _world.Sites.Settlements.Where(s => !s.IsRuin && _world.Knowledge.Knows(s.Id, hunting)).Select(s => s.Id).ToHashSet();
         if (!hunters.SetEquals(_hexMap.Hunters))
             _hexMap.Hunters = hunters; // 第 08-17 章：獵人指示物（只在名單改變時換，指示物不必每次重算）
+        RefreshLegend(); // 第 08-18i 章：地圖模式圖例
+        RefreshLetters(); // 第 08-18i 章：重大事件通知
+        RefreshTracked(); // 第 08-18i 章：追蹤清單
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。
@@ -1557,22 +1563,26 @@ public partial class ObserverRoot : Control
             switch (e.Kind)
             {
                 case DemoSettlementEventKind.MonsterRaid:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home))));
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home)), $"怪物襲擊{e.SettlementName}"));
                     break;
                 case DemoSettlementEventKind.MonsterHunt when Gate(home) is { } gate:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate)));
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate), $"{e.SettlementName}出兵討伐地下城"));
                     break;
                 case DemoSettlementEventKind.SecessionBattle:
                     // 上級那一筆：從上級出兵走到叛離的聚落；叛離方那一筆：守在自己的聚落。
                     var asLiege = _struggles.FirstOrDefault(x => x.LiegeId == e.SettlementId && cells.ContainsKey(x.VassalId));
+                    var war = asLiege ?? _struggles.FirstOrDefault(x => x.VassalId == e.SettlementId);
+                    var label = war is null ? "獨立戰爭" : $"{SiteName(war.VassalId)}對{SiteName(war.LiegeId)}：獨立戰爭";
                     marks.Add(asLiege is not null
-                        ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0)
-                        : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0));
+                        ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0, label)
+                        : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0, label));
                     break;
             }
         }
         return marks;
     }
+
+    private string SiteName(int id) => _world.Sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
 
     private int _soundWeek = -1;
 

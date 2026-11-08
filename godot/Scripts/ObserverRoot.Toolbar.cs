@@ -102,15 +102,89 @@ public partial class ObserverRoot
             BbcodeEnabled = true,
             FitContent = true,
             ScrollActive = false,
-            MouseFilter = MouseFilterEnum.Ignore,
+            MouseFilter = MouseFilterEnum.Pass, // 第 08-18i 章：圖例的名稱可以點
             Visible = false
         };
+        _foodLegend.MetaClicked += meta => OpenLegendEntry(meta.AsString());
         var legend = string.Join("  ", new[] { FoodStatus.Ample, FoodStatus.Tight, FoodStatus.Starving, FoodStatus.Unsettled }
             .Select(s => $"[color=#{DemoHexMap.FoodStatusColor(s).ToHtml(false)}]■[/color] {MapFoodStatus.Label(s)}"));
         _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
         _foodLegend.Text = _foodLegendText;
         _hud.AddChild(_foodLegend);
         SetMapMode(DemoHexMap.Mode.Terrain);
+    }
+
+    /// <summary>
+    /// 第 08-18i 章（GPT 試玩回饋 06：看得出色塊不同，卻不知道每個顏色代表誰、也不容易確認目前模式）：
+    /// 每個模式的圖例都以「目前模式」開頭；家系、文化、信仰、勢力列出人口最多的幾個（色塊＋名稱），名稱可以點（開那個文化、信仰、勢力或聚落）。
+    /// </summary>
+    private string LegendFor(DemoHexMap.Mode mode)
+    {
+        string Wrap(string body) => $"[outline_size=4][outline_color=#000000]{body}[/outline_color][/outline_size]";
+        string Swatch(Color c, string name, string meta) => $"[color=#{c.ToHtml(false)}]■[/color] [url={meta}]{name}[/url]";
+        IEnumerable<(int Key, long People)> Top(Func<int, int?> groupOf)
+            => _hexMap.SettlementScale.Select(kv => (Group: groupOf(kv.Key), People: kv.Value.Item1)).Where(x => x.Group is not null && x.People > 0)
+                .GroupBy(x => x.Group!.Value).Select(g => (g.Key, g.Sum(x => x.People))).OrderByDescending(x => x.Item2).ThenBy(x => x.Key).Take(TempLegendEntries);
+        string Name(int siteId) => _world.Sites.Settlements.FirstOrDefault(s => s.Id == siteId) is { } site && _hexMap.SettlementScale.TryGetValue(siteId, out var scale)
+            ? DemoSettlementHistory.TitledName(site, scale.Item2) : $"#{siteId}";
+        IEnumerable<string> entries = mode switch
+        {
+            DemoHexMap.Mode.Culture => Top(id => _hexMap.CultureOf.TryGetValue(id, out var c) ? c : null)
+                .Select(x => Swatch(_hexMap.CultureColor(x.Key), _hexMap.CultureNames.GetValueOrDefault(x.Key, "？"), $"culture:{x.Key}")),
+            DemoHexMap.Mode.Faith => Top(id => _hexMap.FaithOf.TryGetValue(id, out var f) && f > 0 ? f : null)
+                .Select(x => Swatch(_hexMap.FaithColor(x.Key), _hexMap.FaithNames.GetValueOrDefault(x.Key, "？"), $"faith:{x.Key}")),
+            DemoHexMap.Mode.Realm => Top(id => _hexMap.Territory.Realm.ContainsKey(id) ? _hexMap.Territory.RealmOf(id) : null)
+                .Select(x => Swatch(_hexMap.RealmColor(x.Key), Name(x.Key), $"realm:{x.Key}")),
+            DemoHexMap.Mode.Lineage => Top(id => DemoLineageMap.LineageRoot(_world.Sites, id))
+                .Select(x => Swatch(_hexMap.LineageColor(x.Key), Name(x.Key) + "家系", $"site:{x.Key}")),
+            _ => Array.Empty<string>()
+        };
+        var title = mode switch
+        {
+            DemoHexMap.Mode.Food => "糧食模式",
+            DemoHexMap.Mode.Knowledge => "知識模式",
+            DemoHexMap.Mode.Culture => "文化模式（人口最多的文化）",
+            DemoHexMap.Mode.Faith => "信仰模式（人口最多的信仰）",
+            DemoHexMap.Mode.Realm => "勢力模式（人口最多的勢力）",
+            DemoHexMap.Mode.Lineage => "家系模式（源自哪個開局聚落）",
+            _ => "地形模式（點地塊看地形，點聚落或名牌看聚落）"
+        };
+        return mode switch
+        {
+            DemoHexMap.Mode.Food => Wrap($"[b]{title}[/b]　") + _foodLegendText,
+            DemoHexMap.Mode.Knowledge => Wrap($"[b]{title}[/b]　") + KnowledgeLegend(),
+            _ => Wrap($"[b]{title}[/b]　" + string.Join("　", entries))
+        };
+    }
+
+    /// <summary>【TEMP】圖例最多列幾個。</summary>
+    private const int TempLegendEntries = 6;
+
+    private void OpenLegendEntry(string meta)
+    {
+        var parts = meta.Split(':');
+        if (parts.Length != 2 || !int.TryParse(parts[1], out var id))
+            return;
+        switch (parts[0])
+        {
+            case "culture": ShowBeliefDetail(false, id); break;
+            case "faith": ShowBeliefDetail(true, id); break;
+            case "realm": ShowRealmDetail(id); break;
+            case "site" when _world.Sites.Settlements.FirstOrDefault(s => s.Id == id) is { } site:
+                _hexMap.FocusCell(_world.Map.GetCell(site.Column, site.Row));
+                ShowDetailAt(site.Column, site.Row);
+                break;
+        }
+    }
+
+    /// <summary>第 08-18i 章：圖例跟著世界更新（人口排名會變）；只在文字變了才換。</summary>
+    private void RefreshLegend()
+    {
+        if (_foodLegend is null)
+            return;
+        var text = LegendFor(_hexMap.MapMode);
+        if (text != _foodLegend.Text)
+            _foodLegend.Text = text;
     }
 
     private string KnowledgeLegend()
@@ -140,7 +214,7 @@ public partial class ObserverRoot
             _mapRealmButton.SelfModulate = mode == DemoHexMap.Mode.Realm ? Colors.White : new Color(1, 1, 1, 0.5f);
         // 第 08-10a 章 V4：圖例跟著模式換（糧食狀況／知識）。
         if (_foodLegend is not null)
-            _foodLegend.Text = mode == DemoHexMap.Mode.Knowledge ? KnowledgeLegend() : _foodLegendText;
+            _foodLegend.Text = LegendFor(mode);
         if (_foodLegend is not null)
             ApplyHudLayout();
     }
@@ -294,16 +368,23 @@ public partial class ObserverRoot
         });
         foreach (var (key, name, description, on) in _world.Laws.Entries)
         {
-            var box = new CheckBox { Text = name, ButtonPressed = on, FocusMode = FocusModeEnum.None };
+            // 第 08-18i 章（GPT 試玩回饋 14：說明灰得像停用、切換後不確定何時生效）：每條右邊明寫開啟／關閉，切換後同一列寫「下次結算生效」。
+            var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            var box = new CheckBox { Text = name, ButtonPressed = on, FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            box.AddThemeFontSizeOverride("font_size", 16);
+            var state = new Label { Text = on ? "開啟" : "關閉" };
+            state.AddThemeColorOverride("font_color", on ? new Color(0.20f, 0.45f, 0.15f) : new Color(0.60f, 0.12f, 0.08f));
             box.Toggled += pressed =>
             {
                 _world.Laws = _world.Laws.With(key, pressed);
                 PlayUi(pressed ? "ui_toggle_on" : "ui_toggle_off");
+                state.Text = (pressed ? "開啟" : "關閉") + "（下次結算生效）";
+                state.AddThemeColorOverride("font_color", pressed ? new Color(0.20f, 0.45f, 0.15f) : new Color(0.60f, 0.12f, 0.08f));
             };
-            _lawsPage.AddChild(box);
-            var hint = new Label { Text = "　" + description, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            hint.AddThemeColorOverride("font_color", new Color(0.75f, 0.70f, 0.60f));
-            _lawsPage.AddChild(hint);
+            row.AddChild(box);
+            row.AddChild(state);
+            _lawsPage.AddChild(row);
+            _lawsPage.AddChild(new Label { Text = "　" + description, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill });
         }
     }
 
@@ -328,7 +409,7 @@ public partial class ObserverRoot
             return;
         Place(_toolbarPanel, frame.Toolbar, true);
         // 圖例放在功能列正上方（糧食模式才顯示）。
-        var showLegend = _hexMap.MapMode is DemoHexMap.Mode.Food or DemoHexMap.Mode.Knowledge;
+        var showLegend = true; // 第 08-18i 章：每個模式都有圖例（至少寫出目前是哪個模式）
         Place(_foodLegend, new HudRect(frame.Toolbar.X, Math.Max(0, frame.Toolbar.Y - 32), Math.Max(frame.Toolbar.Width, 1), 28), showLegend);
         SizeModal();
     }

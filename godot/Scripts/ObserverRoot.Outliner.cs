@@ -48,6 +48,7 @@ public partial class ObserverRoot
         };
         column.AddChild(_overviewText);
         column.AddChild(new HSeparator());
+        BuildTrackedSection(column); // 第 08-18i 章：追蹤清單
         // 不放會自動換行的說明文字：換行標籤在面板寬度定案前會撐高最小高度，讓面板超出視窗。
         _outlinerTitle = new Label
         {

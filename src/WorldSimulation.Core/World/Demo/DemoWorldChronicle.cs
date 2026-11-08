@@ -119,10 +119,7 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Ruin, e.EventId,
                         Name(e.SettlementId), T(DemoStories.WhyRuined(e, events) is { } after ? $" 在{after}人口歸零，成為遺跡" : " 人口歸零，成為遺跡"));
                     break;
-                case DemoSettlementEventKind.FarmlandCleared:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Farmland, e.EventId,
-                        Name(e.SettlementId), T(" 開墾一塊農田"));
-                    break;
+                // 第 08-18i 章（GPT 試玩回饋 08：日常紀錄把重大事件夾住）：開墾農田改在下面每年每聚落合計成一條一般事件。
                 case DemoSettlementEventKind.FarmlandAbandoned:
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Farmland, e.EventId,
                         Name(e.SettlementId), T(" 附近的一塊農田無人耕作，開始荒廢"));
@@ -204,6 +201,10 @@ public static class DemoWorldChronicle
                     break;
             }
         }
+
+        // 第 08-18i 章：每年每聚落開墾的農田合計成一條（一般）。
+        foreach (var g in events.Where(e => e.Kind == DemoSettlementEventKind.FarmlandCleared).GroupBy(e => (Year: YearOf(e.Week), e.SettlementId)))
+            Add(g.Max(e => e.Week), DemoChronicleLevel.Normal, DemoChronicleCategory.Farmland, 0, Name(g.Key.SettlementId), T($" 本年開墾 {g.Count()} 塊農田"));
 
         // 每年每聚落合計：餓死（重大）、缺糧週數、外移與遷入（一般）。
         foreach (var g in events.Where(e => e.Kind is DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.MigrantStarvationDeath

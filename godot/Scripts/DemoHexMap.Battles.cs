@@ -4,7 +4,7 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>地圖上的一場戰鬥（事件編號、種類、週、交戰地點、出發地、死亡人數）。</summary>
-public sealed record BattleMark(long EventId, DemoSettlementEventKind Kind, int Week, DemoCellRef Place, DemoCellRef? From, long Deaths, int Seed);
+public sealed record BattleMark(long EventId, DemoSettlementEventKind Kind, int Week, DemoCellRef Place, DemoCellRef? From, long Deaths, int Seed, string Label = "");
 
 /// <summary>
 /// 第 08-18h 章（試玩回饋 2026-11-08 第四次之 4：外在的戰鬥事件應該要顯現出來）：怪物襲擊、出兵討伐、脫離抗爭的交戰畫在地圖上。
@@ -161,6 +161,11 @@ public partial class DemoHexMap
             }
         }
     }
+
+    /// <summary>第 08-18i 章：滑鼠所在格最近的戰鬥說明（提示框第一行；沒有回傳空字串）。</summary>
+    public string BattleTip(int column, int row)
+        => _battleMarks.Where(m => m.Week >= CurrentWeek - 1 && m.Label.Length > 0 && Math.Max(Math.Abs(m.Place.Column - column), Math.Abs(m.Place.Row - row)) <= 0)
+            .OrderByDescending(m => m.EventId).Select(m => $"⚔ {m.Label}（死 {m.Deaths} 人）").FirstOrDefault() ?? "";
 
     /// <summary>⚔ 標記（深色底圓＋字）；怪物相關是紅色，脫離抗爭是金色。</summary>
     private void DrawSwords(Font font, Vector2 center, int size, DemoSettlementEventKind kind, float alpha)

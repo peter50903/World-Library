@@ -358,12 +358,19 @@ public partial class ObserverRoot
         var close = new Button { Text = "✕", TooltipText = "關閉（Esc）" };
         close.Pressed += HideDetail;
         header.AddChild(close);
+        BuildTrackButton(header); // 第 08-18i 章：追蹤
         // 第 08-11 章：分頁籤（現況｜代表人物｜技術｜研究｜歷史；開發資訊開啟時多一頁「除錯」）。
         // 試玩回饋 2026-11-08 第二次之 2：「往上一層」的連結列（地塊→聚落→勢力、文化、信仰）。
         _detailCrumbs = new HFlowContainer();
         _detailCrumbs.AddThemeConstantOverride("h_separation", 6);
         column.AddChild(_detailCrumbs);
         _detailTabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        // 第 08-18i 章（GPT 試玩回饋 04：人口、勢力藏在小箭頭後）：分頁改成會換行的按鈕列，全部常駐、不用左右捲。
+        _detailTabs.TabsVisible = false;
+        _detailTabRow = new HFlowContainer();
+        _detailTabRow.AddThemeConstantOverride("h_separation", 4);
+        _detailTabRow.AddThemeConstantOverride("v_separation", 4);
+        column.AddChild(_detailTabRow);
         column.AddChild(_detailTabs);
         // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
         // 試玩回饋 2026-11-08 第四次之 5（詳情頁文字不明顯、看不清楚）：分頁內容墊一層不透明的淺色紙底，
@@ -387,6 +394,7 @@ public partial class ObserverRoot
         {
             if (!_tabSoundMuted)
                 PlayUi("ui_tab");
+            SyncTabButtons();
         };
         var parchment = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
         StyleBoxFlat TabStyle(float alpha) => ArtAssets.Track(new StyleBoxFlat
@@ -639,6 +647,50 @@ public partial class ObserverRoot
             }
     }
 
+    /// <summary>第 08-18i 章：分頁按鈕列（取代分頁籤）。</summary>
+    private HFlowContainer _detailTabRow = null!;
+
+    /// <summary>【TEMP】分頁按鈕的排列順序（玩家最常看的放前面；沒列到的照原順序排在後面）。</summary>
+    private static readonly string[] TempTabOrder = { "現況", "代表人物", "人物", "人口", "勢力", "概況", "隸屬" };
+
+    private void BuildTabButtons(IReadOnlyList<string> titles)
+    {
+        foreach (var child in _detailTabRow.GetChildren())
+        {
+            _detailTabRow.RemoveChild(child);
+            child.QueueFree();
+        }
+        var order = titles.Select((t, i) => (Title: t, Index: i))
+            .OrderBy(x => Array.IndexOf(TempTabOrder, x.Title) is var k && k >= 0 ? k : TempTabOrder.Length + x.Index).ToList();
+        foreach (var (title, index) in order)
+        {
+            var button = new Button { Text = title, ToggleMode = true, FocusMode = FocusModeEnum.None };
+            StyleBoxFlat Style(float alpha) => new()
+            {
+                BgColor = new Color(0.55f, 0.42f, 0.25f, alpha), CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4,
+                ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3
+            };
+            button.AddThemeStyleboxOverride("normal", Style(0.15f));
+            button.AddThemeStyleboxOverride("hover", Style(0.30f));
+            button.AddThemeStyleboxOverride("pressed", Style(0.55f));
+            button.AddThemeStyleboxOverride("hover_pressed", Style(0.60f));
+            button.SetMeta("tab_index", index);
+            button.Pressed += () => _detailTabs.CurrentTab = index;
+            _detailTabRow.AddChild(button);
+        }
+        _detailTabRow.Visible = titles.Count > 1;
+        SyncTabButtons();
+    }
+
+    private void SyncTabButtons()
+    {
+        if (_detailTabRow is null)
+            return;
+        foreach (var child in _detailTabRow.GetChildren())
+            if (child is Button button)
+                button.SetPressedNoSignal((int)button.GetMeta("tab_index") == _detailTabs.CurrentTab);
+    }
+
     private void RenderDetail(DemoPlayerDetail detail, List<DemoDetailTab> tabs, int keep)
     {
         foreach (var child in _detailTabs.GetChildren())
@@ -671,8 +723,12 @@ public partial class ObserverRoot
         if (keep >= 0 && keep < tabs.Count)
             _detailTabs.CurrentTab = keep;
         _tabSoundMuted = false;
+        BuildTabButtons(tabs.Select(t => t.Title).ToList());
         _detailTitle.Text = detail.Title;
         _detailShown = detail.Text;
+        // 第 08-18i 章：聚落詳情與人物頁可以追蹤。
+        SetTrackSubject(_detailPerson != 0 ? (true, _detailPerson)
+            : detail.SettlementId is { } tracked && tabs.Any(t => t.Title == "代表人物") ? (false, tracked) : null);
         if (!_detailOpen)
             PlayUi("ui_open"); // 第 08-18d 章：介面音效
         _detailOpen = true;
@@ -721,7 +777,15 @@ public partial class ObserverRoot
             _timeSpeeds[i].Pressed += () => SelectSpeed(index);
             row.AddChild(_timeSpeeds[i]);
         }
+        // 第 08-18i 章（GPT 試玩回饋 10：1～5 容易被讀成倍速）：時間控制上方常駐目前狀態「暫停」或「第 N 檔：每秒 X 日」。
+        _timeStatus = new Label { HorizontalAlignment = HorizontalAlignment.Right, MouseFilter = MouseFilterEnum.Ignore };
+        _timeStatus.AddThemeColorOverride("font_color", TempGold);
+        _timeStatus.AddThemeColorOverride("font_outline_color", Colors.Black);
+        _timeStatus.AddThemeConstantOverride("outline_size", 4);
+        _hud.AddChild(_timeStatus);
     }
+
+    private Label? _timeStatus;
 
     /// <summary>右下速度鈕與控制台下拉選單同步（兩者呼叫同一個 <see cref="OnSpeedPicked"/>）。</summary>
     private void SelectSpeed(int index)
@@ -859,7 +923,30 @@ public partial class ObserverRoot
             column.AddChild(icons);
         if (links.GetChildCount() > 0)
             column.AddChild(links);
-        column.AddChild(WrapLabel(string.Join("\n", tab.Lines)));
+        // 第 08-18i 章（GPT 試玩回饋 03）：頁首四塊（【人口】【糧食】【隸屬】【危機】）放在框裡、字大一點，其餘是細節。
+        var glance = tab.Lines.Where(l => l.StartsWith("【", StringComparison.Ordinal)).ToList();
+        if (glance.Count > 0)
+        {
+            var box = new PanelContainer();
+            box.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+            {
+                BgColor = new Color(0.90f, 0.84f, 0.70f), BorderColor = new Color(0.45f, 0.33f, 0.18f),
+                BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+                ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 6, ContentMarginBottom = 6
+            });
+            var lines = new VBoxContainer();
+            foreach (var line in glance)
+            {
+                var label = WrapLabel(line);
+                label.AddThemeFontSizeOverride("font_size", TempDetailFontSize + 1);
+                if (line.StartsWith("【危機】", StringComparison.Ordinal) && line != "【危機】無")
+                    label.AddThemeColorOverride("font_color", new Color(0.62f, 0.10f, 0.06f));
+                lines.AddChild(label);
+            }
+            box.AddChild(lines);
+            column.AddChild(box);
+        }
+        column.AddChild(WrapLabel(string.Join("\n", tab.Lines.Where(l => !glance.Contains(l)))));
         return column;
     }
 
@@ -980,7 +1067,10 @@ public partial class ObserverRoot
         if (_chroniclePanel is not null)
             Place(_chroniclePanel, frame.Console, _rightView == RightView.Chronicle);
         Place(_timePanel, frame.Time, true);
+        if (_timeStatus is not null)
+            Place(_timeStatus, new HudRect(frame.Time.X, Math.Max(0, frame.Time.Y - 22), frame.Time.Width, 20), true);
         PlaceToolbarRow(frame);
+        PlaceLetters(frame); // 第 08-18i 章
         _consoleToggle.SetPressedNoSignal(_rightView == RightView.Console);
         _outlinerToggle.SetPressedNoSignal(_rightView == RightView.Outliner);
         _chronicleToggle?.SetPressedNoSignal(_rightView == RightView.Chronicle);
@@ -1031,7 +1121,16 @@ public partial class ObserverRoot
             return;
         SetButtonIcon(_timePlay, _playback.Playing ? ArtAssets.UiPause : ArtAssets.UiPlay, _playback.Playing ? "⏸" : "▶");
         for (var i = 0; i < _timeSpeeds.Length; i++)
-            _timeSpeeds[i].ButtonPressed = PlaybackClock.TempDaysPerSecondOptions[i] == _playback.DaysPerSecond;
+        {
+            var selected = PlaybackClock.TempDaysPerSecondOptions[i] == _playback.DaysPerSecond;
+            _timeSpeeds[i].ButtonPressed = selected;
+            _timeSpeeds[i].SelfModulate = selected ? Colors.White : new Color(1f, 1f, 1f, 0.55f); // 選中的檔位比較亮
+        }
+        if (_timeStatus is not null)
+        {
+            var gear = PlaybackClock.TempDaysPerSecondOptions.ToList().IndexOf(_playback.DaysPerSecond) + 1;
+            _timeStatus.Text = _playback.Playing ? $"▶ 第 {gear} 檔：每秒 {_playback.DaysPerSecond} 日" : $"⏸ 暫停（第 {gear} 檔：每秒 {_playback.DaysPerSecond} 日）";
+        }
     }
 
     private bool PlayButtonShowsPause()
