@@ -579,7 +579,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 12 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章擊殺換算改每 60／50 人一隻、居民壓制下限每層 1 隻 |
+| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 11 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章壓制下限每層 1 隻 |
+| `src/WorldSimulation.Core/World/Demo/DemoCombat.cs` | 3 | 第 12-2c 節戰鬥人員：鎮 3%／城 5% 士兵、冒險者 2%；冒險者每 20 擊殺升一級、最高 6 級；非戰鬥人員戰力 20%、每隻怪物牽制 3 人；擊殺 0.6、死亡 0.5 倍與運氣 0.75～1.25 |
 | `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 8 | 第 08-19b 章分裂鬥爭（參考 WorldBox 與十字軍之王）：忠誠度各因素（基本 +10、距離、文化 −30、信仰 −15、人口、層級 −20、剛歸附 +15、剛被鎮壓 +25、直屬過多、強勢統治 +10）；派系加入 <0、退出 ≥10；不滿 26 週、請願 26 週、戰爭 8～52 週、停戰 260 週、剛歸附 52 週；通牒 80%、接受 150%、請願讓步 35%＋文化不同 20%、戰爭勝負死亡比 150%；兵力＝居民 1/10、交戰每 20 兵殺 1 人；亂數命名空間 |
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationPyramid.cs` | 1 | 第 08-18b 章第 5 節人口金字塔每幾歲一層、幾歲以上併成一層（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |

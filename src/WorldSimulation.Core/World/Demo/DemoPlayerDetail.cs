@@ -150,7 +150,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } nest)
                 lines.Add(nest.Dormant
                     ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.TempDormantWeeks - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
-                    : $"怪物：{nest.Monsters} 隻｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
+                    : $"怪物：{nest.Monsters} 隻（{DemoCombat.MonsterLevel(nest.Dungeon)} 級）｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
         }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
@@ -187,6 +187,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             now.AddRange(world.LoyaltyLines(settlement.Id));
             if (world.Realms().StruggleOf(settlement.Id) is { } struggle)
                 now.Add(DemoRealms.Describe(struggle, world.Sites, world.CommittedWeeks));
+            now.Add(DemoCombat.Describe(world.CombatForceOf(settlement.Id))); // 第 12-2c 節
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");

@@ -465,6 +465,28 @@ public sealed partial class DemoObserverWorld
         return _territory;
     }
 
+    /// <summary>第 12-2c 節：各聚落對付怪物的人力（士兵、冒險者與等級、非戰鬥人員；同一次查詢內沿用）。</summary>
+    private Func<int, DemoCombatForce> CombatForces(IReadOnlyList<DemoMonsterNest> nests)
+    {
+        var cache = new Dictionary<int, DemoCombatForce>();
+        var areas = nests.Where(n => !n.Dormant && n.Monsters > 0).Select(n => n.Area().ToList()).ToList();
+        return id =>
+        {
+            if (cache.TryGetValue(id, out var known))
+                return known;
+            var site = _sites.Settlements.FirstOrDefault(s => s.Id == id);
+            if (_demography is null || site is null || site.IsRuin)
+                return cache[id] = DemoCombatForce.None;
+            var here = new DemoCellRef(site.Column, site.Row);
+            var near = areas.Any(a => a.Count > 0 && a.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempHuntReach);
+            return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
+                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)), _monsterFold.KillsBy(id), near);
+        };
+    }
+
+    /// <summary>第 12-2c 節：聚落詳情用的人力。</summary>
+    public DemoCombatForce CombatForceOf(int settlementId) => CombatForces(MonsterNests(CommittedWeeks))(settlementId);
+
     /// <summary>第 08-19b 章：算忠誠度與兵力用的世界狀態。</summary>
     private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture)
         => new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
@@ -578,7 +600,7 @@ public sealed partial class DemoObserverWorld
             var monsters = nestsNow.Count == 0
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
-                    nestsNow, natural.Keys.ToHashSet(), _rng);
+                    nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow)); // 第 12-2c 節：戰鬥人員與非戰鬥人員
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
