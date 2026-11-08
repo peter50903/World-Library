@@ -283,7 +283,7 @@ public enum DemoSettlementEventKind
     /// <summary>第 08-19b 章：歸附上級（人數欄＝上級聚落編號；根因）。</summary>
     VassalJoined = 36,
 
-    /// <summary>第 08-19b 章：開始武力抗爭、非武力請願以脫離上級（人數欄＝上級聚落編號；根因）。</summary>
+    /// <summary>第 08-19b 章：派系首領掀起獨立戰爭、請願抗議（人數欄＝上級聚落編號；根因）。</summary>
     SecessionArmed = 37,
     SecessionPeaceful = 38,
 
@@ -292,7 +292,11 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 08-19b 章：獨立、脫離失敗（人數欄＝原上級聚落編號；根因）。</summary>
     Independence = 40,
-    SecessionFailed = 41
+    SecessionFailed = 41,
+
+    /// <summary>第 08-19b 章：忠誠低落而加入獨立派系、回心轉意而退出（人數欄＝上級聚落編號；根因）。</summary>
+    FactionJoined = 42,
+    FactionLeft = 43
 }
 
 /// <summary>
@@ -344,6 +348,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.DungeonCleared or DemoSettlementEventKind.DungeonAwakened
                 or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                 or DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed
+                or DemoSettlementEventKind.FactionJoined or DemoSettlementEventKind.FactionLeft
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

@@ -183,6 +183,10 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             // 第 08-19 章：勢力（獨立或隸屬於誰、轄下有哪些聚落）。
             DemoSettlementTier TierOf(int id) => world.ChronicleOf(id).Tier;
             now.Add(DemoTerritory.Describe(world.Territory(), world.Sites, settlement.Id, TierOf));
+            // 第 08-19b 章：對上級的忠誠度明細（WorldBox 的城市忠誠）、派系與進行中的鬥爭。
+            now.AddRange(world.LoyaltyLines(settlement.Id));
+            if (world.Realms().StruggleOf(settlement.Id) is { } struggle)
+                now.Add(DemoRealms.Describe(struggle, world.Sites, world.CommittedWeeks));
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");

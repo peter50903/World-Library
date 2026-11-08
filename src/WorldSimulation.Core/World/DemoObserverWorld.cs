@@ -465,6 +465,16 @@ public sealed partial class DemoObserverWorld
         return _territory;
     }
 
+    /// <summary>第 08-19b 章：算忠誠度與兵力用的世界狀態。</summary>
+    private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture)
+        => new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
+            id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true);
+
+    /// <summary>第 08-19b 章：聚落詳情的忠誠度明細（沒有上級回傳空）。</summary>
+    public IReadOnlyList<string> LoyaltyLines(int settlementId)
+        => _demography is null ? Array.Empty<string>()
+            : DemoRealms.LoyaltyLines(settlementId, CommittedWeeks, Realms(), RealmContext(_sites, id => _population.GetValueOrDefault(id), _culture));
+
     private DemoRealms.Fold _realmFold = new();
     private object? _realmFoldEarlier;
     private int _realmFoldWeek = int.MinValue;
@@ -576,7 +586,7 @@ public sealed partial class DemoObserverWorld
             // 第 08-19b 章：武力抗爭的交戰（天災、怪物優先；與天災同一欄週帳）。
             if (_demography is not null && _knowledge.Era != DemoEra.Hope)
             {
-                var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet());
+                var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng);
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }
@@ -675,9 +685,9 @@ public sealed partial class DemoObserverWorld
                     checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count));
                 // 第 08-19b 章：歸附、脫離鬥爭與獨立（接在最後；希望時代沒有）。
                 var realmEvents = _knowledge.Era == DemoEra.Hope ? (IReadOnlyList<DemoSettlementEvent>)Array.Empty<DemoSettlementEvent>()
-                    : DemoRealms.Advance(report.Week, report.WorldTime, Realms(), lifecycle.Outcome.Sites,
-                        DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier),
-                        id => lifecycle.Population.ResidentsOf(id), culture.MainCultureOf, _rng,
+                    : DemoRealms.Advance(report.Week, report.WorldTime, Realms(),
+                        RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
+                        DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng,
                         checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count));
                 var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome

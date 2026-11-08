@@ -580,7 +580,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 12 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、擊殺換算、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章擊殺換算改每 60／50 人一隻、居民壓制下限每層 1 隻 |
-| `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 6 | 第 08-19b 章脫離鬥爭：武力 8 週、非武力 26 週、失敗冷卻 104 週；文化相同走武力 30%、武力勝率 15～85%、非武力勝率 35%＋文化不同 20%；交戰傷亡每 80／150 人一人；亂數命名空間 |
+| `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 8 | 第 08-19b 章分裂鬥爭（參考 WorldBox 與十字軍之王）：忠誠度各因素（基本 +10、距離、文化 −30、信仰 −15、人口、層級 −20、剛歸附 +15、剛被鎮壓 +25、直屬過多、強勢統治 +10）；派系加入 <0、退出 ≥10；不滿 26 週、請願 26 週、戰爭 8～52 週、停戰 260 週、剛歸附 52 週；通牒 80%、接受 150%、請願讓步 35%＋文化不同 20%、戰爭勝負死亡比 150%；兵力＝居民 1/10、交戰每 20 兵殺 1 人；亂數命名空間 |
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationPyramid.cs` | 1 | 第 08-18b 章第 5 節人口金字塔每幾歲一層、幾歲以上併成一層（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
@@ -621,7 +621,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 1 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數） |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 7 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 46 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、武力抗爭、請願抗議、抗爭交戰、獨立、脫離失敗六種 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 48 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 7 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |

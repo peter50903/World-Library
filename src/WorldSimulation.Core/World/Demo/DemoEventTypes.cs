@@ -58,11 +58,13 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.DungeonCleared] = new("TEMP_EV_DUNGEON_CLEARED", "地下城沉寂", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.DungeonAwakened] = new("TEMP_EV_DUNGEON_AWAKENED", "怪物再生", CauseRootCategory.Disaster),
         [DemoSettlementEventKind.VassalJoined] = new("TEMP_EV_VASSAL_JOINED", "歸附", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.SecessionArmed] = new("TEMP_EV_SECESSION_ARMED", "武力抗爭", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.SecessionArmed] = new("TEMP_EV_SECESSION_ARMED", "獨立戰爭", CauseRootCategory.Culture),
         [DemoSettlementEventKind.SecessionPeaceful] = new("TEMP_EV_SECESSION_PEACEFUL", "請願抗議", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.SecessionBattle] = new("TEMP_EV_SECESSION_BATTLE", "抗爭交戰", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.SecessionBattle] = new("TEMP_EV_SECESSION_BATTLE", "獨立戰爭交戰", CauseRootCategory.Culture),
         [DemoSettlementEventKind.Independence] = new("TEMP_EV_INDEPENDENCE", "獨立", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.SecessionFailed] = new("TEMP_EV_SECESSION_FAILED", "脫離失敗", CauseRootCategory.Culture)
+        [DemoSettlementEventKind.SecessionFailed] = new("TEMP_EV_SECESSION_FAILED", "脫離失敗", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.FactionJoined] = new("TEMP_EV_FACTION_JOINED", "加入獨立派系", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.FactionLeft] = new("TEMP_EV_FACTION_LEFT", "退出獨立派系", CauseRootCategory.Culture)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

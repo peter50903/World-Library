@@ -380,6 +380,8 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.SecessionPeaceful:
             case DemoSettlementEventKind.Independence:
             case DemoSettlementEventKind.SecessionFailed:
+            case DemoSettlementEventKind.FactionJoined:
+            case DemoSettlementEventKind.FactionLeft:
                 return parent is null && e.Count > 0 && e.Count != e.SettlementId ? null : "歸附、脫離與獨立是根因，事件人數欄必須是另一個聚落（上級）的編號";
             case DemoSettlementEventKind.DungeonAppeared:
                 // 第 12-1 章 C4：根因；人數欄＝格編號。
