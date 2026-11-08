@@ -16,6 +16,9 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
     /// <summary>第 08-16 章：代表人物分頁的每一人（人像＋文字）；介面有素材就畫人像。</summary>
     public IReadOnlyList<DemoPersonEntry> People { get; init; } = Array.Empty<DemoPersonEntry>();
 
+    /// <summary>第 08-18b 章第 5 節：人口金字塔（由年輕到年老；沒有＝不畫）。</summary>
+    public IReadOnlyList<DemoPyramidBand> Pyramid { get; init; } = Array.Empty<DemoPyramidBand>();
+
     /// <summary>第 08-16 章：現況分頁上方的文化紋章與信仰符號（沒有＝null）。</summary>
     public DemoEmblem? Emblem { get; init; }
 
@@ -297,7 +300,26 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             new DemoDetailTab("代表人物", people) { People = entries },
             new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
-            new DemoDetailTab("歷史", history)
+            new DemoDetailTab("歷史", history),
+            PopulationTab(world, settlement)
         }, settlement.Id);
+    }
+
+    /// <summary>第 08-18b 章第 5 節介面第二批：「人口」頁——排行與人口金字塔（有年齡群時；畫面另畫成橫條圖）。</summary>
+    private static DemoDetailTab PopulationTab(DemoObserverWorld world, DemoSettlement settlement)
+    {
+        var lines = DemoPopulationPyramid.Rankings(world, settlement.Id).ToList();
+        var pyramid = world.HumanPopulationSnapshot is { } snapshot
+            ? DemoPopulationPyramid.Of(snapshot.Groups, settlement.Id, world.Snapshot().DaysElapsed)
+            : Array.Empty<DemoPyramidBand>();
+        if (pyramid.Any(b => b.Total > 0))
+        {
+            lines.Add("");
+            lines.Add("人口金字塔（男｜女）");
+            lines.AddRange(Enumerable.Reverse(pyramid).Select(b => $"{b.Label}：{b.Male}｜{b.Female}"));
+        }
+        if (lines.Count == 0)
+            lines.Add(settlement.IsRuin ? "已無人居住" : "還沒有人口資料");
+        return new DemoDetailTab("人口", lines) { Pyramid = pyramid };
     }
 }
