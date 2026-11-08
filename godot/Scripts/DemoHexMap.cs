@@ -290,6 +290,7 @@ public partial class DemoHexMap : Control
 
     public override void _Draw()
     {
+        _actorHits.Clear(); // 試玩回饋 2026-11-08 第二次之 1：這一幀畫了哪些角色，由各畫法重新登記
         if (World is null)
         {
             _surface?.Hide();

@@ -38,7 +38,8 @@ public partial class ObserverRoot
     private (bool Faith, int Id)? _detailBelief; // 第 08-16 章第 15 節：目前開著的是文化頁或信仰頁（null＝地點或聚落）
     private Button _detailBack = null!;
     private int? _detailRealm; // 試玩回饋 2026-11-07 之 4：目前開著的是勢力詳情（最上層聚落編號）
-    private bool _detailFixed; // 試玩回饋 2026-11-08 之 6：開著的是團體或隊伍的詳情（每週不改成聚落頁）
+    private bool _detailFixed;
+    private HFlowContainer _detailCrumbs = null!; // 試玩回饋 2026-11-08 之 6：開著的是團體或隊伍的詳情（每週不改成聚落頁）
     private int _detailWeek = -1;
     private PanelContainer _timePanel = null!;
     private Button _timePlay = null!;
@@ -326,6 +327,10 @@ public partial class ObserverRoot
         close.Pressed += HideDetail;
         header.AddChild(close);
         // 第 08-11 章：分頁籤（現況｜代表人物｜技術｜研究｜歷史；開發資訊開啟時多一頁「除錯」）。
+        // 試玩回饋 2026-11-08 第二次之 2：「往上一層」的連結列（地塊→聚落→勢力、文化、信仰）。
+        _detailCrumbs = new HFlowContainer();
+        _detailCrumbs.AddThemeConstantOverride("h_separation", 6);
+        column.AddChild(_detailCrumbs);
         _detailTabs = new TabContainer { SizeFlagsVertical = SizeFlags.ExpandFill, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddChild(_detailTabs);
         // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
@@ -369,6 +374,22 @@ public partial class ObserverRoot
         if (_showDebugInfo)
             tabs.Add(new DemoDetailTab("除錯", _world.QueryCell(column, row).Lines));
         RenderDetail(detail, tabs, keep);
+        // 往上一層：地塊所屬的聚落；聚落所屬的勢力、主要文化、主要信仰。
+        var crumbs = new List<(string, Action)>();
+        var home = detail.SettlementId ?? (_hexMap.Territory.Cells.TryGetValue(new DemoCellRef(column, row), out var owner) ? owner.SettlementId : null);
+        if (home is { } h && _world.Sites.Settlements.FirstOrDefault(s => s.Id == h) is { } site)
+        {
+            if (detail.SettlementId is null)
+                crumbs.Add(($"聚落：{TitledName(site)}", () => ShowDetailAt(site.Column, site.Row)));
+            var top = _hexMap.Territory.RealmOf(h);
+            if (_hexMap.Territory.Realm.ContainsKey(h))
+                crumbs.Add(($"勢力：{(_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is { } lord ? TitledName(lord) : $"#{top}")}", () => ShowRealmDetail(top)));
+            if (_hexMap.CultureOf.TryGetValue(h, out var culture))
+                crumbs.Add(($"文化：{_hexMap.CultureNames.GetValueOrDefault(culture, $"#{culture}")}", () => ShowBeliefDetail(false, culture)));
+            if (_hexMap.FaithOf.TryGetValue(h, out var faith))
+                crumbs.Add(($"信仰：{_hexMap.FaithNames.GetValueOrDefault(faith, $"#{faith}")}", () => ShowBeliefDetail(true, faith)));
+        }
+        SetCrumbs(crumbs);
     }
 
     /// <summary>第 08-16 章第 15 節：文化頁或信仰頁（十字軍之王式；從聚落現況的連結打開，「返回」回到聚落）。</summary>
@@ -385,6 +406,7 @@ public partial class ObserverRoot
         _detailRealm = null;
         _detailFixed = false;
         RenderDetail(detail, detail.Tabs.ToList(), keep);
+        SetCrumbs(Array.Empty<(string, Action)>());
     }
 
     /// <summary>
@@ -394,8 +416,31 @@ public partial class ObserverRoot
     private void ShowRealmDetail(int realmId)
     {
         var top = _hexMap.Territory.RealmOf(realmId);
-        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is { } capital)
-            ShowDetailAt(capital.Column, capital.Row);
+        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is not { } capital)
+            return;
+        ShowDetailAt(capital.Column, capital.Row);
+        SelectDetailTab("勢力"); // 點勢力就直接看到勢力頁
+    }
+
+    private string TitledName(DemoSettlement site)
+        => _hexMap.SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : site.Name;
+
+    /// <summary>詳情上方「往上一層」的連結（沒有就整列藏起來）。</summary>
+    private void SetCrumbs(IReadOnlyList<(string Label, Action Go)> crumbs)
+    {
+        foreach (var child in _detailCrumbs.GetChildren())
+        {
+            _detailCrumbs.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach (var (label, go) in crumbs)
+        {
+            var button = new Button { Text = "↑ " + label, Flat = true, TooltipText = "打開上一層的詳情" };
+            button.AddThemeFontSizeOverride("font_size", 13);
+            button.Pressed += () => go();
+            _detailCrumbs.AddChild(button);
+        }
+        _detailCrumbs.Visible = crumbs.Count > 0;
     }
 
     /// <summary>聚落所屬勢力的分頁：概況、空一行、隸屬樹（Core 的 <see cref="DemoTerritory.Detail"/>）；不在任何勢力回傳 null。</summary>
@@ -439,6 +484,11 @@ public partial class ObserverRoot
                     };
                     RenderDetail(new DemoPlayerDetail($"{batch.FromName}的{(batch.Founding ? "開拓隊" : "遷徙隊伍")}", new[] { new DemoDetailTab("隊伍", lines) }, null),
                         new List<DemoDetailTab> { new("隊伍", lines) }, 0);
+                    var ends = new List<(string, Action)>();
+                    foreach (var (label, id) in new[] { ("出發地", batch.FromSettlementId), ("目的地", batch.ToSettlementId) })
+                        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == id) is { } end)
+                            ends.Add(($"{label}：{TitledName(end)}", () => ShowDetailAt(end.Column, end.Row)));
+                    SetCrumbs(ends);
                 }
                 return;
             case DemoHexMap.ActorKind.WorkGroup when site is not null:
@@ -459,6 +509,7 @@ public partial class ObserverRoot
                 };
                 RenderDetail(new DemoPlayerDetail($"{home}的{name}", new[] { new DemoDetailTab("團體", lines) }, site.Id),
                     new List<DemoDetailTab> { new("團體", lines) }, 0);
+                SetCrumbs(new List<(string, Action)> { ($"聚落：{home}", () => ShowDetailAt(site.Column, site.Row)) });
                 return;
             }
         }

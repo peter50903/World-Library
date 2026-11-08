@@ -56,16 +56,13 @@ public partial class DemoHexMap
         if (_monsterPatrol.TryGetValue(seed, out var known))
             return known;
         var list = new List<Vector2I>();
-        if (nest is { Radius: > 0 } && World is not null)
+        if (nest is { Cells.Count: > 0 } && World is not null)
         {
-            var c = nest.Dungeon.Cell;
+            // 第 12-2a 節：只走到怪物佔據的格（範圍就是牠們巡遊、控制的地方）。
             for (var k = 0; k < 12 && list.Count < 6; k++)
             {
-                var dc = (int)(LayoutHash(seed, k, 150) * (2 * nest.Radius + 1)) - nest.Radius;
-                var dr = (int)(LayoutHash(seed, k, 151) * (2 * nest.Radius + 1)) - nest.Radius;
-                if (!World.Contains(c.Column + dc, c.Row + dr))
-                    continue;
-                if (OpenTileIn((c.Row + dr) * World.Columns + c.Column + dc, seed + k) is { } spot && ClearPath(gate, spot))
+                var c = nest.Cells[(int)(LayoutHash(seed, k, 150) * nest.Cells.Count) % nest.Cells.Count];
+                if (OpenTileIn(c.Row * World.Columns + c.Column, seed + k) is { } spot && ClearPath(gate, spot))
                     list.Add(spot);
             }
         }
@@ -244,7 +241,6 @@ public partial class DemoHexMap
                 }));
             }
         }
-        _actorHits.RemoveAll(a => a.Actor.Kind == ActorKind.Monster);
         foreach (var (tile, seed) in _monsters!)
         {
             var gate = TileFeet(tile, start, radius);
@@ -290,8 +286,8 @@ public partial class DemoHexMap
                 var lag = k * 0.9f;
                 var face = facing;
                 items.Add((spot.Y, () => DrawMonster(spot, radius, face, seconds + lag, kindSeed)));
-                _actorHits.Add((spot, new MapActor(ActorKind.Monster, nest?.Dungeon.NearSettlementId ?? 0, TokenKind.Residents,
-                    nest?.Monsters ?? 0, nest?.Dungeon.Cell ?? dungeonCell, 0, nest?.Dungeon.EventId ?? 0)));
+                AddActor(spot, radius, new MapActor(ActorKind.Monster, nest?.Dungeon.NearSettlementId ?? 0, TokenKind.Residents,
+                    nest?.Monsters ?? 0, nest?.Dungeon.Cell ?? dungeonCell, 0, nest?.Dungeon.EventId ?? 0), 34f);
             }
         }
         foreach (var (_, draw) in items.OrderBy(x => x.Y))

@@ -47,7 +47,7 @@ public partial class DemoHexMap
         foreach (var nest in MonsterNests)
             if (nest.Dungeon.Cell == at)
                 _tipRows.Add((IcDungeon, nest.Dormant ? $"{nest.Dungeon.Name}：沉寂中" : $"{nest.Dungeon.Name}：怪物 {nest.Monsters}"));
-            else if (nest.Radius > 0 && DemoHexWorld.Distance(nest.Dungeon.Cell, at) <= nest.Radius)
+            else if (nest.Cells.Contains(at))
                 _tipRows.Add((IcDungeon, $"{nest.Dungeon.Name}的怪物出沒"));
         if (status.Length > 0)
             _tipRows.Add((IcDisaster, status));

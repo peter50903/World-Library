@@ -684,7 +684,8 @@ internal static class DemoWeeklySettlement
         Func<int, DemoDisasterStrike?>? disaster = null,
         Func<DemoSettlement, long>? hungerCause = null,
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null,
-        bool verify = true)
+        bool verify = true,
+        Func<DemoCellRef, bool>? forbiddenSite = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -1101,6 +1102,7 @@ internal static class DemoWeeklySettlement
                 bool SiteOk(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is null
                         && (land is null || land.StateOf(c) == DemoLandDevelopment.Undeveloped) // 第 08-6 章 c 節：不在開墾地建村
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
+                        && (forbiddenSite is null || !forbiddenSite(c)) // 第 12-2a 節：怪物佔據的地不能建村
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
                         && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
                 // 第 08-8 章 B2：遷徙之民走得更遠找空地。
@@ -1115,7 +1117,7 @@ internal static class DemoWeeklySettlement
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                         DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
                         wells?.Invoke(settlement.Id) ?? false);
-                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths, partyLimit, DemoEmigrationMode.Founding) : 0;
+                emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths + disasterDeaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
                     foodOut = checked(foodClosing * emigrants) / survivors;
@@ -1147,7 +1149,7 @@ internal static class DemoWeeklySettlement
             }
             else if (target is { } chosen)
             {
-                emigrants = PlanEmigrants(settlement.Id, deaths,
+                emigrants = PlanEmigrants(settlement.Id, deaths + disasterDeaths,
                     joining ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor);
                 if (emigrants > 0)
                 {
@@ -1207,7 +1209,7 @@ internal static class DemoWeeklySettlement
                         mateTarget = (candidate, route);
                 }
 
-                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths, 1, DemoEmigrationMode.Mate) == 1)
+                if (mateTarget is { } mate && PlanEmigrants(settlement.Id, deaths + disasterDeaths, 1, DemoEmigrationMode.Mate) == 1)
                 {
                     emigrants = 1;
                     // 路糧：帶足全程（每格一週份，TEMP），存糧不夠就帶光。

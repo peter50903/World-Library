@@ -67,7 +67,7 @@ public sealed class DemoMonsterTests
                 if (strike.Kind == DemoSettlementEventKind.MonsterRaid)
                 {
                     raids++;
-                    Assert.True(distance <= nest.Radius);
+                    Assert.True(distance <= nest.Radius + DemoMonsters.TempRaidReach);
                     Assert.Equal(1 + 12 / 5, strike.Deaths);
                 }
                 else
@@ -107,5 +107,32 @@ public sealed class DemoMonsterTests
         Assert.Equal(3, DemoMonsters.Radius(4));
         Assert.Equal(4, DemoMonsters.Radius(24));
         Assert.Equal((1234L, 7), DemoMonsters.DecodeKills(DemoMonsters.EncodeKills(1234, 7)));
+    }
+
+    [Fact]
+    public void MonstersClaimConnectedLandOutsideHumanTerritory()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var map = world.Map;
+        var human = DemoTerritory.Compute(map, world.Sites, _ => DemoSettlementTier.Village).Cells;
+        var dungeon = map.Cells.Where(c => c.Terrain != DemoTerrain.Water && !human.ContainsKey(new DemoCellRef(c.Column, c.Row)))
+            .OrderBy(c => c.Row).ThenBy(c => c.Column).Select(c => new DemoCellRef(c.Column, c.Row)).First();
+        bool Human(DemoCellRef c) => human.ContainsKey(c);
+        Assert.Empty(DemoMonsters.Claim(map, dungeon, 0, Human));
+        var cells = DemoMonsters.Claim(map, dungeon, 9, Human);
+        Assert.Equal(dungeon, cells[0]);
+        Assert.InRange(cells.Count, 1, 9 * DemoMonsters.TempCellsPerMonster);
+        Assert.Equal(cells.Count, cells.Distinct().Count());
+        foreach (var c in cells.Skip(1))
+        {
+            // 不進水、不進人類的勢力範圍、不超過最遠距離，而且和已佔的格相連。
+            Assert.NotEqual(DemoTerrain.Water, map.GetCell(c.Column, c.Row).Terrain);
+            Assert.False(Human(c));
+            Assert.InRange(DemoHexWorld.Distance(c, dungeon), 1, DemoMonsters.TempMaxReach);
+            Assert.Contains(cells, o => o != c && DemoHexWorld.Distance(o, c) == 1);
+        }
+        // 範圍內沒有聚落；同樣的輸入同樣的結果。
+        Assert.DoesNotContain(world.Sites.Settlements, s => cells.Contains(new DemoCellRef(s.Column, s.Row)));
+        Assert.Equal(cells, DemoMonsters.Claim(map, dungeon, 9, Human));
     }
 }

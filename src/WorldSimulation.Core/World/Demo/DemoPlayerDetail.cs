@@ -147,7 +147,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } nest)
                 lines.Add(nest.Dormant
                     ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.TempDormantWeeks - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
-                    : $"怪物：{nest.Monsters} 隻｜勢力範圍：{nest.Radius} 格（會襲擊範圍內的聚落，也會被討伐）");
+                    : $"怪物：{nest.Monsters} 隻｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
         }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
@@ -191,11 +191,12 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             var nearDungeons = DemoDungeons.Near(world.Dungeons, world.Map, settlement).Select(d => d.Name).ToList();
             if (nearDungeons.Count > 0)
                 now.Add("附近有地下城：" + string.Join("、", nearDungeons));
-            // 第 12-2 章：在哪個地下城怪物的勢力範圍內。
-            var threats = world.MonsterNests(world.CommittedWeeks).Where(n => n.Radius > 0
-                && DemoHexWorld.Distance(n.Dungeon.Cell, new DemoCellRef(settlement.Column, settlement.Row)) <= n.Radius).Select(n => $"{n.Dungeon.Name}（{n.Monsters} 隻）").ToList();
+            // 第 12-2a 節：緊鄰怪物佔據的範圍（會被襲擊）。
+            var here = new DemoCellRef(settlement.Column, settlement.Row);
+            var threats = world.MonsterNests(world.CommittedWeeks).Where(n => n.Cells.Count > 0
+                && n.Cells.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempRaidReach).Select(n => $"{n.Dungeon.Name}（{n.Monsters} 隻）").ToList();
             if (threats.Count > 0)
-                now.Add("⚔ 位在怪物的勢力範圍內：" + string.Join("、", threats));
+                now.Add("⚔ 緊鄰怪物的地盤：" + string.Join("、", threats));
         }
         // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
         var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();

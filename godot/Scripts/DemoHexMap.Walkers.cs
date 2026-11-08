@@ -23,7 +23,6 @@ public partial class DemoHexMap
     {
         _walkersDrawn = false;
         _walkerHits.Clear();
-        _actorHits.RemoveAll(a => a.Actor.Kind is ActorKind.Leader or ActorKind.WorkGroup);
         if (World is null || Sites is null || radius < TempWalkerMinRadius)
             return;
         var seconds = Time.GetTicksMsec() / 1000f;
@@ -101,8 +100,8 @@ public partial class DemoHexMap
                     people.Add((behind, behind.Y, () => DrawWalker(behind, radius, color, frame, facing, null, unit, lag, null)));
                 }
                 _walkerHits.Add((at, site.Id));
-                _actorHits.Add((at, new MapActor(group is null ? ActorKind.Leader : ActorKind.WorkGroup, site.Id,
-                    group?.Kind ?? TokenKind.Residents, group?.People ?? scale.Item1, group?.Work ?? new DemoCellRef(site.Column, site.Row))));
+                AddActor(at, radius, new MapActor(group is null ? ActorKind.Leader : ActorKind.WorkGroup, site.Id,
+                    group?.Kind ?? TokenKind.Residents, group?.People ?? scale.Item1, group?.Work ?? new DemoCellRef(site.Column, site.Row)));
             }
             _walkersDrawn = true;
         }
