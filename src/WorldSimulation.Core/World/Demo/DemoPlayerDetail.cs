@@ -327,7 +327,20 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             .Select(x => $"{DemoKnowledge.Name(x.Record.Technology)}　{x.Percent}%（{DomainName(x.Record.Technology.Node.Domain)}）")
             .ToList();
         if (research.Count == 0)
+        {
             research.Add(settlement.IsRuin ? "已無人研究" : "目前沒有進行中的研究");
+            if (!settlement.IsRuin)
+            {
+                // 第 08-18i 章（GPT 試玩回饋 07：看不出下一步會發生什麼）：前置都已具備、還沒開始累積的技術（依知識樹的前置規則）。
+                bool Has(string techId) => DemoTechCatalog.Contains(techId)
+                    && (DemoKnowledge.IsOpening(DemoTechnology.Of(techId)) || known.Any(r => r.Technology.Id == techId));
+                var ready = DemoTechnology.All.Where(t => !DemoKnowledge.IsOpening(t) && !known.Any(r => r.Technology == t) && t.Node.Parents.All(Has))
+                    .OrderBy(t => t.Node.Tier).ThenBy(t => t).Take(MaxResearchLines).ToList();
+                research.Add(ready.Count == 0
+                    ? "還沒有前置都具備的新技術"
+                    : "前置都已具備、居民實踐後就會開始研究：" + string.Join("、", ready.Select(DemoKnowledge.Name)));
+            }
+        }
 
         // 歷史（聚落小史，去掉開頭的規模摘要）
         var history = DemoSettlementHistory.Lines(world, settlement.Id)

@@ -38,6 +38,17 @@ public partial class ObserverRoot
     private static void SkinBar(PanelContainer panel)
         => panel.AddThemeStyleboxOverride("panel", (StyleBox?)ArtAssets.ToolbarStyle() ?? TempPanelStyle());
 
+    /// <summary>第 08-18i 章：功能列分組的間隔（左右留白＋一條細線）。</summary>
+    private static Control GroupGap()
+    {
+        var box = new HBoxContainer();
+        box.AddThemeConstantOverride("separation", 0);
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(10, 0) });
+        box.AddChild(new VSeparator());
+        box.AddChild(new Control { CustomMinimumSize = new Vector2(10, 0) });
+        return box;
+    }
+
     private static Button ToolButton(string iconPath, string fallbackText, string tooltip)
     {
         var button = new Button
@@ -106,6 +117,9 @@ public partial class ObserverRoot
             Visible = false
         };
         _foodLegend.MetaClicked += meta => OpenLegendEntry(meta.AsString());
+        // 第 08-18i 章：滑鼠移到圖例的某一項時，地圖上其他群淡化。
+        _foodLegend.MetaHoverStarted += meta => _hexMap.FocusGroup = LegendGroup(meta.AsString());
+        _foodLegend.MetaHoverEnded += _ => _hexMap.FocusGroup = null;
         var legend = string.Join("  ", new[] { FoodStatus.Ample, FoodStatus.Tight, FoodStatus.Starving, FoodStatus.Unsettled }
             .Select(s => $"[color=#{DemoHexMap.FoodStatusColor(s).ToHtml(false)}]■[/color] {MapFoodStatus.Label(s)}"));
         _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
@@ -160,6 +174,9 @@ public partial class ObserverRoot
     /// <summary>【TEMP】圖例最多列幾個。</summary>
     private const int TempLegendEntries = 6;
 
+    private static int? LegendGroup(string meta)
+        => meta.Split(':') is { Length: 2 } parts && int.TryParse(parts[1], out var id) ? id : null;
+
     private void OpenLegendEntry(string meta)
     {
         var parts = meta.Split(':');
@@ -199,6 +216,7 @@ public partial class ObserverRoot
     private void SetMapMode(DemoHexMap.Mode mode)
     {
         _hexMap.MapMode = mode;
+        _hexMap.FocusGroup = null;
         // 目前模式全亮，另一顆變暗（扁平圖示按鈕沒有按下底色）。
         _mapTerrainButton.SelfModulate = mode == DemoHexMap.Mode.Terrain ? Colors.White : new Color(1, 1, 1, 0.5f);
         _mapFoodButton.SelfModulate = mode == DemoHexMap.Mode.Food ? Colors.White : new Color(1, 1, 1, 0.5f);
@@ -228,6 +246,8 @@ public partial class ObserverRoot
         row.AddThemeConstantOverride("separation", 8);
         _toolbarPanel.AddChild(row);
         AddMapModeButtons(row); // 第 08-3 章：地圖模式併入同一條功能列。第 08-5 章：不畫分隔線（使用者 2026-10-23）。
+        // 第 08-18i 章（GPT 試玩回饋 05）：地圖模式與世界功能分兩組（中間留間隔）。
+        row.AddChild(GroupGap());
 
         _toolScenario = ToolButton(ArtAssets.UiScenario, "情境", "情境與新世界（世界種子、歷史種子、TEMP 示範情境）");
         _toolScenario.Pressed += () => ToggleModal("scenario");

@@ -183,6 +183,15 @@ public partial class ObserverRoot
             }
         };
         row.AddChild(_eraBar);
+        // 第 08-18i 章（GPT 試玩回饋 12）：鏡頭——看全世界、回上一個位置。
+        var whole = new Button { Text = "全世界", TooltipText = "把整張地圖置中放進畫面", FocusMode = FocusModeEnum.None, Flat = true };
+        whole.AddThemeColorOverride("font_color", TempGold);
+        whole.Pressed += () => _hexMap.ShowWholeWorld();
+        row.AddChild(whole);
+        var back = new Button { Text = "↩ 上一個位置", TooltipText = "回到定位或看全世界之前的鏡頭", FocusMode = FocusModeEnum.None, Flat = true };
+        back.AddThemeColorOverride("font_color", TempGold);
+        back.Pressed += () => _hexMap.ReturnToPreviousView();
+        row.AddChild(back);
         _topStats = LightLabel();
         _topStats.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _topStats.HorizontalAlignment = HorizontalAlignment.Center;
@@ -1041,7 +1050,21 @@ public partial class ObserverRoot
             bar.OffsetTop = -4;
             root.AddChild(bar);
         }
-        return panel;
+        // 第 08-18i 章（GPT 試玩回饋 07）：圖示下面寫名稱與狀態（已會／研究 N%）。
+        var cell = new VBoxContainer { CustomMinimumSize = new Vector2(TempBadgeSize + 12, 0), TooltipText = tooltip };
+        cell.AddThemeConstantOverride("separation", 1);
+        var center = new CenterContainer { MouseFilter = MouseFilterEnum.Pass };
+        center.AddChild(panel);
+        cell.AddChild(center);
+        var caption = new Label
+        {
+            Text = b.Name + "\n" + (learned ? "已會" : $"研究 {b.Percent}%"),
+            HorizontalAlignment = HorizontalAlignment.Center, ClipText = true, MouseFilter = MouseFilterEnum.Pass,
+            CustomMinimumSize = new Vector2(TempBadgeSize + 12, 0)
+        };
+        caption.AddThemeFontSizeOverride("font_size", 11);
+        cell.AddChild(caption);
+        return cell;
     }
 
     private void HideDetail()
@@ -1051,6 +1074,7 @@ public partial class ObserverRoot
         _detailOpen = false;
         if (_hexMap is not null)
             _hexMap.Highlight = null; // 第 08-5 章：關閉詳情時一併取消地圖上的框
+        RestoreRightAfterDetail(); // 第 08-18i 章
         ApplyHudLayout();
     }
 

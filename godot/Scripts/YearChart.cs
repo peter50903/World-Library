@@ -47,6 +47,9 @@ public partial class YearChart : Control
 
     private const float TempLeft = 52f, TempRight = 12f, TempTop = 30f, TempBottom = 26f;
 
+    /// <summary>第 08-18i 章：圖例換行後圖表實際的上緣。</summary>
+    private float _top = TempTop;
+
     private IReadOnlyList<DemoYearSummary> _rows = Array.Empty<DemoYearSummary>();
     private int _series;
     private int _selectedYear;
@@ -145,7 +148,7 @@ public partial class YearChart : Control
     public int YearAt(Vector2 position)
     {
         if (_rows.Count == 0 || position.X < TempLeft || position.X > Size.X - TempRight
-            || position.Y < TempTop || position.Y > Size.Y - TempBottom)
+            || position.Y < _top || position.Y > Size.Y - TempBottom)
             return 0;
         var index = (int)((position.X - TempLeft) / GroupWidth());
         return index >= 0 && index < _rows.Count ? _rows[index].Year : 0;
@@ -168,17 +171,25 @@ public partial class YearChart : Control
         var font = GetThemeDefaultFont();
         var fontSize = 13;
         var ink = new Color(0.20f, 0.15f, 0.10f);
-        var plot = new Rect2(TempLeft, TempTop, Math.Max(1f, Size.X - TempLeft - TempRight), Math.Max(1f, Size.Y - TempTop - TempBottom));
         var series = AllSeries[_series];
 
-        // 圖例。
+        // 圖例。第 08-18i 章（GPT 試玩回饋 13：圖例文字重疊）：放不下就換行，圖表往下讓出空間。
         var x = TempLeft;
+        var y = 8f;
         foreach (var bar in series.Bars)
         {
-            DrawRect(new Rect2(x, 8, 12, 12), bar.Color);
-            DrawString(font, new Vector2(x + 16, 19), bar.Label, HorizontalAlignment.Left, -1, fontSize, ink);
-            x += 24 + font.GetStringSize(bar.Label, HorizontalAlignment.Left, -1, fontSize).X;
+            var w = 24 + font.GetStringSize(bar.Label, HorizontalAlignment.Left, -1, fontSize).X;
+            if (x + w > Size.X - TempRight && x > TempLeft)
+            {
+                x = TempLeft;
+                y += 18f;
+            }
+            DrawRect(new Rect2(x, y, 12, 12), bar.Color);
+            DrawString(font, new Vector2(x + 16, y + 11), bar.Label, HorizontalAlignment.Left, -1, fontSize, ink);
+            x += w;
         }
+        _top = TempTop + (y - 8f);
+        var plot = new Rect2(TempLeft, _top, Math.Max(1f, Size.X - TempLeft - TempRight), Math.Max(1f, Size.Y - _top - TempBottom));
 
         DrawLine(plot.Position + new Vector2(0, plot.Size.Y), plot.End, ink, 1.5f);
         DrawLine(plot.Position, plot.Position + new Vector2(0, plot.Size.Y), ink, 1.5f);
