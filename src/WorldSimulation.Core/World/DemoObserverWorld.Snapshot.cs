@@ -142,6 +142,9 @@ public sealed partial class DemoObserverWorld
         CheckBatchesInTransit(batches, transit, departedWeek, sites, map, weekCount);
 
         // 安裝到尚未交給呼叫端的候選世界。
+        // 第 08-19c 章：世界法則（加入前的存檔沒有這一欄＝全開）。
+        candidate._laws = state.TryGetProperty("Laws", out var laws) && laws.ValueKind == JsonValueKind.Object
+            ? laws.Deserialize<DemoWorldLaws>() ?? DemoWorldLaws.Default : DemoWorldLaws.Default;
         candidate._weekBase = weekBase;
         candidate._weeks = reports.ToImmutableList();
         candidate._frozenYears = earlierYears.ToImmutableList();

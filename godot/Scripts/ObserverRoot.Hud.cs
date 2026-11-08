@@ -498,6 +498,12 @@ public partial class ObserverRoot
                 ShowDetailAt(actor.Cell.Column, actor.Cell.Row);
                 return;
             case DemoHexMap.ActorKind.Leader when site is not null:
+                // 第 08-19c 章：點到領袖直接開人物頁（沒有在任的領袖時開聚落的代表人物頁）。
+                if (_world.RepresentativesOf(site.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader) is { } leader)
+                {
+                    ShowPersonDetail(leader.Id);
+                    return;
+                }
                 ShowDetailAt(site.Column, site.Row);
                 SelectDetailTab("代表人物");
                 return;
@@ -731,6 +737,26 @@ public partial class ObserverRoot
         Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill
     };
 
+    /// <summary>第 08-19c 章：目前打開的人物頁是誰（0＝不是人物頁）。</summary>
+    private long _detailPerson;
+
+    /// <summary>第 08-19c 章：人物頁（Core 的 <see cref="DemoPersonDetail"/>）；麵包屑回所屬聚落。人已經不在任時改開聚落。</summary>
+    private void ShowPersonDetail(long id)
+    {
+        var site = _world.Sites.Settlements.FirstOrDefault(s => _world.RepresentativesOf(s.Id).Any(r => r.Id == id));
+        if (site is null || DemoPersonDetail.Of(_world, id) is not { } detail)
+            return;
+        _detailBelief = null;
+        _detailRealm = null;
+        _detailFixed = true;
+        _detailCell = (site.Column, site.Row);
+        _detailPerson = id;
+        RenderDetail(detail, detail.Tabs.ToList(), 0);
+        var home = _hexMap.SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : site.Name;
+        SetCrumbs(new List<(string, Action)> { ($"聚落：{home}", () => ShowDetailAt(site.Column, site.Row)) });
+        _detailPerson = 0;
+    }
+
     /// <summary>第 08-16 章：代表人物一人一列（人像＋文字）；人像部件缺少時回傳 null，改用純文字。</summary>
     private Control? PeopleList(DemoDetailTab tab)
     {
@@ -750,7 +776,17 @@ public partial class ObserverRoot
             });
             frame.AddChild(Picture(face, TempPortraitSize));
             row.AddChild(frame);
-            row.AddChild(WrapLabel(string.Join("\n", person.Lines)));
+            var text = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            text.AddChild(WrapLabel(string.Join("\n", person.Lines)));
+            // 第 08-19c 章：打開人物頁（已經在這個人的人物頁就不放）。
+            if (person.Id != _detailPerson)
+            {
+                var id = person.Id;
+                var open = new Button { Text = "查看人物 ▸", Flat = true, SizeFlagsHorizontal = SizeFlags.ShrinkBegin, TooltipText = "打開這個人的人物頁：生平與同僚" };
+                open.Pressed += () => ShowPersonDetail(id);
+                text.AddChild(open);
+            }
+            row.AddChild(text);
             column.AddChild(row);
         }
         return column;
