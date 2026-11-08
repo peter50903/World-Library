@@ -236,7 +236,7 @@ public partial class DemoHexMap
         if (_mode is Mode.Terrain or Mode.Realm)
             DrawRealms(start, radius, layer == ViewLayer.Regional ? (_mode == Mode.Realm ? 0.45f : 0.15f) : 0f, inner: false);
         if (_mode is Mode.Terrain or Mode.Realm)
-            DrawMonsterRealms(start, radius, fill: layer == ViewLayer.Regional); // 第 12-2 章：怪物的勢力範圍
+            DrawMonsterRealms(start, radius, fill: layer == ViewLayer.Regional || _mode == Mode.Realm); // 第 12-2 章：怪物的勢力範圍
         DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
         // 試玩回饋 2026-11-07 之 4：遠看只標各勢力最上層的名字（區域層村莊以上、戰略層城鎮以上）。
         if (_mode is Mode.Terrain or Mode.Realm)

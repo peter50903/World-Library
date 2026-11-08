@@ -104,6 +104,8 @@ public partial class ObserverRoot
     }
 
     /// <summary>點擊連結：s:聚落編號＝定位地圖；fold／unfold:起始年＝展開／收合十年段；stat:年＝展開出生老死明細。</summary>
+    private const string LocateIcon = "res://assets/px2/ic_stat_36.png";
+
     private void OnChronicleMeta(string meta)
     {
         var parts = meta.Split(':', 2);
@@ -203,6 +205,10 @@ public partial class ObserverRoot
                     else
                         text.Append(Escape(segment.Text));
                 }
+                // 第 08-18b 章第 5 節：每筆加一個定位鍵（第五批「定位」圖示；點了移到那個聚落並開詳情）。
+                if (entry.Segments.FirstOrDefault(x => x.SettlementId > 0) is { } place && ResourceLoader.Exists(LocateIcon))
+                    text.Append(" [url=s:").Append(place.SettlementId.ToString(CultureInfo.InvariantCulture)).Append("][img=16x16]")
+                        .Append(LocateIcon).Append("[/img][/url]");
                 text.Append('\n');
             }
             text.Append("[url=stat:").Append(year.Year.ToString(CultureInfo.InvariantCulture)).Append("]　")

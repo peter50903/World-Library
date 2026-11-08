@@ -70,4 +70,7 @@ public sealed class PlaybackClock
 
     /// <summary>狀態列文字。</summary>
     public string StatusText => Playing ? $"播放中（每秒 {DaysPerSecond} 天，TEMP）" : "已暫停";
+
+    /// <summary>試玩回饋 2026-11-08 之 3：玩家看的播放狀態（只說第幾檔速度，不說每秒幾天）。</summary>
+    public string PlayerStatusText => Playing ? $"播放中（{Math.Max(1, TempDaysPerSecondOptions.ToList().IndexOf(DaysPerSecond) + 1)} 倍速）" : "已暫停";
 }

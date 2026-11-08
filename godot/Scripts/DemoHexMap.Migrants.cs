@@ -21,17 +21,22 @@ public partial class DemoHexMap
     private bool WantsAnimation => Migrants.Count > 0 || _hasFire || _impacts.Count > 0
         || (_tokensMoving && CurrentLayer == ViewLayer.Regional) // 第 08-17 章：區域層的指示物來回移動
         || ((_walkersDrawn || _creaturesDrawn) && CurrentLayer == ViewLayer.Local) // 第 08-18b 章：近景小人、動物走動
-        || _movingDisaster; // 第 08-18b 章第 5 節：龍捲風、漲水
+        || _movingDisaster // 第 08-18b 章第 5 節：龍捲風、漲水
+        || _disasterAnimating; // 試玩回饋 2026-11-08 之 4：天災過程照真實時間播
 
     private void DrawMigrants(Vector2 start, float radius)
     {
         var font = ThemeDB.FallbackFont;
         var seconds = Time.GetTicksMsec() / 1000f;
+        _actorHits.RemoveAll(a => a.Actor.Kind == ActorKind.Migrants);
         foreach (var batch in Migrants)
         {
             var center = MigrantPosition(start, radius, batch);
             if (!OnScreen(center, radius * 3f))
                 continue;
+            // 試玩回饋 2026-11-08 之 6：遷徙隊伍可以點。
+            _actorHits.Add((center + new Vector2(0f, radius * 0.25f), new MapActor(ActorKind.Migrants, batch.FromSettlementId, TokenKind.Migrants,
+                batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id)));
             DrawRouteAhead(start, radius, batch, center);
             var heading = MigrantHeading(start, radius, batch);
             var walkers = Math.Clamp((int)((batch.People + TempPeoplePerWalker - 1) / TempPeoplePerWalker), 1, TempMaxWalkers);
@@ -153,4 +158,6 @@ public partial class DemoHexMap
             }
         }
     }
+
+    private DemoCellRef? CellOfScreen(Vector2 position) => CellAt(position) is { } cell ? new DemoCellRef(cell.Column, cell.Row) : null;
 }

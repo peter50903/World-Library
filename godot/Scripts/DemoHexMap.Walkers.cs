@@ -4,15 +4,15 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// 第 08-18b 章第 4 節：近景層的小人——人數依聚落人口推算（每 10 人一個，最多 12 個），在家、田、伐木地、礦坑、廣場之間走動；
+/// 第 08-18b 章第 4 節：近景層的小人，在家、田、伐木地、礦坑、廣場之間走動。試玩回饋 2026-11-08 之 6：每個小人都是一個工作團體
+/// （農夫、樵夫、礦工、獵人、漁夫；人多時後面跟著一兩個）或聚落的領袖，可以點開詳情；
 /// 頭上偶爾冒想法泡泡（餓、工作、開心）。只是表現：不進模擬、不抽世界亂數、不存檔，位置只由時間與固定雜湊決定。
 /// 不做逐格尋路，直接走直線。區域層與戰略層照舊畫指示物（第 08-17 章第 5 節）。
 /// </summary>
 public partial class DemoHexMap
 {
-    /// <summary>【TEMP】每幾人一個小人、每個聚落最多幾個、格半徑至少幾像素才畫；一趟來回的秒數。</summary>
-    private const int TempPeoplePerVillager = 10;
-    private const int TempMaxVillagers = 12;
+    /// <summary>【TEMP】團體每幾人多畫一個跟在後面的小人、格半徑至少幾像素才畫；一趟來回的秒數。</summary>
+    private const long TempPeoplePerFollower = 20;
     private const float TempWalkerMinRadius = 18f;
     private const float TempWalkerTripSeconds = 16f;
 
@@ -23,6 +23,7 @@ public partial class DemoHexMap
     {
         _walkersDrawn = false;
         _walkerHits.Clear();
+        _actorHits.RemoveAll(a => a.Actor.Kind is ActorKind.Leader or ActorKind.WorkGroup);
         if (World is null || Sites is null || radius < TempWalkerMinRadius)
             return;
         var seconds = Time.GetTicksMsec() / 1000f;
@@ -37,11 +38,12 @@ public partial class DemoHexMap
             var homeCenter = start + HexCoordinates.Center(home.AxialQ, home.AxialR, radius);
             if (!OnScreen(homeCenter, radius * 4f))
                 continue;
-            var count = (int)Math.Clamp((scale.Item1 + TempPeoplePerVillager - 1) / TempPeoplePerVillager, 1, TempMaxVillagers);
             var houses = layout.Lots.Where(l => IsResidence(l.Kind) && !l.Construction).ToList();
-            // 工作地：農田、伐木地、礦坑、獵場、水邊（與區域層的職業棋相同），再加廣場。
-            var works = tokens.Where(k => k.SettlementId == site.Id && k.Kind != TokenKind.Residents)
-                .Select(k => (k.Kind, Cell: k.Work)).ToList();
+            // 試玩回饋 2026-11-08 之 6：畫面上的角色都是有影響力的人物或團體——每個工作團體（農夫、樵夫、礦工、獵人、漁夫，
+            // 與區域層的職業棋相同）一個帶頭的小人（人多時後面跟著一兩個），再加一位聚落的領袖；都可以點。
+            var groups = tokens.Where(k => k.SettlementId == site.Id && k.Kind != TokenKind.Residents).ToList();
+            var works = groups.Select(k => (k.Kind, Cell: k.Work)).ToList();
+            var count = works.Count + 1;
             var starving = FoodStatuses.TryGetValue(site.Id, out var food) && food == FoodStatus.Starving;
             var tunic = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.55f, 0.45f, 0.35f);
             for (var i = 0; i < count; i++)
@@ -85,11 +87,22 @@ public partial class DemoHexMap
                 var facing = heading.X < 0f ? -1f : 1f;
                 var color = tunic;
                 // 第 08-18d 章：小人素材依職業（工作中）或男女老少；走路時 4 格動畫。
-                var unit = UnitArt(working ? works[i % (works.Count + 1)].Kind : null, i);
+                var group = i < groups.Count ? groups[i] : (Token?)null;
+                var unit = group is { } g ? UnitArt(g.Kind, i) : "unit_leader";
                 var step = walking ? (int)(seconds * 7f + h * 4f) % 4 : 0;
                 var art = bubble is null ? null : BubbleArt(bubble, h);
                 people.Add((at, at.Y, () => DrawWalker(at, radius, color, frame, facing, bubble, unit, step, art)));
+                // 團體人多時，後面跟著一兩個同職業的小人（每 20 人多一個，最多三人一列）。
+                var followers = group is { } crowd ? (int)Math.Min(2, crowd.People / TempPeoplePerFollower) : 0;
+                for (var k = 1; k <= followers; k++)
+                {
+                    var behind = at - new Vector2(facing * k * radius * 0.2f, -k * radius * 0.04f);
+                    var lag = (step + k) % 4;
+                    people.Add((behind, behind.Y, () => DrawWalker(behind, radius, color, frame, facing, null, unit, lag, null)));
+                }
                 _walkerHits.Add((at, site.Id));
+                _actorHits.Add((at, new MapActor(group is null ? ActorKind.Leader : ActorKind.WorkGroup, site.Id,
+                    group?.Kind ?? TokenKind.Residents, group?.People ?? scale.Item1, group?.Work ?? new DemoCellRef(site.Column, site.Row))));
             }
             _walkersDrawn = true;
         }

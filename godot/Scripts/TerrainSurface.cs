@@ -324,6 +324,8 @@ public partial class TerrainSurface : Control
             BuildPaint(0, 0, _tilesX, _tilesY);
             BuildDistances();
             BuildBiomes();
+            _hillCore = Array.Empty<bool>(); // 試玩回饋 2026-11-08 之 5：山脈核心隨地圖重算
+            _rocky = Array.Empty<byte>();
             foreach (var chunk in _chunks.Values)
                 chunk.Dirty = true;
             BuildThumb(0, 0, _thumbW = _width / TempThumb, _thumbH = _height / TempThumb, rebuild: true);
@@ -944,10 +946,91 @@ public partial class TerrainSurface : Control
             return 0;
         // 試玩回饋 2026-11-07 之 1（礦石、山頭、岩石混在一起很亂）：山頭只長在每 3×3 方格一個的位置（左右錯開一方格），
         // 約一半的位置有山頭：排成一片片山脈、彼此不疊在一起。
-        if (tx % 3 != 1 || ty % 3 != (Hash(tx / 3, ty / 3, 36) < 0.5f ? 0 : 1))
+        // 試玩回饋 2026-11-08 之 5：每 3×3 方格只有一個位置可能有山頭，位置依區塊雜湊錯開（不排成棋盤）；
+        // 礦脈格中央 4×4 方格留給礦床；山脈核心（四周全是丘陵的格）山頭密、外圍丘陵稀。
+        if (tx % 3 != (int)(Hash(tx / 3, ty / 3, 36) * 3f) % 3 || ty % 3 != (int)(Hash(tx / 3, ty / 3, 37) * 3f) % 3)
+            return 0;
+        if (code is not Code.Hills && OreClear(tx, ty))
             return 0;
         var h = Hash(tx, ty, 30);
-        return h < 0.18f ? 2 : h < 0.5f ? 1 : 0;
+        return HillCore(_paint[tile]) ? (h < 0.3f ? 2 : h < 0.7f ? 1 : 0) : h < 0.3f ? 1 : 0;
+    }
+
+    /// <summary>
+    /// 試玩回饋 2026-11-08 之 5：山脈核心——丘陵格（含礦脈、採礦中、礦坑）而且上下左右與斜角八格也都是丘陵。
+    /// 核心是岩石地面與岩石山頭，外圍是長草的丘陵。
+    /// </summary>
+    private bool HillCore(int cell)
+    {
+        if (_hillCore.Length != _columns * _rows)
+            BuildHillCore();
+        return _hillCore[cell];
+    }
+
+    private bool[] _hillCore = Array.Empty<bool>();
+
+    private static bool IsHill(byte code) => code is (byte)Code.Hills or (byte)Code.HillsOre or (byte)Code.HillsMining or (byte)Code.MinePit;
+
+    private void BuildHillCore()
+    {
+        _hillCore = new bool[_columns * _rows];
+        for (var r = 0; r < _rows; r++)
+            for (var c = 0; c < _columns; c++)
+            {
+                var all = IsHill(_codes![(r * _columns + c) * 4]);
+                for (var dr = -1; dr <= 1 && all; dr++)
+                    for (var dc = -1; dc <= 1 && all; dc++)
+                        if (r + dr >= 0 && c + dc >= 0 && r + dr < _rows && c + dc < _columns)
+                            all = IsHill(_codes[((r + dr) * _columns + c + dc) * 4]);
+                _hillCore[r * _columns + c] = all;
+            }
+    }
+
+    /// <summary>礦脈格中央 4×4 方格不長山頭（礦床四周空出來，一眼看得到）。</summary>
+    private static bool OreClear(int tx, int ty)
+        => tx % TilesPerCell is >= 1 and <= 4 && ty % TilesPerCell is >= 1 and <= 4;
+
+    /// <summary>
+    /// 這個方格是不是岩石地面：山脈核心的格是岩石、外圍是草地；兩者交界一方格內參差（核心邊上 35% 露出草地、外圍邊上 45% 露出岩石），
+    /// 不會是一條直線的方框。礦床一定是岩石。【TEMP】參差比例；山頭在核心 70%、外圍 30%。
+    /// </summary>
+    private bool RockyTile(int tx, int ty)
+    {
+        var tile = ty * _tilesX + tx;
+        if (_rocky.Length != _tilesX * _tilesY)
+            _rocky = new byte[_tilesX * _tilesY];
+        if (_rocky[tile] != 0)
+            return _rocky[tile] == 2; // 每方格只算一次（地表逐像素查）
+        var rocky = ComputeRocky(tx, ty);
+        _rocky[tile] = (byte)(rocky ? 2 : 1);
+        return rocky;
+    }
+
+    private byte[] _rocky = Array.Empty<byte>();
+
+    private bool ComputeRocky(int tx, int ty)
+    {
+        var cell = _paint[ty * _tilesX + tx];
+        var own = HillCore(cell);
+        var border = false;
+        for (var dy = -1; dy <= 1 && !border; dy++)
+            for (var dx = -1; dx <= 1 && !border; dx++)
+            {
+                var x = tx + dx;
+                var y = ty + dy;
+                if (x >= 0 && y >= 0 && x < _tilesX && y < _tilesY && HillCore(_paint[y * _tilesX + x]) != own)
+                    border = true;
+            }
+        var h = Hash(tx, ty, 38);
+        return own ? !(border && h < 0.35f) : border && h < 0.45f;
+    }
+
+    /// <summary>礦脈格中央 2×2 方格：礦床（岩石地面上一兩塊礦石，開採中時是礦坑）。</summary>
+    private bool OreSpot(int tx, int ty)
+    {
+        var lx = tx % TilesPerCell;
+        var ly = ty % TilesPerCell;
+        return lx is 2 or 3 && ly is 2 or 3;
     }
 
     /// <summary>兩方格內有沒有山頭（岩石不放在山腳下）。</summary>
@@ -1009,8 +1092,12 @@ public partial class TerrainSurface : Control
 
         if (PeakAt(tx, ty) is var peak and > 0)
         {
-            // 第 08-18d 章：第五批的丘陵山頭（四種）；大山頭用整張，小山頭只在缺素材時畫小的。
-            var art = PixelParts.Variant("px_hill", 4, Hash(tx, ty, 31)) ?? PixelParts.Get(peak == 2 ? "px_mountain_1" : "px_mountain_2");
+            // 試玩回饋 2026-11-08 之 5（參考 WorldBox：外圍是長草的丘陵、中央是岩石山）：山脈核心用岩石山頭（px_hill_1、px_hill_4），
+            // 外圍丘陵用長草的土丘（px_hill_2、px_hill_3）；不再四種混在一起。
+            var core = HillCore(cell);
+            var pick = Hash(tx, ty, 31) < 0.5f ? 0 : 1;
+            var art = PixelParts.Get(core ? (pick == 0 ? "px_hill_1" : "px_hill_4") : (pick == 0 ? "px_hill_2" : "px_hill_3"))
+                ?? PixelParts.Get(peak == 2 ? "px_mountain_1" : "px_mountain_2");
             ShadowEllipse(ax + 2 * K, ay, art is { Scale: 1 } ? art.Width / 2 - K : peak == 2 ? 5 * K : 3 * K, K + 2);
             if (art is not null)
                 StampSprite(art, ax, ay);
@@ -1022,7 +1109,7 @@ public partial class TerrainSurface : Control
         var ly = ty % TilesPerCell;
         var center = lx == TilesPerCell / 2 && ly == TilesPerCell / 2 && _paint[tile] == TileOwner(tx, ty);
         // 試玩回饋 2026-11-07 之 1：礦石只在礦脈格中央 2×2 方格、而且不在山頭上（一格一兩塊，聚在一起）；開採中的格只剩礦坑。
-        if (code == Code.HillsOre && !groundTile && lx is 2 or 3 && ly is 2 or 3 && PeakAt(tx, ty) == 0 && Hash(tx, ty, 34) < 0.5f)
+        if (code == Code.HillsOre && !groundTile && OreSpot(tx, ty))
         {
             if (PixelParts.Variant("px_ore", 4, Hash(tx, ty, 35)) is { } ore)
                 StampSprite(ore, ax, ay);
@@ -1071,7 +1158,7 @@ public partial class TerrainSurface : Control
         }
         else if (code is Code.Forest && d < 0.03f && TreeAt(tx, ty) is null && PixelParts.Variant("px_mushroom", 2, Hash(tx, ty, 41)) is { } mushroom)
             StampSprite(mushroom, ax, ay); // 第 08-18d 章：林地上偶爾一叢蘑菇
-        else if (code == Code.Hills && d < 0.025f && !NearPeak(tx, ty))
+        else if (code == Code.Hills && HillCore(cell) && d < 0.03f && !NearPeak(tx, ty))
         {
             if ((d < 0.015f ? PixelParts.Variant("px_rock_big", 2, Hash(tx, ty, 41)) : PixelParts.Variant("px_rock", 4, Hash(tx, ty, 41))) is { } rock)
                 StampSprite(rock, ax, ay);

@@ -417,6 +417,8 @@ public partial class DemoHexMap : Control
         }
         else if (_mode == Mode.Realm)
             DrawRealms(start, radius, 0.45f, inner: false); // 試玩回饋 2026-11-07 之 4：同一勢力不畫內部分界
+        if (_mode == Mode.Realm)
+            DrawMonsterRealms(start, radius, fill: true); // 試玩回饋 2026-11-08 之 2：怪物也是一個勢力
         if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
         {
             if (_surface is { Active: true })
@@ -703,7 +705,7 @@ public partial class DemoHexMap : Control
     private byte[] SurfaceCodes()
     {
         var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
-        if (_surfaceCodes is not null && key.Equals(_surfaceKey))
+        if (_surfaceCodes is not null && key.Equals(_surfaceKey) && !_disasterAnimating) // 天災過程播放中要隨真實時間更新
             return _surfaceCodes;
         // 試玩回饋 2026-11-04 之 4（遊戲進行時拖地圖很卡）：同一張地圖最多每 TempSurfaceRefreshMs 毫秒重算一次
         // （原本週內進度每幀都變、每幀重算並重新上傳）；換地圖立刻重算。
@@ -907,9 +909,14 @@ public partial class DemoHexMap : Control
             name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
         // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
         var status = DisasterStatus(cell.Column, cell.Row);
+        BuildTipRows(cell, name, status); // 第 08-18b 章第 5 節：圖示＋數字的提示
         if (status.Length > 0)
             name += "\n" + status;
-        return LayerFor(ViewLayout().Radius) == ViewLayer.Local ? name : $"{name}\n{ColorMeaning(cell)}";
+        if (LayerFor(ViewLayout().Radius) == ViewLayer.Local)
+            return name;
+        var meaning = ColorMeaning(cell);
+        _tipRows.Insert(0, (IcPlace, meaning)); // 色塊層：這一格的顏色代表什麼
+        return $"{name}\n{meaning}";
     }
 
     /// <summary>試玩回饋 2026-11-05 之 2：這一格目前的天災狀況（依地表疊層；沒有回傳空字串）。</summary>

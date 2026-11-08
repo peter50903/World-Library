@@ -16,7 +16,7 @@ public partial class ObserverRoot
     public override void _ExitTree()
     {
         _simTask?.Wait(); // 關閉前等背景推進結束
-        foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer })
+        foreach (var player in new[] { _clickPlayer, _alertPlayer, _musicPlayer, _uiPlayer })
             player?.Stop();
         ArtAssets.ReleaseCache();
         base._ExitTree();
@@ -38,6 +38,7 @@ public partial class ObserverRoot
     private (bool Faith, int Id)? _detailBelief; // 第 08-16 章第 15 節：目前開著的是文化頁或信仰頁（null＝地點或聚落）
     private Button _detailBack = null!;
     private int? _detailRealm; // 試玩回饋 2026-11-07 之 4：目前開著的是勢力詳情（最上層聚落編號）
+    private bool _detailFixed; // 試玩回饋 2026-11-08 之 6：開著的是團體或隊伍的詳情（每週不改成聚落頁）
     private int _detailWeek = -1;
     private PanelContainer _timePanel = null!;
     private Button _timePlay = null!;
@@ -238,6 +239,23 @@ public partial class ObserverRoot
         }
     }
 
+    private bool _tabSoundMuted;
+    private AudioStreamPlayer? _uiPlayer;
+
+    /// <summary>第 08-18d 章：介面音效（打開、關閉詳情、切換分頁；第五批 sfx2/ui_*）；無畫面模式靜音、素材缺少時不播。</summary>
+    private void PlayUi(string name)
+    {
+        if (_audioMuted || ArtAssets.Audio(ArtAssets.Sfx2(name)) is not { } stream)
+            return;
+        if (_uiPlayer is null)
+        {
+            _uiPlayer = new AudioStreamPlayer { VolumeDb = TempClickVolumeDb };
+            AddChild(_uiPlayer);
+        }
+        _uiPlayer.Stream = stream;
+        _uiPlayer.Play();
+    }
+
     private void PlayClick()
     {
         if (!_audioMuted && _clickPlayer.Stream is not null)
@@ -312,6 +330,11 @@ public partial class ObserverRoot
         column.AddChild(_detailTabs);
         // 使用者 2026-11-01（試玩回饋四之 2）：分頁不要壓黑底——Godot 預設分頁容器自帶深灰底，蓋在羊皮紙上；改透明、分頁籤用淡色。
         _detailTabs.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        _detailTabs.TabChanged += _ =>
+        {
+            if (!_tabSoundMuted)
+                PlayUi("ui_tab");
+        };
         var parchment = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
         StyleBoxFlat TabStyle(float alpha) => ArtAssets.Track(new StyleBoxFlat
         {
@@ -335,11 +358,14 @@ public partial class ObserverRoot
         _detailCell = (column, row);
         _detailBelief = null;
         _detailRealm = null;
+        _detailFixed = false;
         var detail = _world.PlayerDetail(column, row);
         var tabs = detail.Tabs.ToList();
         // 試玩回饋 2026-11-05 之 2：遭遇天災的地塊在詳情第一頁最上面寫明狀況。
         if (tabs.Count > 0 && _hexMap.DisasterStatus(column, row) is { Length: > 0 } status)
             tabs[0] = tabs[0] with { Lines = new[] { status, "" }.Concat(tabs[0].Lines).ToList() };
+        if (detail.SettlementId is { } settlementId && RealmTab(settlementId) is { } realmTab)
+            tabs.Add(realmTab); // 試玩回饋 2026-11-08 之 1：聚落所屬勢力的概況與隸屬樹
         if (_showDebugInfo)
             tabs.Add(new DemoDetailTab("除錯", _world.QueryCell(column, row).Lines));
         RenderDetail(detail, tabs, keep);
@@ -357,23 +383,116 @@ public partial class ObserverRoot
         }
         _detailBelief = (faith, id);
         _detailRealm = null;
+        _detailFixed = false;
         RenderDetail(detail, detail.Tabs.ToList(), keep);
     }
 
-    /// <summary>試玩回饋 2026-11-07 之 2、4：勢力詳情（遠看點地圖）——最上層聚落、轄下聚落數、人口、範圍與整棵隸屬樹（Core 產生）。</summary>
+    /// <summary>
+    /// 試玩回饋 2026-11-08 之 1：勢力模式點到勢力，開勢力最上層聚落的介紹（城市勢力就是那座城市）；
+    /// 聚落詳情最後一頁「勢力」列出整個勢力的概況與隸屬樹（<see cref="RealmTab"/>）。
+    /// </summary>
     private void ShowRealmDetail(int realmId)
     {
-        var scale = _hexMap.SettlementScale;
         var top = _hexMap.Territory.RealmOf(realmId);
-        var keep = _detailRealm == top ? _detailTabs.CurrentTab : 0;
-        var detail = DemoTerritory.Detail(_hexMap.Territory, _world.Sites, top,
+        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is { } capital)
+            ShowDetailAt(capital.Column, capital.Row);
+    }
+
+    /// <summary>聚落所屬勢力的分頁：概況、空一行、隸屬樹（Core 的 <see cref="DemoTerritory.Detail"/>）；不在任何勢力回傳 null。</summary>
+    private DemoDetailTab? RealmTab(int settlementId)
+    {
+        if (!_hexMap.Territory.Realm.ContainsKey(settlementId))
+            return null;
+        var scale = _hexMap.SettlementScale;
+        var realm = DemoTerritory.Detail(_hexMap.Territory, _world.Sites, settlementId,
             id => scale.TryGetValue(id, out var s) ? s.Tier : DemoSettlementTier.Camp,
             id => scale.TryGetValue(id, out var s) ? s.Population : 0L);
-        _detailBelief = null;
-        _detailRealm = top;
-        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is { } capital)
-            _detailCell = (capital.Column, capital.Row); // 「返回」與刷新時用
-        RenderDetail(detail, detail.Tabs.ToList(), keep);
+        return new DemoDetailTab("勢力", realm.Tabs[0].Lines.Append("").Concat(realm.Tabs[1].Lines).ToList());
+    }
+
+    /// <summary>
+    /// 試玩回饋 2026-11-08 之 6：點到地圖上的角色。領袖開聚落的「代表人物」頁；工作團體、遷徙隊伍開它們自己的詳情；怪物開地下城。
+    /// </summary>
+    private void OnActorSelected(DemoHexMap.MapActor actor)
+    {
+        var site = _world.Sites.Settlements.FirstOrDefault(s => s.Id == actor.SettlementId);
+        switch (actor.Kind)
+        {
+            case DemoHexMap.ActorKind.Monster:
+                ShowDetailAt(actor.Cell.Column, actor.Cell.Row);
+                return;
+            case DemoHexMap.ActorKind.Leader when site is not null:
+                ShowDetailAt(site.Column, site.Row);
+                SelectDetailTab("代表人物");
+                return;
+            case DemoHexMap.ActorKind.Migrants:
+                if (_world.MigrationsInTransit().FirstOrDefault(b => b.Id == actor.BatchId) is { } batch)
+                {
+                    _detailBelief = null;
+                    _detailRealm = null;
+                    _detailFixed = true;
+                    var lines = new List<string>
+                    {
+                        $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}：{batch.People} 人",
+                        $"從{batch.FromName}出發，前往{batch.ToName}",
+                        batch.Founding ? "抵達後會在那裡建立新的聚落" : "抵達後會住進那個聚落"
+                    };
+                    RenderDetail(new DemoPlayerDetail($"{batch.FromName}的{(batch.Founding ? "開拓隊" : "遷徙隊伍")}", new[] { new DemoDetailTab("隊伍", lines) }, null),
+                        new List<DemoDetailTab> { new("隊伍", lines) }, 0);
+                }
+                return;
+            case DemoHexMap.ActorKind.WorkGroup when site is not null:
+            {
+                _detailBelief = null;
+                _detailRealm = null;
+                _detailFixed = true;
+                _detailCell = (site.Column, site.Row);
+                var home = _hexMap.SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : site.Name;
+                var name = WorkGroupName(actor.Work);
+                var place = DemoCellQuery.ShortName(_world.Map, _world.Sites, _world.Map.GetCell(actor.Cell.Column, actor.Cell.Row));
+                var lines = new List<string>
+                {
+                    $"{home}的{name}：約 {actor.People} 人",
+                    $"工作地：{place}",
+                    WorkGroupDuty(actor.Work),
+                    _world.IsStarving(site.Id) ? "聚落正在缺糧，他們的收穫攸關生死" : "聚落糧食充足"
+                };
+                RenderDetail(new DemoPlayerDetail($"{home}的{name}", new[] { new DemoDetailTab("團體", lines) }, site.Id),
+                    new List<DemoDetailTab> { new("團體", lines) }, 0);
+                return;
+            }
+        }
+    }
+
+    private static string WorkGroupName(DemoHexMap.TokenKind kind) => kind switch
+    {
+        DemoHexMap.TokenKind.Farmers => "農夫",
+        DemoHexMap.TokenKind.Woodcutters => "樵夫",
+        DemoHexMap.TokenKind.Miners => "礦工",
+        DemoHexMap.TokenKind.Hunters => "獵人",
+        DemoHexMap.TokenKind.Fishers => "漁夫",
+        _ => "居民"
+    };
+
+    private static string WorkGroupDuty(DemoHexMap.TokenKind kind) => kind switch
+    {
+        DemoHexMap.TokenKind.Farmers => "在農田耕作，是聚落主要的糧食來源",
+        DemoHexMap.TokenKind.Woodcutters => "砍伐森林取得木材，砍過的林地約十年長回",
+        DemoHexMap.TokenKind.Miners => "開採礦脈，挖空後只剩礦坑",
+        DemoHexMap.TokenKind.Hunters => "在附近獵捕野生動物，獵物多寡影響收穫",
+        DemoHexMap.TokenKind.Fishers => "在水邊捕魚",
+        _ => ""
+    };
+
+    /// <summary>切到標題相符的分頁（沒有就不動）。</summary>
+    private void SelectDetailTab(string title)
+    {
+        for (var i = 0; i < _detailTabs.GetTabCount(); i++)
+            if (_detailTabs.GetTabTitle(i) == title)
+            {
+                _detailTabs.CurrentTab = i;
+                return;
+            }
     }
 
     private void RenderDetail(DemoPlayerDetail detail, List<DemoDetailTab> tabs, int keep)
@@ -402,10 +521,14 @@ public partial class ObserverRoot
                 });
             _detailTabs.AddChild(scroll);
         }
+        _tabSoundMuted = true; // 程式切的分頁不播音效
         if (keep >= 0 && keep < tabs.Count)
             _detailTabs.CurrentTab = keep;
+        _tabSoundMuted = false;
         _detailTitle.Text = detail.Title;
         _detailShown = detail.Text;
+        if (!_detailOpen)
+            PlayUi("ui_open"); // 第 08-18d 章：介面音效
         _detailOpen = true;
         ApplyHudLayout();
     }
@@ -660,6 +783,8 @@ public partial class ObserverRoot
 
     private void HideDetail()
     {
+        if (_detailOpen)
+            PlayUi("ui_close"); // 第 08-18d 章：介面音效
         _detailOpen = false;
         if (_hexMap is not null)
             _hexMap.Highlight = null; // 第 08-5 章：關閉詳情時一併取消地圖上的框
@@ -701,14 +826,20 @@ public partial class ObserverRoot
         var week = _world.LatestWeek;
         var births = week?.Settlements.Sum(l => l.Births) ?? 0;
         var deaths = week?.Settlements.Sum(l => l.Deaths) ?? 0;
-        _topWorld.Text = $"【TEMP 示範】{_world.TempScenarioDisplayName}";
+        // 試玩回饋 2026-11-08 之 3（參考 WorldBox、十字軍之王）：頂部只留時代、人口、聚落、勢力與日期；
+        // 天數、糧食庫存、本週出生與死亡只在開發資訊開啟時顯示。
+        _topWorld.Text = _showDebugInfo ? $"【TEMP 示範】{_world.TempScenarioDisplayName}" : DemoKnowledge.EraName(_world.Era);
         var food = _world.Sites.Settlements.Sum(s => _world.SettlementFood(s.Id));
+        var realms = _hexMap.Territory.Realm.Values.Distinct().Count();
         _topStats.Text = string.Create(CultureInfo.InvariantCulture,
-            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count(x => !x.IsRuin)}｜遷徙途中 {_world.PopulationInTransit}");
+            $"人口 {_world.WorldPopulation}｜聚落 {_world.Sites.Settlements.Count(x => !x.IsRuin)}｜勢力 {realms}");
         _topFood.Text = string.Create(CultureInfo.InvariantCulture, $"糧食 {food}");
         _topBirths.Text = string.Create(CultureInfo.InvariantCulture, $"出生 {births}");
         _topDeaths.Text = string.Create(CultureInfo.InvariantCulture, $"死亡 {deaths}");
-        _topDate.Text = $"{DateText(days)}（第 {days} 日）";
+        foreach (var stat in new[] { _topFood, _topBirths, _topDeaths })
+            if (stat.GetParent() is Control group)
+                group.Visible = _showDebugInfo;
+        _topDate.Text = _showDebugInfo ? $"{DateText(days)}（第 {days} 日）" : DateText(days);
         if (_timePlay is null)
             return;
         SetButtonIcon(_timePlay, _playback.Playing ? ArtAssets.UiPause : ArtAssets.UiPlay, _playback.Playing ? "⏸" : "▶");
@@ -779,7 +910,7 @@ public partial class ObserverRoot
         for (var i = 0; i < 7; i++)
             nextButton.EmitSignal(BaseButton.SignalName.Pressed);
         var before = _world.ExportTempSave();
-        if (!_topDate.Text.Contains("第 7 日", StringComparison.Ordinal)
+        if (!_topDate.Text.StartsWith(DateText(7), StringComparison.Ordinal)
             || !_topStats.Text.Contains($"人口 {_world.WorldPopulation}", StringComparison.Ordinal))
             Fail($"top bar does not show Core's day/population: {_topDate.Text} / {_topStats.Text}");
 

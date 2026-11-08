@@ -134,7 +134,10 @@ public partial class TerrainSurface
         return code switch
         {
             Code.Forest or Code.Logged => Tex(art.Floor(biome), tx, ty, x, y),
-            Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Tex(art.Hill, tx, ty, x, y),
+            // 試玩回饋 2026-11-08 之 5：山脈核心與礦床是岩石地面，外圍丘陵是稍暗的草地（看得出高起來）。
+            Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit when RockyTile(tx, ty)
+                || code is not Code.Hills && OreSpot(tx, ty) => Tex(art.Hill, tx, ty, x, y),
+            Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Tex(art.Grass(biome), tx, ty, x, y) is { } grass ? grass.Darkened(0.12f) : null,
             Code.Farmland => Plot(x, y) ?? Tex(art.Grass(biome), tx, ty, x, y),
             Code.Clearing when fourth == SettlementGround => Tex(art.Grass(biome), tx, ty, x, y),
             Code.Clearing => fourth > 0 ? Plot(x, y) ?? Tex(art.Grass(biome), tx, ty, x, y) : Tex(art.Soil, tx, ty, x, y),

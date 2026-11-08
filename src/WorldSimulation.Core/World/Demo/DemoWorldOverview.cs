@@ -101,6 +101,28 @@ public sealed record DemoWorldOverview(
     public long? CapacityPercent => Capacity > 0 ? Population * 100 / Capacity : null;
 
     /// <summary>總覽各列（繁體中文；Godot 與 CLI 共用）。</summary>
+    /// <summary>
+    /// 試玩回饋 2026-11-08 之 3：玩家看的世界概況（參考 WorldBox、十字軍之王：只留時代、年份、人口、聚落、文化與信仰；
+    /// 天數、糧食庫存、出生死亡、懷孕、理論上限等數字只在開發資訊的 <see cref="Lines"/>）。
+    /// </summary>
+    public IReadOnlyList<string> PlayerLines()
+    {
+        string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
+        var lines = new List<string>
+        {
+            EraName is null ? I($"第 {Year} 年") : I($"{EraName}｜第 {Year} 年"),
+            I($"世界人口 {Population}｜有人的聚落 {Villages}")
+        };
+        if (Tiers.Count > 0)
+            lines.Add(string.Join("｜", Enum.GetValues<DemoSettlementTier>().Where(t => Tiers[(int)t] > 0)
+                .Select(t => I($"{DemoSettlementHistory.TierName(t)} {Tiers[(int)t]}"))));
+        if (Cultures.Count > 0)
+            lines.Add("文化：" + string.Join("、", Cultures.Take(MaxCultureLines).Select(c => c.Name)) + (Cultures.Count > MaxCultureLines ? "…" : ""));
+        lines.Add(Faiths.Count == 0 ? "信仰：人人尚無信仰"
+            : "信仰：" + string.Join("、", Faiths.Take(MaxCultureLines).Select(f => f.Name)) + (Faiths.Count > MaxCultureLines ? "…" : ""));
+        return lines;
+    }
+
     public IReadOnlyList<string> Lines()
     {
         string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);

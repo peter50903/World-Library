@@ -211,6 +211,7 @@ public partial class ObserverRoot : Control
             MainRiverTiles = _world.UsesSharedForaging ? DemoForagingWorld.MainRiverTiles(_world.Map) : Array.Empty<DemoCellRef>() };
         _hexMap.CellSelected += OnCellSelected;
         _hexMap.RealmSelected += ShowRealmDetail; // 試玩回饋 2026-11-07 之 2、4：遠看點到勢力
+        _hexMap.ActorSelected += OnActorSelected; // 試玩回饋 2026-11-08 之 6：點到人物、團體、隊伍、怪物
         _hexMap.CultureSelected += id => ShowBeliefDetail(false, id);
         _hexMap.FaithSelected += id => ShowBeliefDetail(true, id);
         mapPanel.AddChild(_hexMap);
@@ -1281,8 +1282,8 @@ public partial class ObserverRoot : Control
                 last = _world.AdvanceOneDay();
             SyncAlertWatermark(); // #95: events seen by stepping manually are never alerted later.
 
-            _notice.Text = (_playback.Playing ? $"{_playback.StatusText}；" : "")
-                + $"已推進 {days} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
+            _notice.Text = (_playback.Playing ? $"{(_showDebugInfo ? _playback.StatusText : _playback.PlayerStatusText)}；" : "")
+                + (_showDebugInfo ? $"已推進 {days} 天（第 {last!.Day} 天）；{WeeklySummaryText()}" : $"已推進 {days} 天"); // 試玩回饋 2026-11-08 之 3
             Refresh();
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
@@ -1315,7 +1316,7 @@ public partial class ObserverRoot : Control
 
         _playback.Play();
         _playButton.Text = "⏸ 暫停";
-        _notice.Text = $"{_playback.StatusText}：世界每天仍由核心逐日結算，與按「下一天」相同。";
+        _notice.Text = _showDebugInfo ? $"{_playback.StatusText}：世界每天仍由核心逐日結算，與按「下一天」相同。" : _playback.PlayerStatusText;
         Refresh();
     }
 
@@ -1413,7 +1414,7 @@ public partial class ObserverRoot : Control
     {
         var snapshot = _world.Snapshot();
         // 第 08-11 章：詳情開著時每週結算後更新一次（不在每幀重建分頁）。
-        if (_detailOpen && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows
+        if (_detailOpen && !_detailFixed && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows
             && _world.LatestWeek?.Week is { } week && week != _detailWeek)
         {
             _detailWeek = week;

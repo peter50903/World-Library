@@ -140,7 +140,10 @@ public partial class ObserverRoot
                     return;
                 }
                 _sinceRefresh.Restart();
-                _notice.Text = $"{_playback.StatusText}{ActualSpeedText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}";
+                // 試玩回饋 2026-11-08 之 3：播放中只說速度；推進天數與週結算摘要只在開發資訊開啟時。
+                _notice.Text = _showDebugInfo
+                    ? $"{_playback.StatusText}{ActualSpeedText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}"
+                    : $"{_playback.PlayerStatusText}{(ActualSpeedText.Length > 0 ? "（電腦跟不上，實際較慢）" : "")}";
                 Refresh();
                 return;
             }

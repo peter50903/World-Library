@@ -37,6 +37,40 @@ public partial class DemoHexMap
     public static bool ShowAnimals { get; set; }
     private List<Group>? _groups;
     private List<(Vector2I Tile, int Seed)>? _monsters;
+
+    /// <summary>試玩回饋 2026-11-08 之 2：每個地下城的怪物在勢力範圍內巡遊的目的地（空地方格；從門口直線走得到）。</summary>
+    private readonly Dictionary<int, List<Vector2I>> _monsterPatrol = new();
+    private object? _patrolKey;
+
+    /// <summary>【TEMP】怪物走一趟（門口→範圍內一處→門口）的秒數；每幾隻怪物畫一隻、最多畫幾隻。</summary>
+    private const float TempMonsterTripSeconds = 22f;
+    private const int TempMonstersPerSprite = 3, TempMaxMonsterSprites = 5;
+
+    private List<Vector2I> PatrolOf(int seed, Vector2I gate, DemoMonsterNest? nest)
+    {
+        if (!ReferenceEquals(_patrolKey, MonsterNests))
+        {
+            _monsterPatrol.Clear();
+            _patrolKey = MonsterNests;
+        }
+        if (_monsterPatrol.TryGetValue(seed, out var known))
+            return known;
+        var list = new List<Vector2I>();
+        if (nest is { Radius: > 0 } && World is not null)
+        {
+            var c = nest.Dungeon.Cell;
+            for (var k = 0; k < 12 && list.Count < 6; k++)
+            {
+                var dc = (int)(LayoutHash(seed, k, 150) * (2 * nest.Radius + 1)) - nest.Radius;
+                var dr = (int)(LayoutHash(seed, k, 151) * (2 * nest.Radius + 1)) - nest.Radius;
+                if (!World.Contains(c.Column + dc, c.Row + dr))
+                    continue;
+                if (OpenTileIn((c.Row + dr) * World.Columns + c.Column + dc, seed + k) is { } spot && ClearPath(gate, spot))
+                    list.Add(spot);
+            }
+        }
+        return _monsterPatrol[seed] = list;
+    }
     private (object?, object?, object?, object?, object?) _groupKey;
 
     /// <summary>依棲地裡的總數挑出要畫的動物群（狼、獵物、地下城、聚落地面或地圖改變時重算）。</summary>
@@ -210,26 +244,54 @@ public partial class DemoHexMap
                 }));
             }
         }
+        _actorHits.RemoveAll(a => a.Actor.Kind == ActorKind.Monster);
         foreach (var (tile, seed) in _monsters!)
         {
             var gate = TileFeet(tile, start, radius);
-            if (!OnScreen(gate, radius * 3f))
+            var nest = NestAtGate(tile);
+            if (!OnScreen(gate, radius * (3f + 2f * (nest?.Radius ?? 0))))
                 continue;
             _creaturesDrawn = true;
-            var pace = Mathf.Sin(seconds * 0.8f + seed);
-            var at = gate + new Vector2(pace * radius * 0.15f, radius * 0.06f);
-            var facing = Mathf.Cos(seconds * 0.8f + seed) >= 0f ? 1f : -1f;
             // 第 08-18d 章：地下城入口（洞窟、古代石門、墓室三種）畫在怪物後面。
-            if (PixelParts.Texture(DungeonArt(seed)) is { } entrance)
+            if (PixelParts.Texture(DungeonArt(seed)) is { } entrance && OnScreen(gate, radius * 3f))
                 items.Add((gate.Y - 0.5f, () => DrawArt(entrance, gate, radius)));
             var kindSeed = seed;
-            // 第 12-2 章：怪物數每 4 隻多畫一隻（最多 3 隻）；沉寂的地下城門口沒有怪物。
-            var shown = MonstersShownAt(tile);
+            // 試玩回饋 2026-11-08 之 2：怪物從地下城出來，在自己的勢力範圍裡巡遊（門口留一隻踱步）；
+            // 每 3 隻畫一隻、最多 5 隻；沉寂的地下城沒有怪物。每一隻都可以點（開地下城詳情）。
+            var shown = nest is null ? 1 : nest.Monsters <= 0 ? 0 : Math.Clamp((nest.Monsters + TempMonstersPerSprite - 1) / TempMonstersPerSprite, 1, TempMaxMonsterSprites);
+            var patrol = PatrolOf(seed, tile, nest);
+            var dungeonCell = new DemoCellRef(tile.X / TerrainSurface.TilesPerCell, tile.Y / TerrainSurface.TilesPerCell);
             for (var k = 0; k < shown; k++)
             {
-                var spot = at + new Vector2((k - (shown - 1) / 2f) * radius * 0.28f, (k % 2) * radius * 0.08f);
+                Vector2 spot;
+                float facing;
+                if (k == 0 || patrol.Count == 0)
+                {
+                    var pace = Mathf.Sin(seconds * 0.8f + seed + k);
+                    spot = gate + new Vector2(pace * radius * 0.15f + k * radius * 0.2f, radius * 0.06f);
+                    facing = Mathf.Cos(seconds * 0.8f + seed + k) >= 0f ? 1f : -1f;
+                }
+                else
+                {
+                    var target = TileFeet(patrol[(k - 1 + seed) % patrol.Count], start, radius);
+                    var h = LayoutHash(seed, k, 152);
+                    var cycle = seconds / (TempMonsterTripSeconds * (0.8f + 0.4f * h)) + h * 5f;
+                    var phase = cycle - Mathf.Floor(cycle);
+                    (spot, facing) = phase switch
+                    {
+                        < 0.4f => (gate.Lerp(target, phase / 0.4f), (float)Mathf.Sign(target.X - gate.X + 0.01f)),
+                        < 0.55f => (target, (float)Mathf.Sign(target.X - gate.X + 0.01f)),
+                        < 0.95f => (target.Lerp(gate, (phase - 0.55f) / 0.4f), (float)Mathf.Sign(gate.X - target.X + 0.01f)),
+                        _ => (gate, 1f)
+                    };
+                }
+                if (!OnScreen(spot, radius))
+                    continue;
                 var lag = k * 0.9f;
-                items.Add((spot.Y, () => DrawMonster(spot, radius, facing, seconds + lag, kindSeed)));
+                var face = facing;
+                items.Add((spot.Y, () => DrawMonster(spot, radius, face, seconds + lag, kindSeed)));
+                _actorHits.Add((spot, new MapActor(ActorKind.Monster, nest?.Dungeon.NearSettlementId ?? 0, TokenKind.Residents,
+                    nest?.Monsters ?? 0, nest?.Dungeon.Cell ?? dungeonCell, 0, nest?.Dungeon.EventId ?? 0)));
             }
         }
         foreach (var (_, draw) in items.OrderBy(x => x.Y))

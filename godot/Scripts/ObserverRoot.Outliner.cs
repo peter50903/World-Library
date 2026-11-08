@@ -136,7 +136,7 @@ public partial class ObserverRoot
             {
                 Flat = true,
                 Text = ruin ? entry.Name : string.Create(CultureInfo.InvariantCulture,
-                    $"{entry.Name}　人口 {entry.Population}　糧食 {MapFoodStatus.Label(entry.Food)}"),
+                    $"{entry.Name}　人口 {entry.Population}"), // 試玩回饋 2026-11-08 之 3：糧食狀況看左邊的色塊就好
                 Alignment = HorizontalAlignment.Left,
                 TooltipText = $"聚落 #{entry.Id}：點一下地圖置中並開詳情",
                 SizeFlagsHorizontal = SizeFlags.ExpandFill,
@@ -169,14 +169,16 @@ public partial class ObserverRoot
         var daysPerYear = _calendar?.DaysPerYear ?? 365;
         var week = _world.LatestWeek?.Week ?? 0;
         var year = Math.Max(0, _world.Snapshot().DaysElapsed - 1) / daysPerYear;
-        if (_overviewKey is { } cached && ReferenceEquals(cached.World, _world) && cached.Week == week && cached.Year == year)
+        if (_overviewKey is { } cached && ReferenceEquals(cached.World, _world) && cached.Week == week && cached.Year == year && cached.Debug == _showDebugInfo)
             return _overviewCache;
-        _overviewKey = (_world, week, year);
-        _overviewCache = string.Join("\n", DemoWorldOverview.Of(_world, daysPerYear).Lines());
+        _overviewKey = (_world, week, year, _showDebugInfo);
+        // 試玩回饋 2026-11-08 之 3：玩家只看精簡的概況；詳細數字只在開發資訊開啟時。
+        var overview = DemoWorldOverview.Of(_world, daysPerYear);
+        _overviewCache = string.Join("\n", _showDebugInfo ? overview.Lines() : overview.PlayerLines());
         return _overviewCache;
     }
 
-    private (WorldSimulation.Core.World.DemoObserverWorld World, int Week, int Year)? _overviewKey;
+    private (WorldSimulation.Core.World.DemoObserverWorld World, int Week, int Year, bool Debug)? _overviewKey;
     private string _overviewCache = string.Empty;
 
     private void FocusSettlement(int settlementId)
