@@ -15,9 +15,9 @@ public sealed class DemoContinentTests
     {
         var map = DemoHexWorld.Generate(seed, size);
         var cells = map.Cells;
-        // 陸地約佔一半（海平面依比例切，河道另佔一些）。
+        // 陸地約佔四成多（海平面依比例切，河道另佔一些）。
         var land = cells.Count(c => c.Terrain != DemoTerrain.Water);
-        Assert.InRange(land * 100 / cells.Count, 40, DemoContinentGenerator.TempLandPercent);
+        Assert.InRange(land * 100 / cells.Count, DemoContinentGenerator.TempLandPercent - 10, DemoContinentGenerator.TempLandPercent);
         // 四邊都以海為主（不再只有南緣）。
         double SeaShare(IEnumerable<DemoHexCell> edge) => edge.Average(c => c.Sea ? 1.0 : 0.0);
         Assert.True(SeaShare(cells.Where(c => c.Row == 0)) >= 0.7, "北緣不是海");
@@ -34,6 +34,37 @@ public sealed class DemoContinentTests
         Assert.Contains(cells, c => c.Terrain == DemoTerrain.Grassland);
         Assert.Equal(cells, DemoHexWorld.Generate(seed, size).Cells);
         Assert.NotEqual(cells, DemoHexWorld.Generate(seed + 100, size).Cells);
+    }
+
+    /// <summary>第 06-5 章：大、巨大地圖有多塊大陸（被海隔開、每塊至少 12 格）。</summary>
+    [Theory]
+    [InlineData(1UL, DemoMapSize.Large)]
+    [InlineData(2UL, DemoMapSize.Large)]
+    [InlineData(3UL, DemoMapSize.Huge)]
+    [InlineData(4UL, DemoMapSize.Huge)]
+    public void BigWorldsHaveSeveralContinents(ulong seed, DemoMapSize size)
+    {
+        var map = DemoHexWorld.Generate(seed, size);
+        var seen = new HashSet<(int, int)>();
+        var masses = new List<int>();
+        foreach (var start in map.Cells.Where(c => !c.Sea))
+        {
+            if (!seen.Add((start.Column, start.Row)))
+                continue;
+            var queue = new Queue<DemoHexCell>();
+            queue.Enqueue(start);
+            var n = 0;
+            while (queue.Count > 0)
+            {
+                var c = queue.Dequeue();
+                n++;
+                foreach (var d in DemoRouteNetwork.Directions)
+                    if (map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is { Sea: false } next && seen.Add((next.Column, next.Row)))
+                        queue.Enqueue(next);
+            }
+            masses.Add(n);
+        }
+        Assert.True(masses.Count(m => m >= 12) >= 2, $"大陸塊（格數）：{string.Join("、", masses.OrderByDescending(m => m))}");
     }
 
     [Fact]
@@ -87,6 +118,6 @@ public sealed class DemoForestMoistureTests
                     pairs++;
                     if (n.Terrain == c.Terrain) same++;
                 }
-        Assert.True(same / pairs >= 0.65, $"同地形相鄰比例 {same / pairs:F2}");
+        Assert.True(same / pairs >= 0.6, $"同地形相鄰比例 {same / pairs:F2}"); // 第 06-5 章：多塊大陸後海岸變多，門檻 0.65→0.6
     }
 }

@@ -574,7 +574,7 @@
 | `godot/Scripts/DemoHexMap.Select.cs` | 1 | 試玩回饋 2026-11-08 第二次之 1 角色點選範圍的最小寬高（D08-18） |
 | `godot/Scripts/PixelParts.cs` | 1 | 第 08-18d 章灰階染色的判斷門檻（D08-18） |
 | `godot/Scripts/DemoHexMap.Tokens.cs` | 2 | 第 08-17 章指示物：各職業示意比例、每聚落最多枚數、往返秒數；人數是示意 |
-| `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 9 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數 |
+| `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 11 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數；第 06-5 章多塊大陸：陸地 44%、起伏 40%、海岸扭曲 2 格、大陸數 2／3～4／4～6、中心間距與半徑、海峽寬 260 |
 | `godot/Scripts/Heraldry.cs` | 1 | 第 08-16 章人像染色：膚色倍率、自然髮色 |
 | `src/WorldSimulation.Core/World/Demo/DemoHeraldry.cs` | 1 | 第 08-16 章人像：中年 40 歲、老年 60 歲（紋路與灰白髮） |
 | `godot/Scripts/ObserverRoot.EraCard.cs` | 1 | 第 08-16 章時代插圖：停留 3.5 秒、淡入淡出 0.8 秒 |
