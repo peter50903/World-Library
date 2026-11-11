@@ -71,6 +71,7 @@ public partial class ObserverRoot
         _mapFoodButton = ToolButton(ArtAssets.UiMapFood, "糧食",
             $"地圖模式：糧食狀況（依最近一週聚落帳；綠＝充足、黃＝緊張：存糧不足 {MapFoodStatus.TempTightWeeks} 週〔TEMP〕、紅＝飢餓、灰＝尚未結算）");
         _mapFoodButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Food);
+        _mapFoodButton.Visible = false; // 第 08-18k 章（試玩回饋 2026-11-11 之 5）：拿掉糧食檢視
         row.AddChild(_mapFoodButton);
         // 第 08-10a 章 V2：家系模式（圖示素材 UI_ICON_MAPMODE_LINEAGE 未到前顯示文字）。
         _mapLineageButton = ToolButton(ArtAssets.UiMapLineage, "家系",
@@ -106,6 +107,7 @@ public partial class ObserverRoot
             _hexMap.ShowGrid = on;
             _gridToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
         };
+        _gridToggle.Visible = false; // 第 08-18k 章：拿掉格線檢視（格線一律不畫）
         row.AddChild(_gridToggle);
 
         _foodLegend = new RichTextLabel
@@ -261,6 +263,7 @@ public partial class ObserverRoot
         // 第 08 章 b 節：年度圖表（圖示 UI_ICON_CHART 尚待製作，缺少時顯示文字）。
         _toolChart = ToolButton(ArtAssets.UiChart, "圖表", "年度圖表：人口、出生死亡、遷徙、糧食採收與缺口（點某年看該年事件）");
         _toolChart.Pressed += () => ToggleModal("chart");
+        _toolChart.Visible = false; // 第 08-18k 章：拿掉年度圖表
         row.AddChild(_toolChart);
         // 第 08-19c 章：世界法則（WorldBox 式的規則開關）。
         var laws = ToolButton(ArtAssets.UiLaws, "法則", "世界法則：開關天災、地下城與怪物、叛亂與獨立、野獸襲擊");
@@ -290,13 +293,13 @@ public partial class ObserverRoot
                 "",
                 "【地圖】",
                 "滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點格或聚落開左側詳情。",
-                "左下地圖模式：地形（預設）、糧食狀況（綠＝充足、黃＝緊張、紅＝飢餓、灰＝尚未結算；依最近一週聚落帳）。",
+                "左下地圖模式：地形（預設）、家系、知識、文化、信仰、勢力。",
                 "",
                 "【介面】",
                 "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「編年史」切換右側面板，再按一次收合。",
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（現況、代表人物、技術、研究、歷史分頁）；遺跡另列在下方。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
-                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／糧食／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色／文化：依主要文化著色）、格線開關、情境與新世界、存讀檔、說明、年度圖表、開發資訊。",
+                "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色／文化：依主要文化著色／信仰／勢力）、情境與新世界、存讀檔、說明、世界法則、開發資訊。",
                 "",
                 "所有人口、糧食與門檻都是 TEMP 示範值；介面操作不會改變世界。"
             })

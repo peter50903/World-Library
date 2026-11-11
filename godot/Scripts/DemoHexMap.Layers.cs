@@ -151,7 +151,7 @@ public partial class DemoHexMap
         var realm = Territory.Cells.TryGetValue(at, out var held) ? held : null;
         return _mode switch
         {
-            Mode.Terrain => realm is not null ? baseColor.Lerp(RealmColor(realm.RealmId), 0.3f) : baseColor, // 第 08-19 章：戰略層淡淡罩上勢力色
+            Mode.Terrain => baseColor, // 第 08-18k 章：地形模式不罩勢力色
             Mode.Realm => realm is not null ? baseColor.Darkened(0.3f).Lerp(RealmColor(realm.RealmId), 0.7f) : baseColor.Darkened(0.45f),
             Mode.Food => Sites?.SettlementAt(cell.Column, cell.Row) is { IsRuin: false } site
                 ? FoodStatusColor(FoodStatuses.TryGetValue(site.Id, out var s) ? s : FoodStatus.Unsettled)
@@ -274,15 +274,16 @@ public partial class DemoHexMap
                 DrawMarker(ArtAssets.IconHolySite, center + new Vector2(-radius * 0.5f, -radius * 0.5f), radius * 0.9f);
         }
         // 第 08-19 章：勢力邊界——區域層在地形模式畫邊界加淡色、勢力模式整片著色（戰略層已烤在色塊圖裡，只補邊界）。
-        if (_mode is Mode.Terrain or Mode.Realm)
-            DrawRealms(start, radius, layer == ViewLayer.Regional ? (_mode == Mode.Realm ? 0.45f : 0.15f) : 0f, inner: false);
-        if (_mode is Mode.Terrain or Mode.Realm)
-            DrawMonsterRealms(start, radius, fill: layer == ViewLayer.Regional || _mode == Mode.Realm); // 第 12-2 章：怪物的勢力範圍
+        // 第 08-18k 章（試玩回饋 2026-11-11 之 10）：地形模式不畫勢力框，只有勢力模式畫。
+        if (_mode == Mode.Realm)
+            DrawRealms(start, radius, layer == ViewLayer.Regional ? 0.45f : 0f, inner: false);
+        if (_mode == Mode.Realm)
+            DrawMonsterRealms(start, radius, fill: true); // 第 12-2 章：怪物的勢力範圍
         DrawTokens(start, radius, layer); // 第 08-17 章第 5 節
         // 試玩回饋 2026-11-07 之 4：遠看只標各勢力最上層的名字（區域層村莊以上、戰略層城鎮以上）。
         if (_mode is Mode.Terrain or Mode.Realm)
             DrawNameplates(start, radius, layer == ViewLayer.Regional ? DemoSettlementTier.Village : DemoSettlementTier.Town, realmsOnly: true);
         else if (layer == ViewLayer.Regional)
-            DrawNameplates(start, radius, DemoSettlementTier.Town); // 第 08-18b 章：區域層只標城鎮以上的名牌
+            DrawNameplates(start, radius, DemoSettlementTier.Town, realmsOnly: true); // 第 08-18k 章：勢力合併後只標首都
     }
 }

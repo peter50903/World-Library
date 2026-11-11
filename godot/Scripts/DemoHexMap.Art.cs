@@ -52,6 +52,23 @@ public partial class DemoHexMap
     }
 
     /// <summary>大建築的素材：市集、神殿、主樓、井（灰階的篷布、屋頂、旗子染文化色）。</summary>
+    /// <summary>第 08-18k 章：公共建築的素材（沒有素材回傳 null，退回原本的畫法）。</summary>
+    private static Texture2D? CivicArt(Building kind) => kind switch
+    {
+        Building.HallVillage => PixelParts.Texture("bld_hall_village"),
+        Building.HallTown => PixelParts.Texture("bld_hall_town"),
+        Building.Granary => PixelParts.Texture("bld_granary"),
+        Building.Smithy => PixelParts.Texture("bld_smithy"),
+        Building.Workshop => PixelParts.Texture("bld_workshop"),
+        Building.Kiln => PixelParts.Texture("bld_kiln"),
+        Building.Windmill => PixelParts.Texture("bld_windmill"),
+        Building.Watchtower => PixelParts.Texture("bld_watchtower"),
+        Building.School => PixelParts.Texture("bld_school"),
+        Building.Scriptorium => PixelParts.Texture("bld_scriptorium"),
+        Building.Shrine => PixelParts.Texture("bld_shrine"),
+        _ => null
+    };
+
     private static Texture2D? LotArt(Building kind, Color culture)
     {
         var (name, top) = kind switch
