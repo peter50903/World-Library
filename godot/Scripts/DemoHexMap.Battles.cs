@@ -9,7 +9,8 @@ public sealed record BattleMark(long EventId, DemoSettlementEventKind Kind, int 
 /// <summary>
 /// 第 08-18h 章（試玩回饋 2026-11-08 第四次之 4：外在的戰鬥事件應該要顯現出來）：怪物襲擊、出兵討伐、脫離抗爭的交戰畫在地圖上。
 /// 第一次看到時照真實時間播 <see cref="TempBattleMs"/> 毫秒（快轉也看得到）：攻方從出發地走到交戰地點，接著交戰的閃光、刀光，
-/// 飄出「⚔ -N」；遠看（區域、戰略層）只畫一閃一閃的 ⚔ 標記。本週與上週的戰鬥在交戰地點留一個小 ⚔。只改畫面。
+/// 飄出「⚔ -N」；遠看（區域、戰略層）只畫一閃一閃的 ⚔ 標記。
+/// 第 08-18j 章：小人突刺、被打中閃紅後退、倒下變灰淡出，雙方頭上有兵力條，行軍揚起塵土。本週與上週的戰鬥在交戰地點留一個小 ⚔。只改畫面。
 /// </summary>
 public partial class DemoHexMap
 {
@@ -114,31 +115,49 @@ public partial class DemoHexMap
             var stop = marching ? place - heading.Normalized() * radius * 0.35f : place - new Vector2(radius * 0.45f, 0f);
             var lead = from.Lerp(stop, Mathf.SmoothStep(0f, 1f, arrive));
             var step = (int)(now / 150UL) % 4;
+            var dir = heading.LengthSquared() > 0.01f ? heading.Normalized() : new Vector2(1f, 0f);
+            var side = new Vector2(-dir.Y, dir.X) * radius * 0.18f;
+            // 第 08-18j 章：雙方人數、哪一方倒下（死亡人數是事件所在聚落那一方的：怪物襲擊是村民、其餘有出發地的是攻方）。
             var attackers = Math.Clamp(1 + (int)(mark.Deaths / 3), 2, 5);
-            var side = new Vector2(-heading.Y, heading.X).Normalized() * radius * 0.18f;
-            if (side == Vector2.Zero)
-                side = new Vector2(0f, radius * 0.18f);
+            var defenders = Math.Clamp(1 + (int)(mark.Deaths / 4), 2, 4);
+            var attackersFall = mark.From is not null && mark.Kind != DemoSettlementEventKind.MonsterRaid;
+            var fallen = mark.Deaths <= 0 ? 0 : Math.Min((attackersFall ? attackers : defenders) - 1, 1 + (int)(mark.Deaths / TempDeathsPerFallen));
+            var seconds = now / 1000f;
+            // 行軍揚起的塵土（第 08-18j 章）。
+            if (marching && arrive < 1f)
+                for (var d = 0; d < 3; d++)
+                {
+                    var puff = lead - dir * radius * (0.18f + 0.13f * d) + side * Mathf.Sin(seconds * 5f + d) * 0.4f;
+                    DrawCircle(puff, radius * 0.05f * (1f + d * 0.5f), new Color(0.58f, 0.48f, 0.34f, 0.35f * (1f - d / 3f) * (1f - arrive)));
+                }
+            var attackerFeet = new List<Vector2>();
             for (var k = 0; k < attackers; k++)
             {
-                var offset = side * (k - (attackers - 1) / 2f) - heading.Normalized() * radius * 0.12f * (k % 2);
-                var jitter = clash > 0f ? new Vector2(Mathf.Sin(now / 90f + k) * radius * 0.05f, 0f) : Vector2.Zero;
-                var feet = lead + offset + jitter;
-                if (mark.Kind == DemoSettlementEventKind.MonsterRaid && PixelParts.Texture(MonsterArt(mark.Seed + k * 3)) is { } monster)
-                    DrawArt(monster, feet, radius, 4, step, facing < 0f);
-                else
-                    DrawWalker(feet, radius, mark.Kind == DemoSettlementEventKind.MonsterRaid ? RaidRed : SoldierTunic, step % 2, facing, null,
-                        mark.Kind == DemoSettlementEventKind.MonsterHunt ? "unit_hunter" : "unit_man", step);
+                var offset = side * (k - (attackers - 1) / 2f) - dir * radius * 0.12f * (k % 2);
+                var feet = lead + offset;
+                attackerFeet.Add(feet);
+                var monster = mark.Kind == DemoSettlementEventKind.MonsterRaid ? PixelParts.Texture(MonsterArt(mark.Seed + k * 3)) : null;
+                DrawFighter(feet, radius, dir, clash, k, attackers, attackersFall ? fallen : 0, true, step, facing, now,
+                    monster, mark.Kind == DemoSettlementEventKind.MonsterRaid ? RaidRed : SoldierTunic,
+                    mark.Kind == DemoSettlementEventKind.MonsterHunt ? "unit_hunter" : "unit_man");
             }
             if (clash <= 0f)
                 continue;
             // 守方：討伐時是怪物、其餘是村民（站在交戰地點另一側）。
-            for (var k = 0; k < 2; k++)
+            var defenderFeet = new List<Vector2>();
+            for (var k = 0; k < defenders; k++)
             {
-                var feet = place + heading.Normalized() * radius * 0.15f + side * (k - 0.5f) * 1.4f;
-                if (mark.Kind == DemoSettlementEventKind.MonsterHunt && PixelParts.Texture(MonsterArt(mark.Seed + k * 3)) is { } monster)
-                    DrawArt(monster, feet, radius, 4, step, facing > 0f);
-                else
-                    DrawWalker(feet, radius, DefenderTunic, step % 2, -facing, null, "unit_man", step);
+                var feet = place + dir * radius * (0.15f + 0.1f * (k % 2)) + side * (k - (defenders - 1) / 2f) * 1.2f;
+                defenderFeet.Add(feet);
+                var monster = mark.Kind == DemoSettlementEventKind.MonsterHunt ? PixelParts.Texture(MonsterArt(mark.Seed + k * 3)) : null;
+                DrawFighter(feet, radius, -dir, clash, k, defenders, attackersFall ? 0 : fallen, false, step, -facing, now,
+                    monster, DefenderTunic, "unit_man");
+            }
+            // 雙方的兵力條（WorldBox 的血條；倒下一人就短一截）。
+            if (radius >= TempBattleBarMinRadius)
+            {
+                DrawStrengthBar(attackerFeet, radius, attackers, attackersFall ? FallenBy(clash, fallen) : 0, mark.Kind == DemoSettlementEventKind.MonsterRaid ? RaidRed : SoldierTunic);
+                DrawStrengthBar(defenderFeet, radius, defenders, attackersFall ? 0 : FallenBy(clash, fallen), mark.Kind == DemoSettlementEventKind.MonsterHunt ? RaidRed : DefenderTunic);
             }
             // 交戰的閃光與刀光（4 幀），中段最亮。
             var hit = place - new Vector2(0f, radius * 0.1f);
@@ -160,6 +179,95 @@ public partial class DemoHexMap
                 DrawString(font, at, text, HorizontalAlignment.Left, -1, 15, new Color(1f, 0.25f, 0.18f, fade));
             }
         }
+    }
+
+    /// <summary>【TEMP】死亡每幾人多倒下一個小人；格半徑小於這個值時不畫兵力條。</summary>
+    private const int TempDeathsPerFallen = 4;
+    private const float TempBattleBarMinRadius = 18f;
+
+    /// <summary>第 k 個（從後面數）倒下的人在交戰的哪個時間點倒下（交戰期 0.25～0.75 之間平均錯開）。</summary>
+    private static float FallAt(int index, int fallen) => 0.25f + 0.5f * (index + 1) / (fallen + 1);
+
+    /// <summary>到交戰時間點 <paramref name="clash"/> 為止倒下了幾人。</summary>
+    private static int FallenBy(float clash, int fallen)
+    {
+        var count = 0;
+        for (var i = 0; i < fallen; i++)
+            if (clash >= FallAt(i, fallen))
+                count++;
+        return count;
+    }
+
+    /// <summary>
+    /// 第 08-18j 章：畫一個交戰中的小人或怪物——向前突刺、被打中時閃紅並往後退、倒下時轉 90 度變灰，最後淡出。
+    /// <paramref name="toward"/>＝面向敵人的方向；後面 <paramref name="fallen"/> 個會倒下。沒有素材時退回程式畫的小人。
+    /// </summary>
+    private void DrawFighter(Vector2 feet, float radius, Vector2 toward, float clash, int k, int count, int fallen, bool attacker, int step, float facing, ulong now,
+        Texture2D? monster, Color tunic, string unit)
+    {
+        var index = k - (count - fallen);
+        var fallAt = index >= 0 ? FallAt(index, fallen) : 2f;
+        var flip = facing < 0f;
+        var rotation = 0f;
+        var modulate = Colors.White;
+        if (clash > 0f)
+        {
+            if (clash < fallAt)
+            {
+                // 突刺：攻方衝得遠、守方小幅回擊；雙方錯開節奏。
+                var phase = now / 1000f * (attacker ? 6.5f : 5.2f) + k * 1.3f + (attacker ? 0f : 1.6f);
+                var thrust = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(phase)), 3f);
+                feet += toward * radius * (attacker ? 0.13f : 0.07f) * thrust;
+                // 被打中：對方突刺的高峰閃紅、往後一退。
+                var hit = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(phase + 1.9f)), 12f);
+                feet -= toward * radius * 0.05f * hit;
+                modulate = new Color(1f + hit, 1f - 0.5f * hit, 1f - 0.55f * hit);
+                if (fallAt - clash < 0.07f)
+                    modulate = new Color(1.9f, 0.55f, 0.5f); // 倒下前最後一擊
+            }
+            else
+            {
+                var f = Mathf.Clamp((clash - fallAt) / 0.12f, 0f, 1f);
+                feet -= toward * radius * 0.14f * Mathf.SmoothStep(0f, 1f, f);
+                rotation = (toward.X >= 0f ? -1f : 1f) * Mathf.Pi / 2f * Mathf.SmoothStep(0f, 1f, f);
+                var fade = 1f - Mathf.Clamp((clash - 0.85f) / 0.15f, 0f, 1f);
+                modulate = new Color(0.55f, 0.5f, 0.48f, fade);
+                step = 0;
+            }
+        }
+        var texture = monster ?? (Texture2D?)PixelParts.Tinted(unit, tunic);
+        if (texture is null)
+        {
+            if (rotation == 0f)
+                DrawWalker(feet, radius, tunic, step % 2, facing, null, null, step);
+            else
+                DrawCircle(feet, radius * 0.08f, new Color(0.25f, 0.2f, 0.18f, 0.6f * modulate.A)); // 沒有素材：倒下的人只畫一小團
+            return;
+        }
+        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        DrawSetTransform(feet + new Vector2(p, 0f), 0f, new Vector2(1f, 0.35f));
+        DrawCircle(Vector2.Zero, 5f * p, new Color(0f, 0f, 0f, 0.3f * modulate.A));
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        var size = PixelParts.ScreenSize(texture, radius, 4);
+        var fw = texture.GetWidth() / 4f;
+        var source = new Rect2(fw * (step % 4), 0f, fw, texture.GetHeight());
+        DrawSetTransform(feet, rotation, new Vector2(flip ? -1f : 1f, 1f));
+        DrawTextureRectRegion(texture, new Rect2(-size.X / 2f, -size.Y, size.X, size.Y), source, modulate);
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+    }
+
+    /// <summary>第 08-18j 章：一方的兵力條（畫在那群人頭上；倒下一人短一截）。</summary>
+    private void DrawStrengthBar(IReadOnlyList<Vector2> feet, float radius, int count, int down, Color color)
+    {
+        if (feet.Count == 0 || count <= 0)
+            return;
+        var center = new Vector2(feet.Average(f => f.X), feet.Min(f => f.Y) - radius * 0.95f);
+        var width = radius * 0.55f;
+        var height = Math.Max(2f, radius * 0.06f);
+        var left = center - new Vector2(width / 2f, 0f);
+        DrawRect(new Rect2(left - new Vector2(1f, 1f), new Vector2(width + 2f, height + 2f)), new Color(0.08f, 0.05f, 0.03f, 0.8f));
+        var share = Math.Clamp((count - down) / (float)count, 0f, 1f);
+        DrawRect(new Rect2(left, new Vector2(width * share, height)), color.Lightened(0.25f));
     }
 
     /// <summary>第 08-18i 章：滑鼠所在格最近的戰鬥說明（提示框第一行；沒有回傳空字串）。</summary>
