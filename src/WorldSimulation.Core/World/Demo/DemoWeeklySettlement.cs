@@ -1235,7 +1235,10 @@ internal static class DemoWeeklySettlement
                     if (!mates.TryGetValue(candidate.Id, out var other)
                         || (seekerSex == DemoTempSex.Female ? other.UnpairedMen : other.UnpairedWomen) == 0)
                         continue;
-                    if (other.SeekerSex is { } theirs && theirs != seekerSex && candidate.Id > settlement.Id)
+                    // 第 08-18l 章（試玩回饋 2026-11-11 之 9：村子不停滅亡）：兩邊都有異性尋偶者時，由人口多的一方搬到人口少的一方，
+                    // 小村留住年輕人（原本依編號，小村的年輕人常被嫁走，只剩老人而老死成遺跡）。
+                    if (other.SeekerSex is { } theirs && theirs != seekerSex
+                        && (population.TryGetValue(candidate.Id, out var theirPeople) ? theirPeople : 0L, candidate.Id).CompareTo((population.TryGetValue(settlement.Id, out var ourPeople) ? ourPeople : 0L, settlement.Id)) > 0)
                         continue; // 對方會搬過來
                     var route = DemoMigrationRoutes.FindRoute(map,
                         new DemoCellRef(settlement.Column, settlement.Row), new DemoCellRef(candidate.Column, candidate.Row));

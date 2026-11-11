@@ -86,7 +86,7 @@ public sealed class DemoMonsterTests
             var taken = world.Sites.Settlements.Select(s => s.Id).ToHashSet();
             Assert.Empty(DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, Residents, new[] { nest }, taken, rng).Strikes);
         }
-        Assert.InRange(raids, 40, 160); // 12 隻 × 3%＝25%（上限）
+        Assert.InRange(raids, 8, 64); // 第 08-18l 章：12 隻 × 1%＝12%，上限 8%
         Assert.True(hunts > 0);
         // 沉寂期滿才再生。
         var dormant = nest with { Monsters = 0, Dormant = true, DormantSinceWeek = 100 };
