@@ -13,8 +13,49 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public static class DemoContinentGenerator
 {
-    /// <summary>【TEMP】陸地佔全圖的比例（%）。</summary>
-    public const int TempLandPercent = 55;
+    /// <summary>【TEMP】陸地佔全圖的比例（%）；第 06-5 章多大陸後降低，留出海峽與大洋。</summary>
+    public const int TempLandPercent = 44;
+
+    /// <summary>【TEMP】第 06-5 章：高度裡起伏雜訊佔幾 %（其餘是大陸棚）；海岸扭曲幾格。</summary>
+    public const int TempReliefPercent = 40;
+    public const long TempWarpCells = 2;
+
+    /// <summary>【TEMP】第 06-5 章：大陸數——中地圖 2 塊、大地圖 3～4 塊、巨大地圖 4～6 塊。</summary>
+    public static int ContinentCount(int columns, Func<ulong, ulong> draw)
+    {
+        ArgumentNullException.ThrowIfNull(draw);
+        return columns <= 24 ? 2 : columns <= 48 ? 3 + (int)(draw(6_000_000UL) % 2UL) : 4 + (int)(draw(6_000_000UL) % 3UL);
+    }
+
+    /// <summary>
+    /// 第 06-5 章：大陸中心與半徑（定點數）。中心落在四邊各 18% 內側，彼此至少相隔「平均每塊大陸的寬度」的 85%；
+    /// 半徑依每塊大陸的平均面積 ×0.7～1.0，長寬比 0.7～1.4。
+    /// </summary>
+    private static List<(long X, long Y, long Rx, long Ry)> PlaceContinents(int columns, int rows, int count, Func<ulong, ulong> draw)
+    {
+        var centers = new List<(long X, long Y, long Rx, long Ry)>();
+        var area = (long)columns * rows * Unit * Unit;
+        var each = (long)Math.Sqrt(area / count); // 每塊大陸平均佔的邊長
+        var minGap = each * 85 / 100;
+        long Pick(ulong index, long size) => size * 18 / 100 + (long)(draw(index) % (ulong)Math.Max(1, size * 64 / 100));
+        for (var k = 0; k < count; k++)
+        {
+            (long X, long Y) best = (Pick(6_100_000UL + (ulong)k * 128, columns * Unit), Pick(6_100_001UL + (ulong)k * 128, rows * Unit));
+            for (ulong attempt = 0; attempt < 48; attempt++)
+            {
+                var at = (Pick(6_100_000UL + (ulong)k * 128 + attempt * 2, columns * Unit), Pick(6_100_001UL + (ulong)k * 128 + attempt * 2, rows * Unit));
+                best = at;
+                if (centers.All(c => Distance(c.X, c.Y, at.Item1, at.Item2) >= minGap))
+                    break;
+            }
+            var size = each * (70 + (long)(draw(6_200_000UL + (ulong)k) % 31UL)) / 100 / 2;
+            var aspect = 70 + (long)(draw(6_300_000UL + (ulong)k) % 71UL); // 0.70～1.40
+            centers.Add((best.X, best.Y, Math.Max(2 * Unit, size * aspect / 100), Math.Max(2 * Unit, size * 100 / aspect)));
+        }
+        return centers;
+    }
+
+    private static long Distance(long ax, long ay, long bx, long by) => (long)Math.Sqrt((double)((ax - bx) * (ax - bx) + (ay - by) * (ay - by)));
 
     /// <summary>【TEMP】陸地中最高的多少 % 是丘陵。</summary>
     public const int TempHillPercent = 15;
@@ -34,10 +75,8 @@ public static class DemoContinentGenerator
     public const int TempMoistureReach = 6;
     public const int TempMoistureNoisePercent = 120;
 
-    /// <summary>【TEMP】離中心多遠（d²，四邊中點＝1000000）開始往下壓。</summary>
-    public const long TempFalloffStart = 300_000;
 
-    private const string Namespace = "TEMP-CONTINENT-v1";
+    private const string Namespace = "TEMP-CONTINENT-v1"; // 第 06-5 章沿用同一命名空間（新的抽樣索引不與舊的重疊）
     private const long Unit = 1000; // 一格寬＝1000（定點數，避免浮點）
 
     public static DemoHexCell[] Generate(RngRegistry rng, int columns, int rows)
@@ -47,25 +86,36 @@ public static class DemoContinentGenerator
         ulong Draw(ulong index) => random.GetUInt64(index);
         var count = columns * rows;
 
-        // ① 高度（0～1000，邊緣往下壓）。
+        // ① 高度。第 06-5 章（試玩回饋 2026-11-11 之 6、7：世界不像大陸、要像現實一樣有多個大陸）：
+        // 先放幾塊大陸的中心（彼此夠遠），每塊大陸是被雜訊扭曲過的橢圓「大陸棚」，再疊上三層平滑雜訊的起伏；
+        // 大陸之間自然是海峽與大洋，海岸線因扭曲而有半島與海灣。地圖四邊兩格內往下壓，外圍一定是海。
         var height = new long[count];
         var spacing = Math.Max(4, columns / 5) * Unit;
-        var cx = (columns - 1) * Unit / 2;
-        var cy = (rows - 1) * Unit / 2;
+        var continents = ContinentCount(columns, Draw);
+        var centers = PlaceContinents(columns, rows, continents, Draw);
+        var warp = Math.Max(2 * Unit, spacing / 2);
         for (var row = 0; row < rows; row++)
         {
             for (var col = 0; col < columns; col++)
             {
                 var x = col * Unit;
                 var y = row * Unit; // 第 08-18a 章：方格，列距＝欄距
-                var h = (4 * Noise(Draw, 0, x, y, spacing) + 2 * Noise(Draw, 1, x, y, Math.Max(2 * Unit, spacing / 2))
+                var relief = (4 * Noise(Draw, 0, x, y, spacing) + 2 * Noise(Draw, 1, x, y, Math.Max(2 * Unit, spacing / 2))
                     + Noise(Draw, 2, x, y, Math.Max(2 * Unit, spacing / 4))) / 7;
-                // 橢圓下壓：離中心越遠越低（d² 以 1000² 為單位，四邊中點＝1000000），海岸自然成圓弧而不是方框。
-                var dx = (x - cx) * 1000 / cx;
-                var dy = (y - cy) * 1000 / cy;
-                var d2 = dx * dx + dy * dy;
-                if (d2 > TempFalloffStart)
-                    h -= (d2 - TempFalloffStart) * 800 / (1_000_000 - TempFalloffStart);
+                // 扭曲座標（約 ±TempWarpCells 格）再量到每塊大陸中心的橢圓距離，取最近的一塊。
+                var wx = x + (Noise(Draw, 6, x, y, warp) - 500) * TempWarpCells * Unit / 500;
+                var wy = y + (Noise(Draw, 7, x, y, warp) - 500) * TempWarpCells * Unit / 500;
+                long shelf = 0;
+                foreach (var (ccx, ccy, rx, ry) in centers)
+                {
+                    var dx = (wx - ccx) * 1000 / rx;
+                    var dy = (wy - ccy) * 1000 / ry;
+                    shelf = Math.Max(shelf, 1000 - Math.Min(1000, (dx * dx + dy * dy) / 1000));
+                }
+                var h = relief * TempReliefPercent / 100 + shelf * (100 - TempReliefPercent) / 100;
+                var edge = Math.Min(Math.Min(col, columns - 1 - col), Math.Min(row, rows - 1 - row));
+                if (edge < 2)
+                    h -= (2 - edge) * 300;
                 height[row * columns + col] = h;
             }
         }
