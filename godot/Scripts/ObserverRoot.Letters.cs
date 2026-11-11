@@ -60,6 +60,9 @@ public partial class ObserverRoot
         DemoSettlementEventKind.SecessionPeaceful => ("✊", DemoPlayerDetail.Clean(e.Cause), false),
         DemoSettlementEventKind.WarDeclared => ("⚔", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-19e 章
         DemoSettlementEventKind.Conquered => ("⚔", DemoPlayerDetail.Clean(e.Cause), true),
+        DemoSettlementEventKind.CivilWar => ("⚔", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-19f 章
+        DemoSettlementEventKind.Usurped => ("★", DemoPlayerDetail.Clean(e.Cause), true),
+        DemoSettlementEventKind.Succession => ("★", $"{e.SettlementName}：{DemoPlayerDetail.Clean(e.Cause)}", false),
         DemoSettlementEventKind.Independence when !e.Cause.StartsWith("隨", StringComparison.Ordinal) => ("★", DemoPlayerDetail.Clean(e.Cause), false),
         DemoSettlementEventKind.EraBegan => ("★", $"世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}", false),
         DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded => ("✦", $"{e.SettlementName}{DemoPlayerDetail.Clean(e.Cause)}", false),

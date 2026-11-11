@@ -15,7 +15,7 @@ public sealed record DemoWorldLaws(bool Disasters = true, bool Monsters = true, 
     {
         ("disasters", "天災", "地震、龍捲風、隕石與洪水會襲擊聚落（關閉後不再發生；熱浪與野火照舊）", Disasters),
         ("monsters", "地下城與怪物", "會出現新的地下城，怪物會襲擊聚落、聚落會出兵討伐（關閉後不再出現新的地下城，怪物也不再出擊）", Monsters),
-        ("rebellions", "叛亂與獨立", "不滿的下級會加入獨立派系、請願或掀起獨立戰爭（關閉後不再有新的派系與鬥爭；進行中的照常結束）", Rebellions),
+        ("rebellions", "叛亂與獨立", "不滿的下級會加入獨立或篡位派系、請願、掀起獨立戰爭或內戰（關閉後不再有新的派系與鬥爭；進行中的照常結束）", Rebellions),
         ("beasts", "野獸襲擊", "野獸會在路上襲擊遷徙隊伍", BeastAttacks),
         ("wars", "王國戰爭", "征服時代的王國會向鄰近勢力宣戰、征服聚落（關閉後不再宣戰；進行中的戰爭照常打完）", Wars)
     };

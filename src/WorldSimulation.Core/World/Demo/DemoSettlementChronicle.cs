@@ -97,7 +97,8 @@ public sealed record DemoSettlementChronicle(
             or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt
             or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
             or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
-            or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded))
+            or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
+            or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
@@ -114,7 +115,8 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
                 DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                     or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
-                    or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded => DemoPlayerDetail.Clean(e.Cause), // 第 08-19b、08-19e 章
+                    or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
+                    or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped => DemoPlayerDetail.Clean(e.Cause), // 第 08-19b、08-19e、08-19f 章
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };

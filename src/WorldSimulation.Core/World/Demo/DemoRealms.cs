@@ -17,6 +17,9 @@ public sealed record DemoSecession(int VassalId, int LiegeId, bool Armed, int St
 
     /// <summary>第 08-18i 章：起因（開始鬥爭那筆事件的原因文字）。</summary>
     public string Cause { get; init; } = "";
+
+    /// <summary>第 08-19f 章：內戰（同文化的篡位派系要推翻國王；打贏換王朝、國家不變）。</summary>
+    public bool Civil { get; init; }
 }
 
 /// <summary>忠誠度的一項因素（給詳情頁列明細）。</summary>
@@ -29,7 +32,11 @@ public sealed record DemoRealmContext(
     Func<int, int?> Culture,
     Func<int, int?> Faith,
     Func<int, DemoSettlementTier> Tier,
-    Func<int, bool> StrongRule);
+    Func<int, bool> StrongRule)
+{
+    /// <summary>第 08-19f 章：聚落目前的村長（王座所在聚落的村長就是國王；沒有時為 null）。</summary>
+    public Func<int, DemoRepresentative?>? Leader { get; init; }
+}
 
 /// <summary>
 /// 第 08-19b 章【TEMP 規則】分裂鬥爭（使用者 2026-11-08：勢力分裂前應該要有分裂鬥爭，武力或非武力；參考 WorldBox 與十字軍之王）。
@@ -96,6 +103,7 @@ public static partial class DemoRealms
         {
             var id = e.SettlementId;
             ApplyConquest(e); // 第 08-19e 章：宣戰、交戰、征服與停戰
+            ApplyCivil(e); // 第 08-19f 章：繼位、篡位
             switch (e.Kind)
             {
                 case DemoSettlementEventKind.VassalJoined:
@@ -109,11 +117,12 @@ public static partial class DemoRealms
                 case DemoSettlementEventKind.FactionLeft:
                     _faction.Remove(id);
                     break;
-                case DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful:
+                case DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful or DemoSettlementEventKind.CivilWar:
                     var members = _faction.Where(kv => kv.Value.Liege == (int)e.Count).Select(kv => kv.Key).Append(id).Distinct().OrderBy(x => x).ToList();
-                    _struggles[id] = new DemoSecession(id, (int)e.Count, e.Kind == DemoSettlementEventKind.SecessionArmed, e.Week, members)
+                    _struggles[id] = new DemoSecession(id, (int)e.Count, e.Kind != DemoSettlementEventKind.SecessionPeaceful, e.Week, members)
                     {
-                        Cause = DemoPlayerDetail.Clean(e.Cause)
+                        Cause = DemoPlayerDetail.Clean(e.Cause),
+                        Civil = e.Kind == DemoSettlementEventKind.CivilWar
                     };
                     break;
                 case DemoSettlementEventKind.SecessionBattle:
@@ -190,6 +199,7 @@ public static partial class DemoRealms
             factors.Add(new("上級強勢統治", 10));
         if (fold.Conquered(vassal, week))
             factors.Add(new("剛被征服", TempConqueredLoyalty)); // 第 08-19e 章
+        CivilFactors(vassal, liege, week, fold, factors); // 第 08-19f 章：新君即位、國王出身於此、擁立了現任國王
         return factors;
     }
 
@@ -221,10 +231,10 @@ public static partial class DemoRealms
                 => Math.Clamp(1 + enemy * (50 + (long)(Draw(rng, week, s.VassalId, k) % 101UL)) / (100L * TempArmyPerDeath), 0L, Math.Max(0L, here - 1));
             if (!taken.Contains(s.VassalId) && !strikes.ContainsKey(s.VassalId) && residents(s.VassalId) > 0)
                 strikes[s.VassalId] = new DemoDisasterStrike(s.VassalId, DemoSettlementEventKind.SecessionBattle,
-                    Deaths(loyal, residents(s.VassalId), 2), $"獨立戰爭：與{Name(s.LiegeId)}的軍隊交戰");
+                    Deaths(loyal, residents(s.VassalId), 2), s.Civil ? $"內戰：與{Name(s.LiegeId)}的王軍交戰" : $"獨立戰爭：與{Name(s.LiegeId)}的軍隊交戰");
             if (!taken.Contains(s.LiegeId) && !strikes.ContainsKey(s.LiegeId) && residents(s.LiegeId) > 0)
                 strikes[s.LiegeId] = new DemoDisasterStrike(s.LiegeId, DemoSettlementEventKind.SecessionBattle,
-                    Deaths(rebels, residents(s.LiegeId), 3), $"出兵鎮壓叛離的{Name(s.VassalId)}");
+                    Deaths(rebels, residents(s.LiegeId), 3), s.Civil ? $"出兵討伐作亂的{Name(s.VassalId)}" : $"出兵鎮壓叛離的{Name(s.VassalId)}");
         }
         ConquestBattles(week, fold, sites, residents, taken, rng, strikes); // 第 08-19e 章
         return strikes;
@@ -285,6 +295,18 @@ public static partial class DemoRealms
                 }
             }
         }
+        string Crowned(int leader) => ctx.Leader?.Invoke(leader) is { } r ? $"擁立{r.Name}為王" : "奪得王位";
+        void Usurp(int leader, int liege, IEnumerable<int> members, string text)
+        {
+            // 第 08-19f 章（十字軍之王的篡位）：王位換到首領的聚落，國家、首都與隸屬都不變；派系成員滿意而一段時間不再作亂。
+            Add(leader, DemoSettlementEventKind.Usurped, liege, text);
+            foreach (var m in members.Append(leader).Distinct())
+            {
+                faction.Remove(m);
+                busy.Add(m);
+            }
+            busy.Add(liege);
+        }
         void Fail(DemoSecession s, string text)
         {
             Add(s.VassalId, DemoSettlementEventKind.SecessionFailed, s.LiegeId, text);
@@ -319,12 +341,14 @@ public static partial class DemoRealms
             }
             var fought = week - s.StartWeek;
             var score = $"（叛軍死 {s.RebelLosses}、上級死 {s.LoyalLosses}）";
-            if (fought >= TempWarMinWeeks && s.LoyalLosses > 0 && s.LoyalLosses * 100 >= s.RebelLosses * TempWarScorePercent)
+            if (fought >= TempWarMinWeeks && s.LoyalLosses > 0 && s.LoyalLosses * 100 >= s.RebelLosses * TempWarScorePercent && s.Civil)
+                Usurp(leader, s.LiegeId, s.Members, $"{Name(leader)}在內戰中擊敗{Name(s.LiegeId)}的王軍，{Crowned(leader)}{score}");
+            else if (fought >= TempWarMinWeeks && s.LoyalLosses > 0 && s.LoyalLosses * 100 >= s.RebelLosses * TempWarScorePercent)
                 Independence(leader, s.LiegeId, s.Members, $"{Name(leader)}在獨立戰爭中擊敗{Name(s.LiegeId)}{score}");
             else if (fought >= TempWarMinWeeks && s.RebelLosses > 0 && s.RebelLosses * 100 >= s.LoyalLosses * TempWarScorePercent)
                 Fail(s, $"{Name(leader)}的叛軍被{Name(s.LiegeId)}擊潰{score}");
             else if (week >= s.EndWeek)
-                Fail(s, $"獨立戰爭打了一年不分勝負，{Name(leader)}只好維持原狀{score}");
+                Fail(s, $"{(s.Civil ? "內戰" : "獨立戰爭")}打了一年不分勝負，{Name(leader)}只好維持原狀{score}");
         }
 
         // ② 每個聚落：上級沒落、歸附、派系的加入與退出。
@@ -349,14 +373,16 @@ public static partial class DemoRealms
                 continue;
             var loyalty = LoyaltyValue(id, liege, week, fold, ctx);
             var inFaction = faction.TryGetValue(id, out var member) && member.Liege == liege;
-            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && rebellions) // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
+            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && !fold.Backed(id, week) && rebellions) // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
             {
-                Add(id, DemoSettlementEventKind.FactionJoined, liege, $"{Name(id)}對{Name(liege)}不滿（忠誠 {loyalty}），加入獨立派系");
+                Add(id, DemoSettlementEventKind.FactionJoined, liege, CivilFaction(id, liege, lieges, ctx, conquestEra)
+                    ? $"{Name(id)}對{Name(liege)}的國王不滿（忠誠 {loyalty}），加入篡位派系" // 第 08-19f 章
+                    : $"{Name(id)}對{Name(liege)}不滿（忠誠 {loyalty}），加入獨立派系");
                 faction[id] = (liege, week);
             }
             else if (inFaction && loyalty >= TempLeaveLoyalty)
             {
-                Add(id, DemoSettlementEventKind.FactionLeft, liege, $"{Name(id)}對{Name(liege)}回心轉意（忠誠 {loyalty}），退出獨立派系");
+                Add(id, DemoSettlementEventKind.FactionLeft, liege, $"{Name(id)}對{Name(liege)}回心轉意（忠誠 {loyalty}），退出派系");
                 faction.Remove(id);
             }
         }
@@ -377,6 +403,16 @@ public static partial class DemoRealms
             var loyal = Math.Max(1L, LoyalArmy(liege, fold, ctx.Residents));
             var power = rebels * 100 / loyal;
             var who = members.Count == 1 ? Name(leader) : $"{Name(leader)}等 {members.Count} 個聚落";
+            if (CivilFaction(leader, liege, lieges, ctx, conquestEra))
+            {
+                // 第 08-19f 章：篡位派系——兵力夠就逼國王退位或掀起內戰；不夠就繼續等（不請願）。
+                var king = ctx.Leader?.Invoke(fold.Seat(liege)) is { } k ? k.Name : "國王";
+                if (power >= TempAcceptPercent)
+                    Usurp(leader, liege, members, $"{who}兵臨{Name(liege)}（兵力 {rebels} 對 {loyal}），{king}被迫退位，{Crowned(leader)}");
+                else if (power >= TempUltimatumPercent)
+                    Add(leader, DemoSettlementEventKind.CivilWar, liege, $"{who}要求{king}退位被拒，{Name(liege)}爆發內戰（兵力 {rebels} 對 {loyal}）");
+                continue;
+            }
             if (power >= TempAcceptPercent)
                 Independence(leader, liege, members, $"{who}向{Name(liege)}下最後通牒（兵力 {rebels} 對 {loyal}），{Name(liege)}自知不敵，同意它們獨立");
             else if (power >= TempUltimatumPercent)
@@ -387,6 +423,9 @@ public static partial class DemoRealms
 
         // ④ 第 08-19e 章：征服戰爭的結束與宣戰（只在征服時代宣戰；進行中的照常打完）。
         AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, conquestEra && wars);
+
+        // ⑤ 第 08-19f 章：王國的國王換人（王座所在聚落本週新任村長）就記繼位。
+        AdvanceSuccession(week, fold, ctx, lieges, busy, Alive, Name, Add, conquestEra);
         return events;
     }
 
@@ -400,7 +439,7 @@ public static partial class DemoRealms
         // 第 08-18i 章（GPT 試玩回饋 09：先知道「在爭什麼」）：雙方與種類 → 起因 → 進展 → 損失。
         var cause = struggle.Cause.Length > 0 ? $"｜起因：{struggle.Cause}" : "";
         return struggle.Armed
-            ? $"⚔ {who}對{Name(struggle.LiegeId)}：獨立戰爭{cause}｜第 {Math.Max(0, week - struggle.StartWeek)} 週｜叛軍死 {struggle.RebelLosses}、上級死 {struggle.LoyalLosses}"
+            ? $"⚔ {who}對{Name(struggle.LiegeId)}：{(struggle.Civil ? "內戰（要推翻國王）" : "獨立戰爭")}{cause}｜第 {Math.Max(0, week - struggle.StartWeek)} 週｜叛軍死 {struggle.RebelLosses}、上級死 {struggle.LoyalLosses}"
             : $"✊ {who}對{Name(struggle.LiegeId)}：請願抗議{cause}｜約 {Math.Max(0, struggle.EndWeek - week)} 週後有結果";
     }
 
@@ -414,7 +453,7 @@ public static partial class DemoRealms
         var lines = new List<string> { $"對上級的忠誠：{factors.Sum(f => f.Value)}" };
         lines.AddRange(factors.Select(f => $"　{f.Text} {(f.Value >= 0 ? "+" : "")}{f.Value}"));
         if (fold.Faction.TryGetValue(vassal, out var member))
-            lines.Add($"已加入獨立派系 {week - member.Week} 週（首領加入滿 {TempDiscontentWeeks} 週就行動）");
+            lines.Add($"已加入派系 {week - member.Week} 週（首領加入滿 {TempDiscontentWeeks} 週就行動）");
         if (fold.Calm(vassal, week))
             lines.Add("剛被鎮壓，暫時不會再叛離");
         return lines;

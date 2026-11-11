@@ -499,9 +499,32 @@ public sealed partial class DemoObserverWorld
     public DemoEraProgress EraProgress() => DemoEraProgress.Of(this);
 
     /// <summary>第 08-19b 章：算忠誠度與兵力用的世界狀態。</summary>
-    private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture)
-        => new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
-            id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true);
+    private DemoRealmContext RealmContext(DemoWorldSites sites, Func<int, long> residents, DemoCultureState culture,
+        IReadOnlyList<DemoRepresentative>? representatives = null)
+    {
+        var leaders = Leaders(representatives);
+        return new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
+            id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true)
+        {
+            Leader = id => leaders.GetValueOrDefault(id) // 第 08-19f 章：國王＝王座所在聚落的村長
+        };
+    }
+
+    /// <summary>第 08-19f 章：各聚落的村長（預設用目前的代表人物）。</summary>
+    private Dictionary<int, DemoRepresentative> Leaders(IReadOnlyList<DemoRepresentative>? representatives = null)
+        => (representatives ?? _demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>())
+            .Where(r => r.Role == DemoRepresentativeRole.Leader).GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.First());
+
+    /// <summary>第 08-19f 章：聚落所屬王國的國王一行（不是王國回傳 null）。</summary>
+    public string? RulerLine(int settlementId)
+    {
+        if (_demography is null)
+            return null;
+        var fold = Realms();
+        var leaders = Leaders();
+        return DemoRealms.RulerLine(DemoRealms.Top(settlementId, fold.Liege), fold, id => leaders.GetValueOrDefault(id), _sites,
+            id => ChronicleOf(id).Tier, checked(CommittedWeeks * 7));
+    }
 
     /// <summary>第 08-19b 章：聚落詳情的忠誠度明細（沒有上級回傳空）。</summary>
     public IReadOnlyList<string> LoyaltyLines(int settlementId)
@@ -721,7 +744,7 @@ public sealed partial class DemoObserverWorld
                 // 第 08-19b 章：歸附、脫離鬥爭與獨立（接在最後；希望時代沒有）。
                 var realmEvents = _knowledge.Era == DemoEra.Hope ? (IReadOnlyList<DemoSettlementEvent>)Array.Empty<DemoSettlementEvent>()
                     : DemoRealms.Advance(report.Week, report.WorldTime, Realms(),
-                        RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
+                        RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture, lifecycle.Population.Representatives),
                         DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng, laws.Rebellions,
                         checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count),
                         conquestEra: knowledge.Era == DemoEra.Conquest, wars: laws.Wars); // 第 08-19e 章：征服時代的王國戰爭

@@ -523,6 +523,8 @@ public partial class ObserverRoot
         var fights = _struggles.Where(x => _hexMap.Territory.RealmOf(x.LiegeId) == top || x.VassalId == settlementId)
             .Select(x => DemoRealms.Describe(x, _world.Sites, week)).OfType<string>().ToList();
         var lines = realm.Tabs[0].Lines.ToList();
+        if (_world.RulerLine(settlementId) is { } ruler) // 第 08-19f 章
+            lines.Insert(Math.Min(1, lines.Count), ruler);
         if (fights.Count > 0)
             lines = lines.Append("").Append("分裂鬥爭：").Concat(fights).ToList();
         // 第 08-19e 章：勢力是攻方或守方的征服戰爭。
