@@ -22,7 +22,7 @@ public static class DemoEnvironment
 {
     /// <summary>【TEMP】年機率（%）、持續週數、來源修正（%）。</summary>
     public const int TempHeatwavePercent = 12;
-    public const int TempWildfirePercent = 12;
+    public const int TempWildfirePercent = 4; // 第 08-18l 章（試玩回饋 2026-11-11 之 1：野火太頻繁）：原 12%
     public const int TempHeatwaveWeeks = 52;
     public const int TempWildfireWeeks = 156;
     public const long TempHeatwaveSourcePercent = -40;

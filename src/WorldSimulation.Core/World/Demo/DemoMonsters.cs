@@ -52,8 +52,8 @@ public static class DemoMonsters
     /// <summary>【TEMP】殺光後沉寂幾週（三年）才再生。</summary>
     public const int TempDormantWeeks = 156;
 
-    /// <summary>【TEMP】襲擊機率：每隻怪物 3%、最多 25%。</summary>
-    public const int TempRaidPercentPerMonster = 3, TempMaxRaidPercent = 25;
+    /// <summary>【TEMP】襲擊機率：每隻怪物每週 1%、最多 8%（第 08-18l 章：原 3%、25%，地下城附近的村子幾乎每月被襲擊而人口流失）。</summary>
+    public const int TempRaidPercentPerMonster = 1, TempMaxRaidPercent = 8;
 
     /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格。</summary>
     public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3;
