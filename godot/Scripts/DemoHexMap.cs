@@ -572,6 +572,7 @@ public partial class DemoHexMap : Control
         }
 
         // 第 08-18h 章：怪物襲擊、討伐與脫離抗爭的交戰（各視角層；遠看只畫 ⚔）。
+        DrawWars(start, radius); // 第 08-18m 章：戰線（佔領斜紋、行軍路線、軍旗、比分條）
         DrawBattles(start, radius);
         // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
         if (!migrants)
@@ -919,6 +920,8 @@ public partial class DemoHexMap : Control
         var status = DisasterStatus(cell.Column, cell.Row);
         if (BattleTip(cell.Column, cell.Row) is { Length: > 0 } battle)
             name = battle + "\n" + name; // 第 08-18i 章：戰鬥寫在提示第一行
+        else if (WarTip(cell.Column, cell.Row) is { Length: > 0 } war)
+            name = war + "\n" + name; // 第 08-18m 章：戰爭目標寫出戰況
         BuildTipRows(cell, name, status); // 第 08-18b 章第 5 節：圖示＋數字的提示
         if (status.Length > 0)
             name += "\n" + status;

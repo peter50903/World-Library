@@ -1476,6 +1476,7 @@ public partial class ObserverRoot : Control
         _struggles = _world.Realms().Struggles.Values.ToList(); // 第 08-19b 章：進行中的脫離鬥爭（勢力頁與地圖交戰用）
         _wars = _world.Realms().Wars.Values.ToList(); // 第 08-19e 章：進行中的征服戰爭
         _hexMap.BattleMarks = BattleMarks(); // 第 08-18h 章：戰鬥畫在地圖上
+        _hexMap.WarFronts = WarFronts(); // 第 08-18m 章：進行中的戰線
         PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
         _hexMap.CultureOf = Same(_hexMap.CultureOf, _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value)); // 第 08-8 章 B1
@@ -1590,6 +1591,36 @@ public partial class ObserverRoot : Control
             }
         }
         return marks;
+    }
+
+    /// <summary>
+    /// 第 08-18m 章：進行中的戰線。征服戰爭＝攻方首都出兵圍攻戰爭目標；獨立戰爭與內戰＝上級出兵圍攻叛軍首領（叛軍旗用金色、內戰用紫色）。
+    /// 兵力照 Core 的算法（居民 1/10），用介面已有的各聚落人口推得。
+    /// </summary>
+    private IReadOnlyList<WarFront> WarFronts()
+    {
+        var cells = _world.Sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => s.Id, s => new DemoCellRef(s.Column, s.Row));
+        var territory = _hexMap.Territory;
+        var people = _hexMap.SettlementScale;
+        long Army(int id) => DemoRealms.Army(people.TryGetValue(id, out var s) ? s.Item1 : 0L);
+        long RealmArmy(int top) => cells.Keys.Where(id => territory.RealmOf(id) == top).Sum(Army);
+        var week = _world.CommittedWeeks;
+        var fronts = new List<WarFront>();
+        foreach (var w in _wars)
+            if (cells.TryGetValue(w.AttackerId, out var home) && cells.TryGetValue(w.TargetId, out var goal))
+                fronts.Add(new WarFront(w.AttackerId, $"{SiteName(w.AttackerId)}對{SiteName(w.DefenderId)}：征服戰爭", home, goal, w.TargetId,
+                    territory.RealmOf(w.AttackerId), territory.RealmOf(w.TargetId), RealmArmy(territory.RealmOf(w.AttackerId)),
+                    RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek)));
+        foreach (var s in _struggles.Where(x => x.Armed))
+            if (cells.TryGetValue(s.LiegeId, out var liege) && cells.TryGetValue(s.VassalId, out var rebel))
+            {
+                var rebels = s.Members.Sum(Army);
+                fronts.Add(new WarFront(-s.VassalId, $"{SiteName(s.VassalId)}對{SiteName(s.LiegeId)}：{(s.Civil ? "內戰" : "獨立戰爭")}", liege, rebel, s.VassalId,
+                    territory.RealmOf(s.LiegeId), territory.RealmOf(s.LiegeId), Math.Max(0L, RealmArmy(territory.RealmOf(s.LiegeId)) - rebels), rebels,
+                    s.LoyalLosses, s.RebelLosses, Math.Max(0, week - s.StartWeek),
+                    s.Civil ? new Color(0.62f, 0.36f, 0.78f) : new Color(0.92f, 0.74f, 0.25f)));
+            }
+        return fronts;
     }
 
     private string SiteName(int id) => _world.Sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
