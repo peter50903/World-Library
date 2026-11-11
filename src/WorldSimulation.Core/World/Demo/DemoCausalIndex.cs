@@ -389,7 +389,11 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.WarDeclared: // 第 08-19e 章：人數欄＝戰爭目標或征服者
             case DemoSettlementEventKind.Conquered:
             case DemoSettlementEventKind.WarEnded:
+            case DemoSettlementEventKind.CivilWar: // 第 08-19f 章
+            case DemoSettlementEventKind.Usurped:
                 return parent is null && e.Count > 0 && e.Count != e.SettlementId ? null : "歸附、脫離與獨立是根因，事件人數欄必須是另一個聚落（上級）的編號";
+            case DemoSettlementEventKind.Succession:
+                return parent is null && e.Count > 0 ? null : "繼位是根因，事件人數欄必須是新國王的實體編號";
             case DemoSettlementEventKind.DungeonAppeared:
                 // 第 12-1 章 C4：根因；人數欄＝格編號。
                 return parent is null && e.Count > 0 ? null : "地下城出現是根因，事件人數欄必須是格編號";

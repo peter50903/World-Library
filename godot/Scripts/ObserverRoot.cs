@@ -1574,7 +1574,7 @@ public partial class ObserverRoot : Control
                     // 上級那一筆：從上級出兵走到叛離的聚落；叛離方那一筆：守在自己的聚落。
                     var asLiege = _struggles.FirstOrDefault(x => x.LiegeId == e.SettlementId && cells.ContainsKey(x.VassalId));
                     var war = asLiege ?? _struggles.FirstOrDefault(x => x.VassalId == e.SettlementId);
-                    var label = war is null ? "獨立戰爭" : $"{SiteName(war.VassalId)}對{SiteName(war.LiegeId)}：獨立戰爭";
+                    var label = war is null ? "獨立戰爭" : $"{SiteName(war.VassalId)}對{SiteName(war.LiegeId)}：{(war.Civil ? "內戰" : "獨立戰爭")}"; // 第 08-19f 章
                     marks.Add(asLiege is not null
                         ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0, label)
                         : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0, label));
