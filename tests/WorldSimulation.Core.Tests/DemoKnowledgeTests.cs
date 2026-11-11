@@ -98,9 +98,10 @@ public sealed class DemoKnowledgeTests
         var source = Assert.Single(world.LatestWeek!.Sources, x => x.Column == cell.Column && x.Row == cell.Row);
         Assert.Equal(DemoCatchmentSourceKind.Farmland, source.Kind);
         Assert.All(world.LatestWeek!.Settlements, l => Assert.True(l.NoMagicFood));
-        // 第 08-7c 章：開拓時代提早、人口較少時，自然來源夠吃的週不一定動用農田；兩年內至少有一週採收到農糧。
+        // 第 08-7c 章：開拓時代提早、人口較少時，自然來源夠吃的週不一定動用農田；五年內至少有一週採收到農糧
+        // （第 08-18l 章：怪物襲擊減少後人口較多、自然來源較常夠吃，原本兩年）。
         var firstWeek = world.LatestWeek!.Week;
-        for (var day = 0; day < 2 * 365 && !world.WeekReports().Any(w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0); day++)
+        for (var day = 0; day < 5 * 365 && !world.WeekReports().Any(w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0); day++)
             world.AdvanceOneDay();
         Assert.Contains(world.WeekReports(), w => w.Week >= firstWeek && w.Settlements.Sum(l => l.FoodFromFarming) > 0);
         Assert.Empty(world.BuildCausalIndex().Problems);
