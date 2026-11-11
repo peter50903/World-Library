@@ -167,10 +167,15 @@ public partial class DemoHexMap
         => _battleMarks.Where(m => m.Week >= CurrentWeek - 1 && m.Label.Length > 0 && Math.Max(Math.Abs(m.Place.Column - column), Math.Abs(m.Place.Row - row)) <= 0)
             .OrderByDescending(m => m.EventId).Select(m => $"⚔ {m.Label}（死 {m.Deaths} 人）").FirstOrDefault() ?? "";
 
-    /// <summary>⚔ 標記（深色底圓＋字）；怪物相關是紅色，脫離抗爭是金色。</summary>
+    /// <summary>⚔ 標記（深色底圓＋字）；怪物相關是紅色，脫離抗爭是金色，征服戰爭是鋼藍色（第 08-19e 章）。</summary>
     private void DrawSwords(Font font, Vector2 center, int size, DemoSettlementEventKind kind, float alpha)
     {
-        var color = kind == DemoSettlementEventKind.SecessionBattle ? new Color(1f, 0.82f, 0.30f, alpha) : new Color(1f, 0.35f, 0.25f, alpha);
+        var color = kind switch
+        {
+            DemoSettlementEventKind.SecessionBattle => new Color(1f, 0.82f, 0.30f, alpha),
+            DemoSettlementEventKind.ConquestBattle => new Color(0.55f, 0.78f, 1f, alpha),
+            _ => new Color(1f, 0.35f, 0.25f, alpha)
+        };
         DrawCircle(center, size * 0.75f, new Color(0.08f, 0.05f, 0.03f, 0.75f * alpha));
         var width = font.GetStringSize("⚔", HorizontalAlignment.Left, -1, size).X;
         DrawString(font, center + new Vector2(-width / 2f, size * 0.38f), "⚔", HorizontalAlignment.Left, -1, size, color);

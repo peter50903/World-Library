@@ -179,6 +179,8 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.SecessionArmed:
                 case DemoSettlementEventKind.SecessionPeaceful:
                 case DemoSettlementEventKind.Independence:
+                case DemoSettlementEventKind.WarDeclared: // 第 08-19e 章：宣戰、征服是重大事件；交戰、敗退與白和平是一般事件
+                case DemoSettlementEventKind.Conquered:
                     // 第 08-19b 章：獨立戰爭、請願的開始與獨立是重大事件；歸附、加入派系、交戰、失敗是一般事件（退出派系不記）。
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Realm, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
@@ -187,6 +189,8 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.SecessionBattle:
                 case DemoSettlementEventKind.SecessionFailed:
                 case DemoSettlementEventKind.FactionJoined:
+                case DemoSettlementEventKind.ConquestBattle:
+                case DemoSettlementEventKind.WarEnded:
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;

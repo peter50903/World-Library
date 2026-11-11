@@ -48,7 +48,7 @@ public sealed record DemoRealmContext(
 /// </list>
 /// 隸屬、派系與鬥爭都由事件推得（<see cref="Fold"/>），不另存；亂數用事件流的實體局部亂數（索引＝週次與聚落），不推進計數器，重跑相同。
 /// </summary>
-public static class DemoRealms
+public static partial class DemoRealms
 {
     /// <summary>【TEMP】不滿累積幾週後行動；請願幾週；戰爭至少、最多幾週；失敗後幾週內不再加入派系；剛歸附算幾週。</summary>
     public const int TempDiscontentWeeks = 26, TempPeacefulWeeks = 26, TempWarMinWeeks = 8, TempWarMaxWeeks = 52, TempTruceWeeks = 260, TempNewVassalWeeks = 52;
@@ -64,10 +64,10 @@ public static class DemoRealms
 
     private const string Namespace = "TEMP-REALM-v2";
 
-    public static bool IsBattle(DemoSettlementEventKind kind) => kind == DemoSettlementEventKind.SecessionBattle;
+    public static bool IsBattle(DemoSettlementEventKind kind) => kind is DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle; // 第 08-19e 章：征服戰爭交戰
 
     /// <summary>由事件推得的隸屬、派系、進行中的鬥爭與停戰（依序餵入已提交的事件）。</summary>
-    public sealed class Fold
+    public sealed partial class Fold
     {
         private readonly Dictionary<int, int> _liege = new();
         private readonly Dictionary<int, int> _joinedWeek = new();
@@ -95,6 +95,7 @@ public static class DemoRealms
         public void Apply(DemoSettlementEvent e)
         {
             var id = e.SettlementId;
+            ApplyConquest(e); // 第 08-19e 章：宣戰、交戰、征服與停戰
             switch (e.Kind)
             {
                 case DemoSettlementEventKind.VassalJoined:
@@ -187,6 +188,8 @@ public static class DemoRealms
             factors.Add(new($"上級直屬 {direct} 個聚落", -3 * (direct - 5)));
         if (ctx.StrongRule(liege))
             factors.Add(new("上級強勢統治", 10));
+        if (fold.Conquered(vassal, week))
+            factors.Add(new("剛被征服", TempConqueredLoyalty)); // 第 08-19e 章
         return factors;
     }
 
@@ -223,6 +226,7 @@ public static class DemoRealms
                 strikes[s.LiegeId] = new DemoDisasterStrike(s.LiegeId, DemoSettlementEventKind.SecessionBattle,
                     Deaths(rebels, residents(s.LiegeId), 3), $"出兵鎮壓叛離的{Name(s.VassalId)}");
         }
+        ConquestBattles(week, fold, sites, residents, taken, rng, strikes); // 第 08-19e 章
         return strikes;
     }
 
@@ -232,7 +236,7 @@ public static class DemoRealms
     /// 事件編號從 <paramref name="nextEventId"/> 起。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Advance(int week, TimeSpan worldTime, Fold fold, DemoRealmContext ctx,
-        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId)
+        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId, bool conquestEra = false, bool wars = true)
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(ctx);
@@ -380,6 +384,9 @@ public static class DemoRealms
             else
                 Add(leader, DemoSettlementEventKind.SecessionPeaceful, liege, $"{who}兵力不足（{rebels} 對 {loyal}），向{Name(liege)}請願抗議、要求獨立");
         }
+
+        // ④ 第 08-19e 章：征服戰爭的結束與宣戰（只在征服時代宣戰；進行中的照常打完）。
+        AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, conquestEra && wars);
         return events;
     }
 

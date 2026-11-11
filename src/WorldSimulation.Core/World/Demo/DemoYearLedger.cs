@@ -148,6 +148,7 @@ public static class DemoYearLedger
                         or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood: // 第 12-1 章 C3
                     case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt: // 第 12-2 章
                     case DemoSettlementEventKind.SecessionBattle: // 第 08-19b 章
+                    case DemoSettlementEventKind.ConquestBattle: // 第 08-19e 章
                     case DemoSettlementEventKind.BeastAttack: // 第 12-1 章 C2：帶原因的非自然死亡
                         DeathsInEvents = checked(DeathsInEvents + e.Count);
                         break;

@@ -525,11 +525,18 @@ public partial class ObserverRoot
         var lines = realm.Tabs[0].Lines.ToList();
         if (fights.Count > 0)
             lines = lines.Append("").Append("分裂鬥爭：").Concat(fights).ToList();
+        // 第 08-19e 章：勢力是攻方或守方的征服戰爭。
+        var wars = _wars.Where(x => x.AttackerId == top || x.DefenderId == top).Select(x => DemoRealms.DescribeWar(x, _world.Sites, week)).ToList();
+        if (wars.Count > 0)
+            lines = lines.Append("").Append("戰爭：").Concat(wars).ToList();
         return new DemoDetailTab("勢力", lines.Append("").Concat(realm.Tabs[1].Lines).ToList());
     }
 
     /// <summary>第 08-19b 章：最近一次刷新時進行中的脫離鬥爭。</summary>
     private IReadOnlyList<DemoSecession> _struggles = Array.Empty<DemoSecession>();
+
+    /// <summary>第 08-19e 章：最近一次刷新時進行中的征服戰爭。</summary>
+    private IReadOnlyList<DemoWar> _wars = Array.Empty<DemoWar>();
 
     /// <summary>
     /// 試玩回饋 2026-11-08 之 6：點到地圖上的角色。領袖開聚落的「代表人物」頁；工作團體、遷徙隊伍開它們自己的詳情；怪物開地下城。
