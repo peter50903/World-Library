@@ -376,6 +376,7 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.DungeonAwakened:
                 return parent is null && e.Count > 0 ? null : "地下城沉寂、怪物再生是根因，事件人數欄必須是格編號";
             case DemoSettlementEventKind.SecessionBattle:
+            case DemoSettlementEventKind.ConquestBattle: // 第 08-19e 章
                 // 第 08-19b 章：根因；人數欄＝死亡人數（與天災同一欄週帳）。
                 return parent is null && e.Count >= 0 ? null : "脫離抗爭的交戰是根因，事件人數欄是死亡人數";
             case DemoSettlementEventKind.VassalJoined:
@@ -385,6 +386,9 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.SecessionFailed:
             case DemoSettlementEventKind.FactionJoined:
             case DemoSettlementEventKind.FactionLeft:
+            case DemoSettlementEventKind.WarDeclared: // 第 08-19e 章：人數欄＝戰爭目標或征服者
+            case DemoSettlementEventKind.Conquered:
+            case DemoSettlementEventKind.WarEnded:
                 return parent is null && e.Count > 0 && e.Count != e.SettlementId ? null : "歸附、脫離與獨立是根因，事件人數欄必須是另一個聚落（上級）的編號";
             case DemoSettlementEventKind.DungeonAppeared:
                 // 第 12-1 章 C4：根因；人數欄＝格編號。

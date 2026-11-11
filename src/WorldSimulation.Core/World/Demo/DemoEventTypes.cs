@@ -64,7 +64,11 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.Independence] = new("TEMP_EV_INDEPENDENCE", "獨立", CauseRootCategory.Culture),
         [DemoSettlementEventKind.SecessionFailed] = new("TEMP_EV_SECESSION_FAILED", "脫離失敗", CauseRootCategory.Culture),
         [DemoSettlementEventKind.FactionJoined] = new("TEMP_EV_FACTION_JOINED", "加入獨立派系", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.FactionLeft] = new("TEMP_EV_FACTION_LEFT", "退出獨立派系", CauseRootCategory.Culture)
+        [DemoSettlementEventKind.FactionLeft] = new("TEMP_EV_FACTION_LEFT", "退出獨立派系", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.WarDeclared] = new("TEMP_EV_WAR_DECLARED", "宣戰", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.ConquestBattle] = new("TEMP_EV_CONQUEST_BATTLE", "征服戰爭交戰", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.Conquered] = new("TEMP_EV_CONQUERED", "征服", CauseRootCategory.Culture),
+        [DemoSettlementEventKind.WarEnded] = new("TEMP_EV_WAR_ENDED", "征服失敗", CauseRootCategory.Culture)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

@@ -235,6 +235,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             now.AddRange(world.LoyaltyLines(settlement.Id));
             if (world.Realms().StruggleOf(settlement.Id) is { } struggle)
                 now.Add(DemoRealms.Describe(struggle, world.Sites, world.CommittedWeeks));
+            if (world.Realms().WarOf(settlement.Id) is { } war) // 第 08-19e 章
+                now.Add(DemoRealms.DescribeWar(war, world.Sites, world.CommittedWeeks));
             now.Add(DemoCombat.Describe(world.CombatForceOf(settlement.Id))); // 第 12-2c 節
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)

@@ -296,7 +296,19 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 08-19b 章：忠誠低落而加入獨立派系、回心轉意而退出（人數欄＝上級聚落編號；根因）。</summary>
     FactionJoined = 42,
-    FactionLeft = 43
+    FactionLeft = 43,
+
+    /// <summary>第 08-19e 章：王國宣戰（人數欄＝戰爭目標聚落編號；根因）。</summary>
+    WarDeclared = 44,
+
+    /// <summary>第 08-19e 章：征服戰爭的交戰（人數欄＝死亡人數，與天災同一欄週帳；根因）。</summary>
+    ConquestBattle = 45,
+
+    /// <summary>第 08-19e 章：被征服（人數欄＝征服者聚落編號；根因）。</summary>
+    Conquered = 46,
+
+    /// <summary>第 08-19e 章：征服戰爭以敗退或白和平結束（人數欄＝戰爭目標聚落編號；根因）。</summary>
+    WarEnded = 47
 }
 
 /// <summary>
@@ -349,6 +361,8 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                 or DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed
                 or DemoSettlementEventKind.FactionJoined or DemoSettlementEventKind.FactionLeft
+                or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.ConquestBattle
+                or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

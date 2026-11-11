@@ -1474,6 +1474,7 @@ public partial class ObserverRoot : Control
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
         _struggles = _world.Realms().Struggles.Values.ToList(); // 第 08-19b 章：進行中的脫離鬥爭（勢力頁與地圖交戰用）
+        _wars = _world.Realms().Wars.Values.ToList(); // 第 08-19e 章：進行中的征服戰爭
         _hexMap.BattleMarks = BattleMarks(); // 第 08-18h 章：戰鬥畫在地圖上
         PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
         _hexMap.CultureOf = Same(_hexMap.CultureOf, _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
@@ -1546,7 +1547,8 @@ public partial class ObserverRoot : Control
     {
         var reports = _world.WeekReports();
         var events = reports.Where(w => w.Week >= _world.CommittedWeeks - 1).SelectMany(w => w.Events)
-            .Where(e => e.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.SecessionBattle)
+            .Where(e => e.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.SecessionBattle
+                or DemoSettlementEventKind.ConquestBattle)
             .ToList();
         if (events.Count == 0)
             return Array.Empty<BattleMark>();
@@ -1576,6 +1578,15 @@ public partial class ObserverRoot : Control
                     marks.Add(asLiege is not null
                         ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0, label)
                         : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0, label));
+                    break;
+                case DemoSettlementEventKind.ConquestBattle:
+                    // 第 08-19e 章：攻方那一筆從首都出兵走到戰爭目標；目標那一筆守在自己的聚落。
+                    var campaign = _wars.FirstOrDefault(x => x.AttackerId == e.SettlementId && cells.ContainsKey(x.TargetId));
+                    var defended = campaign ?? _wars.FirstOrDefault(x => x.TargetId == e.SettlementId);
+                    var title = defended is null ? "征服戰爭" : $"{SiteName(defended.AttackerId)}對{SiteName(defended.DefenderId)}：征服戰爭";
+                    marks.Add(campaign is not null
+                        ? new BattleMark(e.EventId, e.Kind, e.Week, cells[campaign.TargetId], home, e.Count, 0, title)
+                        : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0, title));
                     break;
             }
         }

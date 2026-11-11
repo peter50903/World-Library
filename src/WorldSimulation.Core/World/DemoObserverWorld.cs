@@ -723,7 +723,8 @@ public sealed partial class DemoObserverWorld
                     : DemoRealms.Advance(report.Week, report.WorldTime, Realms(),
                         RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture),
                         DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng, laws.Rebellions,
-                        checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count));
+                        checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count),
+                        conquestEra: knowledge.Era == DemoEra.Conquest, wars: laws.Wars); // 第 08-19e 章：征服時代的王國戰爭
                 // 第 08-19d 章：第一個王國成立時世界進入征服時代（接在最後）。
                 var eraEvents = new List<DemoSettlementEvent>();
                 if (knowledge.Era == DemoEra.Pioneer)
@@ -847,7 +848,7 @@ public sealed partial class DemoObserverWorld
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
         if (!_laws.IsDefault)
-            sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
+            sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks}/{_laws.Wars};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");
