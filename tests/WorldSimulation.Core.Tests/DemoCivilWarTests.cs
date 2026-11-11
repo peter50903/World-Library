@@ -40,7 +40,8 @@ public sealed class DemoCivilWarTests
     private static DemoRealms.Fold Kingdom(int a, int b)
     {
         var fold = new DemoRealms.Fold();
-        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        // 很久以前就歸附（「剛歸附」加分已過期；不受兩個聚落在地圖上的距離影響）。
+        fold.Apply(new DemoSettlementEvent(-200, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
         return fold;
     }
 

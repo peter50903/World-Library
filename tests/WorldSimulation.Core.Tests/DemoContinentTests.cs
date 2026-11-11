@@ -118,6 +118,6 @@ public sealed class DemoForestMoistureTests
                     pairs++;
                     if (n.Terrain == c.Terrain) same++;
                 }
-        Assert.True(same / pairs >= 0.65, $"同地形相鄰比例 {same / pairs:F2}");
+        Assert.True(same / pairs >= 0.6, $"同地形相鄰比例 {same / pairs:F2}"); // 第 06-5 章：多塊大陸後海岸變多，門檻 0.65→0.6
     }
 }
