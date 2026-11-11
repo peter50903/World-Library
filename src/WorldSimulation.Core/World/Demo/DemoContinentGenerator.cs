@@ -20,6 +20,9 @@ public static class DemoContinentGenerator
     public const int TempReliefPercent = 40;
     public const long TempWarpCells = 2;
 
+    /// <summary>【TEMP】第 06-5 章：兩塊大陸的大陸棚值相差不到這個數的地方壓低成海峽（約兩格寬）。</summary>
+    public const long TempStraitWidth = 260;
+
     /// <summary>【TEMP】第 06-5 章：大陸數——中地圖 2 塊、大地圖 3～4 塊、巨大地圖 4～6 塊。</summary>
     public static int ContinentCount(int columns, Func<ulong, ulong> draw)
     {
@@ -105,14 +108,21 @@ public static class DemoContinentGenerator
                 // 扭曲座標（約 ±TempWarpCells 格）再量到每塊大陸中心的橢圓距離，取最近的一塊。
                 var wx = x + (Noise(Draw, 6, x, y, warp) - 500) * TempWarpCells * Unit / 500;
                 var wy = y + (Noise(Draw, 7, x, y, warp) - 500) * TempWarpCells * Unit / 500;
-                long shelf = 0;
+                long shelf = 0, second = 0;
                 foreach (var (ccx, ccy, rx, ry) in centers)
                 {
                     var dx = (wx - ccx) * 1000 / rx;
                     var dy = (wy - ccy) * 1000 / ry;
-                    shelf = Math.Max(shelf, 1000 - Math.Min(1000, (dx * dx + dy * dy) / 1000));
+                    var here = 1000 - Math.Min(1000, (dx * dx + dy * dy) / 1000);
+                    if (here > shelf)
+                        (shelf, second) = (here, shelf);
+                    else if (here > second)
+                        second = here;
                 }
                 var h = relief * TempReliefPercent / 100 + shelf * (100 - TempReliefPercent) / 100;
+                // 兩塊大陸之間（離兩邊差不多近）壓低成海峽，大陸不會連成一片。
+                if (shelf - second < TempStraitWidth)
+                    h -= (TempStraitWidth - (shelf - second)) * 2;
                 var edge = Math.Min(Math.Min(col, columns - 1 - col), Math.Min(row, rows - 1 - row));
                 if (edge < 2)
                     h -= (2 - edge) * 300;
