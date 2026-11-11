@@ -77,8 +77,9 @@ public partial class DemoHexMap
         // ① 角色
         if (ActorUnder(position) is { } actor)
         {
-            if (World!.Contains(actor.Cell.Column, actor.Cell.Row))
-                MarkCell(World.GetCell(actor.Cell.Column, actor.Cell.Row));
+            // 第 08-18k 章（試玩回饋 2026-11-11 之 4）：點到村民、團體、怪物時不框選底下的地塊。
+            Highlight = null;
+            QueueRedraw();
             if (actor.Kind == ActorKind.Settlement && SiteCell(actor.SettlementId) is { } home)
             {
                 MarkCell(home);

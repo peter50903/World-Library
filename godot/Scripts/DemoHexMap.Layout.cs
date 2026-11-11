@@ -31,9 +31,9 @@ public partial class DemoHexMap
     {
         DemoSettlementTier.Camp => 0,
         DemoSettlementTier.Village => 5,
-        DemoSettlementTier.Town => 8,
-        DemoSettlementTier.City => 10,
-        _ => 12
+        DemoSettlementTier.Town => 11, // 第 08-18k 章：城鎮以上的路網更長
+        DemoSettlementTier.City => 15,
+        _ => 19
     };
 
     /// <summary>【TEMP】第 08-18b 章：支路——主路每隔 3 方格有 60% 長出一條垂直的支路，長度是主路剩下長度的一半（至少 2）。</summary>
@@ -59,9 +59,83 @@ public partial class DemoHexMap
     {
         if (tier == DemoSettlementTier.Camp)
             return ((int)Math.Clamp(people / TempPeoplePerTent, 1, 4), false);
-        var houses = (int)Math.Clamp(people / TempPeoplePerHouse, 1, 60);
-        var growing = houses < 60 && people % TempPeoplePerHouse >= TempPeoplePerHouse * TempConstructionAt;
+        var per = PeoplePerHouse(tier);
+        var houses = (int)Math.Clamp(people / per, 1, TempMaxHouses);
+        var growing = houses < TempMaxHouses && people % per >= per * TempConstructionAt;
         return (houses, growing);
+    }
+
+    /// <summary>【TEMP】第 08-18k 章：每棟住屋住幾人（等級越高越密）、住屋上限。</summary>
+    private static int PeoplePerHouse(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Village => TempPeoplePerHouse,
+        DemoSettlementTier.Town => 10,
+        DemoSettlementTier.City => 8,
+        _ => 7
+    };
+
+    private const int TempMaxHouses = 220;
+
+    /// <summary>
+    /// 第 08-18k 章（試玩回饋 2026-11-11 之 2：農田一直閃爍）：版面用的人口有黏性——人口變動不到一成（至少兩棟房子的人）就沿用上次的版面，
+    /// 不會因為每週幾個人的出生死亡就重排道路、房子與屋地。
+    /// </summary>
+    private long LayoutPeople(int id, long people, DemoSettlementTier tier)
+    {
+        if (_layoutPeople.TryGetValue(id, out var last) && last.Tier == tier
+            && Math.Abs(people - last.People) < Math.Max(PeoplePerHouse(tier) * 2L, last.People / 10))
+            return last.People;
+        _layoutPeople[id] = (people, tier);
+        return people;
+    }
+
+    private readonly Dictionary<int, (long People, DemoSettlementTier Tier)> _layoutPeople = new();
+
+    /// <summary>第 08-18k 章：依等級與人口加上的公共建築（村莊：村會所、穀倉；城鎮：鎮會所、市集、鐵匠、工坊、風車…；城市以上再加學校、瞭望塔）。</summary>
+    private static IEnumerable<Building> CivicBuildings(DemoSettlementTier tier, long people, bool faith)
+    {
+        switch (tier)
+        {
+            case DemoSettlementTier.Village:
+                yield return Building.HallVillage;
+                if (people >= 40) yield return Building.Granary;
+                if (faith) yield return Building.Shrine;
+                break;
+            case DemoSettlementTier.Town:
+                yield return Building.HallTown;
+                yield return Building.Market;
+                yield return Building.Granary;
+                yield return Building.Smithy;
+                yield return Building.Workshop;
+                yield return Building.Windmill;
+                if (people >= 200) yield return Building.Kiln;
+                if (faith) yield return Building.Shrine;
+                break;
+            case DemoSettlementTier.City or DemoSettlementTier.Capital:
+                if (tier == DemoSettlementTier.Capital)
+                    yield return Building.Keep;
+                yield return Building.HallTown;
+                yield return Building.Market;
+                yield return faith ? Building.Temple : Building.Shrine;
+                yield return Building.School;
+                yield return Building.Granary;
+                yield return Building.Granary;
+                yield return Building.Smithy;
+                yield return Building.Workshop;
+                yield return Building.Kiln;
+                yield return Building.Windmill;
+                yield return Building.Watchtower;
+                yield return Building.Watchtower;
+                if (tier == DemoSettlementTier.Capital)
+                {
+                    yield return Building.Scriptorium;
+                    yield return Building.Market;
+                    yield return Building.Windmill;
+                    yield return Building.Watchtower;
+                    yield return Building.Watchtower;
+                }
+                break;
+        }
     }
 
     /// <summary>建築地塊的大小（方格）：寬依素材寬度、深 2～4 格；素材往上長出地塊（俯視略帶正面）。</summary>
@@ -71,13 +145,17 @@ public partial class DemoHexMap
         Building.Market or Building.Temple => (5, 3),
         Building.Keep => (5, 4),
         Building.Well => (2, 2),
+        Building.HallTown => (5, 3),
+        Building.HallVillage or Building.School or Building.Scriptorium => (4, 3),
+        Building.Smithy or Building.Workshop or Building.Windmill => (4, 2),
+        Building.Watchtower => (2, 2),
         _ => (3, 2)
     };
 
     /// <summary>【TEMP】建築素材高出地塊幾方格（屋地往上多鋪幾列，讓整棟房子站在泥土地上）。</summary>
     private static int LotOverhang(Building kind) => kind switch
     {
-        Building.Temple or Building.Keep => 2,
+        Building.Temple or Building.Keep or Building.Windmill or Building.Watchtower => 2,
         Building.Tent or Building.Well => 0,
         _ => 1
     };
@@ -103,6 +181,8 @@ public partial class DemoHexMap
             _layouts.Clear();
             _layoutSignatures.Clear();
         }
+        if (!ReferenceEquals(key.Item1, _layoutKey.Item1))
+            _layoutPeople.Clear();
         _layoutKey = key;
         _surface.EnsureGrid(World.Columns, World.Rows);
         var alive = Sites?.Settlements.Where(x => !x.IsRuin && !FadedRuins.Contains(x.Id)).OrderBy(x => x.Id).ToList() ?? new List<DemoSettlement>();
@@ -131,7 +211,8 @@ public partial class DemoHexMap
             var (_, tier) = SettlementScale.TryGetValue(layout.SettlementId, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
             void Mark(int x, int y, byte kind)
             {
-                if (x >= 0 && y >= 0 && x < tx)
+                // 第 08-18k 章：道路、廣場不畫在田上（田不會因版面重排而被道路蓋住又露出）。
+                if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var o && (o < 0 || !IsField(o)))
                     ground[y * tx + x] = kind;
             }
             if (layout.Wall is { } wall && tier >= DemoSettlementTier.City)
@@ -178,7 +259,8 @@ public partial class DemoHexMap
     /// <summary>版面條件的指紋（相同就沿用上次的版面）。</summary>
     private long LayoutSignature(DemoSettlement site)
     {
-        var (people, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+        var (rawPeople, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+        var people = LayoutPeople(site.Id, rawPeople, tier);
         var (houses, building) = HouseCount(people, tier);
         unchecked
         {
@@ -198,7 +280,8 @@ public partial class DemoHexMap
     private SettlementPlan ComputeLayout(DemoSettlement site)
     {
         var surface = _surface!;
-        var (people, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+        var (rawPeople, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+        var people = _layoutPeople.TryGetValue(site.Id, out var sticky) && sticky.Tier == tier ? sticky.People : rawPeople;
         var cells = FootprintCells(site, tier).Select(c => c.Row * World!.Columns + c.Column).ToHashSet();
         var tx = surface.TilesX;
         var used = new HashSet<int>();
@@ -267,13 +350,7 @@ public partial class DemoHexMap
                 paved.Add(new Vector2I(x, y));
 
         // 建築：先放地標（主樓、市集、神殿、井），再放住屋；都要貼著廣場或道路（營地貼著火堆）。
-        var kinds = new List<Building>();
-        if (tier == DemoSettlementTier.Capital)
-            kinds.Add(Building.Keep);
-        if (tier >= DemoSettlementTier.Town)
-            kinds.Add(Building.Market);
-        if (tier >= DemoSettlementTier.City && FaithOf.ContainsKey(site.Id))
-            kinds.Add(Building.Temple);
+        var kinds = CivicBuildings(tier, people, FaithOf.ContainsKey(site.Id)).ToList(); // 第 08-18k 章
         if (!World!.IsNearWater(new DemoCellRef(site.Column, site.Row)))
             kinds.Add(Building.Well);
         var (houses, construction) = HouseCount(people, tier);
@@ -286,7 +363,7 @@ public partial class DemoHexMap
 
         var lots = new List<Lot>();
         var built = new HashSet<Vector2I>();
-        var reach = 4 + length + size;
+        var reach = 6 + length + size;
         var candidates = new List<(int X, int Y)>();
         for (var y = center.Y - reach; y <= center.Y + reach; y++)
             for (var x = center.X - reach; x <= center.X + reach; x++)
@@ -438,11 +515,21 @@ public partial class DemoHexMap
             draw();
         DrawCreatures(start, radius); // 第 08-18b 章：野生動物與地下城怪物
         DrawWalkers(start, radius); // 第 08-18b 章第 4 節：近景小人
-        DrawNameplates(start, radius);
+        DrawNameplates(start, radius, realmsOnly: true); // 第 08-18k 章（試玩回饋 2026-11-11 之 3）：勢力合併後只標首都
     }
 
     private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture)
     {
+        if (CivicArt(kind) is { } civic)
+        {
+            // 第 08-18k 章：公共建築（風車有 4 幀轉動）。
+            GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(civic, radius, kind == Building.Windmill ? 4 : 1).X) * 0.95f, 0.34f);
+            if (kind == Building.Windmill)
+                DrawArt(civic, bottom, radius, 4, (int)(Time.GetTicksMsec() / 220UL % 4UL));
+            else
+                DrawArt(civic, bottom, radius);
+            return;
+        }
         if (LotArt(kind, culture) is { } art)
         {
             // 第 08-18d 章：第五批大建築素材（篷布、屋頂、旗子染文化色）。

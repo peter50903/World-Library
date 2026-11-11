@@ -1547,8 +1547,7 @@ public partial class ObserverRoot : Control
     {
         var reports = _world.WeekReports();
         var events = reports.Where(w => w.Week >= _world.CommittedWeeks - 1).SelectMany(w => w.Events)
-            .Where(e => e.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.SecessionBattle
-                or DemoSettlementEventKind.ConquestBattle)
+            .Where(e => e.Kind is DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle) // 第 08-18k 章（試玩回饋 2026-11-11 之 11）：跟怪物、野獸的戰鬥不畫
             .ToList();
         if (events.Count == 0)
             return Array.Empty<BattleMark>();

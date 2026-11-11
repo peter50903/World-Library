@@ -18,7 +18,7 @@ public partial class DemoHexMap
     private const int TempHousesPerCell = 3;
 
     /// <summary>【TEMP】各等級最多佔幾格（村莊、城鎮在一圈內，城市、首都在兩圈內）。</summary>
-    private const int TempVillageCells = 3, TempTownCells = 5, TempCityCells = 10, TempCapitalCells = 16;
+    private const int TempVillageCells = 3, TempTownCells = 9, TempCityCells = 20, TempCapitalCells = 30; // 第 08-18k 章：城鎮以上明顯更大
 
     public const string SpriteTent = "res://assets/sprites/tent.png";
     public const string SpriteHut = "res://assets/sprites/hut.png";
@@ -30,7 +30,9 @@ public partial class DemoHexMap
     public const string SpritePalisade = "res://assets/sprites/palisade.png";
     public const string SpriteStoneWall = "res://assets/sprites/stone_wall.png";
 
-    public enum Building { Tent, Hut, House, StoneHouse, Market, Temple, Keep, Well }
+    public enum Building { Tent, Hut, House, StoneHouse, Market, Temple, Keep, Well,
+        // 第 08-18k 章：依等級加上的公共建築（第五批素材裡已有、原本沒用到的）
+        HallVillage, HallTown, Granary, Smithy, Workshop, Kiln, Windmill, Watchtower, School, Scriptorium, Shrine }
 
     /// <summary>一棟建築：在哪一格、什麼、相對格中心的位置（格半徑的倍數）。</summary>
     public readonly record struct BuildingSpot(DemoCellRef Cell, Building Kind, Vector2 Offset);
