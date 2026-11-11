@@ -103,7 +103,7 @@ public static partial class DemoRealms
         ArgumentNullException.ThrowIfNull(leader);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(tier);
-        if (fold.Liege.ContainsKey(top) || !fold.Liege.ContainsValue(top) || tier(top) < TempKingdomTier)
+        if (fold.Liege.ContainsKey(top) || !fold.Liege.Values.Contains(top) || tier(top) < TempKingdomTier)
             return null;
         string Name(int id) => sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
         var seat = fold.Seat(top);
