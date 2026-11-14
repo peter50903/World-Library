@@ -106,35 +106,40 @@ public partial class IsoSpriteView : Control
         }
         foreach (var (x, z) in new[] { (x0, z0), (x1, z0), (x0, z1), (x1, z1) })
             Add("iso_watchtower", x, z, town, new Vector3(0.24f, 0.6f, 0.24f), wood.Darkened(0.1f));
-        Add("iso_gatehouse", cx, z1 + 0.02f, town, new Vector3(0.6f, 0.55f, 0.2f), wood.Darkened(0.05f));
+        Add("iso_gatehouse", cx, z1 + 0.02f, town, new Vector3(0.6f, 0.55f, 0.2f), wood.Darkened(0.05f), flip: true); // 翻轉：城門樓沿南牆
         Add("iso_well", cx, cz, town, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
-        Add("iso_stall_red", cx - 0.3f, cz - 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.82f, 0.22f, 0.20f));
-        Add("iso_stall_blue", cx + 0.3f, cz - 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.22f, 0.42f, 0.78f), flip: true);
-        Add("iso_stall_blue", cx - 0.3f, cz + 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.22f, 0.42f, 0.78f));
-        Add("iso_stall_red", cx + 0.3f, cz + 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.82f, 0.22f, 0.20f), flip: true);
+        // 市集攤位：同一個朝向，紅藍交錯。
+        foreach (var (dx, dz, red) in new[] { (-1f, -1f, true), (1f, -1f, false), (-1f, 1f, false), (1f, 1f, true) })
+            Add(red ? "iso_stall_red" : "iso_stall_blue", cx + dx * 0.3f, cz + dz * 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f),
+                red ? new Color(0.82f, 0.22f, 0.20f) : new Color(0.22f, 0.42f, 0.78f));
+        // 房子：四個街區各 2×2 等距對齊、全部同一個朝向（門朝南）；東北街區整區是鎮公所。
+        // 使用者 2026-11-14：房子方向一團亂、毫無邏輯——不再依雜湊翻轉，同一個聚落的房子朝向一致、對齊街道。
         var houses = new[] { "iso_house_timber", "iso_house_timber_2", "iso_house_stone", "iso_house_timber" };
         var n = 0;
         foreach (var (qx, qz) in new[] { (-1, -1), (1, -1), (-1, 1), (1, 1) })
-            for (var i = 0; i < 4; i++, n++)
+        {
+            if (qx == 1 && qz == -1)
             {
-                var x = cx + (0.5f + (i % 2) * 0.5f) * qx;
-                var z = cz + (0.46f + (i / 2) * 0.52f) * qz;
-                if (qx == 1 && qz == 1 && i == 0)
-                    Add("iso_town_hall", x, z, town, new Vector3(0.4f, 0.4f, 0.45f), plaster);
-                else
-                    Add(houses[n % houses.Length], x, z, town, house, n % 3 == 2 ? new Color(0.66f, 0.64f, 0.60f) : plaster, flip: (n + qx) % 2 == 0);
+                Add("iso_town_hall", cx + 0.67f * qx, cz + 0.67f * qz, town, new Vector3(0.4f, 0.4f, 0.45f), plaster);
+                continue;
             }
+            for (var i = 0; i < 4; i++, n++)
+                Add(houses[n % houses.Length], cx + (0.4f + (i % 2) * 0.46f) * qx, cz + (0.4f + (i / 2) * 0.46f) * qz, town, house,
+                    n % 3 == 2 ? new Color(0.66f, 0.64f, 0.60f) : plaster);
+        }
         Add("iso_crates", x0 + 0.25f, z0 + 0.25f, town, new Vector3(0.1f, 0.08f, 0.1f), wood);
 
         // 河邊農村（第 8～10 欄、第 6～8 列；方田第 11～13 欄、第 5～7 列）。
         var village = Map.Settlements[1].Id;
         var thatch = new Color(0.82f, 0.68f, 0.38f);
-        var spots = new[] { (9.05f, 6.1f), (8.6f, 7.6f), (9.5f, 6.55f), (9.55f, 7.7f), (10.45f, 6.35f), (10.5f, 7.55f), (9.15f, 8.55f), (10.35f, 8.6f) };
-        for (var i = 0; i < spots.Length; i++)
-            Add(i % 2 == 0 ? "iso_house_thatch" : "iso_house_thatch_2", spots[i].Item1, spots[i].Item2, village, house, thatch, flip: i % 3 == 0);
+        // 房子：沿東西向小路（第 7.08 列）兩排、第三排兩棟，等距、全部朝南。
+        foreach (var (x, z, art) in new[] { (9.05f, 6.62f, "iso_house_thatch"), (9.7f, 6.62f, "iso_house_thatch"), (10.35f, 6.62f, "iso_house_thatch"),
+                     (9.05f, 7.62f, "iso_house_thatch_2"), (9.7f, 7.62f, "iso_house_thatch_2"), (10.35f, 7.62f, "iso_house_thatch_2"),
+                     (9.4f, 8.5f, "iso_house_thatch"), (10.05f, 8.5f, "iso_house_thatch") })
+            Add(art, x, z, village, house, thatch);
         Add("iso_mill", 8.4f, 6.3f, village, new Vector3(0.35f, 0.4f, 0.4f), plaster, flip: true); // 翻轉：輪軸朝河
         Add("iso_waterwheel", 8.0f, 6.78f, village, new Vector3(0.08f, 0.4f, 0.4f), wood, frames: 4);
-        Add("iso_well", 9.95f, 7.3f, village, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
+        Add("iso_well", 10.85f, 7.1f, village, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
         Add("iso_bridge", 7.5f, 7.5f, village, new Vector3(1.3f, 0.06f, 0.22f), wood, flip: true, ground: true);
         for (var c = 11; c <= 13; c++)
             for (var r = 5; r <= 7; r++)
