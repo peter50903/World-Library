@@ -6,6 +6,8 @@ public static partial class PixelParts
 {
     public static readonly string[] Batch5 =
     {
+        // 第 08-20c 章：KayKit 模型烘焙的建築（tools/kaykit_bake.py）
+        "kk_hall_town_e", "kk_hall_town_n", "kk_hall_town_s", "kk_hall_town_w", "kk_hall_village_e", "kk_hall_village_n", "kk_hall_village_s", "kk_hall_village_w", "kk_house_e", "kk_house_n", "kk_house_s", "kk_house_w", "kk_hut_e", "kk_hut_n", "kk_hut_s", "kk_hut_w", "kk_keep", "kk_market_e", "kk_market_n", "kk_market_s", "kk_market_w", "kk_palisade", "kk_smithy_e", "kk_smithy_n", "kk_smithy_s", "kk_smithy_w", "kk_stone_house_e", "kk_stone_house_n", "kk_stone_house_s", "kk_stone_house_w", "kk_temple_e", "kk_temple_n", "kk_temple_s", "kk_temple_w", "kk_wall_front", "kk_wall_gate", "kk_wall_gate_side", "kk_wall_tower", "kk_watchtower", "kk_well", "kk_windmill", "kk_workshop_e", "kk_workshop_n", "kk_workshop_s", "kk_workshop_w",
         "ani_deer_graze", "ani_deer_walk", "ani_den", "ani_doe_walk", "ani_fawn_walk", "ani_goat_graze", "ani_goat_walk", "ani_tracks", "ani_wolf_alpha_walk", "ani_wolf_howl",
         "ani_wolf_rest", "ani_wolf_run", "ani_wolf_walk", "bld_bonfire", "bld_chimney_smoke", "bld_dock", "bld_fishing_hut", "bld_granary", "bld_hall_town", "bld_hall_village",
         "bld_house_1", "bld_house_2", "bld_house_3", "bld_hunting_lodge", "bld_hut_1", "bld_hut_2", "bld_keep", "bld_kiln", "bld_market", "bld_ruin",

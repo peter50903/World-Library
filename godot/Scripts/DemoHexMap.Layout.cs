@@ -13,11 +13,14 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>一塊建築地塊（方格座標；左上角與寬高）。</summary>
-    public readonly record struct Lot(int X, int Y, int W, int H, Building Kind, bool Construction = false);
+    public readonly record struct Lot(int X, int Y, int W, int H, Building Kind, bool Construction = false, int Facing = 0);
+
+    /// <summary>第 08-20c 章：建築的門朝哪邊（0＝南、1＝東、2＝北、3＝西），對應烘焙素材的 _s／_e／_n／_w。</summary>
+    private static readonly string[] FacingSuffix = { "s", "e", "n", "w" };
 
     /// <summary>一個聚落的版面。<see cref="Wall"/>＝城牆或木柵圍住的方格範圍（沒有＝null）。</summary>
     public sealed record SettlementPlan(int SettlementId, Rect2I Plaza, IReadOnlyList<Vector2I> Roads, IReadOnlyList<Lot> Lots, Rect2I? Wall, bool StoneWall,
-        IReadOnlyList<Vector2I> Gates);
+        IReadOnlyList<Vector2I> Gates, Rect2I? InnerWall = null, IReadOnlyList<Vector2I>? InnerGates = null);
 
     /// <summary>【TEMP】廣場邊長、道路長度（方格）。</summary>
     private static int PlazaSize(DemoSettlementTier tier) => tier switch
@@ -415,16 +418,26 @@ public partial class DemoHexMap
                     Use(spot.Item1 + i, spot.Item2 + j);
                     built.Add(new Vector2I(spot.Item1 + i, spot.Item2 + j));
                 }
-            lots.Add(new Lot(spot.Item1, spot.Item2, w, h, kind, site2));
+            // 第 08-20c 章：門朝貼著的道路（優先順序：南、東、西、北；營地一律朝南）。
+            var facing = 0;
+            if (tier != DemoSettlementTier.Camp)
+            {
+                bool Paved(int ax, int ay) => paved.Contains(new Vector2I(ax, ay));
+                bool Row(int ay) { for (var i = 0; i < w; i++) if (Paved(spot.Item1 + i, ay)) return true; return false; }
+                bool Col(int ax) { for (var j = 0; j < h; j++) if (Paved(ax, spot.Item2 + j)) return true; return false; }
+                facing = Row(spot.Item2 + h) ? 0 : Col(spot.Item1 + w) ? 1 : Col(spot.Item1 - 1) ? 3 : Row(spot.Item2 - 1) ? 2 : 0;
+            }
+            lots.Add(new Lot(spot.Item1, spot.Item2, w, h, kind, site2, facing));
         }
         // 至少一棟（陸地太少時直接放在廣場上）。
         if (lots.Count == 0)
             lots.Add(new Lot(plaza.Position.X, plaza.Position.Y, 2, 2, house));
 
         // 第 08-18b 章：城牆只有城市以上才有，圍住廣場與所有建築（外留一格）；道路穿過的地方是城門。
+        // 第 08-20c 章（使用者 2026-11-14：沿用 KayKit 原型的建築與串聯感）：城鎮也圍木柵（城市以上是石牆）。
         Rect2I? wall = null;
         var gates = new List<Vector2I>();
-        if (tier >= DemoSettlementTier.City)
+        if (tier >= DemoSettlementTier.Town)
         {
             var box = plaza;
             foreach (var lot in lots)
@@ -448,7 +461,21 @@ public partial class DemoHexMap
                 if (road.X == box.Position.X || road.X == box.End.X - 1 || road.Y == box.Position.Y || road.Y == box.End.Y - 1)
                     gates.Add(road);
         }
-        return new SettlementPlan(site.Id, plaza, roads, lots, wall, tier >= DemoSettlementTier.City, gates);
+        // 第 08-20c 章：首都的雙層石牆——主樓外圍一圈內城牆，道路穿過的地方是內城門。
+        Rect2I? inner = null;
+        var innerGates = new List<Vector2I>();
+        if (tier == DemoSettlementTier.Capital && lots.FirstOrDefault(l => l.Kind == Building.Keep) is { W: > 0 } keep)
+        {
+            var ring = new Rect2I(keep.X, keep.Y, keep.W, keep.H).Grow(1);
+            inner = ring;
+            foreach (var road in roads)
+                if (ring.HasPoint(road) && (road.X == ring.Position.X || road.X == ring.End.X - 1 || road.Y == ring.Position.Y || road.Y == ring.End.Y - 1))
+                    innerGates.Add(road);
+            // 沒有路穿過時，內城門開在主樓正面那一邊的中間。
+            if (innerGates.Count == 0)
+                innerGates.Add(new Vector2I(ring.Position.X + ring.Size.X / 2, ring.End.Y - 1));
+        }
+        return new SettlementPlan(site.Id, plaza, roads, lots, wall, tier >= DemoSettlementTier.City, gates, inner, innerGates);
     }
 
     private static float LayoutHash(int a, int b, int c)
@@ -480,6 +507,8 @@ public partial class DemoHexMap
                 continue;
             if (layout.Wall is { } wall)
                 AddWall(items, layout, wall, Screen, radius);
+            if (layout.InnerWall is { } innerWall && KitRepeat("kk_wall_front") is { } innerFront)
+                AddWallArt(items, layout, innerWall, Screen, radius, innerFront, (layout.InnerGates ?? Array.Empty<Vector2I>()).ToHashSet(), kit: true);
             var roof = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.62f, 0.25f, 0.18f);
             foreach (var lot in layout.Lots)
             {
@@ -489,9 +518,9 @@ public partial class DemoHexMap
                 if (lot.Construction)
                     items.Add((bottom.Y, () => DrawConstruction(bottom, width, lot.H * t * radius / TerrainSurface.TempTexelsPerRadius, radius, lot.X * 31 + lot.Y * 17)));
                 else if (IsResidence(kind))
-                    items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius, lot.X * 31 + lot.Y * 17)));
+                    items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius, lot.X * 31 + lot.Y * 17, lot.Facing)));
                 else
-                    items.Add((bottom.Y, () => DrawLotBuilding(kind, bottom, width, radius, roof)));
+                    items.Add((bottom.Y, () => DrawLotBuilding(kind, bottom, width, radius, roof, lot.Facing)));
             }
             // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。
             // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
@@ -518,9 +547,9 @@ public partial class DemoHexMap
         DrawNameplates(start, radius, realmsOnly: true); // 第 08-18k 章（試玩回饋 2026-11-11 之 3）：勢力合併後只標首都
     }
 
-    private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture)
+    private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture, int facing = 0)
     {
-        if (CivicArt(kind) is { } civic)
+        if (CivicArt(kind, culture, facing) is { } civic)
         {
             // 第 08-18k 章：公共建築（風車有 4 幀轉動）。
             GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(civic, radius, kind == Building.Windmill ? 4 : 1).X) * 0.95f, 0.34f);
@@ -530,7 +559,7 @@ public partial class DemoHexMap
                 DrawArt(civic, bottom, radius);
             return;
         }
-        if (LotArt(kind, culture) is { } art)
+        if (LotArt(kind, culture, facing) is { } art)
         {
             // 第 08-18d 章：第五批大建築素材（篷布、屋頂、旗子染文化色）。
             GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(art, radius).X) * 0.95f, 0.36f);
@@ -584,10 +613,19 @@ public partial class DemoHexMap
         var top = face.Lightened(0.15f);
         var faceHeight = (stone ? 12f : 9f) * p;
         var gates = layout.Gates.ToHashSet();
-        var sprite = PixelParts.Texture(stone ? "bld_stone_wall" : "bld_palisade", repeat: true);
+        // 第 08-20c 章：KayKit 烘焙的石牆（城市以上）與木柵（城鎮）。
+        if (stone && KitRepeat("kk_wall_front") is { } kitFront)
+        {
+            AddWallArt(items, layout, wall, screen, radius, kitFront, gates, kit: true);
+            return;
+        }
+        var kitPalisade = stone ? null : KitRepeat("kk_palisade");
+        var sprite = kitPalisade ?? PixelParts.Texture(stone ? "bld_stone_wall" : "bld_palisade", repeat: true);
+        if (kitPalisade is not null)
+            p = radius / TerrainSurface.TempTexelsPerRadius; // 烘焙素材與地表同一密度
         if (stone && PixelParts.IsBatch5("wall_front") && PixelParts.Texture("wall_front", repeat: true) is { } front)
         {
-            AddWallArt(items, layout, wall, screen, radius, front);
+            AddWallArt(items, layout, wall, screen, radius, front, gates);
             return;
         }
 
@@ -682,14 +720,16 @@ public partial class DemoHexMap
     /// 第 08-18d 章：第五批城牆素材——上下兩側是正面牆（wall_front 橫向重複），左右兩側只看得到牆頂（wall_top 一方格一張），
     /// 四角是圓塔（尖頂染文化色），上下的城門是 wall_gate、左右的城門是 wall_gate_side。上側與左右在建築之前畫，下側在建築之後畫。
     /// </summary>
-    private void AddWallArt(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius, CanvasTexture front)
+    private void AddWallArt(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius, CanvasTexture front,
+        HashSet<Vector2I> gates, bool kit = false)
     {
         var culture = CultureOf.TryGetValue(layout.SettlementId, out var id) ? CultureColor(id) : new Color(0.62f, 0.25f, 0.18f);
-        var tower = (Texture2D?)PixelParts.Tinted("wall_tower", culture, 0.5f) ?? PixelParts.Texture("wall_tower");
-        var gate = PixelParts.Texture("wall_gate");
-        var gateSide = PixelParts.Texture("wall_gate_side");
+        // 第 08-20c 章：KayKit 烘焙的塔樓（尖頂染文化色）與城門；牆頂沿用第五批。
+        var tower = kit ? (Texture2D?)PixelParts.Tinted("kk_wall_tower", culture, 1f) ?? PixelParts.Texture("kk_wall_tower")
+            : (Texture2D?)PixelParts.Tinted("wall_tower", culture, 0.5f) ?? PixelParts.Texture("wall_tower");
+        var gate = PixelParts.Texture(kit ? "kk_wall_gate" : "wall_gate");
+        var gateSide = PixelParts.Texture(kit ? "kk_wall_gate_side" : "wall_gate_side");
         var top = PixelParts.Texture("wall_top");
-        var gates = layout.Gates.ToHashSet();
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var tile = TerrainSurface.TempTile * p;
 
