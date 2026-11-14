@@ -36,6 +36,15 @@ STYLE = """你要為一款像素風「上帝視角世界模擬」遊戲畫一批
 **共同規格（每一張都要遵守）**
 - **視角：完全正面**。像 2D 寶可夢的房子：看得到屋頂（畫面上半）與建築的南面（畫面下半），**左右對稱的正面透視**，
   不要斜角、不要等角（45 度）、不要看到東西兩側的牆。每棟只有這一個方向，門一律在南面。
+- **房子的構造（正面立面，像像素風小木屋的正面圖）**：
+  1. **屋頂是人字形（⌂）**：從正中的尖端往左右兩邊斜下，只看得到沿兩斜邊的**屋簷**（約 3 像素厚、灰階），屋簷兩端**伸出牆外**約 3 像素；
+     不要畫成一整片朝向鏡頭的前坡，也不要畫成長方形的平屋頂。
+  2. 屋簷底下是**大面積的三角山牆**（牆的材質，木屋是橫向木板），正中開一扇小窗或通風口；山牆底下一根橫樑。
+  3. 橫樑下是**牆面**：木屋兩側有角柱，窗戶有十字窗框，木屋與白灰牆的窗兩旁有木遮板；門在正中。
+  4. 牆底一條**比牆略寬的石基**（深藍灰色石塊），門的底部貼著石基。
+  5. **煙囪一定是從屋頂伸出來**：下半被屋簷擋住、只露出屋頂以上的部分，不可以擋在山牆前面。
+     **鐘樓、尖塔**的位置與造型可以自由發揮（坐在屋脊上、立在正面、蓋在一側都可以），只要建築上合理、不超出規格尺寸；草圖只是其中一種擺法。
+     屋頂尖端以外的上方兩角是透明的。
 - **尺寸精確**：規格欄的寬×高就是成品的像素數（每個像素是一個「大像素」，一個地圖方格＝16×16）。
   建築**左右填滿到圖邊**（最多留 1 像素）、**底邊貼齊圖底**；門畫在門面底部、門底貼齊圖底（草圖的深褐色塊）。
   輸出時請直接給表中的實際尺寸；做不到的話給整數倍放大（例如 ×8，每個大像素是同大小的方塊），匯入時會縮回。
@@ -75,7 +84,7 @@ add(G, "tent_2", 2, 2, 1.0, "tent", "營地帳篷變化：圓錐帳、旁邊插�
 add(G, "hut_1", 3, 3, 0.5, "house", "村莊木屋：原木牆、灰階木瓦斜頂、木門、一扇小窗", "村莊的住屋", mat="log", win=1)
 add(G, "hut_2", 3, 3, 0.5, "house", "村莊木屋變化：屋頂有補丁、門邊掛乾草、窗台放陶罐", "村莊的住屋", mat="log", win=1, chimney=True)
 add(G, "house_1", 3, 4, 0.45, "house", "城鎮兩層房：石砌一樓、二樓白灰牆與深色木骨架、灰階斜頂、磚煙囪", "城鎮的住屋", mat="plaster", win=2, floors=2, chimney=True)
-add(G, "house_2", 3, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、灰階斜頂上有老虎窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2, dormer=True)
+add(G, "house_2", 3, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、山牆上一扇圓窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2)
 add(G, "house_3", 3, 4, 0.45, "house", "城鎮兩層房變化：二樓陽台欄杆、門上小雨遮", "城鎮的住屋", mat="plaster", win=2, floors=2)
 add(G, "stone_house_1", 3, 4, 0.42, "house", "城市石屋：暖灰石塊牆、灰階瓦頂、拱形木門、石框窗、煙囪", "城市的住屋", mat="stone", win=2, floors=2, chimney=True)
 add(G, "stone_house_2", 3, 5, 0.36, "house", "城市石屋變化：三層窄樓、屋頂兩個煙囪", "城市的住屋", mat="stone", win=2, floors=3, chimney=True)
@@ -85,9 +94,9 @@ add(G, "brick_house_2", 4, 4, 0.4, "house", "首都磚造連棟屋：兩戶並�
 
 G = "B 公共建築"
 add(G, "hall_village", 4, 4, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
-add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、屋頂中央小鐘樓、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
+add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、一座小鐘樓（位置自由發揮）、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
 add(G, "market", 5, 3, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
-add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、正中尖塔、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
+add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、一座尖塔（位置自由發揮）、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
 add(G, "smithy", 4, 3, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
 add(G, "workshop", 4, 3, 0.45, "house", "木工坊：鋸木台、木材堆、灰階屋頂工棚", "城鎮以上", mat="wood", win=1, door=12)
 add(G, "tavern", 4, 4, 0.42, "house", "酒館：兩層木構架、門上掛酒桶招牌、窗戶透暖光、灰階屋頂", "城鎮以上（之後的章節）", mat="plaster", win=4, floors=2, chimney=True)
@@ -97,7 +106,7 @@ add(G, "mine", 4, 3, 0.0, "mine", "礦坑入口：岩石山丘上的木框坑道
 add(G, "shrine", 2, 3, 0.45, "house", "小祠：石台上的小神龕、灰階小屋頂、香爐與花", "村莊以上的信仰（有信仰時）", mat="stone", win=0, door=6)
 add(G, "kiln", 3, 3, 0.0, "kiln", "窯：圓頂磚窯冒煙、柴堆、陶罐", "城鎮以上")
 add(G, "granary", 3, 3, 0.45, "granary", "穀倉：高腳木倉（防鼠）、灰階屋頂、麻袋", "村莊以上")
-add(G, "school", 4, 4, 0.42, "house", "學校：兩層石木建築、屋頂小鐘、門前小庭院", "城市以上", mat="plaster", win=4, floors=2, tower=True)
+add(G, "school", 4, 4, 0.42, "house", "學校：兩層石木建築、一座小鐘樓（位置自由發揮）、門前小庭院", "城市以上", mat="plaster", win=4, floors=2, tower=True)
 add(G, "scriptorium", 4, 4, 0.42, "house", "抄經房：石砌建築、大拱窗、門邊書架", "首都", mat="stone", win=2, floors=2)
 add(G, "hunting_lodge", 3, 3, 0.5, "house", "獵人小屋：原木屋、門上掛鹿角、牆邊晾毛皮", "營地與村莊（獵場）", mat="log", win=1)
 add(G, "fishing_hut", 3, 3, 0.45, "granary", "漁夫高腳屋：木樁撐起的小屋、晾漁網、小木梯", "臨水聚落（岸上）")
@@ -160,6 +169,38 @@ def roof(d, x0, y0, x1, y1, inset=2):
     d.line([x0 + inset, y0, x1 - inset, y0], fill=C["roof_l"] + (255,))
 
 
+def gable_roof(d, x0, y0, x1, y1, wall, ov=3, t=3):
+    """正面立面的人字頂（像 ⌂）：屋頂只看到沿三角形兩斜邊的屋簷（厚 t、左右各伸出牆外 ov），
+    中間是大面積的三角山牆（牆材質、橫向木板紋、一扇小窗）；山牆底下一根橫樑。"""
+    mid = (x0 + x1) / 2
+    h = y1 - y0
+    wx0, wx1 = x0 + ov, x1 - ov
+    # 山牆（三角形，底邊＝牆寬）
+    gy = y0 + t
+    for y in range(int(gy), y1 + 1):
+        half = (mid - wx0) * (y - gy) / max(1, y1 - gy)
+        d.line([(mid - half, y), (mid + half, y)], fill=C[wall] + (255,))
+        if wall in ("wood", "log") and (y - int(gy)) % 3 == 2:
+            d.line([(mid - half + 1, y), (mid + half - 1, y)], fill=darker(C[wall], 0.8) + (255,))
+    if h >= 12:
+        cy = int(y0 + h * 0.62)
+        box(d, int(mid) - 3, cy - 3, int(mid) + 2, cy + 2, C["win"])
+        d.line([int(mid) - 1, cy - 3, int(mid) - 1, cy + 2], fill=C["door"] + (255,))
+    # 屋簷：沿兩斜邊的厚帶，尖端在正中、兩端伸出牆外
+    for k in range(t):
+        d.line([(x0, y1 + 1 - k), (mid, y0 + t - 1 - k), (x1, y1 + 1 - k)], fill=(C["roof_l"] if k else C["roof_d"]) + (255,), width=1)
+    d.line([(x0, y1 + 2), (mid, y0 + t), (x1, y1 + 2)], fill=C["roof_d"] + (255,))
+    d.line([(x0, y1 + 1 - t), (mid, y0 - 1), (x1, y1 + 1 - t)], fill=C["roof"] + (255,))
+    # 橫樑
+    d.rectangle([wx0, y1 + 1, wx1, y1 + 2], fill=darker(C["wood"], 0.75) + (255,))
+
+
+def roof_y(x, x0, x1, y0, y1):
+    """人字頂外緣在 x 處的高度。"""
+    mid = (x0 + x1) / 2
+    return y0 + (y1 - y0) * abs(x - mid) / (mid - x0)
+
+
 def material(d, x0, y0, x1, y1, mat):
     col = C[mat]
     box(d, x0, y0, x1, y1, col)
@@ -182,44 +223,65 @@ def door_at(d, cx, bottom, w, h):
 
 
 def sketch_house(W, H, roof_frac, kw):
+    """正面立面（參考：像素風小木屋的正面）：屋簷伸出牆外、大山牆、牆面、帶遮板的窗、石基。"""
     im = Image.new("RGBA", (W, H))
     d = ImageDraw.Draw(im)
-    rh = max(4, round(H * roof_frac))
-    if kw.get("chimney"):
-        box(d, W - 12, 0, W - 8, rh // 2, C["brick"])
+    rh = max(6, round(H * roof_frac))
+    mat = kw.get("mat", "plaster")
+    wall = mat if mat != "log" else "wood"
+    ov, fh = 3, 3
+    t = 3 if W < 64 else 4
     top = 0
     if kw.get("tower"):
-        box(d, W // 2 - 5, 0, W // 2 + 4, rh // 2 + 2, C["plaster"])
-        box(d, W // 2 - 2, 3, W // 2 + 1, 6, C["metal"])
-    roof(d, 0, max(top, kw.get("chimney") and 2 or 0), W - 1, rh - 1, inset=min(4, W // 8))
+        # 鐘樓：坐在屋脊上、下半被屋頂擋住（先畫，屋頂後畫）
+        top = 14
+        box(d, W // 2 - 4, 5, W // 2 + 3, top + 8, C["plaster"])
+        box(d, W // 2 - 2, 8, W // 2 + 1, 12, C["dark"])
+        d.polygon([(W // 2 - 6, 6), (W // 2, 0), (W // 2 + 5, 6)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
     if kw.get("spire"):
-        sw = W // 5
-        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, rh + 4, C["stone"])
+        # 尖塔：從屋脊後方伸出（先畫，屋頂後畫）
+        sw = W // 6
+        top = H // 4
+        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, top + 10, C["stone"])
+        box(d, W // 2 - 1, H // 8 + 4, W // 2, H // 8 + 9, C["dark"])
         d.polygon([(W // 2, 0), (W // 2 - sw // 2 - 1, H // 8), (W // 2 + sw // 2 + 1, H // 8)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
-        d.ellipse([W // 2 - 4, rh - 8, W // 2 + 3, rh - 1], fill=C["win"] + (255,))
-    if kw.get("dormer"):
-        box(d, W // 2 - 4, rh // 3, W // 2 + 3, rh - 3, C["plaster"])
-        box(d, W // 2 - 2, rh // 3 + 2, W // 2 + 1, rh - 5, C["win"])
-    material(d, 0, rh, W - 1, H - 1, kw.get("mat", "plaster"))
+    if kw.get("chimney"):
+        cx = int(W * 0.7)
+        ry = int(roof_y(cx, 0, W - 1, top + t, rh))
+        box(d, cx, max(0, ry - 8), cx + 4, ry + 1, C["brick"])
+    # 牆
+    material(d, ov, rh + 3, W - 1 - ov, H - 1 - fh, mat)
+    if mat in ("wood", "log", "plaster"):
+        for x in (ov, W - 1 - ov - 1):
+            d.rectangle([x, rh + 3, x + 1, H - 1 - fh], fill=darker(C["wood"], 0.75) + (255,))
+    gable_roof(d, 0, top, W - 1, rh, wall, ov, t)
+    # 窗（木屋與白灰牆的窗有左右遮板）
     floors = kw.get("floors", 1)
-    fh = (H - rh) / floors
+    top_wall = rh + 3
+    fl = (H - fh - top_wall) / floors
     wins = kw.get("win", 2)
     doors = kw.get("doors", 1)
     dw = kw.get("door", 6)
-    dh = min(10, int(fh) - 2)
+    dh = min(11, int(fl) - 2)
+    shutters = mat in ("wood", "log", "plaster")
+    inner0, inner1 = ov + 2, W - 1 - ov - 2
     for f in range(floors):
-        y = rh + int(f * fh) + 3
-        n = wins if f > 0 or doors > 1 else wins
-        if n == 0:
-            continue
-        for i in range(n):
-            x = int((i + 0.5) * W / n) - 2
-            if f == floors - 1 and abs(x + 2 - W // 2) < dw and doors == 1:
+        y = top_wall + int(f * fl) + 3
+        for i in range(wins):
+            x = int(inner0 + (i + 0.5) * (inner1 - inner0) / wins) - 2
+            if f == floors - 1 and doors == 1 and abs(x + 2 - W // 2) < dw:
                 continue
-            box(d, x, y, x + 4, y + 4, C["win"])
+            box(d, x, y, x + 4, y + 5, C["win"])
+            d.line([x + 2, y, x + 2, y + 5], fill=C["door"] + (255,))
+            if shutters:
+                d.rectangle([x - 2, y, x - 1, y + 5], fill=darker(C["wood"], 0.85) + (255,))
+                d.rectangle([x + 5, y, x + 6, y + 5], fill=darker(C["wood"], 0.85) + (255,))
     for i in range(doors):
         cx = int((i + 0.5) * W / doors)
-        door_at(d, cx, H - 1, dw, dh)
+        door_at(d, cx, H - 1 - fh, dw, dh)
+    # 石基（比牆略寬）；門前一階
+    d.rectangle([1, H - fh, W - 2, H - 1], fill=(92, 96, 112, 255))
+    d.line([1, H - fh, W - 2, H - fh], fill=(122, 126, 140, 255))
     return im
 
 
@@ -253,7 +315,7 @@ def sketch(kind, W, H, roof_frac, kw, frame=0):
         box(d, W // 2 - 5, H - 10, W // 2 + 4, H - 1, C["dark"])
     elif kind == "granary":
         rh = int(H * roof_frac)
-        roof(d, 0, 0, W - 1, rh - 1, inset=4)
+        gable_roof(d, 0, 0, W - 1, rh - 1, "wood")
         box(d, 2, rh, W - 3, H - 10, C["wood"])
         for x in (3, W // 2 - 1, W - 6):
             box(d, x, H - 9, x + 2, H - 1, C["log"])
@@ -666,7 +728,7 @@ def import_delivery(folder: Path) -> int:
         px = im.load()
         top = 1.0 if roof_frac >= 1 else roof_frac
         for y in range(H):
-            if y < round(H * top) + 1:
+            if y < round(H * top) + 4:  # 屋簷兩端略低於屋頂比例
                 continue
             for x in range(W):
                 cr, cg, cb, ca = px[x, y]
