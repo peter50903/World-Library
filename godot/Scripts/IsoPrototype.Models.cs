@@ -398,8 +398,11 @@ public partial class IsoPrototypeView
                     continue; // 丘陵中央隆起，格線會被吃掉，不畫
                 var line = water ? new Color(1f, 1f, 1f) : new Color(0.1f, 0.12f, 0.05f);
                 const float w = 0.012f;
-                lines.Quad(id, V(c, y, r), V(c + 1, y, r), V(c + 1, y, r + w), V(c, y, r + w), line, V(c + 0.5f, y - 1f, r + 0.5f));
-                lines.Quad(id, V(c, y, r), V(c + w, y, r), V(c + w, y, r + 1), V(c, y, r + 1), line, V(c + 0.5f, y - 1f, r + 0.5f));
+                if (!UsesKit) // 第 08-20b 章：KayKit 色調不畫格線（使用者 2026-11-14）
+                {
+                    lines.Quad(id, V(c, y, r), V(c + 1, y, r), V(c + 1, y, r + w), V(c, y, r + w), line, V(c + 0.5f, y - 1f, r + 0.5f));
+                    lines.Quad(id, V(c, y, r), V(c + w, y, r), V(c + w, y, r + 1), V(c, y, r + 1), line, V(c + 0.5f, y - 1f, r + 0.5f));
+                }
                 // 浪花：水格與陸地相鄰的那一邊。
                 if (water)
                     foreach (var (dc, dr) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })

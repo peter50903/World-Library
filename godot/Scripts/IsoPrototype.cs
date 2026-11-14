@@ -31,7 +31,7 @@ public partial class IsoPrototypeView : Control
     private Control _overlay = null!;
     private Label _info = null!;
     private CheckButton _showRealms = null!, _showWar = null!, _showIcons = null!;
-    private Vector3 _target = new(8f, 0.3f, 6f);
+    private Vector3 _target = new(8f, 0.3f, 8.5f);
     private float _size = TempStartSize;
     private Node3D? _wheel;
     private int? _selectedSettlement;
@@ -105,12 +105,29 @@ public partial class IsoPrototypeView : Control
         _world.AddChild(_realms);
         _world.AddChild(_strategic);
 
+        // 第 08-20b 章：有 KayKit 模型就用現成模型，沒有就退回程式拼的模型。
+        UsesKit = KitAvailable();
         BuildTerrain();
         BuildWater();
         BuildTerrainDetail();
-        BuildTrees();
-        BuildTown(Map.Settlements[0]);
-        BuildVillage(Map.Settlements[1]);
+        if (UsesKit)
+        {
+            BuildKitNature();
+            var roads = new IsoMeshBuilder { Variation = 0f };
+            BuildKitRoads(roads);
+            BuildKitTown(Map.Settlements[0], roads);
+            BuildKitVillage(Map.Settlements[1], roads);
+            BuildKitCapital(Map.Settlements[2], roads);
+            BuildKitMine(Map.Settlements[3], roads);
+            BuildKitCamp(Map.Settlements[4]);
+            _detail.AddChild(roads.Commit(VertexMaterial()));
+        }
+        else
+        {
+            BuildTrees();
+            BuildTown(Map.Settlements[0]);
+            BuildVillage(Map.Settlements[1]);
+        }
         BuildRealms();
         BuildStrategic();
     }
@@ -176,8 +193,8 @@ public partial class IsoPrototypeView : Control
             {
                 var t = Map.TerrainAt(c, r);
                 var h = Map.TopOf(c, r);
-                var jitter = IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
-                var top = t switch
+                var jitter = UsesKit ? 0f : IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
+                var top = UsesKit ? KitTone(c, r, t) : t switch
                 {
                     IsoTerrain.Sea => new Color(0.55f, 0.62f, 0.55f),
                     IsoTerrain.River => new Color(0.50f, 0.56f, 0.45f),
@@ -187,14 +204,31 @@ public partial class IsoPrototypeView : Control
                     _ => new Color(0.56f, 0.70f, 0.32f)
                 };
                 top = top.Lightened(jitter > 0f ? jitter : 0f).Darkened(jitter < 0f ? -jitter : 0f);
-                var peak = new Vector3(c + 0.5f, h + Map.PeakOf(c, r), r + 0.5f);
+                // 第 08-20b 章（使用者 2026-11-14：不要一格一格的格線）：KayKit 色調下草地與森林是平的，
+                // 顏色取在格點上（相鄰格共用），整片平滑漸變，看不出格子的邊。
+                var smooth = UsesKit && t is (IsoTerrain.Grass or IsoTerrain.Forest);
+                var peak = new Vector3(c + 0.5f, h + (smooth ? 0f : Map.PeakOf(c, r)), r + 0.5f);
                 var corners = new[] { new Vector3(c, h, r), new Vector3(c + 1, h, r), new Vector3(c + 1, h, r + 1), new Vector3(c, h, r + 1) };
-                for (var i = 0; i < 4; i++)
+                if (smooth)
                 {
-                    // 丘陵：高處帶一點雪白，低多邊形的每一面亮暗不同。
-                    var face = t == IsoTerrain.Hill && peak.Y > IsoProtoMap.HillTop + 0.38f && i % 2 == 0 ? new Color(0.92f, 0.93f, 0.95f) : top;
-                    Tri(corners[i], corners[(i + 1) % 4], peak, face.Darkened(i * 0.025f));
+                    var tones = new[] { KitVertexTone(c, r), KitVertexTone(c + 1, r), KitVertexTone(c + 1, r + 1), KitVertexTone(c, r + 1) };
+                    var mid = tones[0].Lerp(tones[2], 0.5f).Lerp(tones[1].Lerp(tones[3], 0.5f), 0.5f);
+                    for (var i = 0; i < 4; i++)
+                        foreach (var (v, color) in new[] { (corners[i], tones[i]), (corners[(i + 1) % 4], tones[(i + 1) % 4]), (peak, mid) })
+                        {
+                            st.SetColor(color);
+                            st.SetNormal(Vector3.Up);
+                            st.AddVertex(v);
+                        }
+                    top = mid;
                 }
+                else
+                    for (var i = 0; i < 4; i++)
+                    {
+                        // 丘陵：高處帶一點雪白，低多邊形的每一面亮暗不同。
+                        var face = t == IsoTerrain.Hill && peak.Y > IsoProtoMap.HillTop + 0.38f && i % 2 == 0 ? new Color(0.92f, 0.93f, 0.95f) : top;
+                        Tri(corners[i], corners[(i + 1) % 4], peak, face.Darkened(i * 0.025f));
+                    }
                 // 側面：東、南、西、北；鄰格比較低（或在地圖外）才畫。
                 foreach (var (dc, dr, normal) in new[] { (1, 0, Vector3.Right), (0, 1, Vector3.Back), (-1, 0, Vector3.Left), (0, -1, Vector3.Forward) })
                 {
@@ -229,7 +263,8 @@ public partial class IsoPrototypeView : Control
                 if (!Map.IsWater(c, r))
                     continue;
                 var deepSea = Map.TerrainAt(c, r) == IsoTerrain.Sea && c == 0;
-                var color = Map.TerrainAt(c, r) == IsoTerrain.River ? new Color(0.30f, 0.62f, 0.80f, 0.82f)
+                var color = UsesKit ? new Color(KitColor(72, 152, 214), deepSea ? 0.92f : 0.86f)
+                    : Map.TerrainAt(c, r) == IsoTerrain.River ? new Color(0.30f, 0.62f, 0.80f, 0.82f)
                     : deepSea ? new Color(0.16f, 0.42f, 0.70f, 0.86f) : new Color(0.24f, 0.56f, 0.78f, 0.84f);
                 var y = IsoProtoMap.WaterLevel;
                 var v = new[] { new Vector3(c, y, r), new Vector3(c + 1, y, r), new Vector3(c + 1, y, r + 1), new Vector3(c, y, r), new Vector3(c + 1, y, r + 1), new Vector3(c, y, r + 1) };
@@ -331,6 +366,7 @@ public partial class IsoPrototypeView : Control
     {
         if (_wheel is not null)
             _wheel.RotateObjectLocal(Vector3.Right, (float)delta * 1.2f);
+        SpinKit((float)delta);
         _overlay?.QueueRedraw();
     }
 
@@ -430,6 +466,7 @@ public partial class IsoPrototypeView : Control
         var column = new VBoxContainer();
         panel.AddChild(column);
         column.AddChild(new Label { Text = "3D 等角原型（試看用，不影響世界）　滾輪縮放｜右鍵或中鍵拖曳｜左鍵點選" });
+        column.AddChild(new Label { Text = UsesKit ? "模型：KayKit Medieval Hexagon（CC0，Kay Lousberg）" : "模型：程式拼的低多邊形（找不到 KayKit 素材）" });
         var row = new HBoxContainer();
         column.AddChild(row);
         _showRealms = new CheckButton { Text = "勢力", ButtonPressed = true };
@@ -533,6 +570,8 @@ public partial class IsoPrototypeView : Control
     {
         if (!Built || BuildingCount < 30)
             return $"iso prototype built={Built} buildings={BuildingCount}";
+        if (UsesKit && KitPlaced < 60)
+            return $"iso prototype kaykit placed={KitPlaced}";
         var cell = Map.CellUnderRay(new Vector3(3.5f, 5f, 6.5f), Vector3.Down);
         if (cell != new Vector2I(3, 6) || Map.SettlementAt(3, 6)?.Name != "金柵鎮")
             return $"iso prototype pick wrong: {cell}";
