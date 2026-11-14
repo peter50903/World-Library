@@ -507,7 +507,7 @@ public partial class DemoHexMap
                 continue;
             if (layout.Wall is { } wall)
                 AddWall(items, layout, wall, Screen, radius);
-            if (layout.InnerWall is { } innerWall && KitRepeat("kk_wall_front") is { } innerFront)
+            if (layout.InnerWall is { } innerWall && (KitRepeat("b8_wall_front") ?? KitRepeat("kk_wall_front")) is { } innerFront)
                 AddWallArt(items, layout, innerWall, Screen, radius, innerFront, (layout.InnerGates ?? Array.Empty<Vector2I>()).ToHashSet(), kit: true);
             var roof = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.62f, 0.25f, 0.18f);
             foreach (var lot in layout.Lots)
@@ -549,21 +549,21 @@ public partial class DemoHexMap
 
     private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture, int facing = 0)
     {
-        if (CivicArt(kind, culture, facing) is { } civic)
+        if (CivicArt(kind, culture, facing, out var civicFlip) is { } civic)
         {
             // 第 08-18k 章：公共建築（風車有 4 幀轉動）。
             GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(civic, radius, kind == Building.Windmill ? 4 : 1).X) * 0.95f, 0.34f);
             if (kind == Building.Windmill)
                 DrawArt(civic, bottom, radius, 4, (int)(Time.GetTicksMsec() / 220UL % 4UL));
             else
-                DrawArt(civic, bottom, radius);
+                DrawArt(civic, bottom, radius, flip: civicFlip);
             return;
         }
-        if (LotArt(kind, culture, facing) is { } art)
+        if (LotArt(kind, culture, facing, out var lotFlip) is { } art)
         {
             // 第 08-18d 章：第五批大建築素材（篷布、屋頂、旗子染文化色）。
             GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(art, radius).X) * 0.95f, 0.36f);
-            DrawArt(art, bottom, radius);
+            DrawArt(art, bottom, radius, flip: lotFlip);
             return;
         }
         // 落地陰影（光源左上：陰影往右下）。
@@ -614,12 +614,14 @@ public partial class DemoHexMap
         var faceHeight = (stone ? 12f : 9f) * p;
         var gates = layout.Gates.ToHashSet();
         // 第 08-20c 章：KayKit 烘焙的石牆（城市以上）與木柵（城鎮）。
-        if (stone && KitRepeat("kk_wall_front") is { } kitFront)
+        if (stone && (KitRepeat("b8_wall_front") ?? KitRepeat("kk_wall_front")) is { } kitFront)
         {
             AddWallArt(items, layout, wall, screen, radius, kitFront, gates, kit: true);
             return;
         }
-        var kitPalisade = stone ? null : KitRepeat("kk_palisade");
+        var kitPalisade = stone ? null : KitRepeat("b8_palisade_front") ?? KitRepeat("kk_palisade");
+        var palisadeTower = stone ? null : PixelParts.Texture("b8_palisade_tower");
+        var palisadeGate = stone ? null : PixelParts.Texture("b8_palisade_gate");
         var sprite = kitPalisade ?? PixelParts.Texture(stone ? "bld_stone_wall" : "bld_palisade", repeat: true);
         if (kitPalisade is not null)
             p = radius / TerrainSurface.TempTexelsPerRadius; // 烘焙素材與地表同一密度
@@ -678,14 +680,25 @@ public partial class DemoHexMap
                 Front(y, x0, x);
                 if (x < wall.End.X)
                 {
-                    Tower(screen(x, y + 1), 3f);
-                    Tower(screen(x + 1, y + 1), 3f);
+                    if (palisadeGate is not null)
+                        DrawArt(palisadeGate, screen(x + 0.5f, y + 1), radius); // 第 08-20d 章：木柵門（第八批）
+                    else
+                    {
+                        Tower(screen(x, y + 1), 3f);
+                        Tower(screen(x + 1, y + 1), 3f);
+                    }
                 }
                 x0 = x + 1;
             }
         }
         void Tower(Vector2 bottom, float half)
         {
+            // 第 08-20d 章：木柵角樓（第八批）。
+            if (palisadeTower is not null)
+            {
+                DrawArt(palisadeTower, bottom, radius);
+                return;
+            }
             var w = half * 2f * p;
             var h = faceHeight + 4f * p;
             DrawRect(new Rect2(bottom.X - w / 2f, bottom.Y - h, w, h), face.Darkened(0.08f));
@@ -725,10 +738,13 @@ public partial class DemoHexMap
     {
         var culture = CultureOf.TryGetValue(layout.SettlementId, out var id) ? CultureColor(id) : new Color(0.62f, 0.25f, 0.18f);
         // 第 08-20c 章：KayKit 烘焙的塔樓（尖頂染文化色）與城門；牆頂沿用第五批。
-        var tower = kit ? (Texture2D?)PixelParts.Tinted("kk_wall_tower", culture, 1f) ?? PixelParts.Texture("kk_wall_tower")
+        // 第 08-20d 章：第八批的城牆零件優先。
+        var b8 = kit && PixelParts.IsBatch5("b8_wall_tower");
+        var tower = b8 ? KitArt("b8_wall_tower", culture)
+            : kit ? (Texture2D?)PixelParts.Tinted("kk_wall_tower", culture, 1f) ?? PixelParts.Texture("kk_wall_tower")
             : (Texture2D?)PixelParts.Tinted("wall_tower", culture, 0.5f) ?? PixelParts.Texture("wall_tower");
-        var gate = PixelParts.Texture(kit ? "kk_wall_gate" : "wall_gate");
-        var gateSide = PixelParts.Texture(kit ? "kk_wall_gate_side" : "wall_gate_side");
+        var gate = PixelParts.Texture(b8 ? "b8_wall_gate" : kit ? "kk_wall_gate" : "wall_gate");
+        var gateSide = PixelParts.Texture(b8 ? "b8_wall_gate_side" : kit ? "kk_wall_gate_side" : "wall_gate_side");
         var top = PixelParts.Texture("wall_top");
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var tile = TerrainSurface.TempTile * p;

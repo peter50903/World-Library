@@ -16,11 +16,11 @@ public partial class DemoHexMap
     private void DrawHouse(Building kind, Vector2 bottom, float lotWidth, Color culture, float radius, int seed = 0, int facing = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
-        if (HouseArt(kind, seed, culture, facing) is { } art)
+        if (HouseArt(kind, seed, culture, facing, out var flip) is { } art)
         {
             // 第 08-18d 章：第五批住屋素材（屋頂染文化色）。
             GroundShadow(bottom - new Vector2(0f, p * 2f), lotWidth * 0.85f);
-            DrawArt(art, bottom, radius);
+            DrawArt(art, bottom, radius, flip: flip);
             return;
         }
         // 落地陰影（光源左上：陰影往右下）。
@@ -102,6 +102,9 @@ public partial class DemoHexMap
     private void DrawConstruction(Vector2 bottom, float lotWidth, float lotDepth, float radius, int seed = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
+        // 第 08-20d 章：第八批建地三階段優先。
+        if (PixelParts.VariantName("b8_site", 3, LayoutHash(seed, 0, 141)) is { } site8 && DrawArt(site8, bottom, radius))
+            return;
         if (PixelParts.VariantName("bld_site", 3, LayoutHash(seed, 0, 141)) is { } site && DrawArt(site, bottom, radius))
             return; // 第 08-18d 章：第五批建地素材
         var half = lotWidth * 0.4f;
