@@ -4,6 +4,7 @@
 - 檔名比對：收件匣檔名＝manifest「檔名」去掉斜線（例：ui/ui_icon_grid.png → uiui_icon_grid.png），或與檔名最後一段相同。
 - 狀態：原本「已套用」的保持不變；其他改為「已交付」。
 - 對不到的檔案只列出，不處理。
+- 第 08-20a 章等角插畫（類型＝等角精靈）：清掉平底色、取不透明範圍、等比平滑縮進規格、底部置中；等角紋理平滑縮到規格並融合接縫。
 - 動畫（類型含「動畫」，第 08-16 章）：原圖橫向等分 4 格，取 4 格共同的不透明範圍裁切，每格等比縮進規格的單格大小、底部置中（不拉伸變形）。
 - 地形紋理（類型＝地形紋理，第 06-4 章）：先縮到「規格÷4」的邏輯像素、把四邊接縫融合成可無縫拼接，再每像素放大 4 倍（保持像素風、不模糊）。
 - 地表方格（第 08-18b 章第五批）：直接縮到規格大小（每像素就是一個圖像素），融合四邊接縫成可無縫拼接。
@@ -55,6 +56,22 @@ def seamless_pixel_texture(img: Image.Image, w: int, h: int, scale: int = 4) -> 
             mask.putpixel((x, y), min(255, edge * 255 // band))
     merged = Image.composite(small, rolled, mask)
     return merged.resize((lw * scale, lh * scale), Image.Resampling.NEAREST)
+
+
+def seamless_horizontal(img: Image.Image, w: int, h: int) -> Image.Image:
+    """第 08-20a 章：只有左右要無縫的長條（土層側面）：平滑縮到規格，左右兩端各四分之一和位移半張的圖融合（上下的地層不動）。"""
+    small = img.resize((w, h), Image.Resampling.LANCZOS)
+    half = w // 2
+    rolled = Image.new(small.mode, (w, h))
+    rolled.paste(small.crop((half, 0, w, h)), (0, 0))
+    rolled.paste(small.crop((0, 0, half, h)), (w - half, 0))
+    band = max(1, w // 4)
+    mask = Image.new("L", (w, h))
+    for x in range(w):
+        v = min(255, min(x, w - 1 - x) * 255 // band)
+        for y in range(h):
+            mask.putpixel((x, y), v)
+    return Image.composite(small, rolled, mask)
 
 
 def animation_strip(img: Image.Image, w: int, h: int, frames: int = 4) -> Image.Image:
@@ -143,7 +160,7 @@ def main() -> int:
         row = by_flat.get(f.stem + ext)
         if row is None:
             candidates = by_base.get(f.stem + ext, [])
-            newest = [r for r in candidates if r["ID"].startswith(("B6_", "B5_"))]
+            newest = [r for r in candidates if r["ID"].startswith(("B7_", "B6_", "B5_"))]
             row = (newest or candidates)[0] if len(newest or candidates) == 1 else None
         if row is None:
             unknown.append(f.name)
@@ -159,7 +176,13 @@ def main() -> int:
         w, h = target_size(row["規格"])
         transparent = "透明背景" in row["規格"]  # 「不透明」也含「透明」二字，要比對整個詞
         img = Image.open(f).convert("RGBA" if transparent else "RGB")
-        if row["類型"].startswith("像素零件"):
+        if row["類型"].startswith("等角精靈"):
+            # 第 08-20a 章：等角插畫（不是像素畫）：清掉平底色、取不透明範圍、等比平滑縮進規格、底部置中。
+            img = animation_strip(drop_flat_background(img), w, h, 4 if "動畫" in row["類型"] else 1)
+        elif row["類型"] == "等角紋理":
+            # 平滑縮到規格大小、融合接縫（土層側面只融合左右）。
+            img = seamless_horizontal(img, w, h) if "左右可無縫" in row["規格"] else seamless_pixel_texture(img, w, h, scale=1)
+        elif row["類型"].startswith("像素零件"):
             img = pixel_part(img, w, h, 4 if "動畫" in row["類型"] else 1)
         elif row["類型"].startswith("地形紋理"):
             img = seamless_pixel_texture(img, w, h)
