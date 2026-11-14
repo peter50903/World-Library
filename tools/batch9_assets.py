@@ -36,9 +36,13 @@ STYLE = """你要為一款像素風「上帝視角世界模擬」遊戲畫一批
 **共同規格（每一張都要遵守）**
 - **視角：完全正面**。像 2D 寶可夢的房子：看得到屋頂（畫面上半）與建築的南面（畫面下半），**左右對稱的正面透視**，
   不要斜角、不要等角（45 度）、不要看到東西兩側的牆。每棟只有這一個方向，門一律在南面。
-- **屋頂一律是人字頂、外形像「⌂」**：從畫面正中的屋頂尖端往**左右兩邊斜下**到屋簷，兩條斜坡是有厚度、看得到瓦面的屋頂
-  （左坡亮、右坡暗，瓦紋順著斜坡），兩坡中間露出**三角形的山牆**（牆的材質，可開小圓窗）；屋頂尖端以外的上方兩角是透明的。
-  **不要**畫成一整片朝向鏡頭的前坡、也不要畫成長方形的平屋頂。
+- **房子的構造（正面立面，像像素風小木屋的正面圖）**：
+  1. **屋頂是人字形（⌂）**：從正中的尖端往左右兩邊斜下，只看得到沿兩斜邊的**屋簷**（約 3 像素厚、灰階），屋簷兩端**伸出牆外**約 3 像素；
+     不要畫成一整片朝向鏡頭的前坡，也不要畫成長方形的平屋頂。
+  2. 屋簷底下是**大面積的三角山牆**（牆的材質，木屋是橫向木板），正中開一扇小窗或通風口；山牆底下一根橫樑。
+  3. 橫樑下是**牆面**：木屋兩側有角柱，窗戶有十字窗框，木屋與白灰牆的窗兩旁有木遮板；門在正中。
+  4. 牆底一條**比牆略寬的石基**（深藍灰色石塊），門的底部貼著石基。
+  5. 煙囪從屋簷後方伸出（畫在斜坡上方）。屋頂尖端以外的上方兩角是透明的。
 - **尺寸精確**：規格欄的寬×高就是成品的像素數（每個像素是一個「大像素」，一個地圖方格＝16×16）。
   建築**左右填滿到圖邊**（最多留 1 像素）、**底邊貼齊圖底**；門畫在門面底部、門底貼齊圖底（草圖的深褐色塊）。
   輸出時請直接給表中的實際尺寸；做不到的話給整數倍放大（例如 ×8，每個大像素是同大小的方塊），匯入時會縮回。
@@ -163,27 +167,30 @@ def roof(d, x0, y0, x1, y1, inset=2):
     d.line([x0 + inset, y0, x1 - inset, y0], fill=C["roof_l"] + (255,))
 
 
-def gable_roof(d, x0, y0, x1, y1, wall, gable_h=None):
-    """人字頂（正面看像 ⌂）：從頂點往左右兩邊斜下到屋簷，兩條斜坡是看得到瓦面的厚屋頂（左亮右暗、瓦紋順著斜坡），
-    中間露出三角山牆（牆材質）；屋頂上方左右兩角透明。"""
+def gable_roof(d, x0, y0, x1, y1, wall, ov=3, t=3):
+    """正面立面的人字頂（像 ⌂）：屋頂只看到沿三角形兩斜邊的屋簷（厚 t、左右各伸出牆外 ov），
+    中間是大面積的三角山牆（牆材質、橫向木板紋、一扇小窗）；山牆底下一根橫樑。"""
     mid = (x0 + x1) / 2
     h = y1 - y0
-    t = max(5, round(h * 0.38))          # 斜坡瓦面的厚度（垂直方向）
-    k = t * (mid - x0) / h                # 內緣往內縮的水平距離
-    d.polygon([(mid, y0), (x0, y1), (mid, y1)], fill=C["roof_l"] + (255,))
-    d.polygon([(mid, y0), (x1, y1), (mid, y1)], fill=C["roof"] + (255,))
-    for j in range(3, t, 3):
-        f = j / h
-        d.line([(mid, y0 + j), (x0 + (mid - x0) * f, y1)], fill=C["roof"] + (255,))
-        d.line([(mid, y0 + j), (x1 - (x1 - mid) * f, y1)], fill=C["roof_d"] + (255,))
-    d.polygon([(mid, y0 + t), (x0 + k, y1), (x1 - k, y1)], fill=C[wall] + (255,))
-    d.line([(x0, y1), (mid, y0), (x1, y1)], fill=C["roof_d"] + (255,))
-    d.line([(x0 + k, y1), (mid, y0 + t), (x1 - k, y1)], fill=C["roof_d"] + (255,))
-    d.rectangle([mid - 1, y0, mid, y0 + 1], fill=C["roof_d"] + (255,))
-    gh = y1 - y0 - t
-    if gh >= 8:
-        cy = y1 - gh // 3
-        d.ellipse([mid - 2, cy - 2, mid + 1, cy + 1], fill=C["win"] + (255,))
+    wx0, wx1 = x0 + ov, x1 - ov
+    # 山牆（三角形，底邊＝牆寬）
+    gy = y0 + t
+    for y in range(int(gy), y1 + 1):
+        half = (mid - wx0) * (y - gy) / max(1, y1 - gy)
+        d.line([(mid - half, y), (mid + half, y)], fill=C[wall] + (255,))
+        if wall in ("wood", "log") and (y - int(gy)) % 3 == 2:
+            d.line([(mid - half + 1, y), (mid + half - 1, y)], fill=darker(C[wall], 0.8) + (255,))
+    if h >= 12:
+        cy = int(y0 + h * 0.62)
+        box(d, int(mid) - 3, cy - 3, int(mid) + 2, cy + 2, C["win"])
+        d.line([int(mid) - 1, cy - 3, int(mid) - 1, cy + 2], fill=C["door"] + (255,))
+    # 屋簷：沿兩斜邊的厚帶，尖端在正中、兩端伸出牆外
+    for k in range(t):
+        d.line([(x0, y1 + 1 - k), (mid, y0 + t - 1 - k), (x1, y1 + 1 - k)], fill=(C["roof_l"] if k else C["roof_d"]) + (255,), width=1)
+    d.line([(x0, y1 + 2), (mid, y0 + t), (x1, y1 + 2)], fill=C["roof_d"] + (255,))
+    d.line([(x0, y1 + 1 - t), (mid, y0 - 1), (x1, y1 + 1 - t)], fill=C["roof"] + (255,))
+    # 橫樑
+    d.rectangle([wx0, y1 + 1, wx1, y1 + 2], fill=darker(C["wood"], 0.75) + (255,))
 
 
 def roof_y(x, x0, x1, y0, y1):
@@ -214,46 +221,60 @@ def door_at(d, cx, bottom, w, h):
 
 
 def sketch_house(W, H, roof_frac, kw):
+    """正面立面（參考：像素風小木屋的正面）：屋簷伸出牆外、大山牆、牆面、帶遮板的窗、石基。"""
     im = Image.new("RGBA", (W, H))
     d = ImageDraw.Draw(im)
-    rh = max(4, round(H * roof_frac))
-    top = 0
-    gable_roof(d, 0, top, W - 1, rh - 1, kw.get("mat", "plaster") if kw.get("mat") != "log" else "wood")
+    rh = max(6, round(H * roof_frac))
+    mat = kw.get("mat", "plaster")
+    wall = mat if mat != "log" else "wood"
+    ov, fh = 3, 3
+    t = 3 if W < 64 else 4
     if kw.get("chimney"):
-        cx = int(W * 0.72)
-        ry = int(roof_y(cx, 0, W - 1, top, rh - 1))
-        box(d, cx, max(0, ry - 7), cx + 4, ry + 2, C["brick"])
+        cx = int(W * 0.7)
+        ry = int(roof_y(cx, 0, W - 1, t, rh))
+        box(d, cx, max(0, ry - 8), cx + 4, ry + 1, C["brick"])
+    # 牆
+    material(d, ov, rh + 3, W - 1 - ov, H - 1 - fh, mat)
+    if mat in ("wood", "log", "plaster"):
+        for x in (ov, W - 1 - ov - 1):
+            d.rectangle([x, rh + 3, x + 1, H - 1 - fh], fill=darker(C["wood"], 0.75) + (255,))
+    gable_roof(d, 0, 0, W - 1, rh, wall, ov, t)
     if kw.get("tower"):
         box(d, W // 2 - 5, 0, W // 2 + 4, rh // 2 + 2, C["plaster"])
         box(d, W // 2 - 2, 3, W // 2 + 1, 6, C["metal"])
+        d.polygon([(W // 2 - 6, 0), (W // 2, -6), (W // 2 + 5, 0)], fill=C["roof"] + (255,))
     if kw.get("spire"):
         sw = W // 5
-        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, rh + 4, C["stone"])
+        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, rh + 2, C["stone"])
         d.polygon([(W // 2, 0), (W // 2 - sw // 2 - 1, H // 8), (W // 2 + sw // 2 + 1, H // 8)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
-        d.ellipse([W // 2 - 4, rh - 8, W // 2 + 3, rh - 1], fill=C["win"] + (255,))
-    if kw.get("dormer"):
-        box(d, W // 2 - 4, rh // 3, W // 2 + 3, rh - 3, C["plaster"])
-        box(d, W // 2 - 2, rh // 3 + 2, W // 2 + 1, rh - 5, C["win"])
-    material(d, 0, rh, W - 1, H - 1, kw.get("mat", "plaster"))
+        d.ellipse([W // 2 - 4, rh - 9, W // 2 + 3, rh - 2], fill=C["win"] + (255,))
+    # 窗（木屋與白灰牆的窗有左右遮板）
     floors = kw.get("floors", 1)
-    fh = (H - rh) / floors
+    top_wall = rh + 3
+    fl = (H - fh - top_wall) / floors
     wins = kw.get("win", 2)
     doors = kw.get("doors", 1)
     dw = kw.get("door", 6)
-    dh = min(10, int(fh) - 2)
+    dh = min(11, int(fl) - 2)
+    shutters = mat in ("wood", "log", "plaster")
+    inner0, inner1 = ov + 2, W - 1 - ov - 2
     for f in range(floors):
-        y = rh + int(f * fh) + 3
-        n = wins if f > 0 or doors > 1 else wins
-        if n == 0:
-            continue
-        for i in range(n):
-            x = int((i + 0.5) * W / n) - 2
-            if f == floors - 1 and abs(x + 2 - W // 2) < dw and doors == 1:
+        y = top_wall + int(f * fl) + 3
+        for i in range(wins):
+            x = int(inner0 + (i + 0.5) * (inner1 - inner0) / wins) - 2
+            if f == floors - 1 and doors == 1 and abs(x + 2 - W // 2) < dw:
                 continue
-            box(d, x, y, x + 4, y + 4, C["win"])
+            box(d, x, y, x + 4, y + 5, C["win"])
+            d.line([x + 2, y, x + 2, y + 5], fill=C["door"] + (255,))
+            if shutters:
+                d.rectangle([x - 2, y, x - 1, y + 5], fill=darker(C["wood"], 0.85) + (255,))
+                d.rectangle([x + 5, y, x + 6, y + 5], fill=darker(C["wood"], 0.85) + (255,))
     for i in range(doors):
         cx = int((i + 0.5) * W / doors)
-        door_at(d, cx, H - 1, dw, dh)
+        door_at(d, cx, H - 1 - fh, dw, dh)
+    # 石基（比牆略寬）；門前一階
+    d.rectangle([1, H - fh, W - 2, H - 1], fill=(92, 96, 112, 255))
+    d.line([1, H - fh, W - 2, H - fh], fill=(122, 126, 140, 255))
     return im
 
 
@@ -700,7 +721,7 @@ def import_delivery(folder: Path) -> int:
         px = im.load()
         top = 1.0 if roof_frac >= 1 else roof_frac
         for y in range(H):
-            if y < round(H * top) + 1:
+            if y < round(H * top) + 4:  # 屋簷兩端略低於屋頂比例
                 continue
             for x in range(W):
                 cr, cg, cb, ca = px[x, y]
