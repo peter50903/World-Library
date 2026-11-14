@@ -42,7 +42,7 @@ STYLE = """你要為一款像素風「上帝視角世界模擬」遊戲畫一批
   2. 屋簷底下是**大面積的三角山牆**（牆的材質，木屋是橫向木板），正中開一扇小窗或通風口；山牆底下一根橫樑。
   3. 橫樑下是**牆面**：木屋兩側有角柱，窗戶有十字窗框，木屋與白灰牆的窗兩旁有木遮板；門在正中。
   4. 牆底一條**比牆略寬的石基**（深藍灰色石塊），門的底部貼著石基。
-  5. 煙囪從屋簷後方伸出（畫在斜坡上方）。屋頂尖端以外的上方兩角是透明的。
+  5. **煙囪、鐘樓一定是從屋頂伸出來**：下半被屋簷擋住、只露出屋頂以上的部分，不可以擋在山牆前面。屋頂尖端以外的上方兩角是透明的。
 - **尺寸精確**：規格欄的寬×高就是成品的像素數（每個像素是一個「大像素」，一個地圖方格＝16×16）。
   建築**左右填滿到圖邊**（最多留 1 像素）、**底邊貼齊圖底**；門畫在門面底部、門底貼齊圖底（草圖的深褐色塊）。
   輸出時請直接給表中的實際尺寸；做不到的話給整數倍放大（例如 ×8，每個大像素是同大小的方塊），匯入時會縮回。
@@ -92,9 +92,9 @@ add(G, "brick_house_2", 4, 4, 0.4, "house", "首都磚造連棟屋：兩戶並�
 
 G = "B 公共建築"
 add(G, "hall_village", 4, 4, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
-add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、屋頂中央小鐘樓、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
+add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、屋脊正中坐著一座小鐘樓（從屋頂後方伸出、下半被屋頂擋住）、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
 add(G, "market", 5, 3, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
-add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、正中尖塔、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
+add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、屋脊正中伸出一座尖塔（下半被屋頂擋住）、山牆上彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
 add(G, "smithy", 4, 3, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
 add(G, "workshop", 4, 3, 0.45, "house", "木工坊：鋸木台、木材堆、灰階屋頂工棚", "城鎮以上", mat="wood", win=1, door=12)
 add(G, "tavern", 4, 4, 0.42, "house", "酒館：兩層木構架、門上掛酒桶招牌、窗戶透暖光、灰階屋頂", "城鎮以上（之後的章節）", mat="plaster", win=4, floors=2, chimney=True)
@@ -229,25 +229,30 @@ def sketch_house(W, H, roof_frac, kw):
     wall = mat if mat != "log" else "wood"
     ov, fh = 3, 3
     t = 3 if W < 64 else 4
+    top = 0
+    if kw.get("tower"):
+        # 鐘樓：坐在屋脊上、下半被屋頂擋住（先畫，屋頂後畫）
+        top = 14
+        box(d, W // 2 - 4, 5, W // 2 + 3, top + 8, C["plaster"])
+        box(d, W // 2 - 2, 8, W // 2 + 1, 12, C["dark"])
+        d.polygon([(W // 2 - 6, 6), (W // 2, 0), (W // 2 + 5, 6)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
+    if kw.get("spire"):
+        # 尖塔：從屋脊後方伸出（先畫，屋頂後畫）
+        sw = W // 6
+        top = H // 4
+        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, top + 10, C["stone"])
+        box(d, W // 2 - 1, H // 8 + 4, W // 2, H // 8 + 9, C["dark"])
+        d.polygon([(W // 2, 0), (W // 2 - sw // 2 - 1, H // 8), (W // 2 + sw // 2 + 1, H // 8)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
     if kw.get("chimney"):
         cx = int(W * 0.7)
-        ry = int(roof_y(cx, 0, W - 1, t, rh))
+        ry = int(roof_y(cx, 0, W - 1, top + t, rh))
         box(d, cx, max(0, ry - 8), cx + 4, ry + 1, C["brick"])
     # 牆
     material(d, ov, rh + 3, W - 1 - ov, H - 1 - fh, mat)
     if mat in ("wood", "log", "plaster"):
         for x in (ov, W - 1 - ov - 1):
             d.rectangle([x, rh + 3, x + 1, H - 1 - fh], fill=darker(C["wood"], 0.75) + (255,))
-    gable_roof(d, 0, 0, W - 1, rh, wall, ov, t)
-    if kw.get("tower"):
-        box(d, W // 2 - 5, 0, W // 2 + 4, rh // 2 + 2, C["plaster"])
-        box(d, W // 2 - 2, 3, W // 2 + 1, 6, C["metal"])
-        d.polygon([(W // 2 - 6, 0), (W // 2, -6), (W // 2 + 5, 0)], fill=C["roof"] + (255,))
-    if kw.get("spire"):
-        sw = W // 5
-        box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, rh + 2, C["stone"])
-        d.polygon([(W // 2, 0), (W // 2 - sw // 2 - 1, H // 8), (W // 2 + sw // 2 + 1, H // 8)], fill=C["roof"] + (255,), outline=C["roof_d"] + (255,))
-        d.ellipse([W // 2 - 4, rh - 9, W // 2 + 3, rh - 2], fill=C["win"] + (255,))
+    gable_roof(d, 0, top, W - 1, rh, wall, ov, t)
     # 窗（木屋與白灰牆的窗有左右遮板）
     floors = kw.get("floors", 1)
     top_wall = rh + 3
