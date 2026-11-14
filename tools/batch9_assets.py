@@ -94,7 +94,7 @@ G = "B 公共建築"
 add(G, "hall_village", 4, 4, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
 add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、門前兩根旗桿（旗灰階）、門上掛徽章（不寫字）", "城鎮中心", mat="stone", win=4, floors=2, door=12)
 add(G, "market", 5, 3, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
-add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、屋脊正中伸出一座尖塔（下半被屋頂擋住）、山牆上彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
+add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、一座尖塔（位置自由發揮）、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
 add(G, "smithy", 4, 3, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
 add(G, "workshop", 4, 3, 0.45, "house", "木工坊：鋸木台、木材堆、灰階屋頂工棚", "城鎮以上", mat="wood", win=1, door=12)
 add(G, "tavern", 4, 4, 0.42, "house", "酒館：兩層木構架、門上掛酒桶招牌、窗戶透暖光、灰階屋頂", "城鎮以上（之後的章節）", mat="plaster", win=4, floors=2, chimney=True)
