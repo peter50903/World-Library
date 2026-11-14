@@ -36,8 +36,9 @@ STYLE = """你要為一款像素風「上帝視角世界模擬」遊戲畫一批
 **共同規格（每一張都要遵守）**
 - **視角：完全正面**。像 2D 寶可夢的房子：看得到屋頂（畫面上半）與建築的南面（畫面下半），**左右對稱的正面透視**，
   不要斜角、不要等角（45 度）、不要看到東西兩側的牆。每棟只有這一個方向，門一律在南面。
-- **屋頂一律是人字頂、屋脊南北向**：從正面看，屋脊是畫面正中的一條直線，屋頂分成**左右兩坡**（左坡亮、右坡暗，瓦片沿坡面直排），
-  南面是**三角形的山牆**（牆的材質，可開小圓窗或通風口），屋簷沿山牆兩斜邊。不要畫成一整片朝向鏡頭的前坡。
+- **屋頂一律是人字頂、外形像「⌂」**：從畫面正中的屋頂尖端往**左右兩邊斜下**到屋簷，兩條斜坡是有厚度、看得到瓦面的屋頂
+  （左坡亮、右坡暗，瓦紋順著斜坡），兩坡中間露出**三角形的山牆**（牆的材質，可開小圓窗）；屋頂尖端以外的上方兩角是透明的。
+  **不要**畫成一整片朝向鏡頭的前坡、也不要畫成長方形的平屋頂。
 - **尺寸精確**：規格欄的寬×高就是成品的像素數（每個像素是一個「大像素」，一個地圖方格＝16×16）。
   建築**左右填滿到圖邊**（最多留 1 像素）、**底邊貼齊圖底**；門畫在門面底部、門底貼齊圖底（草圖的深褐色塊）。
   輸出時請直接給表中的實際尺寸；做不到的話給整數倍放大（例如 ×8，每個大像素是同大小的方塊），匯入時會縮回。
@@ -163,21 +164,32 @@ def roof(d, x0, y0, x1, y1, inset=2):
 
 
 def gable_roof(d, x0, y0, x1, y1, wall, gable_h=None):
-    """人字頂、屋脊南北向（正面看）：屋頂分左右兩坡（左亮右暗、瓦片直紋），正面是三角山牆（牆材質）。"""
-    w = x1 - x0 + 1
-    mid = x0 + w // 2
-    gh = gable_h if gable_h is not None else min(y1 - y0 - 2, max(6, int(w * 0.32)))
-    d.rectangle([x0, y0, mid - 1, y1], fill=C["roof_l"] + (255,))
-    d.rectangle([mid, y0, x1, y1], fill=C["roof"] + (255,))
-    for x in range(x0 + 2, x1, 3):
-        d.line([x, y0 + 1, x, y1], fill=(C["roof"] if x < mid else C["roof_d"]) + (255,))
-    d.line([mid, y0, mid, y1 - gh], fill=C["roof_d"] + (255,), width=2)
-    d.rectangle([x0, y0, x1, y1], outline=C["roof_d"] + (255,))
-    apex = (mid, y1 - gh)
-    d.polygon([(x0 + 2, y1), (x1 - 2, y1), apex], fill=C[wall] + (255,))
-    d.line([(x0 + 1, y1), apex, (x1 - 1, y1)], fill=C["roof_d"] + (255,), width=2)
+    """人字頂（正面看像 ⌂）：從頂點往左右兩邊斜下到屋簷，兩條斜坡是看得到瓦面的厚屋頂（左亮右暗、瓦紋順著斜坡），
+    中間露出三角山牆（牆材質）；屋頂上方左右兩角透明。"""
+    mid = (x0 + x1) / 2
+    h = y1 - y0
+    t = max(5, round(h * 0.38))          # 斜坡瓦面的厚度（垂直方向）
+    k = t * (mid - x0) / h                # 內緣往內縮的水平距離
+    d.polygon([(mid, y0), (x0, y1), (mid, y1)], fill=C["roof_l"] + (255,))
+    d.polygon([(mid, y0), (x1, y1), (mid, y1)], fill=C["roof"] + (255,))
+    for j in range(3, t, 3):
+        f = j / h
+        d.line([(mid, y0 + j), (x0 + (mid - x0) * f, y1)], fill=C["roof"] + (255,))
+        d.line([(mid, y0 + j), (x1 - (x1 - mid) * f, y1)], fill=C["roof_d"] + (255,))
+    d.polygon([(mid, y0 + t), (x0 + k, y1), (x1 - k, y1)], fill=C[wall] + (255,))
+    d.line([(x0, y1), (mid, y0), (x1, y1)], fill=C["roof_d"] + (255,))
+    d.line([(x0 + k, y1), (mid, y0 + t), (x1 - k, y1)], fill=C["roof_d"] + (255,))
+    d.rectangle([mid - 1, y0, mid, y0 + 1], fill=C["roof_d"] + (255,))
+    gh = y1 - y0 - t
     if gh >= 8:
-        d.ellipse([mid - 2, y1 - gh // 2 - 1, mid + 1, y1 - gh // 2 + 2], fill=C["win"] + (255,))
+        cy = y1 - gh // 3
+        d.ellipse([mid - 2, cy - 2, mid + 1, cy + 1], fill=C["win"] + (255,))
+
+
+def roof_y(x, x0, x1, y0, y1):
+    """人字頂外緣在 x 處的高度。"""
+    mid = (x0 + x1) / 2
+    return y0 + (y1 - y0) * abs(x - mid) / (mid - x0)
 
 
 def material(d, x0, y0, x1, y1, mat):
@@ -205,10 +217,12 @@ def sketch_house(W, H, roof_frac, kw):
     im = Image.new("RGBA", (W, H))
     d = ImageDraw.Draw(im)
     rh = max(4, round(H * roof_frac))
-    if kw.get("chimney"):
-        box(d, W - 12, 0, W - 8, rh // 2, C["brick"])
     top = 0
-    gable_roof(d, 0, max(top, kw.get("chimney") and 2 or 0), W - 1, rh - 1, kw.get("mat", "plaster") if kw.get("mat") != "log" else "wood")
+    gable_roof(d, 0, top, W - 1, rh - 1, kw.get("mat", "plaster") if kw.get("mat") != "log" else "wood")
+    if kw.get("chimney"):
+        cx = int(W * 0.72)
+        ry = int(roof_y(cx, 0, W - 1, top, rh - 1))
+        box(d, cx, max(0, ry - 7), cx + 4, ry + 2, C["brick"])
     if kw.get("tower"):
         box(d, W // 2 - 5, 0, W // 2 + 4, rh // 2 + 2, C["plaster"])
         box(d, W // 2 - 2, 3, W // 2 + 1, 6, C["metal"])
