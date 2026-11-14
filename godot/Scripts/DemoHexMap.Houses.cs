@@ -13,10 +13,10 @@ public partial class DemoHexMap
     private static readonly Color Ink = new(0.12f, 0.09f, 0.07f);
 
     /// <summary>一棟住屋：帳篷、木屋、房子、石屋（底部置中在 <paramref name="bottom"/>，地塊寬 <paramref name="lotWidth"/> 像素）。</summary>
-    private void DrawHouse(Building kind, Vector2 bottom, float lotWidth, Color culture, float radius, int seed = 0)
+    private void DrawHouse(Building kind, Vector2 bottom, float lotWidth, Color culture, float radius, int seed = 0, int facing = 0)
     {
         var p = radius / TerrainSurface.TempTexelsPerRadius;
-        if (HouseArt(kind, seed, culture) is { } art)
+        if (HouseArt(kind, seed, culture, facing) is { } art)
         {
             // 第 08-18d 章：第五批住屋素材（屋頂染文化色）。
             GroundShadow(bottom - new Vector2(0f, p * 2f), lotWidth * 0.85f);
