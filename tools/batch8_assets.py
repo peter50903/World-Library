@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """第 08-20d 章：第八批素材——正式 2D 地圖的建築全部由 GPT 重畫（像素風），以 KayKit 模型的算圖當造型與角度參考。
 
+  python3 tools/batch8_assets.py --import <交件資料夾>   # 匯入 GPT 交件的成品到 godot/assets/px2/
   python3 tools/batch8_assets.py   # 重寫 assets/GPT_第八批_像素建築.md、assets/reference/b8/*.png，並把清單同步進 assets/manifest.csv
 
 使用者 2026-11-14：KayKit 烘焙的像素建築方向對，但要重新繪製比較好；交給 GPT 畫，一次多產一點。
@@ -199,5 +200,59 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "--import" not in sys.argv:
     raise SystemExit(main())
+
+
+# ───────────────────────── 交件匯入 ─────────────────────────
+
+def tint_top(name: str) -> float:
+    """灰階要染文化色的範圍（由上往下的比例）；以下的灰色（石基、石牆、岩石）加一點暖色，不會被染。"""
+    if name.startswith(("wall_front", "wall_gate", "palisade", "site_", "ruin", "dock", "mine")):
+        return 0.0
+    if name.startswith("tent"):
+        return 1.0
+    if name.startswith(("wall_tower", "watchtower")):
+        return 0.45
+    if name.startswith("market"):
+        return 0.8
+    if name.startswith(("keep", "windmill")):
+        return 0.55
+    return 0.62
+
+
+def import_delivery(folder: Path) -> int:
+    """把 GPT 交件的成品（已是表中尺寸）複製到 godot/assets/px2/，保護不染色的灰，並更新 manifest 狀態。"""
+    text = MANIFEST.read_text(encoding="utf-8")
+    rows = list(csv.reader(io.StringIO(text)))
+    done = 0
+    for r in rows:
+        if not r[0].startswith("B8_"):
+            continue
+        file = r[1].split("/")[1]
+        src = folder / file
+        if not src.exists():
+            continue
+        im = np.asarray(Image.open(src).convert("RGBA")).astype(np.float32) / 255
+        h = im.shape[0]
+        top = tint_top(Path(file).stem[3:])
+        c = im[..., :3]
+        mx, mn = c.max(-1), c.min(-1)
+        gray = (im[..., 3] > 0.5) & ((mx - mn) <= 0.08)
+        below = np.arange(h)[:, None] >= round(h * top)
+        sel = gray & below
+        v = c[sel].mean(-1, keepdims=True)
+        c[sel] = np.clip(v + [0.05, 0.01, -0.05], 0, 1)
+        im[..., 3] = np.where(im[..., 3] > 0.5, 1.0, 0.0)
+        Image.fromarray((im * 255).round().astype(np.uint8), "RGBA").save(PX2 / file)
+        r[7] = "已交付"
+        done += 1
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="\n").writerows(rows)
+    MANIFEST.write_text(buf.getvalue(), encoding="utf-8")
+    print(f"第八批匯入 {done} 張到 {PX2.relative_to(ROOT)}")
+    return 0
+
+
+if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--import":
+    raise SystemExit(import_delivery(Path(sys.argv[2])))

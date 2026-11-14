@@ -52,50 +52,78 @@ public partial class DemoHexMap
     /// <summary>橫向重複用的烘焙素材（牆面、木柵）。</summary>
     private static CanvasTexture? KitRepeat(string name) => PixelParts.IsBatch5(name) ? PixelParts.Texture(name, repeat: true) : null;
 
-    /// <summary>有四個方向的烘焙素材：<paramref name="name"/>_s／_e／_n／_w。</summary>
-    private static Texture2D? KitFacing(string name, int facing, Color culture) => KitArt($"{name}_{FacingSuffix[facing & 3]}", culture);
+    /// <summary>
+    /// 第 08-20d 章：有方向的建築素材——先找第八批 GPT 重畫的 <paramref name="b8"/>_s／_e／_n（門朝西＝門朝東左右翻轉），
+    /// 沒有再找 08-20c 的 KayKit 烘焙 <paramref name="kk"/>_s／_e／_n／_w。回傳素材與是否左右翻轉。
+    /// </summary>
+    private static (Texture2D? Art, bool Flip) KitFacing(string? b8, string kk, int facing, Color culture)
+    {
+        var d = facing & 3;
+        if (b8 is not null && PixelParts.IsBatch5($"{b8}_s"))
+            return (KitArt(d == 3 ? $"{b8}_e" : $"{b8}_{FacingSuffix[d]}", culture), d == 3);
+        return (KitArt($"{kk}_{FacingSuffix[d]}", culture), false);
+    }
+
+    /// <summary>不分方向的建築：先第八批、再 KayKit 烘焙。</summary>
+    private static Texture2D? KitSingle(string b8, string kk, Color culture) => KitArt(b8, culture) ?? KitArt(kk, culture);
 
     /// <summary>住屋的素材（灰階屋頂染文化色；畫的時候已經上色的那幾張不染、改挑別張；都不能染就用原色）。</summary>
-    private static Texture2D? HouseArt(Building kind, int seed, Color culture, int facing = 0)
+    private static Texture2D? HouseArt(Building kind, int seed, Color culture, int facing, out bool flip)
     {
-        // 第 08-20c 章：KayKit 烘焙的住屋（門朝貼著的道路）；帳篷沿用第五批。
-        var kit = kind switch
+        flip = false;
+        var hash = LayoutHash(seed, (int)kind, 140);
+        // 第 08-20d 章：第八批住屋（木屋 2 款、房子 3 款、石屋 3 款，門朝貼著的道路）；帳篷 2 款。
+        if (kind == Building.Tent && KitArt($"b8_tent_{(hash < 0.5f ? 1 : 2)}", culture) is { } tent)
+            return tent;
+        var (b8, count, kk) = kind switch
         {
-            Building.Hut => "kk_hut",
-            Building.House => "kk_house",
-            Building.StoneHouse => "kk_stone_house",
-            _ => null
+            Building.Hut => ("b8_hut", 2, "kk_hut"),
+            Building.House => ("b8_house", 3, "kk_house"),
+            Building.StoneHouse => ("b8_stone_house", 3, "kk_stone_house"),
+            _ => ("", 0, "")
         };
-        if (kit is not null && KitFacing(kit, facing, culture) is { } baked)
-            return baked;
-        var (prefix, count, top) = kind switch
+        if (count > 0)
+        {
+            var (art, f) = KitFacing($"{b8}_{Math.Clamp((int)(hash * count), 0, count - 1) + 1}", kk, facing, culture);
+            if (art is not null)
+            {
+                flip = f;
+                return art;
+            }
+        }
+        var (prefix, variants, top) = kind switch
         {
             Building.Tent => ("bld_tent", 2, 1f),
             Building.Hut => ("bld_hut", 2, 0.55f),
             Building.House => ("bld_house", 3, 0.55f),
             _ => ("bld_stone_house", 3, 0.42f)
         };
-        var hash = LayoutHash(seed, (int)kind, 140);
-        return (Texture2D?)PixelParts.TintedVariant(prefix, count, hash, culture, top)
-            ?? (PixelParts.VariantName(prefix, count, hash) is { } plain ? PixelParts.Texture(plain) : null);
+        return (Texture2D?)PixelParts.TintedVariant(prefix, variants, hash, culture, top)
+            ?? (PixelParts.VariantName(prefix, variants, hash) is { } plain ? PixelParts.Texture(plain) : null);
     }
 
     /// <summary>大建築的素材：市集、神殿、主樓、井（灰階的篷布、屋頂、旗子染文化色）。</summary>
     /// <summary>第 08-18k 章：公共建築的素材（沒有素材回傳 null，退回原本的畫法）。</summary>
-    private static Texture2D? CivicArt(Building kind, Color culture, int facing = 0)
+    private static Texture2D? CivicArt(Building kind, Color culture, int facing, out bool flip)
     {
-        // 第 08-20c 章：有 KayKit 烘焙版本的公共建築優先用它（風車 4 幀、不分方向）。
-        var kit = kind switch
+        // 第 08-20d 章：第八批優先，其次 08-20c 的 KayKit 烘焙（風車 4 幀、不分方向）。
+        (Texture2D? Art, bool Flip) kit = kind switch
         {
-            Building.HallVillage => KitFacing("kk_hall_village", facing, culture),
-            Building.HallTown => KitFacing("kk_hall_town", facing, culture),
-            Building.Smithy => KitFacing("kk_smithy", facing, culture),
-            Building.Workshop => KitFacing("kk_workshop", facing, culture),
-            Building.Windmill => KitArt("kk_windmill", culture),
-            Building.Watchtower => KitArt("kk_watchtower", culture),
-            _ => null
+            Building.HallVillage => KitFacing("b8_hall_village", "kk_hall_village", facing, culture),
+            Building.HallTown => KitFacing("b8_hall_town", "kk_hall_town", facing, culture),
+            Building.Smithy => KitFacing("b8_smithy", "kk_smithy", facing, culture),
+            Building.Workshop => KitFacing("b8_workshop", "kk_workshop", facing, culture),
+            Building.Shrine => KitFacing("b8_shrine", "kk_shrine", facing, culture),
+            Building.Kiln => KitFacing("b8_kiln", "kk_kiln", facing, culture),
+            Building.Granary => KitFacing("b8_granary", "kk_granary", facing, culture),
+            Building.School => KitFacing("b8_school", "kk_school", facing, culture),
+            Building.Scriptorium => KitFacing("b8_scriptorium", "kk_scriptorium", facing, culture),
+            Building.Windmill => (KitSingle("b8_windmill", "kk_windmill", culture), false),
+            Building.Watchtower => (KitSingle("b8_watchtower", "kk_watchtower", culture), false),
+            _ => (null, false)
         };
-        return kit ?? CivicFallback(kind);
+        flip = kit.Flip;
+        return kit.Art ?? CivicFallback(kind);
     }
 
     private static Texture2D? CivicFallback(Building kind) => kind switch
@@ -114,19 +142,20 @@ public partial class DemoHexMap
         _ => null
     };
 
-    private static Texture2D? LotArt(Building kind, Color culture, int facing = 0)
+    private static Texture2D? LotArt(Building kind, Color culture, int facing, out bool flip)
     {
-        // 第 08-20c 章：KayKit 烘焙的市集、教堂（神殿）、城堡（主樓）、井。
-        var kit = kind switch
+        // 第 08-20d 章：第八批的市集、神殿、王宮、井；沒有再用 08-20c 的 KayKit 烘焙。
+        (Texture2D? Art, bool Flip) kit = kind switch
         {
-            Building.Market => KitFacing("kk_market", facing, culture),
-            Building.Temple => KitFacing("kk_temple", facing, culture),
-            Building.Keep => KitArt("kk_keep", culture),
-            Building.Well => KitArt("kk_well", culture),
-            _ => null
+            Building.Market => KitFacing("b8_market", "kk_market", facing, culture),
+            Building.Temple => KitFacing("b8_temple", "kk_temple", facing, culture),
+            Building.Keep => (KitSingle("b8_keep", "kk_keep", culture), false),
+            Building.Well => (KitSingle("b8_well", "kk_well", culture), false),
+            _ => (null, false)
         };
-        if (kit is not null)
-            return kit;
+        flip = kit.Flip;
+        if (kit.Art is { } art)
+            return art;
         var (name, top) = kind switch
         {
             Building.Market => ("bld_market", 0.6f),
