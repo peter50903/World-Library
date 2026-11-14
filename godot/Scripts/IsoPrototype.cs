@@ -31,7 +31,7 @@ public partial class IsoPrototypeView : Control
     private Control _overlay = null!;
     private Label _info = null!;
     private CheckButton _showRealms = null!, _showWar = null!, _showIcons = null!;
-    private Vector3 _target = new(8f, 0.3f, 6f);
+    private Vector3 _target = new(8f, 0.3f, 8.5f);
     private float _size = TempStartSize;
     private Node3D? _wheel;
     private int? _selectedSettlement;
@@ -117,6 +117,9 @@ public partial class IsoPrototypeView : Control
             BuildKitRoads(roads);
             BuildKitTown(Map.Settlements[0], roads);
             BuildKitVillage(Map.Settlements[1], roads);
+            BuildKitCapital(Map.Settlements[2], roads);
+            BuildKitMine(Map.Settlements[3], roads);
+            BuildKitCamp(Map.Settlements[4]);
             _detail.AddChild(roads.Commit(VertexMaterial()));
         }
         else

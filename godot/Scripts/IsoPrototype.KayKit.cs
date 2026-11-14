@@ -72,9 +72,9 @@ public partial class IsoPrototypeView
     }
 
     /// <summary>房子＋門前小徑接到街（門在模型的 +Z；朝南 yaw 0、朝北 yaw 180）。</summary>
-    private void KitHouse(IsoMeshBuilder roads, string name, float x, float z, float yaw, float streetZ, int settlement)
+    private void KitHouse(IsoMeshBuilder roads, string name, float x, float z, float yaw, float streetZ, int settlement, float scale = TempKitHouse)
     {
-        Kit(_detail, name, V(x, IsoProtoMap.LandTop, z), yaw, TempKitHouse, settlement: settlement);
+        Kit(_detail, name, V(x, IsoProtoMap.LandTop, z), yaw, scale, settlement: settlement);
         var front = yaw == 0f ? z + 0.17f : z - 0.17f;
         if (Math.Abs(streetZ - front) > 0.02f)
             Road(roads, x, front, x, streetZ, 0.07f);
@@ -134,7 +134,8 @@ public partial class IsoPrototypeView
     private void BuildKitNature()
     {
         var flat = Map.Settlements.SelectMany(s => s.Cells).Concat(IsoProtoMap.RoadCells).ToHashSet();
-        string[] forests = { "trees_A_medium", "trees_B_medium", "trees_A_large", "trees_B_large" };
+        string[] forests = { "trees_A_medium", "trees_B_medium", "trees_A_large", "trees_B_large", "trees_A_small" };
+        string[] hills = { "hills_A_trees", "hills_B", "mountain_A_grass_trees", "mountain_B", "hill_single_A" };
         var tuft = KitColor(120, 140, 40);
         Color[] flowers = { KitColor(240, 236, 210), KitColor(232, 200, 70), KitColor(214, 110, 90) };
         var deco = new IsoMeshBuilder { Variation = 0f };
@@ -152,13 +153,13 @@ public partial class IsoPrototypeView
                         Kit(_trees, forests[(int)(H(1) * forests.Length)], V(c + 0.5f, h, r + 0.5f), yaw, TempKitNature);
                         break;
                     case IsoTerrain.Hill when H(5) < 0.6f:
-                        Kit(_trees, H(6) < 0.6f ? "hills_A_trees" : "mountain_A_grass_trees", V(c + 0.5f, h, r + 0.5f), yaw, TempKitNature);
+                        Kit(_trees, hills[(int)(H(6) * hills.Length)], V(c + 0.5f, h, r + 0.5f), yaw, TempKitNature);
                         break;
                     case IsoTerrain.Grass when open:
                         if (H(9) < 0.2f)
                             Kit(_trees, H(3) < 0.5f ? "tree_single_A" : "tree_single_B", V(c + 0.3f + 0.4f * H(4), h, r + 0.3f + 0.4f * H(7)), 0f, 0.45f);
                         else if (H(9) > 0.88f)
-                            Kit(_trees, "rock_single_C", V(c + 0.5f, h, r + 0.5f), yaw, 0.6f);
+                            Kit(_trees, H(8) < 0.5f ? "rock_single_C" : "rock_single_B", V(c + 0.5f, h, r + 0.5f), yaw, 0.6f);
                         for (var k = 0; k < 5; k++)
                         {
                             if (H(100 + k) >= 0.55f)
@@ -175,6 +176,9 @@ public partial class IsoPrototypeView
                             for (var q = 0; q < 3; q++)
                                 deco.Box(T(V(c + 0.2f + 0.6f * H(141) + 0.05f * Mathf.Cos(q * 2.1f), h + 0.008f, r + 0.2f + 0.6f * H(142) + 0.05f * Mathf.Sin(q * 2.1f))), V(0.024f, 0.012f, 0.024f), color);
                         }
+                        break;
+                    case IsoTerrain.River when H(13) < 0.3f:
+                        Kit(_trees, "waterlily_A", V(c + 0.3f + 0.4f * H(14), IsoProtoMap.WaterLevel, r + 0.3f + 0.4f * H(15)), yaw, 0.8f);
                         break;
                     case IsoTerrain.Sand when c == 1 && H(11) < 0.5f:
                         Kit(_trees, "rock_single_A", V(c + 0.3f, h, r + 0.3f + 0.4f * H(12)), yaw, 0.8f);
@@ -254,8 +258,10 @@ public partial class IsoPrototypeView
             {
                 var inner = i / 2 == 0;
                 var southward = (qz < 0) == inner; // 內排面向主街、外排面向環路
-                KitHouse(roads, homes[n % homes.Length], cx + (0.4f + (i % 2) * 0.48f) * qx, cz + (inner ? 0.42f : 0.92f) * qz,
-                    southward ? 0f : 180f, inner ? cz : cz + ring * qz, town.Id);
+                // 西南街區靠主街的兩棟是酒館與鐵匠（城鎮比農村多了店舖）。
+                var art = qx == -1 && qz == 1 && inner ? (i == 0 ? "building_tavern_yellow" : "building_blacksmith_yellow") : homes[n % homes.Length];
+                KitHouse(roads, art, cx + (0.4f + (i % 2) * 0.48f) * qx, cz + (inner ? 0.42f : 0.92f) * qz,
+                    southward ? 0f : 180f, inner ? cz : cz + ring * qz, town.Id, art.Contains("home") ? TempKitHouse : 0.32f);
             }
         }
         Kit(_detail, "barrel", V(x0 + 0.2f, y, z0 + 0.2f), 0f, 0.6f);
@@ -286,6 +292,15 @@ public partial class IsoPrototypeView
         Kit(_detail, "barrel", V(8.45f, y, 8.25f), 0f, 0.6f);
         Kit(_detail, "crate_A_big", V(10.45f, y, 8.25f), 0f, 0.6f);
         Kit(_detail, "flag_blue", V(8.12f, y, 7.25f), 0f, 0.9f);
+        Kit(_detail, "building_tower_A_blue", V(8.2f, y, 7.9f), 0f, TempKitTower, settlement: village.Id); // 橋頭哨塔
+        Kit(_detail, "bucket_water", V(10.8f, y, 7.75f), 0f, 0.8f);
+        Kit(_detail, "crate_open", V(8.45f, y, 6.75f), 0f, 0.7f);
+        // 田邊石牆：方田北緣三段，中間一段是石門。
+        for (var i = 0; i < 3; i++)
+            Kit(_detail, i == 1 ? "fence_stone_straight_gate" : "fence_stone_straight", V(11.5f + i, y, 5f - 0.5f), 90f, scale3: new Vector3(0.5f, 0.5f, 0.86f), settlement: village.Id);
+        // 河灣村南邊林子邊的伐木場。
+        Kit(_detail, "building_lumbermill_blue", V(11.5f, Map.TopOf(11, 10), 10.45f), 0f, TempKitLarge, settlement: village.Id);
+        Kit(_detail, "resource_lumber", V(11f, Map.TopOf(11, 10), 10.75f), 0f, 0.5f);
 
         var grain = KitColor(226, 176, 83);
         var furrow = KitColor(176, 126, 60);
@@ -297,7 +312,121 @@ public partial class IsoPrototypeView
                     roads.Box(T(V(c + 0.5f, y + 0.025f, r + 0.15f + j * 0.175f)), V(0.82f, 0.012f, 0.04f), furrow);
                 _picks.Add((new Aabb(V(c + 0.06f, y, r + 0.06f), V(0.88f, 0.05f, 0.88f)), village.Id));
             }
-        Kit(_detail, "building_windmill_blue", V(13.5f, y, 4.5f), 0f, TempKitLarge, settlement: village.Id);
-        Road(roads, 13.5f, 4.75f, 13.5f, 5f, 0.08f);
+        Kit(_detail, "building_windmill_blue", V(14.45f, y, 6f), 0f, TempKitLarge, settlement: village.Id);
+        Road(roads, 13.94f, 6f, 14.2f, 6f, 0.08f);
+    }
+
+    /// <summary>石牆一段：模型沿 X 長 2、厚 0.8；沿 X 用 yaw 0、沿 Z 用 yaw 90。</summary>
+    private void Wall(string name, float x, float z, bool alongX, float length, float height, float thickness, int settlement)
+        => Kit(_detail, name, V(x, IsoProtoMap.LandTop, z), alongX ? 0f : 90f, scale3: new Vector3(length / 2f, height, thickness), settlement: settlement);
+
+    /// <summary>
+    /// 藍堡（藍色勢力的王都，第 08-20b 章：雙層石牆與王宮）：外城牆 5×4 格，北牆中段是城門、兩側高塔、四角塔樓（南邊兩座投石塔）；
+    /// 內城牆 2×2 格圍住城堡（王宮），北面是內城門；兩層城牆之間一圈環路，西側教堂、兵營、靶場門朝東，東側市集、酒館、鐵匠門朝西；
+    /// 城外東側是擴建中的工地。道路從河灣村往南的小巷一路接到北門、再進內城門。
+    /// </summary>
+    private void BuildKitCapital(IsoSettlement capital, IsoMeshBuilder roads)
+    {
+        var y = IsoProtoMap.LandTop;
+        var id = capital.Id;
+        float X0 = 8f, X1 = 13f, Z0 = 12f, Z1 = 16f;
+        for (var i = 0; i < 5; i++)
+        {
+            Wall(i == 2 ? "wall_straight_gate" : "wall_straight", X0 + 0.5f + i, Z0, true, 1f, 0.5f, 0.5f, id);
+            Wall("wall_straight", X0 + 0.5f + i, Z1, true, 1f, 0.5f, 0.5f, id);
+        }
+        for (var i = 0; i < 4; i++)
+        {
+            Wall("wall_straight", X0, Z0 + 0.5f + i, false, 1f, 0.5f, 0.5f, id);
+            Wall("wall_straight", X1, Z0 + 0.5f + i, false, 1f, 0.5f, 0.5f, id);
+        }
+        Kit(_detail, "building_tower_base_blue", V(X0, y, Z0), 0f, 0.5f, settlement: id);
+        Kit(_detail, "building_tower_base_blue", V(X1, y, Z0), 0f, 0.5f, settlement: id);
+        Kit(_detail, "building_tower_catapult_blue", V(X0, y, Z1), 0f, 0.45f, settlement: id);
+        Kit(_detail, "building_tower_catapult_blue", V(X1, y, Z1), 0f, 0.45f, settlement: id);
+        Kit(_detail, "building_tower_B_blue", V(9.95f, y, Z0), 0f, 0.32f, settlement: id);
+        Kit(_detail, "building_tower_B_blue", V(11.05f, y, Z0), 0f, 0.32f, settlement: id);
+        Kit(_detail, "flag_blue", V(10.3f, y, Z0 - 0.3f), 0f, 1.2f);
+        Kit(_detail, "flag_blue", V(10.7f, y, Z0 - 0.3f), 0f, 1.2f);
+
+        // 內城牆：2×2 格、每邊 4 段（北邊中間兩段換成一座內城門），四角小塔。
+        float x0 = 9.5f, x1 = 11.5f, z0 = 13f, z1 = 15f;
+        for (var i = 0; i < 4; i++)
+        {
+            var at = 0.25f + i * 0.5f;
+            if (i == 1)
+                Wall("wall_straight_gate", 10.5f, z0, true, 1f, 0.5f, 0.45f, id);
+            else if (i != 2)
+                Wall("wall_straight", x0 + at, z0, true, 0.5f, 0.45f, 0.45f, id);
+            Wall("wall_straight", x0 + at, z1, true, 0.5f, 0.45f, 0.45f, id);
+            Wall("wall_straight", x0, z0 + at, false, 0.5f, 0.45f, 0.45f, id);
+            Wall("wall_straight", x1, z0 + at, false, 0.5f, 0.45f, 0.45f, id);
+        }
+        foreach (var (px, pz) in new[] { (x0, z0), (x1, z0), (x0, z1), (x1, z1) })
+            Kit(_detail, "building_tower_base_blue", V(px, y, pz), 0f, 0.3f, settlement: id);
+        roads.Box(T(V(10.5f, y + 0.006f, 14f)), V(1.9f, 0.012f, 1.9f), KitColor(196, 188, 170));
+        Kit(_detail, "building_castle_blue", V(10.5f, y, 14.1f), 180f, 0.5f, settlement: id); // 王宮正門朝北、對著內城門
+
+        // 道路：河灣村小巷往南 → 東轉 → 北門 → 內城門；兩層城牆之間的環路。
+        Road(roads, 9.8f, 8.9f, 9.8f, 11f, 0.14f);
+        Road(roads, 9.73f, 11f, 10.57f, 11f, 0.14f);
+        Road(roads, 10.5f, 10.93f, 10.5f, 13f, 0.22f);
+        foreach (var z in new[] { 12.55f, 15.45f })
+            Road(roads, 8.95f, z, 12.05f, z, 0.14f);
+        foreach (var x in new[] { 9f, 12f })
+            Road(roads, x, 12.48f, x, 15.52f, 0.14f);
+
+        foreach (var (name, z, scale) in new[] { ("building_church_blue", 13f, 0.42f), ("building_barracks_blue", 14.1f, 0.4f), ("building_archeryrange_blue", 15.2f, 0.36f) })
+            Kit(_detail, name, V(8.5f, y, z), 90f, scale, settlement: id);
+        foreach (var (name, z, scale) in new[] { ("building_market_blue", 13f, 0.36f), ("building_tavern_blue", 14.1f, 0.4f), ("building_blacksmith_blue", 15.15f, 0.4f) })
+            Kit(_detail, name, V(12.5f, y, z), -90f, scale, settlement: id);
+        Kit(_detail, "target", V(9.2f, y, 15f), 0f, 0.8f);
+        Kit(_detail, "weaponrack", V(9.2f, y, 14.3f), 0f, 0.8f);
+        Kit(_detail, "building_well_blue", V(10.5f, y, 12.55f), 0f, 0.3f, settlement: id);
+        // 城外的擴建工地：鷹架、蓋到一半的房子、石料、梯子。
+        Kit(_detail, "building_scaffolding", V(13.6f, y, 12.7f), -90f, 0.32f, settlement: id);
+        Kit(_detail, "building_stage_A", V(13.6f, y, 13.55f), -90f, 0.36f, settlement: id);
+        Kit(_detail, "building_stage_B", V(13.6f, y, 14.3f), -90f, 0.36f, settlement: id);
+        Kit(_detail, "building_stage_C", V(13.6f, y, 15.1f), -90f, 0.36f, settlement: id);
+        Kit(_detail, "resource_stone", V(13.85f, y, 15.6f), 0f, 0.6f);
+        Kit(_detail, "projectile_catapult", V(8.35f, y, 15.65f), 0f, 0.8f);
+        Kit(_detail, "ladder", V(13.85f, y, 12.2f), 0f, 0.8f);
+    }
+
+    /// <summary>石丘礦場（藍色勢力的礦村）：山腳的礦坑，前面兩棟房子面向往南的礦路；石料、木箱、棧板；礦路往西再往南接到河灣村東側。</summary>
+    private void BuildKitMine(IsoSettlement mine, IsoMeshBuilder roads)
+    {
+        var y = IsoProtoMap.LandTop;
+        Kit(_detail, "building_mine_blue", V(13.4f, Map.TopOf(13, 3), 3.5f), 0f, 0.45f, settlement: mine.Id);
+        Kit(_detail, "building_home_A_blue", V(11.75f, y, 4.3f), 0f, TempKitHouse, settlement: mine.Id);
+        Kit(_detail, "building_home_B_blue", V(12.45f, y, 4.3f), 0f, TempKitHouse, settlement: mine.Id);
+        Kit(_detail, "resource_stone", V(14f, y, 4f), 0f, 0.6f);
+        Kit(_detail, "crate_long_A", V(13f, y, 4.1f), 0f, 0.7f);
+        Kit(_detail, "pallet", V(13.9f, y, 3.95f), 0f, 0.7f);
+        Road(roads, 13.4f, 3.95f, 13.4f, 4.6f, 0.12f);
+        Road(roads, 10.85f, 4.6f, 13.47f, 4.6f, 0.14f);
+        Road(roads, 10.9f, 4.53f, 10.9f, 7.57f, 0.14f);
+    }
+
+    /// <summary>獵人營地（金色勢力的營地）：五頂帳篷圍著營火（柴堆＋程式畫的火焰）、武器架、木桶；附近一棟廢墟。</summary>
+    private void BuildKitCamp(IsoSettlement camp)
+    {
+        var y = IsoProtoMap.LandTop;
+        const float cx = 4f, cz = 12f;
+        for (var k = 0; k < 5; k++)
+        {
+            var a = k * Mathf.Tau / 5f + 0.3f;
+            Kit(_detail, "tent", V(cx + 0.42f * Mathf.Cos(a), y, cz + 0.42f * Mathf.Sin(a)), 90f - Mathf.RadToDeg(a), 0.55f, settlement: camp.Id);
+        }
+        Kit(_detail, "resource_lumber", V(cx, y, cz), 0f, 0.35f);
+        var fire = new IsoMeshBuilder { Variation = 0f };
+        fire.Frustum(T(V(cx, y + 0.05f, cz)), Vector3.Zero, 0.07f, 0f, 0.16f, 6, KitColor(250, 150, 40));
+        fire.Frustum(T(V(cx, y + 0.05f, cz)), Vector3.Zero, 0.04f, 0f, 0.22f, 5, KitColor(255, 214, 90), 30f);
+        var flame = VertexMaterial();
+        flame.ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded;
+        _detail.AddChild(fire.Commit(flame, shadows: false));
+        Kit(_detail, "weaponrack", V(cx + 0.7f, y, cz - 0.2f), 0f, 0.8f);
+        Kit(_detail, "barrel", V(cx - 0.7f, y, cz + 0.25f), 0f, 0.6f);
+        Kit(_detail, "building_destroyed", V(5.5f, Map.TopOf(5, 9), 9.5f), 0f, 0.4f);
     }
 }

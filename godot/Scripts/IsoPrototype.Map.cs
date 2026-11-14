@@ -15,7 +15,7 @@ public sealed record IsoSettlement(int Id, string Name, string Kind, int Realm, 
 /// </summary>
 public sealed class IsoProtoMap
 {
-    public const int Columns = 16, Rows = 12;
+    public const int Columns = 16, Rows = 17; // 第 08-20b 章：往南加 5 列放王都與營地
 
     /// <summary>【TEMP】地塊頂面高度、水面高度、地板底部（看得出厚度的土層）。</summary>
     public const float SeaBed = -0.12f, RiverBed = 0.02f, SandTop = 0.24f, LandTop = 0.36f, HillTop = 0.72f, WaterLevel = 0.2f, Bottom = -0.75f;
@@ -26,7 +26,13 @@ public sealed class IsoProtoMap
     public const float TempRiseStep = 0.14f;
 
     /// <summary>第 08-20b 章：道路經過的格（城鎮東門→過橋→河灣村、伐木場支路）；這些格不抬高。</summary>
-    public static readonly Vector2I[] RoadCells = { new(5, 6), new(6, 6), new(6, 7), new(5, 7), new(6, 4), new(6, 5) };
+    public static readonly Vector2I[] RoadCells =
+    {
+        new(5, 6), new(6, 6), new(6, 7), new(5, 7), new(6, 4), new(6, 5), // 城鎮→石橋、伐木場支路
+        new(9, 9), new(9, 10), new(10, 10), new(10, 11), // 河灣村→王都
+        new(10, 4), new(10, 5), new(11, 4), new(12, 4), new(13, 4), new(14, 5), new(14, 6), // 礦場→河灣村、風車
+        new(11, 10), new(13, 12), new(13, 13), new(13, 14), new(13, 15) // 伐木場、王都城外工地
+    };
 
     private readonly float[,] _rise = new float[Columns, Rows];
 
@@ -37,7 +43,7 @@ public sealed class IsoProtoMap
     public static readonly Vector2I[] RiverPath =
     {
         new(9, 0), new(9, 1), new(9, 2), new(8, 2), new(8, 3), new(8, 4), new(8, 5), new(7, 5), new(7, 6), new(7, 7),
-        new(7, 8), new(6, 8), new(6, 9), new(6, 10), new(6, 11)
+        new(7, 8), new(6, 8), new(6, 9), new(6, 10), new(6, 11), new(6, 12), new(6, 13), new(6, 14), new(6, 15), new(6, 16)
     };
 
     public IReadOnlyList<IsoSettlement> Settlements { get; }
@@ -70,7 +76,7 @@ public sealed class IsoProtoMap
                 if (c >= 12 || r == 0)
                     _terrain[c, r] = IsoTerrain.Hill;
         _terrain[14, 3] = _terrain[15, 3] = IsoTerrain.Hill;
-        foreach (var (c0, c1, r0, r1) in new[] { (3, 6, 1, 3), (12, 15, 9, 11), (3, 4, 9, 10) })
+        foreach (var (c0, c1, r0, r1) in new[] { (3, 6, 1, 3), (12, 15, 9, 11), (3, 4, 9, 10), (14, 15, 13, 16) })
             for (var c = c0; c <= c1; c++)
                 for (var r = r0; r <= r1; r++)
                     _terrain[c, r] = IsoTerrain.Forest;
@@ -97,15 +103,22 @@ public sealed class IsoProtoMap
             => Enumerable.Range(c0, c1 - c0 + 1).SelectMany(c => Enumerable.Range(r0, r1 - r0 + 1).Select(r => new Vector2I(c, r))).ToList();
         var town = Block(2, 4, 5, 7);
         var village = Block(8, 10, 6, 8).Concat(Block(11, 13, 5, 7)).ToList();
-        foreach (var cell in town.Concat(village))
-            _terrain[cell.X, cell.Y] = IsoTerrain.Grass;
+        // 第 08-20b 章（使用者 2026-11-14：運用所有建築素材）：雙層石牆的王都、山腳的礦場、帳篷圍營火的營地。
+        var capital = Block(8, 12, 12, 15);
+        var mine = Block(12, 13, 3, 3);
+        var camp = Block(3, 4, 11, 12);
         Settlements = new[]
         {
             new IsoSettlement(1, "金柵鎮", "城鎮", Gold, new Vector2I(3, 6), town),
-            new IsoSettlement(2, "河灣村", "農村", Blue, new Vector2I(9, 7), village)
+            new IsoSettlement(2, "河灣村", "農村", Blue, new Vector2I(9, 7), village),
+            new IsoSettlement(3, "藍堡", "王都", Blue, new Vector2I(10, 14), capital),
+            new IsoSettlement(4, "石丘礦場", "礦村", Blue, new Vector2I(13, 3), mine),
+            new IsoSettlement(5, "獵人營地", "營地", Gold, new Vector2I(3, 11), camp)
         };
+        foreach (var cell in Settlements.SelectMany(x => x.Cells))
+            _terrain[cell.X, cell.Y] = IsoTerrain.Grass;
         // 第 08-20b 章：地塊高低一階（使用者 2026-11-14：地塊是一整片綠色）。
-        var flat = town.Concat(village).Concat(RoadCells).ToHashSet();
+        var flat = Settlements.SelectMany(x => x.Cells).Concat(RoadCells).ToHashSet();
         bool Near(int c, int r, Func<int, int, bool> test)
         {
             for (var dc = -1; dc <= 1; dc++)
