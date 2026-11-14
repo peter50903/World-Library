@@ -113,8 +113,11 @@ public partial class IsoPrototypeView : Control
         if (UsesKit)
         {
             BuildKitNature();
-            BuildKitTown(Map.Settlements[0]);
-            BuildKitVillage(Map.Settlements[1]);
+            var roads = new IsoMeshBuilder { Variation = 0f };
+            BuildKitRoads(roads);
+            BuildKitTown(Map.Settlements[0], roads);
+            BuildKitVillage(Map.Settlements[1], roads);
+            _detail.AddChild(roads.Commit(VertexMaterial()));
         }
         else
         {
@@ -188,7 +191,7 @@ public partial class IsoPrototypeView : Control
                 var t = Map.TerrainAt(c, r);
                 var h = Map.TopOf(c, r);
                 var jitter = IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
-                var top = UsesKit ? KitTerrainColor(t) : t switch
+                var top = UsesKit ? KitTone(c, r, t) : t switch
                 {
                     IsoTerrain.Sea => new Color(0.55f, 0.62f, 0.55f),
                     IsoTerrain.River => new Color(0.50f, 0.56f, 0.45f),
@@ -205,6 +208,15 @@ public partial class IsoPrototypeView : Control
                     // 丘陵：高處帶一點雪白，低多邊形的每一面亮暗不同。
                     var face = t == IsoTerrain.Hill && peak.Y > IsoProtoMap.HillTop + 0.38f && i % 2 == 0 ? new Color(0.92f, 0.93f, 0.95f) : top;
                     Tri(corners[i], corners[(i + 1) % 4], peak, face.Darkened(i * 0.025f));
+                }
+                // 第 08-20b 章：KayKit 色調下，每格東、南兩邊一條稍暗的倒角，看得出一格一格。
+                if (UsesKit && !Map.IsWater(c, r))
+                {
+                    const float rim = 0.035f;
+                    var edge = top.Darkened(0.14f);
+                    var ry = h + 0.002f;
+                    Quad(new Vector3(c, ry, r + 1 - rim), new Vector3(c + 1, ry, r + 1 - rim), new Vector3(c + 1, ry, r + 1), new Vector3(c, ry, r + 1), Vector3.Up, edge);
+                    Quad(new Vector3(c + 1 - rim, ry, r), new Vector3(c + 1, ry, r), new Vector3(c + 1, ry, r + 1), new Vector3(c + 1 - rim, ry, r + 1), Vector3.Up, edge);
                 }
                 // 側面：東、南、西、北；鄰格比較低（或在地圖外）才畫。
                 foreach (var (dc, dr, normal) in new[] { (1, 0, Vector3.Right), (0, 1, Vector3.Back), (-1, 0, Vector3.Left), (0, -1, Vector3.Forward) })

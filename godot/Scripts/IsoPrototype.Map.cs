@@ -22,6 +22,14 @@ public sealed class IsoProtoMap
 
     public const int Gold = 1, Blue = 2;
 
+    /// <summary>【TEMP】第 08-20b 章：抬高一階的高度（離聚落、道路、水邊一格以外的草地與森林，依 2×2 區塊決定）。</summary>
+    public const float TempRiseStep = 0.14f;
+
+    /// <summary>第 08-20b 章：道路經過的格（城鎮東門→過橋→河灣村、伐木場支路）；這些格不抬高。</summary>
+    public static readonly Vector2I[] RoadCells = { new(5, 6), new(6, 6), new(6, 7), new(5, 7), new(6, 4), new(6, 5) };
+
+    private readonly float[,] _rise = new float[Columns, Rows];
+
     private readonly IsoTerrain[,] _terrain = new IsoTerrain[Columns, Rows];
     private readonly int[,] _realm = new int[Columns, Rows];
 
@@ -96,6 +104,26 @@ public sealed class IsoProtoMap
             new IsoSettlement(1, "金柵鎮", "城鎮", Gold, new Vector2I(3, 6), town),
             new IsoSettlement(2, "河灣村", "農村", Blue, new Vector2I(9, 7), village)
         };
+        // 第 08-20b 章：地塊高低一階（使用者 2026-11-14：地塊是一整片綠色）。
+        var flat = town.Concat(village).Concat(RoadCells).ToHashSet();
+        bool Near(int c, int r, Func<int, int, bool> test)
+        {
+            for (var dc = -1; dc <= 1; dc++)
+                for (var dr = -1; dr <= 1; dr++)
+                    if (Contains(c + dc, r + dr) && test(c + dc, r + dr))
+                        return true;
+            return false;
+        }
+        for (var c = 0; c < Columns; c++)
+            for (var r = 0; r < Rows; r++)
+            {
+                if (_terrain[c, r] is not (IsoTerrain.Grass or IsoTerrain.Forest) || flat.Contains(new Vector2I(c, r)))
+                    continue;
+                if (Near(c, r, IsWater) || Near(c, r, (a, b) => flat.Contains(new Vector2I(a, b))))
+                    continue;
+                if (Hash01(c / 2, r / 2, 77) < 0.55f)
+                    _rise[c, r] = TempRiseStep;
+            }
         Icons = new[]
         {
             (new Vector2(12.5f, 6.5f), "農", "河灣村的方田（農田）"),
@@ -117,7 +145,7 @@ public sealed class IsoProtoMap
             IsoTerrain.Sand => SandTop,
             IsoTerrain.Hill => HillTop,
             _ => LandTop
-        };
+        } + _rise[c, r];
     }
 
     /// <summary>頂面中心點往上（低多邊形的起伏）：丘陵 0.15～0.5、其他 ±0.03。</summary>
