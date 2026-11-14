@@ -151,6 +151,9 @@ public partial class IsoSpriteView : Control
                 float H(int k) => IsoProtoMap.Hash01(c, r, k);
                 switch (Map.TerrainAt(c, r))
                 {
+                    case IsoTerrain.Forest when H(7) < 0.3f:
+                        Add("iso_tree_grove", c + 0.5f, r + 0.55f, 0, new Vector3(0.6f, 0.45f, 0.6f), new Color(0.22f, 0.44f, 0.22f), flip: H(8) < 0.5f);
+                        break;
                     case IsoTerrain.Forest:
                         for (var k = 0; k < 3 + (int)(H(5) * 2f); k++)
                             Add(trees[(int)(H(70 + k) * trees.Length) % trees.Length], c + 0.15f + 0.7f * H(20 + k), r + 0.15f + 0.7f * H(40 + k), 0,
@@ -237,6 +240,7 @@ public partial class IsoSpriteView : Control
             for (var c = Math.Max(0, sum - IsoProtoMap.Rows + 1); c <= Math.Min(IsoProtoMap.Columns - 1, sum); c++)
                 DrawCell(c, sum - c, cliff);
         DrawGridAndFoam();
+        DrawRoads();
         if (_showRealms.ButtonPressed)
             DrawRealms(strategic ? 0.45f : 0.22f);
         if (strategic)
@@ -304,6 +308,21 @@ public partial class IsoSpriteView : Control
                     Face(new[] { a + Vector3.Up * y, b + Vector3.Up * y, b + Vector3.Up * h, a + Vector3.Up * h }, new Color(0.18f, 0.45f, 0.70f, 0.85f), null);
                 }
         }
+    }
+
+    /// <summary>城鎮的十字石子主街（有 iso_tex_road 就貼紋理）。</summary>
+    private void DrawRoads()
+    {
+        var road = Art("iso_tex_road");
+        var y = IsoProtoMap.LandTop + 0.002f;
+        const float x0 = 2.08f, x1 = 4.92f, z0 = 5.08f, z1 = 7.92f, half = 0.13f;
+        var cx = (x0 + x1) / 2f;
+        var cz = (z0 + z1) / 2f;
+        var color = road is null ? new Color(0.78f, 0.72f, 0.60f) : Colors.White;
+        Vector2 Uv(Vector3 p) => new(p.X * 1.5f, p.Z * 1.5f);
+        Face(new[] { new Vector3(x0, y, cz - half), new Vector3(x1, y, cz - half), new Vector3(x1, y, cz + half), new Vector3(x0, y, cz + half) }, color, road, Uv);
+        Face(new[] { new Vector3(cx - half, y, z0), new Vector3(cx + half, y, z0), new Vector3(cx + half, y, z1 + 0.4f), new Vector3(cx - half, y, z1 + 0.4f) }, color, road, Uv);
+        Face(new[] { new Vector3(cx - 0.36f, y, cz - 0.36f), new Vector3(cx + 0.36f, y, cz - 0.36f), new Vector3(cx + 0.36f, y, cz + 0.36f), new Vector3(cx - 0.36f, y, cz + 0.36f) }, color, road, Uv);
     }
 
     /// <summary>淡淡的格線（陸地與水面）與水陸交界的浪花。</summary>
@@ -384,7 +403,7 @@ public partial class IsoSpriteView : Control
                 var fw = texture.GetWidth() / (float)s.Frames;
                 var size = new Vector2(fw, texture.GetHeight()) * _zoom * s.Scale;
                 // 地面類（方田、橋）：精靈圖底部對齊格的最前方角落；其他：底部中心對齊所在位置。
-                var anchor = s.Ground ? Screen(s.At.X + 0.5f * s.Block.X, s.At.Y, s.At.Z + 0.5f * s.Block.Z) + new Vector2(0f, HalfH * 0.05f) : foot;
+                var anchor = s.Ground ? new Vector2(foot.X, Screen(s.At.X + 0.5f * s.Block.X, s.At.Y, s.At.Z + 0.5f * s.Block.Z).Y + HalfH * 0.05f) : foot;
                 box = new Rect2(anchor - new Vector2(size.X / 2f, size.Y), size);
                 var source = new Rect2(fw * (s.Frames > 1 ? frame : 0), 0f, fw, texture.GetHeight());
                 if (s.Flip)
