@@ -106,35 +106,40 @@ public partial class IsoSpriteView : Control
         }
         foreach (var (x, z) in new[] { (x0, z0), (x1, z0), (x0, z1), (x1, z1) })
             Add("iso_watchtower", x, z, town, new Vector3(0.24f, 0.6f, 0.24f), wood.Darkened(0.1f));
-        Add("iso_gatehouse", cx, z1 + 0.02f, town, new Vector3(0.6f, 0.55f, 0.2f), wood.Darkened(0.05f));
+        Add("iso_gatehouse", cx, z1 + 0.02f, town, new Vector3(0.6f, 0.55f, 0.2f), wood.Darkened(0.05f), flip: true); // 翻轉：城門樓沿南牆
         Add("iso_well", cx, cz, town, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
-        Add("iso_stall_red", cx - 0.3f, cz - 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.82f, 0.22f, 0.20f));
-        Add("iso_stall_blue", cx + 0.3f, cz - 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.22f, 0.42f, 0.78f), flip: true);
-        Add("iso_stall_blue", cx - 0.3f, cz + 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.22f, 0.42f, 0.78f));
-        Add("iso_stall_red", cx + 0.3f, cz + 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f), new Color(0.82f, 0.22f, 0.20f), flip: true);
+        // 市集攤位：同一個朝向，紅藍交錯。
+        foreach (var (dx, dz, red) in new[] { (-1f, -1f, true), (1f, -1f, false), (-1f, 1f, false), (1f, 1f, true) })
+            Add(red ? "iso_stall_red" : "iso_stall_blue", cx + dx * 0.3f, cz + dz * 0.3f, town, new Vector3(0.22f, 0.18f, 0.22f),
+                red ? new Color(0.82f, 0.22f, 0.20f) : new Color(0.22f, 0.42f, 0.78f));
+        // 房子：四個街區各 2×2 等距對齊、全部同一個朝向（門朝南）；東北街區整區是鎮公所。
+        // 使用者 2026-11-14：房子方向一團亂、毫無邏輯——不再依雜湊翻轉，同一個聚落的房子朝向一致、對齊街道。
         var houses = new[] { "iso_house_timber", "iso_house_timber_2", "iso_house_stone", "iso_house_timber" };
         var n = 0;
         foreach (var (qx, qz) in new[] { (-1, -1), (1, -1), (-1, 1), (1, 1) })
-            for (var i = 0; i < 4; i++, n++)
+        {
+            if (qx == 1 && qz == -1)
             {
-                var x = cx + (0.5f + (i % 2) * 0.5f) * qx;
-                var z = cz + (0.46f + (i / 2) * 0.52f) * qz;
-                if (qx == 1 && qz == 1 && i == 0)
-                    Add("iso_town_hall", x, z, town, new Vector3(0.4f, 0.4f, 0.45f), plaster);
-                else
-                    Add(houses[n % houses.Length], x, z, town, house, n % 3 == 2 ? new Color(0.66f, 0.64f, 0.60f) : plaster, flip: (n + qx) % 2 == 0);
+                Add("iso_town_hall", cx + 0.67f * qx, cz + 0.67f * qz, town, new Vector3(0.4f, 0.4f, 0.45f), plaster);
+                continue;
             }
+            for (var i = 0; i < 4; i++, n++)
+                Add(houses[n % houses.Length], cx + (0.4f + (i % 2) * 0.46f) * qx, cz + (0.4f + (i / 2) * 0.46f) * qz, town, house,
+                    n % 3 == 2 ? new Color(0.66f, 0.64f, 0.60f) : plaster);
+        }
         Add("iso_crates", x0 + 0.25f, z0 + 0.25f, town, new Vector3(0.1f, 0.08f, 0.1f), wood);
 
         // 河邊農村（第 8～10 欄、第 6～8 列；方田第 11～13 欄、第 5～7 列）。
         var village = Map.Settlements[1].Id;
         var thatch = new Color(0.82f, 0.68f, 0.38f);
-        var spots = new[] { (8.5f, 6.4f), (8.6f, 7.6f), (9.5f, 6.55f), (9.55f, 7.7f), (10.45f, 6.35f), (10.5f, 7.55f), (9.15f, 8.55f), (10.35f, 8.6f) };
-        for (var i = 0; i < spots.Length; i++)
-            Add(i % 2 == 0 ? "iso_house_thatch" : "iso_house_thatch_2", spots[i].Item1, spots[i].Item2, village, house, thatch, flip: i % 3 == 0);
-        Add("iso_mill", 8.25f, 5.72f, village, new Vector3(0.35f, 0.4f, 0.4f), plaster);
-        Add("iso_waterwheel", 7.93f, 5.72f, village, new Vector3(0.08f, 0.4f, 0.4f), wood, frames: 4);
-        Add("iso_well", 9.95f, 7.3f, village, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
+        // 房子：沿東西向小路（第 7.08 列）兩排、第三排兩棟，等距、全部朝南。
+        foreach (var (x, z, art) in new[] { (9.05f, 6.62f, "iso_house_thatch"), (9.7f, 6.62f, "iso_house_thatch"), (10.35f, 6.62f, "iso_house_thatch"),
+                     (9.05f, 7.62f, "iso_house_thatch_2"), (9.7f, 7.62f, "iso_house_thatch_2"), (10.35f, 7.62f, "iso_house_thatch_2"),
+                     (9.4f, 8.5f, "iso_house_thatch"), (10.05f, 8.5f, "iso_house_thatch") })
+            Add(art, x, z, village, house, thatch);
+        Add("iso_mill", 8.4f, 6.3f, village, new Vector3(0.35f, 0.4f, 0.4f), plaster, flip: true); // 翻轉：輪軸朝河
+        Add("iso_waterwheel", 8.0f, 6.78f, village, new Vector3(0.08f, 0.4f, 0.4f), wood, frames: 4);
+        Add("iso_well", 10.85f, 7.1f, village, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
         Add("iso_bridge", 7.5f, 7.5f, village, new Vector3(1.3f, 0.06f, 0.22f), wood, flip: true, ground: true);
         for (var c = 11; c <= 13; c++)
             for (var r = 5; r <= 7; r++)
@@ -151,6 +156,9 @@ public partial class IsoSpriteView : Control
                 float H(int k) => IsoProtoMap.Hash01(c, r, k);
                 switch (Map.TerrainAt(c, r))
                 {
+                    case IsoTerrain.Forest when H(7) < 0.3f:
+                        Add("iso_tree_grove", c + 0.5f, r + 0.55f, 0, new Vector3(0.6f, 0.45f, 0.6f), new Color(0.22f, 0.44f, 0.22f), flip: H(8) < 0.5f);
+                        break;
                     case IsoTerrain.Forest:
                         for (var k = 0; k < 3 + (int)(H(5) * 2f); k++)
                             Add(trees[(int)(H(70 + k) * trees.Length) % trees.Length], c + 0.15f + 0.7f * H(20 + k), r + 0.15f + 0.7f * H(40 + k), 0,
@@ -237,6 +245,7 @@ public partial class IsoSpriteView : Control
             for (var c = Math.Max(0, sum - IsoProtoMap.Rows + 1); c <= Math.Min(IsoProtoMap.Columns - 1, sum); c++)
                 DrawCell(c, sum - c, cliff);
         DrawGridAndFoam();
+        DrawRoads();
         if (_showRealms.ButtonPressed)
             DrawRealms(strategic ? 0.45f : 0.22f);
         if (strategic)
@@ -304,6 +313,21 @@ public partial class IsoSpriteView : Control
                     Face(new[] { a + Vector3.Up * y, b + Vector3.Up * y, b + Vector3.Up * h, a + Vector3.Up * h }, new Color(0.18f, 0.45f, 0.70f, 0.85f), null);
                 }
         }
+    }
+
+    /// <summary>城鎮的十字石子主街（有 iso_tex_road 就貼紋理）。</summary>
+    private void DrawRoads()
+    {
+        var road = Art("iso_tex_road");
+        var y = IsoProtoMap.LandTop + 0.002f;
+        const float x0 = 2.08f, x1 = 4.92f, z0 = 5.08f, z1 = 7.92f, half = 0.13f;
+        var cx = (x0 + x1) / 2f;
+        var cz = (z0 + z1) / 2f;
+        var color = road is null ? new Color(0.78f, 0.72f, 0.60f) : Colors.White;
+        Vector2 Uv(Vector3 p) => new(p.X * 1.5f, p.Z * 1.5f);
+        Face(new[] { new Vector3(x0, y, cz - half), new Vector3(x1, y, cz - half), new Vector3(x1, y, cz + half), new Vector3(x0, y, cz + half) }, color, road, Uv);
+        Face(new[] { new Vector3(cx - half, y, z0), new Vector3(cx + half, y, z0), new Vector3(cx + half, y, z1 + 0.4f), new Vector3(cx - half, y, z1 + 0.4f) }, color, road, Uv);
+        Face(new[] { new Vector3(cx - 0.36f, y, cz - 0.36f), new Vector3(cx + 0.36f, y, cz - 0.36f), new Vector3(cx + 0.36f, y, cz + 0.36f), new Vector3(cx - 0.36f, y, cz + 0.36f) }, color, road, Uv);
     }
 
     /// <summary>淡淡的格線（陸地與水面）與水陸交界的浪花。</summary>
@@ -384,7 +408,7 @@ public partial class IsoSpriteView : Control
                 var fw = texture.GetWidth() / (float)s.Frames;
                 var size = new Vector2(fw, texture.GetHeight()) * _zoom * s.Scale;
                 // 地面類（方田、橋）：精靈圖底部對齊格的最前方角落；其他：底部中心對齊所在位置。
-                var anchor = s.Ground ? Screen(s.At.X + 0.5f * s.Block.X, s.At.Y, s.At.Z + 0.5f * s.Block.Z) + new Vector2(0f, HalfH * 0.05f) : foot;
+                var anchor = s.Ground ? new Vector2(foot.X, Screen(s.At.X + 0.5f * s.Block.X, s.At.Y, s.At.Z + 0.5f * s.Block.Z).Y + HalfH * 0.05f) : foot;
                 box = new Rect2(anchor - new Vector2(size.X / 2f, size.Y), size);
                 var source = new Rect2(fw * (s.Frames > 1 ? frame : 0), 0f, fw, texture.GetHeight());
                 if (s.Flip)
