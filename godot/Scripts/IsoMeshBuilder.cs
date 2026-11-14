@@ -76,6 +76,13 @@ public sealed class IsoMeshBuilder
         Quad(t, P(-1, -1, -1), P(1, -1, -1), P(1, 1, -1), P(-1, 1, -1), color, center);
     }
 
+    /// <summary>方塊（中心在零件原點）。</summary>
+    public void Box(Transform3D t, Vector3 size, Color color, Color? top = null) => Box(t, Vector3.Zero, size, color, top);
+
+    /// <summary>斜頂（底面在零件原點）。</summary>
+    public void Prism(Transform3D t, Vector3 size, Color color, Color? gable = null, int bands = 1, Color? alt = null)
+        => Prism(t, Vector3.Zero, size, color, gable, bands, alt);
+
     /// <summary>
     /// 斜頂（屋脊沿零件 Z 軸，底面在 <paramref name="bottom"/>）：兩個斜面各分 <paramref name="bands"/> 條（瓦片或茅草一排排的深淺，
     /// <paramref name="alt"/> 有給時兩色交錯＝條紋篷布），兩端的山牆用 <paramref name="gable"/>。
