@@ -565,7 +565,7 @@
 | `godot/Scripts/DemoHexMap.Battles.cs` | 4 | 第 08-18h 章戰鬥動畫：長度 4 秒（行軍佔 55%）、只畫 ⚔ 的格半徑門檻 14、同時最多 8 場；第 08-18j 章死亡每 4 人多倒下一個、兵力條的格半徑門檻 18 |
 | `godot/Scripts/DemoHexMap.Wars.cs` | 1 | 第 08-18m 章戰爭表現：軍旗 14 像素、比分條寬 52 像素、佔領斜線間距 0.32 格半徑 |
 | `godot/Scripts/IsoPrototype.KayKit.cs` | 1 | 第 08-20b 章 KayKit 模型縮放：房子 0.38、大型建築 0.42、角樓 0.26、樹與山 0.5 |
-| `godot/Scripts/IsoPrototype.Map.cs` | 3 | 第 08-20 章 3D 原型：16×12 手擺小地圖、地塊與水面高度、地板厚度；08-20b 抬高一階 0.14 |
+| `godot/Scripts/IsoPrototype.Map.cs` | 2 | 第 08-20 章 3D 原型：16×12 手擺小地圖、地塊與水面高度、地板厚度 |
 | `godot/Scripts/IsoPrototype.cs` | 1 | 第 08-20 章 3D 原型：鏡頭大小範圍、近景／區域／戰略的切換門檻 |
 | `godot/Scripts/IsoSpriteView.cs` | 1 | 第 08-20a 章 2D 等角原型：最大放大時一格 256×128、高度 1＝128 像素、縮放 0.18～1、低於 0.32 畫色塊 |
 | `godot/Scripts/TerrainSurface.cs` | 7 | 第 08-18b 章方格地表：每格半徑 48 圖像素（一格 6×6 方格、每方格 16）、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
