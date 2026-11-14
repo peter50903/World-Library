@@ -129,11 +129,11 @@ public partial class IsoSpriteView : Control
         // 河邊農村（第 8～10 欄、第 6～8 列；方田第 11～13 欄、第 5～7 列）。
         var village = Map.Settlements[1].Id;
         var thatch = new Color(0.82f, 0.68f, 0.38f);
-        var spots = new[] { (8.5f, 6.4f), (8.6f, 7.6f), (9.5f, 6.55f), (9.55f, 7.7f), (10.45f, 6.35f), (10.5f, 7.55f), (9.15f, 8.55f), (10.35f, 8.6f) };
+        var spots = new[] { (9.05f, 6.1f), (8.6f, 7.6f), (9.5f, 6.55f), (9.55f, 7.7f), (10.45f, 6.35f), (10.5f, 7.55f), (9.15f, 8.55f), (10.35f, 8.6f) };
         for (var i = 0; i < spots.Length; i++)
             Add(i % 2 == 0 ? "iso_house_thatch" : "iso_house_thatch_2", spots[i].Item1, spots[i].Item2, village, house, thatch, flip: i % 3 == 0);
-        Add("iso_mill", 8.25f, 5.72f, village, new Vector3(0.35f, 0.4f, 0.4f), plaster);
-        Add("iso_waterwheel", 7.93f, 5.72f, village, new Vector3(0.08f, 0.4f, 0.4f), wood, frames: 4);
+        Add("iso_mill", 8.4f, 6.3f, village, new Vector3(0.35f, 0.4f, 0.4f), plaster, flip: true); // 翻轉：輪軸朝河
+        Add("iso_waterwheel", 8.0f, 6.78f, village, new Vector3(0.08f, 0.4f, 0.4f), wood, frames: 4);
         Add("iso_well", 9.95f, 7.3f, village, new Vector3(0.12f, 0.12f, 0.12f), new Color(0.65f, 0.64f, 0.60f));
         Add("iso_bridge", 7.5f, 7.5f, village, new Vector3(1.3f, 0.06f, 0.22f), wood, flip: true, ground: true);
         for (var c = 11; c <= 13; c++)
