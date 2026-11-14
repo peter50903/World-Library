@@ -92,7 +92,7 @@ add(G, "brick_house_2", 4, 4, 0.4, "house", "首都磚造連棟屋：兩戶並�
 
 G = "B 公共建築"
 add(G, "hall_village", 4, 4, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
-add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、門前兩根旗桿（旗灰階）、門上掛徽章（不寫字）", "城鎮中心", mat="stone", win=4, floors=2, door=12)
+add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、一座小鐘樓（位置自由發揮）、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
 add(G, "market", 5, 3, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
 add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、一座尖塔（位置自由發揮）、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
 add(G, "smithy", 4, 3, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
@@ -104,7 +104,7 @@ add(G, "mine", 4, 3, 0.0, "mine", "礦坑入口：岩石山丘上的木框坑道
 add(G, "shrine", 2, 3, 0.45, "house", "小祠：石台上的小神龕、灰階小屋頂、香爐與花", "村莊以上的信仰（有信仰時）", mat="stone", win=0, door=6)
 add(G, "kiln", 3, 3, 0.0, "kiln", "窯：圓頂磚窯冒煙、柴堆、陶罐", "城鎮以上")
 add(G, "granary", 3, 3, 0.45, "granary", "穀倉：高腳木倉（防鼠）、灰階屋頂、麻袋", "村莊以上")
-add(G, "school", 4, 4, 0.42, "house", "學校：兩層石木建築、門前小庭院與長椅", "城市以上", mat="plaster", win=4, floors=2)
+add(G, "school", 4, 4, 0.42, "house", "學校：兩層石木建築、一座小鐘樓（位置自由發揮）、門前小庭院", "城市以上", mat="plaster", win=4, floors=2, tower=True)
 add(G, "scriptorium", 4, 4, 0.42, "house", "抄經房：石砌建築、大拱窗、門邊書架", "首都", mat="stone", win=2, floors=2)
 add(G, "hunting_lodge", 3, 3, 0.5, "house", "獵人小屋：原木屋、門上掛鹿角、牆邊晾毛皮", "營地與村莊（獵場）", mat="log", win=1)
 add(G, "fishing_hut", 3, 3, 0.45, "granary", "漁夫高腳屋：木樁撐起的小屋、晾漁網、小木梯", "臨水聚落（岸上）")
