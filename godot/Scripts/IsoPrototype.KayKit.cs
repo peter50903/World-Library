@@ -50,6 +50,14 @@ public partial class IsoPrototypeView
         return n > 0.62f ? KitColor(186, 194, 74) : n < 0.3f ? KitColor(146, 160, 52) : KitColor(170, 182, 62);
     }
 
+    /// <summary>格點上的平滑色調（相鄰格共用同一點，所以看不出格線）：深草 → 一般 → 亮草。</summary>
+    private static Color KitVertexTone(int x, int z)
+    {
+        var n = IsoProtoMap.Hash01(x / 3, z / 3, 51) * 0.5f + IsoProtoMap.Hash01(x, z, 52) * 0.5f;
+        var mid = KitColor(170, 182, 62);
+        return n < 0.5f ? KitColor(146, 160, 52).Lerp(mid, n * 2f) : mid.Lerp(KitColor(186, 194, 74), (n - 0.5f) * 2f);
+    }
+
     private static readonly Color KitPath = KitColor(214, 170, 118), KitPathEdge = KitColor(184, 140, 94);
 
     /// <summary>土路（沿 X 或 Z 軸的直段）：淺色路面加一圈深色路緣。</summary>
@@ -185,7 +193,8 @@ public partial class IsoPrototypeView
         Road(roads, 4.88f, 6.5f, 6.61f, 6.5f, 0.22f);
         Road(roads, 6.5f, 6.39f, 6.5f, 7.61f, 0.22f);
         Road(roads, 6.39f, 7.5f, 7f, 7.5f, 0.22f);
-        Kit(_detail, "building_bridge_A", V(7.5f, IsoProtoMap.LandTop, 7.5f), 90f, scale3: new Vector3(0.32f, 0.5f, 0.53f));
+        // 橋：模型是給六角河道用的，橋身沿 Z 軸偏 30 度；轉 60 度後正好沿 X 軸、對齊道路（使用者 2026-11-14：路是直的、橋卻是歪的）。
+        Kit(_detail, "building_bridge_A", V(7.5f, IsoProtoMap.LandTop, 7.5f), 60f, 0.6f);
         Road(roads, 8f, 7.5f, 11f, 7.5f, 0.22f);
         Kit(_trees, "building_lumbermill_yellow", V(6f, IsoProtoMap.LandTop, 4.45f), 0f, TempKitLarge);
         Kit(_trees, "resource_lumber", V(5.55f, IsoProtoMap.LandTop, 4.75f), 0f, 0.5f);

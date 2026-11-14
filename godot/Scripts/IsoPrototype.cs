@@ -190,7 +190,7 @@ public partial class IsoPrototypeView : Control
             {
                 var t = Map.TerrainAt(c, r);
                 var h = Map.TopOf(c, r);
-                var jitter = IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
+                var jitter = UsesKit ? 0f : IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
                 var top = UsesKit ? KitTone(c, r, t) : t switch
                 {
                     IsoTerrain.Sea => new Color(0.55f, 0.62f, 0.55f),
@@ -201,23 +201,31 @@ public partial class IsoPrototypeView : Control
                     _ => new Color(0.56f, 0.70f, 0.32f)
                 };
                 top = top.Lightened(jitter > 0f ? jitter : 0f).Darkened(jitter < 0f ? -jitter : 0f);
-                var peak = new Vector3(c + 0.5f, h + Map.PeakOf(c, r), r + 0.5f);
+                // 第 08-20b 章（使用者 2026-11-14：不要一格一格的格線）：KayKit 色調下草地與森林是平的，
+                // 顏色取在格點上（相鄰格共用），整片平滑漸變，看不出格子的邊。
+                var smooth = UsesKit && t is (IsoTerrain.Grass or IsoTerrain.Forest);
+                var peak = new Vector3(c + 0.5f, h + (smooth ? 0f : Map.PeakOf(c, r)), r + 0.5f);
                 var corners = new[] { new Vector3(c, h, r), new Vector3(c + 1, h, r), new Vector3(c + 1, h, r + 1), new Vector3(c, h, r + 1) };
-                for (var i = 0; i < 4; i++)
+                if (smooth)
                 {
-                    // 丘陵：高處帶一點雪白，低多邊形的每一面亮暗不同。
-                    var face = t == IsoTerrain.Hill && peak.Y > IsoProtoMap.HillTop + 0.38f && i % 2 == 0 ? new Color(0.92f, 0.93f, 0.95f) : top;
-                    Tri(corners[i], corners[(i + 1) % 4], peak, face.Darkened(i * 0.025f));
+                    var tones = new[] { KitVertexTone(c, r), KitVertexTone(c + 1, r), KitVertexTone(c + 1, r + 1), KitVertexTone(c, r + 1) };
+                    var mid = tones[0].Lerp(tones[2], 0.5f).Lerp(tones[1].Lerp(tones[3], 0.5f), 0.5f);
+                    for (var i = 0; i < 4; i++)
+                        foreach (var (v, color) in new[] { (corners[i], tones[i]), (corners[(i + 1) % 4], tones[(i + 1) % 4]), (peak, mid) })
+                        {
+                            st.SetColor(color);
+                            st.SetNormal(Vector3.Up);
+                            st.AddVertex(v);
+                        }
+                    top = mid;
                 }
-                // 第 08-20b 章：KayKit 色調下，每格東、南兩邊一條稍暗的倒角，看得出一格一格。
-                if (UsesKit && !Map.IsWater(c, r))
-                {
-                    const float rim = 0.035f;
-                    var edge = top.Darkened(0.14f);
-                    var ry = h + 0.002f;
-                    Quad(new Vector3(c, ry, r + 1 - rim), new Vector3(c + 1, ry, r + 1 - rim), new Vector3(c + 1, ry, r + 1), new Vector3(c, ry, r + 1), Vector3.Up, edge);
-                    Quad(new Vector3(c + 1 - rim, ry, r), new Vector3(c + 1, ry, r), new Vector3(c + 1, ry, r + 1), new Vector3(c + 1 - rim, ry, r + 1), Vector3.Up, edge);
-                }
+                else
+                    for (var i = 0; i < 4; i++)
+                    {
+                        // 丘陵：高處帶一點雪白，低多邊形的每一面亮暗不同。
+                        var face = t == IsoTerrain.Hill && peak.Y > IsoProtoMap.HillTop + 0.38f && i % 2 == 0 ? new Color(0.92f, 0.93f, 0.95f) : top;
+                        Tri(corners[i], corners[(i + 1) % 4], peak, face.Darkened(i * 0.025f));
+                    }
                 // 側面：東、南、西、北；鄰格比較低（或在地圖外）才畫。
                 foreach (var (dc, dr, normal) in new[] { (1, 0, Vector3.Right), (0, 1, Vector3.Back), (-1, 0, Vector3.Left), (0, -1, Vector3.Forward) })
                 {
