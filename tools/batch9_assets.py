@@ -36,6 +36,8 @@ STYLE = """你要為一款像素風「上帝視角世界模擬」遊戲畫一批
 **共同規格（每一張都要遵守）**
 - **視角：完全正面**。像 2D 寶可夢的房子：看得到屋頂（畫面上半）與建築的南面（畫面下半），**左右對稱的正面透視**，
   不要斜角、不要等角（45 度）、不要看到東西兩側的牆。每棟只有這一個方向，門一律在南面。
+- **屋頂一律是人字頂、屋脊南北向**：從正面看，屋脊是畫面正中的一條直線，屋頂分成**左右兩坡**（左坡亮、右坡暗，瓦片沿坡面直排），
+  南面是**三角形的山牆**（牆的材質，可開小圓窗或通風口），屋簷沿山牆兩斜邊。不要畫成一整片朝向鏡頭的前坡。
 - **尺寸精確**：規格欄的寬×高就是成品的像素數（每個像素是一個「大像素」，一個地圖方格＝16×16）。
   建築**左右填滿到圖邊**（最多留 1 像素）、**底邊貼齊圖底**；門畫在門面底部、門底貼齊圖底（草圖的深褐色塊）。
   輸出時請直接給表中的實際尺寸；做不到的話給整數倍放大（例如 ×8，每個大像素是同大小的方塊），匯入時會縮回。
@@ -75,7 +77,7 @@ add(G, "tent_2", 2, 2, 1.0, "tent", "營地帳篷變化：圓錐帳、旁邊插�
 add(G, "hut_1", 3, 3, 0.5, "house", "村莊木屋：原木牆、灰階木瓦斜頂、木門、一扇小窗", "村莊的住屋", mat="log", win=1)
 add(G, "hut_2", 3, 3, 0.5, "house", "村莊木屋變化：屋頂有補丁、門邊掛乾草、窗台放陶罐", "村莊的住屋", mat="log", win=1, chimney=True)
 add(G, "house_1", 3, 4, 0.45, "house", "城鎮兩層房：石砌一樓、二樓白灰牆與深色木骨架、灰階斜頂、磚煙囪", "城鎮的住屋", mat="plaster", win=2, floors=2, chimney=True)
-add(G, "house_2", 3, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、灰階斜頂上有老虎窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2, dormer=True)
+add(G, "house_2", 3, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、山牆上一扇圓窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2)
 add(G, "house_3", 3, 4, 0.45, "house", "城鎮兩層房變化：二樓陽台欄杆、門上小雨遮", "城鎮的住屋", mat="plaster", win=2, floors=2)
 add(G, "stone_house_1", 3, 4, 0.42, "house", "城市石屋：暖灰石塊牆、灰階瓦頂、拱形木門、石框窗、煙囪", "城市的住屋", mat="stone", win=2, floors=2, chimney=True)
 add(G, "stone_house_2", 3, 5, 0.36, "house", "城市石屋變化：三層窄樓、屋頂兩個煙囪", "城市的住屋", mat="stone", win=2, floors=3, chimney=True)
@@ -160,6 +162,24 @@ def roof(d, x0, y0, x1, y1, inset=2):
     d.line([x0 + inset, y0, x1 - inset, y0], fill=C["roof_l"] + (255,))
 
 
+def gable_roof(d, x0, y0, x1, y1, wall, gable_h=None):
+    """人字頂、屋脊南北向（正面看）：屋頂分左右兩坡（左亮右暗、瓦片直紋），正面是三角山牆（牆材質）。"""
+    w = x1 - x0 + 1
+    mid = x0 + w // 2
+    gh = gable_h if gable_h is not None else min(y1 - y0 - 2, max(6, int(w * 0.32)))
+    d.rectangle([x0, y0, mid - 1, y1], fill=C["roof_l"] + (255,))
+    d.rectangle([mid, y0, x1, y1], fill=C["roof"] + (255,))
+    for x in range(x0 + 2, x1, 3):
+        d.line([x, y0 + 1, x, y1], fill=(C["roof"] if x < mid else C["roof_d"]) + (255,))
+    d.line([mid, y0, mid, y1 - gh], fill=C["roof_d"] + (255,), width=2)
+    d.rectangle([x0, y0, x1, y1], outline=C["roof_d"] + (255,))
+    apex = (mid, y1 - gh)
+    d.polygon([(x0 + 2, y1), (x1 - 2, y1), apex], fill=C[wall] + (255,))
+    d.line([(x0 + 1, y1), apex, (x1 - 1, y1)], fill=C["roof_d"] + (255,), width=2)
+    if gh >= 8:
+        d.ellipse([mid - 2, y1 - gh // 2 - 1, mid + 1, y1 - gh // 2 + 2], fill=C["win"] + (255,))
+
+
 def material(d, x0, y0, x1, y1, mat):
     col = C[mat]
     box(d, x0, y0, x1, y1, col)
@@ -188,10 +208,10 @@ def sketch_house(W, H, roof_frac, kw):
     if kw.get("chimney"):
         box(d, W - 12, 0, W - 8, rh // 2, C["brick"])
     top = 0
+    gable_roof(d, 0, max(top, kw.get("chimney") and 2 or 0), W - 1, rh - 1, kw.get("mat", "plaster") if kw.get("mat") != "log" else "wood")
     if kw.get("tower"):
         box(d, W // 2 - 5, 0, W // 2 + 4, rh // 2 + 2, C["plaster"])
         box(d, W // 2 - 2, 3, W // 2 + 1, 6, C["metal"])
-    roof(d, 0, max(top, kw.get("chimney") and 2 or 0), W - 1, rh - 1, inset=min(4, W // 8))
     if kw.get("spire"):
         sw = W // 5
         box(d, W // 2 - sw // 2, H // 8, W // 2 + sw // 2, rh + 4, C["stone"])
@@ -253,7 +273,7 @@ def sketch(kind, W, H, roof_frac, kw, frame=0):
         box(d, W // 2 - 5, H - 10, W // 2 + 4, H - 1, C["dark"])
     elif kind == "granary":
         rh = int(H * roof_frac)
-        roof(d, 0, 0, W - 1, rh - 1, inset=4)
+        gable_roof(d, 0, 0, W - 1, rh - 1, "wood")
         box(d, 2, rh, W - 3, H - 10, C["wood"])
         for x in (3, W // 2 - 1, W - 6):
             box(d, x, H - 9, x + 2, H - 1, C["log"])
