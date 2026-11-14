@@ -273,6 +273,10 @@ public partial class ObserverRoot
         _toolIso = ToolButton("", "3D", "美術原型：3D 等角小場景（河邊農村、木柵城鎮、河流與藍金勢力邊界；試看用，不影響世界）");
         _toolIso.Pressed += OpenIsoPrototype;
         row.AddChild(_toolIso);
+        // 第 08-20a 章：2D 等角（偽 3D）原型。
+        _toolIso2d = ToolButton("", "等角", "美術原型：2D 等角小場景（第七批等角插畫素材；素材到之前建築畫成色塊；試看用，不影響世界）");
+        _toolIso2d.Pressed += OpenIsoSprites;
+        row.AddChild(_toolIso2d);
         // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
@@ -449,7 +453,28 @@ public partial class ObserverRoot
         return true;
     }
 
-    private Button _toolIso = null!;
+    private Button _toolIso = null!, _toolIso2d = null!;
+    private IsoSpriteView? _isoSprites;
+
+    /// <summary>第 08-20a 章：打開 2D 等角原型（蓋在整個介面上；暫停播放）。</summary>
+    private void OpenIsoSprites()
+    {
+        if (_isoSprites is not null)
+            return;
+        PausePlayback();
+        _isoSprites = new IsoSpriteView();
+        _isoSprites.Closed += CloseIsoSprites;
+        AddChild(_isoSprites);
+    }
+
+    private void CloseIsoSprites()
+    {
+        if (_isoSprites is null)
+            return;
+        RemoveChild(_isoSprites);
+        _isoSprites.QueueFree();
+        _isoSprites = null;
+    }
     private IsoPrototypeView? _isoView;
 
     /// <summary>第 08-20 章：打開 3D 等角原型（蓋在整個介面上；暫停播放）。</summary>
@@ -545,6 +570,15 @@ public partial class ObserverRoot
         CloseIsoPrototype();
         if (_isoView is not null)
             fail("3D prototype did not close.");
+        // 第 08-20a 章：2D 等角原型打得開、擺得出來、投影與點選一致，關閉後回到地圖。
+        _toolIso2d.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_isoSprites is null)
+            fail("2D iso prototype did not open.");
+        else if (_isoSprites.SelfCheck() is { Length: > 0 } spriteProblem)
+            fail(spriteProblem);
+        CloseIsoSprites();
+        if (_isoSprites is not null)
+            fail("2D iso prototype did not close.");
 
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
