@@ -232,7 +232,7 @@ public partial class TerrainSurface : Control
     private IReadOnlyDictionary<int, byte> _ground = NoGround; // 方格編號（列×方格欄數＋欄）→ 聚落地面種類
 
     /// <summary>聚落地面種類（第 08-17 章第 4 節）。</summary>
-    public const byte GroundPlazaDirt = 1, GroundPlazaStone = 2, GroundRoad = 3, GroundYard = 4, GroundCobble = 5, GroundStreet = 6;
+    public const byte GroundPlazaDirt = 1, GroundPlazaStone = 2, GroundRoad = 3, GroundYard = 4, GroundCobble = 5, GroundStreet = 6, GroundBrick = 7;
 
     /// <summary>方格欄數、列數。</summary>
     public int TilesX => _tilesX;
@@ -272,9 +272,12 @@ public partial class TerrainSurface : Control
         var ty = y / TempTile;
         var art = kind switch
         {
+            // 第 08-20e 章：第九批路面（泥土路、石頭路、磚地各兩款）優先。
+            GroundRoad => Tex(Art.FrontDirt, tx, ty, x, y) ?? Tex(Art.RoadDirt, tx, ty, x, y),
+            GroundStreet => Tex(Art.FrontStone, tx, ty, x, y) ?? Tex(Art.RoadCobble, tx, ty, x, y),
+            GroundBrick => Tex(Art.FrontBrick, tx, ty, x, y) ?? Tex(Art.FrontStone, tx, ty, x, y) ?? Tex(Art.RoadCobble, tx, ty, x, y),
             GroundPlazaStone => Tex(Art.PlazaStone, tx, ty, x, y),
-            GroundCobble or GroundStreet => Tex(Art.RoadCobble, tx, ty, x, y),
-            GroundRoad => Tex(Art.RoadDirt, tx, ty, x, y),
+            GroundCobble => Tex(Art.RoadCobble, tx, ty, x, y),
             GroundYard => Tex(Art.Yard, tx, ty, x, y),
             _ => Tex(Art.PlazaDirt, tx, ty, x, y)
         };
@@ -287,7 +290,7 @@ public partial class TerrainSurface : Control
         {
             GroundPlazaStone => (x / 8 + y / 8) % 2 == 0 ? Paving[0] : Paving[1], // 石板廣場（8×8 小石板交錯）
             GroundCobble => ix == 0 || iy == 0 ? Paving[2] : Pick(Paving, h * 0.66f), // 城內石子路
-            GroundStreet => h < 0.15f ? Paving[2] : Paving[1],
+            GroundStreet or GroundBrick => h < 0.15f ? Paving[2] : Paving[1],
             GroundRoad => h < 0.12f ? Soil[0] : Pick(RoadDirt, h), // 土路
             GroundYard => Pick(Yard, h),
             _ => h < 0.1f ? Soil[1] : Pick(Yard, h) // 夯土廣場

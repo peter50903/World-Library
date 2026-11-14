@@ -13,14 +13,14 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>一塊建築地塊（方格座標；左上角與寬高）。</summary>
-    public readonly record struct Lot(int X, int Y, int W, int H, Building Kind, bool Construction = false, int Facing = 0);
+    public readonly record struct Lot(int X, int Y, int W, int H, Building Kind, bool Construction = false, int Facing = 0, int Variant = 1);
 
     /// <summary>第 08-20c 章：建築的門朝哪邊（0＝南、1＝東、2＝北、3＝西），對應烘焙素材的 _s／_e／_n／_w。</summary>
     private static readonly string[] FacingSuffix = { "s", "e", "n", "w" };
 
     /// <summary>一個聚落的版面。<see cref="Wall"/>＝城牆或木柵圍住的方格範圍（沒有＝null）。</summary>
     public sealed record SettlementPlan(int SettlementId, Rect2I Plaza, IReadOnlyList<Vector2I> Roads, IReadOnlyList<Lot> Lots, Rect2I? Wall, bool StoneWall,
-        IReadOnlyList<Vector2I> Gates, Rect2I? InnerWall = null, IReadOnlyList<Vector2I>? InnerGates = null);
+        IReadOnlyList<Vector2I> Gates, Rect2I? InnerWall = null, IReadOnlyList<Vector2I>? InnerGates = null, int WallKind = -1);
 
     /// <summary>【TEMP】廣場邊長、道路長度（方格）。</summary>
     private static int PlazaSize(DemoSettlementTier tier) => tier switch
@@ -52,10 +52,11 @@ public partial class DemoHexMap
         DemoSettlementTier.Camp => Building.Tent,
         DemoSettlementTier.Village => index < Math.Max(1, count / 5) ? Building.House : Building.Hut,
         DemoSettlementTier.Town => index < count * 3 / 10 ? Building.StoneHouse : index >= count * 8 / 10 ? Building.Hut : Building.House,
-        _ => index >= count * 7 / 10 ? Building.House : Building.StoneHouse
+        DemoSettlementTier.City => index >= count * 7 / 10 ? Building.House : Building.StoneHouse,
+        _ => index < count * 6 / 10 ? Building.BrickHouse : Building.StoneHouse // 第 08-20e 章：首都以磚屋為主
     };
 
-    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse;
+    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse or Building.BrickHouse;
 
     /// <summary>住屋數與是否有建地（人口快到下一棟時）。</summary>
     private static (int Houses, bool Building) HouseCount(long people, DemoSettlementTier tier)
@@ -141,32 +142,34 @@ public partial class DemoHexMap
         }
     }
 
-    /// <summary>建築地塊的大小（方格）：寬依素材寬度、深 2～4 格；素材往上長出地塊（俯視略帶正面）。</summary>
-    private static (int W, int H) LotSize(Building kind) => kind switch
+    /// <summary>
+    /// 第 08-20e 章：建築佔的方格＝第九批素材的寬高÷16（整張就是它的範圍；門在底部正中）。
+    /// <paramref name="variant"/>＝款式（石屋第 2 款三層、磚屋第 2 款連棟比較大）。
+    /// </summary>
+    private static (int W, int H) LotSize(Building kind, int variant = 1) => kind switch
     {
-        Building.Tent => (2, 2),
-        Building.Market or Building.Temple => (5, 3),
-        Building.Keep => (5, 4),
-        Building.Well => (2, 2),
-        Building.HallTown => (5, 3),
-        Building.HallVillage or Building.School or Building.Scriptorium => (4, 3),
-        Building.Smithy or Building.Workshop or Building.Windmill => (4, 2),
-        Building.Watchtower => (2, 2),
-        _ => (3, 2)
-    };
-
-    /// <summary>【TEMP】建築素材高出地塊幾方格（屋地往上多鋪幾列，讓整棟房子站在泥土地上）。</summary>
-    private static int LotOverhang(Building kind) => kind switch
-    {
-        Building.Temple or Building.Keep or Building.Windmill or Building.Watchtower => 2,
-        Building.Tent or Building.Well => 0,
-        _ => 1
+        Building.Tent or Building.Well => (2, 2),
+        Building.Hut or Building.Kiln or Building.Granary or Building.HuntingLodge or Building.FishingHut or Building.Dock => (3, 3),
+        Building.House => (3, 4),
+        Building.StoneHouse => variant == 2 ? (3, 5) : (3, 4),
+        Building.BrickHouse => variant == 2 ? (4, 4) : (3, 4),
+        Building.HallVillage or Building.School or Building.Scriptorium => (4, 4),
+        Building.HallTown => (5, 5),
+        Building.Market => (5, 3),
+        Building.Temple => (5, 6),
+        Building.Smithy or Building.Workshop => (4, 3),
+        Building.Shrine => (2, 3),
+        Building.Keep => (6, 7),
+        Building.Watchtower => (2, 4),
+        Building.Windmill => (3, 5),
+        Building.Watermill => (5, 4),
+        _ => (3, 3)
     };
 
     private readonly Dictionary<int, SettlementPlan> _layouts = new();
     private readonly Dictionary<int, long> _layoutSignatures = new();
     private Dictionary<int, byte> _ground = new();
-    private (object?, object?, object?, object?, object?, object?, object?) _layoutKey;
+    private (object?, object?, object?, object?, object?, object?, object?, object?) _layoutKey;
 
     /// <summary>
     /// 全部聚落的版面；同時產生地表要畫的聚落地面。每個聚落只在自己的版面條件（等級、屋數、佔格、佔格上的田、信仰、井）改變時重算，
@@ -176,7 +179,7 @@ public partial class DemoHexMap
     {
         if (World is null || _surface is null)
             return;
-        var key = ((object?)World, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage, (object?)Land, (object?)FaithOf);
+        var key = ((object?)World, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage, (object?)Land, (object?)FaithOf, (object?)Hunters);
         if (key.Equals(_layoutKey))
             return;
         if (!ReferenceEquals(key.Item1, _layoutKey.Item1))
@@ -218,33 +221,24 @@ public partial class DemoHexMap
                 if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var o && (o < 0 || !IsField(o)))
                     ground[y * tx + x] = kind;
             }
-            if (layout.Wall is { } wall && tier >= DemoSettlementTier.City)
-                for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
-                    for (var x = wall.Position.X + 1; x < wall.End.X - 1; x++)
-                    {
-                        var inside = _surface.TileOwner(x, y);
-                        if (inside >= 0 && IsLand(inside) && !IsField(inside))
-                            ground.TryAdd(y * tx + x, TerrainSurface.GroundCobble); // 城內：石子地
-                    }
+            // 第 08-20e 章：牆內道路與廣場——營地、村莊泥土路，城鎮石頭路，城市以上磚地（第九批路面）。
+            var street = tier switch
+            {
+                DemoSettlementTier.Camp or DemoSettlementTier.Village => TerrainSurface.GroundRoad,
+                DemoSettlementTier.Town => TerrainSurface.GroundStreet,
+                _ => TerrainSurface.GroundBrick
+            };
             foreach (var road in layout.Roads)
-                Mark(road.X, road.Y, tier >= DemoSettlementTier.Town ? TerrainSurface.GroundStreet : TerrainSurface.GroundRoad); // 城鎮以上石子路
+                Mark(road.X, road.Y, street);
             for (var y = layout.Plaza.Position.Y; y < layout.Plaza.End.Y; y++)
                 for (var x = layout.Plaza.Position.X; x < layout.Plaza.End.X; x++)
-                    Mark(x, y, tier >= DemoSettlementTier.Town ? TerrainSurface.GroundPlazaStone : TerrainSurface.GroundPlazaDirt);
+                    Mark(x, y, street);
+            // 建築的範圍鋪院子地（素材整張就是範圍，不再往外多鋪）；碼頭、水磨坊在水上的部分不鋪。
             foreach (var lot in layout.Lots)
                 for (var y = lot.Y; y < lot.Y + lot.H; y++)
                     for (var x = lot.X; x < lot.X + lot.W; x++)
-                        Mark(x, y, TerrainSurface.GroundYard);
-            // 試玩回饋 2026-11-08 第三次（房子下方的地板沒有完全包覆住圖案）：屋地往外多鋪——左右與下方各一方格、
-            // 上方依建築高出地塊的方格數（房子一格、神殿與主樓兩格），不蓋掉道路與廣場。
-            foreach (var lot in layout.Lots)
-            {
-                var above = LotOverhang(lot.Kind);
-                for (var y = lot.Y - above; y <= lot.Y + lot.H; y++)
-                    for (var x = lot.X - 1; x <= lot.X + lot.W; x++)
                         if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var inside and >= 0 && IsLand(inside) && !IsField(inside))
                             ground.TryAdd(y * tx + x, TerrainSurface.GroundYard);
-            }
         }
         _ground = ground;
         // 有聚落地面的格（給地表代碼：聚落格不長樹）。
@@ -267,7 +261,7 @@ public partial class DemoHexMap
         var (houses, building) = HouseCount(people, tier);
         unchecked
         {
-            var h = (long)tier * 1_000_003 + (houses * 2 + (building ? 1 : 0)) * 7919 + (FaithOf.ContainsKey(site.Id) ? 1 : 0);
+            var h = (long)tier * 1_000_003 + (houses * 2 + (building ? 1 : 0)) * 7919 + (FaithOf.ContainsKey(site.Id) ? 1 : 0) + (Hunters.Contains(site.Id) ? 2 : 0);
             foreach (var c in FootprintCells(site, tier))
                 h = h * 31 + c.Row * 65_537 + c.Column * 3 + (int)Land.StateOf(c);
             return h;
@@ -279,7 +273,16 @@ public partial class DemoHexMap
 
     private bool IsLand(int cell) => World!.Cells[cell].Terrain != DemoTerrain.Water;
 
-    /// <summary>可以蓋東西的方格：屬於這個聚落的佔格、是陸地、不是田、還沒被別的聚落用掉。</summary>
+    /// <summary>
+    /// 第 08-20e 章（使用者 2026-11-15：RimWorld、2D 寶可夢式的正面視角）：
+    /// <list type="bullet">
+    /// <item>建築一律正面、門在南面；每棟的圖正好填滿自己的方格範圍（<see cref="LotSize"/>），範圍不重疊，前後不互相遮住。</item>
+    /// <item>每棟的門正下方一格是道路或廣場；路網是廣場十字的主街，加上每隔「房子高度＋1」列一條的橫街（長短依雜湊，不排成棋盤）。</item>
+    /// <item>聚落一律圍起來（營地圍籬、村莊木柵、城鎮石牆、城市以上磚牆）；道路只從城門進出（主街穿過的地方），其餘的路收在牆內。</item>
+    /// <item>只有碼頭、水磨坊放進水裡；其他建築一律在陸地。</item>
+    /// </list>
+    /// 版面依聚落編號與方格固定決定（同一世界每次相同），只用聚落佔格（<see cref="FootprintCells"/>）裡的陸地，不壓田地。
+    /// </summary>
     private SettlementPlan ComputeLayout(DemoSettlement site)
     {
         var surface = _surface!;
@@ -288,9 +291,10 @@ public partial class DemoHexMap
         var cells = FootprintCells(site, tier).Select(c => c.Row * World!.Columns + c.Column).ToHashSet();
         var tx = surface.TilesX;
         var used = new HashSet<int>();
+        bool Inside(int x, int y) => x >= 0 && y >= 0 && x < tx && y < surface.TilesY;
         bool Free(int x, int y)
         {
-            if (x < 0 || y < 0 || x >= tx || y >= surface.TilesY)
+            if (!Inside(x, y))
                 return false;
             var o = surface.TileOwner(x, y);
             return o >= 0 && cells.Contains(o) && IsLand(o) && !IsField(o) && !used.Contains(y * tx + x);
@@ -298,7 +302,6 @@ public partial class DemoHexMap
         void Use(int x, int y) => used.Add(y * tx + x);
 
         var center = TerrainSurface.TileOfCell(site.Column, site.Row);
-        // 廣場：以格中心為中心（陸地不夠時照樣畫在能畫的方格上）。
         var size = PlazaSize(tier);
         var plaza = new Rect2I(center.X - size / 2, center.Y - size / 2, size, size);
         for (var y = plaza.Position.Y; y < plaza.End.Y; y++)
@@ -306,176 +309,253 @@ public partial class DemoHexMap
                 if (Free(x, y))
                     Use(x, y);
 
-        // 道路：從廣場四邊中點往外直走，遇到不能蓋的方格就停。
+        // ── 道路：廣場十字的主街（橫街從廣場下緣出發），再加平行的橫街 ──
         var roads = new List<Vector2I>();
-        var length = RoadLength(tier);
-        var tips = new List<(Vector2I Next, Vector2I Step)>(); // 每條路的下一格與方向（圍牆之後再延伸到城門）
-        if (length > 0)
+        var length = Math.Max(3, RoadLength(tier));
+        var mid = new Vector2I(plaza.Position.X + plaza.Size.X / 2, plaza.End.Y); // 主橫街在廣場正下方一列
+        var spine = mid.X; // 主縱街
+        void Walk(Vector2I from, Vector2I step, int count)
         {
-            var mid = plaza.Position + plaza.Size / 2;
-            foreach (var (dx, dy, sx, sy) in new[] { (1, 0, plaza.End.X, mid.Y), (-1, 0, plaza.Position.X - 1, mid.Y), (0, 1, mid.X, plaza.End.Y), (0, -1, mid.X, plaza.Position.Y - 1) })
+            var at = from;
+            for (var k = 0; k < count && Free(at.X, at.Y); k++, at += step)
             {
-                var k = 0;
-                for (; k < length; k++)
-                {
-                    var x = sx + dx * k;
-                    var y = sy + dy * k;
-                    if (!Free(x, y))
-                        break;
-                    Use(x, y);
-                    roads.Add(new Vector2I(x, y));
-                }
-                if (k == length)
-                    tips.Add((new Vector2I(sx + dx * k, sy + dy * k), new Vector2I(dx, dy)));
-                // 第 08-18b 章：支路——沿主路每隔幾方格往一側長出垂直的短路（直角路網，像 WorldBox 一樣慢慢長出去）。
-                for (var b = TempBranchEvery - 1; b < k - 1; b += TempBranchEvery)
-                {
-                    if (LayoutHash(site.Id, b, dx * 3 + dy) > TempBranchChance)
-                        continue;
-                    var side = LayoutHash(site.Id, b, dx * 5 + dy * 7 + 11) < 0.5f ? 1 : -1;
-                    var (bx, by) = (dy * side, dx * side); // 垂直方向
-                    var branch = Math.Max(2, (length - b) / 2);
-                    for (var j = 1; j <= branch; j++)
-                    {
-                        var x = sx + dx * b + bx * j;
-                        var y = sy + dy * b + by * j;
-                        if (!Free(x, y))
-                            break;
-                        Use(x, y);
-                        roads.Add(new Vector2I(x, y));
-                    }
-                }
+                Use(at.X, at.Y);
+                roads.Add(at);
             }
         }
+        Walk(mid, new Vector2I(1, 0), length);
+        Walk(mid - new Vector2I(1, 0), new Vector2I(-1, 0), length);
+        Walk(new Vector2I(spine, plaza.Position.Y - 1), new Vector2I(0, -1), length);
+        Walk(mid + new Vector2I(0, 1), new Vector2I(0, 1), length);
+        // 平行的橫街：每隔「這一級住屋的高度＋1」列一條，越外圍越短，兩側各自依雜湊決定有沒有。
+        var rowStep = HouseHeight(tier) + 1;
+        var streets = tier switch { DemoSettlementTier.Camp => 0, DemoSettlementTier.Village => 1, DemoSettlementTier.Town => 2, DemoSettlementTier.City => 3, _ => 4 };
+        for (var k = 1; k <= streets; k++)
+            foreach (var dir in new[] { -1, 1 })
+            {
+                // 往下：主橫街下方每隔 rowStep 列；往上：廣場上方那排建築面向廣場，再往上每隔 rowStep 列。
+                var y = dir > 0 ? mid.Y + k * rowStep : plaza.Position.Y - k * rowStep;
+                var span = Math.Max(3, length * (streets + 2 - k) / (streets + 2));
+                foreach (var side in new[] { -1, 1 })
+                    if (LayoutHash(site.Id, k * dir, side + 7) < 0.85f)
+                        Walk(new Vector2I(spine + side, y), new Vector2I(side, 0), span);
+            }
         var paved = roads.ToHashSet();
         for (var y = plaza.Position.Y; y < plaza.End.Y; y++)
             for (var x = plaza.Position.X; x < plaza.End.X; x++)
                 paved.Add(new Vector2I(x, y));
 
-        // 建築：先放地標（主樓、市集、神殿、井），再放住屋；都要貼著廣場或道路（營地貼著火堆）。
-        var kinds = CivicBuildings(tier, people, FaithOf.ContainsKey(site.Id)).ToList(); // 第 08-18k 章
-        if (!World!.IsNearWater(new DemoCellRef(site.Column, site.Row)))
+        // ── 建築：先放地標（主樓、會所、市集、神殿…），再放住屋；門下一格要是道路或廣場 ──
+        var kinds = CivicBuildings(tier, people, FaithOf.ContainsKey(site.Id)).ToList();
+        var nearWater = World!.IsNearWater(new DemoCellRef(site.Column, site.Row));
+        if (!nearWater)
             kinds.Add(Building.Well);
+        else if (tier >= DemoSettlementTier.Village)
+            kinds.Add(Building.FishingHut);
+        if (tier <= DemoSettlementTier.Village && Hunters.Contains(site.Id))
+            kinds.Add(Building.HuntingLodge);
         var (houses, construction) = HouseCount(people, tier);
         var landmarks = kinds.Count;
         for (var i = 0; i < houses; i++)
             kinds.Add(HouseFor(tier, i, houses));
         if (construction)
             kinds.Add(HouseFor(tier, houses, houses + 1));
-        var house = HouseFor(tier, 0, 1);
+        var gap = tier >= DemoSettlementTier.City ? 0 : 1; // 城市以上連棟、其餘左右留一方格
 
         var lots = new List<Lot>();
-        var built = new HashSet<Vector2I>();
-        var reach = 6 + length + size;
-        var candidates = new List<(int X, int Y)>();
-        for (var y = center.Y - reach; y <= center.Y + reach; y++)
-            for (var x = center.X - reach; x <= center.X + reach; x++)
-                candidates.Add((x, y));
-        paved.UnionWith(roads);
+        var lotTiles = new HashSet<Vector2I>();
+        var doors = paved.OrderBy(p => Math.Abs(p.X - center.X) + Math.Abs(p.Y - center.Y)).ThenBy(p => p.Y).ThenBy(p => p.X).ToList();
         for (var index = 0; index < kinds.Count; index++)
         {
             var kind = kinds[index];
-            var site2 = index == kinds.Count - 1 && construction;
-            var (w, h) = LotSize(kind);
+            var isSite = index == kinds.Count - 1 && construction;
+            var variant = Variant(kind, site.Id, index);
+            var (w, h) = isSite ? (3, 3) : LotSize(kind, variant);
             bool Fits(int x, int y)
             {
                 for (var j = 0; j < h; j++)
+                {
                     for (var i = 0; i < w; i++)
                         if (!Free(x + i, y + j))
                             return false;
-                // 第 08-18b 章：房子之間留一方格（散在路邊，不排成街區）。
-                for (var j = -1; j <= h; j++)
-                    for (var i = -1; i <= w; i++)
-                        if (built.Contains(new Vector2I(x + i, y + j)))
-                            return false;
+                    for (var g = 1; g <= gap; g++)
+                        if (lotTiles.Contains(new Vector2I(x - g, y + j)) || lotTiles.Contains(new Vector2I(x + w - 1 + g, y + j)))
+                            return false; // 左右和別棟留空
+                }
                 return true;
             }
-            bool Fronts(int x, int y)
+            (int X, int Y)? best = null;
+            var bestScore = float.MaxValue;
+            foreach (var door in doors)
             {
-                if (tier == DemoSettlementTier.Camp)
-                    return Math.Max(Math.Abs(x + w / 2 - center.X), Math.Abs(y + h / 2 - center.Y)) <= 4;
-                // 正面（下緣）或側面貼著道路、廣場。
-                bool Near(int ax, int ay) => paved.Contains(new Vector2I(ax, ay));
-                for (var i = -1; i <= w; i++)
-                    if (Near(x + i, y + h) || Near(x + i, y - 1))
-                        return true;
-                for (var j = 0; j < h; j++)
-                    if (Near(x - 1, y + j) || Near(x + w, y + j))
-                        return true;
-                return false;
+                var x = door.X - w / 2;
+                var y = door.Y - h;
+                if (!Fits(x, y))
+                    continue;
+                var score = Math.Abs(x + w / 2f - center.X) + Math.Abs(y + h / 2f - center.Y) * 1.2f
+                    + LayoutHash(site.Id, x, y) * (index < landmarks ? 0.8f : 3f);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = (x, y);
+                }
             }
-            var best = candidates
-                .Where(c => Fits(c.X, c.Y) && Fronts(c.X, c.Y))
-                .Select(c => (c.X, c.Y, Score: Math.Abs(c.X + w / 2f - center.X) + Math.Abs(c.Y + h / 2f - center.Y) * 1.2f
-                    + LayoutHash(site.Id, c.X, c.Y) * (index < landmarks ? 0.8f : 3f)))
-                .OrderBy(c => c.Score).ThenBy(c => c.Y).ThenBy(c => c.X)
-                .Select(c => ((int, int)?)(c.X, c.Y)).FirstOrDefault();
             if (best is not { } spot)
                 continue;
             for (var j = 0; j < h; j++)
                 for (var i = 0; i < w; i++)
                 {
-                    Use(spot.Item1 + i, spot.Item2 + j);
-                    built.Add(new Vector2I(spot.Item1 + i, spot.Item2 + j));
+                    Use(spot.X + i, spot.Y + j);
+                    lotTiles.Add(new Vector2I(spot.X + i, spot.Y + j));
                 }
-            // 第 08-20c 章：門朝貼著的道路（優先順序：南、東、西、北；營地一律朝南）。
-            var facing = 0;
-            if (tier != DemoSettlementTier.Camp)
-            {
-                bool Paved(int ax, int ay) => paved.Contains(new Vector2I(ax, ay));
-                bool Row(int ay) { for (var i = 0; i < w; i++) if (Paved(spot.Item1 + i, ay)) return true; return false; }
-                bool Col(int ax) { for (var j = 0; j < h; j++) if (Paved(ax, spot.Item2 + j)) return true; return false; }
-                facing = Row(spot.Item2 + h) ? 0 : Col(spot.Item1 + w) ? 1 : Col(spot.Item1 - 1) ? 3 : Row(spot.Item2 - 1) ? 2 : 0;
-            }
-            lots.Add(new Lot(spot.Item1, spot.Item2, w, h, kind, site2, facing));
+            lots.Add(new Lot(spot.X, spot.Y, w, h, kind, isSite, 0, isSite ? SiteStage(people, tier) : variant));
         }
-        // 至少一棟（陸地太少時直接放在廣場上）。
         if (lots.Count == 0)
-            lots.Add(new Lot(plaza.Position.X, plaza.Position.Y, 2, 2, house));
+            lots.Add(new Lot(plaza.Position.X, plaza.Position.Y - 2, 2, 2, HouseFor(tier, 0, 1)));
 
-        // 第 08-18b 章：城牆只有城市以上才有，圍住廣場與所有建築（外留一格）；道路穿過的地方是城門。
-        // 第 08-20c 章（使用者 2026-11-14：沿用 KayKit 原型的建築與串聯感）：城鎮也圍木柵（城市以上是石牆）。
-        Rect2I? wall = null;
+        // ── 水邊：碼頭（最上一列在岸上、其餘在水裡）、水磨坊（左三格在岸上、右兩格在水上） ──
+        if (nearWater && tier >= DemoSettlementTier.Village)
+            PlaceWaterfront(site, center, lots, used, tx, Building.Dock);
+        if (nearWater && tier >= DemoSettlementTier.Village && FieldsNear(site))
+            PlaceWaterfront(site, center, lots, used, tx, Building.Watermill);
+
+        // ── 圍牆：圍住廣場、建築與牆內道路；下牆的正面往上長、佔掉牆內最南的幾列 ──
+        var wallKind = WallKindFor(tier);
+        var landLots = lots.Where(l => l.Kind is not (Building.Dock or Building.Watermill)).ToList();
+        var box = plaza;
+        foreach (var lot in landLots)
+            box = box.Merge(new Rect2I(lot.X, lot.Y, lot.W, lot.H));
+        box = box.Merge(new Rect2I(mid.X, mid.Y, 1, 1));
+        box = box.Grow(1);
+        box = new Rect2I(box.Position, box.Size + new Vector2I(0, WallBottomPad(wallKind)));
+        // 牆內的路收在牆內；主街穿過牆的地方是城門，門外再延伸一格。
+        bool InBox(Vector2I v) => v.X > box.Position.X && v.X < box.End.X - 1 && v.Y > box.Position.Y && v.Y < box.End.Y - 1;
+        roads = roads.Where(InBox).ToList();
         var gates = new List<Vector2I>();
-        if (tier >= DemoSettlementTier.Town)
+        void Gate(Vector2I from, Vector2I step)
         {
-            var box = plaza;
-            foreach (var lot in lots)
-                box = box.Merge(new Rect2I(lot.X, lot.Y, lot.W, lot.H));
-            box = box.Grow(1);
-            wall = box;
-            // 道路一路通到城牆（城門）再往外一格。
-            foreach (var (next, step) in tips)
+            var at = from;
+            var path = new List<Vector2I>();
+            while (InBox(at))
             {
-                var at = next;
-                while (box.HasPoint(at) && Free(at.X, at.Y))
-                {
-                    Use(at.X, at.Y);
-                    roads.Add(at);
-                    at += step;
-                }
-                if (!box.HasPoint(at) && Free(at.X, at.Y))
-                    roads.Add(at);
+                if (lots.Any(l => l.X <= at.X && at.X < l.X + l.W && l.Y <= at.Y && at.Y < l.Y + l.H))
+                    return; // 路被建築擋住：這一邊不開門
+                path.Add(at);
+                at += step;
             }
-            foreach (var road in roads)
-                if (road.X == box.Position.X || road.X == box.End.X - 1 || road.Y == box.Position.Y || road.Y == box.End.Y - 1)
-                    gates.Add(road);
+            var gateTile = at;
+            var outside = at + step;
+            var o = Inside(outside.X, outside.Y) ? surface.TileOwner(outside.X, outside.Y) : -1;
+            if (o < 0 || !IsLand(o))
+                return;
+            foreach (var t in path.Where(t => !roads.Contains(t)))
+                roads.Add(t);
+            roads.Add(gateTile);
+            roads.Add(outside);
+            gates.Add(gateTile);
         }
-        // 第 08-20c 章：首都的雙層石牆——主樓外圍一圈內城牆，道路穿過的地方是內城門。
-        Rect2I? inner = null;
-        var innerGates = new List<Vector2I>();
-        if (tier == DemoSettlementTier.Capital && lots.FirstOrDefault(l => l.Kind == Building.Keep) is { W: > 0 } keep)
+        Gate(mid, new Vector2I(0, 1));
+        Gate(new Vector2I(spine, plaza.Position.Y - 1), new Vector2I(0, -1));
+        Gate(mid, new Vector2I(1, 0));
+        Gate(mid - new Vector2I(1, 0), new Vector2I(-1, 0));
+        return new SettlementPlan(site.Id, plaza, roads, lots, box, wallKind >= 2, gates, WallKind: wallKind);
+    }
+
+    /// <summary>【TEMP】第 08-20e 章：圍牆依等級（0＝圍籬、1＝木柵、2＝石牆、3＝磚牆）。</summary>
+    private static int WallKindFor(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => 0,
+        DemoSettlementTier.Village => 1,
+        DemoSettlementTier.Town => 2,
+        _ => 3
+    };
+
+    private static readonly string[] WallNames = { "fence", "palisade", "stone", "brick" };
+
+    /// <summary>下牆的正面與城門往上長幾列（佔掉牆內最南幾列）：圍籬 0、木柵 1、石牆與磚牆 2（城門三格高）。</summary>
+    private static int WallBottomPad(int wallKind) => wallKind switch { 0 => 0, 1 => 1, _ => 2 };
+
+    /// <summary>城門寬（方格）：圍籬與木柵 2、石牆與磚牆 3。</summary>
+    private static int GateWidth(int wallKind) => wallKind >= 2 ? 3 : 2;
+
+    /// <summary>這一級住屋的高度（方格），決定橫街的間隔。</summary>
+    private static int HouseHeight(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => 2,
+        DemoSettlementTier.Village => 3,
+        _ => 4
+    };
+
+    /// <summary>建地第幾階段（人口離下一棟越近越完整）。</summary>
+    private static int SiteStage(long people, DemoSettlementTier tier)
+    {
+        var per = PeoplePerHouse(tier);
+        var f = (people % per) / (float)per;
+        return f < 0.67f ? 1 : f < 0.84f ? 2 : 3;
+    }
+
+    /// <summary>第 08-20e 章：住屋的款式（第九批：帳篷 2、木屋 2、城鎮住屋 3、石屋 3、磚屋 2 款）。</summary>
+    private static int Variant(Building kind, int siteId, int index)
+    {
+        var count = kind switch
         {
-            var ring = new Rect2I(keep.X, keep.Y, keep.W, keep.H).Grow(1);
-            inner = ring;
-            foreach (var road in roads)
-                if (ring.HasPoint(road) && (road.X == ring.Position.X || road.X == ring.End.X - 1 || road.Y == ring.Position.Y || road.Y == ring.End.Y - 1))
-                    innerGates.Add(road);
-            // 沒有路穿過時，內城門開在主樓正面那一邊的中間。
-            if (innerGates.Count == 0)
-                innerGates.Add(new Vector2I(ring.Position.X + ring.Size.X / 2, ring.End.Y - 1));
-        }
-        return new SettlementPlan(site.Id, plaza, roads, lots, wall, tier >= DemoSettlementTier.City, gates, inner, innerGates);
+            Building.Tent or Building.Hut or Building.BrickHouse => 2,
+            Building.House or Building.StoneHouse => 3,
+            _ => 1
+        };
+        return Math.Clamp((int)(LayoutHash(siteId, index, (int)kind + 140) * count), 0, count - 1) + 1;
+    }
+
+    /// <summary>附近有田（水磨坊只蓋在有田的臨河聚落）。</summary>
+    private bool FieldsNear(DemoSettlement site)
+    {
+        for (var dr = -1; dr <= 1; dr++)
+            for (var dc = -1; dc <= 1; dc++)
+                if (World!.Contains(site.Column + dc, site.Row + dr) && Land.StateOf(new DemoCellRef(site.Column + dc, site.Row + dr)) == DemoLandDevelopment.Farmland)
+                    return true;
+        return false;
+    }
+
+    /// <summary>
+    /// 碼頭（3×3，最上一列在岸上、下兩列在水裡）、水磨坊（5×4，左三欄在岸上、右兩欄在水上）：
+    /// 在聚落格與相鄰格裡找最近、沒被用掉的位置；找不到就不放。
+    /// </summary>
+    private void PlaceWaterfront(DemoSettlement site, Vector2I center, List<Lot> lots, HashSet<int> used, int tx, Building kind)
+    {
+        var surface = _surface!;
+        var (w, h) = LotSize(kind, 1);
+        bool OnLand(int x, int y) => x >= 0 && y >= 0 && x < tx && y < surface.TilesY && surface.TileOwner(x, y) is var o and >= 0 && IsLand(o) && !IsField(o);
+        bool OnWater(int x, int y) => x >= 0 && y >= 0 && x < tx && y < surface.TilesY && surface.TileOwner(x, y) is var o and >= 0 && !IsLand(o);
+        bool Near(int x, int y) => surface.TileOwner(x, y) is var o and >= 0
+            && Math.Max(Math.Abs(o % World!.Columns - site.Column), Math.Abs(o / World.Columns - site.Row)) <= 1;
+        (int X, int Y)? best = null;
+        var bestScore = float.MaxValue;
+        var reach = TerrainSurface.TilesPerCell * 2;
+        for (var y = center.Y - reach; y <= center.Y + reach; y++)
+            for (var x = center.X - reach; x <= center.X + reach; x++)
+            {
+                var ok = Near(x, y);
+                for (var j = 0; j < h && ok; j++)
+                    for (var i = 0; i < w && ok; i++)
+                    {
+                        var wantLand = kind == Building.Dock ? j == 0 : i < 3;
+                        ok = !used.Contains((y + j) * tx + x + i) && (wantLand ? OnLand(x + i, y + j) : OnWater(x + i, y + j));
+                    }
+                if (!ok)
+                    continue;
+                var score = Math.Abs(x - center.X) + Math.Abs(y - center.Y) + LayoutHash(site.Id, x, y + (int)kind);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = (x, y);
+                }
+            }
+        if (best is not { } spot)
+            return;
+        for (var j = 0; j < h; j++)
+            for (var i = 0; i < w; i++)
+                used.Add((spot.Y + j) * tx + spot.X + i);
+        lots.Add(new Lot(spot.X, spot.Y, w, h, kind));
     }
 
     private static float LayoutHash(int a, int b, int c)
@@ -505,7 +585,7 @@ public partial class DemoHexMap
             var cell = World.GetCell(site.Column, site.Row);
             if (!OnScreen(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius * 4f))
                 continue;
-            if (layout.Wall is { } wall)
+            if (layout.Wall is { } wall && !AddFrontWall(items, layout, wall, Screen, radius)) // 第 08-20e 章：第九批圍牆優先
                 AddWall(items, layout, wall, Screen, radius);
             if (layout.InnerWall is { } innerWall && (KitRepeat("b8_wall_front") ?? KitRepeat("kk_wall_front")) is { } innerFront)
                 AddWallArt(items, layout, innerWall, Screen, radius, innerFront, (layout.InnerGates ?? Array.Empty<Vector2I>()).ToHashSet(), kit: true);
@@ -515,7 +595,10 @@ public partial class DemoHexMap
                 var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
                 var kind = lot.Kind;
                 var width = lot.W * t * radius / TerrainSurface.TempTexelsPerRadius;
-                if (lot.Construction)
+                var placed = lot;
+                if (FrontName(lot) is { } frontName && PixelParts.IsBatch5(frontName))
+                    items.Add((bottom.Y, () => DrawFrontLot(placed, bottom, radius, roof))); // 第 08-20e 章：第九批正面建築
+                else if (lot.Construction)
                     items.Add((bottom.Y, () => DrawConstruction(bottom, width, lot.H * t * radius / TerrainSurface.TempTexelsPerRadius, radius, lot.X * 31 + lot.Y * 17)));
                 else if (IsResidence(kind))
                     items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius, lot.X * 31 + lot.Y * 17, lot.Facing)));
@@ -526,10 +609,18 @@ public partial class DemoHexMap
             // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
             var plaza = layout.Plaza;
             var big = plaza.Size.X >= 3;
-            var fire = Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.Position.Y + (big ? 0.9f : plaza.Size.Y / 2f));
-            items.Add((fire.Y, () => DrawCampfire(fire, radius)));
-            var store = big ? Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.End.Y) : Screen(plaza.Position.X + 0.5f, plaza.Position.Y + 1f);
-            items.Add((store.Y, () => DrawStockpile(store, radius, big)));
+            var (_, siteTier) = SettlementScale.TryGetValue(site.Id, out var siteScale) ? siteScale : (0L, DemoSettlementTier.Camp);
+            // 第 08-20e 章：篝火只在營地與村莊的廣場；囤糧圍欄只在營地（城鎮以上的廣場是空的石頭地）。
+            if (siteTier <= DemoSettlementTier.Village || layout.WallKind < 0)
+            {
+                var fire = Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.Position.Y + (big ? 0.9f : plaza.Size.Y / 2f));
+                items.Add((fire.Y, () => DrawCampfire(fire, radius)));
+            }
+            if (siteTier == DemoSettlementTier.Camp || layout.WallKind < 0)
+            {
+                var store = big ? Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.End.Y) : Screen(plaza.Position.X + 0.5f, plaza.Position.Y + 1f);
+                items.Add((store.Y, () => DrawStockpile(store, radius, big)));
+            }
             if (ShowDisasterMarks && RecentDisasters.Contains(site.Id)) // 第 12-1 章 C3：一年內遭天災
             {
                 var mark = Screen(layout.Plaza.End.X + 0.5f, layout.Plaza.Position.Y - 0.5f);

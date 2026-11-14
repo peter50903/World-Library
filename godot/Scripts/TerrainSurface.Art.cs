@@ -55,6 +55,7 @@ public partial class TerrainSurface
         public readonly TileSet Wheat = new("t_field_wheat", 0), Flax = new("t_field_flax", 0), Vegetable = new("t_field_vegetable", 0),
             Green = new("t_field_green", 0), Plowed = new("t_field_plowed", 0), Sown = new("t_field_sown", 0), Sprout = new("t_field_sprout", 0),
             Ridge = new("t_field_ridge", 0);
+        public readonly TileSet FrontDirt = new("b9_road_dirt", 2), FrontStone = new("b9_road_stone", 2), FrontBrick = new("b9_road_brick", 2); // 第 08-20e 章
 
         public TileSet Grass(Biome biome) => biome switch
         {
