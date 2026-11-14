@@ -105,12 +105,23 @@ public partial class IsoPrototypeView : Control
         _world.AddChild(_realms);
         _world.AddChild(_strategic);
 
+        // 第 08-20b 章：有 KayKit 模型就用現成模型，沒有就退回程式拼的模型。
+        UsesKit = KitAvailable();
         BuildTerrain();
         BuildWater();
         BuildTerrainDetail();
-        BuildTrees();
-        BuildTown(Map.Settlements[0]);
-        BuildVillage(Map.Settlements[1]);
+        if (UsesKit)
+        {
+            BuildKitNature();
+            BuildKitTown(Map.Settlements[0]);
+            BuildKitVillage(Map.Settlements[1]);
+        }
+        else
+        {
+            BuildTrees();
+            BuildTown(Map.Settlements[0]);
+            BuildVillage(Map.Settlements[1]);
+        }
         BuildRealms();
         BuildStrategic();
     }
@@ -177,7 +188,7 @@ public partial class IsoPrototypeView : Control
                 var t = Map.TerrainAt(c, r);
                 var h = Map.TopOf(c, r);
                 var jitter = IsoProtoMap.Hash01(c, r, 11) * 0.08f - 0.04f;
-                var top = t switch
+                var top = UsesKit ? KitTerrainColor(t) : t switch
                 {
                     IsoTerrain.Sea => new Color(0.55f, 0.62f, 0.55f),
                     IsoTerrain.River => new Color(0.50f, 0.56f, 0.45f),
@@ -229,7 +240,8 @@ public partial class IsoPrototypeView : Control
                 if (!Map.IsWater(c, r))
                     continue;
                 var deepSea = Map.TerrainAt(c, r) == IsoTerrain.Sea && c == 0;
-                var color = Map.TerrainAt(c, r) == IsoTerrain.River ? new Color(0.30f, 0.62f, 0.80f, 0.82f)
+                var color = UsesKit ? new Color(KitColor(72, 152, 214), deepSea ? 0.92f : 0.86f)
+                    : Map.TerrainAt(c, r) == IsoTerrain.River ? new Color(0.30f, 0.62f, 0.80f, 0.82f)
                     : deepSea ? new Color(0.16f, 0.42f, 0.70f, 0.86f) : new Color(0.24f, 0.56f, 0.78f, 0.84f);
                 var y = IsoProtoMap.WaterLevel;
                 var v = new[] { new Vector3(c, y, r), new Vector3(c + 1, y, r), new Vector3(c + 1, y, r + 1), new Vector3(c, y, r), new Vector3(c + 1, y, r + 1), new Vector3(c, y, r + 1) };
@@ -331,6 +343,7 @@ public partial class IsoPrototypeView : Control
     {
         if (_wheel is not null)
             _wheel.RotateObjectLocal(Vector3.Right, (float)delta * 1.2f);
+        SpinKit((float)delta);
         _overlay?.QueueRedraw();
     }
 
@@ -430,6 +443,7 @@ public partial class IsoPrototypeView : Control
         var column = new VBoxContainer();
         panel.AddChild(column);
         column.AddChild(new Label { Text = "3D 等角原型（試看用，不影響世界）　滾輪縮放｜右鍵或中鍵拖曳｜左鍵點選" });
+        column.AddChild(new Label { Text = UsesKit ? "模型：KayKit Medieval Hexagon（CC0，Kay Lousberg）" : "模型：程式拼的低多邊形（找不到 KayKit 素材）" });
         var row = new HBoxContainer();
         column.AddChild(row);
         _showRealms = new CheckButton { Text = "勢力", ButtonPressed = true };
@@ -533,6 +547,8 @@ public partial class IsoPrototypeView : Control
     {
         if (!Built || BuildingCount < 30)
             return $"iso prototype built={Built} buildings={BuildingCount}";
+        if (UsesKit && KitPlaced < 60)
+            return $"iso prototype kaykit placed={KitPlaced}";
         var cell = Map.CellUnderRay(new Vector3(3.5f, 5f, 6.5f), Vector3.Down);
         if (cell != new Vector2I(3, 6) || Map.SettlementAt(3, 6)?.Name != "金柵鎮")
             return $"iso prototype pick wrong: {cell}";
