@@ -269,6 +269,10 @@ public partial class ObserverRoot
         var laws = ToolButton(ArtAssets.UiLaws, "法則", "世界法則：開關天災、地下城與怪物、叛亂與獨立、野獸襲擊");
         laws.Pressed += () => ToggleModal("laws");
         row.AddChild(laws);
+        // 第 08-20 章：3D 等角美術原型（試看用，不影響世界）。
+        _toolIso = ToolButton("", "3D", "美術原型：3D 等角小場景（河邊農村、木柵城鎮、河流與藍金勢力邊界；試看用，不影響世界）");
+        _toolIso.Pressed += OpenIsoPrototype;
+        row.AddChild(_toolIso);
         // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
@@ -445,6 +449,29 @@ public partial class ObserverRoot
         return true;
     }
 
+    private Button _toolIso = null!;
+    private IsoPrototypeView? _isoView;
+
+    /// <summary>第 08-20 章：打開 3D 等角原型（蓋在整個介面上；暫停播放）。</summary>
+    private void OpenIsoPrototype()
+    {
+        if (_isoView is not null)
+            return;
+        PausePlayback();
+        _isoView = new IsoPrototypeView();
+        _isoView.Closed += CloseIsoPrototype;
+        AddChild(_isoView);
+    }
+
+    private void CloseIsoPrototype()
+    {
+        if (_isoView is null)
+            return;
+        RemoveChild(_isoView);
+        _isoView.QueueFree();
+        _isoView = null;
+    }
+
     /// <summary>第 05 章 b 節冒煙：工具列三個視窗、地圖模式切換、圖示套用；全部不改世界。</summary>
     private string VerifyToolbarSmoke(Action<string> fail, Action<Key> pressKey)
     {
@@ -508,6 +535,16 @@ public partial class ObserverRoot
         if (!_hexMap.ShowGrid)
             fail("grid toggle did not show the grid.");
         _gridToggle.ButtonPressed = false;
+
+        // 第 08-20 章：3D 原型打得開、建得出來、點選換算正確，關閉後回到地圖。
+        _toolIso.EmitSignal(BaseButton.SignalName.Pressed);
+        if (_isoView is null)
+            fail("3D prototype did not open.");
+        else if (_isoView.SelfCheck() is { Length: > 0 } isoProblem)
+            fail(isoProblem);
+        CloseIsoPrototype();
+        if (_isoView is not null)
+            fail("3D prototype did not close.");
 
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)
