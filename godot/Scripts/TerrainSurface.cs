@@ -53,7 +53,10 @@ public partial class TerrainSurface : Control
     private const int TempChunksPerFrame = 16;
     private const double TempBakeMsPerFrame = 5;
     public const float TempChunkMinRadius = 24f * TempZoomScale;
-    private const int TempThumb = 8; // 第 08-20g 章：世界放大後縮圖改成每 8 圖像素一點（記憶體與重算時間不變多）
+    /// <summary>【TEMP】第 08-20h 章：縮圖每幾個圖像素一點——方格總數超過 <see cref="TempThumbCoarseTiles"/> 時每方格一點（16），否則 8。</summary>
+    private const int TempThumbFine = 8, TempThumbCoarse = 16, TempThumbCoarseTiles = 1_000_000;
+
+    private int TempThumb => _tilesX * _tilesY > TempThumbCoarseTiles ? TempThumbCoarse : TempThumbFine;
 
     /// <summary>【TEMP】自然交界的參差：邊上的方格有多少機率畫成隔壁格的地形。</summary>
     private const float TempJitterChance = 0.35f;
@@ -134,7 +137,9 @@ public partial class TerrainSurface : Control
         _origin = origin;
         _radius = radius;
         // 放大時最近鄰（像素清楚）；縮小到一個圖像素不到一個螢幕像素時改線性，避免閃爍。
-        TextureFilter = radius >= TempTexelsPerRadius ? TextureFilterEnum.Nearest : TextureFilterEnum.Linear;
+        // 第 08-20h 章（使用者 2026-11-15：有些畫面地塊太模糊）：只畫縮圖的距離，縮圖一點至少兩個螢幕像素時也用最近鄰（方塊清楚，不糊成一片）。
+        var texel = radius / TempTexelsPerRadius;
+        TextureFilter = texel >= 1f || (radius < TempChunkMinRadius && texel * TempThumb >= 2f) ? TextureFilterEnum.Nearest : TextureFilterEnum.Linear;
         Active = true;
         QueueRedraw();
     }
@@ -588,8 +593,9 @@ public partial class TerrainSurface : Control
                     c = Adjust(c);
                 // 遠看時樹與山頭只剩色點（WorldBox 的遠景做法）：方格中央 2×2 縮圖像素畫成樹冠或岩石色。
                 var tile = TileIndexOf(x, y);
-                int lu = u % (TempTile / TempThumb), lv = v % (TempTile / TempThumb);
-                if (lu is 1 or 2 && lv is 1 or 2 && (_ground.Count == 0 || !_ground.ContainsKey(tile)))
+                var per = Math.Max(1, TempTile / TempThumb);
+                int lu = u % per, lv = v % per;
+                if ((per == 1 || lu is 1 or 2 && lv is 1 or 2) && (_ground.Count == 0 || !_ground.ContainsKey(tile)))
                 {
                     if (TreeAt(tile % _tilesX, tile / _tilesX) is { } tree)
                         c = Canopy(TreeArt(tree, BiomeOfTile(tile), tile % _tilesX, tile / _tilesX)) ?? Adjust(tree.Shades[1]);
@@ -823,6 +829,9 @@ public partial class TerrainSurface : Control
                 break;
         }
         // 天災疊層：依強度把一部分像素換掉（像素風的漸變）。
+        // 第 08-20h 章（使用者 2026-11-15 錄影：熱浪時城裡的地變成一片雜點、一直閃）：聚落地面（街、廣場、院子、菜園、田）只受洪水影響。
+        if (groundKind != 0 && (DemoHexMap.Overlay)overlay != DemoHexMap.Overlay.Flood)
+            return c;
         var hit = Hash(bx, by, 5) < amount;
         switch ((DemoHexMap.Overlay)overlay)
         {
