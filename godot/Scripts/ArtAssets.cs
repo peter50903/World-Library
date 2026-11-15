@@ -168,8 +168,6 @@ public static class ArtAssets
         FxFire, FxSmoke, FxMeteor, FxTornado, FxCrater, FxCracks, FxDebris, // 第 12-1 章第 7 節：天災特效
         SfxFire, SfxEarthquake, SfxMeteor, SfxFlood, SfxTornado, SfxFounding, SfxEra, // 第 08-16 章：天災與事件音效
         TileBurning, TileScorched, TileGrasslandDry, // 第 08-13 章第 6 節：天災反映在地圖上（美術收件匣 2026-11-01）
-        DemoHexMap.SpriteTent, DemoHexMap.SpriteHut, DemoHexMap.SpriteHouse, DemoHexMap.SpriteStoneHouse, // 第 08-13 章第 4 節：聚落外觀
-        DemoHexMap.SpriteMarket, DemoHexMap.SpriteTemple, DemoHexMap.SpriteKeep, DemoHexMap.SpritePalisade, DemoHexMap.SpriteStoneWall,
         SfxClick, SfxEventAlert, MusicObserverLoop
     }.Concat(PixelParts.Names.Select(PixelParts.LegacyPath)) // 第 08-16 章第 12 節：像素零件
         .Concat(PixelParts.Batch5.Select(PixelParts.Path)) // 第 08-18d 章：第五、六批像素素材

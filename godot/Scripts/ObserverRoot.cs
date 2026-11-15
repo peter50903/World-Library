@@ -490,6 +490,8 @@ public partial class ObserverRoot : Control
             VerifyHumanLifecycleSmoke();
         if (ForagingSmoke)
             VerifyForagingSmoke(nextButton);
+        if (PerfSmoke)
+            RunPerfSmoke(); // 第 09-1 章：效能量測
         if (ChartSmoke)
             VerifyYearChartSmoke();
         if (ChronicleSmoke)
@@ -1287,7 +1289,7 @@ public partial class ObserverRoot : Control
 
             _notice.Text = (_playback.Playing ? $"{(_showDebugInfo ? _playback.StatusText : _playback.PlayerStatusText)}；" : "")
                 + (_showDebugInfo ? $"已推進 {days} 天（第 {last!.Day} 天）；{WeeklySummaryText()}" : $"已推進 {days} 天"); // 試玩回饋 2026-11-08 之 3
-            Refresh();
+            RefreshAfterDays();
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
         {
@@ -1413,8 +1415,42 @@ public partial class ObserverRoot : Control
     private static IReadOnlyDictionary<TKey, TValue> Same<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> old, Dictionary<TKey, TValue> fresh) where TKey : notnull
         => old.Count == fresh.Count && fresh.All(kv => old.TryGetValue(kv.Key, out var v) && EqualityComparer<TValue>.Default.Equals(v, kv.Value)) ? old : fresh;
 
+    private (object? World, int Week) _refreshedWeek;
+
+    /// <summary>
+    /// 第 09-3 章：推進幾天後的畫面更新。世界的狀態（聚落、事件、文化、勢力…）只在每週結算時改變，
+    /// 同一週裡只更新日期、時間控制與遷徙隊伍的週內位置，不重建清單、字典與文字（量測：完整更新約 35 毫秒、配置 3.4 MB）。
+    /// </summary>
+    private void RefreshAfterDays()
+    {
+        if (!ReferenceEquals(_refreshedWeek.World, _world) || _refreshedWeek.Week != _world.CommittedWeeks)
+        {
+            Refresh();
+            return;
+        }
+        var snapshot = _world.Snapshot();
+        RefreshHud();
+        _hexMap.WeekFraction = (snapshot.DaysElapsed % 7) / 7f;
+        _hexMap.QueueRedraw();
+    }
+
+    /// <summary>第 09-3 章：量測時記下完整更新各段的時間（毫秒累計）。</summary>
+    private readonly Dictionary<string, double> _refreshParts = new();
+    private readonly System.Diagnostics.Stopwatch _refreshPartWatch = new();
+
+    private void Part(string name)
+    {
+        if (!PerfSmoke)
+            return;
+        _refreshParts[name] = _refreshParts.GetValueOrDefault(name) + _refreshPartWatch.Elapsed.TotalMilliseconds;
+        _refreshPartWatch.Restart();
+    }
+
     private void Refresh()
     {
+        _refreshedWeek = (_world, _world.CommittedWeeks);
+        if (PerfSmoke)
+            _refreshPartWatch.Restart();
         var snapshot = _world.Snapshot();
         // 第 08-11 章：詳情開著時每週結算後更新一次（不在每幀重建分頁）。
         if (_detailOpen && !_detailFixed && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows
@@ -1440,8 +1476,11 @@ public partial class ObserverRoot : Control
             $"遷徙途中人口：{_world.PopulationInTransit}\n" +
             $"世界人口（聚落＋途中，各計一次）：{_world.WorldPopulation}";
 
+        Part("Status");
         RefreshHud(); // 第 05 章：頂部資訊列與時間控制。
+        Part("Hud");
         _ledger.Text = LedgerText(_world.LatestWeek);
+        Part("Ledger");
         _hexMap.Migrants = _world.MigrationsInTransit();
         _hexMap.WeekFraction = (snapshot.DaysElapsed % 7) / 7f; // 第 06-2 章：遷徙隊伍平滑移動
         _hexMap.Sites = _world.Sites; // V0-06B: settlements founded this week appear on the map.
@@ -1468,8 +1507,6 @@ public partial class ObserverRoot : Control
             _hexMap.Dungeons = dungeonCells; // 第 12-1 章 C4（沒變就沿用，地圖的生物快取才不會每次重算）
         _hexMap.MonsterNests = _world.MonsterNests(_world.CommittedWeeks); // 第 12-2 章：怪物數與勢力範圍
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
-        _hexMap.Prey = _world.Wildlife.Prey.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Prey; // 第 08-18b 章：近景的野生動物依每格實際數量
-        _hexMap.Wolves = _world.Wildlife.Wolves.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Wolves;
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();
@@ -1499,6 +1536,7 @@ public partial class ObserverRoot : Control
         var hunters = _world.Sites.Settlements.Where(s => !s.IsRuin && _world.Knowledge.Knows(s.Id, hunting)).Select(s => s.Id).ToHashSet();
         if (!hunters.SetEquals(_hexMap.Hunters))
             _hexMap.Hunters = hunters; // 第 08-17 章：獵人指示物（只在名單改變時換，指示物不必每次重算）
+        Part("MapData");
         RefreshLegend(); // 第 08-18i 章：地圖模式圖例
         RefreshLetters(); // 第 08-18i 章：重大事件通知
         RefreshTracked(); // 第 08-18i 章：追蹤清單
@@ -1506,6 +1544,7 @@ public partial class ObserverRoot : Control
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。
         _hexMap.QueueRedraw();
+        Part("Panels");
 
         // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），
         // 與聚落事件依世界時間合併（同一天：週摘要在前，再列該週事件）。
@@ -1525,8 +1564,11 @@ public partial class ObserverRoot : Control
         _history.Text = string.Join("\n", lines);
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
+        Part("History");
         RefreshEventList();
+        Part("EventList");
         RefreshFoodDiagnostics(); // #104
+        Part("FoodDiag");
     }
 
     private IReadOnlyList<DisasterMark> DisasterMarks()

@@ -26,6 +26,7 @@ public partial class ObserverRoot
     private VBoxContainer _outlinerRows = null!;
     private Button _outlinerToggle = null!;
     private readonly List<(int SettlementId, Button Row, Control Line)> _outlinerButtons = new();
+    private List<bool> _outlinerRuins = new();
     private string _outlinerSignature = string.Empty;
 
     private void BuildOutliner()
@@ -97,6 +98,31 @@ public partial class ObserverRoot
         _outlinerSignature = signature;
         var living = entries.Count(e => !IsRuin(e.Id));
         _outlinerTitle.Text = string.Create(CultureInfo.InvariantCulture, $"有人的聚落（{living}）");
+        // 第 09-3 章（Godot 論壇：重複建立、刪除節點很貴，盡量重用）：聚落與順序沒變時只改文字與色塊，不重建每一列。
+        var ruinNow = entries.Select(e => IsRuin(e.Id)).ToList();
+        // 依人口排序，每週順序都會變：列依位置重用，點擊時讀列上記的聚落編號。
+        if (_outlinerButtons.Count == entries.Count && _outlinerRuins.SequenceEqual(ruinNow))
+        {
+            var ink = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var (entry, (_, row, line)) = (entries[i], _outlinerButtons[i]);
+                _outlinerButtons[i] = (entry.Id, row, line);
+                row.SetMeta("settlement", entry.Id);
+                row.TooltipText = $"聚落 #{entry.Id}：點一下地圖置中並開詳情";
+                if (line.GetChild(0) is ColorRect swatch)
+                    swatch.Color = DemoHexMap.FoodStatusColor(entry.Food);
+                row.Text = ruinNow[i] ? entry.Name : string.Create(CultureInfo.InvariantCulture, $"{entry.Name}　人口 {entry.Population}");
+                if (ink)
+                {
+                    var color = entry.Food == FoodStatus.Starving ? new Color(0.70f, 0.12f, 0.10f) : TempInk;
+                    foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
+                        row.AddThemeColorOverride(state, color);
+                }
+            }
+            return;
+        }
+        _outlinerRuins = ruinNow;
         foreach (var extra in _outlinerExtras)
         {
             _outlinerRows.RemoveChild(extra);
@@ -152,16 +178,16 @@ public partial class ObserverRoot
             }
             if (ruin)
                 line.Modulate = new Color(1, 1, 1, 0.6f);
-            var id = entry.Id;
+            row.SetMeta("settlement", entry.Id);
             row.Pressed += () =>
             {
-                FocusSettlement(id);
+                FocusSettlement(row.GetMeta("settlement").AsInt32()); // 第 09-3 章：列會重用，編號記在列上
                 CollapseRightForDetail(); // 第 08-18i 章（GPT 試玩回饋 02）
             };
             row.Pressed += PlayClick;
             line.AddChild(row);
             _outlinerRows.AddChild(line);
-            _outlinerButtons.Add((id, row, line));
+            _outlinerButtons.Add((entry.Id, row, line));
         }
     }
 
