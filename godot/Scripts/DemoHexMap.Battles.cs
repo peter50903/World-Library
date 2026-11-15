@@ -128,4 +128,9 @@ public partial class DemoHexMap
         DrawColoredPolygon(head, red);
         DrawPolyline(new[] { head[0], head[1], head[2], head[0] }, new Color(0f, 0f, 0f, 0.6f), 1.5f);
     }
+
+    /// <summary>第 08-18i 章：滑鼠所在格最近的戰鬥說明（提示框第一行；沒有回傳空字串）。</summary>
+    public string BattleTip(int column, int row)
+        => _battleMarks.Where(m => m.Week >= CurrentWeek - 1 && m.Label.Length > 0 && m.Place.Column == column && m.Place.Row == row)
+            .OrderByDescending(m => m.EventId).Select(m => $"⚔ {m.Label}（死 {m.Deaths} 人）").FirstOrDefault() ?? "";
 }
