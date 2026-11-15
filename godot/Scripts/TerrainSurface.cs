@@ -286,6 +286,9 @@ public partial class TerrainSurface : Control
     public const byte GroundFieldWheat = 10, GroundFieldVegetable = 11, GroundFieldFlax = 12, GroundFieldGreen = 13,
         GroundFieldPlowed = 14, GroundFieldSown = 15, GroundFieldSprout = 16;
 
+    /// <summary>第 09-1a 章：住屋後院的菜畦（第十一批）。</summary>
+    public const byte GroundGarden = 17;
+
     /// <summary>方格欄數、列數。</summary>
     public int TilesX => _tilesX;
     public int TilesY => _tilesY;
@@ -337,6 +340,7 @@ public partial class TerrainSurface : Control
             GroundFieldPlowed => Tex(Art.Plowed, tx, ty, x, y),
             GroundFieldSown => Tex(Art.Sown, tx, ty, x, y),
             GroundFieldSprout => Tex(Art.Sprout, tx, ty, x, y),
+            GroundGarden => Tex(Art.Garden, tx, ty, x, y) ?? Tex(Art.Vegetable, tx, ty, x, y),
             GroundYard => Tex(Art.Yard, tx, ty, x, y),
             _ => Tex(Art.PlazaDirt, tx, ty, x, y)
         };
@@ -352,12 +356,12 @@ public partial class TerrainSurface : Control
             GroundStreet or GroundBrick => h < 0.15f ? Paving[2] : Paving[1],
             GroundRoad => h < 0.12f ? Soil[0] : Pick(RoadDirt, h), // 土路
             GroundYard => Pick(Yard, h),
-            >= GroundFieldWheat and <= GroundFieldSprout => (y / 3 % 2 == 0) ? FieldFallback[(kind - GroundFieldWheat) % FieldFallback.Length] : Soil[0], // 田：一壟一壟
+            >= GroundFieldWheat and <= GroundGarden => (y / 3 % 2 == 0) ? FieldFallback[(kind - GroundFieldWheat) % FieldFallback.Length] : Soil[0], // 田：一壟一壟
             _ => h < 0.1f ? Soil[1] : Pick(Yard, h) // 夯土廣場
         };
     }
 
-    private static readonly Color[] FieldFallback = { new("dcb856"), new("5c9a46"), new("7f8cc4"), new("7ab048"), new("6a4a2a"), new("a08050"), new("84be5a") };
+    private static readonly Color[] FieldFallback = { new("dcb856"), new("5c9a46"), new("7f8cc4"), new("7ab048"), new("6a4a2a"), new("a08050"), new("84be5a"), new("5c9a46") };
 
     private static readonly Color[] Paving = { new("b9b2a0"), new("a7a08f"), new("8c8576") };
     private static readonly Color[] RoadDirt = { new("a8875a"), new("b39263") };

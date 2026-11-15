@@ -10,8 +10,46 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public partial class DemoHexMap
 {
+    /// <summary>建築素材名：第十一批優先，沒有再用第九批（都沒有回傳 null）。</summary>
+    private static string? FrontName(Lot lot)
+        => B11Name(lot) is { } fresh && PixelParts.IsBatch5(fresh) ? fresh : B9Name(lot);
+
+    /// <summary>
+    /// 第 09-1a 章：第十一批建築素材名。工地依地塊寬挑小（≤3）、中（4）、大（≥5）三種；市集是一列單攤（<see cref="DrawStalls"/>）。
+    /// 碼頭沒有對應的一張圖（第十一批是可接長的棧道），沿用第九批。
+    /// </summary>
+    private static string? B11Name(Lot lot) => lot.Construction
+        ? $"b11_site_{(lot.W <= 3 ? "s" : lot.W <= 4 ? "m" : "l")}_{Math.Clamp(lot.Variant, 1, 3)}"
+        : lot.Kind switch
+        {
+            Building.Tent => $"b11_tent_{Math.Clamp(lot.Variant, 1, 2)}",
+            Building.Hut => $"b11_hut_{Math.Clamp(lot.Variant, 1, 3)}",
+            Building.House => $"b11_house_{Math.Clamp(lot.Variant, 1, 3)}",
+            Building.StoneHouse => $"b11_stone_house_{Math.Clamp(lot.Variant, 1, 3)}",
+            Building.BrickHouse => $"b11_brick_house_{Math.Clamp(lot.Variant, 1, 2)}",
+            Building.HallVillage => "b11_hall_village",
+            Building.HallTown => "b11_hall_town",
+            Building.Market => "b11_stall_1",
+            Building.Temple => "b11_temple",
+            Building.Smithy => "b11_smithy",
+            Building.Workshop => "b11_workshop",
+            Building.Shrine => "b11_shrine",
+            Building.Kiln => "b11_kiln",
+            Building.Granary => "b11_granary",
+            Building.School => "b11_school",
+            Building.Scriptorium => "b11_scriptorium",
+            Building.HuntingLodge => "b11_hunting_lodge",
+            Building.FishingHut => "b11_fishing_hut",
+            Building.Keep => "b11_keep",
+            Building.Well => "b11_well",
+            Building.Watchtower => "b11_watchtower",
+            Building.Windmill => "b11_windmill",
+            Building.Watermill => "b11_watermill",
+            _ => null
+        };
+
     /// <summary>第九批建築素材名（沒有對應的回傳 null）。</summary>
-    private static string? FrontName(Lot lot) => lot.Construction ? $"b9_site_{Math.Clamp(lot.Variant, 1, 3)}" : lot.Kind switch
+    private static string? B9Name(Lot lot) => lot.Construction ? $"b9_site_{Math.Clamp(lot.Variant, 1, 3)}" : lot.Kind switch
     {
         Building.Tent => $"b9_tent_{Math.Clamp(lot.Variant, 1, 2)}",
         Building.Hut => $"b9_hut_{Math.Clamp(lot.Variant, 1, 2)}",
@@ -68,11 +106,30 @@ public partial class DemoHexMap
             return false;
         if (lot.Kind == Building.Watermill && DrawWatermill(art, bottom, radius, culture))
             return true;
+        if (lot.Kind == Building.Market && name.StartsWith("b11_", StringComparison.Ordinal))
+        {
+            DrawStalls(lot, bottom, radius, culture);
+            return true;
+        }
         if (Animated(lot.Kind))
             DrawArt(art, bottom, radius, 4, (int)(Time.GetTicksMsec() / 220UL % 4UL));
         else
             DrawArt(art, bottom, radius);
         return true;
+    }
+
+    /// <summary>第 09-1a 章：市集＝一列單攤（第十一批每攤 2×2），三款輪流，排滿地塊寬、置中。</summary>
+    private void DrawStalls(Lot lot, Vector2 bottom, float radius, Color culture)
+    {
+        var tile = TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius;
+        var count = Math.Max(1, lot.W / 2);
+        for (var i = 0; i < count; i++)
+        {
+            var name = $"b11_stall_{(lot.X + i) % 3 + 1}";
+            if (((Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name)) is not { } stall)
+                continue;
+            DrawArt(stall, bottom + new Vector2((i - (count - 1) / 2f) * 2f * tile, 0f), radius);
+        }
     }
 
     /// <summary>【TEMP】第 08-20g 章：水磨坊每格動畫的寬（像素）、輪子從哪一欄開始。</summary>
@@ -108,12 +165,15 @@ public partial class DemoHexMap
         if (layout.WallKind < 0)
             return false;
         var key = WallNames[Math.Clamp(layout.WallKind, 0, WallNames.Length - 1)];
-        if (!PixelParts.IsBatch5($"b9_{key}_h") || KitRepeat($"b9_{key}_h") is not { } front)
+        // 第 09-1a 章：第十一批優先（四個角、四種端點各有一張）；沒有再用第九批（一種角樓兼端點）。
+        var set = PixelParts.IsBatch5($"b11_{key}_h") ? "b11" : "b9";
+        if (!PixelParts.IsBatch5($"{set}_{key}_h") || KitRepeat($"{set}_{key}_h") is not { } front)
             return false;
-        var side = PixelParts.Texture($"b9_{key}_v");
-        var corner = PixelParts.Texture($"b9_{key}_corner");
-        var gateH = PixelParts.Texture($"b9_{key}_gate_h");
-        var gateV = PixelParts.Texture($"b9_{key}_gate_v");
+        Texture2D? Part(string suffix) => PixelParts.Texture($"{set}_{key}_{suffix}") ?? PixelParts.Texture($"{set}_{key}_corner") ?? PixelParts.Texture($"{set}_{key}_corner_nw");
+        var side = PixelParts.Texture($"{set}_{key}_v");
+        var corner = Part("corner");
+        var gateH = PixelParts.Texture($"{set}_{key}_gate_h");
+        var gateV = PixelParts.Texture($"{set}_{key}_gate_v");
         var p = radius / TerrainSurface.TempTexelsPerRadius;
         var tile = TerrainSurface.TempTile * p;
         var gw = GateWidth(layout.WallKind);
@@ -152,13 +212,18 @@ public partial class DemoHexMap
                     DrawArt(gateH, screen(o + gw / 2f, y + 1), radius);
             if (corner is null)
                 return;
+            var top = y == wall.Position.Y;
             foreach (var (from, to) in runs)
             {
-                // 牆角，或斷在水邊（不是城門）的一頭。
-                if (from == wall.Position.X || !Open(from - 1))
-                    DrawArt(corner, screen(from + 0.5f, y + 1), radius);
-                if (to == wall.End.X || !Open(to))
-                    DrawArt(corner, screen(to - 0.5f, y + 1), radius);
+                // 牆角，或斷在水邊（不是城門）的一頭（第十一批：角樓分四角、斷頭是端點）。
+                if (from == wall.Position.X)
+                    DrawArt(Part(top ? "corner_nw" : "corner_sw")!, screen(from + 0.5f, y + 1), radius);
+                else if (!Open(from - 1))
+                    DrawArt(Part("end_w")!, screen(from + 0.5f, y + 1), radius);
+                if (to == wall.End.X)
+                    DrawArt(Part(top ? "corner_ne" : "corner_se")!, screen(to - 0.5f, y + 1), radius);
+                else if (!Open(to))
+                    DrawArt(Part("end_e")!, screen(to - 0.5f, y + 1), radius);
             }
         }
         void Column(int x)
@@ -178,7 +243,7 @@ public partial class DemoHexMap
                     continue;
                 // 第 08-20g 章：斷在水邊的一頭補角樓（上一格或下一格是水）。
                 if (corner is not null && (!TileLand(x, y - 1) || !TileLand(x, y + 1)))
-                    DrawArt(corner, screen(x + 0.5f, y + 1), radius);
+                    DrawArt(Part(!TileLand(x, y - 1) ? "end_n" : "end_s")!, screen(x + 0.5f, y + 1), radius);
                 else if (side is not null)
                     DrawTextureRect(side, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
             }
