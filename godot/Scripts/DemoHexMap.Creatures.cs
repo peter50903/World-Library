@@ -35,6 +35,12 @@ public partial class DemoHexMap
 
     /// <summary>試玩回饋 2026-11-07 之 5：近景不畫野生動物（地下城怪物照畫）。</summary>
     public static bool ShowAnimals { get; set; }
+
+    /// <summary>
+    /// 第 08-20f 章（使用者 2026-11-15：一般村民只是背後運算的數字，地圖上只看得到建築與地形）：不畫小人、工作團體、怪物，
+    /// 遷徙隊伍改成不會走動的符號，戰鬥只用符號（箭頭與 ⚔）。
+    /// </summary>
+    public static bool ShowPeople { get; set; }
     private List<Group>? _groups;
     private List<(Vector2I Tile, int Seed)>? _monsters;
 
@@ -254,7 +260,8 @@ public partial class DemoHexMap
             var kindSeed = seed;
             // 試玩回饋 2026-11-08 之 2：怪物從地下城出來，在自己的勢力範圍裡巡遊（門口留一隻踱步）；
             // 每 3 隻畫一隻、最多 5 隻；沉寂的地下城沒有怪物。每一隻都可以點（開地下城詳情）。
-            var shown = nest is null ? 1 : nest.Monsters <= 0 ? 0 : Math.Clamp((nest.Monsters + TempMonstersPerSprite - 1) / TempMonstersPerSprite, 1, TempMaxMonsterSprites);
+            // 第 08-20f 章（使用者 2026-11-15：拔除人物移動與跟怪物的戰鬥表演）：地圖上只畫地下城入口，不畫怪物。
+            var shown = !ShowPeople ? 0 : nest is null ? 1 : nest.Monsters <= 0 ? 0 : Math.Clamp((nest.Monsters + TempMonstersPerSprite - 1) / TempMonstersPerSprite, 1, TempMaxMonsterSprites);
             var patrol = PatrolOf(seed, tile, nest);
             var dungeonCell = new DemoCellRef(tile.X / TerrainSurface.TilesPerCell, tile.Y / TerrainSurface.TilesPerCell);
             for (var k = 0; k < shown; k++)
