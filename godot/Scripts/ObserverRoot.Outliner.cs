@@ -26,6 +26,7 @@ public partial class ObserverRoot
     private VBoxContainer _outlinerRows = null!;
     private Button _outlinerToggle = null!;
     private readonly List<(int SettlementId, Button Row, Control Line)> _outlinerButtons = new();
+    private List<bool> _outlinerRuins = new();
     private string _outlinerSignature = string.Empty;
 
     private void BuildOutliner()
@@ -97,6 +98,28 @@ public partial class ObserverRoot
         _outlinerSignature = signature;
         var living = entries.Count(e => !IsRuin(e.Id));
         _outlinerTitle.Text = string.Create(CultureInfo.InvariantCulture, $"有人的聚落（{living}）");
+        // 第 09-3 章（Godot 論壇：重複建立、刪除節點很貴，盡量重用）：聚落與順序沒變時只改文字與色塊，不重建每一列。
+        var ruinNow = entries.Select(e => IsRuin(e.Id)).ToList();
+        if (_outlinerButtons.Count == entries.Count && _outlinerButtons.Select(b => b.SettlementId).SequenceEqual(entries.Select(e => e.Id))
+            && _outlinerRuins.SequenceEqual(ruinNow))
+        {
+            var ink = ArtAssets.Texture(ArtAssets.UiPanelFrame) is not null;
+            for (var i = 0; i < entries.Count; i++)
+            {
+                var (entry, (_, row, line)) = (entries[i], _outlinerButtons[i]);
+                if (line.GetChild(0) is ColorRect swatch)
+                    swatch.Color = DemoHexMap.FoodStatusColor(entry.Food);
+                row.Text = ruinNow[i] ? entry.Name : string.Create(CultureInfo.InvariantCulture, $"{entry.Name}　人口 {entry.Population}");
+                if (ink)
+                {
+                    var color = entry.Food == FoodStatus.Starving ? new Color(0.70f, 0.12f, 0.10f) : TempInk;
+                    foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
+                        row.AddThemeColorOverride(state, color);
+                }
+            }
+            return;
+        }
+        _outlinerRuins = ruinNow;
         foreach (var extra in _outlinerExtras)
         {
             _outlinerRows.RemoveChild(extra);
