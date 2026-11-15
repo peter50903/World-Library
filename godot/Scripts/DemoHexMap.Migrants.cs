@@ -4,15 +4,12 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>
-/// 第 08-16 章第 4 節之 2（讓變化動起來）：遷徙與開拓隊伍畫成沿路線走路的小人群，前方淡淡標出剩下的路線，
-/// 開拓隊的終點插一面小旗。有 <c>FX_MIGRANTS_WALK</c> 素材（4 幀）就播動畫，沒有就由程式畫小人。只影響畫面。
+/// 第 08-16 章第 4 節之 2：遷徙與開拓隊伍的位置與剩下的路線（前方淡淡的小點），開拓隊的終點插一面小旗。
+/// 第 08-20f 章起隊伍是不會走動的旗符；第 09-2 章移除小人畫法。只影響畫面。
 /// </summary>
 public partial class DemoHexMap
 {
-    /// <summary>【TEMP】幾人畫一個小人（最多 <see cref="TempMaxWalkers"/> 個）、走路動畫每秒幾步、畫面重畫的最短間隔（毫秒）。</summary>
-    public const int TempPeoplePerWalker = 8;
-    public const int TempMaxWalkers = 5;
-    public const float TempStepsPerSecond = 6f;
+    /// <summary>【TEMP】有動畫時畫面重畫的最短間隔（毫秒）。</summary>
     public const ulong TempAnimateEveryMs = 66;
 
     private ulong _lastAnimatedMs;
@@ -20,7 +17,6 @@ public partial class DemoHexMap
     /// <summary>有動畫要播時（隊伍在走、火在燒、天災動畫中）限速重畫；在 _Process 呼叫。</summary>
     private bool WantsAnimation => Migrants.Count > 0 || _hasFire || _impacts.Count > 0
         || (_tokensMoving && CurrentLayer == ViewLayer.Regional) // 第 08-17 章：區域層的指示物來回移動
-        || ((_walkersDrawn || _creaturesDrawn) && CurrentLayer == ViewLayer.Local) // 第 08-18b 章：近景小人、動物走動
         || _movingDisaster // 第 08-18b 章第 5 節：龍捲風、漲水
         || _disasterAnimating // 試玩回饋 2026-11-08 之 4：天災過程照真實時間播
         || _battleAnimating; // 第 08-18h 章：戰鬥動畫
@@ -28,7 +24,6 @@ public partial class DemoHexMap
     private void DrawMigrants(Vector2 start, float radius)
     {
         var font = ThemeDB.FallbackFont;
-        var seconds = Time.GetTicksMsec() / 1000f;
         foreach (var batch in Migrants)
         {
             var center = MigrantPosition(start, radius, batch);
@@ -38,25 +33,11 @@ public partial class DemoHexMap
             AddActor(center + new Vector2(0f, radius * 0.25f), radius, new MapActor(ActorKind.Migrants, batch.FromSettlementId, TokenKind.Migrants,
                 batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id), 26f);
             DrawRouteAhead(start, radius, batch, center);
-            var heading = MigrantHeading(start, radius, batch);
-            if (!ShowPeople)
-            {
-                // 第 08-20f 章：遷徙隊伍是不會走動的符號（開拓隊、遷徙隊伍各一種旗符），位置照隊伍目前所在。
-                if (PixelParts.Texture(batch.Founding ? "tok_settlers" : "tok_migrants") is { } token)
-                    DrawArt(token, center + new Vector2(0f, radius * 0.4f), radius, scale: Math.Max(1f, 28f / PixelParts.ScreenSize(token, radius).Y));
-                else
-                    DrawCircle(center, radius * 0.3f, MigrantTunic);
-            }
+            // 第 08-20f 章：遷徙隊伍是不會走動的符號（開拓隊、遷徙隊伍各一種旗符），位置照隊伍目前所在。
+            if (PixelParts.Texture(batch.Founding ? "tok_settlers" : "tok_migrants") is { } token)
+                DrawArt(token, center + new Vector2(0f, radius * 0.4f), radius, scale: Math.Max(1f, 28f / PixelParts.ScreenSize(token, radius).Y));
             else
-            {
-            var walkers = Math.Clamp((int)((batch.People + TempPeoplePerWalker - 1) / TempPeoplePerWalker), 1, TempMaxWalkers);
-            if (radius >= TempWalkerMinRadius && PixelParts.Tinted(batch.Founding ? "unit_settler" : "unit_migrant", MigrantTunic) is { } units)
-                DrawMigrantUnits(units, center, radius, heading, walkers, seconds + batch.Id * 0.37f);
-            else if (ArtAssets.Texture(ArtAssets.FxMigrantsWalk) is { } sheet)
-                DrawWalkSprite(sheet, center, radius, heading, seconds + batch.Id * 0.37f);
-            else
-                DrawWalkers(center, radius, heading, walkers, seconds + batch.Id * 0.37f, batch.Founding);
-            }
+                DrawCircle(center, radius * 0.3f, MigrantTunic);
             // 人數標籤：深色底＋白字（右下角）。
             var size = Mathf.Max(8, (int)(radius * 0.32f));
             var labelPos = center + new Vector2(radius * 0.35f, radius * 0.55f);
@@ -90,85 +71,7 @@ public partial class DemoHexMap
         }
     }
 
-    /// <summary>隊伍行進方向（往路線下一格；到了就沿用上一段）。</summary>
-    private Vector2 MigrantHeading(Vector2 start, float radius, DemoMigrationBatch batch)
-    {
-        var i = Math.Min(batch.StepIndex, Math.Max(0, batch.Path.Length - 2));
-        if (batch.Path.Length < 2)
-            return Vector2.Right;
-        var a = MigrantMarkerCenter(start, radius, World!.GetCell(batch.Path[i].Column, batch.Path[i].Row));
-        var b = MigrantMarkerCenter(start, radius, World.GetCell(batch.Path[i + 1].Column, batch.Path[i + 1].Row));
-        return (b - a).Normalized();
-    }
-
     private static readonly Color MigrantTunic = new(0.58f, 0.46f, 0.32f);
-
-    /// <summary>第 08-18d 章：近景的遷徙隊伍是一列第五批小人素材（遷徙者揹包袱、開拓隊扛小旗），往左走時翻轉。</summary>
-    private void DrawMigrantUnits(Texture2D sheet, Vector2 center, float radius, Vector2 heading, int walkers, float time)
-    {
-        var p = radius / TerrainSurface.TempTexelsPerRadius;
-        var dir = heading.LengthSquared() > 0f ? heading.Normalized() : Vector2.Right;
-        var lead = center + dir * 9f * p * (walkers - 1) / 2f;
-        var flip = dir.X < 0f;
-        var feet = new List<(Vector2 At, int Frame)>();
-        for (var k = 0; k < walkers; k++)
-        {
-            var side = new Vector2(-dir.Y, dir.X) * ((k % 2 == 0) ? 2f : -2f) * p;
-            feet.Add((lead - dir * 9f * p * k + side + new Vector2(0f, radius * 0.25f), (int)(time * 7f + k * 1.3f) % 4));
-        }
-        foreach (var (at, frame) in feet.OrderBy(f => f.At.Y))
-        {
-            DrawSetTransform(at + new Vector2(p, 0f), 0f, new Vector2(1f, 0.35f));
-            DrawCircle(Vector2.Zero, 5f * p, new Color(0f, 0f, 0f, 0.3f));
-            DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-            DrawArt(sheet, at, radius, 4, frame, flip);
-        }
-    }
-
-    /// <summary>素材版：4 幀橫排，往左走時水平翻轉。</summary>
-    private void DrawWalkSprite(Texture2D sheet, Vector2 center, float radius, Vector2 heading, float time)
-    {
-        var frame = (int)(time * TempStepsPerSecond / 1.5f) % 4;
-        var fw = sheet.GetWidth() / 4f;
-        var size = new Vector2(radius * 1.4f, radius * 1.4f * sheet.GetHeight() / fw);
-        var rect = new Rect2(center - new Vector2(size.X / 2f, size.Y * 0.8f), size);
-        if (heading.X < 0f)
-            rect = new Rect2(rect.Position + new Vector2(rect.Size.X, 0), new Vector2(-rect.Size.X, rect.Size.Y));
-        DrawTextureRectRegion(sheet, rect, new Rect2(frame * fw, 0, fw, sheet.GetHeight()));
-    }
-
-    /// <summary>程式版：一列小人（頭、身體、擺動的腿），揹包袱；開拓隊最前面的人扛一面小旗。</summary>
-    private void DrawWalkers(Vector2 center, float radius, Vector2 heading, int walkers, float time, bool founding)
-    {
-        var unit = Math.Max(1.5f, radius * 0.11f);
-        var back = -heading * unit * 2.6f;
-        var side = new Vector2(-heading.Y, heading.X) * unit * 0.9f;
-        var lead = center + heading * unit * 2.6f * (walkers - 1) / 2f;
-        for (var k = 0; k < walkers; k++)
-        {
-            var phase = time * TempStepsPerSecond + k * 1.7f;
-            var bob = Mathf.Abs(Mathf.Sin(phase)) * unit * 0.5f;
-            var foot = lead + back * k + side * ((k % 2 == 0) ? 0.5f : -0.5f);
-            var hip = foot - new Vector2(0, unit * 2.2f + bob);
-            var swing = Mathf.Sin(phase) * unit * 0.9f;
-            var leg = new Color(0.24f, 0.18f, 0.12f);
-            DrawLine(hip, foot + new Vector2(swing, 0), leg, Math.Max(1f, unit * 0.55f));
-            DrawLine(hip, foot - new Vector2(swing, 0), leg, Math.Max(1f, unit * 0.55f));
-            var body = new Color(0.55f + 0.06f * (k % 3), 0.42f, 0.28f);
-            DrawLine(hip, hip - new Vector2(0, unit * 2.0f), body, Math.Max(1.5f, unit * 1.2f));
-            DrawCircle(hip - new Vector2(0, unit * 2.7f), unit * 0.75f, new Color(0.88f, 0.72f, 0.56f));
-            // 包袱：背後一個褐色小方塊。
-            var pack = hip - new Vector2(0, unit * 1.4f) - heading * unit * 0.9f;
-            DrawRect(new Rect2(pack - new Vector2(unit * 0.55f, unit * 0.55f), new Vector2(unit * 1.1f, unit * 1.1f)), new Color(0.42f, 0.30f, 0.18f));
-            if (founding && k == 0)
-            {
-                var top = hip - new Vector2(0, unit * 5.2f);
-                DrawLine(hip - new Vector2(0, unit * 1.0f), top, new Color(0.30f, 0.22f, 0.14f), Math.Max(1f, unit * 0.4f));
-                DrawColoredPolygon(new[] { top, top + new Vector2(unit * 2.0f * Mathf.Sign(heading.X == 0 ? 1 : heading.X), unit * 0.7f), top + new Vector2(0, unit * 1.4f) },
-                    new Color(0.86f, 0.30f, 0.22f));
-            }
-        }
-    }
 
     private DemoCellRef? CellOfScreen(Vector2 position) => CellAt(position) is { } cell ? new DemoCellRef(cell.Column, cell.Row) : null;
 }

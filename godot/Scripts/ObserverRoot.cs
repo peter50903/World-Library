@@ -1470,8 +1470,6 @@ public partial class ObserverRoot : Control
             _hexMap.Dungeons = dungeonCells; // 第 12-1 章 C4（沒變就沿用，地圖的生物快取才不會每次重算）
         _hexMap.MonsterNests = _world.MonsterNests(_world.CommittedWeeks); // 第 12-2 章：怪物數與勢力範圍
         _hexMap.Spells = _world.Wildlife.Spells; // 第 08-13 章：天災反映在地形上
-        _hexMap.Prey = _world.Wildlife.Prey.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Prey; // 第 08-18b 章：近景的野生動物依每格實際數量
-        _hexMap.Wolves = _world.Wildlife.Wolves.IsDefault ? (IReadOnlyList<int>)Array.Empty<int>() : _world.Wildlife.Wolves;
         _hexMap.CurrentWeek = _world.CommittedWeeks;
         // 試玩回饋 2026-11-03 之 3：近一年的天災（畫成依時間漸變的過程與當下的動畫；要在 CurrentWeek 之後設定）。
         _hexMap.DisasterMarks = DisasterMarks();

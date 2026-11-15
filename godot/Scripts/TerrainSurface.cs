@@ -32,8 +32,6 @@ public partial class TerrainSurface : Control
     /// <summary>第四批像素零件與程式畫的建築的像素密度（地表密度的一半）；疊進新地表時放大兩倍。</summary>
     public const int TempArtTexelsPerRadius = TempTexelsPerRadius / 2;
 
-    private const int ArtScale = TempTexelsPerRadius / TempArtTexelsPerRadius;
-
     /// <summary>
     /// 第 08-18b 章第 1 節：畫面方格的邊長（圖像素）。一個規則格＝6×6 方格；
     /// 方格整塊屬於某一格（沿格邊切開），田地、房屋、道路對齊方格。
@@ -863,76 +861,6 @@ public partial class TerrainSurface : Control
 
     /// <summary>與 DemoHexMap 的 TempSettlementGround 相同：有房子的格（聚落空地）。</summary>
     public const byte SettlementGround = 100;
-
-    /// <summary>
-    /// 第 08-18b 章第 3 節：田區。全圖共用的田格——每 3×3 方格一區，其中 2×2 方格是田、右邊一行與下面一列是田埂；
-    /// 一格（6×6 方格）剛好 2×2 塊田，相鄰的農田格連成大片。一塊田只在它的方格都屬於田（農田或開墾中）時才畫。
-    /// 開墾中：依進度一塊塊從草地→翻土→播種→綠苗。作物顏色每塊一種，畦溝橫向深淺相間。
-    /// 回傳 null＝這個像素不是田也不是田埂（畫草地）。
-    /// </summary>
-    public const int TempPlotTilesX = 3, TempPlotTilesY = 3;
-
-    private Color? Plot(int x, int y)
-    {
-        var codes = _codes!;
-        var tx = x / TempTile;
-        var ty = y / TempTile;
-        var px = tx / TempPlotTilesX;
-        var py = ty / TempPlotTilesY;
-        var lx = tx - px * TempPlotTilesX;
-        var ly = ty - py * TempPlotTilesY;
-        bool FieldTile(int ax, int ay)
-        {
-            var o = TileOwner(ax, ay);
-            return o >= 0 && (codes[o * 4] == (byte)Code.Farmland
-                || codes[o * 4] == (byte)Code.Clearing && codes[o * 4 + 3] > 0 && codes[o * 4 + 3] != SettlementGround);
-        }
-        bool Whole(int bx, int by)
-        {
-            for (var j = 0; j < TempPlotTilesY - 1; j++)
-                for (var i = 0; i < TempPlotTilesX - 1; i++)
-                    if (!FieldTile(bx * TempPlotTilesX + i, by * TempPlotTilesY + j))
-                        return false;
-            return true;
-        }
-        if (lx == TempPlotTilesX - 1 || ly == TempPlotTilesY - 1)
-        {
-            // 田埂：本身在田裡、且兩旁至少有一塊完整的田才畫成田埂，否則是草地。
-            var beside = FieldTile(tx, ty) && (Whole(px, py) || lx == TempPlotTilesX - 1 && Whole(px + 1, py) || ly == TempPlotTilesY - 1 && Whole(px, py + 1));
-            return beside ? Tex(Art.Ridge, tx, ty, x, y) ?? Ridge : null;
-        }
-        if (!Whole(px, py))
-            return null;
-        // 一塊田只有一個階段：依田區左上方格所屬的格。
-        var first = TileOwner(px * TempPlotTilesX, py * TempPlotTilesY);
-        var dev = codes[first * 4] == (byte)Code.Farmland ? 1f : codes[first * 4 + 3] / 255f;
-        var ix = x - px * TempPlotTilesX * TempTile;
-        var iy = y - py * TempPlotTilesY * TempTile;
-        var edge = ix <= 1 || iy <= 1 || ix >= (TempPlotTilesX - 1) * TempTile - 2 || iy >= (TempPlotTilesY - 1) * TempTile - 2;
-        var p = Hash(px, py, 13);
-        var furrow = iy / 3 % 2 == 0;
-        Color c;
-        if (FieldArt(dev, p, px, py, x, y) is { } fieldArt)
-        {
-            if (fieldArt.A <= 0f)
-                return null; // 還沒開墾到這一塊（畫草地）
-            c = fieldArt;
-        }
-        else if (dev >= 1f)
-        {
-            var crop = p < 0.65f ? Crops[0] : p < 0.85f ? Crops[2] : Crops[1];
-            c = furrow ? crop : crop.Darkened(0.12f);
-        }
-        else if (p > dev * 1.6f)
-            return null; // 還沒開墾到這一塊（畫草地）
-        else if (dev < 0.5f)
-            c = furrow ? Soil[1] : Soil[2]; // 翻土
-        else if (dev < 0.8f)
-            c = furrow && Hash(x / K, y / K, 14) < 0.35f ? Crops[1] : (furrow ? Soil[1] : Soil[2]); // 播種、冒出嫩苗
-        else
-            c = furrow ? Crops[1] : Crops[1].Darkened(0.12f); // 綠苗
-        return edge ? c.Darkened(0.22f) : c;
-    }
 
     private static readonly Color Ridge = new("6f8a3a");
 

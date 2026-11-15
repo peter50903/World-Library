@@ -17,8 +17,7 @@ public static partial class PixelParts
         "px_tree_round_1", "px_tree_round_2", "px_tree_pine_1", "px_tree_pine_2", "px_bush", "px_sapling", "px_stump", "px_tree_burnt",
         "px_grass_tuft_1", "px_grass_tuft_2", "px_flowers", "px_dry_tuft", "px_mountain_1", "px_mountain_2", "px_rock_1", "px_rock_2",
         "px_ore_1", "px_ore_2", "px_ore_meteor", "px_mine_pit", "px_field_wheat", "px_field_green", "px_field_young", "px_field_soil",
-        "px_field_fallow", "px_fire", "px_smoke", "px_ash", "px_flood_ripple", "px_crack", "px_crater", "px_debris", "px_icon_disaster",
-        "bld_tent", "bld_hut", "bld_house", "bld_stone_house", "bld_market", "bld_temple", "bld_keep", "bld_palisade", "bld_stone_wall", "bld_ruin"
+        "px_field_fallow", "px_fire", "px_smoke", "px_ash", "px_flood_ripple", "px_crack", "px_crater", "px_debris", "px_icon_disaster"
     };
 
     private static HashSet<string>? _batch5;

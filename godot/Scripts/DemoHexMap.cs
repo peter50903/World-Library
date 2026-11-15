@@ -224,15 +224,6 @@ public partial class DemoHexMap : Control
     public IReadOnlyList<DemoEnvironmentSpell> Spells { get; set; } = Array.Empty<DemoEnvironmentSpell>();
     public int CurrentWeek { get; set; }
 
-    /// <summary>第 08-13 章：環境外觀的圖塊；沒有素材時用原地形圖塊染色（燃燒橘紅、焦土暗褐、乾旱枯黃）。</summary>
-    private static (Texture2D? Tile, Color Tint) LookArt(DemoEnvironment.Look look) => look switch
-    {
-        DemoEnvironment.Look.Burning => (ArtAssets.Texture(ArtAssets.TileBurning), new Color(1.0f, 0.45f, 0.25f)),
-        DemoEnvironment.Look.Scorched => (ArtAssets.Texture(ArtAssets.TileScorched), new Color(0.45f, 0.38f, 0.32f)),
-        DemoEnvironment.Look.Dry => (ArtAssets.Texture(ArtAssets.TileGrasslandDry), new Color(1.0f, 0.86f, 0.55f)),
-        _ => (null, Colors.White)
-    };
-
     /// <summary>第 12-1 章 C4：地下城所在格（近景與區域層畫地下城標記）。</summary>
     public IReadOnlyCollection<DemoCellRef> Dungeons { get; set; } = Array.Empty<DemoCellRef>();
 
@@ -324,91 +315,22 @@ public partial class DemoHexMap : Control
             return;
         }
 
-        foreach (var cell in World.Cells)
-        {
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            if (!OnScreen(center, radius))
-                continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
-            if (_surface is { Active: true })
+        // 地形已由連續地表畫好；這裡只畫聚落圖示（近看畫建築由 DrawLayouts 畫，遠看與遺跡畫圖示）。
+        // 第 09-3 章：只走一遍聚落（原本每幀走一遍全部的格）。
+        if (Sites is not null && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
+            foreach (var site in Sites.Settlements)
             {
-                // 地形已由連續地表畫好；這裡只畫聚落圖示（近看畫建築，遠看與遺跡畫圖示）。
-                if (VisibleSite(cell) is { } site && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
-                    && (site.IsRuin || !UseFootprints(radius))
-                    // 第 08-16 章第 12 節：近看的遺跡畫像素零件（倒塌的石牆）。
-                    && !(site.IsRuin && UseFootprints(radius) && (DrawPixelPart("b8_ruin", center + new Vector2(0f, radius * 0.3f), radius) || DrawPixelPart("bld_ruin", center + new Vector2(0f, radius * 0.3f), radius))))
-                    DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-                continue;
+                if (FadedRuins.Contains(site.Id) || !(site.IsRuin || !UseFootprints(radius)))
+                    continue;
+                var cell = World.GetCell(site.Column, site.Row);
+                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
+                if (!OnScreen(center, radius))
+                    continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
+                // 第 08-16 章第 12 節：近看的遺跡畫像素零件（倒塌的石牆）。
+                if (site.IsRuin && UseFootprints(radius) && DrawPixelPart("b9_ruin", center + new Vector2(0f, radius * 0.3f), radius))
+                    continue;
+                DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
             }
-            var vertices = HexCoordinates.Polygon(center, radius - 1.4f);
-            // 第 06 章 a 節：主水道來自 Core 地圖（每個世界都有）；MainRiverTiles 只是舊注入的相容來源。
-            var isRiver = cell.MainWaterway || (cell.Terrain == DemoTerrain.Water
-                && MainRiverTiles.Contains(new DemoCellRef(cell.Column, cell.Row)));
-            // b 節：有地形素材就把圖塊貼進六角形（UV 對齊尖頂六角的外接矩形），沒有就用純色。
-            var land = Land.StateOf(new DemoCellRef(cell.Column, cell.Row));
-            var shallowArt = cell.Shallow ? ArtAssets.Texture(ArtAssets.TileRiverShallow) : null;
-            // 第 08-13 章：熱浪、野火的地形外觀（有素材換圖，沒有就在原圖塊上染色）。
-            var look = DemoEnvironment.LookAt(Spells, cell, CurrentWeek);
-            var (lookTile, lookTint) = LookArt(look);
-            if ((lookTile ?? LandTexture(land) ?? shallowArt ?? TerrainTexture(cell.Terrain, isRiver)) is { } tile)
-            {
-                // 第 08-13 章（試玩回饋三之 2）：圖塊各自帶深色描邊，相鄰格看得出接縫——
-                // 取樣時往內縮掉描邊（TempTileInset），並把六角形畫大一點點讓相鄰格重疊，格線關閉時地形連成一片。
-                // 第 08-15 章第 3 節：外形是不規則邊界（相鄰格共用同一條彎曲的邊）。
-                var full = ScreenShape(cell, center, radius + TempTileOverlap);
-                DrawShape(center, full, lookTile is null && look != DemoEnvironment.Look.None ? lookTint : WaterTint(cell, shallowArt is not null), tile, radius);
-                // 第 06-3 章：礦脈疊圖（農田、開墾中不疊）。
-                if ((cell.Ore || MeteoriteOre.Contains(new DemoCellRef(cell.Column, cell.Row))) && LandTexture(land) is null && ArtAssets.Texture(ArtAssets.OverlayOreVein) is { } ore)
-                    DrawShape(center, full, Colors.White, ore, radius);
-                if (cell.Shallow && shallowArt is null)
-                    DrawStones(center, radius);
-                if (VisibleSite(cell) is { } placed && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith)
-                    && (placed.IsRuin || !UseFootprints(radius))) // 第 08-13 章第 4 節：近看畫建築（地形畫完後），遠看畫圖示
-                    DrawMarker(SettlementIcon(placed), center, IconSize(placed, radius));
-                continue;
-            }
-            var terrainColor = cell.Terrain switch
-            {
-                DemoTerrain.Water => new Color(0.20f, 0.39f, 0.54f),
-                DemoTerrain.Forest => new Color(0.17f, 0.38f, 0.28f),
-                DemoTerrain.Grassland => new Color(0.41f, 0.56f, 0.34f),
-                DemoTerrain.Hills => new Color(0.52f, 0.47f, 0.33f), // 第 06-3 章
-                _ => throw new InvalidOperationException("Unknown TEMP terrain value.")
-            };
-
-            // Explicit TEMP river cells are teal, other Water cells remain blue (not automatically fish sources).
-            if (isRiver)
-                terrainColor = cell.Shallow ? new Color(0.45f, 0.80f, 0.78f) : new Color(0.10f, 0.67f, 0.70f);
-            else if (cell.Sea)
-                terrainColor = new Color(0.10f, 0.22f, 0.40f); // 第 06-1 章：海洋深藍
-            // 第 08 章 a 節（沒有圖塊時的後備）：農田土黃、開墾中褐色。
-            if (land == DemoLandDevelopment.Farmland)
-                terrainColor = new Color(0.72f, 0.62f, 0.30f);
-            else if (land == DemoLandDevelopment.Clearing)
-                terrainColor = new Color(0.52f, 0.42f, 0.28f);
-            DrawShape(center, ScreenShape(cell, center, radius), terrainColor);
-            var outline = new Vector2[7];
-            for (var i = 0; i < 6; i++)
-                outline[i] = vertices[i];
-            outline[6] = vertices[0];
-
-            if (VisibleSite(cell) is { IsRuin: true } ruin)
-            {
-                // 第 07 章 c 節：遺跡（沒有圖塊時的後備）：灰色小點。
-                if (!DrawMarker(ArtAssets.IconRuin, center, radius * 1.4f))
-                    DrawCircle(center, radius * 0.17f, new Color(0.45f, 0.43f, 0.40f));
-            }
-            else if (VisibleSite(cell) is { } settlement && !UseFootprints(radius))
-            {
-                // 第 12-1 章 C3：一年內遭天災的聚落在右上角疊災害標記。
-                if (ShowDisasterMarks && RecentDisasters.Contains(settlement.Id))
-                    DrawMarker(ArtAssets.IconDisaster, center + new Vector2(radius * 0.45f, -radius * 0.45f), radius * 0.8f);
-                DrawCircle(center, radius * 0.24f, new Color(0.12f, 0.13f, 0.15f));
-                DrawCircle(center, radius * 0.17f, new Color(0.97f, 0.76f, 0.35f));
-                // V0-06B: settlements founded by migrants get a white ring so the new dot stands out.
-                if (settlement.IsFounded)
-                    DrawArc(center, radius * 0.29f, 0f, Mathf.Tau, 24, Colors.White, 2f);
-            }
-        }
 
         // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
         // 第 08-19 章：勢力邊界（地形模式只畫邊界、勢力模式整片著色）。
@@ -419,10 +341,7 @@ public partial class DemoHexMap : Control
             DrawMonsterRealms(start, radius, fill: true); // 試玩回饋 2026-11-08 之 2：怪物也是一個勢力
         if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
         {
-            if (_surface is { Active: true })
-                DrawLayouts(start, radius); // 第 08-17 章：對齊方格的聚落版面
-            else
-                DrawFootprints(start, radius);
+            DrawLayouts(start, radius); // 第 08-17 章：對齊方格的聚落版面
         }
 
         // 第 05 章 b 節：糧食狀況模式——地形壓暗，聚落格塗上狀況色並加粗外框。
@@ -615,27 +534,6 @@ public partial class DemoHexMap : Control
             var cell = World.GetCell(site.Column, site.Row);
             var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
             DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-        }
-    }
-
-    /// <summary>
-    /// 第 06-1 章（TEMP 顯示）：淺灘沒有專屬圖塊時把河流圖塊調淡（海洋已有深海圖塊，不再調色）。
-    /// </summary>
-    private static Color WaterTint(DemoHexCell cell, bool hasShallowArt)
-        => cell.Shallow && !hasShallowArt ? new Color(1.35f, 1.30f, 1.10f)
-            : Colors.White;
-
-
-    /// <summary>第 06-1 章（TEMP 後備）：淺灘的一排踏石（橫越河道，示意可涉水過河）。</summary>
-    private void DrawStones(Vector2 center, float radius)
-    {
-        var stone = new Color(0.78f, 0.70f, 0.55f);
-        var edge = new Color(0.35f, 0.30f, 0.22f);
-        for (var i = -2; i <= 2; i++)
-        {
-            var p = center + new Vector2(i * radius * 0.30f, (i % 2 == 0 ? -1 : 1) * radius * 0.06f);
-            DrawCircle(p, radius * 0.10f, edge);
-            DrawCircle(p, radius * 0.08f, stone);
         }
     }
 

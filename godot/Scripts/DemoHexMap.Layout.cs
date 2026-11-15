@@ -15,33 +15,10 @@ public partial class DemoHexMap
     /// <summary>一塊建築地塊（方格座標；左上角與寬高）。</summary>
     public readonly record struct Lot(int X, int Y, int W, int H, Building Kind, bool Construction = false, int Facing = 0, int Variant = 1);
 
-    /// <summary>第 08-20c 章：建築的門朝哪邊（0＝南、1＝東、2＝北、3＝西），對應烘焙素材的 _s／_e／_n／_w。</summary>
-    private static readonly string[] FacingSuffix = { "s", "e", "n", "w" };
 
     /// <summary>一個聚落的版面。<see cref="Wall"/>＝城牆或木柵圍住的方格範圍（沒有＝null）。</summary>
     public sealed record SettlementPlan(int SettlementId, Rect2I Plaza, IReadOnlyList<Vector2I> Roads, IReadOnlyList<Lot> Lots, Rect2I? Wall, bool StoneWall,
         IReadOnlyList<Vector2I> Gates, Rect2I? InnerWall = null, IReadOnlyList<Vector2I>? InnerGates = null, int WallKind = -1);
-
-    /// <summary>【TEMP】廣場邊長、道路長度（方格）。</summary>
-    private static int PlazaSize(DemoSettlementTier tier) => tier switch
-    {
-        DemoSettlementTier.Camp or DemoSettlementTier.Village => 2,
-        DemoSettlementTier.Town => 3,
-        _ => 4
-    };
-
-    private static int RoadLength(DemoSettlementTier tier) => tier switch
-    {
-        DemoSettlementTier.Camp => 0,
-        DemoSettlementTier.Village => 5,
-        DemoSettlementTier.Town => 11, // 第 08-18k 章：城鎮以上的路網更長
-        DemoSettlementTier.City => 15,
-        _ => 19
-    };
-
-    /// <summary>【TEMP】第 08-18b 章：支路——主路每隔 3 方格有 60% 長出一條垂直的支路，長度是主路剩下長度的一半（至少 2）。</summary>
-    private const int TempBranchEvery = 3;
-    private const float TempBranchChance = 0.6f;
 
     /// <summary>【TEMP】人口超過下一棟房子所需的這個比例時，多一塊建地。</summary>
     private const float TempConstructionAt = 0.5f;
@@ -94,53 +71,6 @@ public partial class DemoHexMap
     }
 
     private readonly Dictionary<int, (long People, DemoSettlementTier Tier)> _layoutPeople = new();
-
-    /// <summary>第 08-18k 章：依等級與人口加上的公共建築（村莊：村會所、穀倉；城鎮：鎮會所、市集、鐵匠、工坊、風車…；城市以上再加學校、瞭望塔）。</summary>
-    private static IEnumerable<Building> CivicBuildings(DemoSettlementTier tier, long people, bool faith)
-    {
-        switch (tier)
-        {
-            case DemoSettlementTier.Village:
-                yield return Building.HallVillage;
-                if (people >= 40) yield return Building.Granary;
-                if (faith) yield return Building.Shrine;
-                break;
-            case DemoSettlementTier.Town:
-                yield return Building.HallTown;
-                yield return Building.Market;
-                yield return Building.Granary;
-                yield return Building.Smithy;
-                yield return Building.Workshop;
-                yield return Building.Windmill;
-                if (people >= 200) yield return Building.Kiln;
-                if (faith) yield return Building.Shrine;
-                break;
-            case DemoSettlementTier.City or DemoSettlementTier.Capital:
-                if (tier == DemoSettlementTier.Capital)
-                    yield return Building.Keep;
-                yield return Building.HallTown;
-                yield return Building.Market;
-                yield return faith ? Building.Temple : Building.Shrine;
-                yield return Building.School;
-                yield return Building.Granary;
-                yield return Building.Granary;
-                yield return Building.Smithy;
-                yield return Building.Workshop;
-                yield return Building.Kiln;
-                yield return Building.Windmill;
-                yield return Building.Watchtower;
-                yield return Building.Watchtower;
-                if (tier == DemoSettlementTier.Capital)
-                {
-                    yield return Building.Scriptorium;
-                    yield return Building.Market;
-                    yield return Building.Windmill;
-                    yield return Building.Watchtower;
-                    yield return Building.Watchtower;
-                }
-                break;
-        }
-    }
 
     /// <summary>
     /// 第 08-20e 章：建築佔的方格＝第九批素材的寬高÷16（整張就是它的範圍；門在底部正中）。
@@ -374,22 +304,6 @@ public partial class DemoHexMap
     /// <summary>城門寬（方格）：圍籬與木柵 2、石牆與磚牆 3。</summary>
     private static int GateWidth(int wallKind) => wallKind >= 2 ? 3 : 2;
 
-    /// <summary>這一級住屋的高度（方格），決定橫街的間隔。</summary>
-    private static int HouseHeight(DemoSettlementTier tier) => tier switch
-    {
-        DemoSettlementTier.Camp => 2,
-        DemoSettlementTier.Village => 3,
-        _ => 4
-    };
-
-    /// <summary>建地第幾階段（人口離下一棟越近越完整）。</summary>
-    private static int SiteStage(long people, DemoSettlementTier tier)
-    {
-        var per = PeoplePerHouse(tier);
-        var f = (people % per) / (float)per;
-        return f < 0.67f ? 1 : f < 0.84f ? 2 : 3;
-    }
-
     /// <summary>第 08-20e 章：住屋的款式（第九批：帳篷 2、木屋 2、城鎮住屋 3、石屋 3、磚屋 2 款）。</summary>
     private static int Variant(Building kind, int siteId, int index)
     {
@@ -481,25 +395,15 @@ public partial class DemoHexMap
             var cell = World.GetCell(site.Column, site.Row);
             if (!OnScreen(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius * 2f * (TempPlanRadius / (float)TerrainSurface.TilesPerCell + 1f))) // 第 08-20g 章：規劃半徑
                 continue;
-            if (layout.Wall is { } wall && !AddFrontWall(items, layout, wall, Screen, radius)) // 第 08-20e 章：第九批圍牆優先
-                AddWall(items, layout, wall, Screen, radius);
-            if (layout.InnerWall is { } innerWall && (KitRepeat("b8_wall_front") ?? KitRepeat("kk_wall_front")) is { } innerFront)
-                AddWallArt(items, layout, innerWall, Screen, radius, innerFront, (layout.InnerGates ?? Array.Empty<Vector2I>()).ToHashSet(), kit: true);
+            if (layout.Wall is { } wall)
+                AddFrontWall(items, layout, wall, Screen, radius); // 第 08-20e 章：第九批圍牆
             var roof = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.62f, 0.25f, 0.18f);
             foreach (var lot in layout.Lots)
             {
                 var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
-                var kind = lot.Kind;
-                var width = lot.W * t * radius / TerrainSurface.TempTexelsPerRadius;
                 var placed = lot;
-                if (FrontName(lot) is { } frontName && PixelParts.IsBatch5(frontName))
-                    items.Add((bottom.Y, () => DrawFrontLot(placed, bottom, radius, roof))); // 第 08-20e 章：第九批正面建築
-                else if (lot.Construction)
-                    items.Add((bottom.Y, () => DrawConstruction(bottom, width, lot.H * t * radius / TerrainSurface.TempTexelsPerRadius, radius, lot.X * 31 + lot.Y * 17)));
-                else if (IsResidence(kind))
-                    items.Add((bottom.Y, () => DrawHouse(kind, bottom, width, roof, radius, lot.X * 31 + lot.Y * 17, lot.Facing)));
-                else
-                    items.Add((bottom.Y, () => DrawLotBuilding(kind, bottom, width, radius, roof, lot.Facing)));
+                // 第 08-20e 章：第九批正面建築（第 09-2 章：舊的第四～八批與程式畫的建築已移除）。
+                items.Add((bottom.Y, () => DrawFrontLot(placed, bottom, radius, roof)));
             }
             // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。
             // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
@@ -529,47 +433,8 @@ public partial class DemoHexMap
         }
         foreach (var (_, draw) in items.OrderBy(i => i.Y))
             draw();
-        DrawCreatures(start, radius); // 第 08-18b 章：野生動物與地下城怪物
-        if (ShowPeople)
-            DrawWalkers(start, radius); // 第 08-18b 章第 4 節：近景小人（第 08-20f 章起不畫）
+        DrawCreatures(start, radius); // 地下城入口
         DrawNameplates(start, radius, realmsOnly: true); // 第 08-18k 章（試玩回饋 2026-11-11 之 3）：勢力合併後只標首都
-    }
-
-    private void DrawLotBuilding(Building kind, Vector2 bottom, float lotWidth, float radius, Color culture, int facing = 0)
-    {
-        if (CivicArt(kind, culture, facing, out var civicFlip) is { } civic)
-        {
-            // 第 08-18k 章：公共建築（風車有 4 幀轉動）。
-            GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(civic, radius, kind == Building.Windmill ? 4 : 1).X) * 0.95f, 0.34f);
-            if (kind == Building.Windmill)
-                DrawArt(civic, bottom, radius, 4, (int)(Time.GetTicksMsec() / 220UL % 4UL));
-            else
-                DrawArt(civic, bottom, radius, flip: civicFlip);
-            return;
-        }
-        if (LotArt(kind, culture, facing, out var lotFlip) is { } art)
-        {
-            // 第 08-18d 章：第五批大建築素材（篷布、屋頂、旗子染文化色）。
-            GroundShadow(bottom, Math.Min(lotWidth, PixelParts.ScreenSize(art, radius).X) * 0.95f, 0.36f);
-            DrawArt(art, bottom, radius, flip: lotFlip);
-            return;
-        }
-        // 落地陰影（光源左上：陰影往右下）。
-        DrawSetTransform(bottom + new Vector2(lotWidth * 0.06f, -lotWidth * 0.03f), 0f, new Vector2(1f, 0.3f));
-        DrawCircle(Vector2.Zero, lotWidth * 0.55f, new Color(0.08f, 0.06f, 0.04f, 0.38f));
-        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-        if (kind == Building.Well)
-        {
-            DrawWell(bottom, radius);
-            return;
-        }
-        var px = kind switch
-        {
-            Building.Tent => "bld_tent", Building.Hut => "bld_hut", Building.House => "bld_house", Building.StoneHouse => "bld_stone_house",
-            Building.Market => "bld_market", Building.Temple => "bld_temple", _ => "bld_keep"
-        };
-        if (!DrawPixelPart(px, bottom, radius))
-            DrawBuilding(kind, bottom - new Vector2(0f, radius * 0.3f), radius);
     }
 
     private void DrawCampfire(Vector2 at, float radius)
@@ -586,200 +451,5 @@ public partial class DemoHexMap
         var flicker = 0.8f + 0.2f * Mathf.Sin(Time.GetTicksMsec() / 120f);
         DrawCircle(at - new Vector2(0, 1.5f * p), 2.6f * p * flicker, new Color(0.98f, 0.55f, 0.15f));
         DrawCircle(at - new Vector2(0, 2.2f * p), 1.3f * p * flicker, new Color(1f, 0.85f, 0.35f));
-    }
-
-    /// <summary>
-    /// 第 08-17 章第 3 節：城牆——上下兩側畫正面（素材橫向重複或程式畫的牆面與垛口），左右兩側只畫牆頂（一條窄帶），
-    /// 四角與城門畫塔或門柱。上側與左右在建築之前畫（在後面），下側在建築之後畫（在前面）。
-    /// </summary>
-    private void AddWall(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius)
-    {
-        var p = radius / TerrainSurface.TempArtTexelsPerRadius; // 一個（第四批零件）像素的畫面大小
-        var stone = layout.StoneWall;
-        var face = stone ? new Color(0.62f, 0.60f, 0.56f) : new Color(0.50f, 0.33f, 0.18f);
-        var dark = face.Darkened(0.4f);
-        var top = face.Lightened(0.15f);
-        var faceHeight = (stone ? 12f : 9f) * p;
-        var gates = layout.Gates.ToHashSet();
-        // 第 08-20c 章：KayKit 烘焙的石牆（城市以上）與木柵（城鎮）。
-        if (stone && (KitRepeat("b8_wall_front") ?? KitRepeat("kk_wall_front")) is { } kitFront)
-        {
-            AddWallArt(items, layout, wall, screen, radius, kitFront, gates, kit: true);
-            return;
-        }
-        var kitPalisade = stone ? null : KitRepeat("b8_palisade_front") ?? KitRepeat("kk_palisade");
-        var palisadeTower = stone ? null : PixelParts.Texture("b8_palisade_tower");
-        var palisadeGate = stone ? null : PixelParts.Texture("b8_palisade_gate");
-        var sprite = kitPalisade ?? PixelParts.Texture(stone ? "bld_stone_wall" : "bld_palisade", repeat: true);
-        if (kitPalisade is not null)
-            p = radius / TerrainSurface.TempTexelsPerRadius; // 烘焙素材與地表同一密度
-        if (stone && PixelParts.IsBatch5("wall_front") && PixelParts.Texture("wall_front", repeat: true) is { } front)
-        {
-            AddWallArt(items, layout, wall, screen, radius, front, gates);
-            return;
-        }
-
-        void Front(float y, float x0, float x1)
-        {
-            // 一段正面牆：從 x0 到 x1（方格），底邊在方格 y 的下緣。
-            var a = screen(x0, y + 1);
-            var b = screen(x1, y + 1);
-            if (b.X - a.X <= 0.5f)
-                return;
-            if (sprite is not null)
-            {
-                var h = sprite.GetHeight() * p;
-                DrawTextureRectRegion(sprite, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, sprite.GetHeight()));
-            }
-            else
-            {
-                DrawRect(new Rect2(a.X, a.Y - faceHeight, b.X - a.X, faceHeight), face);
-                DrawRect(new Rect2(a.X, a.Y - faceHeight, b.X - a.X, 2f * p), top);
-                if (stone)
-                    for (var x = a.X; x < b.X - 2f * p; x += 4f * p)
-                        DrawRect(new Rect2(x, a.Y - faceHeight - 2f * p, 2f * p, 2f * p), face); // 垛口
-                else
-                    for (var x = a.X; x < b.X; x += 3f * p)
-                        DrawRect(new Rect2(x, a.Y - faceHeight - 1.5f * p, 2f * p, 1.5f * p), face.Lightened(0.1f)); // 尖木樁
-                DrawRect(new Rect2(a.X, a.Y - 1f * p, b.X - a.X, 1f * p), dark);
-            }
-        }
-        void Side(float x)
-        {
-            // 左右兩側：只看得到牆頂（寬 3 個圖像素的一條），城門處斷開。
-            for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
-            {
-                if (gates.Contains(new Vector2I((int)x, y)))
-                    continue;
-                var a = screen(x + 0.5f, y);
-                var w = 3f * p;
-                DrawRect(new Rect2(a.X - w / 2f, a.Y, w, TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius), dark);
-                DrawRect(new Rect2(a.X - w / 2f + p * 0.5f, a.Y, w - p, TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius), top);
-            }
-        }
-        void Segments(int y)
-        {
-            // 一整排正面牆，城門處斷開、門兩旁加門柱。
-            var x0 = wall.Position.X;
-            for (var x = wall.Position.X; x <= wall.End.X; x++)
-            {
-                if (x < wall.End.X && !gates.Contains(new Vector2I(x, y)))
-                    continue;
-                Front(y, x0, x);
-                if (x < wall.End.X)
-                {
-                    if (palisadeGate is not null)
-                        DrawArt(palisadeGate, screen(x + 0.5f, y + 1), radius); // 第 08-20d 章：木柵門（第八批）
-                    else
-                    {
-                        Tower(screen(x, y + 1), 3f);
-                        Tower(screen(x + 1, y + 1), 3f);
-                    }
-                }
-                x0 = x + 1;
-            }
-        }
-        void Tower(Vector2 bottom, float half)
-        {
-            // 第 08-20d 章：木柵角樓（第八批）。
-            if (palisadeTower is not null)
-            {
-                DrawArt(palisadeTower, bottom, radius);
-                return;
-            }
-            var w = half * 2f * p;
-            var h = faceHeight + 4f * p;
-            DrawRect(new Rect2(bottom.X - w / 2f, bottom.Y - h, w, h), face.Darkened(0.08f));
-            DrawRect(new Rect2(bottom.X - w / 2f, bottom.Y - h, w, 2f * p), top);
-            DrawRect(new Rect2(bottom.X - w / 2f, bottom.Y - h, w, h), dark, false, Math.Max(1f, p * 0.6f));
-        }
-        var topRow = wall.Position.Y;
-        var bottomRow = wall.End.Y - 1;
-        items.Add((screen(0, topRow + 1).Y - 0.01f, () =>
-        {
-            Side(wall.Position.X);
-            Side(wall.End.X - 1);
-            Segments(topRow);
-            if (stone)
-            {
-                Tower(screen(wall.Position.X + 0.5f, topRow + 1), 4f);
-                Tower(screen(wall.End.X - 0.5f, topRow + 1), 4f);
-            }
-        }));
-        items.Add((screen(0, bottomRow + 1).Y + 0.01f, () =>
-        {
-            Segments(bottomRow);
-            if (stone)
-            {
-                Tower(screen(wall.Position.X + 0.5f, bottomRow + 1), 4f);
-                Tower(screen(wall.End.X - 0.5f, bottomRow + 1), 4f);
-            }
-        }));
-    }
-
-    /// <summary>
-    /// 第 08-18d 章：第五批城牆素材——上下兩側是正面牆（wall_front 橫向重複），左右兩側只看得到牆頂（wall_top 一方格一張），
-    /// 四角是圓塔（尖頂染文化色），上下的城門是 wall_gate、左右的城門是 wall_gate_side。上側與左右在建築之前畫，下側在建築之後畫。
-    /// </summary>
-    private void AddWallArt(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius, CanvasTexture front,
-        HashSet<Vector2I> gates, bool kit = false)
-    {
-        var culture = CultureOf.TryGetValue(layout.SettlementId, out var id) ? CultureColor(id) : new Color(0.62f, 0.25f, 0.18f);
-        // 第 08-20c 章：KayKit 烘焙的塔樓（尖頂染文化色）與城門；牆頂沿用第五批。
-        // 第 08-20d 章：第八批的城牆零件優先。
-        var b8 = kit && PixelParts.IsBatch5("b8_wall_tower");
-        var tower = b8 ? KitArt("b8_wall_tower", culture)
-            : kit ? (Texture2D?)PixelParts.Tinted("kk_wall_tower", culture, 1f) ?? PixelParts.Texture("kk_wall_tower")
-            : (Texture2D?)PixelParts.Tinted("wall_tower", culture, 0.5f) ?? PixelParts.Texture("wall_tower");
-        var gate = PixelParts.Texture(b8 ? "b8_wall_gate" : kit ? "kk_wall_gate" : "wall_gate");
-        var gateSide = PixelParts.Texture(b8 ? "b8_wall_gate_side" : kit ? "kk_wall_gate_side" : "wall_gate_side");
-        var top = PixelParts.Texture("wall_top");
-        var p = radius / TerrainSurface.TempTexelsPerRadius;
-        var tile = TerrainSurface.TempTile * p;
-
-        void Row(int y)
-        {
-            var x0 = wall.Position.X;
-            for (var x = wall.Position.X; x <= wall.End.X; x++)
-            {
-                if (x < wall.End.X && !gates.Contains(new Vector2I(x, y)))
-                    continue;
-                var a = screen(x0, y + 1);
-                var b = screen(x, y + 1);
-                if (b.X - a.X > 0.5f)
-                {
-                    var h = front.GetHeight() * p;
-                    DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, front.GetHeight()));
-                }
-                if (x < wall.End.X && gate is not null)
-                    DrawArt(gate, screen(x + 0.5f, y + 1), radius);
-                x0 = x + 1;
-            }
-            if (tower is null)
-                return;
-            DrawArt(tower, screen(wall.Position.X + 0.5f, y + 1), radius);
-            DrawArt(tower, screen(wall.End.X - 0.5f, y + 1), radius);
-        }
-        void Side(int x)
-        {
-            for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
-            {
-                if (gates.Contains(new Vector2I(x, y)))
-                {
-                    if (gateSide is not null)
-                        DrawArt(gateSide, screen(x + 0.5f, y + 1), radius);
-                    continue;
-                }
-                if (top is not null)
-                    DrawTextureRect(top, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
-            }
-        }
-        items.Add((screen(0, wall.Position.Y + 1).Y - 0.01f, () =>
-        {
-            Side(wall.Position.X);
-            Side(wall.End.X - 1);
-            Row(wall.Position.Y);
-        }));
-        items.Add((screen(0, wall.End.Y).Y + 0.01f, () => Row(wall.End.Y - 1)));
     }
 }

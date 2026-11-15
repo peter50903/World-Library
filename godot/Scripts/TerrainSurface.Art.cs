@@ -132,7 +132,7 @@ public partial class TerrainSurface
         return color;
     }
 
-    /// <summary>陸地的素材底色（田、聚落空地交給 <see cref="Plot"/>）；這種地面沒有素材回傳 null。</summary>
+    /// <summary>陸地的素材底色；這種地面沒有素材回傳 null。</summary>
     private Color? LandArt(Code code, byte fourth, Biome biome, int tx, int ty, int x, int y)
     {
         var art = Art;
@@ -153,20 +153,4 @@ public partial class TerrainSurface
         };
     }
 
-    /// <summary>一塊田的素材色：熟田依雜湊種麥、菜、亞麻或綠作物；開墾中依進度翻土→播種→綠苗。
-    /// 還沒開墾到這塊回傳透明色（畫草地）；沒有田的素材回傳 null。</summary>
-    private Color? FieldArt(float dev, float p, int px, int py, int x, int y)
-    {
-        var art = Art;
-        if (art.Wheat.Empty)
-            return null;
-        TileSet set;
-        if (dev >= 1f)
-            set = p < 0.55f ? art.Wheat : p < 0.75f ? art.Vegetable : p < 0.88f ? art.Flax : art.Green;
-        else if (p > dev * 1.6f)
-            return new Color(0f, 0f, 0f, 0f);
-        else
-            set = dev < 0.5f ? art.Plowed : dev < 0.8f ? art.Sown : art.Sprout;
-        return Tex(set, px, py, x, y) ?? Tex(art.Wheat, px, py, x, y);
-    }
 }
