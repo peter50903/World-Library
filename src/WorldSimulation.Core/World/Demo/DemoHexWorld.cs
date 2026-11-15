@@ -55,8 +55,9 @@ public static class DemoMapSizes
     {
         DemoMapSize.Small => (DemoHexWorld.SmallColumns, DemoHexWorld.SmallRows),
         DemoMapSize.Medium => (24, 16),
-        DemoMapSize.Large => (48, 32),
-        DemoMapSize.Huge => (96, 64),
+        // 第 08-20h 章（使用者 2026-11-15：除了巨大之外放不下三個國家，一國至少五座城鎮）：大 48×32 → 72×48、巨大 96×64 → 128×88。
+        DemoMapSize.Large => (72, 48),
+        DemoMapSize.Huge => (128, 88),
         _ => throw new ArgumentOutOfRangeException(nameof(size))
     };
 

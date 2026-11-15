@@ -11,8 +11,8 @@ public sealed class DemoMapSizeTests
     [Theory]
     [InlineData(DemoMapSize.Small, 12, 8)]
     [InlineData(DemoMapSize.Medium, 24, 16)]
-    [InlineData(DemoMapSize.Large, 48, 32)]
-    [InlineData(DemoMapSize.Huge, 96, 64)]
+    [InlineData(DemoMapSize.Large, 72, 48)]
+    [InlineData(DemoMapSize.Huge, 128, 88)]
     public void EverySize_HasItsGrid_DrawCount_RiverAndFords(DemoMapSize size, int columns, int rows)
     {
         var rng = RngRegistry.Create(42);

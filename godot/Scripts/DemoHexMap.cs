@@ -259,7 +259,7 @@ public partial class DemoHexMap : Control
     private const float TempMaxZoom = 3f;
     /// <summary>第 08-13 章第 5 節【TEMP】大地圖：開新世界時鏡頭拉近到每格約這個半徑（像素），可縮小看全圖；最大縮放到每格這麼大。</summary>
     private const float TempComfortHexRadius = 26f;
-    private const float TempMaxHexRadius = 64f * TerrainSurface.TempZoomScale; // 第 08-20g 章：放到最大時方格大小不變
+    private const float TempMaxHexRadius = 160f * TerrainSurface.TempZoomScale; // 第 08-20g 章換算；第 08-20h 章（使用者 2026-11-15：無法放大仔細看城裡的建築）：64 → 160，最大時一個方格約 53 螢幕像素（素材放大 3.3 倍）
     private DemoHexWorld? _viewWorld;
     private float _zoom = 1f;
     private Vector2 _pan = Vector2.Zero;
