@@ -62,6 +62,47 @@ public static class DemoContinentGenerator
         return centers;
     }
 
+    /// <summary>【TEMP】第 08-20h 章：大陸連成一塊時最多重來幾次。</summary>
+    public const int TempContinentRetries = 8;
+
+    /// <summary>至少 12 格的陸塊有幾塊（八鄰相連；與測試的算法相同）。</summary>
+    private static int SeparateMasses(bool[] isLand, int columns, int rows)
+    {
+        var seen = new bool[isLand.Length];
+        var big = 0;
+        var stack = new Stack<int>();
+        for (var start = 0; start < isLand.Length; start++)
+        {
+            if (!isLand[start] || seen[start])
+                continue;
+            seen[start] = true;
+            stack.Push(start);
+            var size = 0;
+            while (stack.Count > 0)
+            {
+                var i = stack.Pop();
+                size++;
+                int r = i / columns, c = i % columns;
+                for (var dr = -1; dr <= 1; dr++)
+                    for (var dc = -1; dc <= 1; dc++)
+                    {
+                        int rr = r + dr, cc = c + dc;
+                        if (rr < 0 || cc < 0 || rr >= rows || cc >= columns)
+                            continue;
+                        var j = rr * columns + cc;
+                        if (isLand[j] && !seen[j])
+                        {
+                            seen[j] = true;
+                            stack.Push(j);
+                        }
+                    }
+            }
+            if (size >= 12)
+                big++;
+        }
+        return big;
+    }
+
     private static long Distance(long ax, long ay, long bx, long by) => (long)Math.Sqrt((double)((ax - bx) * (ax - bx) + (ay - by) * (ay - by)));
 
     /// <summary>【TEMP】陸地中最高的多少 % 是丘陵。</summary>
@@ -90,56 +131,68 @@ public static class DemoContinentGenerator
     {
         ArgumentNullException.ThrowIfNull(rng);
         var random = EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Geography, Namespace);
-        ulong Draw(ulong index) => random.GetUInt64(index);
+        // 第 08-20h 章：大、巨大地圖的大陸連成一塊時換一組抽樣重來（salt 往後移；最多 TempContinentRetries 次）。中地圖以下不重來。
+        var salt = 0UL;
+        ulong Draw(ulong index) => random.GetUInt64(unchecked(index + salt));
         var count = columns * rows;
 
         // ① 高度。第 06-5 章（試玩回饋 2026-11-11 之 6、7：世界不像大陸、要像現實一樣有多個大陸）：
         // 先放幾塊大陸的中心（彼此夠遠），每塊大陸是被雜訊扭曲過的橢圓「大陸棚」，再疊上三層平滑雜訊的起伏；
         // 大陸之間自然是海峽與大洋，海岸線因扭曲而有半島與海灣。地圖四邊兩格內往下壓，外圍一定是海。
-        var height = new long[count];
-        var spacing = Math.Max(4, columns / 5) * Unit;
-        var continents = ContinentCount(columns, Draw);
-        var centers = PlaceContinents(columns, rows, continents, Draw);
-        var warp = Math.Max(2 * Unit, spacing / 2);
-        for (var row = 0; row < rows; row++)
+        long[] height;
+        long[] order;
+        int landCount;
+        bool[] isLand;
+        for (var retry = 0; ; retry++)
         {
-            for (var col = 0; col < columns; col++)
+            height = new long[count];
+            var spacing = Math.Max(4, columns / 5) * Unit;
+            var continents = ContinentCount(columns, Draw);
+            var centers = PlaceContinents(columns, rows, continents, Draw);
+            var warp = Math.Max(2 * Unit, spacing / 2);
+            for (var row = 0; row < rows; row++)
             {
-                var x = col * Unit;
-                var y = row * Unit; // 第 08-18a 章：方格，列距＝欄距
-                var relief = (4 * Noise(Draw, 0, x, y, spacing) + 2 * Noise(Draw, 1, x, y, Math.Max(2 * Unit, spacing / 2))
-                    + Noise(Draw, 2, x, y, Math.Max(2 * Unit, spacing / 4))) / 7;
-                // 扭曲座標（約 ±TempWarpCells 格）再量到每塊大陸中心的橢圓距離，取最近的一塊。
-                var wx = x + (Noise(Draw, 6, x, y, warp) - 500) * TempWarpCells * Unit / 500;
-                var wy = y + (Noise(Draw, 7, x, y, warp) - 500) * TempWarpCells * Unit / 500;
-                long shelf = 0, second = 0;
-                foreach (var (ccx, ccy, rx, ry) in centers)
+                for (var col = 0; col < columns; col++)
                 {
-                    var dx = (wx - ccx) * 1000 / rx;
-                    var dy = (wy - ccy) * 1000 / ry;
-                    var here = 1000 - Math.Min(1000, (dx * dx + dy * dy) / 1000);
-                    if (here > shelf)
-                        (shelf, second) = (here, shelf);
-                    else if (here > second)
-                        second = here;
+                    var x = col * Unit;
+                    var y = row * Unit; // 第 08-18a 章：方格，列距＝欄距
+                    var relief = (4 * Noise(Draw, 0, x, y, spacing) + 2 * Noise(Draw, 1, x, y, Math.Max(2 * Unit, spacing / 2))
+                        + Noise(Draw, 2, x, y, Math.Max(2 * Unit, spacing / 4))) / 7;
+                    // 扭曲座標（約 ±TempWarpCells 格）再量到每塊大陸中心的橢圓距離，取最近的一塊。
+                    var wx = x + (Noise(Draw, 6, x, y, warp) - 500) * TempWarpCells * Unit / 500;
+                    var wy = y + (Noise(Draw, 7, x, y, warp) - 500) * TempWarpCells * Unit / 500;
+                    long shelf = 0, second = 0;
+                    foreach (var (ccx, ccy, rx, ry) in centers)
+                    {
+                        var dx = (wx - ccx) * 1000 / rx;
+                        var dy = (wy - ccy) * 1000 / ry;
+                        var here = 1000 - Math.Min(1000, (dx * dx + dy * dy) / 1000);
+                        if (here > shelf)
+                            (shelf, second) = (here, shelf);
+                        else if (here > second)
+                            second = here;
+                    }
+                    var h = relief * TempReliefPercent / 100 + shelf * (100 - TempReliefPercent) / 100;
+                    // 兩塊大陸之間（離兩邊差不多近）壓低成海峽，大陸不會連成一片。
+                    if (shelf - second < TempStraitWidth)
+                        h -= (TempStraitWidth - (shelf - second)) * 2;
+                    var edge = Math.Min(Math.Min(col, columns - 1 - col), Math.Min(row, rows - 1 - row));
+                    if (edge < 2)
+                        h -= (2 - edge) * 300;
+                    height[row * columns + col] = h;
                 }
-                var h = relief * TempReliefPercent / 100 + shelf * (100 - TempReliefPercent) / 100;
-                // 兩塊大陸之間（離兩邊差不多近）壓低成海峽，大陸不會連成一片。
-                if (shelf - second < TempStraitWidth)
-                    h -= (TempStraitWidth - (shelf - second)) * 2;
-                var edge = Math.Min(Math.Min(col, columns - 1 - col), Math.Min(row, rows - 1 - row));
-                if (edge < 2)
-                    h -= (2 - edge) * 300;
-                height[row * columns + col] = h;
             }
-        }
 
-        // ② 海平面：最高的 TempLandPercent% 是陸地（同高時依格編號，結果固定）。
-        var order = Enumerable.Range(0, count).OrderByDescending(i => height[i]).ThenBy(i => i).ToArray();
-        var landCount = Math.Max(1, count * TempLandPercent / 100);
-        var isLand = new bool[count];
-        foreach (var i in order.Take(landCount))
-            isLand[i] = true;
+            // ② 海平面：最高的 TempLandPercent% 是陸地（同高時依格編號，結果固定）。
+            order = Enumerable.Range(0, count).OrderByDescending(i => height[i]).ThenBy(i => i).ToArray();
+            landCount = Math.Max(1, count * TempLandPercent / 100);
+            isLand = new bool[count];
+            foreach (var i in order.Take(landCount))
+                isLand[i] = true;
+            if (columns <= 48 || retry >= TempContinentRetries || SeparateMasses(isLand, columns, rows) >= 2)
+                break;
+            salt = unchecked(salt + 0x1_0000_0000UL);
+        }
 
         // ③ 丘陵：陸地中最高的一段。
         var hillCount = landCount * TempHillPercent / 100;
