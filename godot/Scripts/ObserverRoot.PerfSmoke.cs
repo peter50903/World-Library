@@ -41,6 +41,7 @@ public partial class ObserverRoot
         watch.Restart();
         InstallWorld(world, "效能量測");
         var installMs = watch.Elapsed.TotalMilliseconds;
+        _refreshParts.Clear();
         const int refreshDays = 28;
         double refreshTotal = 0;
         allocBefore = GC.GetTotalAllocatedBytes(true);
@@ -51,15 +52,33 @@ public partial class ObserverRoot
             Refresh();
             refreshTotal += watch.Elapsed.TotalMilliseconds;
         }
+        var parts = string.Join(" ", _refreshParts.Select(kv => $"R_{kv.Key}={Ms(kv.Value / refreshDays)}"));
         var refreshAllocKb = (GC.GetTotalAllocatedBytes(true) - allocBefore) / 1024.0 / refreshDays;
+        // 第 09-3 章：頂部資訊列單獨的成本（同一天重複更新，不推進世界）。
+        watch.Restart();
+        for (var k = 0; k < refreshDays; k++)
+            RefreshHud();
+        var hudMs = watch.Elapsed.TotalMilliseconds / refreshDays;
+        watch.Restart();
+        for (var k = 0; k < refreshDays; k++)
+            _ = _world.Snapshot();
+        var snapMs = watch.Elapsed.TotalMilliseconds / refreshDays;
         // 第 09-3 章：播放時實際走的路（同一週只更新日期與時間控制）。
-        double dayTotal = 0;
+        double dayTotal = 0, lightTotal = 0;
+        var lightDays = 0;
         for (var d = 0; d < refreshDays; d++)
         {
+            var weekBefore = _world.CommittedWeeks;
             _world.AdvanceOneDay();
             watch.Restart();
             RefreshAfterDays();
-            dayTotal += watch.Elapsed.TotalMilliseconds;
+            var ms = watch.Elapsed.TotalMilliseconds;
+            dayTotal += ms;
+            if (_world.CommittedWeeks == weekBefore)
+            {
+                lightTotal += ms;
+                lightDays++;
+            }
         }
 
         // ③ 地圖：地表代碼、聚落版面、地表整張重建、烤一塊、每週增量。
@@ -73,7 +92,7 @@ public partial class ObserverRoot
         GD.Print("WORLD_SIM_PERF: "
             + $"Map={world.Map.Columns}x{world.Map.Rows} Settlements={settlements} Population={_world.SettledPopulation} "
             + $"CreateMs={Ms(createMs)} CoreWeekMs={Ms(coreWeekMs)} CoreAllocMBPerWeek={Ms(coreAllocMbPerWeek)} CoreGen0={coreGen0} "
-            + $"InstallMs={Ms(installMs)} RefreshMs={Ms(refreshTotal / refreshDays)} RefreshAllocKB={Ms(refreshAllocKb)} DayRefreshMs={Ms(dayTotal / refreshDays)} "
+            + $"InstallMs={Ms(installMs)} RefreshMs={Ms(refreshTotal / refreshDays)} RefreshAllocKB={Ms(refreshAllocKb)} DayRefreshMs={Ms(dayTotal / refreshDays)} LightDayMs={Ms(lightDays == 0 ? 0 : lightTotal / lightDays)} HudMs={Ms(hudMs)} SnapshotMs={Ms(snapMs)} {parts} "
             + map);
     }
 }
