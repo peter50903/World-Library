@@ -401,6 +401,9 @@ public sealed partial class DemoObserverWorld
                 || ledger.FoodConsumed + ledger.FoodShortage != survival.Demand(adults, people - adults, weekly.FoodPerPersonPerWeek))
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的取水、缺水、腐敗或需求與規則重算不符");
         }
+        // 第 08-19g 章：糧稅只是移轉（全部繳的＝全部收的）。
+        if (report.Settlements.Sum(l => l.FoodTaxPaid) != report.Settlements.Sum(l => l.FoodTaxReceived))
+            Reject($"第 {w} 週的糧稅繳收不相等");
 
         stocks.Clear();
         foreach (var source in report.Sources.Where(x => x.StockClosing > 0))
