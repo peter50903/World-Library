@@ -217,10 +217,15 @@ public partial class DemoHexMap
             var (_, tier) = SettlementScale.TryGetValue(layout.SettlementId, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
             void Mark(int x, int y, byte kind)
             {
-                // 第 08-18k 章：道路、廣場不畫在田上（田不會因版面重排而被道路蓋住又露出）。
-                if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var o && (o < 0 || !IsField(o)))
+                // 第 08-20f 章：聚落裡的路、廣場、整地蓋過田（田在牆外）；水上不鋪。
+                if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var o and >= 0 && IsLand(o))
                     ground[y * tx + x] = kind;
             }
+            // 第 08-20f 章（使用者 2026-11-15：牆內不應該還有原始地塊）：牆內的陸地全部整成聚落地面（城市以上鋪石子地、其餘夯土）。
+            if (layout.Wall is { } inner)
+                for (var y = inner.Position.Y; y < inner.End.Y; y++)
+                    for (var x = inner.Position.X; x < inner.End.X; x++)
+                        Mark(x, y, tier >= DemoSettlementTier.City ? TerrainSurface.GroundCobble : TerrainSurface.GroundPlazaDirt);
             // 第 08-20e 章：牆內道路與廣場——營地、村莊泥土路，城鎮石頭路，城市以上磚地（第九批路面）。
             var street = tier switch
             {
@@ -237,8 +242,7 @@ public partial class DemoHexMap
             foreach (var lot in layout.Lots)
                 for (var y = lot.Y; y < lot.Y + lot.H; y++)
                     for (var x = lot.X; x < lot.X + lot.W; x++)
-                        if (x >= 0 && y >= 0 && x < tx && _surface.TileOwner(x, y) is var inside and >= 0 && IsLand(inside) && !IsField(inside))
-                            ground.TryAdd(y * tx + x, TerrainSurface.GroundYard);
+                        Mark(x, y, TerrainSurface.GroundYard);
         }
         _ground = ground;
         // 有聚落地面的格（給地表代碼：聚落格不長樹）。
@@ -297,7 +301,8 @@ public partial class DemoHexMap
             if (!Inside(x, y))
                 return false;
             var o = surface.TileOwner(x, y);
-            return o >= 0 && cells.Contains(o) && IsLand(o) && !IsField(o) && !used.Contains(y * tx + x);
+            // 第 08-20f 章（使用者 2026-11-15：一個村子、一個小鎮只有兩棟房子）：聚落佔格裡的田也可以蓋房子（城鎮長大時田往外移）。
+            return o >= 0 && cells.Contains(o) && IsLand(o) && !used.Contains(y * tx + x);
         }
         void Use(int x, int y) => used.Add(y * tx + x);
 
@@ -370,7 +375,8 @@ public partial class DemoHexMap
             var kind = kinds[index];
             var isSite = index == kinds.Count - 1 && construction;
             var variant = Variant(kind, site.Id, index);
-            var (w, h) = isSite ? (3, 3) : LotSize(kind, variant);
+            var (w, h) = isSite ? SpriteSize(new Lot(0, 0, 0, 0, kind, true, 0, SiteStage(people, tier))) ?? (3, 3)
+                : SpriteSize(new Lot(0, 0, 0, 0, kind, false, 0, variant)) ?? LotSize(kind, variant);
             bool Fits(int x, int y)
             {
                 for (var j = 0; j < h; j++)
@@ -446,8 +452,9 @@ public partial class DemoHexMap
             var gateTile = at;
             var outside = at + step;
             var o = Inside(outside.X, outside.Y) ? surface.TileOwner(outside.X, outside.Y) : -1;
-            if (o < 0 || !IsLand(o))
-                return;
+            var g = Inside(gateTile.X, gateTile.Y) ? surface.TileOwner(gateTile.X, gateTile.Y) : -1;
+            if (o < 0 || !IsLand(o) || g < 0 || !IsLand(g) || path.Any(t => surface.TileOwner(t.X, t.Y) is var q && (q < 0 || !IsLand(q))))
+                return; // 門或門外是水：這一邊不開門
             foreach (var t in path.Where(t => !roads.Contains(t)))
                 roads.Add(t);
             roads.Add(gateTile);
@@ -523,7 +530,7 @@ public partial class DemoHexMap
     private void PlaceWaterfront(DemoSettlement site, Vector2I center, List<Lot> lots, HashSet<int> used, int tx, Building kind)
     {
         var surface = _surface!;
-        var (w, h) = LotSize(kind, 1);
+        var (w, h) = SpriteSize(new Lot(0, 0, 0, 0, kind)) ?? LotSize(kind, 1);
         bool OnLand(int x, int y) => x >= 0 && y >= 0 && x < tx && y < surface.TilesY && surface.TileOwner(x, y) is var o and >= 0 && IsLand(o) && !IsField(o);
         bool OnWater(int x, int y) => x >= 0 && y >= 0 && x < tx && y < surface.TilesY && surface.TileOwner(x, y) is var o and >= 0 && !IsLand(o);
         bool Near(int x, int y) => surface.TileOwner(x, y) is var o and >= 0
@@ -634,7 +641,8 @@ public partial class DemoHexMap
         foreach (var (_, draw) in items.OrderBy(i => i.Y))
             draw();
         DrawCreatures(start, radius); // 第 08-18b 章：野生動物與地下城怪物
-        DrawWalkers(start, radius); // 第 08-18b 章第 4 節：近景小人
+        if (ShowPeople)
+            DrawWalkers(start, radius); // 第 08-18b 章第 4 節：近景小人（第 08-20f 章起不畫）
         DrawNameplates(start, radius, realmsOnly: true); // 第 08-18k 章（試玩回饋 2026-11-11 之 3）：勢力合併後只標首都
     }
 

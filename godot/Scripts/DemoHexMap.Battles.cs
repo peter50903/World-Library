@@ -98,6 +98,18 @@ public partial class DemoHexMap
             var place = ScreenOf(start, radius, mark.Place);
             if (!OnScreen(place, radius * 4f))
                 continue;
+            if (!ShowPeople)
+            {
+                // 第 08-20f 章：只畫符號——紅色箭頭從出兵的地方指向戰場，戰場上一閃一閃的 ⚔ 與死亡人數。
+                var origin = mark.From is { } src && World.Contains(src.Column, src.Row) ? ScreenOf(start, radius, src) : (Vector2?)null;
+                if (origin is { } o && o.DistanceTo(place) > radius * 0.5f)
+                    DrawWarArrow(o, place, radius, Math.Min(1f, t * 2.5f));
+                var beat = 0.6f + 0.4f * Mathf.Sin(t * Mathf.Tau * 4f);
+                DrawSwords(font, place - new Vector2(0f, radius * 0.6f), (int)(16 + 8 * beat), mark.Kind, 1f);
+                if (mark.Deaths > 0)
+                    DrawString(font, place + new Vector2(radius * 0.3f, -radius * 0.2f), $"-{mark.Deaths}", HorizontalAlignment.Left, -1, 15, new Color(1f, 0.3f, 0.2f));
+                continue;
+            }
             if (radius < TempBattleSpriteMinRadius)
             {
                 // 遠看：一閃一閃的 ⚔，交戰時放大。
@@ -287,5 +299,20 @@ public partial class DemoHexMap
         DrawCircle(center, size * 0.75f, new Color(0.08f, 0.05f, 0.03f, 0.75f * alpha));
         var width = font.GetStringSize("⚔", HorizontalAlignment.Left, -1, size).X;
         DrawString(font, center + new Vector2(-width / 2f, size * 0.38f), "⚔", HorizontalAlignment.Left, -1, size, color);
+    }
+
+    /// <summary>第 08-20f 章：戰爭箭頭（紅色粗線＋箭頭，<paramref name="grow"/>＝畫到幾成，動畫一開始從出發點長出去）。</summary>
+    private void DrawWarArrow(Vector2 from, Vector2 to, float radius, float grow)
+    {
+        var dir = (to - from).Normalized();
+        var tip = from + (to - from) * grow - dir * radius * 0.35f;
+        var width = Math.Max(3f, radius * 0.12f);
+        var red = new Color(0.82f, 0.10f, 0.08f, 0.9f);
+        DrawLine(from, tip, new Color(0f, 0f, 0f, 0.5f), width + 3f);
+        DrawLine(from, tip, red, width);
+        var side = new Vector2(-dir.Y, dir.X) * width * 2f;
+        var head = new[] { tip + dir * width * 3f, tip + side, tip - side };
+        DrawColoredPolygon(head, red);
+        DrawPolyline(new[] { head[0], head[1], head[2], head[0] }, new Color(0f, 0f, 0f, 0.6f), 1.5f);
     }
 }
