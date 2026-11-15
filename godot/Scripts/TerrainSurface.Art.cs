@@ -44,22 +44,33 @@ public partial class TerrainSurface
     /// <summary>全部地表方格（第一次用到時讀）。</summary>
     private sealed class GroundArt
     {
-        public readonly TileSet Sea = new("t_sea", 2), SeaShallow = new("t_sea_shallow", 2), SeaDeep = new("t_sea_deep", 2);
-        public readonly TileSet River = new("t_river", 2), RiverShallow = new("t_river_shallow", 2), Ford = new("t_ford_stones", 0);
-        public readonly TileSet Sand = new("t_sand", 3), SandWet = new("t_sand_wet", 2), Soil = new("t_soil", 3), Mud = new("t_mud", 2), Ash = new("t_ash", 3);
-        public readonly TileSet Hill = new("t_ground_hill", 3);
-        public readonly TileSet GrassTemperate = new("t_grass_temperate", 4), GrassMeadow = new("t_grass_meadow", 3), GrassSteppe = new("t_grass_steppe", 3);
-        public readonly TileSet FloorForest = new("t_floor_forest", 3), FloorConifer = new("t_floor_conifer", 3), FloorAutumn = new("t_floor_autumn", 3);
-        public readonly TileSet PlazaDirt = new("t_plaza_dirt", 0), PlazaStone = new("t_plaza_stone", 2), RoadDirt = new("t_road_dirt", 2),
-            RoadCobble = new("t_road_cobble", 2), Yard = new("t_yard", 0);
-        // 第 08-20f 章：第十批照比例尺重畫的農田（b9_field_*）優先，沒有再用第五批。
-        public readonly TileSet Wheat = Prefer("b9_field_wheat", "t_field_wheat"), Flax = Prefer("b9_field_flax", "t_field_flax"),
-            Vegetable = Prefer("b9_field_vegetable", "t_field_vegetable"), Green = Prefer("b9_field_wheat_green", "t_field_green"),
-            Plowed = Prefer("b9_field_plowed", "t_field_plowed"), Sown = Prefer("b9_field_sown", "t_field_sown"),
-            Sprout = Prefer("b9_field_sprout", "t_field_sprout"), Ridge = new("t_field_ridge", 0);
+        // 第 09-1a 章：第十一批地面方格（b11_g_*）優先，沒有再用第五批（t_*）。
+        public readonly TileSet Sea = Prefer("b11_g_water_sea", 2, "t_sea", 2), SeaShallow = Prefer("b11_g_water_shallow", 2, "t_sea_shallow", 2),
+            SeaDeep = Prefer("b11_g_water_deep", 2, "t_sea_deep", 2);
+        public readonly TileSet River = Prefer("b11_g_water_river", 2, "t_river", 2), RiverShallow = Prefer("b11_g_water_shallow", 2, "t_river_shallow", 2), Ford = new("t_ford_stones", 0);
+        public readonly TileSet Sand = Prefer("b11_g_sand", 2, "t_sand", 3), SandWet = Prefer("b11_g_sand_wet", 1, "t_sand_wet", 2), Soil = new("t_soil", 3), Mud = new("t_mud", 2),
+            Ash = Prefer("b11_g_ash", 1, "t_ash", 3);
+        public readonly TileSet Hill = Prefer("b11_g_hill", 3, "t_ground_hill", 3);
+        public readonly TileSet GrassTemperate = Prefer("b11_g_grass_temperate", 4, "t_grass_temperate", 4), GrassMeadow = Prefer("b11_g_grass_meadow", 4, "t_grass_meadow", 3),
+            GrassSteppe = Prefer("b11_g_grass_steppe", 4, "t_grass_steppe", 3);
+        public readonly TileSet FloorForest = Prefer("b11_g_forest_floor", 3, "t_floor_forest", 3), FloorConifer = new("t_floor_conifer", 3), FloorAutumn = new("t_floor_autumn", 3);
+        public readonly TileSet PlazaDirt = Prefer("b11_g_plaza_dirt", 1, "t_plaza_dirt", 0), PlazaStone = Prefer("b11_g_plaza_stone", 2, "t_plaza_stone", 2),
+            RoadDirt = Prefer("b11_g_road_dirt", 2, "t_road_dirt", 2), RoadCobble = Prefer("b11_g_cobble", 1, "t_road_cobble", 2), Yard = Prefer("b11_g_yard", 2, "t_yard", 0),
+            Garden = new("b11_g_garden", 2);
+        // 第 08-20f 章：農田（第十一批 → 第十批 → 第五批）。
+        public readonly TileSet Wheat = Prefer3("b11_g_field_wheat", "b9_field_wheat", "t_field_wheat"), Flax = Prefer3("b11_g_field_flax", "b9_field_flax", "t_field_flax"),
+            Vegetable = Prefer3("b11_g_field_vegetable", "b9_field_vegetable", "t_field_vegetable"), Green = Prefer3("b11_g_field_green", "b9_field_wheat_green", "t_field_green"),
+            Plowed = Prefer3("b11_g_field_plowed", "b9_field_plowed", "t_field_plowed"), Sown = Prefer3("b11_g_field_sown", "b9_field_sown", "t_field_sown"),
+            Sprout = Prefer3("b11_g_field_sprout", "b9_field_sprout", "t_field_sprout"), Ridge = new("t_field_ridge", 0);
 
-        private static TileSet Prefer(string fresh, string old) => new TileSet(fresh, 0) is { Empty: false } set ? set : new TileSet(old, 0);
-        public readonly TileSet FrontDirt = new("b9_road_dirt", 2), FrontStone = new("b9_road_stone", 2), FrontBrick = new("b9_road_brick", 2); // 第 08-20e 章
+        private static TileSet Prefer(string fresh, int freshCount, string old, int oldCount)
+            => new TileSet(fresh, freshCount) is { Empty: false } set ? set : new TileSet(old, oldCount);
+
+        private static TileSet Prefer3(string a, string b, string c)
+            => new TileSet(a, 0) is { Empty: false } x ? x : new TileSet(b, 0) is { Empty: false } y ? y : new TileSet(c, 0);
+
+        public readonly TileSet FrontDirt = Prefer("b11_g_road_dirt", 2, "b9_road_dirt", 2), FrontStone = Prefer("b11_g_road_stone", 2, "b9_road_stone", 2),
+            FrontBrick = Prefer("b11_g_road_brick", 2, "b9_road_brick", 2); // 第 08-20e 章；第 09-1a 章第十一批優先
 
         public TileSet Grass(Biome biome) => biome switch
         {

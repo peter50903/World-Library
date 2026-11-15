@@ -314,8 +314,8 @@ public partial class DemoHexMap
     {
         var count = kind switch
         {
-            Building.Tent or Building.Hut or Building.BrickHouse => 2,
-            Building.House or Building.StoneHouse => 3,
+            Building.Tent or Building.BrickHouse => 2,
+            Building.Hut or Building.House or Building.StoneHouse => 3, // 第 09-1a 章：第十一批木屋 3 款
             _ => 1
         };
         return Math.Clamp((int)(LayoutHash(siteId, index, (int)kind + 140) * count), 0, count - 1) + 1;
@@ -407,7 +407,7 @@ public partial class DemoHexMap
             {
                 var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
                 var placed = lot;
-                // 第 08-20e 章：第九批正面建築（第 09-2 章：舊的第四～八批與程式畫的建築已移除）。
+                // 第 08-20e 章：第九批正面建築（第 09-1a 章：舊的第四～八批與程式畫的建築已移除）。
                 items.Add((bottom.Y, () => DrawFrontLot(placed, bottom, radius, roof)));
             }
             // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。

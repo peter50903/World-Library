@@ -19,7 +19,7 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>【TEMP】第 08-20g 章：街距（街 1 列＋房子 4 列＋後院 4 列）、房子深度、規劃半徑、廣場寬與深、別的聚落中心保留半徑（方格）。</summary>
-    public const int TempStreetSpacing = 9, TempHouseDepth = 4, TempPlanRadius = 40, TempSquareWidth = 12, TempSquareDepth = 5, TempCenterClear = 12;
+    public const int TempStreetSpacing = 13, TempHouseDepth = 6, TempPlanRadius = 44, TempSquareWidth = 14, TempSquareDepth = 5, TempCenterClear = 12;
 
     /// <summary>【TEMP】第 08-20g 章：圍牆往外多留幾格（牆不必每蓋一棟就往外移）。</summary>
     public const int TempWallSlack = 4;
@@ -62,14 +62,18 @@ public partial class DemoHexMap
     /// <summary>【TEMP】每種用途預留的地（寬、深）：取可能蓋在上面的建築裡最大的。</summary>
     private static (int W, int H) SlotSize(SlotRole role) => role switch
     {
-        SlotRole.Hall => (5, 5),
-        SlotRole.Faith => (5, 6),
-        SlotRole.School or SlotRole.Scriptorium or SlotRole.Smithy or SlotRole.Workshop => (4, 4),
-        SlotRole.Keep => (6, 7),
-        SlotRole.Windmill or SlotRole.Windmill2 => (3, 5),
-        SlotRole.Market or SlotRole.Market2 => (5, 4),
+        // 第 09-1a 章：改成第十一批的大小（街距 13＝街 1＋地 12，最深的主堡 12 格放得下）。
+        SlotRole.Hall => (7, 7),
+        SlotRole.Faith => (8, 10),
+        SlotRole.School => (6, 6),
+        SlotRole.Scriptorium => (6, 5),
+        SlotRole.Smithy or SlotRole.Workshop => (5, 4),
+        SlotRole.Keep => (12, 12),
+        SlotRole.Windmill or SlotRole.Windmill2 => (4, 7),
+        SlotRole.Market or SlotRole.Market2 => (6, 3),
         SlotRole.Well => (2, 2),
-        _ => (3, TempHouseDepth)
+        SlotRole.HuntingLodge => (4, 3),
+        _ => (4, TempHouseDepth)
     };
 
     private const int TempPlanItems = 240;
@@ -497,6 +501,6 @@ public partial class DemoHexMap
             yield break;
         for (var j = 1; j <= TempHouseDepth; j++)
             for (var i = 0; i < lot.W; i++)
-                yield return (new Vector2I(lot.X + i, lot.Y - j), j % 2 == 0 ? TerrainSurface.GroundFieldVegetable : TerrainSurface.GroundYard);
+                yield return (new Vector2I(lot.X + i, lot.Y - j), j <= 1 ? TerrainSurface.GroundYard : TerrainSurface.GroundGarden); // 第 09-1a 章：屋後一列院子，再往後是菜畦
     }
 }

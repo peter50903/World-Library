@@ -739,3 +739,227 @@ B9_FIELD_PLOWED,px2/b9_field_plowed.png,像素零件,16×16 PNG（透明背景�
 B9_FIELD_SOWN,px2/b9_field_sown.png,像素零件,16×16 PNG（透明背景）,聚落牆外的農田,08-20f,GPT手動,待製作,,播種：土壟上點點種子；俯視、橫向的壟；上下左右無縫重複。佔地 1×1 格。參考圖 assets/reference/b10/b10ref_field_sown.png。規格 16×16 PNG（透明背景）。（共同風格見 assets/GPT_第十批_比例重畫.md）
 B9_FIELD_SPROUT,px2/b9_field_sprout.png,像素零件,16×16 PNG（透明背景）,聚落牆外的農田,08-20f,GPT手動,待製作,,綠苗：土壟上剛冒出的小綠苗；俯視、橫向的壟；上下左右無縫重複。佔地 1×1 格。參考圖 assets/reference/b10/b10ref_field_sprout.png。規格 16×16 PNG（透明背景）。（共同風格見 assets/GPT_第十批_比例重畫.md）
 B9_FIELD_FALLOW,px2/b9_field_fallow.png,像素零件,16×16 PNG（透明背景）,聚落牆外的農田,08-20f,GPT手動,待製作,,休耕地：長了雜草的休耕地；俯視、橫向的壟；上下左右無縫重複。佔地 1×1 格。參考圖 assets/reference/b10/b10ref_field_fallow.png。規格 16×16 PNG（透明背景）。（共同風格見 assets/GPT_第十批_比例重畫.md）
+B11_G_GRASS_TEMPERATE_1,px2/b11_g_grass_temperate_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,溫帶草地,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_TEMPERATE_2,px2/b11_g_grass_temperate_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,溫帶草地,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_TEMPERATE_3,px2/b11_g_grass_temperate_3.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,溫帶草地,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_TEMPERATE_4,px2/b11_g_grass_temperate_4.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,溫帶草地,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_MEADOW_1,px2/b11_g_grass_meadow_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草甸,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_MEADOW_2,px2/b11_g_grass_meadow_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草甸,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_MEADOW_3,px2/b11_g_grass_meadow_3.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草甸,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_MEADOW_4,px2/b11_g_grass_meadow_4.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草甸,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_STEPPE_1,px2/b11_g_grass_steppe_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草原（乾）,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_STEPPE_2,px2/b11_g_grass_steppe_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草原（乾）,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_STEPPE_3,px2/b11_g_grass_steppe_3.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草原（乾）,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_GRASS_STEPPE_4,px2/b11_g_grass_steppe_4.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,草原（乾）,09-1a,GPT手動,已套用,V,1、2 款幾乎素面；3、4 款帶少量草叢或小花；不透明、四邊無縫
+B11_G_FOREST_FLOOR_1,px2/b11_g_forest_floor_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,林地地面（落葉與苔）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_FOREST_FLOOR_2,px2/b11_g_forest_floor_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,林地地面（落葉與苔）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_FOREST_FLOOR_3,px2/b11_g_forest_floor_3.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,林地地面（落葉與苔）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_HILL_1,px2/b11_g_hill_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,丘陵地面（碎石與短草）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_HILL_2,px2/b11_g_hill_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,丘陵地面（碎石與短草）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_HILL_3,px2/b11_g_hill_3.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,丘陵地面（碎石與短草）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_SAND_1,px2/b11_g_sand_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,沙灘,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_SAND_2,px2/b11_g_sand_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,沙灘,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_SAND_WET_1,px2/b11_g_sand_wet_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,濕沙,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_WATER_SHALLOW_1,px2/b11_g_water_shallow_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,淺水,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_SHALLOW_2,px2/b11_g_water_shallow_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,淺水,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_RIVER_1,px2/b11_g_water_river_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,河,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_RIVER_2,px2/b11_g_water_river_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,河,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_SEA_1,px2/b11_g_water_sea_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,海,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_SEA_2,px2/b11_g_water_sea_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,海,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_DEEP_1,px2/b11_g_water_deep_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,深海,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_WATER_DEEP_2,px2/b11_g_water_deep_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,深海,09-1a,GPT手動,已套用,V,只有波紋、不畫雜點；不透明、四邊無縫
+B11_G_ASH_1,px2/b11_g_ash_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,焦土（野火燒過）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_W_GRASS_SAND,px2/b11_w_grass_sand.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔沙（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 草↔沙（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_W_SAND_SHALLOW,px2/b11_w_sand_shallow.png,過渡方格,64×64 PNG（透明背景）,過渡 沙↔淺水（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,水岸一圈淺色浪花
+B11_W_SHALLOW_DEEP,px2/b11_w_shallow_deep.png,過渡方格,64×64 PNG（透明背景）,過渡 淺水↔深水（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 淺水↔深水（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_W_GRASS_DIRT,px2/b11_w_grass_dirt.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔泥土（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 草↔泥土（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_W_GRASS_STONE,px2/b11_w_grass_stone.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔石頭路（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,路緣一排邊石
+B11_W_GRASS_BRICK,px2/b11_w_grass_brick.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔磚地（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 草↔磚地（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_W_GRASS_FIELD,px2/b11_w_grass_field.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔田（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,田四周是田埂
+B11_W_GRASS_FOREST,px2/b11_w_grass_forest.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔林地（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 草↔林地（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_W_GRASS_HILL,px2/b11_w_grass_hill.png,過渡方格,64×64 PNG（透明背景）,過渡 草↔丘陵（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）,09-1a,自動合成,已交付,,過渡 草↔丘陵（Wang 2-corner 16 格，4×4 排，順序照 wang16.png；位元為 1 的角是「↔」右邊那種）
+B11_G_ROAD_DIRT_1,px2/b11_g_road_dirt_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,泥土路,09-1a,GPT手動,已套用,V,兩條車轍，橫豎通用；不透明、四邊無縫
+B11_G_ROAD_DIRT_2,px2/b11_g_road_dirt_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,泥土路,09-1a,GPT手動,已套用,V,兩條車轍，橫豎通用；不透明、四邊無縫
+B11_G_ROAD_STONE_1,px2/b11_g_road_stone_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,石頭路,09-1a,GPT手動,已套用,V,不規則石塊；不透明、四邊無縫
+B11_G_ROAD_STONE_2,px2/b11_g_road_stone_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,石頭路,09-1a,GPT手動,已套用,V,不規則石塊；不透明、四邊無縫
+B11_G_ROAD_BRICK_1,px2/b11_g_road_brick_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,磚路,09-1a,GPT手動,已套用,V,人字形；不透明、四邊無縫
+B11_G_ROAD_BRICK_2,px2/b11_g_road_brick_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,磚路,09-1a,GPT手動,已套用,V,人字形；不透明、四邊無縫
+B11_G_YARD_1,px2/b11_g_yard_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,院子,09-1a,GPT手動,已套用,V,踩實的土加少量雜草；不透明、四邊無縫
+B11_G_YARD_2,px2/b11_g_yard_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,院子,09-1a,GPT手動,已套用,V,踩實的土加少量雜草；不透明、四邊無縫
+B11_G_GARDEN_1,px2/b11_g_garden_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,菜畦,09-1a,GPT手動,已套用,V,橫向一壟一壟、綠色作物；不透明、四邊無縫
+B11_G_GARDEN_2,px2/b11_g_garden_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,菜畦,09-1a,GPT手動,已套用,V,橫向一壟一壟、綠色作物；不透明、四邊無縫
+B11_G_PLAZA_DIRT_1,px2/b11_g_plaza_dirt_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,夯土廣場,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_PLAZA_STONE_1,px2/b11_g_plaza_stone_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,石板廣場（大塊方石）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_PLAZA_STONE_2,px2/b11_g_plaza_stone_2.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,石板廣場（大塊方石）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_G_FIELD_WHEAT,px2/b11_g_field_wheat.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,成熟麥田,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_GREEN,px2/b11_g_field_green.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,青麥,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_VEGETABLE,px2/b11_g_field_vegetable.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,菜田,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_FLAX,px2/b11_g_field_flax.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,亞麻（藍花）,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_PLOWED,px2/b11_g_field_plowed.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,翻土,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_SOWN,px2/b11_g_field_sown.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,播種,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_SPROUT,px2/b11_g_field_sprout.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,綠苗,09-1a,GPT手動,已套用,V,畦溝橫向；不透明、四邊無縫
+B11_G_FIELD_FALLOW,px2/b11_g_field_fallow.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,休耕,09-1a,GPT手動,已交付,,畦溝橫向；不透明、四邊無縫
+B11_G_COBBLE_1,px2/b11_g_cobble_1.png,地表方格,16×16 PNG（不透明、四邊可無縫拼接）,城內石子地（比石頭路細碎）,09-1a,GPT手動,已套用,V,不透明、四邊無縫
+B11_SYM_ARROW_HEAD,px2/b11_sym_arrow_head.png,像素零件,32×32 PNG（透明背景）,戰爭箭頭（紅，head，可拉長，向右）,09-1a,GPT手動,已交付,,戰爭箭頭（紅，head，可拉長，向右）
+B11_SYM_ARROW_BODY,px2/b11_sym_arrow_body.png,像素零件,32×32 PNG（透明背景）,戰爭箭頭（紅，body，可拉長，向右）,09-1a,GPT手動,已交付,,戰爭箭頭（紅，body，可拉長，向右）
+B11_SYM_ARROW_TAIL,px2/b11_sym_arrow_tail.png,像素零件,32×32 PNG（透明背景）,戰爭箭頭（紅，tail，可拉長，向右）,09-1a,GPT手動,已交付,,戰爭箭頭（紅，tail，可拉長，向右）
+B11_SYM_BATTLE,px2/b11_sym_battle.png,像素零件,32×32 PNG（透明背景）,交戰標記（交叉劍）,09-1a,GPT手動,已交付,,交戰標記（交叉劍）
+B11_SYM_SIEGE,px2/b11_sym_siege.png,像素零件,32×32 PNG（透明背景）,圍城標記,09-1a,GPT手動,已交付,,圍城標記
+B11_SYM_SETTLERS,px2/b11_sym_settlers.png,像素零件,32×32 PNG（透明背景）,開拓隊旗符,09-1a,GPT手動,已交付,,開拓隊旗符
+B11_SYM_MIGRANTS,px2/b11_sym_migrants.png,像素零件,32×32 PNG（透明背景）,遷徙隊伍旗符,09-1a,GPT手動,已交付,,遷徙隊伍旗符
+B11_SYM_FLAG_A,px2/b11_sym_flag_a.png,像素零件,64×32 PNG（透明背景）,勢力旗（灰階，程式染勢力色；飄動）,09-1a,GPT手動,已交付,,動畫 4 格橫排
+B11_SYM_FLAG_B,px2/b11_sym_flag_b.png,像素零件,64×32 PNG（透明背景）,勢力旗（灰階，程式染勢力色；飄動）,09-1a,GPT手動,已交付,,動畫 4 格橫排
+B11_SYM_DISASTER,px2/b11_sym_disaster.png,像素零件,24×24 PNG（透明背景）,天災標記,09-1a,GPT手動,已交付,,天災標記
+B11_SYM_TAX,px2/b11_sym_tax.png,像素零件,24×24 PNG（透明背景）,糧稅（穀袋往上）,09-1a,GPT手動,已交付,,糧稅（穀袋往上）
+B11_SYM_CROWN,px2/b11_sym_crown.png,像素零件,24×24 PNG（透明背景）,首都皇冠,09-1a,GPT手動,已交付,,首都皇冠
+B11_SYM_PLAGUE,px2/b11_sym_plague.png,像素零件,24×24 PNG（透明背景）,疫病,09-1a,GPT手動,已交付,,疫病
+B11_TENT_1,px2/b11_tent_1.png,像素零件,32×32 PNG（透明背景）,帳篷,09-1a,GPT手動,已套用,V,帳篷
+B11_TENT_2,px2/b11_tent_2.png,像素零件,32×32 PNG（透明背景）,帳篷,09-1a,GPT手動,已套用,V,帳篷
+B11_BONFIRE,px2/b11_bonfire.png,像素零件,128×32 PNG（透明背景）,篝火,09-1a,GPT手動,已交付,,動畫 4 格橫排在同一張
+B11_STOCKPILE,px2/b11_stockpile.png,像素零件,32×32 PNG（透明背景）,囤糧堆,09-1a,GPT手動,已交付,,囤糧堆
+B11_HUT_1,px2/b11_hut_1.png,像素零件,48×48 PNG（透明背景）,木屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_HUT_2,px2/b11_hut_2.png,像素零件,48×48 PNG（透明背景）,木屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_HUT_3,px2/b11_hut_3.png,像素零件,48×48 PNG（透明背景）,木屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_FARMHOUSE_1,px2/b11_farmhouse_1.png,像素零件,64×64 PNG（透明背景）,農舍（帶小穀倉）,09-1a,GPT手動,已交付,,；屋頂畫中性灰階（程式染色）
+B11_FARMHOUSE_2,px2/b11_farmhouse_2.png,像素零件,64×64 PNG（透明背景）,農舍（帶小穀倉）,09-1a,GPT手動,已交付,,；屋頂畫中性灰階（程式染色）
+B11_HALL_VILLAGE,px2/b11_hall_village.png,像素零件,80×80 PNG（透明背景）,村會所,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_SHRINE,px2/b11_shrine.png,像素零件,32×48 PNG（透明背景）,小祠,09-1a,GPT手動,已套用,V,小祠
+B11_GRANARY,px2/b11_granary.png,像素零件,48×64 PNG（透明背景）,穀倉,09-1a,GPT手動,已套用,V,穀倉
+B11_WELL,px2/b11_well.png,像素零件,32×32 PNG（透明背景）,水井,09-1a,GPT手動,已套用,V,水井
+B11_HUNTING_LODGE,px2/b11_hunting_lodge.png,像素零件,64×48 PNG（透明背景）,獵人小屋,09-1a,GPT手動,已套用,V,獵人小屋
+B11_FISHING_HUT,px2/b11_fishing_hut.png,像素零件,48×48 PNG（透明背景）,漁夫高腳屋,09-1a,GPT手動,已套用,V,漁夫高腳屋
+B11_HOUSE_1,px2/b11_house_1.png,像素零件,64×64 PNG（透明背景）,城鎮住屋（半木造）,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_HOUSE_2,px2/b11_house_2.png,像素零件,64×64 PNG（透明背景）,城鎮住屋（半木造）,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_HOUSE_3,px2/b11_house_3.png,像素零件,64×64 PNG（透明背景）,城鎮住屋（半木造）,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_STONE_HOUSE_1,px2/b11_stone_house_1.png,像素零件,64×80 PNG（透明背景）,石屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_STONE_HOUSE_2,px2/b11_stone_house_2.png,像素零件,64×80 PNG（透明背景）,石屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_STONE_HOUSE_3,px2/b11_stone_house_3.png,像素零件,64×96 PNG（透明背景）,石屋（三層）,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_HALL_TOWN,px2/b11_hall_town.png,像素零件,112×112 PNG（透明背景）,鎮會所,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_STALL_1,px2/b11_stall_1.png,像素零件,32×32 PNG（透明背景）,市集攤（單攤，程式排成一列）,09-1a,GPT手動,已套用,V,市集攤（單攤，程式排成一列）
+B11_STALL_2,px2/b11_stall_2.png,像素零件,32×32 PNG（透明背景）,市集攤（單攤，程式排成一列）,09-1a,GPT手動,已套用,V,市集攤（單攤，程式排成一列）
+B11_STALL_3,px2/b11_stall_3.png,像素零件,32×32 PNG（透明背景）,市集攤（單攤，程式排成一列）,09-1a,GPT手動,已套用,V,市集攤（單攤，程式排成一列）
+B11_SMITHY,px2/b11_smithy.png,像素零件,80×64 PNG（透明背景）,鐵匠鋪,09-1a,GPT手動,已套用,V,鐵匠鋪
+B11_WORKSHOP,px2/b11_workshop.png,像素零件,80×64 PNG（透明背景）,木工坊,09-1a,GPT手動,已套用,V,木工坊
+B11_KILN,px2/b11_kiln.png,像素零件,48×48 PNG（透明背景）,窯,09-1a,GPT手動,已套用,V,窯
+B11_WINDMILL,px2/b11_windmill.png,像素零件,256×112 PNG（透明背景）,風車（葉片轉動）,09-1a,GPT手動,已套用,V,動畫 4 格橫排在同一張
+B11_INN,px2/b11_inn.png,像素零件,80×80 PNG（透明背景）,旅店,09-1a,GPT手動,已交付,,；屋頂畫中性灰階（程式染色）
+B11_WAREHOUSE,px2/b11_warehouse.png,像素零件,80×64 PNG（透明背景）,倉庫,09-1a,GPT手動,已交付,,；屋頂畫中性灰階（程式染色）
+B11_STABLE,px2/b11_stable.png,像素零件,80×48 PNG（透明背景）,馬廄,09-1a,GPT手動,已交付,,馬廄
+B11_BRICK_HOUSE_1,px2/b11_brick_house_1.png,像素零件,64×80 PNG（透明背景）,磚屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_BRICK_HOUSE_2,px2/b11_brick_house_2.png,像素零件,64×80 PNG（透明背景）,磚屋,09-1a,GPT手動,已套用,V,；屋頂畫中性灰階（程式染色）
+B11_TEMPLE,px2/b11_temple.png,像素零件,128×160 PNG（透明背景）,神殿,09-1a,GPT手動,已套用,V,神殿
+B11_BELL_TOWER,px2/b11_bell_tower.png,像素零件,32×96 PNG（透明背景）,鐘樓,09-1a,GPT手動,已交付,,鐘樓
+B11_SCHOOL,px2/b11_school.png,像素零件,96×96 PNG（透明背景）,學校,09-1a,GPT手動,已套用,V,學校
+B11_SCRIPTORIUM,px2/b11_scriptorium.png,像素零件,96×80 PNG（透明背景）,抄經房,09-1a,GPT手動,已套用,V,抄經房
+B11_BARRACKS,px2/b11_barracks.png,像素零件,112×80 PNG（透明背景）,兵營,09-1a,GPT手動,已交付,,兵營
+B11_ARCHERY,px2/b11_archery.png,像素零件,96×64 PNG（透明背景）,射箭場,09-1a,GPT手動,已交付,,射箭場
+B11_WATCHTOWER,px2/b11_watchtower.png,像素零件,32×96 PNG（透明背景）,瞭望塔,09-1a,GPT手動,已套用,V,瞭望塔
+B11_FOUNTAIN,px2/b11_fountain.png,像素零件,48×48 PNG（透明背景）,廣場噴泉,09-1a,GPT手動,已交付,,廣場噴泉
+B11_KEEP,px2/b11_keep.png,像素零件,192×192 PNG（透明背景）,王宮主堡,09-1a,GPT手動,已套用,V,王宮主堡
+B11_STATUE,px2/b11_statue.png,像素零件,32×48 PNG（透明背景）,首都雕像,09-1a,GPT手動,已交付,,首都雕像
+B11_WATERMILL,px2/b11_watermill.png,像素零件,384×64 PNG（透明背景）,水磨坊（磨坊左 4 格、水車右 2 格，水車轉動）,09-1a,GPT手動,已套用,V,動畫 4 格橫排在同一張
+B11_BOAT_1,px2/b11_boat_1.png,像素零件,32×16 PNG（透明背景）,小船,09-1a,GPT手動,已交付,,小船
+B11_BOAT_2,px2/b11_boat_2.png,像素零件,32×16 PNG（透明背景）,小船,09-1a,GPT手動,已交付,,小船
+B11_FERRY,px2/b11_ferry.png,像素零件,32×32 PNG（透明背景）,渡船,09-1a,GPT手動,已交付,,渡船
+B11_RUIN_SMALL,px2/b11_ruin_small.png,像素零件,48×48 PNG（透明背景）,遺跡（小）,09-1a,GPT手動,已交付,,遺跡（小）
+B11_RUIN_BIG,px2/b11_ruin_big.png,像素零件,80×80 PNG（透明背景）,遺跡（大）,09-1a,GPT手動,已交付,,遺跡（大）
+B11_ROW_LEFT_1,px2/b11_row_left_1.png,像素零件,48×80 PNG（透明背景）,連棟屋（左端，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_ROW_LEFT_2,px2/b11_row_left_2.png,像素零件,48×80 PNG（透明背景）,連棟屋（左端，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_ROW_MID_1,px2/b11_row_mid_1.png,像素零件,48×80 PNG（透明背景）,連棟屋（中段，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_ROW_MID_2,px2/b11_row_mid_2.png,像素零件,48×80 PNG（透明背景）,連棟屋（中段，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_ROW_RIGHT_1,px2/b11_row_right_1.png,像素零件,48×80 PNG（透明背景）,連棟屋（右端，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_ROW_RIGHT_2,px2/b11_row_right_2.png,像素零件,48×80 PNG（透明背景）,連棟屋（右端，可左右接成一排）,09-1a,GPT手動,已交付,,屋頂中性灰階
+B11_PIER_ROOT,px2/b11_pier_root.png,像素零件,32×16 PNG（透明背景）,碼頭棧道（岸邊根部，可接長）,09-1a,GPT手動,已交付,,碼頭棧道（岸邊根部，可接長）
+B11_PIER_MID,px2/b11_pier_mid.png,像素零件,32×16 PNG（透明背景）,碼頭棧道（中段，可接長）,09-1a,GPT手動,已交付,,碼頭棧道（中段，可接長）
+B11_PIER_END,px2/b11_pier_end.png,像素零件,32×16 PNG（透明背景）,碼頭棧道（末端，可接長）,09-1a,GPT手動,已交付,,碼頭棧道（末端，可接長）
+B11_BRIDGE_H_END,px2/b11_bridge_h_end.png,像素零件,16×16 PNG（透明背景）,木橋（橫向端點）,09-1a,GPT手動,已交付,,木橋（橫向端點）
+B11_BRIDGE_H_MID,px2/b11_bridge_h_mid.png,像素零件,16×16 PNG（透明背景）,木橋（橫向中段）,09-1a,GPT手動,已交付,,木橋（橫向中段）
+B11_BRIDGE_V_END,px2/b11_bridge_v_end.png,像素零件,16×16 PNG（透明背景）,木橋（豎向端點）,09-1a,GPT手動,已交付,,木橋（豎向端點）
+B11_BRIDGE_V_MID,px2/b11_bridge_v_mid.png,像素零件,16×16 PNG（透明背景）,木橋（豎向中段）,09-1a,GPT手動,已交付,,木橋（豎向中段）
+B11_SITE_S_1,px2/b11_site_s_1.png,像素零件,48×48 PNG（透明背景）,工地（打樁）,09-1a,GPT手動,已套用,V,工地（打樁）
+B11_SITE_S_2,px2/b11_site_s_2.png,像素零件,48×48 PNG（透明背景）,工地（骨架）,09-1a,GPT手動,已套用,V,工地（骨架）
+B11_SITE_S_3,px2/b11_site_s_3.png,像素零件,48×48 PNG（透明背景）,工地（上樑）,09-1a,GPT手動,已套用,V,工地（上樑）
+B11_SITE_M_1,px2/b11_site_m_1.png,像素零件,64×64 PNG（透明背景）,工地（打樁）,09-1a,GPT手動,已套用,V,工地（打樁）
+B11_SITE_M_2,px2/b11_site_m_2.png,像素零件,64×64 PNG（透明背景）,工地（骨架）,09-1a,GPT手動,已套用,V,工地（骨架）
+B11_SITE_M_3,px2/b11_site_m_3.png,像素零件,64×64 PNG（透明背景）,工地（上樑）,09-1a,GPT手動,已套用,V,工地（上樑）
+B11_SITE_L_1,px2/b11_site_l_1.png,像素零件,96×96 PNG（透明背景）,工地（打樁）,09-1a,GPT手動,已套用,V,工地（打樁）
+B11_SITE_L_2,px2/b11_site_l_2.png,像素零件,96×96 PNG（透明背景）,工地（骨架）,09-1a,GPT手動,已套用,V,工地（骨架）
+B11_SITE_L_3,px2/b11_site_l_3.png,像素零件,96×96 PNG（透明背景）,工地（上樑）,09-1a,GPT手動,已套用,V,工地（上樑）
+B11_FENCE_H,px2/b11_fence_h.png,像素零件,16×16 PNG（透明背景）,圍籬：橫段正面（左右可重複）,09-1a,GPT手動,已套用,V,圍籬：橫段正面（左右可重複）
+B11_FENCE_V,px2/b11_fence_v.png,像素零件,16×16 PNG（透明背景）,圍籬：縱段（俯視牆頂，上下可重複）,09-1a,GPT手動,已套用,V,圍籬：縱段（俯視牆頂，上下可重複）
+B11_FENCE_CORNER_NW,px2/b11_fence_corner_nw.png,像素零件,16×16 PNG（透明背景）,圍籬：外角（角樓）nw,09-1a,GPT手動,已套用,V,圍籬：外角（角樓）nw
+B11_FENCE_CORNER_NE,px2/b11_fence_corner_ne.png,像素零件,16×16 PNG（透明背景）,圍籬：外角（角樓）ne,09-1a,GPT手動,已套用,V,圍籬：外角（角樓）ne
+B11_FENCE_CORNER_SW,px2/b11_fence_corner_sw.png,像素零件,16×16 PNG（透明背景）,圍籬：外角（角樓）sw,09-1a,GPT手動,已套用,V,圍籬：外角（角樓）sw
+B11_FENCE_CORNER_SE,px2/b11_fence_corner_se.png,像素零件,16×16 PNG（透明背景）,圍籬：外角（角樓）se,09-1a,GPT手動,已套用,V,圍籬：外角（角樓）se
+B11_FENCE_END_W,px2/b11_fence_end_w.png,像素零件,16×16 PNG（透明背景）,圍籬：橫段左端收尾,09-1a,GPT手動,已套用,V,圍籬：橫段左端收尾
+B11_FENCE_END_E,px2/b11_fence_end_e.png,像素零件,16×16 PNG（透明背景）,圍籬：橫段右端收尾,09-1a,GPT手動,已套用,V,圍籬：橫段右端收尾
+B11_FENCE_END_N,px2/b11_fence_end_n.png,像素零件,16×16 PNG（透明背景）,圍籬：縱段上端收尾,09-1a,GPT手動,已套用,V,圍籬：縱段上端收尾
+B11_FENCE_END_S,px2/b11_fence_end_s.png,像素零件,16×16 PNG（透明背景）,圍籬：縱段下端收尾,09-1a,GPT手動,已套用,V,圍籬：縱段下端收尾
+B11_FENCE_GATE_H,px2/b11_fence_gate_h.png,像素零件,32×16 PNG（透明背景）,圍籬：橫牆城門（中間是路）,09-1a,GPT手動,已套用,V,圍籬：橫牆城門（中間是路）
+B11_FENCE_GATE_V,px2/b11_fence_gate_v.png,像素零件,16×48 PNG（透明背景）,圍籬：縱牆城門（中間一格是路）,09-1a,GPT手動,已套用,V,圍籬：縱牆城門（中間一格是路）
+B11_FENCE_TEE,px2/b11_fence_tee.png,像素零件,16×16 PNG（透明背景）,圍籬：橫牆與縱牆的 T 字接頭,09-1a,GPT手動,已交付,,圍籬：橫牆與縱牆的 T 字接頭
+B11_PALISADE_H,px2/b11_palisade_h.png,像素零件,16×32 PNG（透明背景）,木柵：橫段正面（左右可重複）,09-1a,GPT手動,已套用,V,木柵：橫段正面（左右可重複）
+B11_PALISADE_V,px2/b11_palisade_v.png,像素零件,16×16 PNG（透明背景）,木柵：縱段（俯視牆頂，上下可重複）,09-1a,GPT手動,已套用,V,木柵：縱段（俯視牆頂，上下可重複）
+B11_PALISADE_CORNER_NW,px2/b11_palisade_corner_nw.png,像素零件,16×32 PNG（透明背景）,木柵：外角（角樓）nw,09-1a,GPT手動,已套用,V,木柵：外角（角樓）nw
+B11_PALISADE_CORNER_NE,px2/b11_palisade_corner_ne.png,像素零件,16×32 PNG（透明背景）,木柵：外角（角樓）ne,09-1a,GPT手動,已套用,V,木柵：外角（角樓）ne
+B11_PALISADE_CORNER_SW,px2/b11_palisade_corner_sw.png,像素零件,16×32 PNG（透明背景）,木柵：外角（角樓）sw,09-1a,GPT手動,已套用,V,木柵：外角（角樓）sw
+B11_PALISADE_CORNER_SE,px2/b11_palisade_corner_se.png,像素零件,16×32 PNG（透明背景）,木柵：外角（角樓）se,09-1a,GPT手動,已套用,V,木柵：外角（角樓）se
+B11_PALISADE_END_W,px2/b11_palisade_end_w.png,像素零件,16×32 PNG（透明背景）,木柵：橫段左端收尾,09-1a,GPT手動,已套用,V,木柵：橫段左端收尾
+B11_PALISADE_END_E,px2/b11_palisade_end_e.png,像素零件,16×32 PNG（透明背景）,木柵：橫段右端收尾,09-1a,GPT手動,已套用,V,木柵：橫段右端收尾
+B11_PALISADE_END_N,px2/b11_palisade_end_n.png,像素零件,16×16 PNG（透明背景）,木柵：縱段上端收尾,09-1a,GPT手動,已套用,V,木柵：縱段上端收尾
+B11_PALISADE_END_S,px2/b11_palisade_end_s.png,像素零件,16×16 PNG（透明背景）,木柵：縱段下端收尾,09-1a,GPT手動,已套用,V,木柵：縱段下端收尾
+B11_PALISADE_GATE_H,px2/b11_palisade_gate_h.png,像素零件,32×32 PNG（透明背景）,木柵：橫牆城門（中間是路）,09-1a,GPT手動,已套用,V,木柵：橫牆城門（中間是路）
+B11_PALISADE_GATE_V,px2/b11_palisade_gate_v.png,像素零件,16×48 PNG（透明背景）,木柵：縱牆城門（中間一格是路）,09-1a,GPT手動,已套用,V,木柵：縱牆城門（中間一格是路）
+B11_PALISADE_TEE,px2/b11_palisade_tee.png,像素零件,16×32 PNG（透明背景）,木柵：橫牆與縱牆的 T 字接頭,09-1a,GPT手動,已交付,,木柵：橫牆與縱牆的 T 字接頭
+B11_STONE_H,px2/b11_stone_h.png,像素零件,16×48 PNG（透明背景）,石牆：橫段正面（左右可重複）,09-1a,GPT手動,已套用,V,石牆：橫段正面（左右可重複）
+B11_STONE_V,px2/b11_stone_v.png,像素零件,16×16 PNG（透明背景）,石牆：縱段（俯視牆頂，上下可重複）,09-1a,GPT手動,已套用,V,石牆：縱段（俯視牆頂，上下可重複）
+B11_STONE_CORNER_NW,px2/b11_stone_corner_nw.png,像素零件,16×48 PNG（透明背景）,石牆：外角（角樓）nw,09-1a,GPT手動,已套用,V,石牆：外角（角樓）nw
+B11_STONE_CORNER_NE,px2/b11_stone_corner_ne.png,像素零件,16×48 PNG（透明背景）,石牆：外角（角樓）ne,09-1a,GPT手動,已套用,V,石牆：外角（角樓）ne
+B11_STONE_CORNER_SW,px2/b11_stone_corner_sw.png,像素零件,16×48 PNG（透明背景）,石牆：外角（角樓）sw,09-1a,GPT手動,已套用,V,石牆：外角（角樓）sw
+B11_STONE_CORNER_SE,px2/b11_stone_corner_se.png,像素零件,16×48 PNG（透明背景）,石牆：外角（角樓）se,09-1a,GPT手動,已套用,V,石牆：外角（角樓）se
+B11_STONE_END_W,px2/b11_stone_end_w.png,像素零件,16×48 PNG（透明背景）,石牆：橫段左端收尾,09-1a,GPT手動,已套用,V,石牆：橫段左端收尾
+B11_STONE_END_E,px2/b11_stone_end_e.png,像素零件,16×48 PNG（透明背景）,石牆：橫段右端收尾,09-1a,GPT手動,已套用,V,石牆：橫段右端收尾
+B11_STONE_END_N,px2/b11_stone_end_n.png,像素零件,16×16 PNG（透明背景）,石牆：縱段上端收尾,09-1a,GPT手動,已套用,V,石牆：縱段上端收尾
+B11_STONE_END_S,px2/b11_stone_end_s.png,像素零件,16×16 PNG（透明背景）,石牆：縱段下端收尾,09-1a,GPT手動,已套用,V,石牆：縱段下端收尾
+B11_STONE_GATE_H,px2/b11_stone_gate_h.png,像素零件,48×48 PNG（透明背景）,石牆：橫牆城門（中間是路）,09-1a,GPT手動,已套用,V,石牆：橫牆城門（中間是路）
+B11_STONE_GATE_V,px2/b11_stone_gate_v.png,像素零件,16×48 PNG（透明背景）,石牆：縱牆城門（中間一格是路）,09-1a,GPT手動,已套用,V,石牆：縱牆城門（中間一格是路）
+B11_STONE_TEE,px2/b11_stone_tee.png,像素零件,16×48 PNG（透明背景）,石牆：橫牆與縱牆的 T 字接頭,09-1a,GPT手動,已交付,,石牆：橫牆與縱牆的 T 字接頭
+B11_BRICK_H,px2/b11_brick_h.png,像素零件,16×48 PNG（透明背景）,磚牆：橫段正面（左右可重複）,09-1a,GPT手動,已套用,V,磚牆：橫段正面（左右可重複）
+B11_BRICK_V,px2/b11_brick_v.png,像素零件,16×16 PNG（透明背景）,磚牆：縱段（俯視牆頂，上下可重複）,09-1a,GPT手動,已套用,V,磚牆：縱段（俯視牆頂，上下可重複）
+B11_BRICK_CORNER_NW,px2/b11_brick_corner_nw.png,像素零件,16×48 PNG（透明背景）,磚牆：外角（角樓）nw,09-1a,GPT手動,已套用,V,磚牆：外角（角樓）nw
+B11_BRICK_CORNER_NE,px2/b11_brick_corner_ne.png,像素零件,16×48 PNG（透明背景）,磚牆：外角（角樓）ne,09-1a,GPT手動,已套用,V,磚牆：外角（角樓）ne
+B11_BRICK_CORNER_SW,px2/b11_brick_corner_sw.png,像素零件,16×48 PNG（透明背景）,磚牆：外角（角樓）sw,09-1a,GPT手動,已套用,V,磚牆：外角（角樓）sw
+B11_BRICK_CORNER_SE,px2/b11_brick_corner_se.png,像素零件,16×48 PNG（透明背景）,磚牆：外角（角樓）se,09-1a,GPT手動,已套用,V,磚牆：外角（角樓）se
+B11_BRICK_END_W,px2/b11_brick_end_w.png,像素零件,16×48 PNG（透明背景）,磚牆：橫段左端收尾,09-1a,GPT手動,已套用,V,磚牆：橫段左端收尾
+B11_BRICK_END_E,px2/b11_brick_end_e.png,像素零件,16×48 PNG（透明背景）,磚牆：橫段右端收尾,09-1a,GPT手動,已套用,V,磚牆：橫段右端收尾
+B11_BRICK_END_N,px2/b11_brick_end_n.png,像素零件,16×16 PNG（透明背景）,磚牆：縱段上端收尾,09-1a,GPT手動,已套用,V,磚牆：縱段上端收尾
+B11_BRICK_END_S,px2/b11_brick_end_s.png,像素零件,16×16 PNG（透明背景）,磚牆：縱段下端收尾,09-1a,GPT手動,已套用,V,磚牆：縱段下端收尾
+B11_BRICK_GATE_H,px2/b11_brick_gate_h.png,像素零件,48×48 PNG（透明背景）,磚牆：橫牆城門（中間是路）,09-1a,GPT手動,已套用,V,磚牆：橫牆城門（中間是路）
+B11_BRICK_GATE_V,px2/b11_brick_gate_v.png,像素零件,16×48 PNG（透明背景）,磚牆：縱牆城門（中間一格是路）,09-1a,GPT手動,已套用,V,磚牆：縱牆城門（中間一格是路）
+B11_BRICK_TEE,px2/b11_brick_tee.png,像素零件,16×48 PNG（透明背景）,磚牆：橫牆與縱牆的 T 字接頭,09-1a,GPT手動,已交付,,磚牆：橫牆與縱牆的 T 字接頭
+B11_P_BARREL,px2/b11_p_barrel.png,像素零件,16×16 PNG（透明背景）,木桶,09-1a,GPT手動,已交付,,透明背景
+B11_P_CRATE,px2/b11_p_crate.png,像素零件,16×16 PNG（透明背景）,木箱,09-1a,GPT手動,已交付,,透明背景
+B11_P_HAYSTACK,px2/b11_p_haystack.png,像素零件,16×16 PNG（透明背景）,乾草堆,09-1a,GPT手動,已交付,,透明背景
+B11_P_WOODPILE,px2/b11_p_woodpile.png,像素零件,16×16 PNG（透明背景）,柴堆,09-1a,GPT手動,已交付,,透明背景
+B11_P_CART,px2/b11_p_cart.png,像素零件,32×16 PNG（透明背景）,推車,09-1a,GPT手動,已交付,,透明背景
+B11_P_BENCH,px2/b11_p_bench.png,像素零件,32×16 PNG（透明背景）,長椅,09-1a,GPT手動,已交付,,透明背景
+B11_P_TORCH,px2/b11_p_torch.png,像素零件,16×32 PNG（透明背景）,路燈（火把）,09-1a,GPT手動,已交付,,透明背景
+B11_P_SIGNBOARD,px2/b11_p_signboard.png,像素零件,16×16 PNG（透明背景）,告示牌,09-1a,GPT手動,已交付,,透明背景
+B11_P_CLOTHESLINE,px2/b11_p_clothesline.png,像素零件,32×16 PNG（透明背景）,晾衣繩,09-1a,GPT手動,已交付,,透明背景
+B11_P_COOP,px2/b11_p_coop.png,像素零件,16×16 PNG（透明背景）,雞舍,09-1a,GPT手動,已交付,,透明背景
+B11_P_DOGHOUSE,px2/b11_p_doghouse.png,像素零件,16×16 PNG（透明背景）,狗屋,09-1a,GPT手動,已交付,,透明背景
+B11_P_SHED,px2/b11_p_shed.png,像素零件,32×32 PNG（透明背景）,小棚屋,09-1a,GPT手動,已交付,,透明背景
+B11_P_FLOWERBED,px2/b11_p_flowerbed.png,像素零件,16×16 PNG（透明背景）,花圃,09-1a,GPT手動,已交付,,透明背景
+B11_P_SCARECROW,px2/b11_p_scarecrow.png,像素零件,16×32 PNG（透明背景）,菜園稻草人,09-1a,GPT手動,已交付,,透明背景
+B11_P_BUCKET,px2/b11_p_bucket.png,像素零件,16×16 PNG（透明背景）,井邊水桶,09-1a,GPT手動,已交付,,透明背景
+B11_P_AWNING,px2/b11_p_awning.png,像素零件,48×32 PNG（透明背景）,市集遮陽棚（布中性灰階）,09-1a,GPT手動,已交付,,透明背景
+B11_P_FLAGPOLE,px2/b11_p_flagpole.png,像素零件,16×48 PNG（透明背景）,旗竿（旗中性灰階）,09-1a,GPT手動,已交付,,透明背景
+B11_W_HEDGE,px2/b11_w_hedge.png,過渡方格,64×64 PNG（透明背景）,籬笆片（Wang 2-corner 16 格一組，4×4 排）,09-1a,自動合成,已交付,,透明背景
+B11_N_ORCHARD_APPLE,px2/b11_n_orchard_apple.png,像素零件,32×48 PNG（透明背景）,蘋果樹,09-1a,GPT手動,已交付,,透明背景
+B11_N_ORCHARD_PEAR,px2/b11_n_orchard_pear.png,像素零件,32×48 PNG（透明背景）,梨樹,09-1a,GPT手動,已交付,,透明背景
+B11_N_ORCHARD_PLUM,px2/b11_n_orchard_plum.png,像素零件,32×48 PNG（透明背景）,李樹,09-1a,GPT手動,已交付,,透明背景
+B11_N_BUSH_1,px2/b11_n_bush_1.png,像素零件,16×16 PNG（透明背景）,灌木叢,09-1a,GPT手動,已交付,,透明背景
+B11_N_BUSH_2,px2/b11_n_bush_2.png,像素零件,16×16 PNG（透明背景）,灌木叢,09-1a,GPT手動,已交付,,透明背景
+B11_N_REEDS,px2/b11_n_reeds.png,像素零件,16×16 PNG（透明背景）,蘆葦叢（水岸）,09-1a,GPT手動,已交付,,透明背景
+B11_N_WEEDS,px2/b11_n_weeds.png,像素零件,16×16 PNG（透明背景）,牆邊雜草,09-1a,GPT手動,已交付,,透明背景
+B11_N_LOG,px2/b11_n_log.png,像素零件,32×16 PNG（透明背景）,倒木,09-1a,GPT手動,已交付,,透明背景
