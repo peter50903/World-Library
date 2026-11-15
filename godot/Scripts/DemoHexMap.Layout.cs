@@ -252,7 +252,8 @@ public partial class DemoHexMap
             // 第 08-20g 章：住屋的後院菜園。
             foreach (var lot in layout.Lots)
                 foreach (var (tile, kind) in Garden(lot))
-                    Mark(tile.X, tile.Y, kind);
+                    if (!layout.Plaza.HasPoint(tile)) // 廣場南邊那排房子的後院不伸進廣場
+                        Mark(tile.X, tile.Y, kind);
             foreach (var road in layout.Roads)
                 Mark(road.X, road.Y, street);
             // 村莊的廣場是綠地（夯土上留草：不鋪），城鎮以上鋪成廣場。
