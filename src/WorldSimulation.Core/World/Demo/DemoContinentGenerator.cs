@@ -27,7 +27,7 @@ public static class DemoContinentGenerator
     public static int ContinentCount(int columns, Func<ulong, ulong> draw)
     {
         ArgumentNullException.ThrowIfNull(draw);
-        return columns <= 24 ? 2 : columns <= 48 ? 3 + (int)(draw(6_000_000UL) % 2UL) : 4 + (int)(draw(6_000_000UL) % 3UL);
+        return columns <= 24 ? 2 : columns <= 72 ? 3 + (int)(draw(6_000_000UL) % 2UL) : 4 + (int)(draw(6_000_000UL) % 3UL);
     }
 
     /// <summary>
