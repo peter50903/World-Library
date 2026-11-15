@@ -13,7 +13,7 @@ public partial class DemoHexMap
 {
     /// <summary>【TEMP】團體每幾人多畫一個跟在後面的小人、格半徑至少幾像素才畫；一趟來回的秒數。</summary>
     private const long TempPeoplePerFollower = 20;
-    private const float TempWalkerMinRadius = 18f;
+    private const float TempWalkerMinRadius = 18f * TerrainSurface.TempZoomScale;
     private const float TempWalkerTripSeconds = 16f;
 
     private bool _walkersDrawn;

@@ -12,7 +12,7 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>【TEMP】每格半徑小於此（像素）時不畫建築、改畫單一圖示；每幾人一棟屋（營地每幾人一頂帳篷）；每格最多幾棟。</summary>
-    private const float TempFootprintMinRadius = 14f;
+    private const float TempFootprintMinRadius = 14f * TerrainSurface.TempZoomScale; // 第 08-20g 章：世界放大後照比例換算
     private const int TempPeoplePerHouse = 15;
     private const int TempPeoplePerTent = 5;
     private const int TempHousesPerCell = 3;

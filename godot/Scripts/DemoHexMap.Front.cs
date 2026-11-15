@@ -66,10 +66,35 @@ public partial class DemoHexMap
         Texture2D? art = (Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name);
         if (art is null)
             return false;
+        if (lot.Kind == Building.Watermill && DrawWatermill(art, bottom, radius, culture))
+            return true;
         if (Animated(lot.Kind))
             DrawArt(art, bottom, radius, 4, (int)(Time.GetTicksMsec() / 220UL % 4UL));
         else
             DrawArt(art, bottom, radius);
+        return true;
+    }
+
+    /// <summary>【TEMP】第 08-20g 章：水磨坊每格動畫的寬（像素）、輪子從哪一欄開始。</summary>
+    private const int TempMillFrameWidth = 80, TempMillWheelFrom = 48;
+
+    /// <summary>
+    /// 第 08-20g 章（使用者 2026-11-15：水車房子屋頂一樣是錯的）：第九批水磨坊的屋頂只畫了左半，第十批重畫交件前，
+    /// 房子改畫一棟完整的木屋（同款染色），只從水磨坊圖裁右邊兩格的水車輪子（照樣 4 格輪播）。
+    /// </summary>
+    private bool DrawWatermill(Texture2D art, Vector2 bottom, float radius, Color culture)
+    {
+        if (art.GetWidth() != TempMillFrameWidth * 4 || PixelParts.Texture("b9_house_1") is null)
+            return false;
+        var house = (Texture2D?)PixelParts.Tinted("b9_house_1", culture, 1f) ?? PixelParts.Texture("b9_house_1")!;
+        var p = radius / TerrainSurface.TempTexelsPerRadius;
+        var tile = TerrainSurface.TempTile * p;
+        // 範圍 5 格寬：左 3 格是房子、右 2 格是輪子（下緣置中在範圍正中）。
+        DrawArt(house, bottom + new Vector2(-tile, 0f), radius);
+        var frame = (int)(Time.GetTicksMsec() / 220UL % 4UL);
+        var wheel = TempMillFrameWidth - TempMillWheelFrom;
+        var source = new Rect2(frame * TempMillFrameWidth + TempMillWheelFrom, 0f, wheel, art.GetHeight());
+        DrawTextureRectRegion(art, new Rect2(bottom.X + tile * 0.5f, bottom.Y - art.GetHeight() * p, wheel * p, art.GetHeight() * p), source);
         return true;
     }
 
@@ -100,35 +125,41 @@ public partial class DemoHexMap
             // 這一排的城門（以主縱街為中心、寬 gw 格）。
             var openings = gates.Where(g => g.Y == y && TopOrBottom(g)).Select(g => g.X - (gw - 1) / 2).ToList();
             bool Open(int x) => openings.Any(o => x >= o && x < o + gw);
-            // 第 08-20f 章（使用者 2026-11-15：城牆不應該建在水上）：牆在水邊斷開，水本身就是邊界。
-            var x0 = wall.Position.X;
+            // 第 08-20f 章：牆在水邊斷開，水本身就是邊界。
+            // 第 08-20g 章（使用者 2026-11-15：遇到畸零地時城牆圖片拼接錯誤）：每一段牆只畫在連續的陸地上，斷在水邊的那一頭補一座角樓收尾。
+            var runs = new List<(int From, int To)>();
+            var start = -1;
             for (var x = wall.Position.X; x <= wall.End.X; x++)
             {
-                if (x < wall.End.X && !Open(x) && TileLand(x, y))
-                    continue;
-                if (x < wall.End.X && !Open(x) && x0 == x)
+                var solid = x < wall.End.X && !Open(x) && TileLand(x, y);
+                if (solid && start < 0)
+                    start = x;
+                else if (!solid && start >= 0)
                 {
-                    x0 = x + 1; // 連續的水格：往後移
-                    continue;
+                    runs.Add((start, x));
+                    start = -1;
                 }
-                var a = screen(x0, y + 1);
-                var b = screen(x, y + 1);
-                if (b.X - a.X > 0.5f)
-                {
-                    var h = front.GetHeight() * p;
-                    DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, front.GetHeight()));
-                }
-                x0 = x + 1;
             }
-            foreach (var start in openings)
+            foreach (var (from, to) in runs)
+            {
+                var a = screen(from, y + 1);
+                var b = screen(to, y + 1);
+                var h = front.GetHeight() * p;
+                DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, front.GetHeight()));
+            }
+            foreach (var o in openings)
                 if (gateH is not null)
-                    DrawArt(gateH, screen(start + gw / 2f, y + 1), radius);
+                    DrawArt(gateH, screen(o + gw / 2f, y + 1), radius);
             if (corner is null)
                 return;
-            if (TileLand(wall.Position.X, y))
-                DrawArt(corner, screen(wall.Position.X + 0.5f, y + 1), radius);
-            if (TileLand(wall.End.X - 1, y))
-                DrawArt(corner, screen(wall.End.X - 0.5f, y + 1), radius);
+            foreach (var (from, to) in runs)
+            {
+                // 牆角，或斷在水邊（不是城門）的一頭。
+                if (from == wall.Position.X || !Open(from - 1))
+                    DrawArt(corner, screen(from + 0.5f, y + 1), radius);
+                if (to == wall.End.X || !Open(to))
+                    DrawArt(corner, screen(to - 0.5f, y + 1), radius);
+            }
         }
         void Column(int x)
         {
@@ -143,7 +174,12 @@ public partial class DemoHexMap
                 }
                 if (openings.Contains(y - 1) || openings.Contains(y + 1))
                     continue; // 門柱佔的兩格
-                if (side is not null && TileLand(x, y))
+                if (!TileLand(x, y))
+                    continue;
+                // 第 08-20g 章：斷在水邊的一頭補角樓（上一格或下一格是水）。
+                if (corner is not null && (!TileLand(x, y - 1) || !TileLand(x, y + 1)))
+                    DrawArt(corner, screen(x + 0.5f, y + 1), radius);
+                else if (side is not null)
                     DrawTextureRect(side, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
             }
         }
