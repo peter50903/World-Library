@@ -187,7 +187,7 @@ public partial class ObserverRoot
             row.Pressed += PlayClick;
             line.AddChild(row);
             _outlinerRows.AddChild(line);
-            _outlinerButtons.Add((id, row, line));
+            _outlinerButtons.Add((entry.Id, row, line));
         }
     }
 
