@@ -83,48 +83,48 @@ add(G, "tent_1", 2, 2, 1.0, "tent", "營地帳篷：獸皮與布（灰階）搭�
 add(G, "tent_2", 2, 2, 1.0, "tent", "營地帳篷變化：圓錐帳、旁邊插一根長矛", "營地", cone=True)
 add(G, "hut_1", 3, 3, 0.5, "house", "村莊木屋：原木牆、灰階木瓦斜頂、木門、一扇小窗", "村莊的住屋", mat="log", win=1)
 add(G, "hut_2", 3, 3, 0.5, "house", "村莊木屋變化：屋頂有補丁、門邊掛乾草、窗台放陶罐", "村莊的住屋", mat="log", win=1, chimney=True)
-add(G, "house_1", 3, 4, 0.45, "house", "城鎮兩層房：石砌一樓、二樓白灰牆與深色木骨架、灰階斜頂、磚煙囪", "城鎮的住屋", mat="plaster", win=2, floors=2, chimney=True)
-add(G, "house_2", 3, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、山牆上一扇圓窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2)
-add(G, "house_3", 3, 4, 0.45, "house", "城鎮兩層房變化：二樓陽台欄杆、門上小雨遮", "城鎮的住屋", mat="plaster", win=2, floors=2)
-add(G, "stone_house_1", 3, 4, 0.42, "house", "城市石屋：暖灰石塊牆、灰階瓦頂、拱形木門、石框窗、煙囪", "城市的住屋", mat="stone", win=2, floors=2, chimney=True)
-add(G, "stone_house_2", 3, 5, 0.36, "house", "城市石屋變化：三層窄樓、屋頂兩個煙囪", "城市的住屋", mat="stone", win=2, floors=3, chimney=True)
-add(G, "stone_house_3", 3, 4, 0.42, "house", "城市石屋變化：門上有雨遮、一樓有店面櫥窗", "城市的住屋", mat="stone", win=2, floors=2)
-add(G, "brick_house_1", 3, 4, 0.42, "house", "首都磚屋：紅磚牆、白石窗框、灰階瓦頂、煙囪", "首都的住屋", mat="brick", win=2, floors=2, chimney=True)
-add(G, "brick_house_2", 4, 4, 0.4, "house", "首都磚造連棟屋：兩戶並排、兩扇門、灰階瓦頂", "首都的住屋", mat="brick", win=4, floors=2, doors=2)
+add(G, "house_1", 4, 4, 0.45, "house", "城鎮兩層房：石砌一樓、二樓白灰牆與深色木骨架、灰階斜頂、磚煙囪", "城鎮的住屋", mat="plaster", win=2, floors=2, chimney=True)
+add(G, "house_2", 4, 4, 0.5, "house", "城鎮一層半房：白灰牆木骨架、山牆上一扇圓窗、窗下花箱", "城鎮的住屋", mat="plaster", win=2)
+add(G, "house_3", 4, 4, 0.45, "house", "城鎮兩層房變化：二樓陽台欄杆、門上小雨遮", "城鎮的住屋", mat="plaster", win=2, floors=2)
+add(G, "stone_house_1", 4, 5, 0.42, "house", "城市石屋：暖灰石塊牆、灰階瓦頂、拱形木門、石框窗、煙囪", "城市的住屋", mat="stone", win=2, floors=2, chimney=True)
+add(G, "stone_house_2", 4, 6, 0.36, "house", "城市石屋變化：三層窄樓、屋頂兩個煙囪", "城市的住屋", mat="stone", win=2, floors=3, chimney=True)
+add(G, "stone_house_3", 4, 5, 0.42, "house", "城市石屋變化：門上有雨遮、一樓有店面櫥窗", "城市的住屋", mat="stone", win=2, floors=2)
+add(G, "brick_house_1", 4, 5, 0.42, "house", "首都磚屋：紅磚牆、白石窗框、灰階瓦頂、煙囪", "首都的住屋", mat="brick", win=2, floors=2, chimney=True)
+add(G, "brick_house_2", 6, 5, 0.4, "house", "首都磚造連棟屋：兩戶並排、兩扇門、灰階瓦頂", "首都的住屋", mat="brick", win=4, floors=2, doors=2)
 
 G = "B 公共建築"
-add(G, "hall_village", 4, 4, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
-add(G, "hall_town", 5, 5, 0.42, "house", "鎮會所：兩層石木建築、一座小鐘樓（位置自由發揮）、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
-add(G, "market", 5, 3, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
-add(G, "temple", 5, 6, 0.5, "house", "神殿：石砌教堂、一座尖塔（位置自由發揮）、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
-add(G, "smithy", 4, 3, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
-add(G, "workshop", 4, 3, 0.45, "house", "木工坊：鋸木台、木材堆、灰階屋頂工棚", "城鎮以上", mat="wood", win=1, door=12)
-add(G, "tavern", 4, 4, 0.42, "house", "酒館：兩層木構架、門上掛酒桶招牌、窗戶透暖光、灰階屋頂", "城鎮以上（之後的章節）", mat="plaster", win=4, floors=2, chimney=True)
-add(G, "barracks", 5, 4, 0.4, "house", "兵營：石牆、木門、門邊武器架、屋頂插旗（灰階）", "城市以上（之後的章節）", mat="stone", win=4, door=12)
-add(G, "archery", 4, 3, 0.45, "house", "射箭場：右半木棚、左半三個箭靶與箭桶", "城市以上（之後的章節）", mat="wood", win=0, door=8)
-add(G, "mine", 4, 3, 0.0, "mine", "礦坑入口：岩石山丘上的木框坑道口、礦車軌道從門口伸出、礦石堆", "礦村")
+add(G, "hall_village", 5, 5, 0.5, "house", "村會所：大木屋、灰階屋頂、門前木平台、屋側掛村旗（灰階）", "村莊中心", mat="log", win=2, door=10)
+add(G, "hall_town", 7, 7, 0.42, "house", "鎮會所：兩層石木建築、一座小鐘樓（位置自由發揮）、門前兩根旗桿（旗灰階）", "城鎮中心", mat="stone", win=4, floors=2, door=12, tower=True)
+add(G, "market", 7, 4, 0.45, "market", "市集：三個條紋篷布攤位（篷布灰階）、木櫃台上擺水果、布匹與陶罐", "城鎮以上的市集")
+add(G, "temple", 8, 10, 0.5, "house", "神殿：石砌教堂、一座尖塔（位置自由發揮）、彩色玻璃圓窗、灰階屋頂", "城市以上的信仰建築", mat="stone", win=2, door=12, spire=True)
+add(G, "smithy", 5, 4, 0.45, "house", "鐵匠鋪：石砌爐灶冒火光、鐵砧、工具架、灰階屋頂的半開放工棚", "城鎮以上", mat="stone", win=0, door=14, chimney=True)
+add(G, "workshop", 5, 4, 0.45, "house", "木工坊：鋸木台、木材堆、灰階屋頂工棚", "城鎮以上", mat="wood", win=1, door=12)
+add(G, "tavern", 5, 5, 0.42, "house", "酒館：兩層木構架、門上掛酒桶招牌、窗戶透暖光、灰階屋頂", "城鎮以上（之後的章節）", mat="plaster", win=4, floors=2, chimney=True)
+add(G, "barracks", 7, 5, 0.4, "house", "兵營：石牆、木門、門邊武器架、屋頂插旗（灰階）", "城市以上（之後的章節）", mat="stone", win=4, door=12)
+add(G, "archery", 6, 4, 0.45, "house", "射箭場：右半木棚、左半三個箭靶與箭桶", "城市以上（之後的章節）", mat="wood", win=0, door=8)
+add(G, "mine", 5, 4, 0.0, "mine", "礦坑入口：岩石山丘上的木框坑道口、礦車軌道從門口伸出、礦石堆", "礦村")
 add(G, "shrine", 2, 3, 0.45, "house", "小祠：石台上的小神龕、灰階小屋頂、香爐與花", "村莊以上的信仰（有信仰時）", mat="stone", win=0, door=6)
 add(G, "kiln", 3, 3, 0.0, "kiln", "窯：圓頂磚窯冒煙、柴堆、陶罐", "城鎮以上")
-add(G, "granary", 3, 3, 0.45, "granary", "穀倉：高腳木倉（防鼠）、灰階屋頂、麻袋", "村莊以上")
-add(G, "school", 4, 4, 0.42, "house", "學校：兩層石木建築、一座小鐘樓（位置自由發揮）、門前小庭院", "城市以上", mat="plaster", win=4, floors=2, tower=True)
-add(G, "scriptorium", 4, 4, 0.42, "house", "抄經房：石砌建築、大拱窗、門邊書架", "首都", mat="stone", win=2, floors=2)
-add(G, "hunting_lodge", 3, 3, 0.5, "house", "獵人小屋：原木屋、門上掛鹿角、牆邊晾毛皮", "營地與村莊（獵場）", mat="log", win=1)
+add(G, "granary", 3, 4, 0.45, "granary", "穀倉：高腳木倉（防鼠）、灰階屋頂、麻袋", "村莊以上")
+add(G, "school", 6, 6, 0.42, "house", "學校：兩層石木建築、一座小鐘樓（位置自由發揮）、門前小庭院", "城市以上", mat="plaster", win=4, floors=2, tower=True)
+add(G, "scriptorium", 6, 5, 0.42, "house", "抄經房：石砌建築、大拱窗、門邊書架", "首都", mat="stone", win=2, floors=2)
+add(G, "hunting_lodge", 4, 3, 0.5, "house", "獵人小屋：原木屋、門上掛鹿角、牆邊晾毛皮", "營地與村莊（獵場）", mat="log", win=1)
 add(G, "fishing_hut", 3, 3, 0.45, "granary", "漁夫高腳屋：木樁撐起的小屋、晾漁網、小木梯", "臨水聚落（岸上）")
-add(G, "keep", 6, 7, 0.4, "keep", "王宮主樓：石砌城堡、兩側圓塔、灰階尖頂與旗幟、大拱門", "首都的主樓")
+add(G, "keep", 12, 12, 0.4, "keep", "王宮主樓：石砌城堡、兩側圓塔、灰階尖頂與旗幟、大拱門", "首都的主樓")
 add(G, "well", 2, 2, 0.45, "well", "水井：石砌井圈、木架上灰階小屋頂、木桶與繩索", "不臨水的聚落廣場邊")
-add(G, "watchtower", 2, 4, 0.3, "tower", "瞭望塔：石砌方塔、頂上木平台、灰階尖頂", "城市以上")
-add(G, "windmill", 3, 5, 0.3, "windmill", "風車：石砌塔身、木扇葉、灰階尖頂；4 格扇葉依序轉 22.5 度", "城鎮以上", frames=4)
-add(G, "site_1", 3, 3, 0.0, "site", "建地第一階段：地基與木樁圍線、木料堆", "人口快到下一棟房子時", stage=1)
-add(G, "site_2", 3, 3, 0.0, "site", "建地第二階段：立起的木骨架、梯子", "人口快到下一棟房子時", stage=2)
-add(G, "site_3", 3, 3, 0.0, "site", "建地第三階段：牆快完成、屋頂只有骨架、鷹架", "人口快到下一棟房子時", stage=3)
+add(G, "watchtower", 2, 6, 0.3, "tower", "瞭望塔：石砌方塔、頂上木平台、灰階尖頂", "城市以上")
+add(G, "windmill", 4, 7, 0.3, "windmill", "風車：石砌塔身、木扇葉、灰階尖頂；4 格扇葉依序轉 22.5 度", "城鎮以上", frames=4)
+add(G, "site_1", 4, 4, 0.0, "site", "建地第一階段：地基與木樁圍線、木料堆", "人口快到下一棟房子時", stage=1)
+add(G, "site_2", 4, 4, 0.0, "site", "建地第二階段：立起的木骨架、梯子", "人口快到下一棟房子時", stage=2)
+add(G, "site_3", 4, 4, 0.0, "site", "建地第三階段：牆快完成、屋頂只有骨架、鷹架", "人口快到下一棟房子時", stage=3)
 add(G, "ruin", 3, 3, 0.0, "ruin", "廢墟：燒黑倒塌的木屋、只剩半面牆", "毀掉的聚落")
 add(G, "ruin_big", 5, 4, 0.0, "ruin", "大廢墟：倒塌的石砌大建築、斷柱與瓦礫", "毀掉的城市")
 
 G = "C 水邊（只有這些可以放進水裡）"
-add(G, "dock", 3, 3, 0.0, "dock", "木碼頭（俯視）：從岸邊往南伸進水裡的木棧道、繫船柱、旁邊一艘小船；最上面一列在岸上", "臨水聚落")
+add(G, "dock", 2, 4, 0.0, "dock", "木碼頭（俯視）：從岸邊往南伸進水裡、一條 2 格寬的窄木棧道、兩側繫船柱；最上面一列在岸上；不要畫船", "臨水聚落")
 add(G, "ferry", 2, 2, 0.0, "ferry", "渡船（俯視）：木筏、欄杆、一根撐篙；程式在兩岸渡口柱之間畫繩", "渡口（河上）")
 add(G, "ferry_post", 1, 2, 0.0, "post", "渡口柱：岸邊的木柱、繞著繩子、旁邊一個小木牌（不寫字）", "渡口（兩岸各一）")
-add(G, "watermill", 5, 4, 0.45, "watermill", "水磨坊：左三格是岸上的木構架磨坊（灰階屋頂、門在正面）、右兩格是伸進水裡的大水車；4 格水車依序轉 22.5 度", "臨河農村", frames=4)
+add(G, "watermill", 6, 4, 0.45, "watermill", "水磨坊：左四格是岸上的木構架磨坊（完整的人字頂，左右兩邊屋簷都要畫、灰階屋頂、門在正面），右兩格是水車：水車整個畫在右兩格裡、不可以蓋到磨坊，只有一根橫軸連到磨坊側牆；4 格只有水車依序轉 22.5 度，磨坊每格完全相同", "臨河農村", frames=4)
 
 G = "D 圍牆（依聚落等級：圍籬→木柵→石牆→磚牆）"
 WALL_KINDS = [("fence", "圍籬", "低矮木圍籬：木樁加兩條橫桿"), ("palisade", "木柵", "削尖的原木樁、中間一條橫樑"),
@@ -139,6 +139,13 @@ for key, zh, look in WALL_KINDS:
     add(G, f"{key}_corner", cw, ch, 0.0, "wall_corner", f"{zh}的角樓（正面）：蓋住橫段與縱段的接點，比橫段高" + ("；木樁比圍籬粗" if key == "fence" else ""), f"{zh}四角", wall=key)
     add(G, f"{key}_gate_h", gw, gh, 0.0, "wall_gate_h", f"{zh}橫段上的門（正面）：門洞開著、兩側門柱或小塔", f"{zh}上下兩側的門", wall=key)
     add(G, f"{key}_gate_v", 1, 3, 0.0, "wall_gate_v", f"{zh}縱段上的門（俯視）：上下兩格是門柱或小塔、中間一格留路", f"{zh}左右兩側的門", wall=key)
+
+G = "F 農田（俯視地面方塊；第 08-20f 章）"
+for crop, zh, look in [("wheat", "成熟麥田", "金黃麥穗一壟一壟"), ("wheat_green", "青麥田", "綠色麥苗一壟一壟"),
+                       ("vegetable", "菜園", "一畦畦葉菜與南瓜"), ("flax", "亞麻田", "藍色小花的亞麻"),
+                       ("plowed", "翻土", "剛翻好的深色土壟"), ("sown", "播種", "土壟上點點種子"),
+                       ("sprout", "綠苗", "土壟上剛冒出的小綠苗"), ("fallow", "休耕地", "長了雜草的休耕地")]:
+    add(G, f"field_{crop}", 1, 1, 0.0, "field", f"{zh}：{look}；俯視、橫向的壟；上下左右無縫重複", "聚落牆外的農田", crop=crop)
 
 G = "E 道路（俯視地面方塊）"
 for key, zh, look in [("dirt", "泥土路", "壓實的泥土、小石子、車轍"), ("stone", "石頭路", "大小不一的圓石、石縫"), ("brick", "磚地", "紅磚鋪地")]:
@@ -362,10 +369,10 @@ def sketch(kind, W, H, roof_frac, kw, frame=0):
             d.line([cx, cy, ex, ey], fill=C["wood"] + (255,), width=3)
         box(d, cx - 1, cy - 1, cx + 1, cy + 1, C["dark"])
     elif kind == "watermill":
-        bw = 3 * T
+        bw = W - 2 * T
         h = sketch_house(bw, H, roof_frac, {"mat": "wood", "win": 1})
         im.alpha_composite(h, (0, 0))
-        cx, cy, r = bw + T - 1, H - T - 4, T + 2
+        cx, cy, r = bw + T, H - T - 2, T - 2  # 水車整個在右兩格裡，不蓋到磨坊
         d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=C["log"] + (255,), width=3)
         for k in range(4):
             a = math.radians(frame * 22.5 + k * 45)
@@ -393,10 +400,9 @@ def sketch(kind, W, H, roof_frac, kw, frame=0):
         box(d, 4, 0, W - 5, H - 1, C["wood"])
         for y in range(3, H, 4):
             d.line([5, y, W - 6, y], fill=C["log"] + (255,))
-        for y in (6, H - 6):
-            for x in (2, W - 4):
+        for y in (T + 4, H - 6):
+            for x in (1, W - 4):
                 box(d, x, y, x + 2, y + 2, C["log"])
-        box(d, W - 12, H - 14, W - 6, H - 3, C["door"])
     elif kind == "ferry":
         box(d, 2, 4, W - 3, H - 5, C["wood"])
         for x in range(5, W - 3, 4):
@@ -407,6 +413,8 @@ def sketch(kind, W, H, roof_frac, kw, frame=0):
         box(d, W // 2 - 3, 4, W // 2 + 2, H - 1, C["log"])
         for y in (10, 13, 16):
             d.line([W // 2 - 4, y, W // 2 + 3, y], fill=C["goods"] + (255,))
+    elif kind == "field":
+        field(d, kw["crop"], W, H)
     elif kind.startswith("wall"):
         wall(d, kind, kw["wall"], W, H)
     elif kind == "road":
@@ -505,6 +513,32 @@ def wall(d, kind, key, W, H):
             else:
                 box(d, x0, y0, x0 + thick - 1, y0 + T - 1, main)
                 box(d, x0 - 1, y0 + T - 4, x0 + thick, y0 + T - 1, dark)
+
+
+FIELD_COLORS = {  # 底色、作物色（草圖用）
+    "wheat": ((150, 112, 60), (222, 186, 86)), "wheat_green": ((120, 92, 52), (122, 168, 70)),
+    "vegetable": ((112, 82, 48), (86, 150, 70)), "flax": ((118, 88, 50), (120, 140, 196)),
+    "plowed": ((128, 92, 54), (98, 68, 38)), "sown": ((128, 92, 54), (160, 128, 80)),
+    "sprout": ((128, 92, 54), (132, 190, 90)), "fallow": ((132, 110, 70), (150, 140, 90)),
+}
+
+
+def field(d, crop, W, H):
+    """田：俯視的作物方塊，橫向一壟一壟（每 4 像素一壟），上下左右無縫重複。"""
+    soil, plant = FIELD_COLORS[crop]
+    box(d, 0, 0, W - 1, H - 1, soil, outline=False)
+    for y in range(1, H, 4):
+        if crop in ("plowed",):
+            d.line([0, y, W - 1, y], fill=plant + (255,))
+        elif crop in ("sown",):
+            for x in range(1, W, 4):
+                d.point((x, y), fill=plant + (255,))
+        elif crop in ("sprout",):
+            for x in range(1, W, 3):
+                d.point((x, y), fill=plant + (255,))
+                d.point((x, y - 1 if y > 0 else y), fill=plant + (255,))
+        else:
+            d.rectangle([0, y - 1, W - 1, y + 1], fill=plant + (255,))
 
 
 def road(d, key, var, W, H):
@@ -750,7 +784,155 @@ def import_delivery(folder: Path) -> int:
     return 0
 
 
+# ───────────────────────── 第 08-20f 章：比例尺與第十批重畫 ─────────────────────────
+
+REF10 = ROOT / "assets" / "reference" / "b10"
+DOC10 = ROOT / "assets" / "GPT_第十批_比例重畫.md"
+ALWAYS_REDO = {"watermill"}  # 使用者 2026-11-15：屋頂壞掉、水車蓋到磨坊
+
+SCALE_NOTE = """**比例尺（第 08-20f 章，使用者 2026-11-15：先建立物件的比例尺再放入世界）**
+- 一個地圖方格（16×16 像素）約 1.5 公尺；一個人大約 1 格寬、1.2 格高（門高約 1.3 格＝20 像素）。
+- 住屋：帳篷 2×2、木屋 3×3、城鎮住屋 4×4、石屋 4×5（三層 4×6）、磚屋 4×5、磚造連棟 6×5。
+- 公共建築依實際大小：小祠 2×3、窯 3×3、穀倉 3×4、獵人小屋 4×3、鐵匠鋪與木工坊 5×4、村會所與酒館 5×5、學校 6×6、抄經房 6×5、
+  射箭場 6×4、市集 7×4、兵營 7×5、鎮會所 7×7、風車 4×7、瞭望塔 2×6、神殿 8×10、王宮 12×12。
+- 水邊：碼頭是 2 格寬的窄棧道（2×4），渡船 2×2、渡口柱 1×2，都比房子小；水磨坊 6×4（磨坊 4 格＋水車 2 格，不重疊）。
+- 附 `b10ref_比例尺.png`：所有建築照這個比例並排（左下角的小人是一個人的大小），請照這個大小關係畫。"""
+
+
+def redo_items():
+    """要重畫的：素材還沒交、尺寸和比例尺不符、或指定重畫的。"""
+    out = []
+    for item in ITEMS:
+        group, name, w, h, roof_frac, kind, kw, *_ = item
+        f = PX2 / f"b9_{name}.png"
+        want = (w * T * frames_of(kw), h * T)
+        if name in ALWAYS_REDO or not f.exists() or Image.open(f).size != want:
+            out.append(item)
+    return out
+
+
+def scale_chart() -> Image.Image:
+    """比例尺：A、B、C 組的建築照方格大小並排（由矮到高），底下一條地面，左下一個人；每棟上方標號碼，圖下列出號碼與名稱。"""
+    from PIL import ImageFont
+    font = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 22, index=0)
+    small = ImageFont.truetype("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 14, index=0)
+    items = [i for i in ITEMS if i[0][0] in "ABC" and not i[1].startswith(("site", "ruin"))]
+    items.sort(key=lambda i: (i[3], i[2]))
+    S = 3  # 放大倍數
+    width_tiles = 64
+    rows, row, x = [], [], 1
+    for it in items:
+        if x + it[2] + 1 > width_tiles:
+            rows.append(row)
+            row, x = [], 1
+        row.append((x, it))
+        x += it[2] + 1
+    rows.append(row)
+    heights = [max(i[3] for _, i in r) + 2 for r in rows]
+    legend_lines = (len(items) + 2) // 3
+    W = width_tiles * T * S
+    H = sum(heights) * T * S + 40 + legend_lines * 30
+    img = Image.new("RGBA", (W, H), (143, 179, 106, 255))
+    d = ImageDraw.Draw(img)
+    for gx in range(0, W, T * S):
+        d.line([gx, 0, gx, sum(heights) * T * S], fill=(128, 162, 94, 255))
+    y = 0
+    n = 0
+    names = []
+    for r, hh in zip(rows, heights):
+        ground = y + hh * T * S
+        for gy in range(y, ground, T * S):
+            d.line([0, gy, W, gy], fill=(128, 162, 94, 255))
+        d.rectangle([0, ground - 6, W, ground], fill=(110, 92, 60, 255))
+        for x0, it in r:
+            n += 1
+            im = item_image(it)
+            if frames_of(it[6]) > 1:
+                im = im.crop((0, 0, im.width // frames_of(it[6]), im.height))
+            im = im.resize((im.width * S, im.height * S), Image.NEAREST)
+            px = x0 * T * S
+            img.alpha_composite(im, (px, ground - im.height))
+            d.text((px + 4, ground - im.height - 26), str(n), font=small, fill=(20, 20, 20, 255))
+            names.append(f"{n}. {it[7].split('：')[0]}（{it[2]}×{it[3]} 格）")
+        y = ground
+    # 一個人：1 格寬、1.2 格高
+    pw, ph = T * S, int(T * 1.2 * S)
+    first_ground = heights[0] * T * S
+    d.ellipse([W - 3 * T * S, first_ground - ph, W - 3 * T * S + pw, first_ground - ph + pw // 2], fill=(230, 200, 160, 255))
+    d.rectangle([W - 3 * T * S + pw // 6, first_ground - ph + pw // 2, W - 3 * T * S + pw * 5 // 6, first_ground - 6], fill=(60, 90, 160, 255))
+    d.text((W - 3 * T * S - 8, first_ground - ph - 30), "一個人", font=small, fill=(20, 20, 20, 255))
+    ly = sum(heights) * T * S + 20
+    for k, line in enumerate(names):
+        d.text((20 + (k % 3) * (W // 3), ly + (k // 3) * 30), line, font=font, fill=(20, 20, 20, 255))
+    return img
+
+
+def redo() -> int:
+    """第十批：重畫清單的參考圖、比例尺圖、給 GPT 的文件；manifest 只把重畫的列改回待製作（新規格）。"""
+    items = redo_items()
+    REF10.mkdir(parents=True, exist_ok=True)
+    for old in REF10.glob("*.png"):
+        old.unlink()
+    rows = []
+    for item in items:
+        group, name, w, h, roof_frac, kind, kw, what, use = item
+        im = item_image(item)
+        refname = f"b10ref_{name}.png"
+        im.resize((im.width * UP, im.height * UP), Image.NEAREST).save(REF10 / refname)
+        n = frames_of(kw)
+        spec = f"{w * T}×{h * T}" if n == 1 else f"{w * T * n}×{h * T}（橫排 {n} 格，每格 {w * T}×{h * T}）"
+        roof_note = f"；上方約 {round(roof_frac * 100)}% 是屋頂（灰階）" if 0 < roof_frac < 1 else ("；整張灰階（帳篷布）" if roof_frac >= 1 else "")
+        rows.append((group, f"b9_{name}.png", spec + " PNG（透明背景）", refname, what + roof_note, use, f"{w}×{h} 格", "像素零件" if n == 1 else "像素零件（動畫）"))
+    chart = scale_chart()
+    chart.save(REF10 / "b10ref_比例尺.png")
+    lines = [
+        "# 第十批素材：照比例尺重畫（像素風、正面視角）",
+        "",
+        "> 使用方式：把「給 GPT 的指示」「比例尺」與下面的表格整份貼給 GPT，並附上 `assets/reference/b10/` 的參考圖（每列「參考圖」欄是檔名；`b10ref_比例尺.png` 每次都附）。",
+        "> 請它逐張生成，檔名照表（沿用 b9_ 開頭，會取代第九批同名檔）；全部完成後打包成 zip，放進 `D:\\DESK\\godot\\世界圖書館_素材`，告訴 Claude 匯入即可。",
+        f"> 本檔由 `tools/batch9_assets.py --redo` 產生（共 {len(rows)} 張），規格依第 08-20f 章；第九批其他素材照舊使用。",
+        "",
+        "## 給 GPT 的指示（請整段照貼）",
+        "",
+        STYLE.replace("b9ref_", "b10ref_").replace("`b10ref_總覽.png`：這些素材拼成聚落的樣子，請照這個感覺畫。", "`b10ref_比例尺.png`：所有建築照比例並排，請照這個大小關係畫。"),
+        "",
+        "## 比例尺",
+        "",
+        SCALE_NOTE,
+        "",
+    ]
+    group = None
+    k = 0
+    for g, file, spec, ref, what, use, tiles, kind in rows:
+        if g != group:
+            lines += ["", f"## {g}", "", "| # | 檔名 | 規格（像素） | 佔地 | 參考圖 | 畫什麼 | 用在哪裡 |", "|---|---|---|---|---|---|---|"]
+            group = g
+        k += 1
+        lines.append(f"| {k} | `{file}` | {spec} | {tiles} | `{ref}` | {what} | {use} |")
+    DOC10.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # manifest：重畫的列改成待製作（新規格），其他照舊。
+    text = MANIFEST.read_text(encoding="utf-8")
+    table = list(csv.reader(io.StringIO(text)))
+    header, body = table[0], table[1:]
+    by_id = {r[0]: r for r in body}
+    for g, file, spec, ref, what, use, tiles, kind in rows:
+        rid = f"B9_{Path(file).stem[3:].upper()}"
+        row = [rid, f"px2/{file}", kind, spec, use, "08-20f", "GPT手動", "待製作", "",
+               f"{what}。佔地 {tiles}。參考圖 assets/reference/b10/{ref}。規格 {spec}。（共同風格見 assets/GPT_第十批_比例重畫.md）"]
+        if rid in by_id:
+            by_id[rid][:] = row
+        else:
+            body.append(row)
+    buf = io.StringIO()
+    csv.writer(buf, lineterminator="\n").writerows([header] + body)
+    MANIFEST.write_text(buf.getvalue(), encoding="utf-8")
+    print(f"第十批重畫：{len(rows)} 張，參考圖在 {REF10.relative_to(ROOT)}")
+    return 0
+
+
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1] == "--redo":
+        raise SystemExit(redo())
     if len(sys.argv) == 3 and sys.argv[1] == "--import":
         raise SystemExit(import_delivery(Path(sys.argv[2])))
     raise SystemExit(main())

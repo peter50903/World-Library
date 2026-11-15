@@ -39,6 +39,16 @@ public partial class DemoHexMap
                 batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id), 26f);
             DrawRouteAhead(start, radius, batch, center);
             var heading = MigrantHeading(start, radius, batch);
+            if (!ShowPeople)
+            {
+                // 第 08-20f 章：遷徙隊伍是不會走動的符號（開拓隊、遷徙隊伍各一種旗符），位置照隊伍目前所在。
+                if (PixelParts.Texture(batch.Founding ? "tok_settlers" : "tok_migrants") is { } token)
+                    DrawArt(token, center + new Vector2(0f, radius * 0.4f), radius, scale: Math.Max(1f, 28f / PixelParts.ScreenSize(token, radius).Y));
+                else
+                    DrawCircle(center, radius * 0.3f, MigrantTunic);
+            }
+            else
+            {
             var walkers = Math.Clamp((int)((batch.People + TempPeoplePerWalker - 1) / TempPeoplePerWalker), 1, TempMaxWalkers);
             if (radius >= TempWalkerMinRadius && PixelParts.Tinted(batch.Founding ? "unit_settler" : "unit_migrant", MigrantTunic) is { } units)
                 DrawMigrantUnits(units, center, radius, heading, walkers, seconds + batch.Id * 0.37f);
@@ -46,6 +56,7 @@ public partial class DemoHexMap
                 DrawWalkSprite(sheet, center, radius, heading, seconds + batch.Id * 0.37f);
             else
                 DrawWalkers(center, radius, heading, walkers, seconds + batch.Id * 0.37f, batch.Founding);
+            }
             // 人數標籤：深色底＋白字（右下角）。
             var size = Mathf.Max(8, (int)(radius * 0.32f));
             var labelPos = center + new Vector2(radius * 0.35f, radius * 0.55f);

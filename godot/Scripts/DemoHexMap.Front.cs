@@ -40,6 +40,22 @@ public partial class DemoHexMap
         _ => null
     };
 
+    /// <summary>
+    /// 第 08-20f 章（使用者 2026-11-15：先建立物件的比例尺）：建築佔的方格直接取素材的寬高÷16（動畫取單格），
+    /// 素材依比例尺重畫後版面自動跟著變大變小；沒有素材回傳 null（用 <see cref="LotSize"/> 的表）。
+    /// </summary>
+    private static (int W, int H)? SpriteSize(Lot lot)
+    {
+        if (FrontName(lot) is not { } name || !PixelParts.IsBatch5(name) || PixelParts.Get(name) is not { } sprite)
+            return null;
+        var frames = Animated(lot.Kind) ? 4 : 1;
+        return (Math.Max(1, sprite.Width / frames / TerrainSurface.TempTile), Math.Max(1, sprite.Height / TerrainSurface.TempTile));
+    }
+
+    /// <summary>這個方格是不是陸地（圍牆只建在陸地上）。</summary>
+    private bool TileLand(int x, int y)
+        => _surface is { } surface && surface.TileOwner(x, y) is var o and >= 0 && IsLand(o);
+
     private static bool Animated(Building kind) => kind is Building.Windmill or Building.Watermill;
 
     /// <summary>畫一棟第九批建築：底部置中在範圍下緣，灰階部分染文化色；動畫素材（風車、水車）4 格輪播。</summary>
@@ -84,11 +100,17 @@ public partial class DemoHexMap
             // 這一排的城門（以主縱街為中心、寬 gw 格）。
             var openings = gates.Where(g => g.Y == y && TopOrBottom(g)).Select(g => g.X - (gw - 1) / 2).ToList();
             bool Open(int x) => openings.Any(o => x >= o && x < o + gw);
+            // 第 08-20f 章（使用者 2026-11-15：城牆不應該建在水上）：牆在水邊斷開，水本身就是邊界。
             var x0 = wall.Position.X;
             for (var x = wall.Position.X; x <= wall.End.X; x++)
             {
-                if (x < wall.End.X && !Open(x))
+                if (x < wall.End.X && !Open(x) && TileLand(x, y))
                     continue;
+                if (x < wall.End.X && !Open(x) && x0 == x)
+                {
+                    x0 = x + 1; // 連續的水格：往後移
+                    continue;
+                }
                 var a = screen(x0, y + 1);
                 var b = screen(x, y + 1);
                 if (b.X - a.X > 0.5f)
@@ -103,8 +125,10 @@ public partial class DemoHexMap
                     DrawArt(gateH, screen(start + gw / 2f, y + 1), radius);
             if (corner is null)
                 return;
-            DrawArt(corner, screen(wall.Position.X + 0.5f, y + 1), radius);
-            DrawArt(corner, screen(wall.End.X - 0.5f, y + 1), radius);
+            if (TileLand(wall.Position.X, y))
+                DrawArt(corner, screen(wall.Position.X + 0.5f, y + 1), radius);
+            if (TileLand(wall.End.X - 1, y))
+                DrawArt(corner, screen(wall.End.X - 0.5f, y + 1), radius);
         }
         void Column(int x)
         {
@@ -119,7 +143,7 @@ public partial class DemoHexMap
                 }
                 if (openings.Contains(y - 1) || openings.Contains(y + 1))
                     continue; // 門柱佔的兩格
-                if (side is not null)
+                if (side is not null && TileLand(x, y))
                     DrawTextureRect(side, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
             }
         }

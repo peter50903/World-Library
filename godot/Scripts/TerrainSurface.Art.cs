@@ -52,9 +52,13 @@ public partial class TerrainSurface
         public readonly TileSet FloorForest = new("t_floor_forest", 3), FloorConifer = new("t_floor_conifer", 3), FloorAutumn = new("t_floor_autumn", 3);
         public readonly TileSet PlazaDirt = new("t_plaza_dirt", 0), PlazaStone = new("t_plaza_stone", 2), RoadDirt = new("t_road_dirt", 2),
             RoadCobble = new("t_road_cobble", 2), Yard = new("t_yard", 0);
-        public readonly TileSet Wheat = new("t_field_wheat", 0), Flax = new("t_field_flax", 0), Vegetable = new("t_field_vegetable", 0),
-            Green = new("t_field_green", 0), Plowed = new("t_field_plowed", 0), Sown = new("t_field_sown", 0), Sprout = new("t_field_sprout", 0),
-            Ridge = new("t_field_ridge", 0);
+        // 第 08-20f 章：第十批照比例尺重畫的農田（b9_field_*）優先，沒有再用第五批。
+        public readonly TileSet Wheat = Prefer("b9_field_wheat", "t_field_wheat"), Flax = Prefer("b9_field_flax", "t_field_flax"),
+            Vegetable = Prefer("b9_field_vegetable", "t_field_vegetable"), Green = Prefer("b9_field_wheat_green", "t_field_green"),
+            Plowed = Prefer("b9_field_plowed", "t_field_plowed"), Sown = Prefer("b9_field_sown", "t_field_sown"),
+            Sprout = Prefer("b9_field_sprout", "t_field_sprout"), Ridge = new("t_field_ridge", 0);
+
+        private static TileSet Prefer(string fresh, string old) => new TileSet(fresh, 0) is { Empty: false } set ? set : new TileSet(old, 0);
         public readonly TileSet FrontDirt = new("b9_road_dirt", 2), FrontStone = new("b9_road_stone", 2), FrontBrick = new("b9_road_brick", 2); // 第 08-20e 章
 
         public TileSet Grass(Biome biome) => biome switch
