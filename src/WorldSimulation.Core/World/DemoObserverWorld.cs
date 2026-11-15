@@ -701,7 +701,8 @@ public sealed partial class DemoObserverWorld
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
                 var (cleanLand, clearedOnly) = DemoLandClearing.Advance(_land, Map, lifecycle.Outcome.Sites, lifecycle.Population, knowledge,
-                    lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId);
+                    lifecycle.Outcome.Migrations.Where(b => b.Founding).Select(b => b.Destination), report.Week, report.WorldTime, landNextId,
+                    _weekly.FoodPerPersonPerWeek, id => ChronicleOf(id).Tier); // 第 08-6b 章：只在田不夠吃、且沒到上限時開墾
                 // 第 12-1 章 C3：洪水、龍捲風毀農田（事件接在開墾事件之後）。
                 var (land, ruined) = DemoDisasters.RuinFarmland(strikes, cleanLand, Map, lifecycle.Outcome.Sites, report.Week, report.WorldTime, _rng,
                     checked(landNextId + clearedOnly.Count));

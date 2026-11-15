@@ -7,17 +7,36 @@ namespace WorldSimulation.Core.World.Demo;
 /// <item>已習得農耕、至少 <see cref="TempMinAdults"/> 名成年人的聚落，每週開墾一塊相鄰草原（本聚落鄰格中
 /// 已在開墾的優先，否則依列、欄最小的未開發草原開工）；不是聚落格、不是開拓隊的目的格。</item>
 /// <item>每週開墾進度＋<see cref="TempPercentPerWeek"/>%（同一塊地鄰接多個開墾聚落時各自累加），滿 100% 成為農田。</item>
-/// <item>農田每週供應 <see cref="TempFarmlandWeeklySupply"/>（草原野採的三倍），可及規則與草原野採相同。</item>
+/// <item>農田每週供應 <see cref="TempFarmlandWeeklySupply"/>，可及規則與草原野採相同。</item>
+/// <item>第 08-6b 章（使用者 2026-11-15：提升農田產量、降低農田數量）：只在相鄰農田的供應不夠全村吃（居民×每人每週糧食）時才開墾新的一塊。</item>
 /// <item>開墾的人仍照常採集（第一版不扣勞力）。</item>
 /// </list>
 /// </summary>
 public static class DemoLandClearing
 {
     /// <summary>
-    /// 【TEMP】農田每週供應（糧食單位／格）；草原野採是 8。第 08-12 章 24→40：農耕養得起的人要明顯多於採集
-    /// （一圈農田約 240／週＝60 人，聚落才長得到城鎮）。
+    /// 【TEMP】農田每週供應（糧食單位／格）；草原野採是 8。第 08-12 章 24→40；第 08-6b 章 40→100：一塊田養 25 人，
+    /// 同樣的人口只要四成的田（一圈八塊田約 800／週＝200 人）。
     /// </summary>
-    public const long TempFarmlandWeeklySupply = 40;
+    public const long TempFarmlandWeeklySupply = 100;
+
+    /// <summary>【TEMP】第 08-6b 章：各等級的田數上限（營地 1、村莊 2、城鎮 2、城市 3、首都 3），每會一項農耕技術再加 1；
+    /// 田只在聚落格相鄰的 6 格（城牆外一圈），所以最多 6 塊。</summary>
+    public static int FieldCap(DemoSettlementTier tier, Func<string, bool> knows)
+    {
+        ArgumentNullException.ThrowIfNull(knows);
+        var basic = tier switch
+        {
+            DemoSettlementTier.Camp => 1,
+            DemoSettlementTier.Village => 2,
+            DemoSettlementTier.Town => 2,
+            _ => 3
+        };
+        return Math.Min(6, basic + FarmingTechs.Count(t => DemoTechCatalog.Contains(t) && knows(t)));
+    }
+
+    /// <summary>增加田數上限的農耕技術（產量加成見 <see cref="DemoKnowledge"/> 的來源加成：灌溉 +50%、輪作 +25%、土壤管理 +25%）。</summary>
+    public static readonly string[] FarmingTechs = { "TECH_IRRIGATION", "TECH_CROP_ROTATION", "TECH_SOIL_MANAGEMENT" };
 
     /// <summary>【TEMP】每週開墾進度（%）：約一年開好一塊。</summary>
     public const int TempPercentPerWeek = 2;
@@ -36,7 +55,8 @@ public static class DemoLandClearing
     /// </summary>
     public static (DemoLandDevelopmentMap Land, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoLandDevelopmentMap land, DemoHexWorld map, DemoWorldSites sites, DemoCohortDemography population,
-        DemoKnowledgeState knowledge, IEnumerable<DemoCellRef> foundingDestinations, int week, TimeSpan worldTime, long nextEventId)
+        DemoKnowledgeState knowledge, IEnumerable<DemoCellRef> foundingDestinations, int week, TimeSpan worldTime, long nextEventId,
+        long foodPerPersonPerWeek = 4, Func<int, DemoSettlementTier>? tierOf = null)
     {
         ArgumentNullException.ThrowIfNull(land);
         ArgumentNullException.ThrowIfNull(map);
@@ -49,6 +69,16 @@ public static class DemoLandClearing
         foreach (var settlement in sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id))
         {
             if (!knowledge.Knows(settlement.Id, DemoTechnology.CropCultivation) || population.AdultsIn(settlement.Id, rules) < TempMinAdults)
+                continue;
+            // 第 08-6b 章：相鄰農田已經夠全村吃就不再開墾（正在開墾中的那塊照樣做完）。
+            var fields = map.Neighbors(map.GetCell(settlement.Column, settlement.Row))
+                .Count(c => land.StateOf(new DemoCellRef(c.Column, c.Row)) == DemoLandDevelopment.Farmland);
+            var need = checked(population.ResidentsOf(settlement.Id) * foodPerPersonPerWeek);
+            var clearing = Candidates(land, map, sites, settlement, reserved).Any(c => land.StateOf(c) == DemoLandDevelopment.Clearing);
+            if (!clearing && fields * TempFarmlandWeeklySupply >= need)
+                continue;
+            // 第 08-6b 章（使用者 2026-11-15：只有城牆外圍一圈可以建農田）：田數有上限，依聚落等級與會的農耕技術。
+            if (!clearing && fields >= FieldCap(tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Village, t => knowledge.Knows(settlement.Id, DemoTechnology.Of(t))))
                 continue;
             var target = Candidates(land, map, sites, settlement, reserved)
                 .OrderByDescending(c => land.StateOf(c) == DemoLandDevelopment.Clearing)

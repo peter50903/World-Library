@@ -143,9 +143,10 @@ public partial class TerrainSurface
             Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit when RockyTile(tx, ty)
                 || code is not Code.Hills && OreClear(tx, ty) => Tex(art.Hill, tx, ty, x, y), // 礦床的岩石地鋪滿中央 4×4 方格，整堆礦石與礦坑都站在岩石上
             Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => Tex(art.Grass(biome), tx, ty, x, y) is { } grass ? grass.Darkened(0.12f) : null,
-            Code.Farmland => Plot(x, y) ?? Tex(art.Grass(biome), tx, ty, x, y),
+            // 第 08-6b 章：田改由聚落版面畫在城牆外一圈（ground 的田地代碼）；地表上的田格本身畫成草地。
+            Code.Farmland => Tex(art.Grass(biome), tx, ty, x, y),
             Code.Clearing when fourth == SettlementGround => Tex(art.Grass(biome), tx, ty, x, y),
-            Code.Clearing => fourth > 0 ? Plot(x, y) ?? Tex(art.Grass(biome), tx, ty, x, y) : Tex(art.Soil, tx, ty, x, y),
+            Code.Clearing => fourth > 0 ? Tex(art.Grass(biome), tx, ty, x, y) : Tex(art.Soil, tx, ty, x, y),
             Code.DryGrass => Tex(art.GrassSteppe, tx, ty, x, y),
             Code.Burning or Code.Scorched => Tex(art.Ash, tx, ty, x, y),
             _ => Tex(art.Grass(biome), tx, ty, x, y)
