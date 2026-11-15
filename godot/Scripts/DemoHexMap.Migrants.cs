@@ -34,7 +34,8 @@ public partial class DemoHexMap
                 batch.People, CellOfScreen(center) ?? new DemoCellRef(0, 0), batch.Id), 26f);
             DrawRouteAhead(start, radius, batch, center);
             // 第 08-20f 章：遷徙隊伍是不會走動的符號（開拓隊、遷徙隊伍各一種旗符），位置照隊伍目前所在。
-            if (PixelParts.Texture(batch.Founding ? "tok_settlers" : "tok_migrants") is { } token)
+            var symbol = batch.Founding ? "b11_sym_settlers" : "b11_sym_migrants"; // 第 09-1b 章：第十一批旗符優先
+            if (((PixelParts.IsBatch5(symbol) ? PixelParts.Texture(symbol) : null) ?? PixelParts.Texture(batch.Founding ? "tok_settlers" : "tok_migrants")) is { } token)
                 DrawArt(token, center + new Vector2(0f, radius * 0.4f), radius, scale: Math.Max(1f, 28f / PixelParts.ScreenSize(token, radius).Y));
             else
                 DrawCircle(center, radius * 0.3f, MigrantTunic);

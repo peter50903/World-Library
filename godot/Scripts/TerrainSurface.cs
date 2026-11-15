@@ -397,6 +397,7 @@ public partial class TerrainSurface : Control
             _rocky = Array.Empty<byte>();
             foreach (var chunk in _chunks.Values)
                 chunk.Dirty = true;
+            BuildMaterials();
             BuildThumb(0, 0, _thumbW = _width / TempThumb, _thumbH = _height / TempThumb, rebuild: true);
             return;
         }
@@ -428,6 +429,7 @@ public partial class TerrainSurface : Control
             BuildPaint(0, 0, _tilesX, _tilesY);
             foreach (var chunk in _chunks.Values)
                 chunk.Dirty = true;
+            BuildMaterials();
             BuildThumb(0, 0, _thumbW, _thumbH, rebuild: false);
             UploadThumb();
             return;
@@ -435,6 +437,7 @@ public partial class TerrainSurface : Control
         var cell = 2 * TempTexelsPerRadius;
         foreach (var i in changed) // 參差只看自己與隔壁格：重算改變的格與四周一格的方格
             BuildPaint((i % columns - 1) * TilesPerCell, (i / columns - 1) * TilesPerCell, (i % columns + 2) * TilesPerCell, (i / columns + 2) * TilesPerCell);
+        BuildMaterials(); // 第 09-1b 章：過渡要看相鄰方格的地面
         foreach (var i in changed)
         {
             // 參差一方格、零件往上最多約四方格、左右兩方格：只重烤這個範圍碰到的塊。
@@ -794,12 +797,139 @@ public partial class TerrainSurface : Control
     private static Color Pick(Color[] shades, float t) => shades[Math.Clamp((int)(t * shades.Length), 0, shades.Length - 1)];
 
     /// <summary>一個圖像素的底色（地形、生態區、離岸距離、開發度、天災疊層）。每個方格一個深淺，方格內只有零星變化。</summary>
+    /// <summary>
+    /// 第 09-1b 章：地面的像素顏色。方格四個角的地面不一樣時（例如草地接沙灘、沙灘接淺水），依四個角畫 Wang 過渡：
+    /// 分界線照四角內插、格子中間有一點固定的起伏（與 tools/batch11_assets.py 合成過渡圖同一個公式），
+    /// 落在另一種地面的像素改用相鄰那種地面方格的顏色（生態區、海的深淺都照原本的畫法）。
+    /// </summary>
     private Color Ground(int x, int y)
     {
         var tx = x / TempTile;
         var ty = y / TempTile;
-        var tile = ty * _tilesX + tx;
+        var source = TransitionSource(tx, ty, x, y);
+        return GroundOf(source >= 0 ? source : ty * _tilesX + tx, x, y);
+    }
+
+    /// <summary>（<paramref name="x"/>, <paramref name="y"/>）改用哪一個相鄰方格的地面來畫；-1＝用自己的。</summary>
+    private int TransitionSource(int tx, int ty, int x, int y)
+    {
+        var w1 = _tilesX + 1;
+        if (_materials.Length != _tilesX * _tilesY || _corners.Length != w1 * (_tilesY + 1))
+            return -1;
+        var m = _materials[ty * _tilesX + tx];
+        if (m == 0)
+            return -1;
+        byte c0 = _corners[ty * w1 + tx], c1 = _corners[ty * w1 + tx + 1], c2 = _corners[(ty + 1) * w1 + tx], c3 = _corners[(ty + 1) * w1 + tx + 1];
+        if (c0 == m && c1 == m && c2 == m && c3 == m)
+            return -1;
+        byte other = 0;
+        if (c0 != m) other = c0;
+        if (c1 != m) other = other == 0 || other == c1 ? c1 : (byte)255;
+        if (c2 != m) other = other == 0 || other == c2 ? c2 : (byte)255;
+        if (c3 != m) other = other == 0 || other == c3 ? c3 : (byte)255;
+        if (other is 0 or 255 || !Pair(m, other, out var low, out var high))
+            return -1;
+        var fx = (x % TempTile + 0.5f) / TempTile;
+        var fy = (y % TempTile + 0.5f) / TempTile;
+        int b0 = c0 == high ? 1 : 0, b1 = c1 == high ? 1 : 0, b2 = c2 == high ? 1 : 0, b3 = c3 == high ? 1 : 0;
+        var idx = b0 | b1 << 1 | b2 << 2 | b3 << 3;
+        var v = b0 * (1 - fx) * (1 - fy) + b1 * fx * (1 - fy) + b2 * (1 - fx) * fy + b3 * fx * fy;
+        var wobble = 0.14f * MathF.Sin(MathF.PI * fx) * MathF.Sin(MathF.PI * fy) * MathF.Sin(5f * fx + 3f * fy + 1.7f * idx);
+        var want = v + wobble >= 0.5f ? high : low;
+        if (want == m)
+            return -1;
+        // 相鄰八格裡找一格是那種地面的（先找上下左右）。
+        foreach (var (dx, dy) in Neighbours8)
+        {
+            int nx = tx + dx, ny = ty + dy;
+            if (nx >= 0 && ny >= 0 && nx < _tilesX && ny < _tilesY && _materials[ny * _tilesX + nx] == want)
+                return ny * _tilesX + nx;
+        }
+        return -1;
+    }
+
+    private static readonly (int, int)[] Neighbours8 = { (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (1, -1), (-1, -1) };
+
+    /// <summary>第 09-1b 章：有 Wang 過渡的地面種類（數字越大越「往外長」：方格的角取相鄰四格裡最大的）。</summary>
+    private const byte MatGrass = 1, MatForest = 2, MatHill = 3, MatField = 4, MatDirt = 5, MatStone = 6, MatBrick = 7, MatSand = 8, MatShallow = 9, MatDeep = 10;
+
+    /// <summary>有過渡圖的兩種地面（第十一批 b11_w_* 的九組）。</summary>
+    private static bool Pair(byte a, byte b, out byte low, out byte high)
+    {
+        low = Math.Min(a, b);
+        high = Math.Max(a, b);
+        return (low, high) is (MatGrass, MatSand) or (MatSand, MatShallow) or (MatShallow, MatDeep) or (MatGrass, MatDirt) or (MatGrass, MatStone)
+            or (MatGrass, MatBrick) or (MatGrass, MatField) or (MatGrass, MatForest) or (MatGrass, MatHill);
+    }
+
+    private byte[] _materials = Array.Empty<byte>();
+    private byte[] _corners = Array.Empty<byte>();
+
+    /// <summary>第 09-1b 章：每個方格的地面種類，與每個格點（方格的角）的地面：角＝相鄰四格裡數字最大的。</summary>
+    private void BuildMaterials()
+    {
+        var count = _tilesX * _tilesY;
+        if (_materials.Length != count)
+            _materials = new byte[count];
+        var codes = _codes!;
+        for (var t = 0; t < count; t++)
+        {
+            var tx = t % _tilesX;
+            var ty = t / _tilesX;
+            var code = (Code)codes[_paint[t] * 4];
+            var sea = _seaDist[t];
+            byte m;
+            if (_ground.Count > 0 && _ground.TryGetValue(t, out var kind))
+                m = kind switch
+                {
+                    GroundRoad or GroundPlazaDirt or GroundYard => MatDirt,
+                    GroundStreet or GroundPlazaStone or GroundCobble => MatStone,
+                    GroundBrick => MatBrick,
+                    >= GroundFieldWheat and <= GroundFieldSprout => MatField,
+                    _ => (byte)0
+                };
+            else if (code == Code.Sea)
+                m = sea <= 2 ? MatShallow : MatDeep;
+            else if (code == Code.River)
+                m = sea <= 1 ? MatShallow : (byte)0;
+            else if (code is Code.Shallow or Code.Burning or Code.Scorched)
+                m = 0;
+            else if (sea == 1 || sea == 2 && Hash(tx, ty, 4) < 0.4f)
+                m = MatSand; // 與 GroundOf 的沙灘同一條規則
+            else
+                m = code switch
+                {
+                    Code.Forest or Code.Logged => MatForest,
+                    Code.Hills or Code.HillsOre or Code.HillsMining or Code.MinePit => MatHill,
+                    _ => MatGrass
+                };
+            _materials[t] = m;
+        }
+        var w1 = _tilesX + 1;
+        if (_corners.Length != w1 * (_tilesY + 1))
+            _corners = new byte[w1 * (_tilesY + 1)];
+        for (var gy = 0; gy <= _tilesY; gy++)
+            for (var gx = 0; gx <= _tilesX; gx++)
+            {
+                byte best = 0;
+                for (var dy = -1; dy <= 0; dy++)
+                    for (var dx = -1; dx <= 0; dx++)
+                    {
+                        int x = gx + dx, y = gy + dy;
+                        if (x >= 0 && y >= 0 && x < _tilesX && y < _tilesY)
+                            best = Math.Max(best, _materials[y * _tilesX + x]);
+                    }
+                _corners[gy * w1 + gx] = best;
+            }
+    }
+
+    /// <summary>方格 <paramref name="tile"/> 的地面在像素（<paramref name="x"/>, <paramref name="y"/>）的顏色（素材的款式依像素所在的方格挑）。</summary>
+    private Color GroundOf(int tile, int x, int y)
+    {
+        var tx = x / TempTile;
+        var ty = y / TempTile;
         var owner = _paint[tile];
+
         var codes = _codes!;
         var code = codes[owner * 4];
         var overlay = codes[owner * 4 + 1];
@@ -838,7 +968,7 @@ public partial class TerrainSurface : Control
                     c = GroundColor(groundKind, x, y);
                     break;
                 }
-                if (sea == 1 || sea == 2 && Hash(tx, ty, 4) < 0.4f)
+                if (sea == 1 || sea == 2 && Hash(tile % _tilesX, tile / _tilesX, 4) < 0.4f)
                 {
                     c = Tex(sea == 1 ? art.SandWet : art.Sand, tx, ty, x, y) ?? Pick(Sand, patch); // 岸邊 1～2 方格沙灘（貼水的是濕沙）
                     break;

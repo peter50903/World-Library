@@ -33,7 +33,7 @@ public partial class DemoHexMap
         _ => index < count * 6 / 10 ? Building.BrickHouse : Building.StoneHouse // 第 08-20e 章：首都以磚屋為主
     };
 
-    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse or Building.BrickHouse;
+    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse or Building.BrickHouse or Building.Farmhouse;
 
     /// <summary>住屋數與是否有建地（人口快到下一棟時）。</summary>
     private static (int Houses, bool Building) HouseCount(long people, DemoSettlementTier tier)
@@ -93,6 +93,15 @@ public partial class DemoHexMap
         Building.Watchtower => (2, 4),
         Building.Windmill => (3, 5),
         Building.Watermill => (5, 4),
+        // 第 09-1b 章（第十一批素材寬高÷16）
+        Building.Farmhouse => (4, 4),
+        Building.Inn => (5, 5),
+        Building.Warehouse => (5, 4),
+        Building.Stable => (5, 3),
+        Building.BellTower => (2, 6),
+        Building.Barracks => (7, 5),
+        Building.Archery => (6, 4),
+        Building.Statue => (2, 3),
         _ => (3, 3)
     };
 
@@ -314,7 +323,7 @@ public partial class DemoHexMap
     {
         var count = kind switch
         {
-            Building.Tent or Building.BrickHouse => 2,
+            Building.Tent or Building.BrickHouse or Building.Farmhouse => 2,
             Building.Hut or Building.House or Building.StoneHouse => 3, // 第 09-1a 章：第十一批木屋 3 款
             _ => 1
         };
@@ -403,6 +412,10 @@ public partial class DemoHexMap
             if (layout.Wall is { } wall)
                 AddFrontWall(items, layout, wall, Screen, radius); // 第 08-20e 章：第九批圍牆
             var roof = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.62f, 0.25f, 0.18f);
+            // 第 09-1b 章：街過水的橋、住屋院子的小物件與農舍果樹。
+            var (_, lotTier) = SettlementScale.TryGetValue(site.Id, out var lotScale) ? lotScale : (0L, DemoSettlementTier.Camp);
+            AddBridges(items, layout, Screen, radius);
+            AddYardProps(items, layout, lotTier, Screen, radius);
             foreach (var lot in layout.Lots)
             {
                 var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
@@ -431,7 +444,8 @@ public partial class DemoHexMap
                 var mark = Screen(layout.Plaza.End.X + 0.5f, layout.Plaza.Position.Y - 0.5f);
                 items.Add((float.MaxValue, () =>
                 {
-                    if (!DrawPixelPart("px_icon_disaster", mark, radius))
+                    if (!DrawSymbol("b11_sym_disaster", mark - new Vector2(0f, radius * 0.25f), Math.Max(radius * 0.5f, 18f), Colors.White) // 第 09-1b 章
+                        && !DrawPixelPart("px_icon_disaster", mark, radius))
                         DrawMarker(ArtAssets.IconDisaster, mark, radius * 0.7f);
                 }));
             }

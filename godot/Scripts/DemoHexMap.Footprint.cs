@@ -24,7 +24,9 @@ public partial class DemoHexMap
         // 第 08-18k 章：依等級加上的公共建築（第五批素材裡已有、原本沒用到的）
         HallVillage, HallTown, Granary, Smithy, Workshop, Kiln, Windmill, Watchtower, School, Scriptorium, Shrine,
         // 第 08-20e 章：第九批的首都磚屋、獵人小屋、漁夫高腳屋、碼頭、水磨坊
-        BrickHouse, HuntingLodge, FishingHut, Dock, Watermill }
+        BrickHouse, HuntingLodge, FishingHut, Dock, Watermill,
+        // 第 09-1b 章：第十一批新增的農舍、旅店、倉庫、馬廄、鐘樓、兵營、靶場、噴泉、雕像
+        Farmhouse, Inn, Warehouse, Stable, BellTower, Barracks, Archery, Fountain, Statue }
 
     /// <summary>一棟建築：在哪一格、什麼、相對格中心的位置（格半徑的倍數）。</summary>
     public readonly record struct BuildingSpot(DemoCellRef Cell, Building Kind, Vector2 Offset);

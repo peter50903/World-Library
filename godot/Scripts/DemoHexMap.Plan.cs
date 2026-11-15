@@ -28,7 +28,9 @@ public partial class DemoHexMap
     private enum SlotRole
     {
         House, Hall, Faith, School, Market, Market2, Well, Granary, Granary2, Smithy, Workshop, Kiln, Windmill, Windmill2,
-        Scriptorium, Keep, HuntingLodge, FishingHut, Dock, Watermill
+        Scriptorium, Keep, HuntingLodge, FishingHut, Dock, Watermill,
+        // 第 09-1b 章
+        Inn, Warehouse, Stable, BellTower, Barracks, Archery, Fountain
     }
 
     /// <summary>一塊地（方格；左上角與寬高，門在下緣正中、門下一格是街）。<see cref="Street"/>＝臨哪一條街（廣場、水邊為 int.MinValue）。</summary>
@@ -56,7 +58,9 @@ public partial class DemoHexMap
     {
         [2] = SlotRole.Granary, [4] = SlotRole.HuntingLodge, [5] = SlotRole.FishingHut, [7] = SlotRole.Smithy, [9] = SlotRole.Workshop,
         [16] = SlotRole.Windmill, [20] = SlotRole.Kiln, [24] = SlotRole.Granary2, [28] = SlotRole.Scriptorium, [34] = SlotRole.Keep,
-        [40] = SlotRole.Market2, [44] = SlotRole.Windmill2
+        [40] = SlotRole.Market2, [44] = SlotRole.Windmill2,
+        // 第 09-1b 章：旅店靠近廣場；鐘樓、倉庫、馬廄在中圈；兵營、靶場在外圈（靠城門）。
+        [3] = SlotRole.Inn, [10] = SlotRole.BellTower, [12] = SlotRole.Warehouse, [14] = SlotRole.Stable, [18] = SlotRole.Barracks, [22] = SlotRole.Archery
     };
 
     /// <summary>【TEMP】每種用途預留的地（寬、深）：取可能蓋在上面的建築裡最大的。</summary>
@@ -73,6 +77,14 @@ public partial class DemoHexMap
         SlotRole.Market or SlotRole.Market2 => (6, 3),
         SlotRole.Well => (2, 2),
         SlotRole.HuntingLodge => (4, 3),
+        // 第 09-1b 章（素材寬高÷16）
+        SlotRole.Inn => (5, 5),
+        SlotRole.Warehouse => (5, 4),
+        SlotRole.Stable => (5, 3),
+        SlotRole.BellTower => (2, 6),
+        SlotRole.Barracks => (7, 5),
+        SlotRole.Archery => (6, 4),
+        SlotRole.Fountain => (3, 3),
         _ => (4, TempHouseDepth)
     };
 
@@ -142,6 +154,10 @@ public partial class DemoHexMap
         var (mw, mh) = SlotSize(SlotRole.Market);
         Add(new PlanSlot(c.X - mw / 2, square.End.Y - 1 - mh, mw, mh, SlotRole.Market, int.MinValue));
         Add(new PlanSlot(square.Position.X + 1, square.End.Y - 3, 2, 2, SlotRole.Well, int.MinValue));
+        // 第 09-1b 章：廣場右邊的噴泉（城市以上）；首都的井位改立雕像（見 Desired）。
+        var (fw, fh) = SlotSize(SlotRole.Fountain);
+        if (square.End.X - 1 - fw >= c.X + mw - mw / 2)
+            Add(new PlanSlot(square.End.X - 1 - fw, square.End.Y - 1 - fh, fw, fh, SlotRole.Fountain, int.MinValue));
         // 會所在廣場北面正中（門開在主街＝廣場第一列）。
         var (hw, hh) = SlotSize(SlotRole.Hall);
         if (Fits(c.X - hw / 2, c.Y - hh, hw, hh, c.Y))
@@ -229,6 +245,14 @@ public partial class DemoHexMap
         Building.HallTown or Building.School or Building.Scriptorium => 20,
         Building.Temple => 30,
         Building.Keep => 52,
+        // 第 09-1b 章
+        Building.Farmhouse => 6,
+        Building.Fountain => 8,
+        Building.Stable or Building.Statue => 10,
+        Building.Warehouse or Building.Archery => 12,
+        Building.Inn => 16,
+        Building.BellTower => 20,
+        Building.Barracks => 24,
         _ => 8
     };
 
@@ -260,7 +284,7 @@ public partial class DemoHexMap
             SlotRole.School => city ? Building.School : null,
             SlotRole.Market => town ? Building.Market : null,
             SlotRole.Market2 => capital ? Building.Market : null,
-            SlotRole.Well => village && !nearWater ? Building.Well : null,
+            SlotRole.Well => capital ? Building.Statue : village && !nearWater ? Building.Well : null, // 第 09-1b 章：首都的井位立雕像
             SlotRole.Granary => town || (village && people >= 40) ? Building.Granary : null,
             SlotRole.Granary2 => city ? Building.Granary : null,
             SlotRole.Smithy => town ? Building.Smithy : null,
@@ -274,10 +298,19 @@ public partial class DemoHexMap
             SlotRole.FishingHut => village && nearWater ? Building.FishingHut : null,
             SlotRole.Dock => village && nearWater ? Building.Dock : null,
             SlotRole.Watermill => village && nearWater && FieldsNear(site) ? Building.Watermill : null,
+            // 第 09-1b 章
+            SlotRole.Inn => town ? Building.Inn : null,
+            SlotRole.Stable => town ? Building.Stable : null,
+            SlotRole.Warehouse => city || (town && people >= 150) ? Building.Warehouse : null,
+            SlotRole.BellTower => city ? Building.BellTower : null,
+            SlotRole.Barracks => city ? Building.Barracks : null,
+            SlotRole.Archery => capital ? Building.Archery : null,
+            SlotRole.Fountain => city ? Building.Fountain : null,
             _ => null
         };
         var desired = new Dictionary<int, (Building, int)>();
         var (houses, _) = HouseCount(people, tier);
+        var farms = tier == DemoSettlementTier.Village && FieldsNear(site);
         var assigned = 0;
         for (var i = 0; i < plan.Slots.Count; i++)
         {
@@ -293,6 +326,9 @@ public partial class DemoHexMap
             if (slot.Street == int.MinValue || assigned >= houses || slot.W < 2)
                 continue;
             var kind = HouseFor(tier, assigned, houses);
+            // 第 09-1b 章：附近有田的村莊，外圍四成的木屋是農舍（後院種果樹，見 DemoHexMap.Extras）。
+            if (kind == Building.Hut && tier == DemoSettlementTier.Village && assigned >= houses * 6 / 10 && farms)
+                kind = Building.Farmhouse;
             var variant = Variant(kind, site.Id, i);
             if (kind == Building.BrickHouse && slot.W < 4)
                 variant = 1; // 連棟的第 2 款要 4 格寬
