@@ -44,9 +44,13 @@ public static class DemoContinentGenerator
         for (var k = 0; k < count; k++)
         {
             (long X, long Y) best = (Pick(6_100_000UL + (ulong)k * 128, columns * Unit), Pick(6_100_001UL + (ulong)k * 128, rows * Unit));
-            for (ulong attempt = 0; attempt < 48; attempt++)
+            // 第 08-20h 章：大、巨大地圖多找幾次（48 次都太近時大陸會連成一塊）；前 48 次的抽樣不變，中地圖結果不變。
+            var attempts = columns > 48 ? 400UL : 48UL;
+            for (ulong attempt = 0; attempt < attempts; attempt++)
             {
-                var at = (Pick(6_100_000UL + (ulong)k * 128 + attempt * 2, columns * Unit), Pick(6_100_001UL + (ulong)k * 128 + attempt * 2, rows * Unit));
+                var at = attempt < 48
+                    ? (Pick(6_100_000UL + (ulong)k * 128 + attempt * 2, columns * Unit), Pick(6_100_001UL + (ulong)k * 128 + attempt * 2, rows * Unit))
+                    : (Pick(6_400_000UL + (ulong)k * 1024 + attempt * 2, columns * Unit), Pick(6_400_001UL + (ulong)k * 1024 + attempt * 2, rows * Unit));
                 best = at;
                 if (centers.All(c => Distance(c.X, c.Y, at.Item1, at.Item2) >= minGap))
                     break;
