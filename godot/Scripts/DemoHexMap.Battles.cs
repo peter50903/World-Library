@@ -110,6 +110,12 @@ public partial class DemoHexMap
             _ => new Color(1f, 0.35f, 0.25f, alpha)
         };
         DrawCircle(center, size * 0.75f, new Color(0.08f, 0.05f, 0.03f, 0.75f * alpha));
+        // 第 09-1b 章：第十一批交叉雙劍（底圓的顏色照舊分戰爭種類），缺素材才用字。
+        if (DrawSymbol("b11_sym_battle", center, size * 1.3f, new Color(1f, 1f, 1f, alpha)))
+        {
+            DrawArc(center, size * 0.75f, 0f, Mathf.Tau, 24, color, Math.Max(1.5f, size * 0.08f));
+            return;
+        }
         var width = font.GetStringSize("⚔", HorizontalAlignment.Left, -1, size).X;
         DrawString(font, center + new Vector2(-width / 2f, size * 0.38f), "⚔", HorizontalAlignment.Left, -1, size, color);
     }
@@ -124,6 +130,8 @@ public partial class DemoHexMap
         DrawLine(from, tip, new Color(0f, 0f, 0f, 0.5f), width + 3f);
         DrawLine(from, tip, red, width);
         var side = new Vector2(-dir.Y, dir.X) * width * 2f;
+        if (DrawArrowHead(tip + dir * width * 3f, dir, Math.Max(radius * 0.6f, 20f), red.A)) // 第 09-1b 章：旗箭箭頭
+            return;
         var head = new[] { tip + dir * width * 3f, tip + side, tip - side };
         DrawColoredPolygon(head, red);
         DrawPolyline(new[] { head[0], head[1], head[2], head[0] }, new Color(0f, 0f, 0f, 0.6f), 1.5f);

@@ -45,6 +45,16 @@ public partial class DemoHexMap
             Building.Watchtower => "b11_watchtower",
             Building.Windmill => "b11_windmill",
             Building.Watermill => "b11_watermill",
+            // 第 09-1b 章
+            Building.Farmhouse => $"b11_farmhouse_{Math.Clamp(lot.Variant, 1, 2)}",
+            Building.Inn => "b11_inn",
+            Building.Warehouse => "b11_warehouse",
+            Building.Stable => "b11_stable",
+            Building.BellTower => "b11_bell_tower",
+            Building.Barracks => "b11_barracks",
+            Building.Archery => "b11_archery",
+            Building.Fountain => "b11_fountain",
+            Building.Statue => "b11_statue",
             _ => null
         };
 
