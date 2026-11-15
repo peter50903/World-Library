@@ -20,6 +20,24 @@ public static class DemoLandClearing
     /// </summary>
     public const long TempFarmlandWeeklySupply = 100;
 
+    /// <summary>【TEMP】第 08-6b 章：各等級的田數上限（營地 1、村莊 2、城鎮 2、城市 3、首都 3），每會一項農耕技術再加 1；
+    /// 田只在聚落格相鄰的 6 格（城牆外一圈），所以最多 6 塊。</summary>
+    public static int FieldCap(DemoSettlementTier tier, Func<string, bool> knows)
+    {
+        ArgumentNullException.ThrowIfNull(knows);
+        var basic = tier switch
+        {
+            DemoSettlementTier.Camp => 1,
+            DemoSettlementTier.Village => 2,
+            DemoSettlementTier.Town => 2,
+            _ => 3
+        };
+        return Math.Min(6, basic + FarmingTechs.Count(t => DemoTechCatalog.Contains(t) && knows(t)));
+    }
+
+    /// <summary>增加田數上限的農耕技術（產量加成見 <see cref="DemoKnowledge"/> 的來源加成：灌溉 +50%、輪作 +25%、土壤管理 +25%）。</summary>
+    public static readonly string[] FarmingTechs = { "TECH_IRRIGATION", "TECH_CROP_ROTATION", "TECH_SOIL_MANAGEMENT" };
+
     /// <summary>【TEMP】每週開墾進度（%）：約一年開好一塊。</summary>
     public const int TempPercentPerWeek = 2;
 
@@ -38,7 +56,7 @@ public static class DemoLandClearing
     public static (DemoLandDevelopmentMap Land, IReadOnlyList<DemoSettlementEvent> Events) Advance(
         DemoLandDevelopmentMap land, DemoHexWorld map, DemoWorldSites sites, DemoCohortDemography population,
         DemoKnowledgeState knowledge, IEnumerable<DemoCellRef> foundingDestinations, int week, TimeSpan worldTime, long nextEventId,
-        long foodPerPersonPerWeek = 4)
+        long foodPerPersonPerWeek = 4, Func<int, DemoSettlementTier>? tierOf = null)
     {
         ArgumentNullException.ThrowIfNull(land);
         ArgumentNullException.ThrowIfNull(map);
@@ -58,6 +76,9 @@ public static class DemoLandClearing
             var need = checked(population.ResidentsOf(settlement.Id) * foodPerPersonPerWeek);
             var clearing = Candidates(land, map, sites, settlement, reserved).Any(c => land.StateOf(c) == DemoLandDevelopment.Clearing);
             if (!clearing && fields * TempFarmlandWeeklySupply >= need)
+                continue;
+            // 第 08-6b 章（使用者 2026-11-15：只有城牆外圍一圈可以建農田）：田數有上限，依聚落等級與會的農耕技術。
+            if (!clearing && fields >= FieldCap(tierOf?.Invoke(settlement.Id) ?? DemoSettlementTier.Village, t => knowledge.Knows(settlement.Id, DemoTechnology.Of(t))))
                 continue;
             var target = Candidates(land, map, sites, settlement, reserved)
                 .OrderByDescending(c => land.StateOf(c) == DemoLandDevelopment.Clearing)

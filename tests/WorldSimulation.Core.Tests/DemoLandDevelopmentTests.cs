@@ -101,4 +101,17 @@ public sealed class DemoLandDevelopmentTests
         doc["Manifest"]!["StateChecksum"] = DemoSaveHeader.Checksum(Encoding.UTF8.GetBytes(doc["State"]!.ToJsonString()));
         Assert.Throws<InvalidDataException>(() => DemoObserverWorld.ImportTempSave(doc.ToJsonString()));
     }
+
+    /// <summary>第 08-6b 章：田數上限依等級（營 1、村 2、鎮 2、城 3、都 3），每項農耕技術 +1，最多 6。</summary>
+    [Theory]
+    [InlineData(DemoSettlementTier.Camp, 0, 1)]
+    [InlineData(DemoSettlementTier.Village, 0, 2)]
+    [InlineData(DemoSettlementTier.Town, 1, 3)]
+    [InlineData(DemoSettlementTier.City, 2, 5)]
+    [InlineData(DemoSettlementTier.Capital, 3, 6)]
+    public void FieldCap_GrowsWithTierAndFarmingTechs(DemoSettlementTier tier, int techs, int expected)
+    {
+        var known = DemoLandClearing.FarmingTechs.Take(techs).ToHashSet();
+        Assert.Equal(expected, DemoLandClearing.FieldCap(tier, known.Contains));
+    }
 }

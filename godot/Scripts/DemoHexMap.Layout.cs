@@ -244,6 +244,9 @@ public partial class DemoHexMap
                     for (var x = lot.X; x < lot.X + lot.W; x++)
                         Mark(x, y, TerrainSurface.GroundYard);
         }
+        // 第 08-6b 章：田畫在城牆外一圈（建築、道路優先，所以最後才鋪、不蓋過別的聚落）。
+        foreach (var layout in _layouts.Values.OrderBy(l => l.SettlementId))
+            AddFieldRing(ground, layout, tx);
         _ground = ground;
         // 有聚落地面的格（給地表代碼：聚落格不長樹）。
         _builtCells.Clear();
@@ -257,6 +260,59 @@ public partial class DemoHexMap
             _builtCells.Add(new DemoCellRef(site.Column, site.Row));
     }
 
+    /// <summary>【TEMP】第 08-6b 章：城牆外田地環的寬度（方格）。</summary>
+    public const int TempFieldRingWidth = 3;
+
+    /// <summary>【TEMP】第 08-6b 章：田地環畫滿時的田數（＝田數上限的最大值，見 <c>DemoLandClearing.FieldCap</c>）。</summary>
+    public const int TempFieldRingFull = 6;
+
+    /// <summary>
+    /// 第 08-6b 章（使用者 2026-11-15：一個聚集地只有城牆外圍一圈可以建造農田）：
+    /// 聚落格相鄰 6 格裡的農田、開墾地，畫成城牆外寬 <see cref="TempFieldRingWidth"/> 格的一圈田；
+    /// 從南面正中開始、繞著牆左右兩邊往北長，一塊田佔一圈的 1/<see cref="TempFieldRingFull"/>。
+    /// 成熟的田依雜湊是麥、菜、亞麻、青麥；開墾中的田依進度是翻土、播種、綠苗。水上與別的聚落地面不鋪。
+    /// </summary>
+    private void AddFieldRing(Dictionary<int, byte> ground, SettlementPlan layout, int tx)
+    {
+        if (layout.Wall is not { } wall || Sites?.Settlements.FirstOrDefault(s => s.Id == layout.SettlementId) is not { } site)
+            return;
+        var fields = World!.Neighbors(World.GetCell(site.Column, site.Row))
+            .Select(c => new DemoCellRef(c.Column, c.Row))
+            .Select(c => (Cell: c, State: Land.StateOf(c)))
+            .Where(c => c.State is DemoLandDevelopment.Farmland or DemoLandDevelopment.Clearing)
+            .OrderByDescending(c => c.State == DemoLandDevelopment.Farmland).ThenBy(c => c.Cell.Row).ThenBy(c => c.Cell.Column)
+            .ToList();
+        if (fields.Count == 0)
+            return;
+        var outer = wall.Grow(TempFieldRingWidth);
+        var center = new Vector2(wall.Position.X + wall.Size.X / 2f, wall.Position.Y + wall.Size.Y / 2f);
+        var ring = new List<(int X, int Y, float Angle)>();
+        for (var y = outer.Position.Y; y < outer.End.Y; y++)
+            for (var x = outer.Position.X; x < outer.End.X; x++)
+            {
+                if (wall.HasPoint(new Vector2I(x, y)) || x < 0 || y < 0 || x >= tx || y >= _surface!.TilesY)
+                    continue;
+                // 從正南（角度 0）往兩側長：左右對稱，角度取絕對值。
+                var angle = MathF.Abs(MathF.Atan2(x + 0.5f - center.X, y + 0.5f - center.Y));
+                ring.Add((x, y, angle));
+            }
+        ring.Sort((a, b) => a.Angle.CompareTo(b.Angle));
+        var per = Math.Max(1, ring.Count / TempFieldRingFull);
+        for (var i = 0; i < ring.Count && i / per < fields.Count; i++)
+        {
+            var (x, y, _) = ring[i];
+            if (_surface!.TileOwner(x, y) is not (var o and >= 0) || !IsLand(o))
+                continue;
+            var (cell, state) = fields[i / per];
+            var h = LayoutHash(site.Id, cell.Row * 977 + cell.Column, 211);
+            var progress = Land.ParcelAt(cell)?.DevelopmentPercent ?? 0;
+            var crop = state == DemoLandDevelopment.Clearing
+                ? progress < 50 ? TerrainSurface.GroundFieldPlowed : progress < 80 ? TerrainSurface.GroundFieldSown : TerrainSurface.GroundFieldSprout
+                : h < 0.55f ? TerrainSurface.GroundFieldWheat : h < 0.75f ? TerrainSurface.GroundFieldVegetable : h < 0.88f ? TerrainSurface.GroundFieldFlax : TerrainSurface.GroundFieldGreen;
+            ground.TryAdd(y * tx + x, crop);
+        }
+    }
+
     /// <summary>版面條件的指紋（相同就沿用上次的版面）。</summary>
     private long LayoutSignature(DemoSettlement site)
     {
@@ -268,6 +324,10 @@ public partial class DemoHexMap
             var h = (long)tier * 1_000_003 + (houses * 2 + (building ? 1 : 0)) * 7919 + (FaithOf.ContainsKey(site.Id) ? 1 : 0) + (Hunters.Contains(site.Id) ? 2 : 0);
             foreach (var c in FootprintCells(site, tier))
                 h = h * 31 + c.Row * 65_537 + c.Column * 3 + (int)Land.StateOf(c);
+            // 第 08-6b 章：相鄰格的田與開墾進度（田地環的塊數與作物）。
+            foreach (var n in World!.Neighbors(World.GetCell(site.Column, site.Row)))
+                if (Land.ParcelAt(new DemoCellRef(n.Column, n.Row)) is { } parcel)
+                    h = h * 37 + (int)parcel.State * 7 + parcel.DevelopmentPercent / 30;
             return h;
         }
     }
