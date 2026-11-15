@@ -490,6 +490,8 @@ public partial class ObserverRoot : Control
             VerifyHumanLifecycleSmoke();
         if (ForagingSmoke)
             VerifyForagingSmoke(nextButton);
+        if (PerfSmoke)
+            RunPerfSmoke(); // 第 09-1 章：效能量測
         if (ChartSmoke)
             VerifyYearChartSmoke();
         if (ChronicleSmoke)

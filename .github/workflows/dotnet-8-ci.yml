@@ -480,6 +480,14 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_HUMAN_OK: Births=[1-9][0-9]* ChildWorkers=0 Children=[1-9][0-9]* Save=1' /tmp/godot-human.log
+          # 第 09-1 章：效能量測（只印數字、不設門檻；改版前後比較用）。
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_PERF_SMOKE=1 timeout 900 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-perf.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-perf.log; then
+            echo "Godot perf measurement failed."
+            exit 1
+          fi
+          grep 'WORLD_SIM_PERF:' /tmp/godot-perf.log
+          echo "::notice title=效能量測::$(grep -o 'WORLD_SIM_PERF:.*' /tmp/godot-perf.log)"
           # V0-03B: Godot must render the injected Core map, never generate its own.
           if grep -Rq 'DemoHexWorld.Generate\|DemoWorldSites.Generate' godot/Scripts; then
             echo "Forbidden Godot-side map or site generation detected."
