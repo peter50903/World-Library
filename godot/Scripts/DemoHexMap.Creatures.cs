@@ -23,7 +23,7 @@ public partial class DemoHexMap
     /// <summary>【TEMP】棲地大小（格）、成群的門檻（棲地裡的獵物、狼總數）、格半徑至少幾像素才畫、遊走與巡獵一圈的秒數。</summary>
     private const int TempHabitat = 4;
     private const int TempHerdPrey = 16, TempLonePrey = 6, TempPackWolves = 3;
-    private const float TempCreatureMinRadius = 18f;
+    private const float TempCreatureMinRadius = 18f * TerrainSurface.TempZoomScale;
     private const float TempRoamSeconds = 24f, TempPatrolSeconds = 30f;
 
     private enum Creature { Deer, Goat, Wolf }

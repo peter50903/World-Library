@@ -19,7 +19,7 @@ public partial class DemoHexMap
     private const float TempMarchShare = 0.55f;
 
     /// <summary>【TEMP】格半徑小於這個值時只畫 ⚔ 標記（看不清楚小人）。</summary>
-    public const float TempBattleSpriteMinRadius = 14f;
+    public const float TempBattleSpriteMinRadius = 14f * TerrainSurface.TempZoomScale;
 
     private IReadOnlyList<BattleMark> _battleMarks = Array.Empty<BattleMark>();
     private readonly HashSet<long> _seenBattles = new();
@@ -195,7 +195,7 @@ public partial class DemoHexMap
 
     /// <summary>【TEMP】死亡每幾人多倒下一個小人；格半徑小於這個值時不畫兵力條。</summary>
     private const int TempDeathsPerFallen = 4;
-    private const float TempBattleBarMinRadius = 18f;
+    private const float TempBattleBarMinRadius = 18f * TerrainSurface.TempZoomScale;
 
     /// <summary>第 k 個（從後面數）倒下的人在交戰的哪個時間點倒下（交戰期 0.25～0.75 之間平均錯開）。</summary>
     private static float FallAt(int index, int fallen) => 0.25f + 0.5f * (index + 1) / (fallen + 1);

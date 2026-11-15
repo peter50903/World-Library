@@ -21,11 +21,16 @@ public partial class TerrainSurface : Control
         Logged = 12, HillsMining = 13, MinePit = 14
     }
 
-    /// <summary>【TEMP】第 08-18b 章：每格半徑幾個圖像素（一格邊長＝2 個半徑＝96 圖像素）。</summary>
-    public const int TempTexelsPerRadius = 48;
+    /// <summary>【TEMP】第 08-18b 章：每格半徑幾個圖像素。
+    /// 第 08-20g 章（使用者 2026-11-15：依這個建築大小，世界太小、城鎮塞不了多少東西）：48 → 128，一格從 6×6 方格放大成 16×16 方格
+    /// （建築、樹、方格本身的大小不變，每格的地變成約 7 倍）。</summary>
+    public const int TempTexelsPerRadius = 128;
 
-    /// <summary>第四批像素零件與程式畫的建築的像素密度（每格半徑 24 圖像素）；疊進新地表時放大兩倍。</summary>
-    public const int TempArtTexelsPerRadius = 24;
+    /// <summary>【TEMP】放大世界前（第 08-20g 章以前）每格半徑的圖像素；畫面門檻（多近才畫建築、細節）照這個比例換算。</summary>
+    public const float TempZoomScale = TempTexelsPerRadius / 48f;
+
+    /// <summary>第四批像素零件與程式畫的建築的像素密度（地表密度的一半）；疊進新地表時放大兩倍。</summary>
+    public const int TempArtTexelsPerRadius = TempTexelsPerRadius / 2;
 
     private const int ArtScale = TempTexelsPerRadius / TempArtTexelsPerRadius;
 
@@ -47,14 +52,14 @@ public partial class TerrainSurface : Control
     private const int TempChunkCache = 256;
     private const int TempChunksPerFrame = 16;
     private const double TempBakeMsPerFrame = 5;
-    public const float TempChunkMinRadius = 24f;
-    private const int TempThumb = 4;
+    public const float TempChunkMinRadius = 24f * TempZoomScale;
+    private const int TempThumb = 8; // 第 08-20g 章：世界放大後縮圖改成每 8 圖像素一點（記憶體與重算時間不變多）
 
     /// <summary>【TEMP】自然交界的參差：邊上的方格有多少機率畫成隔壁格的地形。</summary>
     private const float TempJitterChance = 0.35f;
 
     /// <summary>【TEMP】細節層（草叢、野花、小石頭）在格半徑至少幾像素時才畫；整體調色（飽和度、亮度倍率）。</summary>
-    public const float TempDetailMinRadius = 26f;
+    public const float TempDetailMinRadius = 26f * TempZoomScale;
     public const float TempSaturation = 0.78f;
     public const float TempBrightness = 0.9f;
 
@@ -67,7 +72,18 @@ public partial class TerrainSurface : Control
         public ImageTexture? Detail;
         public ulong Used;
         public bool Dirty;
+        // 第 08-20g 章（使用者 2026-11-15：土地還是會閃爍，像是大規模刷新）：重烤的結果先放這裡，
+        // 畫面上所有要重烤的塊都烤好了才一起換上（不再一塊一塊輪流換）；內容跟原本一樣就不換。
+        public ulong BaseHash, DetailHash;
+        public byte[]? PendingBase, PendingDetail;
+        public bool HasPending;
+        public int PendingW, PendingH;
     }
+
+    /// <summary>【TEMP】第 08-20g 章：重烤的塊最多等幾幀就換上（避免一直有新變動時永遠不換）。</summary>
+    private const int TempSwapMaxWaitFrames = 30;
+
+    private ulong _pendingSince;
 
     private readonly Dictionary<(int, int), Chunk> _chunks = new();
     private ulong _frame;
@@ -180,9 +196,38 @@ public partial class TerrainSurface : Control
                 if (_radius >= TempDetailMinRadius && chunk.Detail is { } detail)
                     DrawTextureRect(detail, rect, false);
             }
+        // 第 08-20g 章：畫面上的塊都烤完了（或等太久）才把新結果一起換上。
+        if (_chunks.Values.Any(c => c.HasPending) && (!pending || _frame - _pendingSince > TempSwapMaxWaitFrames))
+        {
+            foreach (var chunk in _chunks.Values.Where(c => c.HasPending))
+                SwapIn(chunk);
+            QueueRedraw();
+        }
         Evict();
         if (pending)
             CallDeferred(CanvasItem.MethodName.QueueRedraw);
+    }
+
+    /// <summary>把烤好、等著換上的結果上傳。</summary>
+    private void SwapIn(Chunk chunk)
+    {
+        chunk.HasPending = false;
+        if (chunk.PendingBase is { } b)
+            chunk.Base = UploadSized(b, chunk.PendingW, chunk.PendingH, chunk.Base);
+        chunk.Detail = chunk.PendingDetail is { } d ? UploadSized(d, chunk.PendingW, chunk.PendingH, chunk.Detail) : null;
+        chunk.PendingBase = chunk.PendingDetail = null;
+    }
+
+    /// <summary>快速雜湊（判斷重烤的內容有沒有變）。</summary>
+    private static ulong HashBytes(byte[] bytes, int length)
+    {
+        var words = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, ulong>(bytes.AsSpan(0, length - length % 8));
+        var h = 1469598103934665603UL ^ (ulong)length;
+        foreach (var w in words)
+            h = (h ^ w) * 1099511628211UL;
+        for (var i = length - length % 8; i < length; i++)
+            h = (h ^ bytes[i]) * 1099511628211UL;
+        return h;
     }
 
     /// <summary>快取超過上限時丟掉最久沒畫的塊。</summary>
@@ -597,21 +642,43 @@ public partial class TerrainSurface : Control
         for (var ty = ty0; ty <= ty1; ty++)
             for (var tx = tx0; tx <= tx1; tx++)
                 StampTile(tx, ty);
-        chunk.Base = Upload(_buf, chunk.Base);
-        chunk.Detail = _wroteDetail ? Upload(_detailBuf, chunk.Detail) : null;
+        var baseBytes = Crop(_buf);
+        var detailBytes = _wroteDetail ? Crop(_detailBuf) : null;
+        var baseHash = HashBytes(baseBytes, baseBytes.Length);
+        var detailHash = detailBytes is null ? 0UL : HashBytes(detailBytes, detailBytes.Length);
+        // 第 08-20g 章：還沒有圖的塊直接上傳；已經有圖的，內容沒變就不動，變了先放著、等整批一起換。
+        if (chunk.Base is null)
+        {
+            chunk.Base = UploadSized(baseBytes, _bw, _bh, null);
+            chunk.Detail = detailBytes is null ? null : UploadSized(detailBytes, _bw, _bh, null);
+        }
+        else if (baseHash != chunk.BaseHash || detailHash != chunk.DetailHash)
+        {
+            if (!_chunks.Values.Any(c => c.HasPending))
+                _pendingSince = _frame;
+            chunk.PendingBase = baseBytes;
+            chunk.PendingDetail = detailBytes;
+            chunk.PendingW = _bw;
+            chunk.PendingH = _bh;
+            chunk.HasPending = true;
+        }
+        chunk.BaseHash = baseHash;
+        chunk.DetailHash = detailHash;
     }
 
-    private ImageTexture Upload(byte[] source, ImageTexture? texture)
+    /// <summary>烤圖緩衝裁成這一塊的實際大小（地圖邊上的塊比較小），並複製一份（緩衝會被下一塊重用）。</summary>
+    private byte[] Crop(byte[] source)
     {
-        var bytes = source;
-        if (_bw != TempChunk || _bh != TempChunk)
-        {
-            bytes = new byte[_bw * _bh * 4];
-            for (var y = 0; y < _bh; y++)
-                Array.Copy(source, y * TempChunk * 4, bytes, y * _bw * 4, _bw * 4);
-        }
-        using var image = Image.CreateFromData(_bw, _bh, false, Image.Format.Rgba8, bytes);
-        if (texture is not null && texture.GetWidth() == _bw && texture.GetHeight() == _bh)
+        var bytes = new byte[_bw * _bh * 4];
+        for (var y = 0; y < _bh; y++)
+            Array.Copy(source, y * TempChunk * 4, bytes, y * _bw * 4, _bw * 4);
+        return bytes;
+    }
+
+    private static ImageTexture UploadSized(byte[] bytes, int w, int h, ImageTexture? texture)
+    {
+        using var image = Image.CreateFromData(w, h, false, Image.Format.Rgba8, bytes);
+        if (texture is not null && texture.GetWidth() == w && texture.GetHeight() == h)
         {
             texture.Update(image);
             return texture;
@@ -1005,7 +1072,7 @@ public partial class TerrainSurface : Control
 
     /// <summary>礦脈格中央 4×4 方格不長山頭（礦床四周空出來，一眼看得到）。</summary>
     private static bool OreClear(int tx, int ty)
-        => tx % TilesPerCell is >= 1 and <= 4 && ty % TilesPerCell is >= 1 and <= 4;
+        => Math.Abs(tx % TilesPerCell - TilesPerCell / 2 + 0.5f) < 2.5f && Math.Abs(ty % TilesPerCell - TilesPerCell / 2 + 0.5f) < 2.5f;
 
     /// <summary>
     /// 這個方格是不是岩石地面：山脈核心的格是岩石、外圍是草地；兩者交界一方格內參差（核心邊上 35% 露出草地、外圍邊上 45% 露出岩石），
@@ -1047,7 +1114,7 @@ public partial class TerrainSurface : Control
     {
         var lx = tx % TilesPerCell;
         var ly = ty % TilesPerCell;
-        return lx is 2 or 3 && ly is 2 or 3;
+        return (lx == TilesPerCell / 2 - 1 || lx == TilesPerCell / 2) && (ly == TilesPerCell / 2 - 1 || ly == TilesPerCell / 2);
     }
 
     /// <summary>兩方格內有沒有山頭（岩石不放在山腳下）。</summary>
