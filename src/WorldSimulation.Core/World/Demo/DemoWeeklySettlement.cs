@@ -425,7 +425,9 @@ public sealed record DemoSettlementWeekLedger(
     long ElderStarvationDeaths = 0,
     long SourceSlack = 0,
     long ToolYieldPercent = 0,
-    long DisasterDeaths = 0)
+    long DisasterDeaths = 0,
+    long FoodTaxPaid = 0,
+    long FoodTaxReceived = 0)
 {
     /// <summary>第 08-6 章 e 節：本週每名勞力可採量（工具加成後）。</summary>
     public long YieldPerWorker(DemoWeeklyTempConfig config)
@@ -445,7 +447,7 @@ public sealed record DemoSettlementWeekLedger(
 
     /// <summary>糧食帳：期初＋生產＋帶入－消耗－帶出－腐敗（第 06 章 d 節）＝期末。</summary>
     public bool FoodBalanced
-        => FoodOpening + FoodProduced + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled == FoodClosing;
+        => FoodOpening + FoodProduced + FoodCarriedIn + FoodTaxReceived - FoodConsumed - FoodCarriedOut - FoodSpoiled - FoodTaxPaid == FoodClosing;
 
     /// <summary>
     /// M1_NO_MAGIC_FOOD：糧食只能來自資源點的實際採收，且每一單位都歸屬合法來源（農牧／採集）。
@@ -463,7 +465,7 @@ public sealed record DemoSettlementWeekLedger(
     /// M1_RES：聚落總資源（資源點存量＋糧食）只因再生與遷徙隊伍帶入增加、只因消耗與帶出減少。
     /// </summary>
     public bool TotalResourceBalanced
-        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn - FoodConsumed - FoodCarriedOut - FoodSpoiled
+        => ReserveOpening + FoodOpening + Regenerated + FoodCarriedIn + FoodTaxReceived - FoodConsumed - FoodCarriedOut - FoodSpoiled - FoodTaxPaid
             == ReserveClosing + FoodClosing;
 
     /// <summary>M1_POP 的人口帳部分。</summary>
@@ -480,7 +482,7 @@ public sealed record DemoSettlementWeekLedger(
         && Immigrants >= 0 && Emigrants >= 0 && FoodCarriedIn >= 0 && FoodCarriedOut >= 0
         && HungerDebtCarriedIn >= 0 && HungerDebtCarriedOut >= 0
         && (AdultWorkersOpening == -1 || AdultWorkersOpening >= 0 && AdultWorkersOpening <= PopulationOpening)
-        && FoodSpoiled >= 0 && WaterShortage >= 0 && WaterCarriers >= 0
+        && FoodSpoiled >= 0 && WaterShortage >= 0 && WaterCarriers >= 0 && FoodTaxPaid >= 0 && FoodTaxReceived >= 0
         && ChildStarvationDeaths >= 0 && ElderStarvationDeaths >= 0
         && ChildStarvationDeaths + ElderStarvationDeaths <= Deaths - NaturalDeaths;
 
@@ -728,7 +730,8 @@ internal static class DemoWeeklySettlement
         Func<DemoSettlement, long>? hungerCause = null,
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null,
         bool verify = true,
-        Func<DemoCellRef, bool>? forbiddenSite = null)
+        Func<DemoCellRef, bool>? forbiddenSite = null,
+        Func<int, int?>? liegeOf = null)
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -1312,6 +1315,10 @@ internal static class DemoWeeklySettlement
 
         if (arrivals.Keys.Any(id => weekSites.Settlements.All(s => s.Id != id)))
             throw new InvalidOperationException("A migration batch arrived at an unknown settlement.");
+
+        // 第 08-19g 章（使用者 2026-11-15：上級聚集地可以向下級聚集地徵收糧食稅）：期末存糧超過留底的部分，繳一成給直屬上級。
+        if (liegeOf is not null)
+            DemoFoodTax.Collect(ledgers, nextFood, liegeOf, config.FoodPerPersonPerWeek);
 
         // 第 07 章 c 節：人口連續為 0 滿 TEMP 週數的聚落成為遺跡（仍有隊伍正前往時延後）。
         var ruinRule = DemoSettlementTempSettings.Current;

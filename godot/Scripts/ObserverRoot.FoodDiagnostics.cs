@@ -142,6 +142,9 @@ public partial class ObserverRoot
                 + $"實採 {ledger.Harvested}，腐敗 {ledger.FoodSpoiled}，消耗 {ledger.FoodConsumed}，缺糧 {ledger.FoodShortage}，"
                 + $"期末糧庫 {ledger.FoodClosing}，飢餓債 {ledger.HungerDebtClosing}，"
                 + $"出生 {ledger.Births}、自然死亡 {ledger.NaturalDeaths}、餓死 {ledger.StarvationDeaths}");
+            // 第 08-19g 章：糧稅（下級繳給直屬上級）。
+            if (ledger.FoodTaxPaid > 0 || ledger.FoodTaxReceived > 0)
+                output.Add($"糧稅：繳給上級 {ledger.FoodTaxPaid}，向下級收 {ledger.FoodTaxReceived}");
             // 第 04 章 c 節：讀已提交的來源帳（每源預算與未採），不重算。
             var origins = week!.Sources
                 .Select(source => (source, share: source.Shares.FirstOrDefault(x => x.SettlementId == place.Id)))

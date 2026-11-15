@@ -649,6 +649,8 @@ public sealed partial class DemoObserverWorld
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }
             DemoPerf.Mark("排程與天災");
+            // 第 08-19g 章：下級繳糧稅給直屬上級（隸屬由歸附、獨立事件推得；希望時代沒有隸屬）。
+            var lieges = _demography is null || _knowledge.Era == DemoEra.Hope ? null : new Dictionary<int, int>(Realms().Liege);
             var outcome = DemoWeeklySettlement.Settle(
                 checked(CommittedWeeks + 1), commit.DueTime, Map, _sites,
                 _reserves, _settlementFood, _population, _hungerDebt,
@@ -674,7 +676,8 @@ public sealed partial class DemoObserverWorld
                 hungerCause: s => DemoEnvironment.HeatwaveCause(_wildlife.Spells, s, checked(CommittedWeeks + 1)), // C3b
                 cultureTraits: _demography is null ? null : id => _culture.TraitsAt(id, checked(CommittedWeeks + 1)), // 第 08-8 章 B2：遷徙之民、守土
                 forbiddenSite: monsterLand.Count == 0 ? null : c => monsterLand.Contains(c), // 第 12-2a 節
-                verify: _demography is null); // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
+                verify: _demography is null, // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
+                liegeOf: lieges is null || lieges.Count == 0 ? null : id => lieges.TryGetValue(id, out var liege) ? liege : null); // 第 08-19g 章：糧稅
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
