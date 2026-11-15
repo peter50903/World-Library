@@ -144,7 +144,7 @@ public partial class ObserverRoot
                 _notice.Text = _showDebugInfo
                     ? $"{_playback.StatusText}{ActualSpeedText}；已推進 {advanced} 天（第 {last!.Day} 天）；{WeeklySummaryText()}"
                     : $"{_playback.PlayerStatusText}{(ActualSpeedText.Length > 0 ? "（電腦跟不上，實際較慢）" : "")}";
-                Refresh();
+                RefreshAfterDays(); // 第 09-3 章：同一週裡只更新日期與時間控制
                 return;
             }
 

@@ -1289,7 +1289,7 @@ public partial class ObserverRoot : Control
 
             _notice.Text = (_playback.Playing ? $"{(_showDebugInfo ? _playback.StatusText : _playback.PlayerStatusText)}；" : "")
                 + (_showDebugInfo ? $"已推進 {days} 天（第 {last!.Day} 天）；{WeeklySummaryText()}" : $"已推進 {days} 天"); // 試玩回饋 2026-11-08 之 3
-            Refresh();
+            RefreshAfterDays();
         }
         catch (Exception ex) when (ex is InvalidOperationException or OverflowException)
         {
@@ -1415,8 +1415,28 @@ public partial class ObserverRoot : Control
     private static IReadOnlyDictionary<TKey, TValue> Same<TKey, TValue>(IReadOnlyDictionary<TKey, TValue> old, Dictionary<TKey, TValue> fresh) where TKey : notnull
         => old.Count == fresh.Count && fresh.All(kv => old.TryGetValue(kv.Key, out var v) && EqualityComparer<TValue>.Default.Equals(v, kv.Value)) ? old : fresh;
 
+    private (object? World, int Week) _refreshedWeek;
+
+    /// <summary>
+    /// 第 09-3 章：推進幾天後的畫面更新。世界的狀態（聚落、事件、文化、勢力…）只在每週結算時改變，
+    /// 同一週裡只更新日期、時間控制與遷徙隊伍的週內位置，不重建清單、字典與文字（量測：完整更新約 35 毫秒、配置 3.4 MB）。
+    /// </summary>
+    private void RefreshAfterDays()
+    {
+        if (!ReferenceEquals(_refreshedWeek.World, _world) || _refreshedWeek.Week != _world.CommittedWeeks)
+        {
+            Refresh();
+            return;
+        }
+        var snapshot = _world.Snapshot();
+        RefreshHud();
+        _hexMap.WeekFraction = (snapshot.DaysElapsed % 7) / 7f;
+        _hexMap.QueueRedraw();
+    }
+
     private void Refresh()
     {
+        _refreshedWeek = (_world, _world.CommittedWeeks);
         var snapshot = _world.Snapshot();
         // 第 08-11 章：詳情開著時每週結算後更新一次（不在每幀重建分頁）。
         if (_detailOpen && !_detailFixed && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows

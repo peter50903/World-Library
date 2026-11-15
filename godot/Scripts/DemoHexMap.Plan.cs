@@ -44,6 +44,7 @@ public partial class DemoHexMap
         public readonly Dictionary<int, (Building Kind, int Variant, int Start)> Work = new();
         public Rect2I? Wall;
         public int Week;
+        public bool Settled; // 第 09-3 章：該蓋的都蓋好了（沒有工地、沒有缺的）
     }
 
     private readonly Dictionary<int, MasterPlan> _plans = new();
@@ -326,12 +327,44 @@ public partial class DemoHexMap
     /// 第 08-20g 章：一個聚落現在的樣子——蓋好的建築、工地、看得到的街巷、圍牆與城門。
     /// <paramref name="occupied"/>＝編號比較小的聚落已經用掉的方格（不重疊）。
     /// </summary>
-    private SettlementPlan ComputeLayout(DemoSettlement site, HashSet<Vector2I> occupied)
+    /// <summary>
+    /// 第 09-3 章：每週版面的快取。輸入（前面聚落的用地、等級、人口、信仰、狩獵、別的聚落數）沒變、而且沒有工地時，
+    /// 這一週什麼都不會動，直接沿用上次的版面（量測：每週版面原本約 33 毫秒）。
+    /// </summary>
+    private readonly Dictionary<int, (long Key, SettlementPlan Layout)> _settled = new();
+
+    private SettlementPlan ComputeLayout(DemoSettlement site, HashSet<Vector2I> occupied, long prefix = 0)
+    {
+        var (_, tierNow) = SettlementScale.TryGetValue(site.Id, out var scaleNow) ? scaleNow : (0L, DemoSettlementTier.Camp);
+        long key;
+        unchecked
+        {
+            key = prefix * 1_000_003 + (int)tierNow * 7919 + LayoutPeople(site.Id, scaleNow.Item1, tierNow) * 31
+                + (FaithOf.ContainsKey(site.Id) ? 1 : 0) + (Hunters.Contains(site.Id) ? 2 : 0) + Sites!.Settlements.Count * 131
+                + (FieldsNear(site) ? 4 : 0);
+        }
+        if (ReferenceEquals(_plansWorld, World) && _settled.TryGetValue(site.Id, out var cached) && cached.Key == key
+            && _builds.TryGetValue(site.Id, out var quiet) && quiet.Work.Count == 0 && CurrentWeek >= quiet.Week && CurrentWeek - quiet.Week <= TempInstantJumpWeeks)
+        {
+            quiet.Week = CurrentWeek;
+            return cached.Layout;
+        }
+        var computed = ComputeLayoutFresh(site, occupied);
+        // 只有蓋完（沒有工地、也沒有該蓋沒蓋的）才記下來沿用。
+        if (_builds.TryGetValue(site.Id, out var after) && after.Work.Count == 0 && after.Settled)
+            _settled[site.Id] = (key, computed);
+        else
+            _settled.Remove(site.Id);
+        return computed;
+    }
+
+    private SettlementPlan ComputeLayoutFresh(DemoSettlement site, HashSet<Vector2I> occupied)
     {
         if (!ReferenceEquals(_plansWorld, World))
         {
             _plans.Clear();
             _builds.Clear();
+            _settled.Clear();
             _plansWorld = World;
         }
         if (!_plans.TryGetValue(site.Id, out var plan))
@@ -362,6 +395,7 @@ public partial class DemoHexMap
         }
         while (state.Week < CurrentWeek)
             Step(state, desired, crews);
+        state.Settled = state.Work.Count == 0 && desired.All(d => state.Built.TryGetValue(d.Key, out var has) && has == d.Value);
 
         // ── 看得到的建築：蓋好的＋工地（改建中的舊屋已拆） ──
         var lots = new List<Lot>();
@@ -383,7 +417,7 @@ public partial class DemoHexMap
         var spans = new SortedDictionary<int, (int Min, int Max)>();
         void Span(int street, int x)
             => spans[street] = spans.TryGetValue(street, out var s) ? (Math.Min(s.Min, x), Math.Max(s.Max, x)) : (x, x);
-        var slotOf = lots.Select(l => plan.Slots.FirstOrDefault(s => s.X == l.X && s.Y == l.Y)).ToList();
+        var slotOf = state.Built.Keys.Where(k => !state.Work.ContainsKey(k)).Concat(state.Work.Keys).Select(k => plan.Slots[k]);
         foreach (var slot in slotOf)
             if (slot is { Street: not int.MinValue })
             {

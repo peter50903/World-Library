@@ -581,30 +581,36 @@ public partial class TerrainSurface : Control
     {
         if (rebuild || _thumbBytes is null || _thumbBytes.Length != _thumbW * _thumbH * 4)
             _thumbBytes = new byte[_thumbW * _thumbH * 4];
+        // 第 09-3 章：地面顏色逐列平行計算（Ground 只讀已建好的表；先把延後建立的表建好）。
+        PrepareParallel();
+        var step = TempThumb;
+        var bytes = _thumbBytes;
+        var width = _thumbW;
+        System.Threading.Tasks.Parallel.For(v0, v1, v =>
+        {
+            for (var u = u0; u < u1; u++)
+            {
+                var c = Ground(u * step + step / 2, v * step + step / 2);
+                if (!_groundRaw)
+                    c = Adjust(c);
+                WriteColor(bytes, (v * width + u) * 4, c);
+            }
+        });
+        // 遠看時樹與山頭只剩色點（WorldBox 的遠景做法）：方格中央 2×2 縮圖像素畫成樹冠或岩石色（樹冠色有快取，留在主執行緒）。
+        var per = Math.Max(1, TempTile / step);
         for (var v = v0; v < v1; v++)
             for (var u = u0; u < u1; u++)
             {
-                var x = u * TempThumb + TempThumb / 2;
-                var y = v * TempThumb + TempThumb / 2;
-                var c = Ground(x, y);
-                if (!_groundRaw)
-                    c = Adjust(c);
-                // 遠看時樹與山頭只剩色點（WorldBox 的遠景做法）：方格中央 2×2 縮圖像素畫成樹冠或岩石色。
-                var tile = TileIndexOf(x, y);
-                var per = Math.Max(1, TempTile / TempThumb);
                 int lu = u % per, lv = v % per;
-                if ((per == 1 || lu is 1 or 2 && lv is 1 or 2) && (_ground.Count == 0 || !_ground.ContainsKey(tile)))
-                {
-                    if (TreeAt(tile % _tilesX, tile / _tilesX) is { } tree)
-                        c = Canopy(TreeArt(tree, BiomeOfTile(tile), tile % _tilesX, tile / _tilesX)) ?? Adjust(tree.Shades[1]);
-                    else if (PeakAt(tile % _tilesX, tile / _tilesX) > 0)
-                        c = Adjust(RockShades[1]);
-                }
-                var o = (v * _thumbW + u) * 4;
-                _thumbBytes[o] = (byte)(c.R * 255f);
-                _thumbBytes[o + 1] = (byte)(c.G * 255f);
-                _thumbBytes[o + 2] = (byte)(c.B * 255f);
-                _thumbBytes[o + 3] = (byte)(c.A * 255f);
+                if (!(per == 1 || lu is 1 or 2 && lv is 1 or 2))
+                    continue;
+                var tile = TileIndexOf(u * step + step / 2, v * step + step / 2);
+                if (_ground.Count > 0 && _ground.ContainsKey(tile))
+                    continue;
+                if (TreeAt(tile % _tilesX, tile / _tilesX) is { } tree)
+                    WriteColor(bytes, (v * width + u) * 4, Canopy(TreeArt(tree, BiomeOfTile(tile), tile % _tilesX, tile / _tilesX)) ?? Adjust(tree.Shades[1]));
+                else if (PeakAt(tile % _tilesX, tile / _tilesX) > 0)
+                    WriteColor(bytes, (v * width + u) * 4, Adjust(RockShades[1]));
             }
         if (rebuild || _thumbTiles.GetLength(0) != (_thumbW + TempThumbTile - 1) / TempThumbTile || _thumbTiles.GetLength(1) != (_thumbH + TempThumbTile - 1) / TempThumbTile)
         {
@@ -632,12 +638,18 @@ public partial class TerrainSurface : Control
         _bh = Math.Min(TempChunk, _height - _by);
         Array.Clear(_detailBuf);
         _wroteDetail = false;
-        for (var y = _by; y < _by + _bh; y++)
-            for (var x = _bx; x < _bx + _bw; x++)
+        // 第 09-3 章：地面逐列平行計算（每個像素只寫自己的位置）；零件（樹、山頭）照舊在主執行緒依序疊上。
+        PrepareParallel();
+        int bx = _bx, by = _by, bw = _bw;
+        var buf = _buf;
+        System.Threading.Tasks.Parallel.For(by, by + _bh, y =>
+        {
+            for (var x = bx; x < bx + bw; x++)
             {
                 var c = Ground(x, y);
-                Put(x, y, c, _groundRaw);
+                WriteColor(buf, ((y - by) * TempChunk + x - bx) * 4, _groundRaw ? c : Adjust(c));
             }
+        });
         // 疊上樹、山頭、礦石等零件：由上而下（下面的蓋住上面的）；零件會往上、往左右超出自己的方格，所以多看幾個方格。
         var tx0 = Math.Max(0, _bx / TempTile - 2);
         var tx1 = Math.Min(_tilesX - 1, (_bx + _bw) / TempTile + 2);
@@ -712,6 +724,24 @@ public partial class TerrainSurface : Control
         target[i + 1] = (byte)(c.G * 255f);
         target[i + 2] = (byte)(c.B * 255f);
         target[i + 3] = (byte)(c.A * 255f);
+    }
+
+    private static void WriteColor(byte[] target, int i, Color c)
+    {
+        target[i] = (byte)(c.R * 255f);
+        target[i + 1] = (byte)(c.G * 255f);
+        target[i + 2] = (byte)(c.B * 255f);
+        target[i + 3] = (byte)(c.A * 255f);
+    }
+
+    /// <summary>第 09-3 章：平行計算地面之前，把延後建立的表（素材、山脈核心、岩石地面）先建好，平行時只讀。</summary>
+    private void PrepareParallel()
+    {
+        _ = Art;
+        if (_hillCore.Length != _columns * _rows)
+            BuildHillCore();
+        if (_rocky.Length != _tilesX * _tilesY)
+            _rocky = new byte[_tilesX * _tilesY];
     }
 
     /// <summary>把底圖上一個像素調暗（落地陰影）。</summary>

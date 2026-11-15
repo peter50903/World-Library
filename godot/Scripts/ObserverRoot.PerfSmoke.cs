@@ -52,6 +52,15 @@ public partial class ObserverRoot
             refreshTotal += watch.Elapsed.TotalMilliseconds;
         }
         var refreshAllocKb = (GC.GetTotalAllocatedBytes(true) - allocBefore) / 1024.0 / refreshDays;
+        // 第 09-3 章：播放時實際走的路（同一週只更新日期與時間控制）。
+        double dayTotal = 0;
+        for (var d = 0; d < refreshDays; d++)
+        {
+            _world.AdvanceOneDay();
+            watch.Restart();
+            RefreshAfterDays();
+            dayTotal += watch.Elapsed.TotalMilliseconds;
+        }
 
         // ③ 地圖：地表代碼、聚落版面、地表整張重建、烤一塊、每週增量。
         var map = _hexMap.PerfMeasure(() =>
@@ -64,7 +73,7 @@ public partial class ObserverRoot
         GD.Print("WORLD_SIM_PERF: "
             + $"Map={world.Map.Columns}x{world.Map.Rows} Settlements={settlements} Population={_world.SettledPopulation} "
             + $"CreateMs={Ms(createMs)} CoreWeekMs={Ms(coreWeekMs)} CoreAllocMBPerWeek={Ms(coreAllocMbPerWeek)} CoreGen0={coreGen0} "
-            + $"InstallMs={Ms(installMs)} RefreshMs={Ms(refreshTotal / refreshDays)} RefreshAllocKB={Ms(refreshAllocKb)} "
+            + $"InstallMs={Ms(installMs)} RefreshMs={Ms(refreshTotal / refreshDays)} RefreshAllocKB={Ms(refreshAllocKb)} DayRefreshMs={Ms(dayTotal / refreshDays)} "
             + map);
     }
 }

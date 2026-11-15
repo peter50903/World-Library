@@ -131,9 +131,14 @@ public partial class DemoHexMap
         }
         // 編號小（早建立）的聚落先排；後面的不壓到前面已經用掉的方格。
         var occupied = new HashSet<Vector2I>();
+        long prefix = 17;
         foreach (var site in alive)
         {
-            var layout = ComputeLayout(site, occupied);
+            var layout = ComputeLayout(site, occupied, prefix);
+            unchecked
+            {
+                prefix = prefix * 31 + Signature(layout); // 第 09-3 章：後面聚落的快取鍵含前面聚落的用地
+            }
             foreach (var lot in layout.Lots)
                 for (var j = 0; j < lot.H; j++)
                     for (var i = 0; i < lot.W; i++)

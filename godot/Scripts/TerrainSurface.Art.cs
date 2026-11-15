@@ -80,7 +80,9 @@ public partial class TerrainSurface
     private GroundArt Art => _art ??= new GroundArt();
 
     /// <summary>剛才 <see cref="Ground"/> 回傳的顏色是不是直接取自素材（是就不再降彩度）。</summary>
-    private bool _groundRaw;
+    /// 第 09-3 章：地面平行計算，每個執行緒各記各的。
+    [ThreadStatic]
+    private static bool _groundRaw;
 
     /// <summary>取素材顏色；有素材時記下「這是素材色」。</summary>
     private Color? Tex(TileSet set, int tx, int ty, int x, int y, int salt = 3)
