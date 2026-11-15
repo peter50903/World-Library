@@ -140,7 +140,7 @@ public static class DemoContinentGenerator
         // 先放幾塊大陸的中心（彼此夠遠），每塊大陸是被雜訊扭曲過的橢圓「大陸棚」，再疊上三層平滑雜訊的起伏；
         // 大陸之間自然是海峽與大洋，海岸線因扭曲而有半島與海灣。地圖四邊兩格內往下壓，外圍一定是海。
         long[] height;
-        long[] order;
+        int[] order;
         int landCount;
         bool[] isLand;
         for (var retry = 0; ; retry++)
