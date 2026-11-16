@@ -15,8 +15,9 @@ namespace WorldSimulation.GodotClient;
 public partial class DemoHexMap
 {
     /// <summary>【TEMP】戰略層的格半徑上限（像素）、戰略圖每格的取樣半徑、重畫的最短間隔（毫秒）。</summary>
-    private const float TempStrategicMaxRadius = 6f;
-    private const float TempStrategicImageRadius = 4f;
+    /// <summary>第 09-1d 章（參考 CK3 最遠一層的紙地圖）：6 → 12 像素以下畫紙地圖；紙地圖每格取樣半徑 4 → 8（放大時不糊）。</summary>
+    private const float TempStrategicMaxRadius = 12f;
+    private const float TempStrategicImageRadius = 8f;
     private const ulong TempStrategicRebuildMs = 250;
 
     public enum ViewLayer { Strategic, Regional, Local }
@@ -178,27 +179,8 @@ public partial class DemoHexMap
             return _strategicTexture;
         if (_strategicTexture is not null && structure.Equals(_strategicStructure) && now - _strategicBuiltAt < TempStrategicRebuildMs)
             return _strategicTexture;
-        var r = TempStrategicImageRadius;
-        var (offset, size) = StrategicFrame(r);
-        var width = Math.Max(1, (int)Mathf.Ceil(size.X));
-        var height = Math.Max(1, (int)Mathf.Ceil(size.Y));
-        var bytes = new byte[width * height * 4];
-        for (var y = 0; y < height; y++)
-        {
-            for (var x = 0; x < width; x++)
-            {
-                // 第 08-18b 章：一格一塊方形色塊（像素中心 → 欄列，不扭曲）。
-                var at = HexCoordinates.CellOf(new Vector2(x + 0.5f + offset.X, y + 0.5f + offset.Y), r);
-                if (!World!.Contains(at.X, at.Y))
-                    continue;
-                var c = colors[at.Y * World.Columns + at.X];
-                var o = (y * width + x) * 4;
-                bytes[o] = (byte)(Mathf.Clamp(c.R, 0f, 1f) * 255f);
-                bytes[o + 1] = (byte)(Mathf.Clamp(c.G, 0f, 1f) * 255f);
-                bytes[o + 2] = (byte)(Mathf.Clamp(c.B, 0f, 1f) * 255f);
-                bytes[o + 3] = 255;
-            }
-        }
+        var (width, height, index) = PaperIndex();
+        var bytes = PaperBytes(width, height, index, colors);
         var image = Image.CreateFromData(width, height, false, Image.Format.Rgba8, bytes);
         if (_strategicTexture is not null && _strategicTexture.GetWidth() == width && _strategicTexture.GetHeight() == height)
             _strategicTexture.Update(image);
@@ -285,5 +267,103 @@ public partial class DemoHexMap
             DrawNameplates(start, radius, layer == ViewLayer.Regional ? DemoSettlementTier.Village : DemoSettlementTier.Town, realmsOnly: true);
         else if (layer == ViewLayer.Regional)
             DrawNameplates(start, radius, DemoSettlementTier.Town, realmsOnly: true); // 第 08-18k 章：勢力合併後只標首都
+    }
+
+    // ───────────── 第 09-1d 章：紙地圖（參考 CK3 最遠一層） ─────────────
+
+    private (DemoHexWorld? World, int W, int H, int[] Index)? _paperIndex;
+
+    /// <summary>紙地圖每個像素屬於哪一格（-1＝地圖外）；只在換世界時算一次，之後每週重畫只查表。</summary>
+    private (int W, int H, int[] Index) PaperIndex()
+    {
+        if (_paperIndex is { } cached && ReferenceEquals(cached.World, World))
+            return (cached.W, cached.H, cached.Index);
+        var r = TempStrategicImageRadius;
+        var (offset, size) = StrategicFrame(r);
+        var width = Math.Max(1, (int)Mathf.Ceil(size.X));
+        var height = Math.Max(1, (int)Mathf.Ceil(size.Y));
+        var index = new int[width * height];
+        System.Threading.Tasks.Parallel.For(0, height, y =>
+        {
+            for (var x = 0; x < width; x++)
+            {
+                // 第 08-18b 章：一格一塊方形色塊（像素中心 → 欄列，不扭曲）。
+                var at = HexCoordinates.CellOf(new Vector2(x + 0.5f + offset.X, y + 0.5f + offset.Y), r);
+                index[y * width + x] = World!.Contains(at.X, at.Y) ? at.Y * World.Columns + at.X : -1;
+            }
+        });
+        _paperIndex = (World, width, height, index);
+        return (width, height, index);
+    }
+
+    // 紙、墨、海的顏色（【TEMP】第 09-1d 章調色）。
+    private static readonly Color TempPaper = new(0.88f, 0.81f, 0.65f), TempPaperForest = new(0.74f, 0.76f, 0.56f),
+        TempPaperHills = new(0.80f, 0.70f, 0.52f), TempPaperFarm = new(0.90f, 0.78f, 0.50f), TempPaperSea = new(0.56f, 0.66f, 0.64f),
+        TempPaperLake = new(0.50f, 0.64f, 0.68f), TempInk = new(0.28f, 0.21f, 0.15f);
+
+    /// <summary>
+    /// 紙地圖：陸地是羊皮紙色（森林偏綠、丘陵偏褐、田偏黃），海是灰藍；海岸線與勢力邊界用深褐墨線，勢力模式整片淡淡上色；
+    /// 其他地圖模式照原本的色塊、一樣描海岸線。紙面有一點固定的顆粒。
+    /// </summary>
+    private byte[] PaperBytes(int width, int height, int[] index, Color[] colors)
+    {
+        var cells = World!.Cells;
+        var paper = new Color[cells.Count];
+        var realmOf = new int[cells.Count];
+        for (var i = 0; i < cells.Count; i++)
+        {
+            var cell = cells[i];
+            var at = new DemoCellRef(cell.Column, cell.Row);
+            realmOf[i] = Territory.Cells.TryGetValue(at, out var held) ? held.RealmId : -1;
+            if (_mode is not (Mode.Terrain or Mode.Realm))
+            {
+                paper[i] = colors[i];
+                continue;
+            }
+            var c = cell.Terrain switch
+            {
+                DemoTerrain.Water => cell.Sea ? TempPaperSea : TempPaperLake,
+                DemoTerrain.Forest => TempPaperForest,
+                DemoTerrain.Hills => TempPaperHills,
+                _ => Land.StateOf(at) == DemoLandDevelopment.Farmland ? TempPaperFarm : TempPaper
+            };
+            if (_mode == Mode.Realm && realmOf[i] >= 0 && cell.Terrain != DemoTerrain.Water)
+                c = c.Lerp(RealmColor(realmOf[i]), 0.38f);
+            if (FocusGroup is { } focus && GroupOf(at) != focus)
+                c = c.Darkened(0.35f);
+            paper[i] = c;
+        }
+        var bytes = new byte[width * height * 4];
+        var realm = _mode == Mode.Realm;
+        System.Threading.Tasks.Parallel.For(0, height, y =>
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var k = index[y * width + x];
+                if (k < 0)
+                    continue;
+                var c = paper[k];
+                // 墨線：右邊或下面的像素換了水陸（海岸線），或勢力模式換了勢力（邊界）。
+                var water = cells[k].Terrain == DemoTerrain.Water;
+                for (var side = 0; side < 2; side++)
+                {
+                    var n = side == 0 ? (x + 1 < width ? index[y * width + x + 1] : -1) : (y + 1 < height ? index[(y + 1) * width + x] : -1);
+                    if (n < 0 || n == k)
+                        continue;
+                    if ((cells[n].Terrain == DemoTerrain.Water) != water)
+                        c = TempInk;
+                    else if (realm && !water && realmOf[n] != realmOf[k])
+                        c = c.Lerp(TempInk, 0.7f);
+                }
+                // 紙的顆粒（固定雜湊，±4%）。
+                var grain = 1f + ((((uint)(x * 73856093) ^ (uint)(y * 19349663)) % 1000u) / 1000f - 0.5f) * 0.08f;
+                var o = (y * width + x) * 4;
+                bytes[o] = (byte)(Mathf.Clamp(c.R * grain, 0f, 1f) * 255f);
+                bytes[o + 1] = (byte)(Mathf.Clamp(c.G * grain, 0f, 1f) * 255f);
+                bytes[o + 2] = (byte)(Mathf.Clamp(c.B * grain, 0f, 1f) * 255f);
+                bytes[o + 3] = 255;
+            }
+        });
+        return bytes;
     }
 }
