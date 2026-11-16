@@ -44,6 +44,10 @@ public partial class DemoHexMap
             var defenderColor = FrontColor(front, false);
             var target = ScreenOf(start, radius, front.Target);
             var from = ScreenOf(start, radius, front.From);
+            // 第 09-1e 章：行軍虛線在流動、軍旗在飄——戰線經過畫面時才持續重畫。
+            var span = new Rect2(Mathf.Min(target.X, from.X), Mathf.Min(target.Y, from.Y), Mathf.Abs(target.X - from.X), Mathf.Abs(target.Y - from.Y));
+            if (span.Grow(radius * 4f + 64f).Intersects(new Rect2(Vector2.Zero, Size)))
+                _animatedOnScreen = true;
             // ① 佔領斜紋：目標聚落直屬的格。
             var step = Math.Max(4f, radius * TempHatchStep);
             foreach (var (at, owner) in Territory.Cells)

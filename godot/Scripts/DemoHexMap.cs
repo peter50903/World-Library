@@ -292,6 +292,7 @@ public partial class DemoHexMap : Control
 
         var (start, radius) = ViewLayout();
 
+        _animatedOnScreen = false; // 第 09-1e 章：這一次重畫有沒有畫到會動的東西，由各畫法重新登記
         // 第 08-15 章：遠看（戰略層、區域層）用簡化畫法；近景層才畫圖塊、建築與格線。
         var layer = LayerFor(radius);
         // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
