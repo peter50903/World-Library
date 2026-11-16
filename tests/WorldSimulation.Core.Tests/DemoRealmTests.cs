@@ -148,6 +148,44 @@ public sealed class DemoRealmTests
         Assert.Equal(events, DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10));
     }
 
+    // 第 08-19h 章：獨立之後不會自己歸附回舊主（期滿才會）；湊不出 3 個兵的派系打不起獨立戰爭，只能請願。
+    [Fact]
+    public void FreedSettlementDoesNotRejoinItsFormerLiegeUntilTheIndependencePeriodEnds()
+    {
+        var (world, a, b, _) = Setup();
+        var rng = RngRegistry.Create(5);
+        var natural = new Dictionary<int, int> { [b] = a };
+        var ctx = Ctx(world.Sites, _ => 120);
+        var fold = new DemoRealms.Fold();
+        Step(fold, 1, ctx, natural, rng);
+        Assert.Equal(a, fold.Liege[b]);
+        fold.Apply(new DemoSettlementEvent(2, TimeSpan.FromDays(14), b, "", DemoSettlementEventKind.Independence, a, ""));
+        Assert.True(fold.FreedFrom(b, a, 3));
+        Assert.DoesNotContain(Step(fold, 3, ctx, natural, rng), e => e.Kind == DemoSettlementEventKind.VassalJoined);
+        Assert.False(fold.Liege.ContainsKey(b));
+        var later = 2 + DemoRealms.TempIndependenceWeeks;
+        Assert.False(fold.FreedFrom(b, a, later));
+        Assert.Contains(Step(fold, later, ctx, natural, rng), e => e.Kind == DemoSettlementEventKind.VassalJoined && e.SettlementId == b);
+    }
+
+    [Fact]
+    public void TinyFactionPetitionsInsteadOfWagingWar()
+    {
+        var (world, a, b, _) = Setup();
+        var rng = RngRegistry.Create(6);
+        var natural = new Dictionary<int, int> { [b] = a };
+        // 雙方各 20 人（兵力 2 對 2，原本會開戰）：兵力不到 3，只能請願。
+        var ctx = Ctx(world.Sites, _ => 20, id => id == a ? 1 : 2);
+        var fold = new DemoRealms.Fold();
+        var all = new List<DemoSettlementEvent>();
+        for (var week = 1; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
+            all.AddRange(Step(fold, week, ctx, natural, rng));
+        Assert.DoesNotContain(all, e => e.Kind == DemoSettlementEventKind.SecessionArmed);
+        var petition = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.SecessionPeaceful);
+        Assert.Contains("人少勢弱（2 對 2）", petition.Cause, StringComparison.Ordinal);
+        Assert.False(Assert.Single(fold.Struggles.Values).Armed);
+    }
+
     [Fact]
     public void TerritoryUsesTheLiegesFromEvents()
     {

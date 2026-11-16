@@ -67,13 +67,13 @@ public sealed record DemoRealmContext(
 public static partial class DemoRealms
 {
     /// <summary>【TEMP】不滿累積幾週後行動；請願幾週；戰爭至少、最多幾週；失敗後幾週內不再加入派系；剛歸附算幾週。</summary>
-    public const int TempDiscontentWeeks = 26, TempPeacefulWeeks = 26, TempWarMinWeeks = 8, TempWarMaxWeeks = 52, TempTruceWeeks = 260, TempNewVassalWeeks = 52;
+    public const int TempDiscontentWeeks = 26, TempPeacefulWeeks = 26, TempWarMinWeeks = 8, TempWarMaxWeeks = 52, TempTruceWeeks = 260, TempNewVassalWeeks = 52, TempIndependenceWeeks = 1040;
 
     /// <summary>【TEMP】派系兵力達上級方幾 % 下通牒、幾 % 上級接受；請願的讓步機率與文化不同的加成；戰爭分出勝負的死亡比。</summary>
     public const int TempUltimatumPercent = 80, TempAcceptPercent = 150, TempPeacefulWinPercent = 35, TempCultureBonusPercent = 20, TempWarScorePercent = 150;
 
     /// <summary>【TEMP】兵力＝居民的 1/10（至少 1）；每週交戰對方每 20 名兵多殺 1 人（再乘 0.5～1.5 的運氣）。</summary>
-    public const int TempLevyDivisor = 10, TempArmyPerDeath = 20;
+    public const int TempLevyDivisor = 10, TempArmyPerDeath = 20, TempMinWarArmy = 3;
 
     /// <summary>【TEMP】忠誠回到這個值以上才退出派系。</summary>
     public const int TempLeaveLoyalty = 10;
@@ -90,6 +90,7 @@ public static partial class DemoRealms
         private readonly Dictionary<int, (int Liege, int Week)> _faction = new();
         private readonly Dictionary<int, DemoSecession> _struggles = new();
         private readonly Dictionary<int, int> _truceUntil = new();
+        private readonly Dictionary<int, (int Former, int Week)> _freedFrom = new();
 
         public IReadOnlyDictionary<int, int> Liege => _liege;
 
@@ -103,6 +104,12 @@ public static partial class DemoRealms
 
         /// <summary>剛被鎮壓（停戰中）。</summary>
         public bool Calm(int settlementId, int week) => _truceUntil.TryGetValue(settlementId, out var until) && week < until;
+
+        /// <summary>
+        /// 第 08-19h 章：剛脫離這個上級（獨立之後 <see cref="TempIndependenceWeeks"/> 週內不會再自己歸附回去；歸附別人不受限）。
+        /// </summary>
+        public bool FreedFrom(int settlementId, int lord, int week)
+            => _freedFrom.TryGetValue(settlementId, out var f) && f.Former == lord && week < f.Week + TempIndependenceWeeks;
 
         /// <summary>這個聚落正在參與的鬥爭（首領、成員或上級）。</summary>
         public DemoSecession? StruggleOf(int settlementId)
@@ -144,6 +151,7 @@ public static partial class DemoRealms
                     }
                     break;
                 case DemoSettlementEventKind.Independence:
+                    _freedFrom[id] = ((int)e.Count, e.Week); // 第 08-19h 章
                     _liege.Remove(id);
                     _joinedWeek.Remove(id);
                     _faction.Remove(id);
@@ -376,7 +384,7 @@ public static partial class DemoRealms
             var id = s.Id;
             if (!lieges.TryGetValue(id, out var liege))
             {
-                if (natural.TryGetValue(id, out var lord) && Alive(lord) && !Cycle(id, lord))
+                if (natural.TryGetValue(id, out var lord) && Alive(lord) && !Cycle(id, lord) && !fold.FreedFrom(id, lord, week)) // 第 08-19h 章：剛獨立的不再歸附舊主
                 {
                     Add(id, DemoSettlementEventKind.VassalJoined, lord, $"{Name(id)}歸附{Name(lord)}");
                     lieges[id] = lord;
@@ -434,10 +442,10 @@ public static partial class DemoRealms
             }
             if (power >= TempAcceptPercent)
                 Independence(leader, liege, members, $"{who}向{Name(liege)}下最後通牒（兵力 {rebels} 對 {loyal}），{Name(liege)}自知不敵，同意它們獨立");
-            else if (power >= TempUltimatumPercent)
+            else if (power >= TempUltimatumPercent && rebels >= TempMinWarArmy) // 第 08-19h 章：湊不出像樣的兵力就打不起來
                 Add(leader, DemoSettlementEventKind.SecessionArmed, liege, $"{who}向{Name(liege)}下最後通牒被拒，掀起獨立戰爭（兵力 {rebels} 對 {loyal}）");
             else
-                Add(leader, DemoSettlementEventKind.SecessionPeaceful, liege, $"{who}兵力不足（{rebels} 對 {loyal}），向{Name(liege)}請願抗議、要求獨立");
+                Add(leader, DemoSettlementEventKind.SecessionPeaceful, liege, $"{who}{(power >= TempUltimatumPercent ? "人少勢弱" : "兵力不足")}（{rebels} 對 {loyal}），向{Name(liege)}請願抗議、要求獨立");
         }
 
         // ④ 第 08-19e 章：征服戰爭的結束與宣戰（只在征服時代宣戰；進行中的照常打完）。
