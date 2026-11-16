@@ -145,6 +145,7 @@ public sealed partial class DemoObserverWorld
         // 第 08-19c 章：世界法則（加入前的存檔沒有這一欄＝全開）。
         candidate._laws = state.TryGetProperty("Laws", out var laws) && laws.ValueKind == JsonValueKind.Object
             ? laws.Deserialize<DemoWorldLaws>() ?? DemoWorldLaws.Default : DemoWorldLaws.Default;
+        candidate._lawChanges = ReadLawChanges(state, candidate._laws, weekCount);
         candidate._weekBase = weekBase;
         candidate._weeks = reports.ToImmutableList();
         candidate._frozenYears = earlierYears.ToImmutableList();
@@ -615,6 +616,29 @@ public sealed partial class DemoObserverWorld
     }
 
     [DoesNotReturn]
+    /// <summary>
+    /// 第 14-1 章第 1 項：讀法則切換紀錄並檢查（週次遞增、不超過已提交週數、最後一筆＝目前的法則）。
+    /// 加入這一欄之前的存檔沒有紀錄：法則不是全開時，當成「現在才切換」（那種存檔本來就無法重播驗證）。
+    /// </summary>
+    internal static ImmutableList<DemoLawChange> ReadLawChanges(JsonElement state, DemoWorldLaws current, int weekCount)
+    {
+        if (!state.TryGetProperty("LawChanges", out var element) || element.ValueKind != JsonValueKind.Array)
+            return current.IsDefault ? ImmutableList<DemoLawChange>.Empty : ImmutableList.Create(new DemoLawChange(weekCount, current));
+        var changes = (element.Deserialize<DemoLawChange[]>() ?? Array.Empty<DemoLawChange>()).ToImmutableList();
+        var previous = -1;
+        var laws = DemoWorldLaws.Default;
+        foreach (var c in changes)
+        {
+            if (c is null || c.Laws is null || c.AfterWeek <= previous || c.AfterWeek > weekCount || c.Laws == laws)
+                Reject("世界法則的切換紀錄不合法");
+            previous = c!.AfterWeek;
+            laws = c.Laws!;
+        }
+        if (laws != current)
+            Reject("世界法則的切換紀錄與目前的法則不一致");
+        return changes;
+    }
+
     private static void Reject(string reason)
         => throw new InvalidDataException($"TEMP 存檔驗證失敗：{reason}，已拒絕載入。");
 

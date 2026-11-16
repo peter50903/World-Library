@@ -4,6 +4,12 @@ namespace WorldSimulation.Core.World.Demo;
 /// 第 08-19c 章：世界法則（參考 WorldBox 的世界法則）——玩家可以隨時開關幾條會改變世界走向的規則。
 /// 預設全開（與加入世界法則前完全相同）；關掉後從下一個結算週起生效，存檔記下目前的法則。
 /// </summary>
+/// <summary>
+/// 第 14-1 章第 1 項：一次世界法則切換——第 <see cref="AfterWeek"/> 週結算之後改成 <see cref="Laws"/>（從下一個結算週起生效）。
+/// 只追加；存檔保存全部，重播驗證在同一週套用，世界才重現得出來。
+/// </summary>
+public sealed record DemoLawChange(int AfterWeek, DemoWorldLaws Laws);
+
 public sealed record DemoWorldLaws(bool Disasters = true, bool Monsters = true, bool Rebellions = true, bool BeastAttacks = true, bool Wars = true)
 {
     public static DemoWorldLaws Default { get; } = new();
