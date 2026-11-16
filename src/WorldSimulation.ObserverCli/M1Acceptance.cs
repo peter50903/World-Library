@@ -446,7 +446,7 @@ public static class M1Evaluator
             {
                 migrationLedgers++;
                 if (!m.FoodBalanced)
-                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 糧食帳：{m.FoodOpening}－消耗 {m.FoodConsumed}≠{m.FoodClosing}");
+                    problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 糧食帳：{m.FoodOpening}－消耗 {m.FoodConsumed}－遺留 {m.FoodAbandoned}≠{m.FoodClosing}（或全員死亡的隊伍還有糧食）");
                 if (!m.NonNegative)
                     problems.Add($"{At(run, report.Week)} 遷徙隊伍 #{m.BatchId} 出現負值");
                 wConsumed += m.FoodConsumed;

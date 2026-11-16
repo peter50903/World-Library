@@ -148,6 +148,7 @@ internal static class DemoHumanLifecycle
         // 途中隊伍帳：出生、自然死亡；全員自然死亡的隊伍剩餘飢餓債沒有承擔者，隨死者移除，隊伍解散。
         var legs = new List<DemoMigrationWeekLedger>(report.Migrations.Count);
         var batches = weekly.Migrations.ToBuilder();
+        var abandonedByBatch = new Dictionary<int, long>(); // 第 14-1 章第 3 項：全員老死的隊伍遺留的糧食
         foreach (var leg in report.Migrations)
         {
             if (leg.Arrived) { legs.Add(leg); continue; }
@@ -158,10 +159,15 @@ internal static class DemoHumanLifecycle
             if (closing < 0 || population.MembersOf(leg.BatchId) != closing)
                 throw new InvalidOperationException("Travel birth/death cohorts do not match the migration ledger.");
             var excessDebt = closing == 0 ? leg.HungerDebtClosing : 0L;
+            // 第 14-1 章第 3 項：全員自然死亡的隊伍，攜帶的糧食遺留在途中（記在隊伍帳與死亡事件，不無帳消失）。
+            var abandoned = closing == 0 ? leg.FoodClosing : 0L;
+            if (abandoned > 0)
+                abandonedByBatch[leg.BatchId] = abandoned;
             var revisedLeg = leg with
             {
                 Births = births, NaturalDeaths = natural, PopulationClosing = closing,
-                HungerDebtRemovedByNaturalDeath = excessDebt, HungerDebtClosing = leg.HungerDebtClosing - excessDebt
+                HungerDebtRemovedByNaturalDeath = excessDebt, HungerDebtClosing = leg.HungerDebtClosing - excessDebt,
+                FoodAbandoned = checked(leg.FoodAbandoned + abandoned), FoodClosing = leg.FoodClosing - abandoned
             };
             legs.Add(revisedLeg);
             var index = batches.FindIndex(b => b.Id == leg.BatchId);
@@ -191,6 +197,8 @@ internal static class DemoHumanLifecycle
             var (kind, cause) = g.Key.Birth
                 ? (DemoSettlementEventKind.Birth, $"TEMP人族：懷孕 {Rules.GestationWeeks} 週到期，新生兒出生{travel}")
                 : (DemoSettlementEventKind.NaturalDeath, $"TEMP人族：年齡 {ages}，依種族典型壽命 {Rules.TypicalLifespanYears} 的自然死亡風險{travel}");
+            if (!g.Key.Birth && abandonedByBatch.TryGetValue(g.Key.BatchId, out var left))
+                cause += $"；隊伍全員死亡，攜帶的糧食 {left} 遺留在途中";
             events.Add(new DemoSettlementEvent(report.Week, report.WorldTime, site.Id, site.Name,
                 kind, count, cause, MigrationBatchId: g.Key.BatchId, EventId: eventId++));
         }
@@ -323,7 +331,10 @@ internal static class DemoHumanLifecycle
                     NaturalDeaths = 0,
                     PopulationClosing = m.PopulationClosing - m.Births + m.NaturalDeaths,
                     HungerDebtClosing = m.HungerDebtClosing + m.HungerDebtRemovedByNaturalDeath,
-                    HungerDebtRemovedByNaturalDeath = 0
+                    HungerDebtRemovedByNaturalDeath = 0,
+                    // 第 14-1 章第 3 項：生死步驟記的遺留糧食（全員老死）還原回期末糧食；結算步驟記的（全員餓死）不動。
+                    FoodClosing = m.NaturalDeaths > 0 && m.PopulationClosing == 0 ? m.FoodClosing + m.FoodAbandoned : m.FoodClosing,
+                    FoodAbandoned = m.NaturalDeaths > 0 && m.PopulationClosing == 0 ? 0 : m.FoodAbandoned
                 }).ToArray(),
                 Events = stored.Events.Where(e => e.Kind is not
                     (DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)).ToArray(),

@@ -881,6 +881,9 @@ internal static class DemoWeeklySettlement
             if (survivors == 0)
                 removedByDeath = debt;
             debt -= removedByDeath;
+            // 第 14-1 章第 3 項：全員死亡的隊伍，剩下的糧食遺留在途中（記帳，不無帳消失）。
+            var abandoned = survivors == 0 ? foodClosing : 0;
+            foodClosing -= abandoned;
 
             // 不瞬移：每週最多前進一格（TEMP 速度），全數死亡的隊伍停在原地。
             var step = survivors > 0 ? batch.StepIndex + 1 : batch.StepIndex;
@@ -890,11 +893,12 @@ internal static class DemoWeeklySettlement
             {
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, batch.FromSettlementId, batch.FromName,
                     DemoSettlementEventKind.MigrantStarvationDeath, deaths,
-                    survivors == 0 && batch.Founding
+                    (survivors == 0 && batch.Founding
                         ? $"開拓隊前往{batch.ToName}途中攜帶的糧食耗盡，全數死亡，開拓失敗、沒有建立聚落"
                         : survivors == 0
                         ? $"前往{batch.ToName}途中攜帶的糧食耗盡，隊伍全數死亡"
-                        : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）",
+                        : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）")
+                    + (abandoned > 0 ? $"；攜帶的糧食 {abandoned} 遺留在途中" : string.Empty,
                     batch.Id), emigrationEventId));
             }
 
@@ -955,7 +959,7 @@ internal static class DemoWeeklySettlement
                 batch.Cell, batch.Path[step], Departed: false, Arrived: arrived,
                 people, deaths, survivors,
                 batch.Food, consumed, foodClosing, shortage,
-                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding, AttackDeaths: attacked));
+                batch.HungerDebt, recovered, removedByDeath, debt, Founding: batch.Founding, AttackDeaths: attacked, FoodAbandoned: abandoned));
         }
 
         DemoPerf.Mark("結算：途中隊伍");
