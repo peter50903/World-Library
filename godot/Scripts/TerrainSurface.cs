@@ -453,7 +453,14 @@ public partial class TerrainSurface : Control
         var cell = 2 * TempTexelsPerRadius;
         foreach (var i in changed) // 參差只看自己與隔壁格：重算改變的格與四周一格的方格
             BuildPaint((i % columns - 1) * TilesPerCell, (i / columns - 1) * TilesPerCell, (i % columns + 2) * TilesPerCell, (i / columns + 2) * TilesPerCell);
-        BuildMaterials(); // 第 09-1b 章：過渡要看相鄰方格的地面
+        // 第 09-1b 章：過渡要看相鄰方格的地面。
+        // 第 09-1e 章：材質只看方格自己的地面、畫成哪一格與那一格的代碼，所以只重算參差重算過的範圍（原本每次整張重算）；
+        // 變動的格多到範圍加起來超過整張時，照舊整張算一次。
+        if (changed.Count * 9 >= columns * rows)
+            BuildMaterials();
+        else
+            foreach (var i in changed)
+                BuildMaterials((i % columns - 1) * TilesPerCell, (i / columns - 1) * TilesPerCell, (i % columns + 2) * TilesPerCell, (i / columns + 2) * TilesPerCell);
         foreach (var i in changed)
         {
             // 參差一方格、零件往上最多約四方格、左右兩方格：只重烤這個範圍碰到的塊。
@@ -912,17 +919,31 @@ public partial class TerrainSurface : Control
     private byte[] _materials = Array.Empty<byte>();
     private byte[] _corners = Array.Empty<byte>();
 
-    /// <summary>第 09-1b 章：每個方格的地面種類，與每個格點（方格的角）的地面：角＝相鄰四格裡數字最大的。</summary>
-    private void BuildMaterials()
+    /// <summary>
+    /// 第 09-1b 章：每個方格的地面種類，與每個格點（方格的角）的地面：角＝相鄰四格裡數字最大的。
+    /// 第 09-1e 章：可以只重算方格範圍 [<paramref name="tx0"/>, <paramref name="tx1"/>)×[<paramref name="ty0"/>, <paramref name="ty1"/>)
+    /// （格點多算右、下各一排：格點看的是左上四個方格）；不給範圍＝整張。表的大小不對時一律整張。
+    /// </summary>
+    private void BuildMaterials(int tx0 = 0, int ty0 = 0, int tx1 = int.MaxValue, int ty1 = int.MaxValue)
     {
         var count = _tilesX * _tilesY;
-        if (_materials.Length != count)
-            _materials = new byte[count];
-        var codes = _codes!;
-        for (var t = 0; t < count; t++)
+        var w1 = _tilesX + 1;
+        if (_materials.Length != count || _corners.Length != w1 * (_tilesY + 1))
         {
-            var tx = t % _tilesX;
-            var ty = t / _tilesX;
+            _materials = new byte[count];
+            _corners = new byte[w1 * (_tilesY + 1)];
+            tx0 = ty0 = 0;
+            tx1 = ty1 = int.MaxValue;
+        }
+        tx0 = Math.Max(0, tx0);
+        ty0 = Math.Max(0, ty0);
+        tx1 = Math.Min(_tilesX, tx1);
+        ty1 = Math.Min(_tilesY, ty1);
+        var codes = _codes!;
+        for (var ty = ty0; ty < ty1; ty++)
+        for (var tx = tx0; tx < tx1; tx++)
+        {
+            var t = ty * _tilesX + tx;
             var code = (Code)codes[_paint[t] * 4];
             var sea = _seaDist[t];
             byte m;
@@ -952,11 +973,8 @@ public partial class TerrainSurface : Control
                 };
             _materials[t] = m;
         }
-        var w1 = _tilesX + 1;
-        if (_corners.Length != w1 * (_tilesY + 1))
-            _corners = new byte[w1 * (_tilesY + 1)];
-        for (var gy = 0; gy <= _tilesY; gy++)
-            for (var gx = 0; gx <= _tilesX; gx++)
+        for (var gy = ty0; gy <= ty1; gy++)
+            for (var gx = tx0; gx <= tx1; gx++)
             {
                 byte best = 0;
                 for (var dy = -1; dy <= 0; dy++)

@@ -62,6 +62,15 @@ public partial class TerrainSurface
         return baked == 0 ? 0 : watch.Elapsed.TotalMilliseconds / baked;
     }
 
+    /// <summary>第 09-1e 章：增量更新後的材質表與格點，是否與整張重算完全相同（比完後表是整張重算的結果）。</summary>
+    internal bool MaterialsMatchFullRebuild()
+    {
+        var materials = (byte[])_materials.Clone();
+        var corners = (byte[])_corners.Clone();
+        BuildMaterials();
+        return materials.AsSpan().SequenceEqual(_materials) && corners.AsSpan().SequenceEqual(_corners);
+    }
+
     internal void PerfUpdate(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
         Update(codes, columns, rows, ground);
