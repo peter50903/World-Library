@@ -71,6 +71,16 @@ public partial class TerrainSurface
         return materials.AsSpan().SequenceEqual(_materials) && corners.AsSpan().SequenceEqual(_corners);
     }
 
+    /// <summary>第 09-1e 章：聚落地面換成一份新的表（內容相同）時，地表要花多少毫秒（重建不長樹表、比對新舊地面）。</summary>
+    internal double PerfGroundSwap(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
+    {
+        var copy = new Dictionary<int, byte>(ground);
+        var watch = Stopwatch.StartNew();
+        Update(codes, columns, rows, copy);
+        _uploaded = codes;
+        return watch.Elapsed.TotalMilliseconds;
+    }
+
     internal void PerfUpdate(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
         Update(codes, columns, rows, ground);

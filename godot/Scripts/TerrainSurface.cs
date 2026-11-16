@@ -397,8 +397,8 @@ public partial class TerrainSurface : Control
         var oldGround = _ground;
         _ground = ground;
         _codes = codes;
-        var oldTreeless = _treeless;
-        if (!ReferenceEquals(oldGround, ground))
+        var groundChanged = !ReferenceEquals(oldGround, ground);
+        if (groundChanged || _treeless.Length != _tilesX * _tilesY)
             BuildTreeless();
         var full = old is null || old.Length != codes.Length || !_thumbReady;
         if (!full)
@@ -422,20 +422,26 @@ public partial class TerrainSurface : Control
         for (var i = 0; i < columns * rows; i++)
             if (codes[i * 4] != old![i * 4] || codes[i * 4 + 1] != old[i * 4 + 1] || codes[i * 4 + 2] != old[i * 4 + 2] || codes[i * 4 + 3] != old[i * 4 + 3])
                 changed.Add(i);
-        if (!ReferenceEquals(oldGround, ground))
+        if (groundChanged)
         {
+            // 第 09-1e 章：地面變了的方格——自己的格要重畫；它四周「不長樹」的範圍（左右一方格、上三下一）也可能跟著變，
+            // 範圍比一格小，所以取四個角所在的格就涵蓋了（原本另外建一份舊的不長樹表、整份逐筆比對）。
+            void Touch(int tile)
+            {
+                var tx = tile % _tilesX;
+                var ty = tile / _tilesX;
+                changed.Add(TileOwner(tx, ty));
+                changed.Add(TileOwner(tx - 1, ty - 3));
+                changed.Add(TileOwner(tx + 1, ty - 3));
+                changed.Add(TileOwner(tx - 1, ty + 1));
+                changed.Add(TileOwner(tx + 1, ty + 1));
+            }
             foreach (var (tile, kind) in ground)
                 if (!oldGround.TryGetValue(tile, out var was) || was != kind)
-                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+                    Touch(tile);
             foreach (var tile in oldGround.Keys)
                 if (!ground.ContainsKey(tile))
-                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
-            foreach (var tile in _treeless)
-                if (!oldTreeless.Contains(tile))
-                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
-            foreach (var tile in oldTreeless)
-                if (!_treeless.Contains(tile))
-                    changed.Add(TileOwner(tile % _tilesX, tile / _tilesX));
+                    Touch(tile);
             changed.Remove(-1);
         }
         if (changed.Count == 0)
@@ -1106,11 +1112,15 @@ public partial class TerrainSurface : Control
 
     /// <summary>試玩回饋 2026-11-06 之 4（物件蓋住樹頂，透視奇怪）：聚落地面四周不長樹——
     /// 房子、城牆往上長出自己的方格，所以地面上方三方格、左右與下方一方格內也不長樹（樹不會被屋頂蓋住，也不會擋在房子前面）。</summary>
-    private HashSet<int> _treeless = new();
+    /// 第 09-1e 章：改成每方格一個位元組的表（原本是雜湊集合，每次聚落地面改變都重建數十萬筆、再與舊的逐筆比對）。
+    private bool[] _treeless = Array.Empty<bool>();
 
     private void BuildTreeless()
     {
-        _treeless = new HashSet<int>();
+        if (_treeless.Length != _tilesX * _tilesY)
+            _treeless = new bool[_tilesX * _tilesY];
+        else
+            Array.Clear(_treeless);
         foreach (var tile in _ground.Keys)
         {
             var tx = tile % _tilesX;
@@ -1118,7 +1128,7 @@ public partial class TerrainSurface : Control
             for (var dy = -3; dy <= 1; dy++)
                 for (var dx = -1; dx <= 1; dx++)
                     if (tx + dx >= 0 && tx + dx < _tilesX && ty + dy >= 0 && ty + dy < _tilesY)
-                        _treeless.Add((ty + dy) * _tilesX + tx + dx);
+                        _treeless[(ty + dy) * _tilesX + tx + dx] = true;
         }
     }
 
@@ -1151,7 +1161,7 @@ public partial class TerrainSurface : Control
     private Tree? TreeAt(int tx, int ty)
     {
         var tile = ty * _tilesX + tx;
-        if (_ground.Count > 0 && _ground.ContainsKey(tile) || _seaDist[tile] <= 1 || _treeless.Contains(tile))
+        if (_ground.Count > 0 && _ground.ContainsKey(tile) || _seaDist[tile] <= 1 || _treeless[tile])
             return null;
         var cell = _paint[tile];
         var code = (Code)_codes![cell * 4];
