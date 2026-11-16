@@ -14,8 +14,25 @@ public partial class DemoHexMap
 
     private ulong _lastAnimatedMs;
 
-    /// <summary>有動畫要播時（隊伍在走、火在燒、天災動畫中）限速重畫；在 _Process 呼叫。</summary>
-    private bool WantsAnimation => Migrants.Count > 0 || _hasFire || _impacts.Count > 0
+    /// <summary>
+    /// 第 09-1e 章：這一次重畫時，畫面內有沒有畫到「隨真實時間動」的東西——篝火、風車、水車、戰線（行軍虛線、軍旗），
+    /// 或紙地圖還有一次延後的重畫。每次重畫開頭清掉，畫到時設起來。
+    /// </summary>
+    private bool _animatedOnScreen;
+
+    /// <summary>畫了一個會動的東西：在畫面內（含四周幾格）才算。</summary>
+    private void MarkAnimated(Vector2 at, float radius)
+    {
+        if (OnScreen(at, radius * 4f))
+            _animatedOnScreen = true;
+    }
+
+    /// <summary>
+    /// 有動畫要播時（火在燒、天災動畫中、畫面內有會動的建築…）限速重畫；在 _Process 呼叫。
+    /// 第 09-1e 章：原本只要世界上有遷徙隊伍就一直重畫（暫停時也是）；隊伍是不會走的旗符，位置只在世界推進時變（那時本來就會重畫）。
+    /// 改成畫面內有會動的東西（<see cref="_animatedOnScreen"/>）才重畫：暫停時篝火、風車照常動，畫面上沒有會動的東西就不重畫。
+    /// </summary>
+    private bool WantsAnimation => _animatedOnScreen || _hasFire || _impacts.Count > 0
         || (_tokensMoving && CurrentLayer == ViewLayer.Regional) // 第 08-17 章：區域層的指示物來回移動
         || _movingDisaster // 第 08-18b 章第 5 節：龍捲風、漲水
         || _disasterAnimating // 試玩回饋 2026-11-08 之 4：天災過程照真實時間播

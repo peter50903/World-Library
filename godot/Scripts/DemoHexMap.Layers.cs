@@ -178,7 +178,10 @@ public partial class DemoHexMap
         if (_strategicTexture is not null && ReferenceEquals(_strategicColors, colors))
             return _strategicTexture;
         if (_strategicTexture is not null && structure.Equals(_strategicStructure) && now - _strategicBuiltAt < TempStrategicRebuildMs)
+        {
+            _animatedOnScreen = true; // 第 09-1e 章：這次先沿用舊圖；間隔到了要補畫一次（原本靠遷徙隊伍的持續重畫順便補上）
             return _strategicTexture;
+        }
         var (width, height, index) = PaperIndex();
         var bytes = PaperBytes(width, height, index, colors);
         var image = Image.CreateFromData(width, height, false, Image.Format.Rgba8, bytes);

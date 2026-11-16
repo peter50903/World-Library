@@ -115,6 +115,8 @@ public partial class DemoHexMap
         Texture2D? art = (Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name);
         if (art is null)
             return false;
+        if (Animated(lot.Kind))
+            MarkAnimated(bottom, radius); // 第 09-1e 章：風車、水車在畫面內時才持續重畫
         if (lot.Kind == Building.Watermill && DrawWatermill(art, bottom, radius, culture))
             return true;
         if (lot.Kind == Building.Market && name.StartsWith("b11_", StringComparison.Ordinal))
