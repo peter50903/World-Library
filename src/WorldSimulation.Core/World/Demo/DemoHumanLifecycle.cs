@@ -88,7 +88,9 @@ internal static class DemoHumanLifecycle
 
         // 第 07-1 章 b 節：代表人物本人的老死（以本人的實體 ID 抽 POP 流局部亂數），所屬年齡群至少死這麼多人。
         var repDeaths = moved.Representatives
-            .Where(r => draws.Hit(r.Id, report.Week, DemoPopulationAction.NaturalDeath,
+            // 第 14-1 章第 5 項：編號夠大、可能等於某個年齡群抽樣鍵的代表人物改用自己的動作碼（小編號照舊，既有世界不變）。
+            .Where(r => draws.Hit(r.Id, report.Week,
+                r.Id < DemoCohortDemography.MinCohortKey ? DemoPopulationAction.NaturalDeath : DemoPopulationAction.RepresentativeDeath,
                 Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day))))
             .ToList();
         var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))

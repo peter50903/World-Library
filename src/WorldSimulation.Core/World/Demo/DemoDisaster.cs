@@ -60,7 +60,13 @@ public static class DemoDisasters
     };
 
     private static ulong Draw(RngRegistry rng, int year, int k)
-        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 16 + (ulong)k);
+    {
+        // 第 14-1 章第 5 項：k 0～3 是當年的天災；100～107（洪水毀田）與 200（隕石礦脈）落在之後幾年沒人用的位置，照舊。
+        // 其他的 k（例如第 9 塊以後的田）會撞到別年的天災抽樣，改用另一個命名空間。
+        if (k is >= 0 and < 4 or >= 100 and < 108 or 200)
+            return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 16 + (ulong)k);
+        return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace + "-WIDE").GetUInt64(checked((ulong)year * 4096UL + (ulong)k));
+    }
 
     private static IEnumerable<DemoHexCell> Around(DemoHexWorld map, DemoSettlement s, int range)
     {
@@ -167,7 +173,7 @@ public static class DemoDisasters
         ArgumentNullException.ThrowIfNull(weekEvents);
         var events = new List<DemoSettlementEvent>();
         var year = week / DemoWildlife.TempYearWeeks;
-        foreach (var strike in strikes.Values.Where(x => x.Kind == DemoSettlementEventKind.Meteorite))
+        foreach (var strike in strikes.Values.Where(x => x.Kind == DemoSettlementEventKind.Meteorite).OrderBy(x => x.SettlementId)) // 第 14-1 章第 11 項：順序固定
         {
             var cause = weekEvents.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.Meteorite && e.SettlementId == strike.SettlementId);
             if (cause is null) continue;

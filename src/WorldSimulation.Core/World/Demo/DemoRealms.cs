@@ -153,8 +153,18 @@ public static partial class DemoRealms
     }
 
     private static ulong Draw(RngRegistry rng, int week, int settlementId, int k)
-        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace)
-            .GetUInt64(checked((ulong)week * 1_048_576UL + (ulong)settlementId * 8UL + (ulong)k));
+    {
+        // 第 14-1 章第 5 項：原本把（週、聚落、第幾抽）乘加成一個索引，聚落編號 ≥ 131072 或 k ≥ 8 時會和下一週別的聚落撞號。
+        // 範圍內的照舊（既有世界的結果不變）；範圍外改用聚落自己的實體編號當鍵，不會撞。
+        if (settlementId is > 0 and < WideSettlementId && k is >= 0 and < 8)
+            return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace)
+                .GetUInt64(checked((ulong)week * 1_048_576UL + (ulong)settlementId * 8UL + (ulong)k));
+        return EntityLocalRandom.Create(rng, EntityId.From(checked((ulong)settlementId)), RngStreams.Event, WideNamespace)
+            .GetUInt64(checked((ulong)week * 4096UL + (ulong)k));
+    }
+
+    private const int WideSettlementId = 131072;
+    private const string WideNamespace = Namespace + "-WIDE";
 
     /// <summary>兵力：居民的 1/10（有人就至少 1）。</summary>
     public static long Army(long residents) => residents <= 0 ? 0 : Math.Max(1L, residents / TempLevyDivisor);
