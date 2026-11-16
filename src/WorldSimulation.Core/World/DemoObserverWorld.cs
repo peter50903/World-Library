@@ -531,7 +531,33 @@ public sealed partial class DemoObserverWorld
         return new(sites, residents, culture.MainCultureOf, culture.Faith.MainFaithOf, id => ChronicleOf(id).Tier,
             id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true)
         {
-            Leader = id => leaders.GetValueOrDefault(id) // 第 08-19f 章：國王＝王座所在聚落的村長
+            Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
+            Known = KnownResidents(sites, residents) // 第 14-1 章★4：別人的兵力只知道舊消息
+        };
+    }
+
+    /// <summary>
+    /// 第 14-1 章★4：消息依距離延遲——相距 d 格的聚落，只知道對方 d×每格延遲週數 之前那一週週報的期末人口
+    /// （與缺糧遷徙的消息模型同一個延遲設定）。那一週還沒有對方的紀錄時，退回即時人口。
+    /// </summary>
+    private Func<int, int, long> KnownResidents(DemoWorldSites sites, Func<int, long> residents)
+    {
+        var weeks = _weeks;
+        var delay = _weekly.NewsDelayWeeksPerCell;
+        Dictionary<int, DemoSettlement>? byId = null;
+        var cache = new Dictionary<int, Dictionary<int, long>>();
+        return (observer, target) =>
+        {
+            if (observer == target || weeks.Count == 0)
+                return residents(target);
+            byId ??= sites.Settlements.ToDictionary(s => s.Id);
+            if (!byId.TryGetValue(observer, out var a) || !byId.TryGetValue(target, out var b))
+                return residents(target);
+            var distance = DemoHexWorld.Distance(new DemoCellRef(a.Column, a.Row), new DemoCellRef(b.Column, b.Row));
+            var index = Math.Clamp(weeks.Count - checked(distance * delay), 0, weeks.Count - 1);
+            if (!cache.TryGetValue(index, out var people))
+                cache[index] = people = weeks[index].Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationClosing);
+            return people.TryGetValue(target, out var known) ? known : residents(target);
         };
     }
 

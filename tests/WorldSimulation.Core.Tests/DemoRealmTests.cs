@@ -170,4 +170,15 @@ public sealed class DemoRealmTests
         Assert.Equal(world.Realms().Liege.Where(kv => territory.Realm.ContainsKey(kv.Key) && territory.Realm.ContainsKey(kv.Value)).OrderBy(kv => kv.Key),
             territory.Liege.OrderBy(kv => kv.Key));
     }
+
+    // 第 14-1 章★4：估算別人的兵力用「所知」的人口（舊消息）；沒有消息模型時就是即時人口。
+    [Fact]
+    public void KnownResidentsFallBackToLivePopulationWithoutANewsModel()
+    {
+        var ctx = new DemoRealmContext(null!, id => id * 10L, _ => null, _ => null, _ => DemoSettlementTier.Camp, _ => false);
+        Assert.Equal(30, ctx.KnownResidents(1, 3));
+        var delayed = ctx with { Known = (observer, target) => observer == target ? target * 10L : target * 10L - 5 };
+        Assert.Equal(25, delayed.KnownResidents(1, 3));
+        Assert.Equal(30, delayed.KnownResidents(3, 3));
+    }
 }
