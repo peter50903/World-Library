@@ -81,7 +81,8 @@ public sealed record DemoMigrationWeekLedger(
     long NaturalDeaths = 0,
     long HungerDebtRemovedByNaturalDeath = 0,
     bool MateSeeking = false,
-    long AttackDeaths = 0)
+    long AttackDeaths = 0,
+    long FoodAbandoned = 0)
 {
     /// <summary>
     /// 第 07 章 b 節：途中也可能分娩或自然死亡（Deaths 只算途中餓死）。
@@ -89,7 +90,14 @@ public sealed record DemoMigrationWeekLedger(
     /// </summary>
     public bool PopulationBalanced => PopulationOpening + Births - Deaths - NaturalDeaths - AttackDeaths == PopulationClosing;
 
-    public bool FoodBalanced => FoodOpening - FoodConsumed == FoodClosing;
+    /// <summary>
+    /// 第 14-1 章第 3 項：隊伍全員死亡時攜帶的糧食記為 <see cref="FoodAbandoned"/>（遺留在途中），不再無帳消失；
+    /// 還有人活著的隊伍不會遺留糧食，全員死亡的隊伍期末糧食必為 0。
+    /// </summary>
+    public bool FoodBalanced
+        => FoodOpening - FoodConsumed - FoodAbandoned == FoodClosing
+        && (FoodAbandoned == 0 || PopulationClosing == 0)
+        && (PopulationClosing > 0 || FoodClosing == 0);
 
     public bool HungerDebtBalanced
         => HungerDebtOpening + FoodShortage - HungerDebtRecovered - HungerDebtRemovedByDeath
@@ -107,7 +115,7 @@ public sealed record DemoMigrationWeekLedger(
         => PopulationOpening >= 0 && Deaths >= 0 && PopulationClosing >= 0
         && FoodOpening >= 0 && FoodConsumed >= 0 && FoodClosing >= 0 && FoodShortage >= 0
         && HungerDebtOpening >= 0 && HungerDebtRecovered >= 0 && HungerDebtRemovedByDeath >= 0
-        && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0 && AttackDeaths >= 0
+        && HungerDebtClosing >= 0 && Births >= 0 && NaturalDeaths >= 0 && HungerDebtRemovedByNaturalDeath >= 0 && AttackDeaths >= 0 && FoodAbandoned >= 0
         && (Arrived ? Births == 0 && NaturalDeaths == 0 : true); // 抵達週的成員已併入目的聚落，生死記在聚落帳
 
     public bool IsBalanced
