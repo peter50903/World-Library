@@ -39,8 +39,19 @@ public partial class DemoHexMap
         watch.Restart();
         _surface.PerfUpdate(next, World.Columns, World.Rows, _ground);
         var weekSurfaceMs = watch.Elapsed.TotalMilliseconds;
+        // 第 09-1e 章：材質表只重算變動範圍——連續幾週的增量更新後，都要與整張重算逐格相同。
+        var materialsOk = _surface.MaterialsMatchFullRebuild();
+        for (var k = 0; k < 12 && materialsOk; k++)
+        {
+            advanceOneWeek();
+            _surfaceBuiltMs = 0;
+            _surface.PerfUpdate(SurfaceCodes(), World.Columns, World.Rows, _ground);
+            materialsOk = _surface.MaterialsMatchFullRebuild();
+        }
+        if (!materialsOk)
+            GD.PushError("地表材質表的增量更新與整張重算不一致（第 09-1e 章）。");
         var lots = _layouts.Values.Sum(l => l.Lots.Count);
         return $"Tiles={tiles} Lots={lots} Ground={_ground.Count} LayoutMs={Ms(layoutMs)} CodesMs={Ms(codesMs)} SurfaceFullMs={Ms(fullMs)} "
-            + $"BakeChunkMs={Ms(bakeMs)} BakeLod2Ms={Ms(bake2Ms)} BakeLod4Ms={Ms(bake4Ms)} WeekLayoutMs={Ms(weekLayoutMs)} WeekSurfaceMs={Ms(weekSurfaceMs)}";
+            + $"BakeChunkMs={Ms(bakeMs)} BakeLod2Ms={Ms(bake2Ms)} BakeLod4Ms={Ms(bake4Ms)} WeekLayoutMs={Ms(weekLayoutMs)} WeekSurfaceMs={Ms(weekSurfaceMs)} MaterialsOk={(materialsOk ? 1 : 0)}";
     }
 }
