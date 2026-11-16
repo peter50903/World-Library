@@ -13,6 +13,9 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
 
     public string KeyTitle { get; init; } = "";
 
+    /// <summary>第 08-10d 章 D：整棵知識樹（「技術」頁；介面依領域分區、依階級分欄、前置之間畫連線）。</summary>
+    public IReadOnlyList<DemoTechTreeNode> Tree { get; init; } = Array.Empty<DemoTechTreeNode>();
+
     /// <summary>第 08-16 章：代表人物分頁的每一人（人像＋文字）；介面有素材就畫人像。</summary>
     public IReadOnlyList<DemoPersonEntry> People { get; init; } = Array.Empty<DemoPersonEntry>();
 
@@ -361,7 +364,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
                 CultureId = world.Culture.MainCultureOf(settlement.Id) ?? 0
             },
             new DemoDetailTab("代表人物", people) { People = entries },
-            new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle },
+            new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle, Tree = DemoTechTree.Build(world, settlement.Id) },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
             new DemoDetailTab("歷史", history),
             PopulationTab(world, settlement)

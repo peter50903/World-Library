@@ -980,9 +980,25 @@ public partial class ObserverRoot
                 grid.AddChild(TechBadge(badge));
             return grid;
         }
+        // 第 08-10d 章 D：整棵知識樹（前置連線；已會、研究中、前置已具備、還缺前置），接在徽章下面。
+        void AddTree()
+        {
+            if (tab.Tree.Count == 0)
+                return;
+            var known = tab.Tree.Count(n => n.Status == DemoTechStatus.Known);
+            var ready = tab.Tree.Count(n => n.Status == DemoTechStatus.Ready);
+            column.AddChild(new Label
+            {
+                Text = $"知識樹：已會 {known} 項、可以開始研究 {ready} 項（共 {tab.Tree.Count} 項）\n彩色＝已會，深色＝研究中，金框＝前置已具備，灰色＝還缺前置",
+                AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill
+            });
+            column.AddChild(new TechTreeView(tab.Tree, DomainColor, n =>
+                (DemoTechCatalog.Contains(n.Id) ? DemoTechTooltip.Text(DemoTechCatalog.Get(n.Id)) : n.Name) + "\n" + n.StatusText + "\n" + n.Origin));
+        }
         if (tab.KeyBadgeCount <= 0)
         {
             column.AddChild(Grid(tab.Badges));
+            AddTree();
             return column;
         }
         // 第 08-16 章（知識樹收斂顯示）：關鍵技術放最上面，其餘技術預設收合。
@@ -990,7 +1006,10 @@ public partial class ObserverRoot
         column.AddChild(Grid(tab.Badges.Take(tab.KeyBadgeCount)));
         var rest = tab.Badges.Skip(tab.KeyBadgeCount).ToList();
         if (rest.Count == 0)
+        {
+            AddTree();
             return column;
+        }
         var others = Grid(rest);
         others.Visible = false;
         var toggle = new Button { Text = $"其他技術 {rest.Count} 項 ▸", Flat = true, Alignment = HorizontalAlignment.Left };
@@ -1001,6 +1020,7 @@ public partial class ObserverRoot
         };
         column.AddChild(toggle);
         column.AddChild(others);
+        AddTree();
         return column;
     }
 

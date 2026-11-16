@@ -125,4 +125,45 @@ public sealed class DemoPlayerDetailTests
         var top = living.OrderByDescending(s => world.SettlementPopulation(s.Id)).First();
         Assert.StartsWith("人口：全世界第 1 名", world.PlayerDetail(top.Column, top.Row).Tabs.Single(t => t.Title == "人口").Lines[0], StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void TechTabCarriesTheWholeTreeWithStatusAndOrigin()
+    {
+        // 第 08-10d 章 D：每個聚落的「技術」頁帶整棵知識樹；狀態與知識紀錄一致，前置都在樹上。
+        var world = World.Value;
+        var all = DemoTechnology.All.ToList();
+        foreach (var s in world.Sites.Settlements)
+        {
+            var tree = world.PlayerDetail(s.Column, s.Row).Tabs[2].Tree;
+            Assert.Equal(all.Select(t => t.Id), tree.Select(n => n.Id));
+            var ids = tree.Select(n => n.Id).ToHashSet();
+            var knownIds = all.Where(DemoKnowledge.IsOpening).Concat(world.Knowledge.KnownBy(s.Id)).Select(t => t.Id).ToHashSet();
+            Assert.All(tree, n =>
+            {
+                Assert.Equal(knownIds.Contains(n.Id), n.Status == DemoTechStatus.Known);
+                Assert.All(n.ParentIds, p => Assert.Contains(p, ids));
+                Assert.False(string.IsNullOrWhiteSpace(n.StatusText));
+                Assert.False(string.IsNullOrWhiteSpace(n.Origin));
+                Assert.InRange(n.Percent, 0L, 100L);
+                if (n.Status == DemoTechStatus.Known)
+                    Assert.Equal(100L, n.Percent);
+                if (n.Status == DemoTechStatus.Ready)
+                    Assert.All(n.ParentIds, p => Assert.Contains(p, knownIds));
+                if (n.Status == DemoTechStatus.Blocked)
+                {
+                    Assert.Contains(n.ParentIds, p => !knownIds.Contains(p));
+                    Assert.StartsWith("還缺前置：", n.StatusText, StringComparison.Ordinal);
+                }
+            });
+            // 世界上有人會的技術都說得出首創者；首創者自己看到的是「本聚落」。
+            Assert.All(tree.Where(n => n.LearnedYear is not null), n => Assert.StartsWith("世界首創：", n.Origin, StringComparison.Ordinal));
+        }
+        var firstLearned = world.Knowledge.Records.Where(r => r.Learned).OrderBy(r => r.LearnedWeek).ThenBy(r => r.SettlementId).FirstOrDefault();
+        if (firstLearned is not null)
+        {
+            var site = world.Sites.Settlements.Single(x => x.Id == firstLearned.SettlementId);
+            var node = world.PlayerDetail(site.Column, site.Row).Tabs[2].Tree.Single(n => n.Id == firstLearned.Technology.Id);
+            Assert.StartsWith("世界首創：本聚落", node.Origin, StringComparison.Ordinal);
+        }
+    }
 }
