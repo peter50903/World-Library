@@ -898,7 +898,7 @@ internal static class DemoWeeklySettlement
                         : survivors == 0
                         ? $"前往{batch.ToName}途中攜帶的糧食耗盡，隊伍全數死亡"
                         : $"前往{batch.ToName}途中攜帶的糧食不足，飢餓債達 TEMP 門檻（每人 {config.HungerDebtPerStarvationDeath}）")
-                    + (abandoned > 0 ? $"；攜帶的糧食 {abandoned} 遺留在途中" : string.Empty,
+                    + (abandoned > 0 ? $"；攜帶的糧食 {abandoned} 遺留在途中" : string.Empty),
                     batch.Id), emigrationEventId));
             }
 
