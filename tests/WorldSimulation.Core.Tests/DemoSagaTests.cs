@@ -38,8 +38,9 @@ public sealed class DemoSagaTests
         var lines = DemoSaga.Write(world, opening);
         var years = DemoWorldChronicle.Build(world);
 
-        // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，一模一樣的句子只寫一次。
-        var sentences = years.SelectMany(y => y.Entries).Where(DemoSaga.IsTold).Select(DemoSaga.Sentence).Distinct().ToList();
+        // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，同一卷裡一模一樣的句子只寫一次。
+        var sentences = years.Chunk(DemoSaga.YearsPerVolume)
+            .SelectMany(volume => volume.SelectMany(y => y.Entries).Where(DemoSaga.IsTold).Select(DemoSaga.Sentence).Distinct()).ToList();
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
         Assert.Equal(sentences.Count, told.Count);
         Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
