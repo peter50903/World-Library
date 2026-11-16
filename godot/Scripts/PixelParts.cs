@@ -162,20 +162,39 @@ public static partial class PixelParts
         return null;
     }
 
-    /// <summary>這張貼圖每格半徑幾個圖像素（第五批＝地表密度，第四批＝一半）。</summary>
-    public static int Density(Texture2D texture)
-        => texture is CanvasTexture { DiffuseTexture: { } source } && (source.ResourcePath.Contains("/px2/") || source is ImageTexture)
+    private static readonly Dictionary<Texture2D, (float Width, float Height, int Density)> MetricsCache = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>
+    /// 第 09-1e 章：貼圖的寬、高（圖像素）與密度，每張貼圖第一次用到時向引擎問一次、之後直接用
+    /// （原本每畫一張都問寬、高與檔案路徑，路徑每次回傳一個新字串；畫面上幾百張素材就是每幀上千次）。
+    /// </summary>
+    public static (float Width, float Height, int Density) Metrics(Texture2D texture)
+    {
+        if (MetricsCache.TryGetValue(texture, out var known))
+            return known;
+        var density = texture is CanvasTexture { DiffuseTexture: { } source } && (source.ResourcePath.Contains("/px2/") || source is ImageTexture)
             ? TerrainSurface.TempTexelsPerRadius
             : TerrainSurface.TempArtTexelsPerRadius;
+        known = (texture.GetWidth(), texture.GetHeight(), density);
+        MetricsCache[texture] = known;
+        return known;
+    }
+
+    /// <summary>這張貼圖每格半徑幾個圖像素（第五批＝地表密度，第四批＝一半）。</summary>
+    public static int Density(Texture2D texture) => Metrics(texture).Density;
 
     /// <summary>零件在畫面上的大小：圖像素數 × 每像素的螢幕大小（格半徑÷每格半徑的圖像素）。</summary>
     public static Vector2 ScreenSize(Texture2D texture, float radius, int frames = 1)
-        => new Vector2(texture.GetWidth() / (float)frames, texture.GetHeight()) * (radius / Density(texture));
+    {
+        var (width, height, density) = Metrics(texture);
+        return new Vector2(width / frames, height) * (radius / density);
+    }
 
     /// <summary>離開場景時清掉快取（貼圖本身由 <see cref="ArtAssets.ReleaseCache"/> 釋放）。</summary>
     public static void ReleaseCache()
     {
         Nearest.Clear();
+        MetricsCache.Clear();
         TintedCache.Clear();
         Sprites.Clear();
     }

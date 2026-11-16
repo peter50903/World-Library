@@ -103,11 +103,19 @@ public partial class ObserverRoot
         FinishSimulation();
     }
 
-    /// <summary>任何按鍵、點擊之前先等背景算完：處理輸入時世界一定是完整的一天。</summary>
+    /// <summary>
+    /// 任何按鍵、點擊之前先等背景算完：處理輸入時世界一定是完整的一天。
+    /// 第 09-1e 章：滑鼠在地圖上時的滾輪與中鍵只動鏡頭（縮放、拖曳），不碰世界，不等——原本快轉時每滾一格就停到這一批算完。
+    /// 滑鼠在面板上時照舊等（面板裡的數字框會跟著滾輪變動、重新查世界）。
+    /// </summary>
     public override void _Input(InputEvent @event)
     {
-        if (_simTask is not null && @event is InputEventMouseButton or InputEventKey or InputEventScreenTouch)
-            WaitForSimulation();
+        if (_simTask is null || @event is not (InputEventMouseButton or InputEventKey or InputEventScreenTouch))
+            return;
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown or MouseButton.Middle }
+            && GetViewport().GuiGetHoveredControl() == _hexMap)
+            return;
+        WaitForSimulation();
     }
 
     /// <summary>狀態列：實際速度（電腦算不了那麼快時低於選定速度）。</summary>
