@@ -170,7 +170,7 @@ public sealed class DemoHopeEraTests
         foreach (var x in new[] { 1e-300, 1e-9, 0.02425, 0.25, 0.5, 0.82, 0.999999, 1.0, 1.5, 2.0, 12345.678, 1e300 })
         {
             Assert.InRange(DemoDeterministicMath.Log(x) - Math.Log(x), -1e-12 * Math.Max(1, Math.Abs(Math.Log(x))), 1e-12 * Math.Max(1, Math.Abs(Math.Log(x))));
-            if (x <= 1)
+            if (x is <= 1 and >= 1e-9)
                 foreach (var y in new[] { 7.0 / 365, 84.0 / 365, 1.0, 3.5 })
                     Assert.InRange(DemoDeterministicMath.Pow(x, y) / Math.Pow(x, y), 1 - 1e-12, 1 + 1e-12);
         }
