@@ -476,6 +476,7 @@ public partial class DemoHexMap
 
     private void DrawCampfire(Vector2 at, float radius)
     {
+        MarkAnimated(at, radius); // 第 09-1e 章：篝火在畫面內時才持續重畫
         if (PixelParts.Texture("bld_bonfire") is { } bonfire)
         {
             // 第 08-18d 章：篝火素材（4 格動畫），以中心為準往下半張。
