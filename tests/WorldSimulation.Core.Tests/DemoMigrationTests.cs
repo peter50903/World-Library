@@ -569,4 +569,23 @@ public sealed class DemoMigrationTests
         }
     }
 
+    // 第 14-1 章第 3 項：全員死亡的隊伍，攜帶的糧食要記成「遺留在途中」，不能無帳消失。
+    [Fact]
+    public void DissolvedPartyMustAccountForItsFood()
+    {
+        DemoMigrationWeekLedger Leg(long closingPeople, long foodClosing, long abandoned, long naturalDeaths)
+            => new(5, 7, 1, 2, new DemoCellRef(0, 0), new DemoCellRef(0, 0), Departed: false, Arrived: false,
+                PopulationOpening: 2, Deaths: 0, PopulationClosing: closingPeople,
+                FoodOpening: 12, FoodConsumed: 8, FoodClosing: foodClosing, FoodShortage: 0,
+                HungerDebtOpening: 0, HungerDebtRecovered: 0, HungerDebtRemovedByDeath: 0, HungerDebtClosing: 0,
+                NaturalDeaths: naturalDeaths, FoodAbandoned: abandoned);
+
+        Assert.True(Leg(2, 4, 0, 0).FoodBalanced);   // 還有人：糧食照常帶著走
+        Assert.True(Leg(0, 0, 4, 2).FoodBalanced);   // 全員老死：剩下的 4 記為遺留
+        Assert.True(Leg(0, 0, 4, 2).IsBalanced);
+        Assert.False(Leg(0, 4, 0, 2).FoodBalanced);  // 全員死亡卻還「帶著」糧食：不平衡
+        Assert.False(Leg(0, 0, 0, 2).FoodBalanced);  // 糧食無帳消失：不平衡
+        Assert.False(Leg(2, 0, 4, 0).FoodBalanced);  // 還有人活著不能遺留糧食
+        Assert.False(Leg(0, 0, -1, 2).NonNegative);
+    }
 }
