@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using WorldSimulation.Core.World.Demo;
 
@@ -41,6 +42,40 @@ public partial class DemoHexMap
         }
     }
 
+    /// <summary>
+    /// 第 09-1c 章：連棟街屋——同一條街、彼此相接的地塊接成一整排，用第十一批的左、中、右三種（每張 3 格寬）拼起來，
+    /// 排的總寬除以 3 的餘數平分在兩頭（留成小巷）。款式取這一排第一塊的。
+    /// </summary>
+    private void AddRowRuns(List<(float Y, Action Draw)> items, SettlementPlan layout, Func<float, float, Vector2> screen, float radius, Color culture)
+    {
+        var rows = layout.Lots.Where(l => l.Kind == Building.RowHouse && !l.Construction).OrderBy(l => l.Y + l.H).ThenBy(l => l.X).ToList();
+        var i = 0;
+        while (i < rows.Count)
+        {
+            var first = rows[i];
+            var end = first.X + first.W;
+            var j = i + 1;
+            while (j < rows.Count && rows[j].Y + rows[j].H == first.Y + first.H && rows[j].X == end)
+                end = rows[j++].X + rows[j - 1].W;
+            var total = end - first.X;
+            var count = Math.Max(1, total / 3);
+            var start = first.X + (total - count * 3) / 2f;
+            var variant = Math.Clamp(first.Variant, 1, 2);
+            for (var k = 0; k < count; k++)
+            {
+                var part = count == 1 ? "mid" : k == 0 ? "left" : k == count - 1 ? "right" : "mid";
+                var name = $"b11_row_{part}_{variant}";
+                var bottom = screen(start + k * 3 + 1.5f, first.Y + first.H);
+                items.Add((bottom.Y, () =>
+                {
+                    if (((Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name)) is { } art)
+                        DrawArt(art, bottom, radius);
+                }));
+            }
+            i = j;
+        }
+    }
+
     /// <summary>【TEMP】住屋旁小物件的出現機率（每戶最多兩件）。</summary>
     private const float TempYardPropChance = 0.55f;
 
@@ -58,7 +93,7 @@ public partial class DemoHexMap
             : new[] { "b11_p_woodpile", "b11_p_clothesline", "b11_p_bucket", "b11_p_flowerbed", "b11_p_bench" };
         foreach (var lot in layout.Lots)
         {
-            if (!IsResidence(lot.Kind) || lot.Construction || lot.Kind == Building.Tent)
+            if (!IsResidence(lot.Kind) || lot.Construction || lot.Kind is Building.Tent or Building.RowHouse)
                 continue;
             var spriteH = SpriteSize(lot)?.H ?? lot.H;
             var free = lot.H - spriteH; // 房子圖上方空著的列（地塊比圖深）
@@ -75,20 +110,23 @@ public partial class DemoHexMap
                 var n = name;
                 items.Add((bottom.Y, () => DrawArt(n, bottom, radius)));
             }
+            // 第 09-1c 章：村子菜畦（屋後一列）偶爾立稻草人；農舍在隔壁空地（村莊隔一塊蓋一棟）種兩棵果樹。
+            if (rural && LayoutHash(lot.X, lot.Y, 214) < 0.25f)
+            {
+                var crow = screen(lot.X + lot.W / 2f, lot.Y);
+                items.Add((crow.Y, () => DrawArt("b11_p_scarecrow", crow, radius)));
+            }
             if (lot.Kind == Building.Farmhouse)
             {
-                // 菜畦後半（屋後第 4～6 列）種一排果樹，兩格一棵。
                 var kind = new[] { "b11_n_orchard_apple", "b11_n_orchard_pear", "b11_n_orchard_plum" }[(int)(LayoutHash(lot.X, lot.Y, 213) * 3) % 3];
-                for (var i = 0; i + 1 < lot.W + 1; i += 2)
-                {
-                    var tree = screen(lot.X + i + 1f, lot.Y - 3f);
-                    items.Add((tree.Y, () => DrawArt(kind, tree, radius)));
-                }
-            }
-            else if (rural && LayoutHash(lot.X, lot.Y, 214) < 0.25f)
-            {
-                var crow = screen(lot.X + lot.W / 2f, lot.Y - 2f);
-                items.Add((crow.Y, () => DrawArt("b11_p_scarecrow", crow, radius)));
+                var side = LayoutHash(lot.X, lot.Y, 215) < 0.5f ? -1 : 1;
+                var nx = side < 0 ? lot.X - 2 : lot.X + lot.W;
+                if (!layout.Lots.Any(o => o.X < nx + 2 && nx < o.X + o.W && o.Y < lot.Y + lot.H && lot.Y < o.Y + o.H))
+                    for (var k = 0; k < 2; k++)
+                    {
+                        var tree = screen(nx + 1f, lot.Y + lot.H - 2f * k);
+                        items.Add((tree.Y, () => DrawArt(kind, tree, radius)));
+                    }
             }
         }
     }
