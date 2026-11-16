@@ -598,6 +598,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoSettlementStory.cs` | 1 | 第 08-10d 章 C：聚落小史分期——分出幾個聚落稱為母城、最多說幾項聞名的事（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
 | `src/WorldSimulation.Core/World/Demo/DemoTerritory.cs` | 3 | 第 08-19 章勢力範圍半徑：營地 1、村莊 2、城鎮 4、城市 6、首都 8 格（D08-19）；第 08-19a 章建築佔幾格、建築與工作地的最遠距離 |
