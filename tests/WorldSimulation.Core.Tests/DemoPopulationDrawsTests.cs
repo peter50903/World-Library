@@ -100,4 +100,21 @@ public sealed class DemoPopulationDrawsTests
         }
         Assert.Equal(LifeEvents(a), LifeEvents(b));
     }
+
+    // 第 14-1 章第 5 項：年齡群的抽樣鍵跨過出生年 2048 也不會和別的聚落撞號，且都不小於 MinCohortKey。
+    [Fact]
+    public void CohortKeysNeverCollideAcrossSettlementsOrYears()
+    {
+        var keys = new HashSet<long>();
+        foreach (var settlement in new[] { 1, 2, 3, 500 })
+            foreach (var batch in new[] { 0, 7 })
+                foreach (var year in new[] { -2049, -2048, -1, 0, 2047, 2048, 2049, 6143, 6144, 100_000 })
+                    foreach (var sex in new[] { DemoTempSex.Female, DemoTempSex.Male })
+                    {
+                        var key = DemoCohortDemography.CohortKey(settlement, batch, year, sex);
+                        Assert.True(key >= DemoCohortDemography.MinCohortKey);
+                        Assert.True(keys.Add(key) || batch > 0, $"撞號：聚落 {settlement} 隊伍 {batch} 出生年 {year} {sex}");
+                    }
+        Assert.Equal(DemoCohortDemography.MinCohortKey, DemoCohortDemography.CohortKey(1, 0, -2048, DemoTempSex.Female));
+    }
 }

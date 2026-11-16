@@ -11,7 +11,10 @@ public enum DemoPopulationAction
     Miscarriage = 3,
     Conception = 4,
     /// <summary>第 06 章 d 節：餓死名單抽樣（依年齡權重）。</summary>
-    StarvationSelection = 5
+    StarvationSelection = 5,
+
+    /// <summary>第 14-1 章第 5 項：代表人物本人的老死（編號可能與年齡群的抽樣鍵相同時用這個，兩者才不會抽到同一個數）。</summary>
+    RepresentativeDeath = 6
 }
 
 /// <summary>

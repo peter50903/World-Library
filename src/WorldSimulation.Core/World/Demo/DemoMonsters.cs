@@ -185,7 +185,13 @@ public static class DemoMonsters
     }
 
     private static ulong Draw(RngRegistry rng, int week, int slot, int k)
-        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64(checked((ulong)week * 4096UL + (ulong)slot * 16UL + (ulong)k));
+    {
+        // 第 14-1 章第 5 項：第 256 個以後的地下城原本會和下一週的抽樣撞號；範圍內照舊，範圍外用地下城序號當鍵。
+        if (slot is >= 0 and < 256 && k is >= 0 and < 16)
+            return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64(checked((ulong)week * 4096UL + (ulong)slot * 16UL + (ulong)k));
+        return EntityLocalRandom.Create(rng, EntityId.From(checked((ulong)slot + 1UL)), RngStreams.Event, Namespace + "-WIDE")
+            .GetUInt64(checked((ulong)week * 4096UL + (ulong)k));
+    }
 
     /// <summary>
     /// 本週的怪物行動。<paramref name="nests"/>＝上週結束時的狀態（依地下城出現順序）；<paramref name="taken"/>＝本週已經有天災的聚落（不再承受怪物）。

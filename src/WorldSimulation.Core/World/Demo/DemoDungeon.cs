@@ -42,7 +42,12 @@ public static class DemoDungeons
     }
 
     private static ulong Draw(RngRegistry rng, int year, ulong k)
-        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 64 + k);
+    {
+        // 第 14-1 章第 5 項：k ≥ 64（取名重試到第 22 次以後）原本會用到下一年「是否出現地下城」的抽樣；範圍外另用一個命名空間。
+        if (k < 64)
+            return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace).GetUInt64((ulong)year * 64 + k);
+        return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace + "-WIDE").GetUInt64(checked((ulong)year * 4096UL + k));
+    }
 
     /// <summary>名字與層數：只依出現年份、格編號與已用過的名字決定（重算結果相同）。</summary>
     public static (string Name, int Layers) Describe(RngRegistry rng, int year, long cellId, ISet<string> taken)

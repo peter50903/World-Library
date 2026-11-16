@@ -517,8 +517,14 @@ public sealed class DemoCohortDemography
     internal static long CohortKey(int settlement, int batch, int birthYear, DemoTempSex sex)
     {
         var place = batch > 0 ? (1L << 31) + batch : settlement;
+        // 第 14-1 章第 5 項：出生年在 −2048～2047 以外時，原本的算法會和下一個聚落的年齡群撞號；範圍外放到另一段（2^60 起）。
+        if (birthYear is < -2048 or >= 2048)
+            return checked((1L << 60) + ((place << 22) + (birthYear & 0x1FFFFF)) * 2 + (sex == DemoTempSex.Male ? 1 : 0));
         return checked(1 + ((place * 4096 + (birthYear + 2048)) * 2 + (sex == DemoTempSex.Male ? 1 : 0)));
     }
+
+    /// <summary>第 14-1 章第 5 項：年齡群抽樣鍵的最小值（聚落 1、出生年 −2048）；實體編號小於它就不會和任何年齡群的鍵相同。</summary>
+    internal const long MinCohortKey = 8193;
 
     /// <summary>懷孕群（地點、到期週）的抽樣鍵；到期週 0＝該地本週受孕。</summary>
     internal static long PregnancyKey(int settlement, int batch, int dueWeek)
