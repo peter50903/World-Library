@@ -11,9 +11,10 @@ public partial class DemoHexMap
     /// <summary>畫一張素材（或動畫的第 <paramref name="frame"/> 格）：底部置中在 <paramref name="bottom"/>；<paramref name="flip"/>＝左右翻轉。</summary>
     private void DrawArt(Texture2D texture, Vector2 bottom, float radius, int frames = 1, int frame = 0, bool flip = false, float alpha = 1f, float scale = 1f)
     {
-        var size = PixelParts.ScreenSize(texture, radius, frames) * scale;
-        var fw = texture.GetWidth() / (float)frames;
-        var source = new Rect2(fw * (frame % frames), 0f, fw, texture.GetHeight());
+        var (width, height, density) = PixelParts.Metrics(texture); // 第 09-1e 章：寬、高、密度只問引擎一次
+        var fw = width / frames;
+        var size = new Vector2(fw, height) * (radius / density) * scale;
+        var source = new Rect2(fw * (frame % frames), 0f, fw, height);
         DrawSetTransform(bottom, 0f, new Vector2(flip ? -1f : 1f, 1f));
         DrawTextureRectRegion(texture, new Rect2(-size.X / 2f, -size.Y, size.X, size.Y), source, new Color(1f, 1f, 1f, alpha));
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);

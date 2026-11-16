@@ -215,8 +215,9 @@ public partial class DemoHexMap
             {
                 var a = screen(from, y + 1);
                 var b = screen(to, y + 1);
-                var h = front.GetHeight() * p;
-                DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, front.GetHeight()));
+                var frontHeight = PixelParts.Metrics(front).Height;
+                var h = frontHeight * p;
+                DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, frontHeight));
             }
             foreach (var o in openings)
                 if (gateH is not null)
