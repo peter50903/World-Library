@@ -554,7 +554,7 @@ public static class DemoBinomial
         if (n * p < 50 && n <= 5000)
         {
             var q = 1 - p;
-            var pk = Math.Pow(q, n);
+            var pk = DemoDeterministicMath.PowInt(q, n); // 第 14-1 章第 2 項：各平台逐位相同
             var cdf = pk;
             long k = 0;
             while (u > cdf && k < n)
@@ -582,12 +582,12 @@ public static class DemoBinomial
         const double low = 0.02425;
         if (p < low)
         {
-            var q = Math.Sqrt(-2 * Math.Log(p));
+            var q = Math.Sqrt(-2 * DemoDeterministicMath.Log(p));
             return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
         }
         if (p > 1 - low)
         {
-            var q = Math.Sqrt(-2 * Math.Log(1 - p));
+            var q = Math.Sqrt(-2 * DemoDeterministicMath.Log(1 - p));
             return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
         }
         var r = p - 0.5;

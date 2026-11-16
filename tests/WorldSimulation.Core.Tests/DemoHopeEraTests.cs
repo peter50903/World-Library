@@ -162,4 +162,26 @@ public sealed class DemoHopeEraTests
         Assert.Contains(lines, l => l.StartsWith($"世界人口 {world.WorldPopulation}／理論上限 {world.MapCapacity.People}", StringComparison.Ordinal));
         Assert.Contains(lines, l => l.StartsWith("今年：出生", StringComparison.Ordinal));
     }
+
+    // 第 14-1 章第 2 項：自製的次方、對數、指數與標準函式差在第 13 位以後，邊界值正確。
+    [Fact]
+    public void DeterministicMathMatchesTheStandardFunctions()
+    {
+        foreach (var x in new[] { 1e-300, 1e-9, 0.02425, 0.25, 0.5, 0.82, 0.999999, 1.0, 1.5, 2.0, 12345.678, 1e300 })
+        {
+            Assert.InRange(DemoDeterministicMath.Log(x) - Math.Log(x), -1e-12 * Math.Max(1, Math.Abs(Math.Log(x))), 1e-12 * Math.Max(1, Math.Abs(Math.Log(x))));
+            if (x is <= 1 and >= 1e-9)
+                foreach (var y in new[] { 7.0 / 365, 84.0 / 365, 1.0, 3.5 })
+                    Assert.InRange(DemoDeterministicMath.Pow(x, y) / Math.Pow(x, y), 1 - 1e-12, 1 + 1e-12);
+        }
+        foreach (var x in new[] { -700.0, -1.0, -1e-9, 0.0, 1e-9, 0.3, 1.0, 20.0, 700.0 })
+            Assert.InRange(DemoDeterministicMath.Exp(x) / Math.Exp(x), 1 - 1e-12, 1 + 1e-12);
+        Assert.Equal(1.0, DemoDeterministicMath.PowInt(0.3, 0));
+        Assert.InRange(DemoDeterministicMath.PowInt(0.97, 5000) / Math.Pow(0.97, 5000), 1 - 1e-11, 1 + 1e-11);
+        Assert.Equal(0.0, DemoDeterministicMath.Pow(0, 0.5));
+        Assert.Equal(1.0, DemoDeterministicMath.Pow(0.4, 0));
+        Assert.Equal(0.0, DemoDeterministicMath.Log(1.0));
+        Assert.True(double.IsNegativeInfinity(DemoDeterministicMath.Log(0)));
+        Assert.True(double.IsNaN(DemoDeterministicMath.Log(-1)));
+    }
 }

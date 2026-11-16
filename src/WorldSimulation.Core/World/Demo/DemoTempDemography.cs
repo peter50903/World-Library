@@ -52,8 +52,8 @@ public sealed record DemoTempDemographyRules(
     }
 
     // TEMP: calendar uses 365 days/year and 12 months/year, 7 days per settlement week.
-    public double WeeklyConceptionChance => 1 - Math.Pow(1 - FertilityMonthly, 84.0 / 365);
-    public double WeeklyMiscarriageChance => 1 - Math.Pow(1 - MiscarriageMonthly, 84.0 / 365);
+    public double WeeklyConceptionChance => 1 - DemoDeterministicMath.Pow(1 - FertilityMonthly, 84.0 / 365);
+    public double WeeklyMiscarriageChance => 1 - DemoDeterministicMath.Pow(1 - MiscarriageMonthly, 84.0 / 365);
 
     /// <summary>39C 年度自然死亡機率（依年齡÷典型壽命 分段）；不是壽命到期強制死亡。</summary>
     public double AnnualNaturalDeathChance(int ageYears)
@@ -68,5 +68,5 @@ public sealed record DemoTempDemographyRules(
     }
 
     public double WeeklyNaturalDeathChance(int ageYears)
-        => 1 - Math.Pow(1 - AnnualNaturalDeathChance(ageYears), 7.0 / 365);
+        => 1 - DemoDeterministicMath.Pow(1 - AnnualNaturalDeathChance(ageYears), 7.0 / 365);
 }
