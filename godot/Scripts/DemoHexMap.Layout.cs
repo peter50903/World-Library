@@ -29,11 +29,12 @@ public partial class DemoHexMap
         DemoSettlementTier.Camp => Building.Tent,
         DemoSettlementTier.Village => index < Math.Max(1, count / 5) ? Building.House : Building.Hut,
         DemoSettlementTier.Town => index < count * 3 / 10 ? Building.StoneHouse : index >= count * 8 / 10 ? Building.Hut : Building.House,
-        DemoSettlementTier.City => index >= count * 7 / 10 ? Building.House : Building.StoneHouse,
-        _ => index < count * 6 / 10 ? Building.BrickHouse : Building.StoneHouse // 第 08-20e 章：首都以磚屋為主
+        // 第 09-1c 章：城市以上內圈是連棟街屋，往外石屋、房子。
+        DemoSettlementTier.City => index < count * 4 / 10 ? Building.RowHouse : index >= count * 8 / 10 ? Building.House : Building.StoneHouse,
+        _ => index < count * 5 / 10 ? Building.RowHouse : index < count * 8 / 10 ? Building.BrickHouse : Building.StoneHouse // 第 08-20e 章：首都以磚屋為主
     };
 
-    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse or Building.BrickHouse or Building.Farmhouse;
+    private static bool IsResidence(Building kind) => kind is Building.Tent or Building.Hut or Building.House or Building.StoneHouse or Building.BrickHouse or Building.Farmhouse or Building.RowHouse;
 
     /// <summary>住屋數與是否有建地（人口快到下一棟時）。</summary>
     private static (int Houses, bool Building) HouseCount(long people, DemoSettlementTier tier)
@@ -41,8 +42,9 @@ public partial class DemoHexMap
         if (tier == DemoSettlementTier.Camp)
             return ((int)Math.Clamp(people / TempPeoplePerTent, 1, 4), false);
         var per = PeoplePerHouse(tier);
-        var houses = (int)Math.Clamp(people / per, 1, TempMaxHouses);
-        var growing = houses < TempMaxHouses && people % per >= per * TempConstructionAt;
+        var max = MaxHouses(tier);
+        var houses = (int)Math.Clamp(people / per, 1, max);
+        var growing = houses < max && people % per >= per * TempConstructionAt;
         return (houses, growing);
     }
 
@@ -56,6 +58,18 @@ public partial class DemoHexMap
     };
 
     private const int TempMaxHouses = 220;
+
+    /// <summary>
+    /// 【TEMP】第 09-1c 章（參考 CK3：據點不照比例，依等級換大小）：畫面上的住屋數上限——村莊 14、城鎮 28、城市 44、首都 60。
+    /// 人口再多也只畫這麼多（象徵性），聚落不會攤成好幾格寬。
+    /// </summary>
+    private static int MaxHouses(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Village => 14,
+        DemoSettlementTier.Town => 28,
+        DemoSettlementTier.City => 44,
+        _ => Math.Min(60, TempMaxHouses)
+    };
 
     /// <summary>
     /// 第 08-18k 章（試玩回饋 2026-11-11 之 2：農田一直閃爍）：版面用的人口有黏性——人口變動不到一成（至少兩棟房子的人）就沿用上次的版面，
@@ -102,6 +116,7 @@ public partial class DemoHexMap
         Building.Barracks => (7, 5),
         Building.Archery => (6, 4),
         Building.Statue => (2, 3),
+        Building.RowHouse => (3, 5),
         _ => (3, 3)
     };
 
@@ -323,7 +338,7 @@ public partial class DemoHexMap
     {
         var count = kind switch
         {
-            Building.Tent or Building.BrickHouse or Building.Farmhouse => 2,
+            Building.Tent or Building.BrickHouse or Building.Farmhouse or Building.RowHouse => 2,
             Building.Hut or Building.House or Building.StoneHouse => 3, // 第 09-1a 章：第十一批木屋 3 款
             _ => 1
         };
@@ -416,8 +431,11 @@ public partial class DemoHexMap
             var (_, lotTier) = SettlementScale.TryGetValue(site.Id, out var lotScale) ? lotScale : (0L, DemoSettlementTier.Camp);
             AddBridges(items, layout, Screen, radius);
             AddYardProps(items, layout, lotTier, Screen, radius);
+            AddRowRuns(items, layout, Screen, radius, roof); // 第 09-1c 章：連棟街屋接成整排
             foreach (var lot in layout.Lots)
             {
+                if (lot.Kind == Building.RowHouse && !lot.Construction)
+                    continue;
                 var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
                 var placed = lot;
                 // 第 08-20e 章：第九批正面建築（第 09-1a 章：舊的第四～八批與程式畫的建築已移除）。

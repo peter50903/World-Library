@@ -26,7 +26,9 @@ public partial class DemoHexMap
         // 第 08-20e 章：第九批的首都磚屋、獵人小屋、漁夫高腳屋、碼頭、水磨坊
         BrickHouse, HuntingLodge, FishingHut, Dock, Watermill,
         // 第 09-1b 章：第十一批新增的農舍、旅店、倉庫、馬廄、鐘樓、兵營、靶場、噴泉、雕像
-        Farmhouse, Inn, Warehouse, Stable, BellTower, Barracks, Archery, Fountain, Statue }
+        Farmhouse, Inn, Warehouse, Stable, BellTower, Barracks, Archery, Fountain, Statue,
+        // 第 09-1c 章：城市以上的連棟街屋（第十一批 row 素材，相鄰的接成一整排）
+        RowHouse }
 
     /// <summary>一棟建築：在哪一格、什麼、相對格中心的位置（格半徑的倍數）。</summary>
     public readonly record struct BuildingSpot(DemoCellRef Cell, Building Kind, Vector2 Offset);

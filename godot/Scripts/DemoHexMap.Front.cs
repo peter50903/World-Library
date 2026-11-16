@@ -55,6 +55,7 @@ public partial class DemoHexMap
             Building.Archery => "b11_archery",
             Building.Fountain => "b11_fountain",
             Building.Statue => "b11_statue",
+            Building.RowHouse => $"b11_row_mid_{Math.Clamp(lot.Variant, 1, 2)}", // 實際依整排畫左、中、右（DrawRowRuns）
             _ => null
         };
 

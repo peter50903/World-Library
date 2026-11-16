@@ -18,11 +18,14 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public partial class DemoHexMap
 {
-    /// <summary>【TEMP】第 08-20g 章：街距（街 1 列＋房子 4 列＋後院 4 列）、房子深度、規劃半徑、廣場寬與深、別的聚落中心保留半徑（方格）。</summary>
-    public const int TempStreetSpacing = 13, TempHouseDepth = 6, TempPlanRadius = 44, TempSquareWidth = 14, TempSquareDepth = 5, TempCenterClear = 12;
+    /// <summary>
+    /// 【TEMP】第 08-20g 章：街距、房子深度、規劃半徑、廣場寬與深、別的聚落中心保留半徑（方格）。
+    /// 第 09-1c 章（使用者 2026-11-16：城市規劃太鬆散、佔太多空間）：街距 13→7（街 1＋房子 5＋後院 1）、房深 6→5、規劃半徑 44→26、保留半徑 12→10。
+    /// </summary>
+    public const int TempStreetSpacing = 7, TempHouseDepth = 5, TempPlanRadius = 26, TempSquareWidth = 14, TempSquareDepth = 5, TempCenterClear = 10;
 
     /// <summary>【TEMP】第 08-20g 章：圍牆往外多留幾格（牆不必每蓋一棟就往外移）。</summary>
-    public const int TempWallSlack = 4;
+    public const int TempWallSlack = 2; // 第 09-1c 章：4→2
 
     /// <summary>規劃裡一塊地的用途。</summary>
     private enum SlotRole
@@ -88,7 +91,7 @@ public partial class DemoHexMap
         _ => (4, TempHouseDepth)
     };
 
-    private const int TempPlanItems = 240;
+    private const int TempPlanItems = 140;
 
     /// <summary>【TEMP】臨街地往外找位置時最多跳過幾格（巷子、水、別人的地）。</summary>
     private const int TempMaxSkip = 8;
@@ -132,8 +135,8 @@ public partial class DemoHexMap
                 for (var i = 0; i < w; i++)
                 {
                     var t = new Vector2I(x + i, y + j);
-                    if (!Ok(t.X, t.Y) || laneSet.Contains(t.X) || square.HasPoint(t) || taken.Contains(t))
-                        return false;
+                    if (!Ok(t.X, t.Y) || laneSet.Contains(t.X) || square.HasPoint(t) || taken.Contains(t) || t.Y == c.Y)
+                        return false; // 第 09-1c 章：比街距高的建築可以跨過後面的街，但不能壓到主街
                 }
             return Ok(x + w / 2, street); // 門下一格（街）也要是陸地
         }
@@ -188,7 +191,7 @@ public partial class DemoHexMap
             for (var i = 0; i < cursors.Count; i++)
             {
                 var cur = cursors[i];
-                var score = Math.Abs(cur.X - c.X) + Math.Abs(cur.Street - c.Y) * 1.5f + LayoutHash(site.Id, cur.Street, cur.Dir) * 2f;
+                var score = Math.Abs(cur.X - c.X) + Math.Abs(cur.Street - c.Y) * 1.1f + LayoutHash(site.Id, cur.Street, cur.Dir) * 2f; // 第 09-1c 章：1.5→1.1（街距變小，往南北長得一樣快，聚落接近方形）
                 if (score < bestScore)
                 {
                     bestScore = score;
@@ -206,8 +209,8 @@ public partial class DemoHexMap
                 if (!Fits(left, street - h, w, h, street))
                     continue;
                 Add(new PlanSlot(left, street - h, w, h, role, street));
-                // 外圍的房子間距不規則（多留一格空地或樹）。
-                var gap = 1 + (Math.Abs(x - c.X) > 10 && LayoutHash(site.Id, left, street) < 0.3f ? 1 : 0);
+                // 第 09-1c 章：臨街連排不留縫（中世紀城鎮的街屋）；外圍偶爾留一格小巷。
+                var gap = Math.Abs(x - c.X) > 8 && LayoutHash(site.Id, left, street) < 0.2f ? 1 : 0;
                 cursors[best] = (street, dir, dir < 0 ? left - 1 - gap : left + w + gap, false);
                 placed = true;
                 break;
@@ -247,6 +250,7 @@ public partial class DemoHexMap
         Building.Keep => 52,
         // 第 09-1b 章
         Building.Farmhouse => 6,
+        Building.RowHouse => 10,
         Building.Fountain => 8,
         Building.Stable or Building.Statue => 10,
         Building.Warehouse or Building.Archery => 12,
@@ -324,6 +328,9 @@ public partial class DemoHexMap
             }
             // 沒用到的公共建築地先蓋住屋（廣場上、水邊的地除外）。
             if (slot.Street == int.MinValue || assigned >= houses || slot.W < 2)
+                continue;
+            // 第 09-1c 章：村莊隔一塊蓋一棟（留菜園、空地，看得出是村子）；升成城鎮後空地補滿成連排街屋。
+            if (tier <= DemoSettlementTier.Village && (slot.X / 4 + slot.Street) % 2 != 0)
                 continue;
             var kind = HouseFor(tier, assigned, houses);
             // 第 09-1b 章：附近有田的村莊，外圍四成的木屋是農舍（後院種果樹，見 DemoHexMap.Extras）。
@@ -479,6 +486,10 @@ public partial class DemoHexMap
                     for (var y = rows[i - 1]; y <= rows[i]; y++)
                         roads.Add(new Vector2I(lane, y));
 
+        // 第 09-1c 章：比街距高的建築（神殿、主堡…）跨過後面的街，那一段街不鋪。
+        foreach (var lot in lots)
+            roads.RemoveWhere(r => r.X >= lot.X && r.X < lot.X + lot.W && r.Y >= lot.Y && r.Y < lot.Y + lot.H);
+
         // ── 圍牆：圍住廣場、建築與街；放不下時一次往外多擴 TempWallSlack 格 ──
         var wallKind = WallKindFor(tier);
         var landLots = lots.Where(l => l.Kind is not (Building.Dock or Building.Watermill)).ToList();
@@ -530,13 +541,16 @@ public partial class DemoHexMap
     private static Lot LotIn(PlanSlot slot, Building kind, bool construction, int variant)
         => new(slot.X, slot.Y, slot.W, slot.H, kind, construction, 0, variant);
 
-    /// <summary>第 08-20g 章：住屋的後院（房子正北、一樣寬、<see cref="TempHouseDepth"/> 列）：菜畦與院子一列一列交錯。</summary>
+    /// <summary>
+    /// 第 08-20g 章：住屋的後院（房子正北、一樣寬）。第 09-1c 章：街距縮成 7 以後只剩一列——
+    /// 木屋、農舍是菜畦（村子），其他住屋是院子（城鎮）。
+    /// </summary>
     private static IEnumerable<(Vector2I Tile, byte Ground)> Garden(Lot lot)
     {
-        if (!IsResidence(lot.Kind) || lot.Construction)
+        if (!IsResidence(lot.Kind) || lot.Construction || lot.Kind == Building.Tent)
             yield break;
-        for (var j = 1; j <= TempHouseDepth; j++)
-            for (var i = 0; i < lot.W; i++)
-                yield return (new Vector2I(lot.X + i, lot.Y - j), j <= 1 ? TerrainSurface.GroundYard : TerrainSurface.GroundGarden); // 第 09-1a 章：屋後一列院子，再往後是菜畦
+        var kind = lot.Kind is Building.Hut or Building.Farmhouse ? TerrainSurface.GroundGarden : TerrainSurface.GroundYard;
+        for (var i = 0; i < lot.W; i++)
+            yield return (new Vector2I(lot.X + i, lot.Y - 1), kind);
     }
 }
