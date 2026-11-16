@@ -346,9 +346,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             }
         }
 
-        // 歷史（聚落小史，去掉開頭的規模摘要）
-        var history = DemoSettlementHistory.Lines(world, settlement.Id)
-            .SkipWhile(l => !l.StartsWith("聚落小史", StringComparison.Ordinal)).Skip(1)
+        // 歷史：第 08-10d 章 C——以什麼聞名，加上分期的聚落小史（每個時期一句總結，底下是那段時間的紀錄）。
+        var history = DemoSettlementStory.Lines(world, settlement.Id)
             .Select(l => Clean(l.Trim()))
             .ToList();
 
