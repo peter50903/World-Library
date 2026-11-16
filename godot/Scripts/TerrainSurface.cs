@@ -744,8 +744,8 @@ public partial class TerrainSurface : Control
 
     private void Put(int x, int y, Color c, bool raw = false)
     {
-        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
-            return;
+        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh || _toDetail && _lod >= 4)
+            return; // 第 09-1d 章：4 倍塊不畫細節層（草叢、野花；那個距離看不到）
         var i = TexelIndex(x, y);
         if (i < 0)
             return;
@@ -1493,6 +1493,24 @@ public partial class TerrainSurface : Control
         var raw = s == 1; // 第五批素材照原色，舊素材照舊降彩度
         var left = ax - sprite.Width * s / 2;
         var top = ay - sprite.Height * s + 1;
+        if (_lod > 1)
+        {
+            // 第 09-1d 章：分級塊只走落在取樣點上的像素（原本整張零件逐像素跑完再丟掉，4 倍塊慢 16 倍）。
+            var half = _lod / 2;
+            int First(int from, int origin) => origin + Math.Max(0, (from - origin - half + _lod - 1) / _lod) * _lod + half;
+            for (var py = First(top, _by); py < top + sprite.Height * s; py += _lod)
+                for (var px = First(left, _bx); px < left + sprite.Width * s; px += _lod)
+                {
+                    var c = sprite.At((px - left) / s, (py - top) / s);
+                    if (c.A < 0.5f)
+                        continue;
+                    var color = new Color(c.R, c.G, c.B);
+                    if (autumn && c.G > c.R && c.G > c.B)
+                        color = new Color(Mathf.Clamp(c.G * 1.35f, 0f, 1f), c.G * 0.62f, c.B * 0.35f);
+                    Put(px, py, color, raw);
+                }
+            return;
+        }
         for (var y = 0; y < sprite.Height; y++)
             for (var x = 0; x < sprite.Width; x++)
             {
