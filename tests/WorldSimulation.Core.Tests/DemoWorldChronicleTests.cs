@@ -92,6 +92,42 @@ public sealed class DemoWorldChronicleTests
         Assert.StartsWith("第 1～10 年：", summary, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WorldEventsAreTheFewMajorOnesAndOldDecadesTellAStory()
+    {
+        var years = DemoWorldChronicle.Build(Shared.Value);
+        var all = years.SelectMany(y => y.Entries).ToList();
+
+        // 第 08-10d 章：世界大事一定是重大事件；時代更替與世界首次的技術是世界大事，聚落建立是各地大事。
+        Assert.All(all.Where(e => e.IsWorld), e => Assert.Equal(DemoChronicleLevel.Major, e.Level));
+        Assert.All(all.Where(e => e.Category == DemoChronicleCategory.Era), e => Assert.Equal(DemoWorldChronicle.WeightEra, e.Weight));
+        Assert.All(all.Where(e => e.Category == DemoChronicleCategory.Knowledge && e.Level == DemoChronicleLevel.Major),
+            e => Assert.Equal(DemoWorldChronicle.WeightKnowledge, e.Weight));
+        Assert.DoesNotContain(all, e => e.Category == DemoChronicleCategory.Founding && e.IsWorld);
+        // 每一級只有全世界第一個升上去的聚落算世界大事（最多四級）；有聚落升過級就至少有一筆。
+        var firstTiers = all.Count(e => e.Category == DemoChronicleCategory.Tier && e.IsWorld);
+        Assert.InRange(firstTiers, 0, 4);
+        if (all.Any(e => e.Category == DemoChronicleCategory.Tier && e.Text.Contains(DemoSettlementChronicle.TierUpMarker, StringComparison.Ordinal)))
+            Assert.True(firstTiers >= 1);
+
+        // 各地大事的合計只數不是世界大事的重大條目。
+        Assert.All(years, y => Assert.Equal(
+            y.Entries.Any(e => e.Level == DemoChronicleLevel.Major && !e.IsWorld), DemoWorldChronicle.LocalTally(y).Length > 0));
+
+        // 年代小結：開頭是年份範圍與一句定性，結尾是出生與老死；空白的年代是「平靜的年代」。
+        var empty = new DemoChronicleYear(1, DemoEra.Hope, false, Array.Empty<DemoChronicleEntry>(), 3, 1,
+            new Dictionary<int, (long Births, long NaturalDeaths)>());
+        Assert.Equal("", DemoWorldChronicle.LocalTally(empty));
+        Assert.Equal("第 1～1 年：平靜的年代。｜出生 3、老死 1", DemoWorldChronicle.DecadeStory(new[] { empty }));
+        var story = DemoWorldChronicle.DecadeStory(years.Take(10).ToList());
+        Assert.StartsWith("第 1～10 年：", story, StringComparison.Ordinal);
+        Assert.Contains("的年代", story, StringComparison.Ordinal);
+        Assert.EndsWith($"｜出生 {years.Take(10).Sum(y => y.Births)}、老死 {years.Take(10).Sum(y => y.NaturalDeaths)}", story, StringComparison.Ordinal);
+        // 小結引述的每一件事都是編年史上的世界大事原文。
+        var worldTexts = years.Take(10).SelectMany(y => y.Entries).Where(e => e.IsWorld).Select(e => e.Text.Trim()).ToList();
+        Assert.InRange(worldTexts.Count(t => story.Contains(t, StringComparison.Ordinal)), Math.Min(1, worldTexts.Count), worldTexts.Count);
+    }
+
     private static IReadOnlyList<string> Texts(IReadOnlyList<DemoChronicleYear> years)
         => years.SelectMany(y => new[] { $"{y.Year}|{y.Era}|{y.EraStarted}|{y.StatisticLine}" }
             .Concat(y.Entries.Select(e => $"{e.Week}|{e.Level}|{e.Category}|{e.Text}|{e.SettlementId}"))).ToList();
