@@ -197,7 +197,7 @@ public static partial class DemoRealms
                 .Where(x => x.Distance <= TempConquestReach)
                 .GroupBy(x => x.Defender)
                 .Select(g => g.OrderBy(x => x.Distance).ThenBy(x => x.Target).First())
-                .Select(x => (x.Target, x.Defender, x.Distance, Army: RealmArmy(x.Defender, lieges, living, ctx.Residents)))
+                .Select(x => (x.Target, x.Defender, x.Distance, Army: RealmArmy(x.Defender, lieges, living, id => ctx.KnownResidents(king, id)))) // 第 14-1 章★4：國王所知的對方兵力
                 .Where(x => attack * 100 >= x.Army * TempConquestStrengthPercent)
                 .OrderBy(x => x.Distance).ThenBy(x => x.Army).ThenBy(x => x.Target)
                 .Select(x => ((int, int, long)?)(x.Target, x.Defender, x.Army)).FirstOrDefault();

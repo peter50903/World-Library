@@ -36,6 +36,15 @@ public sealed record DemoRealmContext(
 {
     /// <summary>第 08-19f 章：聚落目前的村長（王座所在聚落的村長就是國王；沒有時為 null）。</summary>
     public Func<int, DemoRepresentative?>? Leader { get; init; }
+
+    /// <summary>
+    /// 第 14-1 章★4：（觀察者聚落, 對象聚落）→ 觀察者「所知」的對象人口——消息依距離延遲（每格幾週），不是即時真相。
+    /// 沒給時＝即時人口（測試與沒有週報的世界）。只用在估算別人的兵力（宣戰、下通牒）；自己人的兵力用真實值。
+    /// </summary>
+    public Func<int, int, long>? Known { get; init; }
+
+    /// <summary>觀察者所知的對象人口（沒有消息模型時是即時人口）。</summary>
+    public long KnownResidents(int observer, int target) => Known?.Invoke(observer, target) ?? Residents(target);
 }
 
 /// <summary>
@@ -410,7 +419,7 @@ public static partial class DemoRealms
             if (week - faction[leader].Week < TempDiscontentWeeks)
                 continue;
             var rebels = members.Sum(m => Army(ctx.Residents(m)));
-            var loyal = Math.Max(1L, LoyalArmy(liege, fold, ctx.Residents));
+            var loyal = Math.Max(1L, LoyalArmy(liege, fold, id => ctx.KnownResidents(leader, id))); // 第 14-1 章★4：首領所知的上級兵力
             var power = rebels * 100 / loyal;
             var who = members.Count == 1 ? Name(leader) : $"{Name(leader)}等 {members.Count} 個聚落";
             if (CivilFaction(leader, liege, lieges, ctx, conquestEra))
