@@ -15,7 +15,7 @@ public partial class DemoHexMap
     /// 聚落裡的街經過水面（河穿過城內）時畫木橋：左右有街＝橫橋，否則直橋；橋頭（朝岸的那一端）用 end 圖，
     /// 橫橋東端左右翻轉；直橋只有一張南端的橋頭，北端用橋身。
     /// </summary>
-    private void AddBridges(List<(float Y, Action Draw)> items, SettlementPlan layout, Func<float, float, Vector2> screen, float radius)
+    private void AddBridges(List<DrawItem> items, SettlementPlan layout)
     {
         if (!PixelParts.IsBatch5("b11_bridge_h_mid"))
             return;
@@ -36,9 +36,10 @@ public partial class DemoHexMap
             }
             else
                 name = TileLand(r.X, r.Y + 1) ? "b11_bridge_v_end" : "b11_bridge_v_mid";
-            var bottom = screen(r.X + 0.5f, r.Y + 1f);
+            var (bx, by) = (r.X + 0.5f, r.Y + 1f);
             var (n, f) = (name, flip);
-            items.Add((bottom.Y - radius, () => DrawArt(n, bottom, radius, flip: f))); // 橋貼著水面：比同一列的建築先畫
+            // 橋貼著水面：比同一列的建築先畫（往前排半格＝原本的一個格半徑）。
+            Put(items, by - TerrainSurface.TilesPerCell / 2f, new Rect2(bx - 2.5f, by - 4f, 5f, 5f), () => DrawArt(n, TileScreen(bx, by), _drawRadius, flip: f));
         }
     }
 
@@ -46,7 +47,7 @@ public partial class DemoHexMap
     /// 第 09-1c 章：連棟街屋——同一條街、彼此相接的地塊接成一整排，用第十一批的左、中、右三種（每張 3 格寬）拼起來，
     /// 排的總寬除以 3 的餘數平分在兩頭（留成小巷）。款式取這一排第一塊的。
     /// </summary>
-    private void AddRowRuns(List<(float Y, Action Draw)> items, SettlementPlan layout, Func<float, float, Vector2> screen, float radius, Color culture)
+    private void AddRowRuns(List<DrawItem> items, SettlementPlan layout, Color culture)
     {
         var rows = layout.Lots.Where(l => l.Kind == Building.RowHouse && !l.Construction).OrderBy(l => l.Y + l.H).ThenBy(l => l.X).ToList();
         var i = 0;
@@ -65,12 +66,12 @@ public partial class DemoHexMap
             {
                 var part = count == 1 ? "mid" : k == 0 ? "left" : k == count - 1 ? "right" : "mid";
                 var name = $"b11_row_{part}_{variant}";
-                var bottom = screen(start + k * 3 + 1.5f, first.Y + first.H);
-                items.Add((bottom.Y, () =>
+                var (sx, sy) = (start + k * 3 + 1.5f, (float)(first.Y + first.H));
+                Put(items, sy, new Rect2(sx - 3.5f, first.Y - 4f, 7f, first.H + 6f), () =>
                 {
                     if (((Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name)) is { } art)
-                        DrawArt(art, bottom, radius);
-                }));
+                        DrawArt(art, TileScreen(sx, sy), _drawRadius);
+                });
             }
             i = j;
         }
@@ -83,7 +84,7 @@ public partial class DemoHexMap
     /// 住屋的院子：房子圖上方空著的幾列與屋後第一列院子，依雜湊擺一兩件小物件（村莊：乾草堆、柴堆、雞舍、狗屋、曬衣繩；
     /// 城鎮以上：柴堆、曬衣繩、水桶、花圃、長凳）。農舍屋後的菜畦後半種一排果樹（蘋果、梨、李），村莊的菜畦裡偶爾有稻草人。
     /// </summary>
-    private void AddYardProps(List<(float Y, Action Draw)> items, SettlementPlan layout, DemoSettlementTier tier, Func<float, float, Vector2> screen, float radius)
+    private void AddYardProps(List<DrawItem> items, SettlementPlan layout, DemoSettlementTier tier)
     {
         if (!PixelParts.IsBatch5("b11_p_woodpile"))
             return;
@@ -106,15 +107,15 @@ public partial class DemoHexMap
                 var wide = name is "b11_p_clothesline" or "b11_p_bench";
                 var x = k == 0 ? lot.X + 0.5f + (wide ? 0.5f : 0f) : lot.X + lot.W - 0.5f - (wide ? 0.5f : 0f);
                 var y = free > 0 ? lot.Y + free : lot.Y; // 有空列擺在房子後面，否則擺在屋後院子
-                var bottom = screen(x, y);
+                var (px, py) = (x, (float)y);
                 var n = name;
-                items.Add((bottom.Y, () => DrawArt(n, bottom, radius)));
+                Put(items, py, new Rect2(px - 3f, py - 5f, 6f, 7f), () => DrawArt(n, TileScreen(px, py), _drawRadius));
             }
             // 第 09-1c 章：村子菜畦（屋後一列）偶爾立稻草人；農舍在隔壁空地（村莊隔一塊蓋一棟）種兩棵果樹。
             if (rural && LayoutHash(lot.X, lot.Y, 214) < 0.25f)
             {
-                var crow = screen(lot.X + lot.W / 2f, lot.Y);
-                items.Add((crow.Y, () => DrawArt("b11_p_scarecrow", crow, radius)));
+                var (cx, cy) = (lot.X + lot.W / 2f, (float)lot.Y);
+                Put(items, cy, new Rect2(cx - 3f, cy - 5f, 6f, 7f), () => DrawArt("b11_p_scarecrow", TileScreen(cx, cy), _drawRadius));
             }
             if (lot.Kind == Building.Farmhouse)
             {
@@ -124,8 +125,8 @@ public partial class DemoHexMap
                 if (!layout.Lots.Any(o => o.X < nx + 2 && nx < o.X + o.W && o.Y < lot.Y + lot.H && lot.Y < o.Y + o.H))
                     for (var k = 0; k < 2; k++)
                     {
-                        var tree = screen(nx + 1f, lot.Y + lot.H - 2f * k);
-                        items.Add((tree.Y, () => DrawArt(kind, tree, radius)));
+                        var (ox, oy) = (nx + 1f, lot.Y + lot.H - 2f * k);
+                        Put(items, oy, new Rect2(ox - 3f, oy - 7f, 6f, 9f), () => DrawArt(kind, TileScreen(ox, oy), _drawRadius));
                     }
             }
         }

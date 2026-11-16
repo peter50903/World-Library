@@ -408,15 +408,50 @@ public partial class DemoHexMap
         }
     }
 
-    /// <summary>版面裡的建築、牆畫在地表之上（由上而下排序，前面的屋子蓋住後面的）。</summary>
+    /// <summary>
+    /// 第 09-1e 章：畫面上的一件東西（建築、牆、橋、小物件…）。<see cref="Y"/>＝排序用的方格列（由上而下畫），
+    /// <see cref="Seq"/>＝同一列時照加入的順序，<see cref="Bounds"/>＝大約佔的方格範圍（畫面外的不畫），
+    /// <see cref="Draw"/>＝畫的動作（位置在畫的時候才由方格換算成畫面座標）。
+    /// </summary>
+    private readonly record struct DrawItem(float Y, int Seq, Rect2 Bounds, Action Draw);
+
+    /// <summary>一個聚落算好的繪製清單，以及算的時候用到的條件（任何一個變了就重算）。</summary>
+    private sealed record SiteDraw(SettlementPlan Layout, Color Roof, DemoSettlementTier Tier, bool Disaster, DrawItem[] Items);
+
+    private readonly Dictionary<int, SiteDraw> _siteDraws = new();
+    private readonly List<DrawItem> _drawQueue = new();
+    private Vector2 _drawStart;
+    private float _drawRadius;
+
+    private static readonly Comparison<DrawItem> DrawOrder = (a, b) => a.Y != b.Y ? a.Y.CompareTo(b.Y) : a.Seq.CompareTo(b.Seq);
+
+    /// <summary>圍牆排在同一列的建築前後用的微小差距（方格）。</summary>
+    private const float WallOrderBias = 0.001f;
+
+    /// <summary>方格座標在畫面上的位置（用這一次重畫的鏡頭）。</summary>
+    private Vector2 TileScreen(float tx, float ty)
+        => TerrainSurface.TexelToScreen(new Vector2(tx * TerrainSurface.TempTile, ty * TerrainSurface.TempTile), _drawStart, _drawRadius);
+
+    private static void Put(List<DrawItem> items, float y, Rect2 bounds, Action draw) => items.Add(new DrawItem(y, items.Count, bounds, draw));
+
+    /// <summary>
+    /// 版面裡的建築、牆畫在地表之上（由上而下排序，前面的屋子蓋住後面的）。
+    /// 第 09-1e 章：每個聚落的繪製清單只在版面、屋頂顏色或等級改變時重算（<see cref="BuildSiteDraw"/>）；
+    /// 每一幀只把畫面內的項目收集起來、排序、畫（原本每幀為每棟建築組素材名字串、配置閉包、重排，圍牆每列重算開口與牆段）。
+    /// </summary>
     private void DrawLayouts(Vector2 start, float radius)
     {
         if (World is null || Sites is null || _surface is null)
             return;
         EnsureLayouts();
-        var t = TerrainSurface.TempTile;
-        Vector2 Screen(float tx, float ty) => TerrainSurface.TexelToScreen(new Vector2(tx * t, ty * t), start, radius);
-        var items = new List<(float Y, Action Draw)>();
+        _drawStart = start;
+        _drawRadius = radius;
+        var tilePx = TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius;
+        var corner = TileScreen(0f, 0f);
+        _drawQueue.Clear();
+        if (_siteDraws.Count > _layouts.Count + 64) // 已經不在的聚落：偶爾清一次
+            foreach (var gone in _siteDraws.Keys.Where(id => !_layouts.ContainsKey(id)).ToList())
+                _siteDraws.Remove(gone);
         foreach (var site in Sites.Settlements)
         {
             if (site.IsRuin || FadedRuins.Contains(site.Id) || !_layouts.TryGetValue(site.Id, out var layout))
@@ -424,54 +459,80 @@ public partial class DemoHexMap
             var cell = World.GetCell(site.Column, site.Row);
             if (!OnScreen(start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius), radius * 2f * (TempPlanRadius / (float)TerrainSurface.TilesPerCell + 1f))) // 第 08-20g 章：規劃半徑
                 continue;
-            if (layout.Wall is { } wall)
-                AddFrontWall(items, layout, wall, Screen, radius); // 第 08-20e 章：第九批圍牆
             var roof = CultureOf.TryGetValue(site.Id, out var culture) ? CultureColor(culture) : new Color(0.62f, 0.25f, 0.18f);
-            // 第 09-1b 章：街過水的橋、住屋院子的小物件與農舍果樹。
-            var (_, lotTier) = SettlementScale.TryGetValue(site.Id, out var lotScale) ? lotScale : (0L, DemoSettlementTier.Camp);
-            AddBridges(items, layout, Screen, radius);
-            AddYardProps(items, layout, lotTier, Screen, radius);
-            AddRowRuns(items, layout, Screen, radius, roof); // 第 09-1c 章：連棟街屋接成整排
-            foreach (var lot in layout.Lots)
+            var (_, tier) = SettlementScale.TryGetValue(site.Id, out var scale) ? scale : (0L, DemoSettlementTier.Camp);
+            var disaster = ShowDisasterMarks && RecentDisasters.Contains(site.Id); // 第 12-1 章 C3：一年內遭天災
+            if (!_siteDraws.TryGetValue(site.Id, out var cached) || !ReferenceEquals(cached.Layout, layout) || cached.Roof != roof
+                || cached.Tier != tier || cached.Disaster != disaster)
+                _siteDraws[site.Id] = cached = new SiteDraw(layout, roof, tier, disaster, BuildSiteDraw(layout, roof, tier, disaster));
+            foreach (var item in cached.Items)
             {
-                if (lot.Kind == Building.RowHouse && !lot.Construction)
+                // 逐項裁切：大約的範圍完全在畫面外就不畫（原本只以聚落為單位，拉近時畫面外的房子照畫）。
+                var bounds = item.Bounds;
+                if (corner.X + bounds.End.X * tilePx < 0f || corner.X + bounds.Position.X * tilePx > Size.X
+                    || corner.Y + bounds.End.Y * tilePx < 0f || corner.Y + bounds.Position.Y * tilePx > Size.Y)
                     continue;
-                var bottom = Screen(lot.X + lot.W / 2f, lot.Y + lot.H);
-                var placed = lot;
-                // 第 08-20e 章：第九批正面建築（第 09-1a 章：舊的第四～八批與程式畫的建築已移除）。
-                items.Add((bottom.Y, () => DrawFrontLot(placed, bottom, radius, roof)));
-            }
-            // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。
-            // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
-            var plaza = layout.Plaza;
-            var big = plaza.Size.X >= 3;
-            var (_, siteTier) = SettlementScale.TryGetValue(site.Id, out var siteScale) ? siteScale : (0L, DemoSettlementTier.Camp);
-            // 第 08-20e 章：篝火只在營地與村莊的廣場；囤糧圍欄只在營地（城鎮以上的廣場是空的石頭地）。
-            if (siteTier <= DemoSettlementTier.Village || layout.WallKind < 0)
-            {
-                var fire = Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.Position.Y + (big ? 0.9f : plaza.Size.Y / 2f));
-                items.Add((fire.Y, () => DrawCampfire(fire, radius)));
-            }
-            if (siteTier == DemoSettlementTier.Camp || layout.WallKind < 0)
-            {
-                var store = big ? Screen(plaza.Position.X + plaza.Size.X / 2f, plaza.End.Y) : Screen(plaza.Position.X + 0.5f, plaza.Position.Y + 1f);
-                items.Add((store.Y, () => DrawStockpile(store, radius, big)));
-            }
-            if (ShowDisasterMarks && RecentDisasters.Contains(site.Id)) // 第 12-1 章 C3：一年內遭天災
-            {
-                var mark = Screen(layout.Plaza.End.X + 0.5f, layout.Plaza.Position.Y - 0.5f);
-                items.Add((float.MaxValue, () =>
-                {
-                    if (!DrawSymbol("b11_sym_disaster", mark - new Vector2(0f, radius * 0.25f), Math.Max(radius * 0.5f, 18f), Colors.White) // 第 09-1b 章
-                        && !DrawPixelPart("px_icon_disaster", mark, radius))
-                        DrawMarker(ArtAssets.IconDisaster, mark, radius * 0.7f);
-                }));
+                _drawQueue.Add(item with { Seq = _drawQueue.Count });
             }
         }
-        foreach (var (_, draw) in items.OrderBy(i => i.Y))
-            draw();
+        _drawQueue.Sort(DrawOrder);
+        foreach (var item in _drawQueue)
+            item.Draw();
         DrawCreatures(start, radius); // 地下城入口
         DrawNameplates(start, radius, realmsOnly: true); // 第 08-18k 章（試玩回饋 2026-11-11 之 3）：勢力合併後只標首都
+    }
+
+    /// <summary>第 09-1e 章：一個聚落的繪製清單（方格座標；加入的順序與原本每幀組的清單相同）。</summary>
+    private DrawItem[] BuildSiteDraw(SettlementPlan layout, Color roof, DemoSettlementTier tier, bool disaster)
+    {
+        var items = new List<DrawItem>();
+        if (layout.Wall is { } wall)
+            AddFrontWall(items, layout, wall); // 第 08-20e 章：第九批圍牆
+        // 第 09-1b 章：街過水的橋、住屋院子的小物件與農舍果樹。
+        AddBridges(items, layout);
+        AddYardProps(items, layout, tier);
+        AddRowRuns(items, layout, roof); // 第 09-1c 章：連棟街屋接成整排
+        foreach (var lot in layout.Lots)
+        {
+            if (lot.Kind == Building.RowHouse && !lot.Construction)
+                continue;
+            var placed = lot;
+            var name = FrontName(lot); // 素材名只在這裡組一次
+            // 第 08-20e 章：第九批正面建築（第 09-1a 章：舊的第四～八批與程式畫的建築已移除）。
+            Put(items, lot.Y + lot.H, new Rect2(lot.X - 3f, lot.Y - 4f, lot.W + 6f, lot.H + 6f),
+                () => DrawFrontLot(placed, name, TileScreen(placed.X + placed.W / 2f, placed.Y + placed.H), _drawRadius, roof));
+        }
+        // 第 08-18b 章：中心是篝火加囤糧圍欄（營地起就有）。
+        // 第 08-18d 章：廣場三方格以上時篝火往上移、素材的囤糧圍欄（三方格寬）放在廣場下緣；小廣場照舊畫小圍欄。
+        var plaza = layout.Plaza;
+        var big = plaza.Size.X >= 3;
+        // 第 08-20e 章：篝火只在營地與村莊的廣場；囤糧圍欄只在營地（城鎮以上的廣場是空的石頭地）。
+        if (tier <= DemoSettlementTier.Village || layout.WallKind < 0)
+        {
+            var fx = plaza.Position.X + plaza.Size.X / 2f;
+            var fy = plaza.Position.Y + (big ? 0.9f : plaza.Size.Y / 2f);
+            Put(items, fy, new Rect2(fx - 3f, fy - 4f, 6f, 8f), () => DrawCampfire(TileScreen(fx, fy), _drawRadius));
+        }
+        if (tier == DemoSettlementTier.Camp || layout.WallKind < 0)
+        {
+            var sx = big ? plaza.Position.X + plaza.Size.X / 2f : plaza.Position.X + 0.5f;
+            var sy = big ? plaza.End.Y : plaza.Position.Y + 1f;
+            Put(items, sy, new Rect2(sx - 4f, sy - 5f, 8f, 7f), () => DrawStockpile(TileScreen(sx, sy), _drawRadius, big));
+        }
+        if (disaster)
+        {
+            var mx = plaza.End.X + 0.5f;
+            var my = plaza.Position.Y - 0.5f;
+            Put(items, float.MaxValue, new Rect2(mx - 8f, my - 8f, 16f, 16f), () =>
+            {
+                var radius = _drawRadius;
+                var mark = TileScreen(mx, my);
+                if (!DrawSymbol("b11_sym_disaster", mark - new Vector2(0f, radius * 0.25f), Math.Max(radius * 0.5f, 18f), Colors.White) // 第 09-1b 章
+                    && !DrawPixelPart("px_icon_disaster", mark, radius))
+                    DrawMarker(ArtAssets.IconDisaster, mark, radius * 0.7f);
+            });
+        }
+        return items.ToArray();
     }
 
     private void DrawCampfire(Vector2 at, float radius)

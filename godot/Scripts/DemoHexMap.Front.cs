@@ -108,9 +108,10 @@ public partial class DemoHexMap
     private static bool Animated(Building kind) => kind is Building.Windmill or Building.Watermill;
 
     /// <summary>畫一棟第九批建築：底部置中在範圍下緣，灰階部分染文化色；動畫素材（風車、水車）4 格輪播。</summary>
-    private bool DrawFrontLot(Lot lot, Vector2 bottom, float radius, Color culture)
+    /// <summary><paramref name="name"/>＝<see cref="FrontName"/> 的結果（第 09-1e 章：版面改變時組一次，不每幀組字串）。</summary>
+    private bool DrawFrontLot(Lot lot, string? name, Vector2 bottom, float radius, Color culture)
     {
-        if (FrontName(lot) is not { } name || !PixelParts.IsBatch5(name))
+        if (name is null || !PixelParts.IsBatch5(name))
             return false;
         Texture2D? art = (Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name);
         if (art is null)
@@ -131,6 +132,8 @@ public partial class DemoHexMap
         return true;
     }
 
+    private static readonly string[] StallNames = { "b11_stall_1", "b11_stall_2", "b11_stall_3" };
+
     /// <summary>第 09-1a 章：市集＝一列單攤（第十一批每攤 2×2），三款輪流，排滿地塊寬、置中。</summary>
     private void DrawStalls(Lot lot, Vector2 bottom, float radius, Color culture)
     {
@@ -138,7 +141,7 @@ public partial class DemoHexMap
         var count = Math.Max(1, lot.W / 2);
         for (var i = 0; i < count; i++)
         {
-            var name = $"b11_stall_{(lot.X + i) % 3 + 1}";
+            var name = StallNames[(lot.X + i) % 3];
             if (((Texture2D?)PixelParts.Tinted(name, culture, 1f) ?? PixelParts.Texture(name)) is not { } stall)
                 continue;
             DrawArt(stall, bottom + new Vector2((i - (count - 1) / 2f) * 2f * tile, 0f), radius);
@@ -173,7 +176,7 @@ public partial class DemoHexMap
     /// 城門：上下牆的門在主縱街的位置（寬 2～3 格，中間是路）；左右牆的門在主橫街的位置（1×3，中間一格是路）。
     /// 缺第九批素材時回傳 false。
     /// </summary>
-    private bool AddFrontWall(List<(float Y, Action Draw)> items, SettlementPlan layout, Rect2I wall, Func<float, float, Vector2> screen, float radius)
+    private bool AddFrontWall(List<DrawItem> items, SettlementPlan layout, Rect2I wall)
     {
         if (layout.WallKind < 0)
             return false;
@@ -187,13 +190,13 @@ public partial class DemoHexMap
         var corner = Part("corner");
         var gateH = PixelParts.Texture($"{set}_{key}_gate_h");
         var gateV = PixelParts.Texture($"{set}_{key}_gate_v");
-        var p = radius / TerrainSurface.TempTexelsPerRadius;
-        var tile = TerrainSurface.TempTile * p;
+        var frontHeight = PixelParts.Metrics(front).Height;
         var gw = GateWidth(layout.WallKind);
         var gates = layout.Gates;
         bool TopOrBottom(Vector2I g) => g.Y == wall.Position.Y || g.Y == wall.End.Y - 1;
 
-        void Row(int y)
+        // 第 09-1e 章：開口、連續的牆段、兩端的角樓在版面改變時算好；回傳的動作每幀只負責畫。
+        Action Row(int y)
         {
             // 這一排的城門（以主縱街為中心、寬 gw 格）。
             var openings = gates.Where(g => g.Y == y && TopOrBottom(g)).Select(g => g.X - (gw - 1) / 2).ToList();
@@ -213,42 +216,50 @@ public partial class DemoHexMap
                     start = -1;
                 }
             }
-            foreach (var (from, to) in runs)
-            {
-                var a = screen(from, y + 1);
-                var b = screen(to, y + 1);
-                var frontHeight = PixelParts.Metrics(front).Height;
-                var h = frontHeight * p;
-                DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, frontHeight));
-            }
-            foreach (var o in openings)
-                if (gateH is not null)
-                    DrawArt(gateH, screen(o + gw / 2f, y + 1), radius);
-            if (corner is null)
-                return;
+            // 牆角，或斷在水邊（不是城門）的一頭（第十一批：角樓分四角、斷頭是端點）。
+            var caps = new List<(Texture2D Art, float X)>();
             var top = y == wall.Position.Y;
-            foreach (var (from, to) in runs)
+            if (corner is not null)
+                foreach (var (from, to) in runs)
+                {
+                    if (from == wall.Position.X)
+                        caps.Add((Part(top ? "corner_nw" : "corner_sw")!, from + 0.5f));
+                    else if (!Open(from - 1))
+                        caps.Add((Part("end_w")!, from + 0.5f));
+                    if (to == wall.End.X)
+                        caps.Add((Part(top ? "corner_ne" : "corner_se")!, to - 0.5f));
+                    else if (!Open(to))
+                        caps.Add((Part("end_e")!, to - 0.5f));
+                }
+            return () =>
             {
-                // 牆角，或斷在水邊（不是城門）的一頭（第十一批：角樓分四角、斷頭是端點）。
-                if (from == wall.Position.X)
-                    DrawArt(Part(top ? "corner_nw" : "corner_sw")!, screen(from + 0.5f, y + 1), radius);
-                else if (!Open(from - 1))
-                    DrawArt(Part("end_w")!, screen(from + 0.5f, y + 1), radius);
-                if (to == wall.End.X)
-                    DrawArt(Part(top ? "corner_ne" : "corner_se")!, screen(to - 0.5f, y + 1), radius);
-                else if (!Open(to))
-                    DrawArt(Part("end_e")!, screen(to - 0.5f, y + 1), radius);
-            }
+                var radius = _drawRadius;
+                var p = radius / TerrainSurface.TempTexelsPerRadius;
+                foreach (var (from, to) in runs)
+                {
+                    var a = TileScreen(from, y + 1);
+                    var b = TileScreen(to, y + 1);
+                    var h = frontHeight * p;
+                    DrawTextureRectRegion(front, new Rect2(a.X, a.Y - h, b.X - a.X, h), new Rect2(0f, 0f, (b.X - a.X) / p, frontHeight));
+                }
+                if (gateH is not null)
+                    foreach (var opening in openings)
+                        DrawArt(gateH, TileScreen(opening + gw / 2f, y + 1), radius);
+                foreach (var (art, capX) in caps)
+                    DrawArt(art, TileScreen(capX, y + 1), radius);
+            };
         }
-        void Column(int x)
+        // 一排縱牆：每一格畫什麼（0＝城門、1＝斷頭的角樓、2＝牆頂）在版面改變時算好。
+        Action Column(int x)
         {
             var openings = gates.Where(g => g.X == x && !TopOrBottom(g)).Select(g => g.Y).ToHashSet();
+            var parts = new List<(Texture2D Art, int Row, int Kind)>();
             for (var y = wall.Position.Y + 1; y < wall.End.Y - 1; y++)
             {
                 if (openings.Contains(y))
                 {
                     if (gateV is not null)
-                        DrawArt(gateV, screen(x + 0.5f, y + 2), radius); // 1×3：中間一格是路
+                        parts.Add((gateV, y, 0)); // 1×3：中間一格是路
                     continue;
                 }
                 if (openings.Contains(y - 1) || openings.Contains(y + 1))
@@ -257,18 +268,37 @@ public partial class DemoHexMap
                     continue;
                 // 第 08-20g 章：斷在水邊的一頭補角樓（上一格或下一格是水）。
                 if (corner is not null && (!TileLand(x, y - 1) || !TileLand(x, y + 1)))
-                    DrawArt(Part(!TileLand(x, y - 1) ? "end_n" : "end_s")!, screen(x + 0.5f, y + 1), radius);
+                    parts.Add((Part(!TileLand(x, y - 1) ? "end_n" : "end_s")!, y, 1));
                 else if (side is not null)
-                    DrawTextureRect(side, new Rect2(screen(x, y), new Vector2(tile, tile)), false);
+                    parts.Add((side, y, 2));
             }
+            return () =>
+            {
+                var radius = _drawRadius;
+                var tile = TerrainSurface.TempTile * radius / TerrainSurface.TempTexelsPerRadius;
+                foreach (var (art, row, kind) in parts)
+                {
+                    if (kind == 0)
+                        DrawArt(art, TileScreen(x + 0.5f, row + 2), radius);
+                    else if (kind == 1)
+                        DrawArt(art, TileScreen(x + 0.5f, row + 1), radius);
+                    else
+                        DrawTextureRect(art, new Rect2(TileScreen(x, row), new Vector2(tile, tile)), false);
+                }
+            };
         }
-        items.Add((screen(0, wall.Position.Y + 1).Y - 0.01f, () =>
+        var left = Column(wall.Position.X);
+        var right = Column(wall.End.X - 1);
+        var topRow = Row(wall.Position.Y);
+        var bottomRow = Row(wall.End.Y - 1);
+        // 上牆與左右牆排在同一列的建築之前（在後面），下牆排在之後（在前面）。
+        Put(items, wall.Position.Y + 1 - WallOrderBias, new Rect2(wall.Position.X - 3f, wall.Position.Y - 5f, wall.Size.X + 6f, wall.Size.Y + 8f), () =>
         {
-            Column(wall.Position.X);
-            Column(wall.End.X - 1);
-            Row(wall.Position.Y);
-        }));
-        items.Add((screen(0, wall.End.Y).Y + 0.01f, () => Row(wall.End.Y - 1)));
+            left();
+            right();
+            topRow();
+        });
+        Put(items, wall.End.Y + WallOrderBias, new Rect2(wall.Position.X - 3f, wall.End.Y - 7f, wall.Size.X + 6f, 10f), bottomRow);
         return true;
     }
 }
