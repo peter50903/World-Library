@@ -13,8 +13,8 @@ public sealed record DemoSagaOpening(long Population, int Settlements);
 /// </summary>
 public static class DemoSaga
 {
-    /// <summary>【TEMP】每卷幾年；終章列幾個最大的聚落。</summary>
-    public const int YearsPerVolume = 10, EndingSettlements = 3;
+    /// <summary>【TEMP】每卷幾年；終章列幾個最大的聚落；每卷的技術一句最多點名幾項。</summary>
+    public const int YearsPerVolume = 10, EndingSettlements = 3, NamedTechs = 4;
 
     /// <summary>世界開始推進之前呼叫：開局的人口與聚落數。</summary>
     public static DemoSagaOpening Opening(DemoObserverWorld world)
@@ -49,26 +49,29 @@ public static class DemoSaga
                 : I($"序　太初，{opening.Population} 人分居 {opening.Settlements} 處聚落，世上還沒有任何紀錄。")
         };
 
+        var ledger = world.YearSummaries().ToDictionary(y => y.Year);
         for (var from = 0; from < years.Count; from += YearsPerVolume)
         {
             var volume = years.Skip(from).Take(YearsPerVolume).ToList();
             var character = DemoWorldChronicle.DecadeCharacter(volume);
             lines.Add("");
             lines.Add(I($"卷 {from / YearsPerVolume + 1}　第 {volume[0].Year}～{volume[^1].Year} 年　{VolumeTitle(character)}（{character}）"));
-            var told = 0;
-            foreach (var year in volume)
-                foreach (var entry in year.Entries.Where(e => e.IsWorld))
-                {
-                    lines.Add(I($"　第 {year.Year} 年，{Sentence(entry.Text)}"));
-                    told++;
-                }
-            if (told == 0)
+
+            // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
+            var told = volume.SelectMany(y => y.Entries.Where(IsTold).Select(e => (y.Year, Text: Sentence(e))))
+                .GroupBy(x => x.Text, StringComparer.Ordinal)
+                .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.Key)).ToList();
+            foreach (var (toldYears, text) in told)
+                lines.Add(I($"　第 {string.Join("、", toldYears)} 年，{text}"));
+            var techs = Techs(volume);
+            if (techs is not null)
+                lines.Add("　" + techs);
+            if (told.Count == 0 && techs is null)
                 lines.Add("　這些年沒有驚動世界的大事。");
-            var local = string.Join("；", volume.Select(y => (y.Year, Tally: DemoWorldChronicle.LocalTally(y)))
-                .Where(x => x.Tally.Length > 0).Select(x => I($"第 {x.Year} 年 {x.Tally}")));
+            var local = DemoWorldChronicle.LocalTally(volume);
             if (local.Length > 0)
                 lines.Add("　各地：" + local + "。");
-            lines.Add(I($"　這些年裡 {volume.Sum(y => y.Births)} 人出生，{volume.Sum(y => y.NaturalDeaths)} 人壽終。"));
+            lines.Add("　" + People(volume, ledger));
         }
 
         lines.Add("");
@@ -98,13 +101,94 @@ public static class DemoSaga
         var realms = active.Select(s => (Site: s, Vassals: territory.VassalsOf(s.Id).Count)).Where(x => x.Vassals > 0)
             .OrderByDescending(x => x.Vassals).ThenBy(x => x.Site.Id)
             .Select(x => I($"{Titled(x.Site)}統領 {x.Vassals} 個聚落")).ToList();
+        var ruins = world.Sites.Settlements.Where(x => x.IsRuin).OrderBy(x => x.RuinedWeek).ThenBy(x => x.Id)
+            .Select(x => I($"{x.Name}（全盛時 {world.ChronicleOf(x.Id).Peak} 人）")).ToList();
+        if (ruins.Count > 0)
+            yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
     }
 
-    /// <summary>編年史條目收成一句：去頭尾空白，補句號。</summary>
-    private static string Sentence(string text)
+    /// <summary>這一筆要不要逐條寫進史書：世界大事（技術除外）、任何聚落淪為遺跡、城鎮以上的等級升降。</summary>
+    public static bool IsTold(DemoChronicleEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge)
+            return false;
+        if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
+            return true;
+        return entry.Category == DemoChronicleCategory.Tier
+            && new[] { DemoSettlementTier.Town, DemoSettlementTier.City, DemoSettlementTier.Capital }
+                .Any(t => entry.Text.Contains(DemoSettlementHistory.TierName(t), StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// 編年史條目收成一句：開頭的聚落名稱如果句子裡已經有了就不重複；去掉中文字之間的空白；補句號。
+    /// </summary>
+    public static string Sentence(DemoChronicleEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        var text = entry.Text;
+        if (entry.Segments.Count >= 2 && entry.Segments[0].SettlementId > 0)
+        {
+            var rest = string.Concat(entry.Segments.Skip(1).Select(s => s.Text));
+            if (rest.Contains(entry.Segments[0].Text, StringComparison.Ordinal))
+                text = rest;
+        }
+        var t = Tidy(text);
+        return t.EndsWith('。') || t.EndsWith('！') || t.EndsWith('？') ? t : t + "。";
+    }
+
+    /// <summary>去頭尾空白，並去掉夾在兩個非英數字（中文字、全形標點）之間的空白；數字與英文旁邊的空白留著。</summary>
+    private static string Tidy(string text)
     {
         var t = text.Trim();
-        return t.EndsWith('。') || t.EndsWith('！') || t.EndsWith('？') ? t : t + "。";
+        var sb = new System.Text.StringBuilder(t.Length);
+        for (var i = 0; i < t.Length; i++)
+        {
+            if (t[i] == ' ' && i > 0 && i + 1 < t.Length && t[i - 1] > 0x7F && t[i + 1] > 0x7F)
+                continue;
+            sb.Append(t[i]);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>這一卷世界首次習得的技術收成一句（共幾項、點名前幾項、各聚落首創幾項）；沒有＝null。</summary>
+    private static string? Techs(IReadOnlyList<DemoChronicleYear> volume)
+    {
+        static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
+        const string learned = "學會", firstMark = "（世界首次）";
+        var firsts = volume.SelectMany(y => y.Entries)
+            .Where(e => e.IsWorld && e.Category == DemoChronicleCategory.Knowledge && e.Segments.Count > 0).ToList();
+        if (firsts.Count == 0)
+            return null;
+        var names = firsts.Select(e =>
+        {
+            var text = Tidy(e.Text);
+            var at = text.IndexOf(learned, StringComparison.Ordinal);
+            var name = at < 0 ? text : text[(at + learned.Length)..];
+            return name.EndsWith(firstMark, StringComparison.Ordinal) ? name[..^firstMark.Length] : name;
+        }).ToList();
+        var by = firsts.GroupBy(e => e.Segments[0].Text, StringComparer.Ordinal)
+            .Select(g => (Name: g.Key, Count: g.Count())).OrderByDescending(x => x.Count).ThenBy(x => x.Name, StringComparer.Ordinal)
+            .Select(x => I($"{x.Name} {x.Count} 項"));
+        return I($"世人學會了 {firsts.Count} 項前所未有的技術（{string.Join("、", names.Take(NamedTechs))}{(names.Count > NamedTechs ? "等" : "")}）；首創者：{string.Join("、", by)}。");
+    }
+
+    /// <summary>
+    /// 這一卷的生死與卷末人口。優先用世界的年帳（出生、壽終、其餘死亡、年末人口）；年帳不齊（曆法不同的測試世界）時只寫編年史數得到的出生與壽終。
+    /// </summary>
+    private static string People(IReadOnlyList<DemoChronicleYear> volume, IReadOnlyDictionary<int, DemoYearSummary> ledger)
+    {
+        static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
+        if (!volume.All(y => ledger.ContainsKey(y.Year)))
+            return I($"這些年裡 {volume.Sum(y => y.Births)} 人出生，{volume.Sum(y => y.NaturalDeaths)} 人壽終。");
+        var rows = volume.Select(y => ledger[y.Year]).ToList();
+        var births = rows.Sum(r => r.Births);
+        var natural = rows.Sum(r => r.NaturalDeaths);
+        var other = rows.Sum(r => r.Deaths) - natural;
+        var last = rows[^1];
+        return I($"這些年裡 {births} 人出生，{natural} 人壽終")
+            + (other > 0 ? I($"，{other} 人未得善終") : "")
+            + I($"；第 {last.Year} 年末世上有 {last.PopulationClosing} 人。");
     }
 }

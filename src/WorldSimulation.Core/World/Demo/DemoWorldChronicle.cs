@@ -420,6 +420,13 @@ public static class DemoWorldChronicle
         return Tally(year.Entries.Where(e => e.Level == DemoChronicleLevel.Major && !e.IsWorld).ToList());
     }
 
+    /// <summary>第 08-10e 章：一段年代的「各地大事」合計（文字史書每卷一行）。</summary>
+    public static string LocalTally(IReadOnlyList<DemoChronicleYear> years)
+    {
+        ArgumentNullException.ThrowIfNull(years);
+        return Tally(years.SelectMany(y => y.Entries).Where(e => e.Level == DemoChronicleLevel.Major && !e.IsWorld).ToList());
+    }
+
     /// <summary>
     /// 第 08-10d 章：一段年代的定性（戰亂、衰退、饑荒、擴張、創新、轉折、平穩、平靜的年代），由件數依固定順序判定。
     /// 年代小結與文字史書（第 08-10e 章）共用。
@@ -430,7 +437,8 @@ public static class DemoWorldChronicle
         var major = years.SelectMany(y => y.Entries.Where(e => e.Level == DemoChronicleLevel.Major)).ToList();
         var world = major.Where(e => e.IsWorld).ToList();
         int Count(DemoChronicleCategory c) => major.Count(e => e.Category == c);
-        var wars = world.Count(e => e.Weight is WeightWar or WeightConquest);
+        // 第 08-10e 章：只數真的動武的（開戰、內戰、武裝獨立）；和平獲准的獨立不算戰事。
+        var wars = world.Count(e => e.Weight == WeightWar);
         var founded = Count(DemoChronicleCategory.Founding);
         var ruined = Count(DemoChronicleCategory.Ruin);
         return wars >= TempWarEra ? "戰亂的年代"
