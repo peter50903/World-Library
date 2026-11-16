@@ -1267,7 +1267,7 @@ public partial class ObserverRoot : Control
             lines.Add("");
             var state = m.Departed ? "出發" : m.Arrived ? "抵達" : m.PopulationClosing == 0 ? "全數死於途中" : "途中";
             lines.Add($"遷徙隊伍 #{m.BatchId}（{state}）：格 {m.CellBefore}→{m.CellAfter}");
-            lines.Add($"  人口：期初 {m.PopulationOpening} －途中死亡 {m.Deaths} ＝期末 {m.PopulationClosing}；攜帶糧食 {m.FoodOpening}→{m.FoodClosing}");
+            lines.Add($"  人口：期初 {m.PopulationOpening} －途中死亡 {m.Deaths} ＝期末 {m.PopulationClosing}；攜帶糧食 {m.FoodOpening}→{m.FoodClosing}{(m.FoodAbandoned > 0 ? $"（遺留在途中 {m.FoodAbandoned}）" : "")}");
             lines.Add(m.IsBalanced ? "  帳目平衡：是（不瞬移）" : "  【錯誤】隊伍帳目不平衡或瞬移！");
         }
 

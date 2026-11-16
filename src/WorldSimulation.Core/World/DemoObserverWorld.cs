@@ -85,8 +85,26 @@ public sealed partial class DemoObserverWorld
     public DemoWorldLaws Laws
     {
         get => _laws;
-        set => _laws = value ?? throw new ArgumentNullException(nameof(value));
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (value == _laws)
+                return;
+            // 第 14-1 章第 1 項：記下切換發生在第幾週結算之後（同一週內改幾次只留最後一次；改回原樣就當沒改）。
+            var week = CommittedWeeks;
+            var log = _lawChanges;
+            if (!log.IsEmpty && log[^1].AfterWeek == week)
+                log = log.RemoveAt(log.Count - 1);
+            var before = log.IsEmpty ? DemoWorldLaws.Default : log[^1].Laws;
+            _lawChanges = value == before ? log : log.Add(new DemoLawChange(week, value));
+            _laws = value;
+        }
     }
+
+    private ImmutableList<DemoLawChange> _lawChanges = ImmutableList<DemoLawChange>.Empty;
+
+    /// <summary>第 14-1 章第 1 項：世界法則的切換紀錄（只追加，舊的在前；全開且從沒改過時是空的）。</summary>
+    public IReadOnlyList<DemoLawChange> LawChanges => _lawChanges;
 
     public DemoObserverWorld(DemoScenario scenario)
         : this(scenario, DemoWeeklyTempConfig.Sample)
@@ -876,6 +894,8 @@ public sealed partial class DemoObserverWorld
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
         if (!_laws.IsDefault)
             sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks}/{_laws.Wars};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
+        foreach (var c in _lawChanges) // 第 14-1 章第 1 項（沒切換過時不寫）
+            sb.Append(inv, $"lawlog{c.AfterWeek}={c.Laws.Disasters}/{c.Laws.Monsters}/{c.Laws.Rebellions}/{c.Laws.BeastAttacks}/{c.Laws.Wars};");
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

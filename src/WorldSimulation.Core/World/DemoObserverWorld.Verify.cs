@@ -46,8 +46,19 @@ public sealed partial class DemoObserverWorld
             var weekBase = savedState.GetProperty("WeekBase").GetInt32();
 
             var world = new DemoObserverWorld(manifest.Recipe, weekly);
+            // 第 14-1 章第 1 項：世界法則的切換在同一週套用（否則關過法則的存檔一定重算不出來）。
+            var savedLaws = savedState.TryGetProperty("Laws", out var lawsElement) && lawsElement.ValueKind == JsonValueKind.Object
+                ? lawsElement.Deserialize<DemoWorldLaws>() ?? DemoWorldLaws.Default : DemoWorldLaws.Default;
+            var lawChanges = ReadLawChanges(savedState, savedLaws, days / 7);
+            var nextLaw = 0;
+            void ApplyLaws()
+            {
+                while (nextLaw < lawChanges.Count && lawChanges[nextLaw].AfterWeek <= world.CommittedWeeks)
+                    world.Laws = lawChanges[nextLaw++].Laws;
+            }
             for (var day = 0; day < days; day++)
             {
+                ApplyLaws();
                 var advance = world.AdvanceOneDay();
                 if (advance.SettledWeek is not { } week || week.Week <= weekBase)
                     continue;
@@ -56,6 +67,7 @@ public sealed partial class DemoObserverWorld
                 if (FirstWeekDifference(saved[week.Week - weekBase - 1], week) is { } difference)
                     return Fail(week.Week, difference);
             }
+            ApplyLaws();
             if (weekBase + saved.Count > world.CommittedWeeks)
                 return Fail(world.CommittedWeeks + 1, $"存檔多出第 {world.CommittedWeeks + 1} 週週報（重算沒有）");
 

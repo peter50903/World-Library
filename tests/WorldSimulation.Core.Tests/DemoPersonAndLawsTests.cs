@@ -53,6 +53,32 @@ public sealed class DemoPersonAndLawsTests
         Assert.Equal(saved, loaded.ExportTempSave());
     }
 
+    // 第 14-1 章第 1 項：法則切換記下週次，存檔帶著走，重播驗證在同一週套用。
+    [Fact]
+    public void LawChangesAreLoggedAndReplayed()
+    {
+        var world = World(2UL, 14);
+        Assert.Empty(world.LawChanges);
+        var off = DemoWorldLaws.Default.With("disasters", false);
+        world.Laws = off;
+        world.Laws = off.With("wars", false);          // 同一週再改：只留最後一次
+        Assert.Equal(new[] { new DemoLawChange(2, off.With("wars", false)) }, world.LawChanges);
+        for (var day = 0; day < 21; day++)
+            world.AdvanceOneDay();
+        world.Laws = DemoWorldLaws.Default.With("wars", false);
+        world.Laws = off.With("wars", false);          // 改回原樣：這一週等於沒改
+        Assert.Single(world.LawChanges);
+        world.Laws = DemoWorldLaws.Default;
+        Assert.Equal(new[] { 2, 5 }, world.LawChanges.Select(c => c.AfterWeek));
+
+        var saved = world.ExportTempSave();
+        var loaded = DemoObserverWorld.ImportTempSave(saved);
+        Assert.Equal(world.LawChanges, loaded.LawChanges);
+        Assert.Equal(saved, loaded.ExportTempSave());
+        var verdict = DemoObserverWorld.VerifyTempSaveByReplay(saved);
+        Assert.True(verdict.Ok, verdict.FirstDifference);
+    }
+
     [Fact]
     public void ClosedLawsStopDisastersMonstersAndRebellions()
     {
