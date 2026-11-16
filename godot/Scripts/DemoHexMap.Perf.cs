@@ -29,7 +29,7 @@ public partial class DemoHexMap
         watch.Restart();
         var codes = SurfaceCodes();
         var codesMs = watch.Elapsed.TotalMilliseconds;
-        var (fullMs, bakeMs, tiles) = _surface.PerfMeasure(codes, World.Columns, World.Rows, _ground);
+        var (fullMs, bakeMs, tiles, bake2Ms, bake4Ms) = _surface.PerfMeasure(codes, World.Columns, World.Rows, _ground);
         // 每週增量：推進一週後的版面與地表局部更新。
         advanceOneWeek();
         _surfaceBuiltMs = 0;
@@ -41,6 +41,6 @@ public partial class DemoHexMap
         var weekSurfaceMs = watch.Elapsed.TotalMilliseconds;
         var lots = _layouts.Values.Sum(l => l.Lots.Count);
         return $"Tiles={tiles} Lots={lots} Ground={_ground.Count} LayoutMs={Ms(layoutMs)} CodesMs={Ms(codesMs)} SurfaceFullMs={Ms(fullMs)} "
-            + $"BakeChunkMs={Ms(bakeMs)} WeekLayoutMs={Ms(weekLayoutMs)} WeekSurfaceMs={Ms(weekSurfaceMs)}";
+            + $"BakeChunkMs={Ms(bakeMs)} BakeLod2Ms={Ms(bake2Ms)} BakeLod4Ms={Ms(bake4Ms)} WeekLayoutMs={Ms(weekLayoutMs)} WeekSurfaceMs={Ms(weekSurfaceMs)}";
     }
 }

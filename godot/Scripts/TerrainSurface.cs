@@ -50,7 +50,11 @@ public partial class TerrainSurface : Control
     private const int TempChunkCache = 256;
     private const int TempChunksPerFrame = 16;
     private const double TempBakeMsPerFrame = 5;
-    public const float TempChunkMinRadius = 24f * TempZoomScale;
+    /// <summary>
+    /// 第 09-1d 章（使用者 2026-11-16：世界放大後太模糊，參考 CK3）：24×縮放比（64 像素）→ 32 像素。
+    /// 32～64 用 4 倍、64～128 用 2 倍的分級塊（每個塊圖像素至少一個螢幕像素、最近鄰取樣），不再拿 1/8 縮圖線性放大。
+    /// </summary>
+    public const float TempChunkMinRadius = 32f;
     /// <summary>【TEMP】第 08-20h 章：縮圖每幾個圖像素一點——方格總數超過 <see cref="TempThumbCoarseTiles"/> 時每方格一點（16），否則 8。</summary>
     private const int TempThumbFine = 8, TempThumbCoarse = 16, TempThumbCoarseTiles = 1_000_000;
 
@@ -86,11 +90,18 @@ public partial class TerrainSurface : Control
 
     private ulong _pendingSince;
 
-    private readonly Dictionary<(int, int), Chunk> _chunks = new();
+    private readonly Dictionary<(int, int, int), Chunk> _chunks = new(); // （塊欄、塊列、分級）
     private ulong _frame;
     private byte[] _buf = new byte[TempChunk * TempChunk * 4];
     private byte[] _detailBuf = new byte[TempChunk * TempChunk * 4];
     private int _bx, _by, _bw, _bh; // 正在烤的塊（圖像素範圍）
+    private int _lod = 1, _tw, _th; // 第 09-1d 章：正在烤的塊的分級（每幾個圖像素取一點）與貼圖寬高
+
+    /// <summary>第 09-1d 章：縮放比 <paramref name="scale"/>（螢幕像素／圖像素）用哪一級：一個塊圖像素至少一個螢幕像素。</summary>
+    private static int LodFor(float scale) => scale >= 1f ? 1 : scale >= 0.5f ? 2 : 4;
+
+    /// <summary>第 09-1d 章：會用到的分級。</summary>
+    private static readonly int[] Lods = { 1, 2, 4 };
     private bool _toDetail, _wroteDetail;
 
     // 試玩回饋 2026-11-06 之 8：縮圖切成 256×256 的小塊，改變時只重新上傳改到的塊（原本每次上傳整張 14 MB）。
@@ -137,7 +148,8 @@ public partial class TerrainSurface : Control
         // 放大時最近鄰（像素清楚）；縮小到一個圖像素不到一個螢幕像素時改線性，避免閃爍。
         // 第 08-20h 章（使用者 2026-11-15：有些畫面地塊太模糊）：只畫縮圖的距離，縮圖一點至少兩個螢幕像素時也用最近鄰（方塊清楚，不糊成一片）。
         var texel = radius / TempTexelsPerRadius;
-        TextureFilter = texel >= 1f || (radius < TempChunkMinRadius && texel * TempThumb >= 2f) ? TextureFilterEnum.Nearest : TextureFilterEnum.Linear;
+        // 第 09-1d 章：分級塊保證一個圖像素至少一個螢幕像素，一律最近鄰；只畫縮圖時縮圖一點至少一個螢幕像素也最近鄰。
+        TextureFilter = radius >= TempChunkMinRadius || texel * TempThumb >= 1f ? TextureFilterEnum.Nearest : TextureFilterEnum.Linear;
         Active = true;
         QueueRedraw();
     }
@@ -169,32 +181,34 @@ public partial class TerrainSurface : Control
         if (_radius < TempChunkMinRadius)
             return;
         // 畫面範圍內的塊：有就畫，沒有（或過期）就烤，每幀最多烤幾塊，其餘下一幀再烤（先看到縮圖）。
-        var x0 = Math.Max(0, (int)((0f - topLeft.X) / scale) / TempChunk);
-        var y0 = Math.Max(0, (int)((0f - topLeft.Y) / scale) / TempChunk);
-        var x1 = Math.Min((_width - 1) / TempChunk, (int)((Size.X - topLeft.X) / scale) / TempChunk);
-        var y1 = Math.Min((_height - 1) / TempChunk, (int)((Size.Y - topLeft.Y) / scale) / TempChunk);
+        var lod = LodFor(scale);
+        var span = TempChunk * lod; // 一塊涵蓋的圖像素
+        var x0 = Math.Max(0, (int)((0f - topLeft.X) / scale) / span);
+        var y0 = Math.Max(0, (int)((0f - topLeft.Y) / scale) / span);
+        var x1 = Math.Min((_width - 1) / span, (int)((Size.X - topLeft.X) / scale) / span);
+        var y1 = Math.Min((_height - 1) / span, (int)((Size.Y - topLeft.Y) / scale) / span);
         var budget = TempChunksPerFrame;
         var pending = false;
         var bakeWatch = System.Diagnostics.Stopwatch.StartNew();
         for (var cy = y0; cy <= y1; cy++)
             for (var cx = x0; cx <= x1; cx++)
             {
-                if (!_chunks.TryGetValue((cx, cy), out var chunk))
-                    _chunks[(cx, cy)] = chunk = new Chunk { Dirty = true };
+                if (!_chunks.TryGetValue((cx, cy, lod), out var chunk))
+                    _chunks[(cx, cy, lod)] = chunk = new Chunk { Dirty = true };
                 chunk.Used = _frame;
                 if (chunk.Dirty)
                 {
                     if (budget > 0 && (budget == TempChunksPerFrame || bakeWatch.Elapsed.TotalMilliseconds < TempBakeMsPerFrame))
                     {
                         budget--;
-                        BakeChunk(cx, cy, chunk);
+                        BakeChunk(cx, cy, chunk, lod);
                     }
                     else
                         pending = true;
                 }
                 if (chunk.Base is not { } texture)
                     continue;
-                var rect = new Rect2(topLeft + new Vector2(cx, cy) * TempChunk * scale, texture.GetSize() * scale);
+                var rect = new Rect2(topLeft + new Vector2(cx, cy) * span * scale, texture.GetSize() * scale * lod);
                 DrawTextureRect(texture, rect, false);
                 if (_radius >= TempDetailMinRadius && chunk.Detail is { } detail)
                     DrawTextureRect(detail, rect, false);
@@ -445,10 +459,14 @@ public partial class TerrainSurface : Control
             var y0 = i / columns * cell - 4 * TempTile;
             var x1 = (i % columns + 1) * cell + 2 * TempTile;
             var y1 = (i / columns + 1) * cell + TempTile;
-            for (var cy = Math.Max(0, y0 / TempChunk); cy <= Math.Min((_height - 1) / TempChunk, y1 / TempChunk); cy++)
-                for (var cx = Math.Max(0, x0 / TempChunk); cx <= Math.Min((_width - 1) / TempChunk, x1 / TempChunk); cx++)
-                    if (_chunks.TryGetValue((cx, cy), out var chunk))
-                        chunk.Dirty = true;
+            foreach (var lod in Lods)
+            {
+                var span = TempChunk * lod;
+                for (var cy = Math.Max(0, y0 / span); cy <= Math.Min((_height - 1) / span, y1 / span); cy++)
+                    for (var cx = Math.Max(0, x0 / span); cx <= Math.Min((_width - 1) / span, x1 / span); cx++)
+                        if (_chunks.TryGetValue((cx, cy, lod), out var chunk))
+                            chunk.Dirty = true;
+            }
             BuildThumb(Math.Max(0, x0 / TempThumb), Math.Max(0, y0 / TempThumb), Math.Min(_thumbW, x1 / TempThumb), Math.Min(_thumbH, y1 / TempThumb), rebuild: false);
         }
         UploadThumb();
@@ -636,25 +654,31 @@ public partial class TerrainSurface : Control
 
     // ───────────── 烤一塊 ─────────────
 
-    private void BakeChunk(int cx, int cy, Chunk chunk)
+    private void BakeChunk(int cx, int cy, Chunk chunk, int lod = 1)
     {
         chunk.Dirty = false;
-        _bx = cx * TempChunk;
-        _by = cy * TempChunk;
-        _bw = Math.Min(TempChunk, _width - _bx);
-        _bh = Math.Min(TempChunk, _height - _by);
+        // 第 09-1d 章：分級塊涵蓋 TempChunk×lod 圖像素，貼圖仍是 TempChunk 見方：每 lod 個圖像素取中間那一點（最近鄰縮小，像素風不糊）。
+        _lod = lod;
+        var span = TempChunk * lod;
+        _bx = cx * span;
+        _by = cy * span;
+        _bw = Math.Min(span, _width - _bx);
+        _bh = Math.Min(span, _height - _by);
+        _tw = (_bw + lod - 1) / lod;
+        _th = (_bh + lod - 1) / lod;
         Array.Clear(_detailBuf);
         _wroteDetail = false;
         // 第 09-3 章：地面逐列平行計算（每個像素只寫自己的位置）；零件（樹、山頭）照舊在主執行緒依序疊上。
         PrepareParallel();
-        int bx = _bx, by = _by, bw = _bw;
+        int bx = _bx, by = _by, tw = _tw, half = lod / 2, bxEnd = _bx + _bw, byEnd = _by + _bh;
         var buf = _buf;
-        System.Threading.Tasks.Parallel.For(by, by + _bh, y =>
+        System.Threading.Tasks.Parallel.For(0, _th, v =>
         {
-            for (var x = bx; x < bx + bw; x++)
+            var y = Math.Min(byEnd - 1, by + v * lod + half);
+            for (var u = 0; u < tw; u++)
             {
-                var c = Ground(x, y);
-                WriteColor(buf, ((y - by) * TempChunk + x - bx) * 4, _groundRaw ? c : Adjust(c));
+                var c = Ground(Math.Min(bxEnd - 1, bx + u * lod + half), y);
+                WriteColor(buf, (v * TempChunk + u) * 4, _groundRaw ? c : Adjust(c));
             }
         });
         // 疊上樹、山頭、礦石等零件：由上而下（下面的蓋住上面的）；零件會往上、往左右超出自己的方格，所以多看幾個方格。
@@ -672,8 +696,8 @@ public partial class TerrainSurface : Control
         // 第 08-20g 章：還沒有圖的塊直接上傳；已經有圖的，內容沒變就不動，變了先放著、等整批一起換。
         if (chunk.Base is null)
         {
-            chunk.Base = UploadSized(baseBytes, _bw, _bh, null);
-            chunk.Detail = detailBytes is null ? null : UploadSized(detailBytes, _bw, _bh, null);
+            chunk.Base = UploadSized(baseBytes, _tw, _th, null);
+            chunk.Detail = detailBytes is null ? null : UploadSized(detailBytes, _tw, _th, null);
         }
         else if (baseHash != chunk.BaseHash || detailHash != chunk.DetailHash)
         {
@@ -681,8 +705,8 @@ public partial class TerrainSurface : Control
                 _pendingSince = _frame;
             chunk.PendingBase = baseBytes;
             chunk.PendingDetail = detailBytes;
-            chunk.PendingW = _bw;
-            chunk.PendingH = _bh;
+            chunk.PendingW = _tw;
+            chunk.PendingH = _th;
             chunk.HasPending = true;
         }
         chunk.BaseHash = baseHash;
@@ -692,9 +716,9 @@ public partial class TerrainSurface : Control
     /// <summary>烤圖緩衝裁成這一塊的實際大小（地圖邊上的塊比較小），並複製一份（緩衝會被下一塊重用）。</summary>
     private byte[] Crop(byte[] source)
     {
-        var bytes = new byte[_bw * _bh * 4];
-        for (var y = 0; y < _bh; y++)
-            Array.Copy(source, y * TempChunk * 4, bytes, y * _bw * 4, _bw * 4);
+        var bytes = new byte[_tw * _th * 4];
+        for (var y = 0; y < _th; y++)
+            Array.Copy(source, y * TempChunk * 4, bytes, y * _tw * 4, _tw * 4);
         return bytes;
     }
 
@@ -720,17 +744,36 @@ public partial class TerrainSurface : Control
 
     private void Put(int x, int y, Color c, bool raw = false)
     {
-        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
+        if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh || _toDetail && _lod >= 4)
+            return; // 第 09-1d 章：4 倍塊不畫細節層（草叢、野花；那個距離看不到）
+        var i = TexelIndex(x, y);
+        if (i < 0)
             return;
         if (!raw)
             c = Adjust(c);
-        var i = ((y - _by) * TempChunk + x - _bx) * 4;
         var target = _toDetail ? _detailBuf : _buf;
         _wroteDetail |= _toDetail;
         target[i] = (byte)(c.R * 255f);
         target[i + 1] = (byte)(c.G * 255f);
         target[i + 2] = (byte)(c.B * 255f);
         target[i + 3] = (byte)(c.A * 255f);
+    }
+
+    /// <summary>第 09-1d 章：圖像素在烤圖緩衝的位置；分級塊只收每 lod 格中間那一點（其他回傳 -1）。</summary>
+    private int TexelIndex(int x, int y)
+    {
+        int lx = x - _bx, ly = y - _by;
+        if (_lod > 1)
+        {
+            var half = _lod / 2;
+            var u = lx / _lod;
+            var v = ly / _lod;
+            // 塊的最後一點可能落在地圖邊外，取樣點夾在邊內（與地面的取樣一致）。
+            if (lx != Math.Min(_bw - 1, u * _lod + half) || ly != Math.Min(_bh - 1, v * _lod + half))
+                return -1;
+            return (v * TempChunk + u) * 4;
+        }
+        return (ly * TempChunk + lx) * 4;
     }
 
     private static void WriteColor(byte[] target, int i, Color c)
@@ -756,7 +799,9 @@ public partial class TerrainSurface : Control
     {
         if (x < _bx || y < _by || x >= _bx + _bw || y >= _by + _bh)
             return;
-        var i = ((y - _by) * TempChunk + x - _bx) * 4;
+        var i = TexelIndex(x, y);
+        if (i < 0)
+            return;
         for (var k = 0; k < 3; k++)
             _buf[i + k] = (byte)(_buf[i + k] * (1f - amount));
     }
@@ -1448,6 +1493,24 @@ public partial class TerrainSurface : Control
         var raw = s == 1; // 第五批素材照原色，舊素材照舊降彩度
         var left = ax - sprite.Width * s / 2;
         var top = ay - sprite.Height * s + 1;
+        if (_lod > 1)
+        {
+            // 第 09-1d 章：分級塊只走落在取樣點上的像素（原本整張零件逐像素跑完再丟掉，4 倍塊慢 16 倍）。
+            var half = _lod / 2;
+            int First(int from, int origin) => origin + Math.Max(0, (from - origin - half + _lod - 1) / _lod) * _lod + half;
+            for (var py = First(top, _by); py < top + sprite.Height * s; py += _lod)
+                for (var px = First(left, _bx); px < left + sprite.Width * s; px += _lod)
+                {
+                    var c = sprite.At((px - left) / s, (py - top) / s);
+                    if (c.A < 0.5f)
+                        continue;
+                    var color = new Color(c.R, c.G, c.B);
+                    if (autumn && c.G > c.R && c.G > c.B)
+                        color = new Color(Mathf.Clamp(c.G * 1.35f, 0f, 1f), c.G * 0.62f, c.B * 0.35f);
+                    Put(px, py, color, raw);
+                }
+            return;
+        }
         for (var y = 0; y < sprite.Height; y++)
             for (var x = 0; x < sprite.Width; x++)
             {

@@ -9,7 +9,7 @@ public partial class TerrainSurface
     /// <summary>【TEMP】量測時烤幾塊。</summary>
     private const int TempPerfChunks = 24;
 
-    internal (double FullMs, double BakeMs, int Tiles) PerfMeasure(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
+    internal (double FullMs, double BakeMs, int Tiles, double Bake2Ms, double Bake4Ms) PerfMeasure(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
     {
         _codes = null;
         _thumbReady = false;
@@ -36,7 +36,30 @@ public partial class TerrainSurface
                     chunk.Detail?.Dispose();
                     baked++;
                 }
-        return (fullMs, baked == 0 ? 0 : watch.Elapsed.TotalMilliseconds / baked, _tilesX * _tilesY);
+        var bakeMs = baked == 0 ? 0 : watch.Elapsed.TotalMilliseconds / baked;
+        return (fullMs, bakeMs, _tilesX * _tilesY, BakeLod(2), BakeLod(4));
+    }
+
+    /// <summary>第 09-1d 章：分級塊（2 倍、4 倍）從地圖中央烤幾塊的平均毫秒。</summary>
+    private double BakeLod(int lod)
+    {
+        var span = TempChunk * lod;
+        var cx = _width / span / 2;
+        var cy = _height / span / 2;
+        var baked = 0;
+        var watch = Stopwatch.StartNew();
+        for (var dy = -1; dy <= 1; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+            {
+                if (cx + dx < 0 || cy + dy < 0 || (cx + dx) * span >= _width || (cy + dy) * span >= _height)
+                    continue;
+                var chunk = new Chunk { Dirty = true };
+                BakeChunk(cx + dx, cy + dy, chunk, lod);
+                chunk.Base?.Dispose();
+                chunk.Detail?.Dispose();
+                baked++;
+            }
+        return baked == 0 ? 0 : watch.Elapsed.TotalMilliseconds / baked;
     }
 
     internal void PerfUpdate(byte[] codes, int columns, int rows, IReadOnlyDictionary<int, byte> ground)
