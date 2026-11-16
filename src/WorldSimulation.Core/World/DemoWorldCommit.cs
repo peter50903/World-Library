@@ -75,6 +75,7 @@ public sealed partial class DemoObserverWorld
         private DemoCultureState _culture; // 第 08-8 章 B1：文化
         private DemoWildlifeState _wildlife; // 第 12-1 章 C1：野生動物
         private DemoLandDevelopmentMap _land; // 第 08-6 章 c 節：開墾
+        private ImmutableSortedDictionary<long, DemoPersonRecord> _people; // 第 14-1 章第 7 項：人物登記表
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
 
         internal DemoWorldCommit(DemoObserverWorld world, bool settleWeekly)
@@ -100,6 +101,7 @@ public sealed partial class DemoObserverWorld
             _culture = world._culture;
             _wildlife = world._wildlife;
             _land = world._land;
+            _people = world._people;
         }
 
         /// <summary>本日到期時間（<see cref="StageSchedule"/> 後才有）。</summary>
@@ -222,6 +224,7 @@ public sealed partial class DemoObserverWorld
                 _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>(),
                 _knowledge); // 第 08-11 章：等級設施看知識
             _debtSources = AdvanceDebtSources(_world._debtSources, report);
+            _people = DemoPersonRegister.Advance(_world._people, report, _demography?.Representatives); // 第 14-1 章第 7 項：與歷史同一步
         }
 
         /// <summary>第 08-6 章：生死之後的知識樹與時代（只在結算週、歷史步驟之前）。</summary>
@@ -282,6 +285,7 @@ public sealed partial class DemoObserverWorld
             world._culture = _culture;
             world._wildlife = _wildlife;
             world._land = _land;
+            world._people = _people;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
         }
 

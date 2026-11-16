@@ -95,4 +95,38 @@ public sealed class DemoPersonAndLawsTests
         Assert.Empty(world.Dungeons);
         Assert.Empty(world.BuildCausalIndex().Problems);
     }
+
+    // 第 14-1 章第 7 項：具名人物上任就登記，卸任後仍用編號查得到；存檔帶著走。
+    [Fact]
+    public void PeopleStayInTheRegisterAfterTheyLeaveOffice()
+    {
+        var world = World(1UL, 70);
+        var inOffice = world.Sites.Settlements.SelectMany(s => world.RepresentativesOf(s.Id)).ToList();
+        Assert.NotEmpty(inOffice);
+        Assert.All(inOffice, r =>
+        {
+            var record = world.PersonRecord(r.Id);
+            Assert.NotNull(record);
+            Assert.True(record!.InOffice);
+            Assert.Equal((r.Name, r.Role, r.SettlementId, r.AppointedWeek), (record.Name, record.Role, record.SettlementId, record.AppointedWeek));
+        });
+        Assert.Equal(inOffice.Select(r => r.Id).Order(), world.PersonRecords.Where(p => p.InOffice).Select(p => p.Id));
+        Assert.Null(world.PersonRecord(-1));
+
+        // 登記只增不減：每週週報的上任都在，卸任的補上卸任週與原因。
+        var appointed = world.WeekReports().SelectMany(w => w.Appointments).Select(r => r.Id).ToList();
+        Assert.All(appointed, id => Assert.NotNull(world.PersonRecord(id)));
+        foreach (var exit in world.WeekReports().SelectMany(w => w.RepresentativeExits.Select(x => (w.Week, x))))
+        {
+            var record = world.PersonRecord(exit.x.Id);
+            Assert.NotNull(record);
+            Assert.False(record!.InOffice);
+            Assert.Equal((exit.Week, exit.x.Reason), (record.ExitWeek, record.ExitReason));
+        }
+
+        var saved = world.ExportTempSave();
+        var loaded = DemoObserverWorld.ImportTempSave(saved);
+        Assert.Equal(world.PersonRecords, loaded.PersonRecords);
+        Assert.Equal(saved, loaded.ExportTempSave());
+    }
 }

@@ -105,6 +105,7 @@ public sealed partial class DemoObserverWorld
             Wildlife = _wildlife, // 第 12-1 章 C1
             Laws = _laws, // 第 08-19c 章：世界法則
             LawChanges = _lawChanges.ToArray(), // 第 14-1 章第 1 項：法則切換紀錄
+            People = _people.Values.ToArray(), // 第 14-1 章第 7 項：人物登記表
             Reserves = _reserves,
             SettlementFood = _settlementFood,
             Population = _population,

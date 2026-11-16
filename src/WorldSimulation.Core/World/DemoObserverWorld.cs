@@ -80,6 +80,13 @@ public sealed partial class DemoObserverWorld
     private DemoCultureState _culture = DemoCultureState.Empty; // 第 08-8 章 B1：文化
     private DemoWildlifeState _wildlife = DemoWildlifeState.Empty; // 第 12-1 章 C1：野生動物
     private DemoWorldLaws _laws = DemoWorldLaws.Default; // 第 08-19c 章：世界法則
+    private ImmutableSortedDictionary<long, DemoPersonRecord> _people = DemoPersonRegister.Empty; // 第 14-1 章第 7 項：人物登記表
+
+    /// <summary>第 14-1 章第 7 項：用實體編號查具名人物（在任或已卸任）；沒有這個人回傳 null。</summary>
+    public DemoPersonRecord? PersonRecord(long id) => _people.GetValueOrDefault(id);
+
+    /// <summary>第 14-1 章第 7 項：全部登記過的具名人物（依編號；只增不減）。</summary>
+    public IReadOnlyCollection<DemoPersonRecord> PersonRecords => _people.Values.ToList();
 
     /// <summary>第 08-19c 章：世界法則（介面隨時可改；從下一個結算週起生效；存檔記下）。</summary>
     public DemoWorldLaws Laws
@@ -892,6 +899,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
+        foreach (var p in _people.Values) sb.Append(inv, $"person{p};"); // 第 14-1 章第 7 項
         if (!_laws.IsDefault)
             sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks}/{_laws.Wars};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
         foreach (var c in _lawChanges) // 第 14-1 章第 1 項（沒切換過時不寫）

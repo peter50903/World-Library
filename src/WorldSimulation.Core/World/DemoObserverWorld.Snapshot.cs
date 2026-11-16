@@ -298,6 +298,8 @@ public sealed partial class DemoObserverWorld
                 Reject("群體人口與聚落、隊伍人數不一致");
             candidate._demography = people;
         }
+        candidate._people = ReadPeople(state, candidate._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>(),
+            sites, weekCount);
 
         // 第 04-2 章：正式史庫不另存——由較早事件與近期週報經提交時同一個轉換器重建，並逐筆驗證
         // （編號連續、時間不倒退、原因指向既有事件）。
@@ -616,6 +618,30 @@ public sealed partial class DemoObserverWorld
     }
 
     [DoesNotReturn]
+    /// <summary>
+    /// 第 14-1 章第 7 項：讀人物登記表並檢查（編號唯一、週次合理、聚落存在、「在任」的恰好是目前的代表人物）。
+    /// 沒有這一欄的存檔：只登記目前在任的人。
+    /// </summary>
+    internal static ImmutableSortedDictionary<long, DemoPersonRecord> ReadPeople(JsonElement state,
+        IReadOnlyList<DemoRepresentative> inOffice, DemoWorldSites sites, int weekCount)
+    {
+        if (!state.TryGetProperty("People", out var element) || element.ValueKind != JsonValueKind.Array)
+            return DemoPersonRegister.FromInOffice(inOffice);
+        var records = element.Deserialize<DemoPersonRecord[]>() ?? Array.Empty<DemoPersonRecord>();
+        var settlementIds = sites.Settlements.Select(s => s.Id).ToHashSet();
+        if (records.Any(p => p is null || p.Id < 1 || string.IsNullOrWhiteSpace(p.Name) || p.ExitReason is null
+                || !Enum.IsDefined(p.Role) || !Enum.IsDefined(p.Sex) || !settlementIds.Contains(p.SettlementId)
+                || p.AppointedWeek < 0 || p.AppointedWeek > weekCount || p.ExitWeek < 0 || p.ExitWeek > weekCount
+                || (p.ExitWeek > 0 && p.ExitWeek < p.AppointedWeek))
+            || records.Select(p => p.Id).Distinct().Count() != records.Length)
+            Reject("人物登記表不合法");
+        var register = records.ToImmutableSortedDictionary(p => p.Id, p => p);
+        var current = inOffice.Select(r => r.Id).ToHashSet();
+        if (register.Values.Count(p => p.InOffice) != current.Count || register.Values.Any(p => p.InOffice && !current.Contains(p.Id)))
+            Reject("人物登記表與在任的代表人物不一致");
+        return register;
+    }
+
     /// <summary>
     /// 第 14-1 章第 1 項：讀法則切換紀錄並檢查（週次遞增、不超過已提交週數、最後一筆＝目前的法則）。
     /// 加入這一欄之前的存檔沒有紀錄：法則不是全開時，當成「現在才切換」（那種存檔本來就無法重播驗證）。
