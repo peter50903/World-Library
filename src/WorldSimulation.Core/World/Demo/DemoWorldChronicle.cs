@@ -38,8 +38,16 @@ public sealed record DemoChronicleEntry(
     DemoChronicleCategory Category,
     IReadOnlyList<DemoChronicleSegment> Segments,
     long EventId = 0,
-    long ParentEventId = 0)
+    long ParentEventId = 0,
+    int Weight = 0)
 {
+    /// <summary>
+    /// 第 08-10d 章：世界大事（<see cref="Weight"/>＞0）——改變整個世界的事，編年史預設只列這一層；
+    /// 其餘重大事件是「各地大事」，每年合計成一行。數字越大越重要（年代小結挑最重要的幾件）。
+    /// </summary>
+    public bool IsWorld => Weight > 0;
+
+
     /// <summary>第 08-16 章：同一年裡起因也在編年史上的條目（介面縮排在起因下面，合成一段）；沒有＝0。</summary>
     public bool IsFollowUp => ParentEventId > 0;
 
@@ -72,6 +80,12 @@ public static class DemoWorldChronicle
     /// <summary>【TEMP】超過幾年的舊年份在介面上預設折疊成十年摘要。</summary>
     public const int TempFoldAfterYears = 10;
 
+    /// <summary>【TEMP】第 08-10d 章：世界大事的輕重（時代＞征服、獨立、篡位＞開戰、內戰＞世界第一個某級聚落＞城鎮以上淪為遺跡＞信仰與文化＞世界首次的技術）。</summary>
+    public const int WeightEra = 100, WeightConquest = 90, WeightWar = 80, WeightFirstTier = 70, WeightRuin = 60, WeightBelief = 50, WeightKnowledge = 40;
+
+    /// <summary>【TEMP】第 08-10d 章：年代小結最多引述幾件世界大事；一段年代裡幾場戰事算「戰亂」、幾處餓死紀錄算「饑荒」、建立幾個聚落算「擴張」、幾項首創技術算「創新」。</summary>
+    public const int TempStoryHighlights = 3, TempWarEra = 2, TempFamineEra = 3, TempGrowthEra = 3, TempInventionEra = 3;
+
     /// <summary>從第 1 年到目前年份，每年一筆（沒有條目的年份也列出，方便看出空白）。</summary>
     public static IReadOnlyList<DemoChronicleYear> Build(DemoObserverWorld world)
     {
@@ -85,6 +99,9 @@ public static class DemoWorldChronicle
         var entries = new List<(int Year, DemoChronicleEntry Entry)>();
         void Add(int week, DemoChronicleLevel level, DemoChronicleCategory category, long eventId, params DemoChronicleSegment[] segments)
             => entries.Add((YearOf(week), new DemoChronicleEntry(week, level, category, segments, eventId)));
+        // 第 08-10d 章：世界大事（一定是重大事件；weight＝0 時就是一般的重大事件）。
+        void AddWorld(int week, int weight, DemoChronicleCategory category, long eventId, params DemoChronicleSegment[] segments)
+            => entries.Add((YearOf(week), new DemoChronicleEntry(week, DemoChronicleLevel.Major, category, segments, eventId, 0, weight)));
         // 第 08-16 章：沒有事件編號的年度合計（餓死、缺糧）記下它們的起因事件（例：熱浪），之後接到起因下面。
         var aggregateCause = new Dictionary<int, long>();
 
@@ -98,14 +115,18 @@ public static class DemoWorldChronicle
             {
                 case DemoSettlementEventKind.EraBegan:
                     eraStarts[YearOf(e.Week)] = (DemoEra)e.Count;
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Era, e.EventId,
+                    AddWorld(e.Week, WeightEra, DemoChronicleCategory.Era, e.EventId,
                         T($"世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}（"), Name(e.SettlementId), T(" 率先）"));
                     break;
                 case DemoSettlementEventKind.KnowledgeLearned:
                     var tech = (DemoTechnology)e.Count;
                     var first = knownTechs.Add(tech);
-                    Add(e.Week, first ? DemoChronicleLevel.Major : DemoChronicleLevel.Normal, DemoChronicleCategory.Knowledge, e.EventId,
-                        Name(e.SettlementId), T($" 學會{DemoKnowledge.Name(tech)}{(first ? "（世界首次）" : "")}"));
+                    if (first)
+                        AddWorld(e.Week, WeightKnowledge, DemoChronicleCategory.Knowledge, e.EventId,
+                            Name(e.SettlementId), T($" 學會{DemoKnowledge.Name(tech)}（世界首次）"));
+                    else
+                        Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Knowledge, e.EventId,
+                            Name(e.SettlementId), T($" 學會{DemoKnowledge.Name(tech)}"));
                     break;
                 case DemoSettlementEventKind.SettlementFounded:
                     var from = parents.GetValueOrDefault(e.SettlementId);
@@ -116,7 +137,9 @@ public static class DemoWorldChronicle
                                   : new[] { T("開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }).Concat(why).ToArray());
                     break;
                 case DemoSettlementEventKind.SettlementRuined:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Ruin, e.EventId,
+                    // 第 08-10d 章：曾經長到城鎮規模的聚落淪為遺跡是世界大事；小聚落的興廢是各地大事。
+                    AddWorld(e.Week, world.ChronicleOf(e.SettlementId).Peak >= DemoSettlementHistory.TempUpPopulation(DemoSettlementTier.Town) ? WeightRuin : 0,
+                        DemoChronicleCategory.Ruin, e.EventId,
                         Name(e.SettlementId), T(DemoStories.WhyRuined(e, events) is { } after ? $" 在{after}人口歸零，成為遺跡" : " 人口歸零，成為遺跡"));
                     break;
                 // 第 08-18i 章（GPT 試玩回饋 08：日常紀錄把重大事件夾住）：開墾農田改在下面每年每聚落合計成一條一般事件。
@@ -125,11 +148,11 @@ public static class DemoWorldChronicle
                         Name(e.SettlementId), T(" 附近的一塊農田無人耕作，開始荒廢"));
                     break;
                 case DemoSettlementEventKind.FaithFounded:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId,
+                    AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Faith, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.FaithExtinct:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
+                    AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.Earthquake:
                 case DemoSettlementEventKind.Tornado:
@@ -185,7 +208,13 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.CivilWar:
                 case DemoSettlementEventKind.Usurped:
                     // 第 08-19b 章：獨立戰爭、請願的開始與獨立是重大事件；歸附、加入派系、交戰、失敗是一般事件（退出派系不記）。
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Realm, e.EventId,
+                    // 第 08-10d 章：征服、獨立、篡位，以及開戰、內戰、武裝獨立是世界大事；繼位與和平請願是各地（勢力內）大事。
+                    AddWorld(e.Week, e.Kind switch
+                        {
+                            DemoSettlementEventKind.Conquered or DemoSettlementEventKind.Independence or DemoSettlementEventKind.Usurped => WeightConquest,
+                            DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.SecessionArmed => WeightWar,
+                            _ => 0
+                        }, DemoChronicleCategory.Realm, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.VassalJoined:
@@ -203,7 +232,7 @@ public static class DemoWorldChronicle
                         DemoChronicleCategory.Wilds, e.EventId, Name(e.SettlementId), T(" 的" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.CultureSplit:
-                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Culture, e.EventId,
+                    AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Culture, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
             }
@@ -255,6 +284,13 @@ public static class DemoWorldChronicle
                 entries[k] = (year, entry with { ParentEventId = parent });
         }
 
+        // 第 08-10d 章：全世界第一個長到村莊、城鎮、城市、首都的聚落是世界大事（同一週時取編號小的）。
+        var firstOfTier = new Dictionary<DemoSettlementTier, (int Week, int SettlementId)>();
+        foreach (var s in world.Sites.Settlements)
+            foreach (var line in world.ChronicleOf(s.Id).Milestones)
+                if (RaisedTo(line) is { } tier && (!firstOfTier.TryGetValue(tier, out var best) || (line.Week, s.Id).CompareTo(best) < 0))
+                    firstOfTier[tier] = (line.Week, s.Id);
+
         // 聚落小史：等級升降（重大）、人口里程碑與代表人物就任／卸任（一般）。
         foreach (var s in world.Sites.Settlements)
         {
@@ -262,7 +298,8 @@ public static class DemoWorldChronicle
             foreach (var line in chronicle.Milestones)
             {
                 if (DemoSettlementChronicle.IsTierChange(line))
-                    Add(line.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Tier, 0, Name(s.Id), T($" {line.Text}"));
+                    AddWorld(line.Week, RaisedTo(line) is { } tier && firstOfTier[tier] == (line.Week, s.Id) ? WeightFirstTier : 0,
+                        DemoChronicleCategory.Tier, 0, Name(s.Id), T($" {line.Text}"));
                 else if (DemoSettlementChronicle.IsPopulationMilestone(line))
                     Add(line.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Population, 0, Name(s.Id), T($" {line.Text}"));
             }
@@ -292,6 +329,19 @@ public static class DemoWorldChronicle
                 bySettlement.Values.Sum(v => v.Births), bySettlement.Values.Sum(v => v.NaturalDeaths), bySettlement));
         }
         return result.AsReadOnly();
+    }
+
+    /// <summary>第 08-10d 章：這一筆小史是升到哪一級（不是升級回傳 null）。</summary>
+    private static DemoSettlementTier? RaisedTo(DemoChronicleLine line)
+    {
+        var at = line.Text.IndexOf(DemoSettlementChronicle.TierUpMarker, StringComparison.Ordinal);
+        if (at < 0)
+            return null;
+        var rest = line.Text[(at + DemoSettlementChronicle.TierUpMarker.Length)..];
+        foreach (var tier in new[] { DemoSettlementTier.Capital, DemoSettlementTier.City, DemoSettlementTier.Town, DemoSettlementTier.Village })
+            if (rest.StartsWith(DemoSettlementHistory.TierName(tier), StringComparison.Ordinal))
+                return tier;
+        return null;
     }
 
     /// <summary>第 08-16 章：起因依時間排列，每個起因的後續（遞迴）緊接在它下面，合成一段。</summary>
@@ -337,6 +387,69 @@ public static class DemoWorldChronicle
         Part(DemoChronicleCategory.Disaster, "天災");
         var head = $"第 {years[0].Year}～{years[^1].Year} 年：";
         return head + (parts.Count == 0 ? "沒有重大事件" : string.Join("、", parts))
+               + $"｜出生 {years.Sum(y => y.Births)}、老死 {years.Sum(y => y.NaturalDeaths)}";
+    }
+
+    /// <summary>各類重大條目的件數（「建立聚落 2、天災 1」）；沒有回傳空字串。</summary>
+    private static string Tally(IReadOnlyCollection<DemoChronicleEntry> major)
+    {
+        var parts = new List<string>();
+        void Part(DemoChronicleCategory c, string unit)
+        {
+            var n = major.Count(e => e.Category == c);
+            if (n > 0)
+                parts.Add($"{unit} {n}");
+        }
+        Part(DemoChronicleCategory.Founding, "建立聚落");
+        Part(DemoChronicleCategory.Ruin, "成為遺跡");
+        Part(DemoChronicleCategory.Tier, "等級升降");
+        Part(DemoChronicleCategory.Realm, "勢力變動");
+        Part(DemoChronicleCategory.Famine, "餓死紀錄");
+        Part(DemoChronicleCategory.Disaster, "天災");
+        Part(DemoChronicleCategory.Wilds, "野外險境");
+        return string.Join("、", parts);
+    }
+
+    /// <summary>
+    /// 第 08-10d 章：這一年的「各地大事」合計（不是世界大事的重大條目，依類型數件數）；沒有回傳空字串。
+    /// 編年史預設只列世界大事，各地的興廢用這一行帶過（點開才逐條列）。
+    /// </summary>
+    public static string LocalTally(DemoChronicleYear year)
+    {
+        ArgumentNullException.ThrowIfNull(year);
+        return Tally(year.Entries.Where(e => e.Level == DemoChronicleLevel.Major && !e.IsWorld).ToList());
+    }
+
+    /// <summary>
+    /// 第 08-10d 章：年代小結（舊年份折疊時顯示，取代只數件數的 <see cref="DecadeSummary"/>）。
+    /// 一句定性（戰亂、衰退、饑荒、擴張、創新、轉折、平穩、平靜的年代）＋最重要的幾件世界大事（依時間）＋各地大事合計＋出生與老死。
+    /// 只組合已經發生的事實：定性由件數依固定規則判定，引述的是編年史既有條目的原文，不添加任何原因或評語。
+    /// </summary>
+    public static string DecadeStory(IReadOnlyList<DemoChronicleYear> years)
+    {
+        ArgumentNullException.ThrowIfNull(years);
+        if (years.Count == 0) return "";
+        var major = years.SelectMany(y => y.Entries.Where(e => e.Level == DemoChronicleLevel.Major).Select(e => (y.Year, Entry: e))).ToList();
+        var world = major.Where(x => x.Entry.IsWorld).ToList();
+        int Count(DemoChronicleCategory c) => major.Count(x => x.Entry.Category == c);
+        var wars = world.Count(x => x.Entry.Weight is WeightWar or WeightConquest);
+        var founded = Count(DemoChronicleCategory.Founding);
+        var ruined = Count(DemoChronicleCategory.Ruin);
+        var character = wars >= TempWarEra ? "戰亂的年代"
+            : ruined >= 2 && ruined >= founded ? "衰退的年代"
+            : Count(DemoChronicleCategory.Famine) >= TempFamineEra ? "饑荒的年代"
+            : founded >= TempGrowthEra && founded > ruined ? "擴張的年代"
+            : world.Count(x => x.Entry.Weight == WeightKnowledge) >= TempInventionEra ? "創新的年代"
+            : world.Any(x => x.Entry.Weight == WeightEra) ? "轉折的年代"
+            : major.Count == 0 ? "平靜的年代"
+            : "平穩的年代";
+        var highlights = world.OrderByDescending(x => x.Entry.Weight).ThenBy(x => x.Year).ThenBy(x => x.Entry.Week).Take(TempStoryHighlights)
+            .OrderBy(x => x.Year).ThenBy(x => x.Entry.Week)
+            .Select(x => $"第 {x.Year} 年，{x.Entry.Text.Trim()}").ToList();
+        var local = Tally(major.Where(x => !x.Entry.IsWorld).Select(x => x.Entry).ToList());
+        return $"第 {years[0].Year}～{years[^1].Year} 年：{character}"
+               + (highlights.Count > 0 ? "——" + string.Join("；", highlights) + "。" : "。")
+               + (local.Length > 0 ? $"各地：{local}。" : "")
                + $"｜出生 {years.Sum(y => y.Births)}、老死 {years.Sum(y => y.NaturalDeaths)}";
     }
 

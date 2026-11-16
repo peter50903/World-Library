@@ -10,6 +10,8 @@ namespace WorldSimulation.GodotClient;
 /// 第 08-10b 章 b 節：右側「編年史」分頁。依年份分組（新的在上，參考 FMS 國家歷史），預設只列重大事件，
 /// 「一般事件」與各類型可開關（FMS 類型開關）；聚落名稱可點，地圖置中並開詳情（CK3 名稱底線）；
 /// 最近 10 年以外每 10 年折疊成摘要，點開才看細節（CK3 記憶淡去，只作用在畫面）；出生老死每年一行，點開列各聚落。
+/// 第 08-10d 章：預設只列世界大事（◆）；各地大事（◇，聚落的興廢、升降、天災…）每年合計成一行，勾「各地大事」才逐條列；
+/// 折疊的十年段顯示年代小結（一句定性＋最重要的幾件世界大事）。
 /// 資料全部來自 Core <see cref="DemoWorldChronicle"/>，只讀不改世界。
 /// </summary>
 public partial class ObserverRoot
@@ -20,6 +22,7 @@ public partial class ObserverRoot
     private Button _chronicleToggle = null!;
     private RichTextLabel _chronicleText = null!;
     private CheckBox _chronicleShowNormal = null!;
+    private CheckBox _chronicleShowLocal = null!;
     private MenuButton _chronicleTypes = null!;
     private readonly HashSet<DemoChronicleCategory> _chronicleHidden = new();
     private readonly HashSet<int> _chronicleExpanded = new();
@@ -63,12 +66,15 @@ public partial class ObserverRoot
         var title = new Label
         {
             Text = "編年史",
-            TooltipText = "依年份列出世界的重大事件（新的在上）；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開",
+            TooltipText = "依年份列出改變世界的大事（新的在上）；各地的興廢每年合計成一行；點聚落名稱定位地圖；較早的年份每 10 年折疊成一段小結，點一下展開",
             MouseFilter = MouseFilterEnum.Pass,
             SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
         title.AddThemeFontSizeOverride("font_size", 20);
         header.AddChild(title);
+        _chronicleShowLocal = new CheckBox { Text = "各地大事", TooltipText = "也逐條列出各地的大事：聚落建立與廢棄、等級升降、天災、餓死、勢力內的繼位…（預設每年只合計成一行）" };
+        _chronicleShowLocal.Toggled += _ => RefreshChronicle();
+        header.AddChild(_chronicleShowLocal);
         _chronicleShowNormal = new CheckBox { Text = "一般事件", TooltipText = "也列出一般事件：技術傳入、遷徙、缺糧、人口里程碑、代表人物就任與卸任" };
         _chronicleShowNormal.Toggled += _ => RefreshChronicle();
         header.AddChild(_chronicleShowNormal);
@@ -104,7 +110,7 @@ public partial class ObserverRoot
         RefreshChronicle();
     }
 
-    /// <summary>點擊連結：s:聚落編號＝定位地圖；fold／unfold:起始年＝展開／收合十年段；stat:年＝展開出生老死明細。</summary>
+    /// <summary>點擊連結：s:聚落編號＝定位地圖；fold／unfold:起始年＝展開／收合十年段；stat:年＝展開出生老死明細；local:1＝逐條列出各地大事。</summary>
     private const string LocateIcon = "res://assets/px2/ic_stat_36.png";
 
     private void OnChronicleMeta(string meta)
@@ -127,6 +133,9 @@ public partial class ObserverRoot
                 if (!_chronicleStatsOpen.Remove(value))
                     _chronicleStatsOpen.Add(value);
                 break;
+            case "local":
+                _chronicleShowLocal.ButtonPressed = true; // 會觸發重畫
+                return;
             default:
                 return;
         }
@@ -144,7 +153,7 @@ public partial class ObserverRoot
             _chronicleDataKey = dataKey;
             _chronicleYears = DemoWorldChronicle.Build(_world);
         }
-        var viewKey = string.Join("|", dataKey.CommittedWeeks, _chronicleShowNormal.ButtonPressed,
+        var viewKey = string.Join("|", dataKey.CommittedWeeks, _chronicleShowNormal.ButtonPressed, _chronicleShowLocal.ButtonPressed,
             string.Join(",", _chronicleHidden.OrderBy(c => c)), string.Join(",", _chronicleExpanded.OrderBy(y => y)),
             string.Join(",", _chronicleStatsOpen.OrderBy(y => y)), _world.GetHashCode());
         if (viewKey == _chronicleViewKey)
@@ -154,7 +163,8 @@ public partial class ObserverRoot
     }
 
     private bool ChronicleShows(DemoChronicleEntry entry)
-        => (entry.Level == DemoChronicleLevel.Major || _chronicleShowNormal.ButtonPressed) && !_chronicleHidden.Contains(entry.Category);
+        => (entry.IsWorld || (entry.Level == DemoChronicleLevel.Major ? _chronicleShowLocal.ButtonPressed : _chronicleShowNormal.ButtonPressed))
+            && !_chronicleHidden.Contains(entry.Category);
 
     private static string Escape(string text) => text.Replace("[", "[lb]", StringComparison.Ordinal);
 
@@ -177,7 +187,7 @@ public partial class ObserverRoot
                 {
                     var decade = years.Where(y => y.Year >= fold.FromYear && y.Year <= fold.ToYear).ToList();
                     text.Append("[url=fold:").Append(fold.FromYear.ToString(CultureInfo.InvariantCulture)).Append("]▶ ")
-                        .Append(Escape(DemoWorldChronicle.DecadeSummary(decade))).Append("[/url]\n\n");
+                        .Append(Escape(DemoWorldChronicle.DecadeStory(decade))).Append("[/url]\n\n"); // 第 08-10d 章：年代小結
                 }
                 continue;
             }
@@ -195,7 +205,7 @@ public partial class ObserverRoot
             var shownIds = year.Entries.Where(ChronicleShows).Where(e => e.EventId > 0).Select(e => e.EventId).ToHashSet();
             foreach (var entry in year.Entries.Where(ChronicleShows))
             {
-                text.Append(entry.Level == DemoChronicleLevel.Major ? "◆ " : "・");
+                text.Append(entry.IsWorld ? "◆ " : entry.Level == DemoChronicleLevel.Major ? "◇ " : "・");
                 if (entry.IsFollowUp && shownIds.Contains(entry.ParentEventId))
                     text.Append("　↳ ");
                 foreach (var segment in entry.Segments)
@@ -212,6 +222,9 @@ public partial class ObserverRoot
                         .Append(LocateIcon).Append("[/img][/url]");
                 text.Append('\n');
             }
+            // 第 08-10d 章：沒有逐條列出各地大事時，合計成一行（點一下逐條列出）。
+            if (!_chronicleShowLocal.ButtonPressed && DemoWorldChronicle.LocalTally(year) is { Length: > 0 } tally)
+                text.Append("[url=local:1]　各地：").Append(Escape(tally)).Append("[/url]\n");
             text.Append("[url=stat:").Append(year.Year.ToString(CultureInfo.InvariantCulture)).Append("]　")
                 .Append(Escape(year.StatisticLine)).Append("[/url]\n");
             if (_chronicleStatsOpen.Contains(year.Year))
@@ -255,8 +268,13 @@ public partial class ObserverRoot
             || !text.Contains("▶ 第 1～10 年：", StringComparison.Ordinal) || Lines("▶ ") != 3)
             Fail("recent years are not expanded or old decades are not folded.");
         var visibleMajor = expected.Where(y => y.Year > 30).Sum(y => y.Entries.Count(e => e.Level == DemoChronicleLevel.Major));
-        if (Lines("◆ ") != visibleMajor || Lines("・") != 0)
-            Fail($"expected {visibleMajor} major lines and no normal lines, saw {Lines("◆ ")}/{Lines("・")}.");
+        // 第 08-10d 章：預設只列世界大事；勾「各地大事」後重大事件全部列出。
+        var visibleWorld = expected.Where(y => y.Year > 30).Sum(y => y.Entries.Count(e => e.IsWorld));
+        if (Lines("◆ ") != visibleWorld || Lines("◇ ") != 0 || Lines("・") != 0)
+            Fail($"expected {visibleWorld} world lines only, saw {Lines("◆ ")}/{Lines("◇ ")}/{Lines("・")}.");
+        _chronicleShowLocal.ButtonPressed = true;
+        if (Lines("◆ ") + Lines("◇ ") != visibleMajor || Lines("・") != 0)
+            Fail($"expected {visibleMajor} major lines and no normal lines, saw {Lines("◆ ") + Lines("◇ ")}/{Lines("・")}.");
 
         OnChronicleMeta("fold:1");
         if (!Shown().Contains("第 1 年", StringComparison.Ordinal) || Lines("▶ ") != 2 || Lines("▲ ") != 1)
