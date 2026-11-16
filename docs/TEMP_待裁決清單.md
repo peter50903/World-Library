@@ -622,6 +622,7 @@
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 11 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列）；第 08-3 章功能列置底、移除事件列 |
 | `godot/Scripts/ObserverRoot.Hud.cs` | 13 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色；第 08-18h 章詳情頁內文顏色與字級（15）；第 08-19d 章時代進度條寬度；第 08-18i 章分頁按鈕排列順序 |
+| `godot/Scripts/TechTreeView.cs` | 1 | 第 08-10d 章 D：知識樹版面（欄數、節點高、間距、字級；畫面顯示參數） |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
 | `godot/Scripts/ObserverRoot.YearChart.cs` | 2 | 第 08 章 b 節圖表高度、冒煙用圖表尺寸 |
