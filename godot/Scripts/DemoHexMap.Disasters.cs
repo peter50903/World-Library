@@ -70,6 +70,7 @@ public partial class DemoHexMap
 
     public override void _Process(double delta)
     {
+        PerfMonitors.EndFrame(); // 第 09-1e 章：每幀結算監看值
         UpdateFireLoop();
         if (_surfaceStale && Time.GetTicksMsec() - _surfaceBuiltMs >= TempSurfaceRefreshMs)
             QueueRedraw();

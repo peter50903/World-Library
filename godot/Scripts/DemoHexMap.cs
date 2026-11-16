@@ -283,6 +283,7 @@ public partial class DemoHexMap : Control
     {
         _actorHits.Clear(); // 試玩回饋 2026-11-08 第二次之 1：這一幀畫了哪些角色，由各畫法重新登記
         _plateHits.Clear(); // 第 08-18i 章：名牌的點選範圍
+        using var perf = PerfMonitors.MapDraw(); // 第 09-1e 章：監看值「地圖重畫毫秒」
         if (World is null)
         {
             _surface?.Hide();

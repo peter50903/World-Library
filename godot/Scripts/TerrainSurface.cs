@@ -140,6 +140,7 @@ public partial class TerrainSurface : Control
         ground ??= NoGround;
         if (!ReferenceEquals(codes, _uploaded) || columns != _columns || rows != _rows || !ReferenceEquals(ground, _ground))
         {
+            using var perf = PerfMonitors.SurfaceUpdate(); // 第 09-1e 章：監看值「地表更新毫秒」
             Update(codes, columns, rows, ground);
             _uploaded = codes;
         }
@@ -201,6 +202,7 @@ public partial class TerrainSurface : Control
                     if (budget > 0 && (budget == TempChunksPerFrame || bakeWatch.Elapsed.TotalMilliseconds < TempBakeMsPerFrame))
                     {
                         budget--;
+                        using var perf = PerfMonitors.Bake(); // 第 09-1e 章：監看值「烤塊數與毫秒」
                         BakeChunk(cx, cy, chunk, lod);
                     }
                     else
