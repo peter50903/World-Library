@@ -165,7 +165,7 @@ public static class DemoCellQuery
                 lines.Add($"人口結構：兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}｜育齡伴侶約 {st.Couples} 對｜懷孕中 {st.Pregnant}");
             var day = world.Snapshot().DaysElapsed;
             foreach (var r in world.RepresentativesOf(settlement.Id))
-                lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
+                lines.Add($"代表人物：{DemoRepresentative.RoleName(r.Role, world.ChronicleOf(settlement.Id).Tier)} {r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）");
             // 第 08-6 章、08-7a 章 A1：知識樹（已習得的技術依習得順序；研究中的列進度最高的三項）。
             if (world.HumanPopulationSnapshot is not null)
             {

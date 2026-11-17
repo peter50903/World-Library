@@ -890,7 +890,8 @@ public sealed partial class DemoObserverWorld
                 var (faith, faithEvents) = DemoFaiths.Advance(culture.Faith, report, learned, lifecycle.Outcome.Sites, Map, _rng,
                     lifecycle.Population.Representatives,
                     id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
-                    checked(landNextId + cleared.Count + split.Count));
+                    checked(landNextId + cleared.Count + split.Count),
+                    id => ChronicleOf(id).Tier); // 第 08-10l 節：創立者的稱號依聚落等級
                 culture = culture with { Faith = faith };
                 DemoPerf.Mark("信仰");
                 // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）；C3b：熱浪、野火的開始與結束（事件接在信仰之後）。

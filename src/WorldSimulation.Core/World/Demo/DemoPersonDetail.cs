@@ -22,7 +22,7 @@ public static class DemoPersonDetail
         var site = world.Sites.Settlements.First(s => s.Id == person.SettlementId);
         var tier = world.ChronicleOf(site.Id).Tier;
         var home = DemoSettlementHistory.TitledName(site, tier);
-        var role = DemoRepresentative.RoleName(person.Role);
+        var role = DemoRepresentative.RoleName(person.Role, tier); // 第 08-10l 節：稱號依聚落等級
         var cultureId = world.Culture.CultureOfRepresentative(person.Id);
         var year = DemoSettlementHistory.YearOfDay(day);
 
@@ -52,7 +52,7 @@ public static class DemoPersonDetail
             life.Add("還沒有值得記下的事");
         var peers = world.RepresentativesOf(site.Id).Where(r => r.Id != person.Id)
             .Select(r => new DemoPersonEntry(r.Id, DemoHeraldry.PortraitOf(r, DemoCohortDemography.AgeAt(r.BirthYear, day), world.Culture.CultureOfRepresentative(r.Id) ?? 0),
-                new[] { $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）" }))
+                new[] { $"{DemoRepresentative.RoleName(r.Role, tier)}　{r.Name}（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）" }))
             .ToList();
         var peerLines = peers.SelectMany(p => p.Lines).ToList();
         if (peerLines.Count == 0)
@@ -76,7 +76,7 @@ public static class DemoPersonDetail
         var age = DemoCohortDemography.AgeAt(record.BirthYear, checked(Math.Max(1, record.ExitWeek) * 7));
         var site = world.Sites.Settlements.FirstOrDefault(s => s.Id == record.SettlementId);
         var home = site is null ? "某地" : DemoSettlementHistory.TitledName(site, world.ChronicleOf(site.Id).Tier);
-        var role = DemoRepresentative.RoleName(record.Role);
+        var role = Title(world, record);
         var status = Died(record) ? "已故" : "已卸任";
         var cultureId = world.Culture.CultureOfRepresentative(record.Id);
         var start = record.AppointedWeek < 1 ? "開局" : $"第 {Year(record.AppointedWeek)} 年";
@@ -121,12 +121,16 @@ public static class DemoPersonDetail
     }
 
     /// <summary>第 08-10g～08-10i 章：家族與父母、英雄的事蹟、性格（領袖與英雄）。</summary>
+    /// <summary>第 08-10l 節：這個人的職稱；領袖依聚落在他在任最後那一週（在任＝現在）的等級。</summary>
+    internal static string Title(DemoObserverWorld world, DemoPersonRecord p)
+        => DemoRepresentative.RoleName(p.Role, world.ChronicleOf(p.SettlementId).TierAt(p.InOffice ? world.CommittedWeeks : p.ExitWeek));
+
     private static void AddFamily(List<string> lines, DemoObserverWorld world, DemoRepresentative person, IReadOnlyDictionary<long, DemoPersonRecord> people)
     {
         if (person.Role is not (DemoRepresentativeRole.Leader or DemoRepresentativeRole.Hero))
             return;
         lines.Add($"家族：{DemoNames.FamilyOf(person.Name)}家" + (person.ParentId > 0 && people.TryGetValue(person.ParentId, out var parent)
-            ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是{DemoRepresentative.RoleName(parent.Role)}{parent.Name}）"
+            ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是{Title(world, parent)}{parent.Name}）"
             : person.Role == DemoRepresentativeRole.Hero ? "（士兵出身）" : "（這一家的第一代）"));
         // 第 08-10i 章：英雄的事蹟與傳說物品。
         if (person.Role == DemoRepresentativeRole.Hero && DemoHeroes.Legends(world).FirstOrDefault(l => l.Hero.Id == person.Id) is { } legend)
@@ -155,7 +159,7 @@ public static class DemoPersonDetail
     {
         var entries = new List<DemoPersonEntry>();
         void Add(DemoPersonRecord p, string relation)
-            => entries.Add(Entry(world, p, day, $"{relation}　{DemoRepresentative.RoleName(p.Role)}　{p.Name}", Term(p)));
+            => entries.Add(Entry(world, p, day, $"{relation}　{Title(world, p)}　{p.Name}", Term(p)));
         if (self.ParentId > 0 && people.TryGetValue(self.ParentId, out var parent))
         {
             Add(parent, parent.Sex == DemoTempSex.Female ? "母親" : "父親");

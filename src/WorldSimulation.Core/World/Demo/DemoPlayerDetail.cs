@@ -299,7 +299,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
                 DemoHeraldry.PortraitOf(r, DemoCohortDemography.AgeAt(r.BirthYear, day), world.Culture.CultureOfRepresentative(r.Id) ?? 0),
                 new[]
                 {
-                    $"{DemoRepresentative.RoleName(r.Role)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
+                    $"{DemoRepresentative.RoleName(r.Role, world.ChronicleOf(settlement.Id).Tier)}　{r.Name}（{(r.Sex == DemoTempSex.Female ? "女" : "男")}，"
                     + $"{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲，第 {YearOfWeek(r.AppointedWeek)} 年上任"
                     + (world.Culture.CultureOfRepresentative(r.Id) is { } c && world.Culture.Culture(c) is { } culture ? $"，{culture.Name}" : "")
                     + (world.Culture.Faith.Faith(world.Culture.Faith.FaithOfRepresentative(r.Id)) is { } rf ? $"，信{rf.Name}" : "") + "）"

@@ -88,10 +88,14 @@ public static class DemoStories
         var lines = new List<string>();
         if (picked.Count > 0)
             lines.Add("　" + string.Join("；", picked));
-        var predecessors = world.ChronicleOf(r.SettlementId).Representatives
-            .Count(l => l.Week < r.AppointedWeek && l.Text.EndsWith("成為" + DemoRepresentative.RoleName(r.Role), StringComparison.Ordinal));
+        // 第 08-10l 節：領袖的稱號隨等級改變，前任用任何一種稱號上任都算。
+        bool Appointed(DemoChronicleLine l) => r.Role == DemoRepresentativeRole.Leader
+            ? DemoRepresentative.LeaderTitles.Any(t => l.Text.EndsWith("成為" + t, StringComparison.Ordinal))
+            : l.Text.EndsWith("成為" + DemoRepresentative.RoleName(r.Role), StringComparison.Ordinal);
+        var chronicle = world.ChronicleOf(r.SettlementId);
+        var predecessors = chronicle.Representatives.Count(l => l.Week < r.AppointedWeek && Appointed(l));
         if (predecessors > 0)
-            lines.Add($"　本村第 {predecessors + 1} 任{DemoRepresentative.RoleName(r.Role)}");
+            lines.Add($"　本地第 {predecessors + 1} 任{DemoRepresentative.RoleName(r.Role, chronicle.Tier)}");
         return lines;
     }
 }

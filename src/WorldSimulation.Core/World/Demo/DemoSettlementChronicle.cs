@@ -52,6 +52,17 @@ public sealed record DemoSettlementChronicle(
         return line.Text.Contains(TierUpMarker, StringComparison.Ordinal) || line.Text.Contains(TierDownMarker, StringComparison.Ordinal);
     }
 
+    /// <summary>第 08-10l 節：第 <paramref name="week"/> 週結算之後的等級（由小史的等級升降推得；一開始是營地）。</summary>
+    public DemoSettlementTier TierAt(int week)
+    {
+        var tier = DemoSettlementTier.Camp;
+        foreach (var line in Milestones.Where(l => l.Week <= week && IsTierChange(l)).OrderBy(l => l.Week))
+            if (Enum.GetValues<DemoSettlementTier>().Where(t => line.Text.EndsWith(DemoSettlementHistory.TierName(t), StringComparison.Ordinal))
+                    .Select(t => (DemoSettlementTier?)t).FirstOrDefault() is { } named)
+                tier = named;
+        return tier;
+    }
+
     /// <summary>第 08-10b 章：這一筆小史是不是人口里程碑。</summary>
     public static bool IsPopulationMilestone(DemoChronicleLine line)
     {
@@ -129,7 +140,7 @@ public sealed record DemoSettlementChronicle(
             var c = builder.GetValueOrDefault(r.SettlementId) ?? Empty;
             builder[r.SettlementId] = c with
             {
-                Representatives = c.Representatives.Add(new DemoChronicleLine(report.Week, $"{r.Name} 成為{DemoRepresentative.RoleName(r.Role)}"))
+                Representatives = c.Representatives.Add(new DemoChronicleLine(report.Week, $"{r.Name} 成為{DemoRepresentative.RoleName(r.Role, c.Tier)}")) // 第 08-10l 節：稱號依等級
             };
         }
         foreach (var x in report.RepresentativeExits)
@@ -139,7 +150,7 @@ public sealed record DemoSettlementChronicle(
             builder[x.SettlementId] = c with
             {
                 Representatives = c.Representatives.Add(new DemoChronicleLine(report.Week,
-                    $"{DemoRepresentative.RoleName(who.Role)} {who.Name} 卸任：{x.Reason}"))
+                    $"{DemoRepresentative.RoleName(who.Role, c.Tier)} {who.Name} 卸任：{x.Reason}"))
             };
         }
         // 第 08-11 章【TEMP 規則】居住地五級（世紀帝國式）：人口與本級設施（專家或技術）決定升降，每週最多一級（記入小史）。

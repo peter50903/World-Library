@@ -100,7 +100,7 @@ public partial class ObserverRoot
         {
             foreach (var site in _world.Sites.Settlements)
                 if (_world.RepresentativesOf(site.Id).FirstOrDefault(r => r.Id == subject.Id) is { } person)
-                    return $"★ {DemoRepresentative.RoleName(person.Role)} {person.Name}（{site.Name}）";
+                    return $"★ {DemoRepresentative.RoleName(person.Role, _world.ChronicleOf(site.Id).Tier)} {person.Name}（{site.Name}）"; // 第 08-10l 節
             return "★ （已卸任或過世）";
         }
         return _world.Sites.Settlements.FirstOrDefault(s => s.Id == subject.Id) is { } settlement

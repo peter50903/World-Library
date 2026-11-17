@@ -188,7 +188,9 @@ public static class DemoBeliefDetail
         var core = new List<string>
         {
             faith.Name,
-            $"第 {Year(faith.FoundedWeek)} 年由{Name(world, faith.FounderSettlementId)}" + (founder is null ? "的村長" : $"的{DemoRepresentative.RoleName(founder.Role)}{founder.Name}") + "創立",
+            $"第 {Year(faith.FoundedWeek)} 年由{Name(world, faith.FounderSettlementId)}" + (founder is null
+                ? "的" + DemoRepresentative.LeaderTitle(world.ChronicleOf(faith.FounderSettlementId).TierAt(faith.FoundedWeek))
+                : $"的{DemoRepresentative.RoleName(founder.Role, world.ChronicleOf(faith.FounderSettlementId).TierAt(faith.FoundedWeek))}{founder.Name}") + "創立", // 第 08-10l 節
             $"聖地：{Name(world, faith.FounderSettlementId)}",
             faith.ExtinctWeek > 0 ? $"第 {Year(faith.ExtinctWeek)} 年起已無信徒（失傳）" : "仍有人信奉",
             "",

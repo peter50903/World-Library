@@ -51,6 +51,22 @@ public enum DemoRepresentativeRole
 public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresentativeRole Role, string Name, DemoTempSex Sex,
     int BirthYear, int AppointedWeek, long ParentId = 0, DemoTrait Traits = DemoTrait.None)
 {
+    /// <summary>第 08-10l 節：領袖依聚落等級的稱號（營地族長、村莊村長、城鎮鎮長、城市以上城主）。</summary>
+    public static string LeaderTitle(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => "族長",
+        DemoSettlementTier.Village => "村長",
+        DemoSettlementTier.Town => "鎮長",
+        _ => "城主"
+    };
+
+    /// <summary>第 08-10l 節：領袖的各種稱號（比對小史的上任紀錄用）。</summary>
+    public static IReadOnlyList<string> LeaderTitles { get; } = new[] { "族長", "村長", "鎮長", "城主" };
+
+    /// <summary>第 08-10l 節：職位名稱；領袖依聚落當時的等級（其他職位與 <see cref="RoleName(DemoRepresentativeRole)"/> 相同）。</summary>
+    public static string RoleName(DemoRepresentativeRole role, DemoSettlementTier tier)
+        => role == DemoRepresentativeRole.Leader ? LeaderTitle(tier) : RoleName(role);
+
     public static string RoleName(DemoRepresentativeRole role) => role switch
     {
         DemoRepresentativeRole.Leader => "村長",
