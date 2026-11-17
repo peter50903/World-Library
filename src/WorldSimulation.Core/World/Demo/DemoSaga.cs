@@ -132,13 +132,16 @@ public static class DemoSaga
     /// <summary>戰爭沒打贏的結局（編年史列為一般事件）在條目裡的用語：叛軍被擊潰、不分勝負、敗退、無力再戰、收兵。</summary>
     private static readonly string[] WarEndings = { "擊潰", "不分勝負", "敗退", "無力再戰", "收兵" };
 
-    /// <summary>這一筆要不要逐條寫進史書：世界大事（技術除外）、任何聚落淪為遺跡、城鎮以上的等級升降、戰爭的結局。</summary>
+    /// <summary>這一筆要不要逐條寫進史書：世界大事（技術除外）、任何聚落淪為遺跡、城鎮以上的等級升降、戰爭的結局、地下城的出現與被殺光。</summary>
     public static bool IsTold(DemoChronicleEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
         // 第 08-19h 章：開了戰就要有下文——沒打贏的結局也寫。
         if (entry.Category == DemoChronicleCategory.Realm && entry.Level == DemoChronicleLevel.Normal)
             return WarEndings.Any(w => entry.Text.Contains(w, StringComparison.Ordinal));
+        // 第 12-2e 節：地下城的出現與被殺光也寫（怪物討伐的故事）；怪物再生不寫（會一再重複）。
+        if (entry.Category == DemoChronicleCategory.Wilds)
+            return entry.Level == DemoChronicleLevel.Major && !entry.Text.Contains("又爬出了怪物", StringComparison.Ordinal);
         // 第 08-19i 章：開戰不另寫——戰爭的結局（征服、獨立、敗退、白和平）那一句已經說了誰打誰、結果如何。
         if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge || entry.Weight == DemoWorldChronicle.WeightWar)
             return false;

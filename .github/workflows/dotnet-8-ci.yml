@@ -300,7 +300,7 @@ jobs:
           done
           # 第 08-10i 章：中地圖的一百年只貼人物、英雄、傳說物品、家族與終章（看大一點的世界有沒有英雄）。
           if timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map medium > /tmp/saga-medium.txt 2>&1; then
-            grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡' /tmp/saga-medium.txt | cut -c1-400 | head -40 > /tmp/saga-medium-short.txt
+            grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|洞窟|古墓|地窟|深淵|迷宮' /tmp/saga-medium.txt | cut -c1-400 | head -48 > /tmp/saga-medium-short.txt
             echo "::notice title=中地圖史書摘要::$(wc -l < /tmp/saga-medium.txt) 行%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-medium-short.txt | cut -c1-3800)"
           else
             echo "::warning title=中地圖史書未完成::$(tail -5 /tmp/saga-medium.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
