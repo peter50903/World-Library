@@ -37,6 +37,30 @@ public sealed class DemoSagaTests
             Assert.Single(lines, l => l.StartsWith("　險境：", StringComparison.Ordinal) && world.Dungeons.All(d => l.Contains(d.Name, StringComparison.Ordinal)));
     }
 
+    // 第 08-10m 節：同一卷的請願獨立合成一句、跟著首領脫離的不另寫、同一個征服者收服兩處以上合成一句（單獨一次照常逐條寫）。
+    [Fact]
+    public void RealmEventsInAVolumeAreCondensed()
+    {
+        static DemoSettlementEvent Ev(long id, int settlement, DemoSettlementEventKind kind, long count, string cause)
+            => new(52, TimeSpan.Zero, settlement, "", kind, count, cause, EventId: id);
+        static DemoChronicleEntry En(long id) => new(52, DemoChronicleLevel.Major, DemoChronicleCategory.Realm, new[] { new DemoChronicleSegment("某事") }, id);
+        var events = new[]
+        {
+            Ev(1, 2, DemoSettlementEventKind.Independence, 1, "甲接受了乙的請願，讓它們獨立"),
+            Ev(2, 3, DemoSettlementEventKind.Independence, 1, "隨乙脫離甲"),
+            Ev(3, 4, DemoSettlementEventKind.Independence, 5, "戊接受了丁的請願，讓它們獨立"),
+            Ev(4, 6, DemoSettlementEventKind.Conquered, 7, "庚兵臨城下（兵力 9 對 2），己不戰而降，歸入庚"),
+            Ev(5, 8, DemoSettlementEventKind.Conquered, 7, "庚征服了辛（攻方死 2、守方死 5）"),
+            Ev(6, 9, DemoSettlementEventKind.Conquered, 10, "癸征服了壬（攻方死 1、守方死 3）"),
+        }.ToDictionary(e => e.EventId);
+        var names = new Dictionary<int, string> { [1] = "甲", [2] = "乙", [3] = "丙", [4] = "丁", [5] = "戊", [6] = "己", [7] = "庚", [8] = "辛", [9] = "壬", [10] = "癸" };
+        var entries = new[] { (3, En(1)), (3, En(2)), (5, En(3)), (6, En(4)), (8, En(5)), (9, En(6)) };
+        var (lines, consumed) = DemoSaga.Condense(entries, events, names);
+        Assert.Equal(new[] { (3, "　第 3～5 年，2 處聚落請願獲准、脫離上級獨立：乙、丁。"), (6, "　第 6～8 年，庚先後收服己、辛（2 處聚落）。") },
+            lines.Select(l => (l.FirstYear, l.Text)));
+        Assert.Equal(new long[] { 1, 2, 3, 4, 5 }, consumed.Select(e => e.EventId).OrderBy(x => x));
+    }
+
     // 第 08-10j 節：未得善終的死因由事件數得；每年的死因合計不超過年帳的非壽終死亡。
     [Fact]
     public void SagaListsTheCausesOfUnnaturalDeaths()
@@ -80,7 +104,7 @@ public sealed class DemoSagaTests
         {
             Year(1, " 人口 60 人，由村莊發展為城鎮"), Year(2, " 人口降到 40 人，降為村莊"), Year(3, " 人口 61 人，由村莊發展為城鎮"), Year(4, " 人口 200 人，由城鎮發展為城市")
         });
-        Assert.Equal(new[] { 52, 208 }, flapping.Select(e => e.Week)); // 降為村莊不在史書的範圍（只寫城鎮以上）
+        Assert.Equal(new[] { 208 }, flapping.Select(e => e.Week)); // 第 08-10m 節：城鎮成立與降為村莊算在「各地」，城市以上才逐條寫
         // 戰爭沒打贏的結局是一般事件，也要寫進史書；其他一般事件不寫。
         static DemoChronicleEntry Realm(string text) => new(1, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, new[] { new DemoChronicleSegment(text) });
         Assert.True(DemoSaga.IsTold(Realm("東塔林的叛軍被佩林谷擊潰（叛軍死 3、上級死 1）")));

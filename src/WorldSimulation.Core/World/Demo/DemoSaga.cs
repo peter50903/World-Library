@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace WorldSimulation.Core.World.Demo;
 
@@ -15,6 +16,12 @@ public static class DemoSaga
 {
     /// <summary>【TEMP】終章列幾個最大的聚落；每卷的技術一句最多點名幾項；每卷最多寫幾位人物、事蹟（降服加失去的聚落）至少幾件才寫、降服幾個稱「征服者」。</summary>
     public const int EndingSettlements = 3, NamedTechs = 4, VolumeRulers = 3, RulerDeeds = 2, ConquerorDeeds = 3;
+
+    /// <summary>
+    /// 【TEMP】第 08-10m 節（大地圖的史書一卷兩百多行）：每卷逐條寫的、沒有傳說物品的英雄最多幾位（其餘只列名字）；
+    /// 合成一句時最多列出幾個聚落名稱（其餘寫「等」）。
+    /// </summary>
+    public const int VolumeHeroes = 6, CondensedNames = 8;
 
     /// <summary>世界開始推進之前呼叫：開局的人口與聚落數。</summary>
     public static DemoSagaOpening Opening(DemoObserverWorld world)
@@ -111,7 +118,12 @@ public static class DemoSaga
         };
 
         var ledger = world.YearSummaries().ToDictionary(y => y.Year);
-        var causes = DeathCauses(world.SettlementEvents()); // 第 08-10j 節：未得善終的死因
+        var settlementEvents = world.SettlementEvents();
+        var causes = DeathCauses(settlementEvents); // 第 08-10j 節：未得善終的死因
+        // 第 08-10m 節：合成句子要看事件的種類與對象（獨立、被征服）。
+        var realmEvents = settlementEvents.Where(e => e.EventId > 0 && e.Kind is DemoSettlementEventKind.Independence or DemoSettlementEventKind.Conquered)
+            .ToDictionary(e => e.EventId);
+        var nameOf = world.Sites.Settlements.ToDictionary(s => s.Id, s => s.Name);
         var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
         var cast = new DemoSagaCast(world); // 第 08-10f 章：人物進入史書
         var lastYear = years.Count == 0 ? 1 : years[^1].Year;
@@ -136,23 +148,28 @@ public static class DemoSaga
             lines.Add("");
             lines.Add(I($"卷 {++number}　{DemoAges.Name(span.Age)}　第 {volume[0].Year}～{volume[^1].Year} 年　{DemoAges.Description(span.Age)}"));
 
-            // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
-            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: cast.MarkedSentence(e))))
+            // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城市以上的升降。一模一樣的句子合併年份。
+            // 第 08-10m 節：同一卷的請願獨立合成一句、跟著首領脫離的不另寫、同一個征服者收服的聚落合成一句；勢力戰爭的死傷數不寫（每卷的死因已經有）。
+            var entries = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Entry: e))).ToList();
+            var (condensed, consumed) = Condense(entries, realmEvents, nameOf);
+            var told = entries.Where(x => !consumed.Contains(x.Entry))
+                .Select(x => (x.Year, Text: x.Entry.Category == DemoChronicleCategory.Realm ? Casualties.Replace(cast.MarkedSentence(x.Entry), "") : cast.MarkedSentence(x.Entry)))
                 .GroupBy(x => Plain(x.Text), StringComparer.Ordinal)
                 .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.First().Text)).ToList();
-            foreach (var (toldYears, text) in told)
-                lines.Add(I($"　第 {string.Join("、", toldYears)} 年，{text}"));
+            foreach (var (_, text) in told.Select(t => (t.Years[0], I($"　第 {string.Join("、", t.Years)} 年，{t.Text}")))
+                .Concat(condensed).OrderBy(x => x.Item1))
+                lines.Add(text);
             var techs = Techs(volume);
             if (techs is not null)
                 lines.Add("　" + techs);
-            if (told.Count == 0 && techs is null)
+            if (told.Count == 0 && condensed.Count == 0 && techs is null)
                 lines.Add("　這些年沒有驚動世界的大事。");
             var local = DemoWorldChronicle.LocalTally(volume);
             if (local.Length > 0)
                 lines.Add("　各地：" + local + "。");
             foreach (var ruler in cast.RulersMarked(volume[0].Year, volume[^1].Year, lastYear))
                 lines.Add("　人物：" + ruler);
-            foreach (var hero in cast.HeroesMarked(volume[0].Year, volume[^1].Year)) // 第 08-10i 章
+            foreach (var hero in cast.HeroesMarked(volume[0].Year, volume[^1].Year, VolumeHeroes)) // 第 08-10i 章；第 08-10m 節：其餘只列名字
                 lines.Add("　英雄：" + hero);
             lines.Add("　" + People(volume, ledger, causes));
         }
@@ -161,6 +178,48 @@ public static class DemoSaga
         lines.AddRange(Ending(world, years.Count, cast));
         var linker = new SettlementLinker(world); // 第 05-2 章：聚落名稱一律可以點
         return lines.Select(linker.Apply).ToList();
+    }
+
+    /// <summary>第 08-10m 節：勢力戰爭句子裡的死傷數（「（叛軍死 3、上級死 1）」「（攻方死 2、守方死 6）」）。</summary>
+    private static readonly Regex Casualties = new("（(?:叛軍|攻方)死 \\d+、(?:上級|守方)死 \\d+）", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// 第 08-10m 節：把一卷裡的勢力大事合成幾句——請願獲准而獨立的（兩件以上）合成一句；跟著首領脫離的不另寫；
+    /// 同一個征服者收服的聚落（兩處以上）合成一句。回傳合成的句子（依第一年排序用）與被合併掉的條目。
+    /// </summary>
+    internal static (List<(int FirstYear, string Text)> Lines, HashSet<DemoChronicleEntry> Consumed) Condense(
+        IReadOnlyList<(int Year, DemoChronicleEntry Entry)> entries, IReadOnlyDictionary<long, DemoSettlementEvent> realm,
+        IReadOnlyDictionary<int, string> nameOf)
+    {
+        static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
+        string Name(int id) => nameOf.GetValueOrDefault(id, "某地");
+        string Names(IEnumerable<int> ids)
+        {
+            var list = ids.Distinct().Select(Name).ToList();
+            return string.Join("、", list.Take(CondensedNames)) + (list.Count > CondensedNames ? "等" : "");
+        }
+        static string Span(IReadOnlyCollection<int> years) => years.Min() == years.Max() ? I($"第 {years.Min()} 年") : I($"第 {years.Min()}～{years.Max()} 年");
+        var lines = new List<(int, string)>();
+        var consumed = new HashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
+        DemoSettlementEvent? Event(DemoChronicleEntry e) => e.Category == DemoChronicleCategory.Realm && realm.TryGetValue(e.EventId, out var x) ? x : null;
+
+        var independent = entries.Where(x => Event(x.Entry)?.Kind == DemoSettlementEventKind.Independence).ToList();
+        consumed.UnionWith(independent.Where(x => Event(x.Entry)!.Cause.StartsWith("隨", StringComparison.Ordinal)).Select(x => x.Entry));
+        var petitions = independent.Where(x => Event(x.Entry)!.Cause.Contains("的請願", StringComparison.Ordinal)).ToList();
+        if (petitions.Count >= 2)
+        {
+            var years = petitions.Select(x => x.Year).ToList();
+            lines.Add((years.Min(), I($"　{Span(years)}，{petitions.Count} 處聚落請願獲准、脫離上級獨立：{Names(petitions.Select(x => Event(x.Entry)!.SettlementId))}。")));
+            consumed.UnionWith(petitions.Select(x => x.Entry));
+        }
+        foreach (var conqueror in entries.Where(x => Event(x.Entry)?.Kind == DemoSettlementEventKind.Conquered)
+            .GroupBy(x => (int)Event(x.Entry)!.Count).Where(g => g.Count() >= 2).OrderBy(g => g.Min(x => x.Year)).ThenBy(g => g.Key))
+        {
+            var years = conqueror.Select(x => x.Year).ToList();
+            lines.Add((years.Min(), I($"　{Span(years)}，{Name(conqueror.Key)}先後收服{Names(conqueror.Select(x => Event(x.Entry)!.SettlementId))}（{conqueror.Count()} 處聚落）。")));
+            consumed.UnionWith(conqueror.Select(x => x.Entry));
+        }
+        return (lines, consumed);
     }
 
     /// <summary>第 05-2 章：把一行裡出現的聚落名稱標成連結（聚落名稱不重複；長的先比對；已經是連結的部分不動）。</summary>
@@ -291,9 +350,12 @@ public static class DemoSaga
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
             return true;
+        // 第 08-10m 節：城鎮成立不逐條寫（世上第一座是世界大事，上面已經寫了；其餘算在「各地」的等級升降裡）；
+        // 城市、首都的成立與城市降為城鎮照寫。
         return entry.Category == DemoChronicleCategory.Tier
-            && new[] { DemoSettlementTier.Town, DemoSettlementTier.City, DemoSettlementTier.Capital }
-                .Any(t => entry.Text.Contains(DemoSettlementHistory.TierName(t), StringComparison.Ordinal));
+            && (new[] { DemoSettlementTier.City, DemoSettlementTier.Capital }
+                    .Any(t => entry.Text.Contains(DemoSettlementHistory.TierName(t), StringComparison.Ordinal))
+                || entry.Text.Contains(DemoSettlementChronicle.TierDownMarker + DemoSettlementHistory.TierName(DemoSettlementTier.Town), StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -455,17 +517,28 @@ public sealed class DemoSagaCast
     public IReadOnlyList<string> Heroes(int fromYear, int toYear) => HeroesMarked(fromYear, toYear).Select(DemoSaga.Plain).ToList();
 
     /// <summary>同 <see cref="Heroes"/>，名稱帶連結標記。</summary>
-    internal IReadOnlyList<string> HeroesMarked(int fromYear, int toYear)
+    /// <remarks>第 08-10m 節：沒有傳說物品的英雄超過 <paramref name="keepWithoutItem"/> 位時，其餘只在最後一句列名字。</remarks>
+    internal IReadOnlyList<string> HeroesMarked(int fromYear, int toYear, int keepWithoutItem = int.MaxValue)
     {
         static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
         static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
-        return _legends.Where(l => Year(l.Week) >= fromYear && Year(l.Week) <= toYear).Select(l =>
+        var lines = new List<string>();
+        var others = new List<DemoPersonRecord>();
+        foreach (var l in _legends.Where(l => Year(l.Week) >= fromYear && Year(l.Week) <= toYear))
         {
+            if (l.Item.Length == 0 && lines.Count(x => !x.Contains("，得到「", StringComparison.Ordinal)) >= keepWithoutItem)
+            {
+                others.Add(l.Hero);
+                continue;
+            }
             var temper = DemoTraits.Names(l.Hero.Traits);
             var end = l.Hero.InOffice ? "" : I($"；第 {Year(l.Hero.ExitWeek)} 年{ExitText(l.Hero.ExitReason)}");
             var prize = l.Item.Length > 0 ? $"，得到「{l.Item}」" : "";
-            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{P(l.Hero)}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）{l.Deed.Text}{prize}{end}。");
-        }).ToList();
+            lines.Add(I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{P(l.Hero)}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）{l.Deed.Text}{prize}{end}。"));
+        }
+        if (others.Count > 0)
+            lines.Add(I($"另有 {others.Count} 位英雄在平亂與獨立戰爭中成名：{string.Join("、", others.Select(h => $"{_nameOf.GetValueOrDefault(h.SettlementId, "某地")}的{P(h)}"))}。"));
+        return lines;
     }
 
     /// <summary>
