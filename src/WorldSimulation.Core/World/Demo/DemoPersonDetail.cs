@@ -36,10 +36,14 @@ public static class DemoPersonDetail
             Duty(person.Role)
         };
         // 第 08-10g 章：家族、父母與性格（領袖）。
-        if (person.Role == DemoRepresentativeRole.Leader)
+        if (person.Role is DemoRepresentativeRole.Leader or DemoRepresentativeRole.Hero)
         {
             lines.Add($"家族：{DemoNames.FamilyOf(person.Name)}家" + (person.ParentId > 0 && world.PersonRecord(person.ParentId) is { } parent
-                ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是前任{role}{parent.Name}）" : "（這一家的第一代）"));
+                ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是{DemoRepresentative.RoleName(parent.Role)}{parent.Name}）"
+                : person.Role == DemoRepresentativeRole.Hero ? "（士兵出身）" : "（這一家的第一代）"));
+            // 第 08-10i 章：英雄得到的傳說物品。
+            if (person.Role == DemoRepresentativeRole.Hero && DemoHeroes.Legends(world).FirstOrDefault(l => l.Hero.Id == person.Id) is { } legend)
+                lines.Add($"事蹟：第 {Year(legend.Week)} 年帶隊殺光{legend.Dungeon}的怪物，得到「{legend.Item}」");
             if (person.Traits != DemoTrait.None)
             {
                 lines.Add("性格：" + DemoTraits.Names(person.Traits));
@@ -86,6 +90,7 @@ public static class DemoPersonDetail
         DemoRepresentativeRole.Hunter => "職責：帶領狩獵，也是對抗野獸與怪物的好手",
         DemoRepresentativeRole.Shaman => "職責：主持祭祀、照顧病人",
         DemoRepresentativeRole.Scholar => "職責：抄寫與研究，加快所有領域的研究",
+        DemoRepresentativeRole.Hero => "職責：帶領士兵對付怪物，在世時本地士兵的等級 +1",
         _ => "職責：代表聚落"
     };
 }

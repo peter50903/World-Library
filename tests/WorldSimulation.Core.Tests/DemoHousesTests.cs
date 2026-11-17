@@ -71,7 +71,7 @@ public sealed class DemoHousesTests
         var byId = leaders.ToDictionary(p => p.Id);
         // 每位領袖兩項性格；其他職位沒有性格、沒有父母。
         Assert.All(leaders, p => Assert.Equal(DemoTraits.TempCount, DemoTraits.List(p.Traits).Count));
-        Assert.All(world.PersonRecords.Where(p => p.Role != DemoRepresentativeRole.Leader),
+        Assert.All(world.PersonRecords.Where(p => p.Role is not (DemoRepresentativeRole.Leader or DemoRepresentativeRole.Hero)),
             p => Assert.Equal((DemoTrait.None, 0L), (p.Traits, p.ParentId)));
         // 世襲：45 年裡一定有人繼承；繼承人與父母同姓不同名、同一個聚落、比父母小 18～45 歲、在父母離任那一週接任。
         var heirs = leaders.Where(p => p.ParentId > 0).ToList();

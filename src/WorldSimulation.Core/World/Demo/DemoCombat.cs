@@ -39,14 +39,14 @@ public static class DemoCombat
     public static int MonsterLevel(DemoDungeon dungeon) => dungeon.Layers + 1;
 
     /// <summary>一個聚落的人力：<paramref name="knows"/>＝會不會某項技術（TechID）。</summary>
-    public static DemoCombatForce Force(long adults, DemoSettlementTier tier, Func<string, bool> knows)
+    public static DemoCombatForce Force(long adults, DemoSettlementTier tier, Func<string, bool> knows, bool hero = false)
     {
         ArgumentNullException.ThrowIfNull(knows);
         if (adults <= 0)
             return DemoCombatForce.None;
         var soldiers = tier >= DemoSettlementTier.City ? adults * TempCitySoldierPermille / 1000
             : tier >= DemoSettlementTier.Town ? adults * TempTownSoldierPermille / 1000 : 0;
-        var soldierLevel = soldiers > 0 ? 1 + GearTechs.Count(knows) : 0;
+        var soldierLevel = soldiers > 0 ? 1 + GearTechs.Count(knows) + (hero ? 1 : 0) : 0; // 第 08-10i 章：有英雄帶隊 +1
         return new DemoCombatForce(soldiers, soldierLevel, Math.Max(0, adults - soldiers));
     }
 

@@ -66,6 +66,8 @@ public static class DemoSaga
                 lines.Add("　各地：" + local + "。");
             foreach (var ruler in cast.Rulers(volume[0].Year, volume[^1].Year, lastYear))
                 lines.Add("　人物：" + ruler);
+            foreach (var hero in cast.Heroes(volume[0].Year, volume[^1].Year)) // 第 08-10i 章
+                lines.Add("　英雄：" + hero);
             lines.Add("　" + People(volume, ledger));
         }
 
@@ -99,6 +101,9 @@ public static class DemoSaga
             .Select(x => I($"{x.Name}（全盛時 {world.ChronicleOf(x.Id).Peak} 人）")).ToList();
         if (ruins.Count > 0)
             yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
+        var relics = new DemoSagaCast(world).Relics(); // 第 08-10i 章
+        if (relics.Count > 0)
+            yield return "　傳說物品：" + string.Join("；", relics) + "。";
         var houses = new DemoSagaCast(world).Houses(EndingSettlements); // 第 08-10g 章
         if (houses.Count > 0)
             yield return "　家族：" + string.Join("；", houses) + "。";
@@ -228,6 +233,8 @@ public sealed class DemoSagaCast
     private readonly Dictionary<int, string> _nameOf;
     private readonly List<(int Week, int Attacker)> _conquests;
     private readonly List<(int Week, int Liege)> _losses;
+    private readonly IReadOnlyList<DemoLegend> _legends;
+    private readonly Dictionary<long, DemoPersonRecord> _people;
 
     public DemoSagaCast(DemoObserverWorld world)
     {
@@ -241,7 +248,42 @@ public sealed class DemoSagaCast
         var events = world.SettlementEvents();
         _conquests = events.Where(e => e.Kind == DemoSettlementEventKind.Conquered).Select(e => (e.Week, (int)e.Count)).ToList();
         _losses = events.Where(e => e.Kind == DemoSettlementEventKind.Independence).Select(e => (e.Week, (int)e.Count)).ToList();
+        _legends = DemoHeroes.Legends(world);
+        _people = world.PersonRecords.ToDictionary(p => p.Id);
     }
+
+    private string Origin(DemoPersonRecord hero)
+        => hero.ParentId > 0 && _people.TryGetValue(hero.ParentId, out var parent)
+            ? $"{DemoRepresentative.RoleName(parent.Role)}{parent.Name}的{(hero.Sex == DemoTempSex.Female ? "女兒" : "兒子")}"
+            : "士兵出身";
+
+    /// <summary>
+    /// 第 08-10i 章：這一卷成名的英雄（每人一句）：哪一年、哪個聚落的誰（出身、性格）殺光了哪個地下城的怪物、得到什麼；已經過世的寫出結局。
+    /// </summary>
+    public IReadOnlyList<string> Heroes(int fromYear, int toYear)
+    {
+        static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
+        return _legends.Where(l => Year(l.Week) >= fromYear && Year(l.Week) <= toYear).Select(l =>
+        {
+            var temper = DemoTraits.Names(l.Hero.Traits);
+            var end = l.Hero.InOffice ? "" : I($"；第 {Year(l.Hero.ExitWeek)} 年{ExitText(l.Hero.ExitReason)}");
+            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{l.Hero.Name}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）帶隊殺光{l.Dungeon}的怪物，得到「{l.Item}」{end}。");
+        }).ToList();
+    }
+
+    /// <summary>
+    /// 第 08-10i 章：傳說物品的下落（每件一句）：英雄在世由英雄持有；領袖家族出身的英雄死後由家族收藏；士兵出身的英雄死後下落不明。
+    /// </summary>
+    public IReadOnlyList<string> Relics()
+        => _legends.Select(l =>
+        {
+            var place = _nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地");
+            var holder = l.Hero.InOffice ? $"由{place}的英雄{l.Hero.Name}持有"
+                : l.Hero.ParentId > 0 ? $"{l.Hero.Name}死後由{place}的{DemoNames.FamilyOf(l.Hero.Name)}家收藏"
+                : $"{l.Hero.Name}死後下落不明";
+            return $"「{l.Item}」{holder}";
+        }).ToList();
 
     /// <summary>第 <paramref name="week"/> 週時這個聚落的領袖（那時沒有領袖＝null）。</summary>
     public DemoPersonRecord? LeaderAt(int settlementId, int week)
