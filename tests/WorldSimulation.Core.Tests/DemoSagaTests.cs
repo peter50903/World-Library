@@ -37,6 +37,23 @@ public sealed class DemoSagaTests
             Assert.Single(lines, l => l.StartsWith("　險境：", StringComparison.Ordinal) && world.Dungeons.All(d => l.Contains(d.Name, StringComparison.Ordinal)));
     }
 
+    // 第 08-10j 節：未得善終的死因由事件數得；每年的死因合計不超過年帳的非壽終死亡。
+    [Fact]
+    public void SagaListsTheCausesOfUnnaturalDeaths()
+    {
+        var (world, opening) = Shared.Value;
+        var causes = DemoSaga.DeathCauses(world.SettlementEvents());
+        foreach (var y in world.YearSummaries())
+        {
+            var known = causes.TryGetValue(y.Year, out var t) ? t.Values.Sum() : 0;
+            Assert.True(known <= y.Deaths - y.NaturalDeaths, $"第 {y.Year} 年：死因合計 {known}、未得善終 {y.Deaths - y.NaturalDeaths}");
+        }
+        Assert.All(causes.Values.SelectMany(t => t.Keys), c => Assert.Contains(c, DemoSaga.DeathCauseNames));
+        var lines = DemoSaga.Write(world, opening);
+        Assert.All(lines.Where(l => l.Contains("人未得善終", StringComparison.Ordinal)),
+            l => Assert.Contains("人未得善終（", l, StringComparison.Ordinal));
+    }
+
     [Fact]
     public void SagaTellsEveryWorldEventOnceAndSumsUpTheNewTechnologies()
     {
