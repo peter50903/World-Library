@@ -25,7 +25,8 @@ internal static class DemoHumanLifecycle
     /// <returns>生死後的週結算與群體人口（第 07-1 章起沒有個體當事人；事件只記聚落與人數）。</returns>
     public static (DemoWeeklyOutcome Outcome, DemoCohortDemography Population) Apply(
         DemoWeeklyOutcome weekly, DemoCohortDemography opening, DemoPopulationDraws draws, DemoNames names, long firstNewEventId = 1,
-        DemoKnowledgeState? knowledge = null, Func<int, bool>? strongRule = null, IReadOnlySet<int>? heroDeeds = null)
+        DemoKnowledgeState? knowledge = null, Func<int, bool>? strongRule = null, IReadOnlySet<int>? heroDeeds = null,
+        Func<long, IReadOnlyCollection<string>>? houseGiven = null)
     {
         ArgumentNullException.ThrowIfNull(names);
         ArgumentNullException.ThrowIfNull(weekly);
@@ -113,7 +114,7 @@ internal static class DemoHumanLifecycle
         // ④ 第 07-1 章 b 節：代表人物卸任（老死、聚落無人）與補任。
         var entityAllocator = EntityIdAllocator.Restore(weekly.EntityIds);
         var (population, appointments, exits) = Representatives(outcome.Population, repDeaths, report, weekly.Sites, day, entityAllocator, names,
-            knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps, heroDeeds);
+            knowledge ?? DemoKnowledgeState.Initial, starvedReps, strongRule, disasterReps, heroDeeds, houseGiven);
 
         DemoPerf.Mark("生死：代表人物");
         var eventSums = outcome.Events.GroupBy(e => (e.Kind, e.SettlementId, e.BatchId)).ToDictionary(g => g.Key, g => g.Sum(e => e.Count));
@@ -234,8 +235,11 @@ internal static class DemoHumanLifecycle
         Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
             DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge,
             IReadOnlyList<DemoRepresentative> starved, Func<int, bool>? strongRule = null,
-            IReadOnlyList<DemoRepresentative>? disasterVictims = null, IReadOnlySet<int>? heroDeeds = null)
+            IReadOnlyList<DemoRepresentative>? disasterVictims = null, IReadOnlySet<int>? heroDeeds = null,
+            Func<long, IReadOnlyCollection<string>>? houseGiven = null)
     {
+        // 第 08-10k 節：世襲取名避開這一脈用過的名（沒給＝只避開父母的名）。
+        IReadOnlyCollection<string> Avoid(DemoRepresentative parent) => houseGiven?.Invoke(parent.Id) ?? new[] { DemoNames.GivenOf(parent.Name) };
         var exits = starved.Select(r => new DemoRepresentativeExit(r.Id, r.SettlementId, $"餓死（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）"))
             .Concat((disasterVictims ?? Array.Empty<DemoRepresentative>()).Select(r =>
                 new DemoRepresentativeExit(r.Id, r.SettlementId, $"死於天災（{DemoCohortDemography.AgeAt(r.BirthYear, day)} 歲）"))) // 第 12-1 章 C3
@@ -295,7 +299,7 @@ internal static class DemoHumanLifecycle
                 if (pick is null) continue;
                 var id = DemoEntityIds.NextLong(ids);
                 var name = parent is null ? names.Person(id, pick.Sex)
-                    : names.PersonOfHouse(id, pick.Sex, DemoNames.FamilyOf(parent.Name), DemoNames.GivenOf(parent.Name));
+                    : names.PersonOfHouse(id, pick.Sex, DemoNames.FamilyOf(parent.Name), Avoid(parent));
                 var traits = role == DemoRepresentativeRole.Leader ? DemoTraits.Roll(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None) : DemoTrait.None;
                 var person = new DemoRepresentative(id, settlement.Id, role, name, pick.Sex, pick.BirthYear, report.Week, parent?.Id ?? 0, traits);
                 current.Add(person);
@@ -315,7 +319,7 @@ internal static class DemoHumanLifecycle
                             .OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
                     var isKin = kin is not null && (int)(names.TraitDraw(heroId, 20) % 100UL) < DemoHeroes.TempKinPercent;
                     var chosen = isKin ? kin! : able.OrderByDescending(g => g.BirthYear).ThenBy(g => g.Sex).First();
-                    var heroName = isKin ? names.PersonOfHouse(heroId, chosen.Sex, DemoNames.FamilyOf(lord!.Name), DemoNames.GivenOf(lord.Name))
+                    var heroName = isKin ? names.PersonOfHouse(heroId, chosen.Sex, DemoNames.FamilyOf(lord!.Name), Avoid(lord))
                         : names.Person(heroId, chosen.Sex);
                     var hero = new DemoRepresentative(heroId, settlement.Id, DemoRepresentativeRole.Hero, heroName, chosen.Sex, chosen.BirthYear, report.Week,
                         isKin ? lord!.Id : 0, DemoTraits.Roll(k => names.TraitDraw(heroId, k), isKin ? lord!.Traits : DemoTrait.None));

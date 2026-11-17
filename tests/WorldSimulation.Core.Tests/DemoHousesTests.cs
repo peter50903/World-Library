@@ -76,11 +76,23 @@ public sealed class DemoHousesTests
         // 世襲：45 年裡一定有人繼承；繼承人與父母同姓不同名、同一個聚落、比父母小 18～45 歲、在父母離任那一週接任。
         var heirs = leaders.Where(p => p.ParentId > 0).ToList();
         Assert.NotEmpty(heirs);
+        var everyone = world.PersonRecords.ToDictionary(p => p.Id);
+        List<string> Ancestors(DemoPersonRecord p)
+        {
+            var names = new List<string>();
+            var id = p.ParentId;
+            while (id > 0 && everyone.TryGetValue(id, out var a) && names.Count < 100)
+            {
+                names.Add(DemoNames.GivenOf(a.Name));
+                id = a.ParentId;
+            }
+            return names;
+        }
         Assert.All(heirs, heir =>
         {
             var parent = byId[heir.ParentId];
             Assert.Equal(DemoNames.FamilyOf(parent.Name), DemoNames.FamilyOf(heir.Name));
-            Assert.NotEqual(DemoNames.GivenOf(parent.Name), DemoNames.GivenOf(heir.Name));
+            Assert.DoesNotContain(DemoNames.GivenOf(heir.Name), Ancestors(heir)); // 第 08-10k 節：家譜裡不同名
             Assert.Equal(parent.SettlementId, heir.SettlementId);
             Assert.InRange(heir.BirthYear - parent.BirthYear, DemoHumanLifecycle.TempHeirMinGapYears, DemoHumanLifecycle.TempHeirMaxGapYears);
             Assert.Equal(parent.ExitWeek, heir.AppointedWeek);
