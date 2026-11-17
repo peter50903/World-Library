@@ -37,7 +37,10 @@ public enum DemoRepresentativeRole
     Shaman = 5,
 
     /// <summary>第 08-9 章 A2（08-7b 第 3 節）：學者（抄寫法起補任；所有領域研究加速）。</summary>
-    Scholar = 6
+    Scholar = 6,
+
+    /// <summary>第 08-10i 章：英雄（殺光地下城怪物而成名；不是每個聚落都有，也不補任）。</summary>
+    Hero = 7
 }
 
 /// <summary>
@@ -57,6 +60,7 @@ public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresent
         DemoRepresentativeRole.Hunter => "獵人",
         DemoRepresentativeRole.Shaman => "巫祝",
         DemoRepresentativeRole.Scholar => "學者",
+        DemoRepresentativeRole.Hero => "英雄",
         _ => "代表"
     };
 

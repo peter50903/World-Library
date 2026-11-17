@@ -517,7 +517,8 @@ public sealed partial class DemoObserverWorld
             if (_demography is null || site is null || site.IsRuin)
                 return cache[id] = DemoCombatForce.None;
             return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
-                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)));
+                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)),
+                _demography.Representatives.Any(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)); // 第 08-10i 章：英雄在世，士兵等級 +1
         };
     }
 
@@ -745,7 +746,8 @@ public sealed partial class DemoObserverWorld
                 // 第 04 章 a 節：生死抽樣只走歷史種子的 POP 流（實體局部亂數，不推進全域流計數器）。
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
                     checked(_history.LastEventId + 1), _knowledge,
-                    id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true); // 第 08-8 章 B2
+                    id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true, // 第 08-8 章 B2
+                    DemoHeroes.Deeds(LatestWeek?.Events)); // 第 08-10i 章：上一週殺光地下城怪物的聚落出一位英雄
                 DemoPerf.Mark("生死");
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
