@@ -42,12 +42,23 @@ public sealed class DemoSagaTests
 
         // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，同一卷裡一模一樣的句子只寫一次。
         var sentences = world.Ages().Select(a => years.Where(y => y.Year >= a.FromYear && y.Year <= a.ToYear))
-            .SelectMany(volume => volume.SelectMany(y => y.Entries).Where(DemoSaga.IsTold).Select(DemoSaga.Sentence).Distinct()).ToList();
+            .SelectMany(volume => DemoSaga.ToldEntries(years).Where(e => volume.Any(y => y.Entries.Contains(e))).Select(DemoSaga.Sentence).Distinct()).ToList();
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
         Assert.Equal(sentences.Count, told.Count);
         Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
-        Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge),
+        Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge && e.Weight != DemoWorldChronicle.WeightWar),
             e => Assert.True(DemoSaga.IsTold(e)));
+        Assert.False(DemoSaga.IsTold(new DemoChronicleEntry(1, DemoChronicleLevel.Major, DemoChronicleCategory.Realm,
+            new[] { new DemoChronicleSegment("甲向乙宣戰") }, Weight: DemoWorldChronicle.WeightWar))); // 開戰不另寫，結局會說
+        // 同一個聚落升到同一級只寫第一次；降級照寫。
+        static DemoChronicleYear Year(int year, params string[] texts) => new(year, DemoEra.Pioneer, false,
+            texts.Select(t => new DemoChronicleEntry(year * 52, DemoChronicleLevel.Major, DemoChronicleCategory.Tier,
+                new[] { new DemoChronicleSegment("東塔林", 7), new DemoChronicleSegment(t) })).ToList(), 0, 0, new Dictionary<int, (long, long)>());
+        var flapping = DemoSaga.ToldEntries(new[]
+        {
+            Year(1, " 人口 60 人，由村莊發展為城鎮"), Year(2, " 人口降到 40 人，降為村莊"), Year(3, " 人口 61 人，由村莊發展為城鎮"), Year(4, " 人口 200 人，由城鎮發展為城市")
+        });
+        Assert.Equal(new[] { 52, 208 }, flapping.Select(e => e.Week)); // 降為村莊不在史書的範圍（只寫城鎮以上）
         // 戰爭沒打贏的結局是一般事件，也要寫進史書；其他一般事件不寫。
         static DemoChronicleEntry Realm(string text) => new(1, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, new[] { new DemoChronicleSegment(text) });
         Assert.True(DemoSaga.IsTold(Realm("東塔林的叛軍被佩林谷擊潰（叛軍死 3、上級死 1）")));

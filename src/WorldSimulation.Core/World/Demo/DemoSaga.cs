@@ -37,6 +37,7 @@ public static class DemoSaga
         };
 
         var ledger = world.YearSummaries().ToDictionary(y => y.Year);
+        var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
         // 第 08-6c 章：一個世界時代一卷（原本固定十年一卷）。
         var number = 0;
         foreach (var span in world.Ages())
@@ -48,7 +49,7 @@ public static class DemoSaga
             lines.Add(I($"卷 {++number}　{DemoAges.Name(span.Age)}　第 {volume[0].Year}～{volume[^1].Year} 年　{DemoAges.Description(span.Age)}"));
 
             // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
-            var told = volume.SelectMany(y => y.Entries.Where(IsTold).Select(e => (y.Year, Text: Sentence(e))))
+            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: Sentence(e))))
                 .GroupBy(x => x.Text, StringComparer.Ordinal)
                 .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.Key)).ToList();
             foreach (var (toldYears, text) in told)
@@ -97,6 +98,25 @@ public static class DemoSaga
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
     }
 
+    /// <summary>
+    /// 要逐條寫進史書的條目（依時間）：<see cref="IsTold"/> 的條目，但同一個聚落升到同一級只寫第一次
+    /// （人口在門檻上下擺盪時，不重複寫「發展為城鎮」；降級照寫）。
+    /// </summary>
+    public static IReadOnlyList<DemoChronicleEntry> ToldEntries(IEnumerable<DemoChronicleYear> years)
+    {
+        ArgumentNullException.ThrowIfNull(years);
+        var reached = new HashSet<(int Settlement, string Tier)>();
+        var result = new List<DemoChronicleEntry>();
+        foreach (var entry in years.OrderBy(y => y.Year).SelectMany(y => y.Entries).Where(IsTold))
+        {
+            var at = entry.Category == DemoChronicleCategory.Tier ? entry.Text.IndexOf(DemoSettlementChronicle.TierUpMarker, StringComparison.Ordinal) : -1;
+            if (at >= 0 && !reached.Add((entry.SettlementId, entry.Text[(at + DemoSettlementChronicle.TierUpMarker.Length)..])))
+                continue;
+            result.Add(entry);
+        }
+        return result;
+    }
+
     /// <summary>戰爭沒打贏的結局（編年史列為一般事件）在條目裡的用語：叛軍被擊潰、不分勝負、敗退、無力再戰、收兵。</summary>
     private static readonly string[] WarEndings = { "擊潰", "不分勝負", "敗退", "無力再戰", "收兵" };
 
@@ -107,7 +127,8 @@ public static class DemoSaga
         // 第 08-19h 章：開了戰就要有下文——沒打贏的結局也寫。
         if (entry.Category == DemoChronicleCategory.Realm && entry.Level == DemoChronicleLevel.Normal)
             return WarEndings.Any(w => entry.Text.Contains(w, StringComparison.Ordinal));
-        if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge)
+        // 第 08-19i 章：開戰不另寫——戰爭的結局（征服、獨立、敗退、白和平）那一句已經說了誰打誰、結果如何。
+        if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge || entry.Weight == DemoWorldChronicle.WeightWar)
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
             return true;

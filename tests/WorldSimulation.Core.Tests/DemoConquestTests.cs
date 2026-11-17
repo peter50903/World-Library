@@ -22,14 +22,14 @@ public sealed class DemoConquestTests
     private static DemoRealmContext Ctx(DemoWorldSites sites, int king, Func<int, long> residents, Func<int, int?>? faith = null)
         => new(sites, residents, _ => 1, faith ?? (_ => null), id => id == king ? DemoSettlementTier.City : DemoSettlementTier.Village, _ => false);
 
-    private static IReadOnlyList<DemoSettlementEvent> Step(DemoRealms.Fold fold, int week, DemoRealmContext ctx, RngRegistry rng, bool conquest = true)
+    private static IReadOnlyList<DemoSettlementEvent> Step(DemoRealms.Fold fold, int week, DemoRealmContext ctx, RngRegistry rng, bool conquest = true, bool cityWars = false)
     {
         var battles = DemoRealms.Battles(week, fold, ctx.Sites, ctx.Residents, new HashSet<int>(), RngRegistry.Create(1)).Values
             .Select((b, k) => new DemoSettlementEvent(week, TimeSpan.FromDays(week * 7), b.SettlementId, "", b.Kind, b.Deaths, b.Cause, EventId: week * 100 + k))
             .ToList();
         foreach (var e in battles)
             fold.Apply(e);
-        var events = DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold, ctx, new Dictionary<int, int>(), rng, false, week * 100 + 50, conquest);
+        var events = DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold, ctx, new Dictionary<int, int>(), rng, false, week * 100 + 50, conquest, cityWars: cityWars);
         foreach (var e in events)
             fold.Apply(e);
         return battles.Concat(events).ToList();
@@ -41,7 +41,7 @@ public sealed class DemoConquestTests
         var (sites, a, b, c) = Setup();
         var fold = new DemoRealms.Fold();
         fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
-        var ctx = Ctx(sites, a, id => id == a ? 200 : id == b ? 100 : id == c ? 50 : 0, id => id == c ? 2 : 1);
+        var ctx = Ctx(sites, a, id => id == a ? 200 : id == b ? 100 : id == c ? 70 : 0, id => id == c ? 2 : 1); // 兵力 30 對 7：不到五倍，要打
         var rng = RngRegistry.Create(7);
         var all = new List<DemoSettlementEvent>();
         for (var week = 2; week < 2 + 13 * 60 && !all.Any(e => e.Kind is DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded); week++)
@@ -72,6 +72,37 @@ public sealed class DemoConquestTests
             for (var week = 2; week < 2 + 13 * 30; week++)
                 Assert.DoesNotContain(Step(fold, week, ctx, rng, conquest), e => e.Kind == DemoSettlementEventKind.WarDeclared);
         }
+    }
+
+    // 第 08-19i 章：沒有臣屬、世上還沒有王國，城市也能出兵征服鄰居；勢力由征服而來。
+    [Fact]
+    public void LoneCityConquersItsNeighbourBeforeAnyKingdomExists()
+    {
+        var (sites, a, _, c) = Setup();
+        var fold = new DemoRealms.Fold();
+        var ctx = Ctx(sites, a, id => id == a ? 200 : id == c ? 50 : 0, id => id == c ? 2 : 1);
+        var rng = RngRegistry.Create(7);
+        var all = new List<DemoSettlementEvent>();
+        for (var week = 2; week < 2 + 13 * 60 && !all.Any(e => e.Kind is DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded); week++)
+            all.AddRange(Step(fold, week, ctx, rng, conquest: false, cityWars: true));
+        var declared = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.WarDeclared);
+        Assert.Equal((a, (long)c), (declared.SettlementId, declared.Count));
+        Assert.Contains(all, e => e.Kind is DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded);
+        // 兵力五倍以上：不戰而降（沒有宣戰與交戰），而且剛被征服的不會加入派系。
+        var meek = new DemoRealms.Fold();
+        var weak = Ctx(sites, a, id => id == a ? 200 : id == c ? 20 : 0, id => id == c ? 2 : 1);
+        var quick = new List<DemoSettlementEvent>();
+        for (var week = 2; week < 2 + 13 * 60 && !quick.Any(e => e.Kind == DemoSettlementEventKind.Conquered); week++)
+            quick.AddRange(Step(meek, week, weak, RngRegistry.Create(7), conquest: false, cityWars: true));
+        var surrender = Assert.Single(quick, e => e.Kind == DemoSettlementEventKind.Conquered);
+        Assert.Contains("不戰而降", surrender.Cause, StringComparison.Ordinal);
+        Assert.DoesNotContain(quick, e => e.Kind is DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.ConquestBattle);
+        Assert.Equal(a, meek.Liege[c]);
+        Assert.True(meek.Conquered(c, surrender.Week + 1));
+        // 不開這條規則、也不是征服時代：不宣戰。
+        var quiet = new DemoRealms.Fold();
+        for (var week = 2; week < 2 + 13 * 30; week++)
+            Assert.DoesNotContain(Step(quiet, week, ctx, RngRegistry.Create(7), conquest: false), e => e.Kind == DemoSettlementEventKind.WarDeclared);
     }
 
     [Fact]

@@ -810,7 +810,7 @@ public sealed partial class DemoObserverWorld
                         RealmContext(lifecycle.Outcome.Sites, id => lifecycle.Population.ResidentsOf(id), culture, lifecycle.Population.Representatives),
                         DemoTerritory.NaturalLieges(lifecycle.Outcome.Sites, id => ChronicleOf(id).Tier), _rng, laws.Rebellions,
                         checked(landNextId + cleared.Count + split.Count + faithEvents.Count + environmentEvents.Count + monsterEvents.Count),
-                        conquestEra: knowledge.Era == DemoEra.Conquest, wars: laws.Wars); // 第 08-19e 章：征服時代的王國戰爭
+                        conquestEra: knowledge.Era == DemoEra.Conquest, wars: laws.Wars, cityWars: true); // 第 08-19e 章：征服時代的王國戰爭
                 // 第 08-19d 章：第一個王國成立時世界進入征服時代（接在最後）。
                 var eraEvents = new List<DemoSettlementEvent>();
                 if (knowledge.Era == DemoEra.Pioneer)

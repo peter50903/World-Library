@@ -155,6 +155,7 @@ public static partial class DemoRealms
                     break;
                 case DemoSettlementEventKind.Independence:
                     _freedFrom[id] = ((int)e.Count, e.Week); // 第 08-19h 章
+                    Truce(id, (int)e.Count, e.Week); // 第 08-19i 章：放手讓它獨立之後，停戰期內不會回頭征討
                     _liege.Remove(id);
                     _joinedWeek.Remove(id);
                     _faction.Remove(id);
@@ -288,7 +289,7 @@ public static partial class DemoRealms
     /// 事件編號從 <paramref name="nextEventId"/> 起。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Advance(int week, TimeSpan worldTime, Fold fold, DemoRealmContext ctx,
-        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId, bool conquestEra = false, bool wars = true)
+        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId, bool conquestEra = false, bool wars = true, bool cityWars = false)
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(ctx);
@@ -416,7 +417,7 @@ public static partial class DemoRealms
                 continue;
             var loyalty = LoyaltyValue(id, liege, week, fold, ctx);
             var inFaction = faction.TryGetValue(id, out var member) && member.Liege == liege;
-            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && !fold.Backed(id, week) && rebellions) // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
+            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && !fold.Conquered(id, week) && !fold.Backed(id, week) && rebellions) // 第 08-19i 章：剛被征服的還不敢作亂 // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
             {
                 Add(id, DemoSettlementEventKind.FactionJoined, liege, CivilFaction(id, liege, lieges, ctx, conquestEra)
                     ? $"{Name(id)}對{Name(liege)}的國王不滿（忠誠 {loyalty}），加入篡位派系" // 第 08-19f 章
@@ -465,7 +466,7 @@ public static partial class DemoRealms
         }
 
         // ④ 第 08-19e 章：征服戰爭的結束與宣戰（只在征服時代宣戰；進行中的照常打完）。
-        AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, conquestEra && wars);
+        AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, (conquestEra || cityWars) && wars); // 第 08-19i 章：城市不必等王國成立就能出兵
 
         // ⑤ 第 08-19f 章：王國的國王換人（王座所在聚落本週新任村長）就記繼位。
         AdvanceSuccession(week, fold, ctx, lieges, busy, Alive, Name, Add, conquestEra);
