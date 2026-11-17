@@ -19,7 +19,13 @@ public enum DemoAge
     Dark = 2,
 
     /// <summary>混沌時代：人心浮動，下級對上級的忠誠降低。</summary>
-    Chaos = 3
+    Chaos = 3,
+
+    /// <summary>第 08-6c 章：霜雪時代：寒冬漫長，採集與收成都減少。</summary>
+    Frost = 4,
+
+    /// <summary>第 08-6c 章：奇蹟時代：研究加快，士兵更強（地下城更容易被殺光，英雄與傳說物品更常出現）。</summary>
+    Miracle = 5
 }
 
 /// <summary>一段世界時代：第 <see cref="FromYear"/>～<see cref="ToYear"/> 年。</summary>
@@ -36,6 +42,9 @@ public static class DemoAges
 
     /// <summary>【TEMP】烈日時代熱浪與野火的機率 ×3；黑暗時代地下城出現的機率 ×3、數量上限 ×2；混沌時代忠誠 −15。</summary>
     public const int TempSunFirePercent = 300, TempDarkDungeonPercent = 300, TempDarkDungeonTargetPercent = 200, TempChaosLoyalty = -15;
+
+    /// <summary>【TEMP】霜雪時代每個食物來源的產量 −25%；奇蹟時代研究 ×150%、士兵等級 +1。</summary>
+    public const int TempFrostSourcePercent = -25, TempMiracleResearchPercent = 150, TempMiracleSoldierLevels = 1;
 
     private const string Namespace = "TEMP-AGE-v1";
 
@@ -72,6 +81,8 @@ public static class DemoAges
         DemoAge.Sun => "烈日時代",
         DemoAge.Dark => "黑暗時代",
         DemoAge.Chaos => "混沌時代",
+        DemoAge.Frost => "霜雪時代",
+        DemoAge.Miracle => "奇蹟時代",
         _ => "希望時代"
     };
 
@@ -81,6 +92,8 @@ public static class DemoAges
         DemoAge.Sun => "烈日當空，熱浪與野火頻仍",
         DemoAge.Dark => "長夜降臨，地下城接連出現",
         DemoAge.Chaos => "人心浮動，下級不再安分",
+        DemoAge.Frost => "寒冬漫長，收成減少",
+        DemoAge.Miracle => "靈光遍地，學問與英雄輩出",
         _ => "風調雨順，萬物滋長"
     };
 
@@ -95,4 +108,13 @@ public static class DemoAges
 
     /// <summary>忠誠度的加減。</summary>
     public static int Loyalty(DemoAge age) => age == DemoAge.Chaos ? TempChaosLoyalty : 0;
+
+    /// <summary>食物來源產量的加減（%；與技術、熱浪等其他修正相加）。</summary>
+    public static long SourcePercent(DemoAge age) => age == DemoAge.Frost ? TempFrostSourcePercent : 0;
+
+    /// <summary>研究速度（%）。</summary>
+    public static int ResearchPercent(DemoAge age) => age == DemoAge.Miracle ? TempMiracleResearchPercent : 100;
+
+    /// <summary>士兵多幾級。</summary>
+    public static int SoldierLevels(DemoAge age) => age == DemoAge.Miracle ? TempMiracleSoldierLevels : 0;
 }

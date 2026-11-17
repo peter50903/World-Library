@@ -47,6 +47,16 @@ public sealed class DemoAgesTests
         Assert.Equal(DemoAges.TempDarkDungeonTargetPercent, DemoAges.DungeonTargetPercent(DemoAge.Dark));
         Assert.Equal(0, DemoAges.Loyalty(DemoAge.Dark));
         Assert.Equal(DemoAges.TempChaosLoyalty, DemoAges.Loyalty(DemoAge.Chaos));
+        // 霜雪時代減產、奇蹟時代研究加快與士兵 +1；其他時代不動這三項。
+        Assert.Equal(DemoAges.TempFrostSourcePercent, DemoAges.SourcePercent(DemoAge.Frost));
+        Assert.Equal(DemoAges.TempMiracleResearchPercent, DemoAges.ResearchPercent(DemoAge.Miracle));
+        Assert.Equal(DemoAges.TempMiracleSoldierLevels, DemoAges.SoldierLevels(DemoAge.Miracle));
+        Assert.All(Enum.GetValues<DemoAge>().Where(a => a != DemoAge.Frost), a => Assert.Equal(0, DemoAges.SourcePercent(a)));
+        Assert.All(Enum.GetValues<DemoAge>().Where(a => a != DemoAge.Miracle), a => Assert.Equal(100, DemoAges.ResearchPercent(a)));
+        Assert.All(Enum.GetValues<DemoAge>().Where(a => a != DemoAge.Miracle), a => Assert.Equal(0, DemoAges.SoldierLevels(a)));
+        bool None(string _) => false;
+        Assert.Equal(DemoCombat.Force(1000, DemoSettlementTier.Town, None).SoldierLevel + 1,
+            DemoCombat.Force(1000, DemoSettlementTier.Town, None, extraLevels: DemoAges.SoldierLevels(DemoAge.Miracle)).SoldierLevel);
         Assert.Equal(Enum.GetValues<DemoAge>().Length, Enum.GetValues<DemoAge>().Select(DemoAges.Name).Distinct().Count());
         Assert.Equal(Enum.GetValues<DemoAge>().Length, Enum.GetValues<DemoAge>().Select(DemoAges.Description).Distinct().Count());
         // 第 05-1 章：文明里程碑的說法不用「時代」。

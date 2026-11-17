@@ -94,9 +94,10 @@ public sealed partial class DemoObserverWorld
         var wildlife = state.TryGetProperty("Wildlife", out var wl) ? wl.Deserialize<DemoWildlifeState>() ?? DemoWildlifeState.Empty : DemoWildlifeState.Empty;
         foreach (var report in reports)
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
-                (s, week) => waterKnowledge.Records is null ? 0
+                (s, week) => (waterKnowledge.Records is null ? 0
                     : DemoKnowledge.SourcePercent(waterKnowledge, sites, map, s, week, cultureHistory.MainHistory is null ? null : cultureHistory.TraitsAt,
-                        wildlife.Hunting is null ? null : wildlife.HuntingAt, wildlife.Spells));
+                        wildlife.Hunting is null ? null : wildlife.HuntingAt, wildlife.Spells))
+                    + DemoAges.SourcePercent(candidate.AgeAtWeek(week))); // 第 08-6c 章：霜雪時代減產
         // C04：近期週報的配號區間逐週銜接，且每週恰好被本週新實體填滿。
         long? entityNext = reports.Count == 0 ? null : reports[0].EntityIdNextOpening;
         foreach (var report in reports)
