@@ -99,6 +99,48 @@ public sealed class DemoMonsterTests
         Assert.Equal(500, events[0].EventId);
     }
 
+    // 第 12-2e 節：勢力的士兵組成遠征軍，能討伐離得較遠的地下城（民兵只到三格）；等級夠就殺得光。
+    [Fact]
+    public void SoldierExpeditionsReachFartherAndCanClearTheDungeon()
+    {
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample);
+        var sites = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
+        // 找一格地下城：離某個聚落 7 格（範圍 2 格，所以離範圍約 5 格：民兵到不了、遠征軍到得了），離其他聚落都超過 6 格。
+        var spot = world.Map.Cells.Select(c => new DemoCellRef(c.Column, c.Row))
+            .Select(c => (Cell: c, Near: sites.Select(s => (Site: s, D: DemoHexWorld.Distance(c, new DemoCellRef(s.Column, s.Row)))).OrderBy(x => x.D).ToList()))
+            .Where(x => x.Near[0].D == 7 && (x.Near.Count < 2 || x.Near[1].D > 6))
+            .Select(x => ((DemoCellRef Cell, DemoSettlement Home)?)(x.Cell, x.Near[0].Site)).FirstOrDefault();
+        Assert.NotNull(spot);
+        var (cell, home) = spot!.Value;
+        var dungeon = new DemoDungeon(cell, "測試洞窟", 2, 0, 99, home.Id);
+        var floor = DemoMonsters.SuppressFloor(dungeon);
+        var nest = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        var none = new HashSet<int>();
+        DemoCombatForce Villagers(int _) => new(0, 0, 100);
+        DemoCombatForce Army(int id) => id == home.Id ? new DemoCombatForce(10, 5, 100) : Villagers(id);
+        // 只有民兵：怪物已經壓到下限，而且太遠，誰都不出兵。
+        var rng = RngRegistry.Create(3);
+        for (var week = 1; week <= 200; week++)
+            Assert.Empty(DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { nest }, none, rng, Villagers).Strikes);
+        // 有遠征軍：只有那個聚落出兵，等級（5）高過怪物（3），殺得光。
+        var hunts = 0;
+        var cleared = false;
+        var current = nest;
+        for (var week = 1; week <= 400 && !cleared; week++)
+        {
+            var plan = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { current }, none, rng, Villagers, Army);
+            foreach (var strike in plan.Strikes.Values.Where(s => s.Kind == DemoSettlementEventKind.MonsterHunt))
+            {
+                Assert.Equal(home.Id, strike.SettlementId);
+                hunts++;
+            }
+            cleared = plan.Cleared.Count == 1;
+            current = current with { Monsters = Math.Max(0, current.Monsters - plan.Kills.Sum(k => k.Kills)) }; // 擊殺照事件扣掉
+        }
+        Assert.True(hunts > 0);
+        Assert.True(cleared);
+    }
+
     [Fact]
     public void ResidentsOnlySuppressMonstersDownToTheFloor()
     {
