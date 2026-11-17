@@ -129,8 +129,7 @@ public static partial class DemoRealms
         {
             var attack = RealmArmy(w.AttackerId, fold.Liege, alive, residents);
             var defend = RealmArmy(Top(w.TargetId, fold.Liege), fold.Liege, alive, residents) * TempHomePercent / 100;
-            long Deaths(long enemy, long here, int k)
-                => Math.Clamp(1 + enemy * (50 + (long)(Draw(rng, week, w.AttackerId, k) % 101UL)) / (100L * TempArmyPerDeath), 0L, Math.Max(0L, here - 1));
+            long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, w.AttackerId, k)); // 第 08-19h 章
             if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
                 strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
                     Deaths(attack, residents(w.TargetId), 6), $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍");

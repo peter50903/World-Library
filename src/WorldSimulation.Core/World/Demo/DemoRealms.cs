@@ -232,6 +232,17 @@ public static partial class DemoRealms
 
     public static int LoyaltyValue(int vassal, int liege, int week, Fold fold, DemoRealmContext ctx) => Loyalty(vassal, liege, week, fold, ctx).Sum(f => f.Value);
 
+    /// <summary>
+    /// 第 08-19h 章：一週交戰的死亡＝對方兵力 ÷ <see cref="TempArmyPerDeath"/> × 0.5～1.5 的運氣；不滿一人的零頭用同一個亂數決定進位
+    /// （原本每週固定至少死 1 人，小村打一年會死掉大半）。最多留 1 人。
+    /// </summary>
+    internal static long WarDeaths(long enemy, long here, ulong draw)
+    {
+        var milli = enemy * (50 + (long)(draw % 101UL)) * 10 / TempArmyPerDeath;
+        var deaths = milli / 1000 + ((long)(draw / 101UL % 1000UL) < milli % 1000 ? 1 : 0);
+        return Math.Clamp(deaths, 0L, Math.Max(0L, here - 1));
+    }
+
     /// <summary>上級方的兵力：上級加上不在反它的派系裡的直屬下級。</summary>
     public static long LoyalArmy(int liege, Fold fold, Func<int, long> residents)
     {
@@ -254,8 +265,7 @@ public static partial class DemoRealms
         {
             var rebels = s.Members.Sum(m => Army(residents(m)));
             var loyal = LoyalArmy(s.LiegeId, fold, residents);
-            long Deaths(long enemy, long here, int k)
-                => Math.Clamp(1 + enemy * (50 + (long)(Draw(rng, week, s.VassalId, k) % 101UL)) / (100L * TempArmyPerDeath), 0L, Math.Max(0L, here - 1));
+            long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, s.VassalId, k));
             if (!taken.Contains(s.VassalId) && !strikes.ContainsKey(s.VassalId) && residents(s.VassalId) > 0)
                 strikes[s.VassalId] = new DemoDisasterStrike(s.VassalId, DemoSettlementEventKind.SecessionBattle,
                     Deaths(loyal, residents(s.VassalId), 2), s.Civil ? $"內戰：與{Name(s.LiegeId)}的王軍交戰" : $"獨立戰爭：與{Name(s.LiegeId)}的軍隊交戰");
@@ -384,7 +394,8 @@ public static partial class DemoRealms
             var id = s.Id;
             if (!lieges.TryGetValue(id, out var liege))
             {
-                if (natural.TryGetValue(id, out var lord) && Alive(lord) && !Cycle(id, lord) && !fold.FreedFrom(id, lord, week)) // 第 08-19h 章：剛獨立的不再歸附舊主
+                if (natural.TryGetValue(id, out var lord) && Alive(lord) && !Cycle(id, lord) && !fold.FreedFrom(id, lord, week)
+                    && LoyaltyValue(id, lord, week, fold, ctx) >= 0) // 第 08-19h 章：剛獨立的不再歸附舊主；一開始就不服的不歸附
                 {
                     Add(id, DemoSettlementEventKind.VassalJoined, lord, $"{Name(id)}歸附{Name(lord)}");
                     lieges[id] = lord;

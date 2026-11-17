@@ -108,10 +108,16 @@ public static class DemoSaga
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
     }
 
-    /// <summary>這一筆要不要逐條寫進史書：世界大事（技術除外）、任何聚落淪為遺跡、城鎮以上的等級升降。</summary>
+    /// <summary>戰爭沒打贏的結局（編年史列為一般事件）在條目裡的用語：叛軍被擊潰、不分勝負、敗退、無力再戰、收兵。</summary>
+    private static readonly string[] WarEndings = { "擊潰", "不分勝負", "敗退", "無力再戰", "收兵" };
+
+    /// <summary>這一筆要不要逐條寫進史書：世界大事（技術除外）、任何聚落淪為遺跡、城鎮以上的等級升降、戰爭的結局。</summary>
     public static bool IsTold(DemoChronicleEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
+        // 第 08-19h 章：開了戰就要有下文——沒打贏的結局也寫。
+        if (entry.Category == DemoChronicleCategory.Realm && entry.Level == DemoChronicleLevel.Normal)
+            return WarEndings.Any(w => entry.Text.Contains(w, StringComparison.Ordinal));
         if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge)
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
