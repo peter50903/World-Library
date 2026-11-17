@@ -43,6 +43,9 @@ public sealed record DemoRealmContext(
     /// </summary>
     public Func<int, int, long>? Known { get; init; }
 
+    /// <summary>第 08-6c 章：某一週的世界時代（混沌時代忠誠降低）；沒給＝希望時代（測試）。</summary>
+    public Func<int, DemoAge>? AgeOfWeek { get; init; }
+
     /// <summary>觀察者所知的對象人口（沒有消息模型時是即時人口）。</summary>
     public long KnownResidents(int observer, int target) => Known?.Invoke(observer, target) ?? Residents(target);
 }
@@ -226,6 +229,8 @@ public static partial class DemoRealms
             factors.Add(new("上級強勢統治", 10));
         if (fold.Conquered(vassal, week))
             factors.Add(new("剛被征服", TempConqueredLoyalty)); // 第 08-19e 章
+        if (ctx.AgeOfWeek?.Invoke(week) is { } age && DemoAges.Loyalty(age) != 0)
+            factors.Add(new(DemoAges.Name(age), DemoAges.Loyalty(age))); // 第 08-6c 章
         CivilFactors(vassal, liege, week, fold, factors); // 第 08-19f 章：新君即位、國王出身於此、擁立了現任國王
         return factors;
     }

@@ -115,8 +115,9 @@ public static class DemoWorldChronicle
             {
                 case DemoSettlementEventKind.EraBegan:
                     eraStarts[YearOf(e.Week)] = (DemoEra)e.Count;
+                    // 第 08-6c 章：「時代」一詞留給世界時代；文明的進度寫成里程碑。
                     AddWorld(e.Week, WeightEra, DemoChronicleCategory.Era, e.EventId,
-                        T($"世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}（"), Name(e.SettlementId), T(" 率先）"));
+                        Name(e.SettlementId), T((DemoEra)e.Count == DemoEra.Conquest ? " 成立了世上第一個王國" : " 習得世上第一項技術，文明踏出第一步"));
                     break;
                 case DemoSettlementEventKind.KnowledgeLearned:
                     var tech = (DemoTechnology)e.Count;
@@ -306,6 +307,12 @@ public static class DemoWorldChronicle
             foreach (var line in chronicle.Representatives)
                 Add(line.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Representative, 0, Name(s.Id), T($"：{line.Text}"));
         }
+
+        // 第 08-6c 章：世界時代的更替（第一段希望時代是開局，不記）。
+        var nowYear = Math.Max(1, DemoSettlementHistory.YearOfDay(world.Snapshot().DaysElapsed));
+        foreach (var span in world.Ages().Skip(1).Where(a => a.FromYear <= nowYear))
+            AddWorld(checked((span.FromYear - 1) * DemoSettlementHistory.DaysPerYear / 7 + 1), WeightEra, DemoChronicleCategory.Era, 0,
+                T($"世界進入{DemoAges.Name(span.Age)}——{DemoAges.Description(span.Age)}"));
 
         var stats = events.Where(e => e.Kind is DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)
             .GroupBy(e => YearOf(e.Week))
