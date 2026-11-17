@@ -32,19 +32,47 @@ public sealed class DemoSagaTests
     }
 
     [Fact]
-    public void SagaTellsEveryWorldEventOfTheChronicleAndNothingElse()
+    public void SagaTellsEveryWorldEventOnceAndSumsUpTheNewTechnologies()
     {
         var (world, opening) = Shared.Value;
         var lines = DemoSaga.Write(world, opening);
         var years = DemoWorldChronicle.Build(world);
 
-        var expected = years.SelectMany(y => y.Entries.Where(e => e.IsWorld).Select(e => $"　第 {y.Year} 年，{e.Text.Trim()}")).ToList();
+        // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，同一卷裡一模一樣的句子只寫一次。
+        var sentences = years.Chunk(DemoSaga.YearsPerVolume)
+            .SelectMany(volume => volume.SelectMany(y => y.Entries).Where(DemoSaga.IsTold).Select(DemoSaga.Sentence).Distinct()).ToList();
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
-        Assert.Equal(expected.Count, told.Count);
-        Assert.All(expected.Zip(told), pair => Assert.StartsWith(pair.First, pair.Second, StringComparison.Ordinal));
-        Assert.Equal(years.Sum(y => y.Births),
-            lines.Where(l => l.StartsWith("　這些年裡 ", StringComparison.Ordinal))
-                .Sum(l => long.Parse(l["　這些年裡 ".Length..l.IndexOf(" 人出生", StringComparison.Ordinal)], System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.Equal(sentences.Count, told.Count);
+        Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
+        Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge),
+            e => Assert.True(DemoSaga.IsTold(e)));
+
+        // 世界首次的技術不逐條列，每卷收成一句，項數加起來等於編年史的首創數。
+        var firsts = years.SelectMany(y => y.Entries).Count(e => e.IsWorld && e.Category == DemoChronicleCategory.Knowledge);
+        const string head = "　世人學會了 ";
+        Assert.Equal(firsts, lines.Where(l => l.StartsWith(head, StringComparison.Ordinal))
+            .Sum(l => int.Parse(l[head.Length..l.IndexOf(" 項", StringComparison.Ordinal)], System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.DoesNotContain(lines, l => l.Contains("（世界首次）", StringComparison.Ordinal));
+
+        // 生死用世界的年帳：出生、壽終、其餘死亡加起來對得上。
+        var ledger = world.YearSummaries();
+        const string people = "　這些年裡 ";
+        Assert.Equal(ledger.Sum(y => y.Births), lines.Where(l => l.StartsWith(people, StringComparison.Ordinal))
+            .Sum(l => long.Parse(l[people.Length..l.IndexOf(" 人出生", StringComparison.Ordinal)], System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.Contains(lines, l => l.EndsWith($"；第 45 年末世上有 {world.WorldPopulation} 人。", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SentenceDoesNotRepeatTheSettlementNameAndDropsSpacesBetweenChineseCharacters()
+    {
+        static DemoChronicleEntry Entry(params DemoChronicleSegment[] segments)
+            => new(1, DemoChronicleLevel.Major, DemoChronicleCategory.Realm, segments);
+        Assert.Equal("佩林谷接受了提爾谷的請願，讓它們獨立。",
+            DemoSaga.Sentence(Entry(new DemoChronicleSegment("提爾谷", 2), new DemoChronicleSegment(" 佩林谷接受了提爾谷的請願，讓它們獨立"))));
+        Assert.Equal("塔林丘隨東塔林脫離佩林谷。",
+            DemoSaga.Sentence(Entry(new DemoChronicleSegment("塔林丘", 3), new DemoChronicleSegment(" 隨東塔林脫離佩林谷"))));
+        Assert.Equal("歐文港人口 29 人，由營地發展為村莊。",
+            DemoSaga.Sentence(Entry(new DemoChronicleSegment("歐文港", 1), new DemoChronicleSegment(" 人口 29 人，由營地發展為村莊"))));
     }
 
     [Fact]
