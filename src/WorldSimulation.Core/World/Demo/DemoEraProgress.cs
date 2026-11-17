@@ -94,9 +94,10 @@ public sealed record DemoEraProgress(DemoEra Current, DemoEra? Next, int Percent
     public IReadOnlyList<string> Lines(DemoObserverWorld world)
     {
         ArgumentNullException.ThrowIfNull(world);
+        // 第 05-2 章：「時代」一詞留給世界時代（08-6c），這條進度改稱文明里程碑。
         if (Next is not { } next)
-            return new[] { $"{DemoKnowledge.EraName(Current)}：目前最後的時代" };
-        var lines = new List<string> { $"{DemoKnowledge.EraName(Current)} → {DemoKnowledge.EraName(next)}：{Percent}%" };
+            return new[] { "文明里程碑：已全部達成（第一個王國已經成立）" };
+        var lines = new List<string> { $"下一個文明里程碑：{DemoKnowledge.MilestoneName(next)}（{Percent}%）" };
         if (Leader != 0 && world.Sites.Settlements.FirstOrDefault(s => s.Id == Leader) is { } s)
             lines.Add($"最接近的聚落：{DemoSettlementHistory.TitledName(s, world.ChronicleOf(s.Id).Tier)}");
         lines.AddRange(Conditions.Select(c => $"{(c.Percent >= 100 ? "✔" : "・")} {c.Name}（{c.Detail}）"));

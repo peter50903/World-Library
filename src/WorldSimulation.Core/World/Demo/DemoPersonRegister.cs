@@ -50,6 +50,14 @@ public static class DemoPersonRegister
         return builder.ToImmutable();
     }
 
+    /// <summary>第 05-2 章：把一筆紀錄當成代表人物來用（人像、小傳等只讀的地方；已卸任的人也一樣）。</summary>
+    public static DemoRepresentative AsRepresentative(DemoPersonRecord record)
+    {
+        ArgumentNullException.ThrowIfNull(record);
+        return new DemoRepresentative(record.Id, record.SettlementId, record.Role, record.Name, record.Sex, record.BirthYear, record.AppointedWeek,
+            record.ParentId, record.Traits);
+    }
+
     /// <summary>從在任的代表人物建立登記表（新世界開局、或沒有登記表的舊存檔）。</summary>
     public static ImmutableSortedDictionary<long, DemoPersonRecord> FromInOffice(IEnumerable<DemoRepresentative> representatives)
         => representatives.ToImmutableSortedDictionary(r => r.Id,

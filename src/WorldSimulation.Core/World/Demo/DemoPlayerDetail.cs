@@ -31,7 +31,21 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
 
     /// <summary>第 08-16 章第 15 節：現況分頁的主要文化（介面放「查看文化」連結；沒有＝0）。</summary>
     public int CultureId { get; init; }
+
+    /// <summary>第 05-2 章：分頁底下的連結（打開聚落、人物或家族）；介面畫成一排按鈕。</summary>
+    public IReadOnlyList<DemoDetailLink> Links { get; init; } = Array.Empty<DemoDetailLink>();
 }
+
+/// <summary>第 05-2 章：詳情連結打開什麼。</summary>
+public enum DemoLinkKind
+{
+    Settlement = 0,
+    Person = 1,
+    House = 2
+}
+
+/// <summary>第 05-2 章：詳情裡的一個連結（按鈕文字、打開什麼、編號：聚落編號、人物編號或家族開創者的人物編號）。</summary>
+public sealed record DemoDetailLink(string Text, DemoLinkKind Kind, long Id);
 
 /// <summary>第 08-16 章：代表人物分頁的一人（人像部件＋原本的文字與小傳）。</summary>
 public sealed record DemoPersonEntry(long Id, DemoPortrait Portrait, IReadOnlyList<string> Lines);

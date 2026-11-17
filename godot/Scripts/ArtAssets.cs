@@ -99,6 +99,8 @@ public static class ArtAssets
     public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（缺少時按鈕顯示「開發」）
     public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（缺少時按鈕顯示「圖表」）
     public const string UiLaws = "res://assets/ui/ui_icon_laws.png"; // 第 08-19c 章（缺少時按鈕顯示「法則」）
+    public const string UiSchematic = "res://assets/ui/ui_icon_schematic.png"; // 第 05-2 章（UI_ICON_SCHEMATIC，缺少時按鈕顯示「色塊」）
+    public const string UiDevTools = "res://assets/ui/ui_icon_devtools.png"; // 第 05-2 章（UI_ICON_DEVTOOLS，缺少時按鈕顯示「開發工具」）
 
     // 音訊
     public const string SfxClick = "res://assets/audio/sfx_click.ogg";
