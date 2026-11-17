@@ -82,15 +82,15 @@ public static class DemoDungeons
     /// 事件掛在最近的有人聚落（同距離取編號小的），人數欄＝格編號，根因。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Roll(int week, TimeSpan worldTime, DemoEra era, DemoHexWorld map, DemoWorldSites sites,
-        IEnumerable<int> livingIds, IReadOnlyList<DemoDungeon> existing, RngRegistry rng, long nextEventId)
+        IEnumerable<int> livingIds, IReadOnlyList<DemoDungeon> existing, RngRegistry rng, long nextEventId, DemoAge age = DemoAge.Hope) // 第 08-6c 章：黑暗時代
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(existing);
-        if (era == DemoEra.Hope || week % DemoWildlife.TempYearWeeks != TempYearWeek || existing.Count >= TargetCount(map))
+        if (era == DemoEra.Hope || week % DemoWildlife.TempYearWeeks != TempYearWeek || existing.Count >= TargetCount(map) * DemoAges.DungeonTargetPercent(age) / 100)
             return Array.Empty<DemoSettlementEvent>();
         var year = week / DemoWildlife.TempYearWeeks;
-        if ((int)(Draw(rng, year, 0) % 100UL) >= TempChancePercent)
+        if ((int)(Draw(rng, year, 0) % 100UL) >= TempChancePercent * DemoAges.DungeonPercent(age) / 100)
             return Array.Empty<DemoSettlementEvent>();
         var living = livingIds.OrderBy(i => i).Select(i => sites.Settlements.First(s => s.Id == i)).ToList();
         if (living.Count == 0)

@@ -232,7 +232,8 @@ public static class DemoEnvironment
     /// </summary>
     public static (DemoWildlifeState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(DemoWildlifeState state, int week, TimeSpan worldTime,
         DemoEra era, DemoHexWorld map, DemoWorldSites sites, IEnumerable<int> livingIds, RngRegistry rng, long nextEventId,
-        Func<int, long>? residents = null, Func<int, bool>? logs = null, Func<int, bool>? mines = null, IReadOnlySet<DemoCellRef>? extraOre = null)
+        Func<int, long>? residents = null, Func<int, bool>? logs = null, Func<int, bool>? mines = null, IReadOnlySet<DemoCellRef>? extraOre = null,
+        DemoAge age = DemoAge.Hope) // 第 08-6c 章：烈日時代熱浪與野火變多
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(map);
@@ -264,7 +265,7 @@ public static class DemoEnvironment
             var living = livingIds.OrderBy(i => i).Select(i => sites.Settlements.First(x => x.Id == i)).ToList();
             // 熱浪
             var heat = living.Where(s => HeatwaveEligible(map, s)).ToList();
-            if (heat.Count > 0 && (int)(Draw(rng, year, 0) % 100UL) < TempHeatwavePercent)
+            if (heat.Count > 0 && (int)(Draw(rng, year, 0) % 100UL) < TempHeatwavePercent * DemoAges.FirePercent(age) / 100)
             {
                 var s = heat[(int)(Draw(rng, year, 1) % (ulong)heat.Count)];
                 var cells = Around(map, s, TempRange).Where(c => c.Terrain != DemoTerrain.Water)
@@ -276,7 +277,7 @@ public static class DemoEnvironment
             }
             // 野火
             var fire = living.Where(s => WildfireEligible(map, s)).ToList();
-            if (fire.Count > 0 && (int)(Draw(rng, year, 2) % 100UL) < TempWildfirePercent)
+            if (fire.Count > 0 && (int)(Draw(rng, year, 2) % 100UL) < TempWildfirePercent * DemoAges.FirePercent(age) / 100)
             {
                 var s = fire[(int)(Draw(rng, year, 3) % (ulong)fire.Count)];
                 // 第 08-13 章：野火也燒草原（WorldBox 的火會沿草地蔓延）。

@@ -261,6 +261,13 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
 
+    /// <summary>第 08-6c 章：目前的世界時代（由歷史種子的輪替表推得，不另存）。</summary>
+    public DemoAge Age => DemoAges.AtWeek(_rng, CommittedWeeks);
+
+    /// <summary>第 08-6c 章：從第 1 年到目前為止經歷的世界時代（最後一段是目前的時代，結束年份是預定的）。</summary>
+    public IReadOnlyList<DemoAgeSpan> Ages()
+        => DemoAges.Schedule(_rng, Math.Max(1, DemoSettlementHistory.YearOfDay(Snapshot().DaysElapsed)));
+
     /// <summary>第 04-1 章：聚落自己記得的小史（沒有紀錄＝空）。</summary>
     public DemoSettlementChronicle ChronicleOf(int settlementId)
         => _chronicle.GetValueOrDefault(settlementId) ?? DemoSettlementChronicle.Empty;
@@ -532,7 +539,8 @@ public sealed partial class DemoObserverWorld
             id => culture.MainCultureOf(id) is { } c && culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true)
         {
             Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
-            Known = KnownResidents(sites, residents) // 第 14-1 章★4：別人的兵力只知道舊消息
+            Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
+            AgeOfWeek = week => DemoAges.AtWeek(_rng, week) // 第 08-6c 章：混沌時代忠誠降低
         };
     }
 
@@ -766,7 +774,7 @@ public sealed partial class DemoObserverWorld
                 // 第 12-1 章 C4：地下城出現（事件接在隕石礦脈之後；用本週習得後的時代）。
                 var dungeon = !laws.Monsters ? Array.Empty<DemoSettlementEvent>() : DemoDungeons.Roll(report.Week, report.WorldTime, knowledge.Era, Map, lifecycle.Outcome.Sites,
                     lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
-                    Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count));
+                    Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count), DemoAges.AtWeek(_rng, report.Week));
                 var cleared = clearedOnly.Concat(ruined).Concat(ore).Concat(dungeon).ToList();
                 DemoPerf.Mark("土地與天災");
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
@@ -791,7 +799,7 @@ public sealed partial class DemoObserverWorld
                     residents: id => lifecycle.Population.ResidentsOf(id),
                     logs: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.LoggingTech)),
                     mines: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.MiningTech)),
-                    extraOre: MeteoriteOre);
+                    extraOre: MeteoriteOre, age: DemoAges.AtWeek(_rng, report.Week));
                 DemoPerf.Mark("野生動物與環境");
                 // 第 12-2 章：擊殺怪物、地下城沉寂與再生（接在最後）。
                 var monsterEvents = DemoMonsters.Events(monsters, report.Week, report.WorldTime, lifecycle.Outcome.Sites,

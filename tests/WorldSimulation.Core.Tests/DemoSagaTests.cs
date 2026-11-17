@@ -23,10 +23,12 @@ public sealed class DemoSagaTests
         var lines = DemoSaga.Write(world, opening);
 
         Assert.StartsWith($"序　太初，{opening.Population} 人分居 {opening.Settlements} 處聚落", lines[0], StringComparison.Ordinal);
+        // 第 08-6c 章：一個世界時代一卷；第一卷一定是希望時代，最後一卷寫到目前這一年。
+        var ages = world.Ages();
         var volumes = lines.Where(l => l.StartsWith("卷 ", StringComparison.Ordinal)).ToList();
-        Assert.Equal(5, volumes.Count);
-        Assert.StartsWith("卷 1　第 1～10 年　", volumes[0], StringComparison.Ordinal);
-        Assert.StartsWith("卷 5　第 41～45 年　", volumes[4], StringComparison.Ordinal);
+        Assert.Equal(ages.Count, volumes.Count);
+        Assert.StartsWith("卷 1　希望時代　第 1～", volumes[0], StringComparison.Ordinal);
+        Assert.Contains($"　{DemoAges.Name(ages[^1].Age)}　第 {ages[^1].FromYear}～45 年　", volumes[^1], StringComparison.Ordinal);
         Assert.Contains("終章　第 45 年的世界", lines);
         Assert.Contains(lines, l => l.StartsWith($"　世上有 {world.WorldPopulation} 人、", StringComparison.Ordinal));
     }
@@ -39,7 +41,7 @@ public sealed class DemoSagaTests
         var years = DemoWorldChronicle.Build(world);
 
         // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，同一卷裡一模一樣的句子只寫一次。
-        var sentences = years.Chunk(DemoSaga.YearsPerVolume)
+        var sentences = world.Ages().Select(a => years.Where(y => y.Year >= a.FromYear && y.Year <= a.ToYear))
             .SelectMany(volume => volume.SelectMany(y => y.Entries).Where(DemoSaga.IsTold).Select(DemoSaga.Sentence).Distinct()).ToList();
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
         Assert.Equal(sentences.Count, told.Count);
@@ -88,13 +90,5 @@ public sealed class DemoSagaTests
         var plain = DemoSaga.Write(world);
         Assert.Equal("序　這是一個世界留下的紀錄。", plain[0]);
         Assert.Equal(DemoSaga.Write(world, opening).Skip(1), plain.Skip(1));
-    }
-
-    [Fact]
-    public void EveryDecadeCharacterHasItsOwnVolumeTitle()
-    {
-        var titles = new[] { "戰亂的年代", "衰退的年代", "饑荒的年代", "擴張的年代", "創新的年代", "轉折的年代", "平靜的年代", "平穩的年代" }
-            .Select(DemoSaga.VolumeTitle).ToList();
-        Assert.Equal(titles.Count, titles.Distinct().Count());
     }
 }

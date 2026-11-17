@@ -1,0 +1,98 @@
+using WorldSimulation.Core.Entity;
+using WorldSimulation.Core.Rng;
+
+namespace WorldSimulation.Core.World.Demo;
+
+/// <summary>
+/// 第 08-6c 章：世界時代（參考 WorldBox 的時代）——世界的氣候與命運，每隔數十年輪替，改變既有世界法則的強弱。
+/// 與文明的進度（<see cref="DemoEra"/>：第一項技術、第一個王國）無關。
+/// </summary>
+public enum DemoAge
+{
+    /// <summary>希望時代：風調雨順，沒有額外的災厄。世界的第一個時代。</summary>
+    Hope = 0,
+
+    /// <summary>烈日時代：熱浪與野火頻仍。</summary>
+    Sun = 1,
+
+    /// <summary>黑暗時代：地下城接連出現，數量上限加倍。</summary>
+    Dark = 2,
+
+    /// <summary>混沌時代：人心浮動，下級對上級的忠誠降低。</summary>
+    Chaos = 3
+}
+
+/// <summary>一段世界時代：第 <see cref="FromYear"/>～<see cref="ToYear"/> 年。</summary>
+public sealed record DemoAgeSpan(DemoAge Age, int FromYear, int ToYear);
+
+/// <summary>
+/// 第 08-6c 章：世界時代的輪替表。由歷史種子決定（THREAT 流的實體局部亂數，不推進計數器），不另存：
+/// 同一個世界任何時候重算都相同，讀檔與重播驗證不需要額外資料。
+/// </summary>
+public static class DemoAges
+{
+    /// <summary>【TEMP】每個時代持續 30～60 年。</summary>
+    public const int TempMinYears = 30, TempMaxYears = 60;
+
+    /// <summary>【TEMP】烈日時代熱浪與野火的機率 ×3；黑暗時代地下城出現的機率 ×3、數量上限 ×2；混沌時代忠誠 −15。</summary>
+    public const int TempSunFirePercent = 300, TempDarkDungeonPercent = 300, TempDarkDungeonTargetPercent = 200, TempChaosLoyalty = -15;
+
+    private const string Namespace = "TEMP-AGE-v1";
+
+    private static ulong Draw(RngRegistry rng, int index, int k)
+        => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Threat, Namespace).GetUInt64(checked((ulong)index * 4UL + (ulong)k));
+
+    /// <summary>從第 1 年排到涵蓋 <paramref name="untilYear"/> 的那一段為止。第一段一定是希望時代；下一段從其他時代裡抽，不連續重複。</summary>
+    public static IReadOnlyList<DemoAgeSpan> Schedule(RngRegistry rng, int untilYear)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        var spans = new List<DemoAgeSpan>();
+        var all = Enum.GetValues<DemoAge>();
+        var age = DemoAge.Hope;
+        var from = 1;
+        for (var index = 0; spans.Count == 0 || from <= untilYear; index++)
+        {
+            var years = TempMinYears + (int)(Draw(rng, index, 0) % (ulong)(TempMaxYears - TempMinYears + 1));
+            spans.Add(new DemoAgeSpan(age, from, from + years - 1));
+            from += years;
+            var options = all.Where(a => a != age).ToArray();
+            age = options[(int)(Draw(rng, index, 1) % (ulong)options.Length)];
+        }
+        return spans;
+    }
+
+    /// <summary>第 <paramref name="year"/> 年的世界時代。</summary>
+    public static DemoAge At(RngRegistry rng, int year) => Schedule(rng, Math.Max(1, year))[^1].Age;
+
+    /// <summary>第 <paramref name="week"/> 週結算時的世界時代。</summary>
+    public static DemoAge AtWeek(RngRegistry rng, int week) => At(rng, DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7)));
+
+    public static string Name(DemoAge age) => age switch
+    {
+        DemoAge.Sun => "烈日時代",
+        DemoAge.Dark => "黑暗時代",
+        DemoAge.Chaos => "混沌時代",
+        _ => "希望時代"
+    };
+
+    /// <summary>這個時代改變了什麼（玩家看得懂的一句）。</summary>
+    public static string Description(DemoAge age) => age switch
+    {
+        DemoAge.Sun => "烈日當空，熱浪與野火頻仍",
+        DemoAge.Dark => "長夜降臨，地下城接連出現",
+        DemoAge.Chaos => "人心浮動，下級不再安分",
+        _ => "風調雨順，萬物滋長"
+    };
+
+    /// <summary>熱浪、野火機率的倍率（百分比）。</summary>
+    public static int FirePercent(DemoAge age) => age == DemoAge.Sun ? TempSunFirePercent : 100;
+
+    /// <summary>地下城出現機率的倍率（百分比）。</summary>
+    public static int DungeonPercent(DemoAge age) => age == DemoAge.Dark ? TempDarkDungeonPercent : 100;
+
+    /// <summary>地下城數量上限的倍率（百分比）。</summary>
+    public static int DungeonTargetPercent(DemoAge age) => age == DemoAge.Dark ? TempDarkDungeonTargetPercent : 100;
+
+    /// <summary>忠誠度的加減。</summary>
+    public static int Loyalty(DemoAge age) => age == DemoAge.Chaos ? TempChaosLoyalty : 0;
+}
