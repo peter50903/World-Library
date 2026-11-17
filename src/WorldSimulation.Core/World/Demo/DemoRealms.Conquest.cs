@@ -86,8 +86,21 @@ public static partial class DemoRealms
         return Math.Clamp(BattleScore(war) + occupation, -100, 100);
     }
 
+    /// <summary>
+    /// 第 08-22e 章【TEMP】宣戰理由「收復失地」（參考 CK3 的宣稱）：被別的勢力征服走的聚落，原本的勢力 <see cref="TempReconquestWeeks"/> 週內可以宣戰收回——
+    /// 兵力只要守方的 <see cref="TempReconquestStrengthPercent"/>%（一般要 120%），宣戰機率再加 <see cref="TempReconquestBonusPercent"/>%，先於其他目標。
+    /// </summary>
+    public const int TempReconquestWeeks = 1040, TempReconquestStrengthPercent = 80, TempReconquestBonusPercent = 40;
+
     public sealed partial class Fold
     {
+        /// <summary>第 08-22e 章：被征服走的聚落 → 原本的勢力頂層與第幾週失去。</summary>
+        private readonly Dictionary<int, (int Former, int Week)> _lostTo = new();
+
+        /// <summary>第 08-22e 章：這個聚落在 <see cref="TempReconquestWeeks"/> 週內從哪個勢力被征服走（沒有＝null）。</summary>
+        public int? LostBy(int settlementId, int week)
+            => _lostTo.TryGetValue(settlementId, out var lost) && week - lost.Week < TempReconquestWeeks ? lost.Former : null;
+
         private readonly Dictionary<int, DemoWar> _wars = new();
         private readonly Dictionary<(int, int), int> _warTruce = new();
         private readonly Dictionary<int, int> _conqueredWeek = new();
@@ -132,6 +145,11 @@ public static partial class DemoRealms
                         _wars[(int)e.Count] = sieged with { OccupiedWeek = e.Week };
                     break;
                 case DemoSettlementEventKind.Conquered:
+                    // 第 08-22e 章：原本屬於別的勢力（不是自己獨立）就記下來，原本的勢力之後可以收復。
+                    if (Top(id, _liege) is var former && former != id && former != Top((int)e.Count, _liege))
+                        _lostTo[id] = (former, e.Week);
+                    else
+                        _lostTo.Remove(id);
                     if (_wars.Remove((int)e.Count, out var won))
                         Truce(won.AttackerId, won.DefenderId, e.Week);
                     _liege[id] = (int)e.Count;
@@ -304,16 +322,26 @@ public static partial class DemoRealms
                 .Where(x => attack * 100 >= x.Army * need)
                 .OrderBy(x => x.Distance).ThenBy(x => x.Army).ThenBy(x => x.Target)
                 .Select(x => ((int, int, long)?)(x.Target, x.Defender, x.Army)).FirstOrDefault();
-            if (pick is not { } p)
+            // 第 08-22e 章：收復失地優先（兵力要求較低）。
+            var regain = living.Where(t => fold.LostBy(t, week) == king && tops[t] != king && !fighting.Contains(tops[t]) && !busy.Contains(t) && !busy.Contains(tops[t])
+                    && fold.StruggleOf(t) is null && !Struggling(tops[t]) && (DemoTraits.Has(temper, DemoTrait.Deceitful) || !fold.WarTruce(king, tops[t], week)))
+                .Select(t => (Target: t, Defender: tops[t], Distance: members.Min(m => Distance(m, t))))
+                .Where(x => x.Distance <= TempConquestReach)
+                .Select(x => (x.Target, x.Defender, x.Distance, Army: RealmArmy(x.Defender, lieges, living, id => ctx.KnownResidents(king, id))))
+                .Where(x => attack * 100 >= x.Army * TempReconquestStrengthPercent)
+                .OrderBy(x => x.Distance).ThenBy(x => x.Target)
+                .Select(x => ((int, int, long)?)(x.Target, x.Defender, x.Army)).FirstOrDefault();
+            var reconquest = regain is not null;
+            if ((regain ?? pick) is not { } p)
                 continue;
             var (target, defender, army) = p;
             var holy = ctx.Faith(king) is { } f1 && ctx.Faith(target) is { } f2 && f1 != f2 && !DemoTraits.Has(temper, DemoTrait.Cynical); // 第 08-10h 章：多疑的不為信仰開戰
             var foreign = ctx.Culture(king) is { } c1 && ctx.Culture(target) is { } c2 && c1 != c2;
-            var chance = TempConquestChancePercent + (foreign ? TempCultureWarBonusPercent : 0) + DemoTraits.WarChance(temper)
+            var chance = TempConquestChancePercent + (foreign ? TempCultureWarBonusPercent : 0) + DemoTraits.WarChance(temper) + (reconquest ? TempReconquestBonusPercent : 0)
                 + (holy ? TempHolyWarBonusPercent * (DemoTraits.Has(temper, DemoTrait.Zealous) ? DemoTraits.TempZealousHolyWarTimes : 1) : 0);
             if ((int)(Draw(rng, week, king, 5) % 100UL) >= chance)
                 continue;
-            var reason = holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土";
+            var reason = reconquest ? "要收復失地" : holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土"; // 第 08-22e 章
             if (attack * 100 >= army * DemoTraits.SurrenderPercent(ctx.Leader?.Invoke(fold.Seat(defender))?.Traits ?? DemoTrait.None, TempSurrenderPercent)) // 第 08-10h 章：堅毅、軟弱
             {
                 // 第 08-19i 章：兵力懸殊（五倍以上）就不戰而降，不打一場沒有懸念的仗。
