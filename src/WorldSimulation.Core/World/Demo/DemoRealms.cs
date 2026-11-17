@@ -58,7 +58,8 @@ public sealed record DemoRealmContext(
 /// <item><b>獨立派系</b>（十字軍之王）：忠誠低於 0 加入、回到 <see cref="TempLeaveLoyalty"/> 以上退出（記事件）。同一個上級底下的成員是同一個派系，
 ///   首領是人口最多的成員；首領加入滿 <see cref="TempDiscontentWeeks"/> 週（不滿累積滿了）就行動。</item>
 /// <item><b>請願</b>（非武力）：派系兵力不到上級方的 <see cref="TempUltimatumPercent"/>%，只能請願抗議 <see cref="TempPeacefulWeeks"/> 週，
-///   期滿 <see cref="TempPeacefulWinPercent"/>%（文化不同再加 <see cref="TempCultureBonusPercent"/>）上級讓步。</item>
+///   期滿 <see cref="TempPeacefulWinPercent"/>%（文化不同再加 <see cref="TempCultureBonusPercent"/>）上級讓步；
+///   第 08-19j 節：這個機率再乘上派系兵力占上級方的比例（兵力只有一成的派系，讓步機率也只剩一成）。</item>
 /// <item><b>最後通牒</b>：派系兵力達上級方的 <see cref="TempUltimatumPercent"/>% 以上就下通牒；達 <see cref="TempAcceptPercent"/>% 時上級接受、和平獨立，否則拒絕而開戰。</item>
 /// <item><b>獨立戰爭</b>：每週首領與上級交戰，死亡依對方兵力（與天災同一欄週帳，天災、怪物優先）。打滿 <see cref="TempWarMinWeeks"/> 週後，
 ///   一方累計死亡達另一方的 <see cref="TempWarScorePercent"/>% 就分出勝負；打滿 <see cref="TempWarMaxWeeks"/> 週維持原狀（叛軍失敗）。</item>
@@ -388,7 +389,11 @@ public static partial class DemoRealms
                 if (week < s.EndWeek)
                     continue;
                 var differs = ctx.Culture(leader) is { } a && ctx.Culture(s.LiegeId) is { } b && a != b;
-                if ((int)(Draw(rng, week, leader, 0) % 100UL) < TempPeacefulWinPercent + (differs ? TempCultureBonusPercent : 0)
+                // 第 08-19j 節：強大的上級很少向弱小的派系讓步——讓步機率乘上派系兵力占上級方的比例（首領所知的兵力）。
+                var rebels = s.Members.Where(Alive).Sum(m => Army(ctx.Residents(m)));
+                var loyal = Math.Max(1L, LoyalArmy(s.LiegeId, fold, id => ctx.KnownResidents(leader, id)));
+                var power = Math.Min(100L, rebels * 100 / loyal);
+                if ((int)(Draw(rng, week, leader, 0) % 100UL) < (TempPeacefulWinPercent + (differs ? TempCultureBonusPercent : 0)) * power / 100
                     + DemoTraits.Petition(ctx.Leader?.Invoke(fold.Seat(s.LiegeId))?.Traits ?? DemoTrait.None)) // 第 08-10g 章：寬厚的領袖容易讓步、嚴苛的很少
                     Independence(leader, s.LiegeId, s.Members, $"{Name(s.LiegeId)}接受了{Name(leader)}的請願，讓它們獨立");
                 else
