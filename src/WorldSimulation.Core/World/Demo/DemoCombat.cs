@@ -20,7 +20,7 @@ public sealed record DemoCombatForce(long Soldiers, int SoldierLevel, long Civil
 /// <item><b>士兵</b>：鎮以上才有駐軍，成年人的 <see cref="TempTownSoldierPermille"/>‰（城以上 <see cref="TempCitySoldierPermille"/>‰）。
 ///   等級＝1＋弓術、武器鍛造、皮甲、基礎附魔各 +1。</item>
 /// <item><b>非戰鬥人員</b>：每人戰力固定 <see cref="TempCivilianStrengthPercent"/>%（等級 1 的怪物是 100%），所以再多人也只能拖住、壓制。</item>
-/// <item><b>怪物等級</b>＝地下城層數＋1（2～4 級）。每隻怪物的戰力＝等級；每名戰鬥人員的戰力＝自己的等級——等級相同就勢均力敵，高於怪物就佔優勢。</item>
+/// <item><b>怪物等級</b>＝地下城層數（1～3 級；第 12-2f 節：原本層數＋1，三層地下城的 4 級怪物要三項裝備技術的士兵，百年內沒有勢力打得贏）。每隻怪物的戰力＝等級；每名戰鬥人員的戰力＝自己的等級——等級相同就勢均力敵，高於怪物就佔優勢。</item>
 /// <item><b>交戰</b>：我方戰力占雙方的比例決定擊殺（交戰怪物數 × 比例 × 0.6 × 運氣）與我方死亡（交戰怪物數 × 怪物佔比 × 怪物等級 × 0.5 × 運氣）。
 ///   沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限（第 12-2b 節）；有的話才能殺光（地下城沉寂）。</item>
 /// </list>
@@ -36,7 +36,7 @@ public static class DemoCombat
     /// <summary>士兵的裝備技術（各 +1 級）。</summary>
     public static readonly string[] GearTechs = { "TECH_ARCHERY", "TECH_WEAPON_SMITHING", "TECH_LEATHER_ARMOR", "TECH_BASIC_ENCHANTING" };
 
-    public static int MonsterLevel(DemoDungeon dungeon) => dungeon.Layers + 1;
+    public static int MonsterLevel(DemoDungeon dungeon) => dungeon.Layers; // 第 12-2f 節（原本層數＋1）
 
     /// <summary>一個聚落的人力：<paramref name="knows"/>＝會不會某項技術（TechID）。</summary>
     public static DemoCombatForce Force(long adults, DemoSettlementTier tier, Func<string, bool> knows, bool hero = false, int extraLevels = 0)

@@ -125,7 +125,7 @@ public sealed class DemoMonsterTests
         var rng = RngRegistry.Create(3);
         for (var week = 1; week <= 200; week++)
             Assert.Empty(DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { nest }, none, rng, Villagers).Strikes);
-        // 有遠征軍：只有那個聚落出兵，等級（5）高過怪物（3），殺得光。
+        // 有遠征軍：只有那個聚落出兵，等級（5）高過怪物（2），殺得光。
         var hunts = 0;
         var cleared = false;
         var current = nest;
@@ -171,7 +171,7 @@ public sealed class DemoMonsterTests
     {
         var dungeon = new DemoDungeon(new DemoCellRef(0, 0), "測試洞窟", 2, 0, 99, 1);
         var level = DemoCombat.MonsterLevel(dungeon);
-        Assert.Equal(3, level);
+        Assert.Equal(2, level); // 第 12-2f 節：怪物等級＝層數
         // 人力：村莊沒有士兵；鎮有駐軍，裝備技術越多等級越高（第 12-2d 節：沒有冒險者）。
         bool None(string _) => false;
         Assert.Equal(new DemoCombatForce(0, 0, 300), DemoCombat.Force(300, DemoSettlementTier.Village, None));

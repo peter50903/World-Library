@@ -31,6 +31,10 @@ public sealed class DemoSagaTests
         Assert.Contains($"　{DemoAges.Name(ages[^1].Age)}　第 {ages[^1].FromYear}～45 年　", volumes[^1], StringComparison.Ordinal);
         Assert.Contains("終章　第 45 年的世界", lines);
         Assert.Contains(lines, l => l.StartsWith($"　世上有 {world.WorldPopulation} 人、", StringComparison.Ordinal));
+        // 第 12-2f 節：終章寫出險境（有地下城時）與最強的軍隊。
+        Assert.Single(lines, l => l.StartsWith("　最強的軍隊：", StringComparison.Ordinal) || l == "　世上還沒有軍隊。");
+        if (world.Dungeons.Count > 0)
+            Assert.Single(lines, l => l.StartsWith("　險境：", StringComparison.Ordinal) && world.Dungeons.All(d => l.Contains(d.Name, StringComparison.Ordinal)));
     }
 
     [Fact]

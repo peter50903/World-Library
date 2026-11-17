@@ -119,6 +119,16 @@ public static class DemoSaga
         if (houses.Count > 0)
             yield return "　家族：" + string.Join("；", houses) + "。";
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
+
+        // 第 12-2f 節：世上還有哪些險境、誰的軍隊最強（怪物討伐這條故事線的現況）。
+        var dangers = world.MonsterNests(world.CommittedWeeks)
+            .Select(n => I($"{n.Dungeon.Name}（{n.Dungeon.Layers} 層，{(n.Dormant ? "沉寂中" : I($"{DemoCombat.MonsterLevel(n.Dungeon)} 級怪物 {n.Monsters} 隻"))}）")).ToList();
+        if (dangers.Count > 0)
+            yield return "　險境：" + string.Join("、", dangers) + "。";
+        var army = active.Select(s => (Site: s, Force: world.ExpeditionForceOf(s.Id))).Where(x => x.Force.Soldiers > 0)
+            .OrderByDescending(x => x.Force.Soldiers * x.Force.SoldierLevel).ThenBy(x => x.Site.Id).FirstOrDefault();
+        yield return army.Site is null ? "　世上還沒有軍隊。"
+            : I($"　最強的軍隊：{Titled(army.Site)}（{army.Force.SoldierLevel} 級士兵 {army.Force.Soldiers} 人）。");
     }
 
     /// <summary>
