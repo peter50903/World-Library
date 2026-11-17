@@ -48,9 +48,9 @@ public partial class DemoHexMap
             var span = new Rect2(Mathf.Min(target.X, from.X), Mathf.Min(target.Y, from.Y), Mathf.Abs(target.X - from.X), Mathf.Abs(target.Y - from.Y));
             if (span.Grow(radius * 4f + 64f).Intersects(new Rect2(Vector2.Zero, Size)))
                 _animatedOnScreen = true;
-            // ① 佔領斜紋：目標聚落直屬的格。
+            // ① 佔領斜紋：目標聚落直屬的格（第 08-21 章：政治地圖由著色器把整個省份畫成斜紋）。
             var step = Math.Max(4f, radius * TempHatchStep);
-            foreach (var (at, owner) in Territory.Cells)
+            foreach (var (at, owner) in _political ? Enumerable.Empty<KeyValuePair<DemoCellRef, DemoTerritoryCell>>() : (IEnumerable<KeyValuePair<DemoCellRef, DemoTerritoryCell>>)Territory.Cells)
             {
                 if (owner.SettlementId != front.TargetSettlement)
                     continue;

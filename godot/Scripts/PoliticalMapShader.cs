@@ -19,6 +19,7 @@ render_mode unshaded;
 uniform sampler2D ids : filter_nearest, repeat_disable;
 uniform sampler2D land : filter_nearest, repeat_disable;
 uniform sampler2D palette : filter_nearest, repeat_disable;
+uniform sampler2D occupy : filter_nearest, repeat_disable;
 uniform vec2 grid = vec2(1.0, 1.0);
 uniform vec2 origin = vec2(0.0, 0.0);
 uniform float cell_px = 16.0;
@@ -198,6 +199,11 @@ void fragment() {
 		float gold = 1.0 - smoothstep(gold_w - 0.7, gold_w + 0.7, gd);
 		col = mix(col, vec3(0.98, 0.84, 0.36), gold * (0.75 + 0.25 * sin(TIME * 3.0)));
 	}
+
+	// 戰爭中被圍攻的省份：攻方顏色的斜紋（CK3 的佔領斜紋）。
+	vec4 occ = texelFetch(occupy, ivec2(bp % 256, bp / 256), 0);
+	float occ_stripe = step(0.55, fract((c.x - c.y) * 3.0));
+	col = mix(col, occ.rgb, occ.a * occ_stripe * 0.7 * (bp != 0 ? 1.0 : 0.0));
 
 	// 怪物地盤：暗紅、斜紋（世界座標，拖地圖時不會滑動）。
 	float bmask = smoothstep(0.42, 0.58, bl);

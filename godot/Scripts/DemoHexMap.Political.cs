@@ -39,7 +39,8 @@ public partial class DemoHexMap
 
     private ColorRect? _politicalRect;
     private ShaderMaterial? _politicalMaterial;
-    private ImageTexture? _idsTexture, _landTexture, _paletteTexture;
+    private ImageTexture? _idsTexture, _landTexture, _paletteTexture, _occupyTexture;
+    private (object? Fronts, DemoProvinceMap? Provinces) _occupyKey;
     private DemoProvinceMap? _provinces;
     private (DemoHexWorld? World, object? Sites, object? Territory, object? Nests, object? Ruins, object? Scale) _provinceKey;
     private ulong _provincesBuiltMs;
@@ -97,6 +98,7 @@ public partial class DemoHexMap
         if (_provinces is null || _politicalMaterial is null)
             return;
         EnsurePaint();
+        EnsureOccupation();
         var cellPx = CellPx(radius);
         var origin = start - new Vector2(radius, radius); // 第 (0,0) 格左上角
         if (_politicalRect!.Position != Vector2.Zero || _politicalRect.Size != Size)
@@ -144,6 +146,32 @@ public partial class DemoHexMap
         AddChild(_politicalRect);
         _politicalRect.Position = Vector2.Zero;
         _politicalRect.Size = Size;
+        // 沒有戰爭時也要綁一張全透明的佔領圖（沒綁的取樣器是白色，會整張變斜紋）。
+        _occupyTexture = Upload(null, 256, 256, new byte[256 * 256 * 4]);
+        _politicalMaterial.SetShaderParameter("occupy", _occupyTexture);
+    }
+
+    /// <summary>戰爭中被圍攻的省份塗攻方顏色的斜紋（CK3 的佔領斜紋；戰線或省份變了才重建）。</summary>
+    private void EnsureOccupation()
+    {
+        var key = ((object?)WarFronts, _provinces);
+        if (key.Equals(_occupyKey) || _politicalMaterial is null)
+            return;
+        _occupyKey = key;
+        var bytes = new byte[256 * 256 * 4];
+        foreach (var front in WarFronts)
+        {
+            if (!_provinceIndex.TryGetValue(front.TargetSettlement, out var index))
+                continue;
+            var color = FrontColor(front, true);
+            var at = index * 4;
+            bytes[at] = (byte)Mathf.Clamp(color.R * 255f, 0f, 255f);
+            bytes[at + 1] = (byte)Mathf.Clamp(color.G * 255f, 0f, 255f);
+            bytes[at + 2] = (byte)Mathf.Clamp(color.B * 255f, 0f, 255f);
+            bytes[at + 3] = 255;
+        }
+        _occupyTexture = Upload(_occupyTexture, 256, 256, bytes);
+        _politicalMaterial.SetShaderParameter("occupy", _occupyTexture);
     }
 
     /// <summary>不畫政治地圖時藏起來（舊地圖、沒有世界）。</summary>
@@ -180,6 +208,12 @@ public partial class DemoHexMap
             if (_provinceIndex.Count >= PoliticalMapShader.WaterIndex - 2)
                 break;
             _provinceIndex[id] = _provinceIndex.Count + 1;
+        }
+        _realmProvinces.Clear();
+        foreach (var id in _provinceIndex.Keys)
+        {
+            var realm = Territory.RealmOf(id);
+            _realmProvinces[realm] = _realmProvinces.GetValueOrDefault(realm) + 1;
         }
         AssignRealmColors();
         _paintKey = default; // 省份變了，填色與分組重算
@@ -286,8 +320,18 @@ public partial class DemoHexMap
         Mode.Lineage => Sites is null ? (Color?)null : LineageColor(DemoLineageMap.LineageRoot(Sites, province)),
         Mode.Knowledge => KnowledgeTint(province),
         Mode.Food => FoodStatusColor(FoodStatuses.TryGetValue(province, out var s) ? s : FoodStatus.Unsettled),
-        _ => PoliticalRealmColor(Territory.RealmOf(province))
+        _ => RealmFill(Territory.RealmOf(province))
     };
+
+    /// <summary>勢力有幾個省份（填色與勢力名依大小分輕重）。</summary>
+    private readonly Dictionary<int, int> _realmProvinces = new();
+
+    /// <summary>【TEMP】羊皮紙色：獨立的小聚落（單一省份的勢力）只淡淡染上自己的顏色，大勢力才是重點。</summary>
+    private static readonly Color TempParchment = new(0.72f, 0.68f, 0.56f);
+
+    /// <summary>勢力的填色：兩個省份以上用勢力色；只有自己一個省份的獨立聚落混一半羊皮紙色（不會滿地都是碎色塊）。</summary>
+    private Color RealmFill(int realm)
+        => _realmProvinces.GetValueOrDefault(realm) >= 2 ? PoliticalRealmColor(realm) : PoliticalRealmColor(realm).Lerp(TempParchment, 0.55f);
 
     private void EnsurePaint()
     {

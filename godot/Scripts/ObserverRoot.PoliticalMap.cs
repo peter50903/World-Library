@@ -49,6 +49,31 @@ public partial class ObserverRoot
         GD.Print($"WORLD_SIM_POLITICAL_OK: Provinces={check.Provinces} Realms={check.Realms} Labels={check.Labels} Hit={check.Hits}/{check.Sites} Realm=1 Tooltip=1");
     }
 
+    /// <summary>
+    /// 截圖縮成 <paramref name="width"/>×<paramref name="height"/>（或取 <paramref name="crop"/> 那一塊），每個像素量化成 6×7×6＝252 色之一（一個位元組），
+    /// zlib 壓縮後 base64：「寬x高:資料」。註記一則只收 4KB，原圖太大，這樣一張約十幾 KB。
+    /// </summary>
+    private static string Thumb(Image image, int width, int height, Rect2I? crop)
+    {
+        var src = crop is { } region ? image.GetRegion(region) : (Image)image.Duplicate();
+        if (src.GetWidth() != width || src.GetHeight() != height)
+            src.Resize(width, height, Image.Interpolation.Lanczos);
+        var bytes = new byte[width * height];
+        for (var y = 0; y < height; y++)
+            for (var x = 0; x < width; x++)
+            {
+                var c = src.GetPixel(x, y);
+                var r = Math.Clamp((int)Math.Round(c.R * 5f), 0, 5);
+                var g = Math.Clamp((int)Math.Round(c.G * 6f), 0, 6);
+                var b = Math.Clamp((int)Math.Round(c.B * 5f), 0, 5);
+                bytes[y * width + x] = (byte)(r * 42 + g * 6 + b);
+            }
+        using var memory = new System.IO.MemoryStream();
+        using (var zlib = new System.IO.Compression.ZLibStream(memory, System.IO.Compression.CompressionLevel.SmallestSize))
+            zlib.Write(bytes);
+        return $"{width}x{height}:{Convert.ToBase64String(memory.ToArray())}";
+    }
+
     /// <summary>【TEMP】截圖的種子與年數（大地圖）。</summary>
     private const ulong TempShotSeed = 7;
     private const int TempShotYears = 30;
@@ -72,10 +97,11 @@ public partial class ObserverRoot
             var image = GetViewport().GetTexture().GetImage();
             var path = System.IO.Path.Combine(dir, name + ".png");
             image.SavePng(path);
-            // CI 另存縮小的 JPG（轉成註記給讀不到 artifact 的工作階段看）。
-            var small = (Image)image.Duplicate();
-            small.Resize(1120, image.GetHeight() * 1120 / Math.Max(1, image.GetWidth()), Image.Interpolation.Lanczos);
-            small.SaveJpg(System.IO.Path.Combine(dir, name + ".jpg"), 0.72f);
+            // CI 另存小縮圖（252 色、壓縮後 base64），轉成註記給讀不到 artifact 的工作階段看；近景另存畫面中央一塊原尺寸。
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 288, 180, null));
+            if (name.Contains("close", StringComparison.Ordinal))
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
+                    new Rect2I(image.GetWidth() / 2 - 160, image.GetHeight() / 2 - 100, 320, 200)));
             GD.Print($"WORLD_SIM_MAP_SHOT: {path} {image.GetWidth()}x{image.GetHeight()}");
         }
         _hexMap.ShowWholeWorld();

@@ -577,24 +577,24 @@ jobs:
           ls -la /tmp/map-shots
           echo "::notice title=政治地圖截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Simulated.*' /tmp/godot-mapshot.log)"
 
-      - name: 政治地圖截圖轉成註記（準備；縮小的 JPG 以 base64 分段，API 讀得到）
+      - name: 政治地圖截圖轉成註記（準備；註記一則只收 4KB，縮圖量化壓縮後分段）
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for f in /tmp/map-shots/*.jpg; do
+          for name in 1_realms_far 3_realms_close_crop 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
+            f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
-            name="$(basename "${f%.jpg}")"
-            base64 -w0 "$f" | fold -w 48000 > "/tmp/shot-notes/$name.b64"
-            n="$(wc -l < "/tmp/shot-notes/$name.b64")"
+            fold -w 3900 "$f" > "/tmp/shot-notes/$name.txt"
+            n="$(wc -l < "/tmp/shot-notes/$name.txt")"
             k=0
             while IFS= read -r chunk; do
               k=$((k + 1))
               echo "::notice title=shot $name $k/$n::$chunk" >> /tmp/shot-notes/all.txt
-            done < "/tmp/shot-notes/$name.b64"
+            done < "/tmp/shot-notes/$name.txt"
           done
+          wc -l /tmp/shot-notes/all.txt
           split -l 9 -d /tmp/shot-notes/all.txt /tmp/shot-notes/part-
-          ls -la /tmp/shot-notes
 
       - name: 政治地圖截圖註記 1
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
@@ -607,6 +607,10 @@ jobs:
       - name: 政治地圖截圖註記 3
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
         run: cat /tmp/shot-notes/part-02 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 4
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        run: cat /tmp/shot-notes/part-03 2>/dev/null || true
 
       - name: Upload political map shots (第 08-21 章)
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))

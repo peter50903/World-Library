@@ -131,6 +131,7 @@ public partial class DemoHexMap
         if (_provinces is null || World is null || _mode is not (Mode.Realm or Mode.Terrain or Mode.Culture or Mode.Faith))
             return;
         var byGroup = new Dictionary<long, HashSet<Vector2I>>();
+        var provincesOf = new Dictionary<long, HashSet<int>>();
         for (var r = 0; r < World.Rows; r++)
             for (var c = 0; c < World.Columns; c++)
             {
@@ -141,11 +142,13 @@ public partial class DemoHexMap
                 if (g == 0)
                     continue;
                 (byGroup.TryGetValue(g, out var set) ? set : byGroup[g] = new HashSet<Vector2I>()).Add(new Vector2I(c, r));
+                (provincesOf.TryGetValue(g, out var ps) ? ps : provincesOf[g] = new HashSet<int>()).Add(p);
             }
         foreach (var (group, cells) in byGroup.OrderBy(kv => kv.Key))
         {
             var name = GroupName(group);
-            if (string.IsNullOrEmpty(name) || cells.Count < 2)
+            // 只有一個省份的（獨立的小聚落）不寫勢力名：拉近時名牌就有名字，遠看不會滿地都是小字。
+            if (string.IsNullOrEmpty(name) || cells.Count < 2 || provincesOf[group].Count < 2)
                 continue;
             if (LayoutLabel(group, name.Replace("·", string.Empty, StringComparison.Ordinal), cells) is { } label)
                 _labels.Add(label);
