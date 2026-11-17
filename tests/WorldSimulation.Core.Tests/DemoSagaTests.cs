@@ -46,6 +46,11 @@ public sealed class DemoSagaTests
         Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
         Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge),
             e => Assert.True(DemoSaga.IsTold(e)));
+        // 戰爭沒打贏的結局是一般事件，也要寫進史書；其他一般事件不寫。
+        static DemoChronicleEntry Realm(string text) => new(1, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, new[] { new DemoChronicleSegment(text) });
+        Assert.True(DemoSaga.IsTold(Realm("東塔林的叛軍被佩林谷擊潰（叛軍死 3、上級死 1）")));
+        Assert.True(DemoSaga.IsTold(Realm("獨立戰爭打了一年不分勝負，東塔林只好維持原狀")));
+        Assert.False(DemoSaga.IsTold(Realm("東塔林歸附佩林谷")));
 
         // 世界首次的技術不逐條列，每卷收成一句，項數加起來等於編年史的首創數。
         var firsts = years.SelectMany(y => y.Entries).Count(e => e.IsWorld && e.Category == DemoChronicleCategory.Knowledge);

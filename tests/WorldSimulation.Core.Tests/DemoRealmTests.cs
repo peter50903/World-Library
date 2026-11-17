@@ -19,6 +19,10 @@ public sealed class DemoRealmTests
     private static DemoRealmContext Ctx(DemoWorldSites sites, Func<int, long> residents, Func<int, int?>? culture = null)
         => new(sites, residents, culture ?? (_ => 1), _ => null, _ => DemoSettlementTier.Village, _ => false);
 
+    /// <summary>第 08-19h 章：<paramref name="town"/> 是 100 人的城鎮，其餘是 10 人的村莊、同文化——小村服氣，會自己歸附。</summary>
+    private static DemoRealmContext Feudal(DemoWorldSites sites, int town)
+        => new(sites, id => id == town ? 100 : 10, _ => 1, _ => null, id => id == town ? DemoSettlementTier.Town : DemoSettlementTier.Village, _ => true);
+
     /// <summary>跑一週：交戰事件（照 Battles）＋隸屬變化，全部餵進摺疊。</summary>
     private static IReadOnlyList<DemoSettlementEvent> Step(DemoRealms.Fold fold, int week, DemoRealmContext ctx, IReadOnlyDictionary<int, int> natural, RngRegistry rng)
     {
@@ -63,8 +67,9 @@ public sealed class DemoRealmTests
         // 上級很大、兩個下級文化不同（忠誠為負）但兵力不足：加入派系、半年後請願（非武力）。
         var ctx = Ctx(world.Sites, id => id == a ? 1000 : 100, id => id == a ? 1 : 2);
         var natural = new Dictionary<int, int> { [b] = a, [c] = a };
-        var joined = Step(fold, 1, ctx, natural, rng);
-        Assert.Equal(2, joined.Count(e => e.Kind == DemoSettlementEventKind.VassalJoined));
+        // 第 08-19h 章：一開始就不服的不會自己歸附，所以隸屬直接給定（例：被征服而來）。
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, c, "", DemoSettlementEventKind.VassalJoined, a, ""));
         // 文化不同、同層級：即使剛歸附 +15，忠誠仍是負的，第 2 週加入派系。
         var factions = Step(fold, 2, ctx, natural, rng);
         Assert.Equal(new[] { b, c }, factions.Where(e => e.Kind == DemoSettlementEventKind.FactionJoined).Select(e => e.SettlementId).OrderBy(x => x));
@@ -105,7 +110,9 @@ public sealed class DemoRealmTests
         var fold = new DemoRealms.Fold();
         var rng = RngRegistry.Create(4);
         var strong = Ctx(world.Sites, id => id == a ? 100 : 100, id => id == a ? 1 : 2);
-        for (var week = 1; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, c, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        for (var week = 2; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
             Step(fold, week, strong, natural, rng);
         Assert.False(fold.Liege.ContainsKey(b));
         Assert.Empty(fold.Struggles);
@@ -113,7 +120,9 @@ public sealed class DemoRealmTests
         fold = new DemoRealms.Fold();
         var even = Ctx(world.Sites, id => id == a ? 200 : 100, id => id == a ? 1 : 2);
         var all = new List<DemoSettlementEvent>();
-        for (var week = 1; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, c, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        for (var week = 2; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
             all.AddRange(Step(fold, week, even, natural, rng));
         Assert.Contains(all, e => e.Kind == DemoSettlementEventKind.SecessionArmed);
         var war = Assert.Single(fold.Struggles.Values);
@@ -130,22 +139,82 @@ public sealed class DemoRealmTests
         Assert.Contains(all, e => e.Kind == DemoSettlementEventKind.SecessionBattle);
     }
 
+    // 第 08-19h 章：交戰死亡跟著對方兵力走，零頭用亂數進位；小兵力不再每週固定死一人。
+    [Fact]
+    public void WarDeathsScaleWithTheEnemyArmyAndRoundByChance()
+    {
+        Assert.Equal(0, DemoRealms.WarDeaths(0, 100, 12345));
+        // 兵力 20、運氣 1.0（draw % 101 = 50）＝剛好 1 人。
+        Assert.Equal(1, DemoRealms.WarDeaths(20, 100, 50));
+        // 兵力 2、運氣 0.5＝0.05 人：進位亂數（draw / 101 % 1000）小於 50 才死 1 人。
+        Assert.Equal(1, DemoRealms.WarDeaths(2, 100, 0));
+        Assert.Equal(0, DemoRealms.WarDeaths(2, 100, 101UL * 50));
+        // 最多留 1 人。
+        Assert.Equal(4, DemoRealms.WarDeaths(2000, 5, 50));
+        Assert.Equal(0, DemoRealms.WarDeaths(2000, 1, 50));
+    }
+
     [Fact]
     public void LiegeRuinFreesVassalsAndJoiningNeverCycles()
     {
         var (world, a, b, _) = Setup();
         var rng = RngRegistry.Create(3);
         var fold = new DemoRealms.Fold();
-        Step(fold, 1, Ctx(world.Sites, _ => 120), new Dictionary<int, int> { [b] = a }, rng);
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
         Assert.Equal(a, fold.Liege[b]);
         var free = Assert.Single(Step(fold, 2, Ctx(world.Sites, id => id == a ? 0 : 120), new Dictionary<int, int>(), rng));
         Assert.Equal((DemoSettlementEventKind.Independence, b, (long)a), (free.Kind, free.SettlementId, free.Count));
         Assert.False(fold.Liege.ContainsKey(b));
         // 互為自然上級時只歸附一邊；同樣的輸入、同樣的結果。
         var cyc = new Dictionary<int, int> { [a] = b, [b] = a };
-        var events = DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10);
-        Assert.Single(events);
-        Assert.Equal(events, DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10));
+        var feudal = Feudal(world.Sites, a);
+        var willing = DemoRealms.LoyaltyValue(b, a, 1, new DemoRealms.Fold(), feudal) >= 0; // 離得太遠的小村也不服
+        var events = DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), feudal, cyc, RngRegistry.Create(1), true, 10);
+        Assert.Equal(willing ? new[] { (DemoSettlementEventKind.VassalJoined, b, (long)a) } : Array.Empty<(DemoSettlementEventKind, int, long)>(),
+            events.Select(e => (e.Kind, e.SettlementId, e.Count)));
+        Assert.Equal(events, DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Feudal(world.Sites, a), cyc, RngRegistry.Create(1), true, 10));
+        // 第 08-19h 章：規模相當的同級聚落互不相服，誰也不歸附誰。
+        Assert.Empty(DemoRealms.Advance(1, TimeSpan.FromDays(7), new DemoRealms.Fold(), Ctx(world.Sites, _ => 50), cyc, RngRegistry.Create(1), true, 10));
+    }
+
+    // 第 08-19h 章：獨立之後不會自己歸附回舊主（期滿才會）；湊不出 3 個兵的派系打不起獨立戰爭，只能請願。
+    [Fact]
+    public void FreedSettlementDoesNotRejoinItsFormerLiegeUntilTheIndependencePeriodEnds()
+    {
+        var (world, a, b, _) = Setup();
+        var rng = RngRegistry.Create(5);
+        var natural = new Dictionary<int, int> { [b] = a };
+        var ctx = Feudal(world.Sites, a);
+        var fold = new DemoRealms.Fold();
+        var willing = DemoRealms.LoyaltyValue(b, a, 1, fold, ctx) >= 0;
+        Assert.Equal(willing, Step(fold, 1, ctx, natural, rng).Any(e => e.Kind == DemoSettlementEventKind.VassalJoined && e.SettlementId == b));
+        Assert.Equal(willing, fold.Liege.ContainsKey(b));
+        fold.Apply(new DemoSettlementEvent(2, TimeSpan.FromDays(14), b, "", DemoSettlementEventKind.Independence, a, ""));
+        Assert.True(fold.FreedFrom(b, a, 3));
+        Assert.DoesNotContain(Step(fold, 3, ctx, natural, rng), e => e.Kind == DemoSettlementEventKind.VassalJoined);
+        Assert.False(fold.Liege.ContainsKey(b));
+        var later = 2 + DemoRealms.TempIndependenceWeeks;
+        Assert.False(fold.FreedFrom(b, a, later));
+        Assert.Equal(willing, Step(fold, later, ctx, natural, rng).Any(e => e.Kind == DemoSettlementEventKind.VassalJoined && e.SettlementId == b));
+    }
+
+    [Fact]
+    public void TinyFactionPetitionsInsteadOfWagingWar()
+    {
+        var (world, a, b, _) = Setup();
+        var rng = RngRegistry.Create(6);
+        var natural = new Dictionary<int, int> { [b] = a };
+        // 雙方各 20 人（兵力 2 對 2，原本會開戰）：兵力不到 3，只能請願。
+        var ctx = Ctx(world.Sites, _ => 20, id => id == a ? 1 : 2);
+        var fold = new DemoRealms.Fold();
+        var all = new List<DemoSettlementEvent>();
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        for (var week = 2; week <= 2 + DemoRealms.TempDiscontentWeeks; week++)
+            all.AddRange(Step(fold, week, ctx, natural, rng));
+        Assert.DoesNotContain(all, e => e.Kind == DemoSettlementEventKind.SecessionArmed);
+        var petition = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.SecessionPeaceful);
+        Assert.Contains("人少勢弱（2 對 2）", petition.Cause, StringComparison.Ordinal);
+        Assert.False(Assert.Single(fold.Struggles.Values).Armed);
     }
 
     [Fact]
