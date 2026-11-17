@@ -298,15 +298,18 @@ jobs:
           for part in $(ls /tmp/saga-part-* | head -9); do
             echo "::notice title=文字史書 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
           done
-          # 第 08-10i 章：中地圖的一百年只貼人物、英雄、傳說物品、家族與終章（看大一點的世界有沒有英雄）。
-          if timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map medium > /tmp/saga-medium.txt 2>&1; then
-            grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|洞窟|古墓|地窟|深淵|迷宮|險境：|軍隊' /tmp/saga-medium.txt | cut -c1-400 | head -56 > /tmp/saga-medium-short.txt
-            echo "::notice title=中地圖史書摘要::$(wc -l < /tmp/saga-medium.txt) 行%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-medium-short.txt | cut -c1-3800)"
-            # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）；全文印在這一步的紀錄裡。
-            echo "::notice title=中地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-medium.txt)、請願駁回 $(grep -c '駁回了' /tmp/saga-medium.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-medium.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-medium.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-medium.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-medium.txt)、征服 $(grep -c '歸入' /tmp/saga-medium.txt)"
-            cat /tmp/saga-medium.txt
+          # 第 08-20i 章（使用者 2026-11-17：小、中地圖是小規模測試，本來就停在王國之前；正式內容以大、巨大地圖為主）：
+          # 驗收看大地圖種子 1 的一百年——摘要、勢力結局計數與耗時貼成註記，全文印在這一步的紀錄裡（原本的中地圖一百年拿掉）。
+          start=$(date +%s)
+          if timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map large > /tmp/saga-large.txt 2>&1; then
+            elapsed=$(( $(date +%s) - start ))
+            grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|險境：|軍隊|王國' /tmp/saga-large.txt | cut -c1-400 | head -60 > /tmp/saga-large-short.txt
+            echo "::notice title=大地圖史書摘要::$(wc -l < /tmp/saga-large.txt) 行、跑了 ${elapsed} 秒%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-short.txt | cut -c1-3800)"
+            # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）。
+            echo "::notice title=大地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-large.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-large.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-large.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-large.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-large.txt)、征服 $(grep -c '征服了\|歸入' /tmp/saga-large.txt)、地下城被殺光 $(grep -c '怪物被殺光' /tmp/saga-large.txt)"
+            cat /tmp/saga-large.txt
           else
-            echo "::warning title=中地圖史書未完成::$(tail -5 /tmp/saga-medium.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+            echo "::warning title=大地圖史書未完成::$(( $(date +%s) - start )) 秒%0A$(tail -5 /tmp/saga-large.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
           fi
 
       - name: Upload M1 acceptance report (第 08 章 d 節)
