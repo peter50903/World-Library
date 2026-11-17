@@ -111,6 +111,7 @@ public static class DemoSaga
         };
 
         var ledger = world.YearSummaries().ToDictionary(y => y.Year);
+        var causes = DeathCauses(world.SettlementEvents()); // 第 08-10j 節：未得善終的死因
         var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
         var cast = new DemoSagaCast(world); // 第 08-10f 章：人物進入史書
         var lastYear = years.Count == 0 ? 1 : years[^1].Year;
@@ -153,7 +154,7 @@ public static class DemoSaga
                 lines.Add("　人物：" + ruler);
             foreach (var hero in cast.HeroesMarked(volume[0].Year, volume[^1].Year)) // 第 08-10i 章
                 lines.Add("　英雄：" + hero);
-            lines.Add("　" + People(volume, ledger));
+            lines.Add("　" + People(volume, ledger, causes));
         }
 
         lines.Add("");
@@ -348,10 +349,37 @@ public static class DemoSaga
         return I($"世人學會了 {firsts.Count} 項前所未有的技術（{string.Join("、", names.Take(NamedTechs))}{(names.Count > NamedTechs ? "等" : "")}）；首創者：{string.Join("、", by)}。");
     }
 
+    /// <summary>第 08-10j 節：史書列出的死因（依這個順序比大小相同時的先後）。</summary>
+    public static readonly string[] DeathCauseNames = { "戰火", "餓死", "怪物", "天災", "野獸" };
+
+    /// <summary>第 08-10j 節：這種事件的人數欄是哪一種死因的死亡人數；不是死亡事件＝null。</summary>
+    public static string? DeathCause(DemoSettlementEventKind kind) => kind switch
+    {
+        DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle => "戰火",
+        DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.MigrantStarvationDeath => "餓死",
+        DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => "怪物",
+        DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite
+            or DemoSettlementEventKind.Flood => "天災",
+        DemoSettlementEventKind.BeastAttack => "野獸",
+        _ => null
+    };
+
+    /// <summary>第 08-10j 節：每年各種死因的死亡人數（由事件推得）。</summary>
+    public static IReadOnlyDictionary<int, IReadOnlyDictionary<string, long>> DeathCauses(IEnumerable<DemoSettlementEvent> events)
+    {
+        ArgumentNullException.ThrowIfNull(events);
+        return events.Where(e => e.Count > 0 && DeathCause(e.Kind) is not null)
+            .GroupBy(e => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, e.Week) * 7)))
+            .ToDictionary(g => g.Key, g => (IReadOnlyDictionary<string, long>)g.GroupBy(e => DeathCause(e.Kind)!)
+                .ToDictionary(c => c.Key, c => c.Sum(e => e.Count)));
+    }
+
     /// <summary>
     /// 這一卷的生死與卷末人口。優先用世界的年帳（出生、壽終、其餘死亡、年末人口）；年帳不齊（曆法不同的測試世界）時只寫編年史數得到的出生與壽終。
+    /// 第 08-10j 節：未得善終的人數後面列出死因（多的在前；事件數不到的寫「其他」）。
     /// </summary>
-    private static string People(IReadOnlyList<DemoChronicleYear> volume, IReadOnlyDictionary<int, DemoYearSummary> ledger)
+    private static string People(IReadOnlyList<DemoChronicleYear> volume, IReadOnlyDictionary<int, DemoYearSummary> ledger,
+        IReadOnlyDictionary<int, IReadOnlyDictionary<string, long>> causes)
     {
         static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
         if (!volume.All(y => ledger.ContainsKey(y.Year)))
@@ -361,8 +389,16 @@ public static class DemoSaga
         var natural = rows.Sum(r => r.NaturalDeaths);
         var other = rows.Sum(r => r.Deaths) - natural;
         var last = rows[^1];
+        var tally = DeathCauseNames
+            .Select((name, order) => (Name: name, Order: order,
+                Count: volume.Sum(y => causes.TryGetValue(y.Year, out var t) ? t.GetValueOrDefault(name) : 0L)))
+            .Where(x => x.Count > 0).OrderByDescending(x => x.Count).ThenBy(x => x.Order)
+            .Select(x => (x.Name, x.Count)).ToList();
+        if (other > tally.Sum(x => x.Count))
+            tally.Add(("其他", other - tally.Sum(x => x.Count)));
+        var detail = tally.Count == 0 ? "" : "（" + string.Join("、", tally.Select(x => I($"{x.Name} {x.Count}"))) + "）";
         return I($"這些年裡 {births} 人出生，{natural} 人壽終")
-            + (other > 0 ? I($"，{other} 人未得善終") : "")
+            + (other > 0 ? I($"，{other} 人未得善終") + detail : "")
             + I($"；第 {last.Year} 年末世上有 {last.PopulationClosing} 人。");
     }
 }
