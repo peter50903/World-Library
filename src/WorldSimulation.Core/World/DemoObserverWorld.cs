@@ -804,7 +804,8 @@ public sealed partial class DemoObserverWorld
                 // 進行中的獨立戰爭照常打完（關掉叛亂只擋新的派系與鬥爭）。
                 var leadersNow = Leaders(); // 第 08-10h 章：領袖的性格影響交戰
                 var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng,
-                    id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None, Map); // 第 08-22b 章：地形
+                    id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None, Map, // 第 08-22b 章：地形
+                    id => _demography.Representatives.FirstOrDefault(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)?.Name); // 第 08-22f 章：英雄帶兵
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }
