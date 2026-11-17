@@ -187,6 +187,9 @@ public static partial class DemoRealms
                 continue;
             var members = living.Where(id => tops[id] == king).ToList(); // 第 08-19i 章：沒有臣屬的城市也能出兵（原本至少要一個臣屬）
             var attack = RealmArmy(king, lieges, living, ctx.Residents);
+            // 第 08-10g 章：領袖的性格——謹慎的要有更大的兵力優勢才出兵；好戰的更常出兵。
+            var temper = ctx.Leader?.Invoke(fold.Seat(king))?.Traits ?? DemoTrait.None;
+            var need = DemoTraits.Has(temper, DemoTrait.Cautious) ? DemoTraits.TempCautiousStrengthPercent : TempConquestStrengthPercent;
             // 每個鄰近勢力取離本國最近的聚落當戰爭目標；只挑打得贏的（兵力至少 120%），最近的先。
             var pick = living.Where(t => tops[t] != king && !fighting.Contains(tops[t]) && !busy.Contains(t) && !busy.Contains(tops[t])
                     && fold.StruggleOf(t) is null && !Struggling(tops[t]) && !fold.WarTruce(king, tops[t], week))
@@ -195,7 +198,7 @@ public static partial class DemoRealms
                 .GroupBy(x => x.Defender)
                 .Select(g => g.OrderBy(x => x.Distance).ThenBy(x => x.Target).First())
                 .Select(x => (x.Target, x.Defender, x.Distance, Army: RealmArmy(x.Defender, lieges, living, id => ctx.KnownResidents(king, id)))) // 第 14-1 章★4：國王所知的對方兵力
-                .Where(x => attack * 100 >= x.Army * TempConquestStrengthPercent)
+                .Where(x => attack * 100 >= x.Army * need)
                 .OrderBy(x => x.Distance).ThenBy(x => x.Army).ThenBy(x => x.Target)
                 .Select(x => ((int, int, long)?)(x.Target, x.Defender, x.Army)).FirstOrDefault();
             if (pick is not { } p)
@@ -203,7 +206,8 @@ public static partial class DemoRealms
             var (target, defender, army) = p;
             var holy = ctx.Faith(king) is { } f1 && ctx.Faith(target) is { } f2 && f1 != f2;
             var foreign = ctx.Culture(king) is { } c1 && ctx.Culture(target) is { } c2 && c1 != c2;
-            var chance = TempConquestChancePercent + (holy ? TempHolyWarBonusPercent : 0) + (foreign ? TempCultureWarBonusPercent : 0);
+            var chance = TempConquestChancePercent + (holy ? TempHolyWarBonusPercent : 0) + (foreign ? TempCultureWarBonusPercent : 0)
+                + (DemoTraits.Has(temper, DemoTrait.Warlike) ? DemoTraits.TempWarlikeChance : 0);
             if ((int)(Draw(rng, week, king, 5) % 100UL) >= chance)
                 continue;
             var reason = holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土";

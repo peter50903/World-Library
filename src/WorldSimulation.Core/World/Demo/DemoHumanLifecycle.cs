@@ -227,6 +227,9 @@ internal static class DemoHumanLifecycle
     /// （使用者：只有權力者與持有專業知識的人才算）。老死或聚落無人就卸任，下週結算由同規則補任。
     /// 補任者從年齡群中具名化（不是出生、不改人數），實體 ID 由世界唯一分配器依聚落、職位順序發號，名字依 ID 抽。
     /// </summary>
+    /// <summary>【TEMP】第 08-10g 章：繼承人比前任小幾歲到幾歲（子女輩）。</summary>
+    public const int TempHeirMinGapYears = 18, TempHeirMaxGapYears = 45;
+
     private static (DemoCohortDemography Population, IReadOnlyList<DemoRepresentative> Appointments, IReadOnlyList<DemoRepresentativeExit> Exits)
         Representatives(DemoCohortDemography population, IReadOnlyList<DemoRepresentative> died, DemoWeekReport report,
             DemoWorldSites sites, int day, EntityIdAllocator ids, DemoNames names, DemoKnowledgeState knowledge,
@@ -249,6 +252,9 @@ internal static class DemoHumanLifecycle
                 current.Add(r);
         }
 
+        // 第 08-10g 章：本週離世的領袖（世襲時子女接任）。
+        var goneLeaders = died.Concat(starved).Concat(disasterVictims ?? Array.Empty<DemoRepresentative>())
+            .Where(r => r.Role == DemoRepresentativeRole.Leader).GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.OrderBy(r => r.Id).First());
         var appointments = new List<DemoRepresentative>();
         // 第 08-13 章第 5 節：在任者依聚落分組（原本每次掃全部在任者；結果相同）。
         var currentAt = current.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.ToList());
@@ -273,9 +279,25 @@ internal static class DemoHumanLifecycle
                 var pick = role == DemoRepresentativeRole.Leader
                     ? candidates.OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault()
                     : candidates.OrderByDescending(Free).ThenBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
+                // 第 08-10g 章：世襲——前任領袖本週離世時，由子女輩（比前任小 18～45 歲【TEMP】的成年人）裡最年長的接任，沿用家族的姓；
+                // 沒有這樣的人才照原本的規則另推一位（換一個家族）。
+                DemoRepresentative? parent = null;
+                if (role == DemoRepresentativeRole.Leader && goneLeaders.TryGetValue(settlement.Id, out var gone))
+                {
+                    var heir = adults.Where(g => Free(g) > 0 && g.BirthYear >= gone.BirthYear + TempHeirMinGapYears && g.BirthYear <= gone.BirthYear + TempHeirMaxGapYears)
+                        .OrderBy(g => g.BirthYear).ThenBy(g => g.Sex).FirstOrDefault();
+                    if (heir is not null)
+                    {
+                        pick = heir;
+                        parent = gone;
+                    }
+                }
                 if (pick is null) continue;
                 var id = DemoEntityIds.NextLong(ids);
-                var person = new DemoRepresentative(id, settlement.Id, role, names.Person(id, pick.Sex), pick.Sex, pick.BirthYear, report.Week);
+                var name = parent is null ? names.Person(id, pick.Sex)
+                    : names.PersonOfHouse(id, pick.Sex, DemoNames.FamilyOf(parent.Name), DemoNames.GivenOf(parent.Name));
+                var traits = role == DemoRepresentativeRole.Leader ? DemoTraits.Roll(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None) : DemoTrait.None;
+                var person = new DemoRepresentative(id, settlement.Id, role, name, pick.Sex, pick.BirthYear, report.Week, parent?.Id ?? 0, traits);
                 current.Add(person);
                 here.Add(person);
                 appointments.Add(person);

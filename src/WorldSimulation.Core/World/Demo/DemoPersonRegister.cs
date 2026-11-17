@@ -8,7 +8,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// <see cref="ExitWeek"/>＝0 表示仍在任。
 /// </summary>
 public sealed record DemoPersonRecord(long Id, string Name, DemoTempSex Sex, int BirthYear, DemoRepresentativeRole Role,
-    int SettlementId, int AppointedWeek, int ExitWeek = 0, string ExitReason = "")
+    int SettlementId, int AppointedWeek, int ExitWeek = 0, string ExitReason = "", long ParentId = 0, DemoTrait Traits = DemoTrait.None)
 {
     public bool InOffice => ExitWeek == 0;
 }
@@ -30,7 +30,7 @@ public static class DemoPersonRegister
         {
             if (builder.ContainsKey(r.Id))
                 throw new InvalidOperationException($"人物 #{r.Id} 重複登記（實體編號不重用）。");
-            builder[r.Id] = new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek);
+            builder[r.Id] = new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek, ParentId: r.ParentId, Traits: r.Traits);
         }
         foreach (var x in report.RepresentativeExits)
         {
@@ -45,7 +45,7 @@ public static class DemoPersonRegister
             foreach (var record in builder.Values.Where(p => p.InOffice && !current.Contains(p.Id)).ToList())
                 builder[record.Id] = record with { ExitWeek = report.Week, ExitReason = "卸任" };
             foreach (var r in inOffice.Where(r => !builder.ContainsKey(r.Id)))
-                builder[r.Id] = new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek);
+                builder[r.Id] = new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek, ParentId: r.ParentId, Traits: r.Traits);
         }
         return builder.ToImmutable();
     }
@@ -53,5 +53,5 @@ public static class DemoPersonRegister
     /// <summary>從在任的代表人物建立登記表（新世界開局、或沒有登記表的舊存檔）。</summary>
     public static ImmutableSortedDictionary<long, DemoPersonRecord> FromInOffice(IEnumerable<DemoRepresentative> representatives)
         => representatives.ToImmutableSortedDictionary(r => r.Id,
-            r => new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek));
+            r => new DemoPersonRecord(r.Id, r.Name, r.Sex, r.BirthYear, r.Role, r.SettlementId, r.AppointedWeek, ParentId: r.ParentId, Traits: r.Traits));
 }

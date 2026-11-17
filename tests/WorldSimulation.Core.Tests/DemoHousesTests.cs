@@ -1,0 +1,107 @@
+using WorldSimulation.Core.World;
+using WorldSimulation.Core.World.Demo;
+using Xunit;
+
+namespace WorldSimulation.Core.Tests;
+
+/// <summary>第 08-10g 章：領袖的性格、世襲與家族。</summary>
+public sealed class DemoHousesTests
+{
+    private static readonly Lazy<DemoObserverWorld> Shared = new(() =>
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 45 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        return world;
+    });
+
+    [Fact]
+    public void TraitsComeInTwoFromDifferentPairsAndCanBeInherited()
+    {
+        for (ulong seed = 0; seed < 200; seed++)
+        {
+            ulong Draw(int k) => seed * 7919UL + (ulong)k * 104729UL + seed / 3UL;
+            var traits = DemoTraits.Roll(Draw);
+            var list = DemoTraits.List(traits);
+            Assert.Equal(2, list.Count);
+            Assert.False(DemoTraits.Has(traits, DemoTrait.Warlike) && DemoTraits.Has(traits, DemoTrait.Cautious));
+            Assert.False(DemoTraits.Has(traits, DemoTrait.Lenient) && DemoTraits.Has(traits, DemoTrait.Harsh));
+            Assert.False(DemoTraits.Has(traits, DemoTrait.Just) && DemoTraits.Has(traits, DemoTrait.Cruel));
+            // 有父母：仍是兩項、不同組；承襲時其中一項來自父母。
+            var child = DemoTraits.Roll(Draw, DemoTrait.Warlike | DemoTrait.Cruel);
+            Assert.Equal(2, DemoTraits.List(child).Count);
+            if ((int)(Draw(4) % 100UL) < DemoTraits.TempInheritPercent)
+                Assert.True(DemoTraits.Has(child, DemoTrait.Warlike) || DemoTraits.Has(child, DemoTrait.Cruel));
+            else
+                Assert.Equal(traits, child);
+        }
+        Assert.Equal("好戰、暴虐", DemoTraits.Names(DemoTrait.Cruel | DemoTrait.Warlike));
+        Assert.Equal("", DemoTraits.Names(DemoTrait.None));
+        Assert.Equal(DemoTraits.TempLenientPetition, DemoTraits.Petition(DemoTrait.Lenient | DemoTrait.Just));
+        Assert.Equal(DemoTraits.TempHarshPetition, DemoTraits.Petition(DemoTrait.Harsh));
+        Assert.Equal(DemoTraits.TempCruelLoyalty, DemoTraits.Loyalty(DemoTrait.Cruel | DemoTrait.Warlike));
+        Assert.Equal(0, DemoTraits.Loyalty(DemoTrait.Warlike));
+    }
+
+    [Fact]
+    public void NamesSplitIntoGivenAndFamily()
+    {
+        Assert.Equal("莫頓", DemoNames.FamilyOf("艾妲·莫頓"));
+        Assert.Equal("艾妲", DemoNames.GivenOf("艾妲·莫頓"));
+        Assert.Equal("無名者7", DemoNames.FamilyOf("無名者7"));
+    }
+
+    [Fact]
+    public void LeadersHaveTraitsAndHeirsKeepTheFamilyName()
+    {
+        var world = Shared.Value;
+        var leaders = world.PersonRecords.Where(p => p.Role == DemoRepresentativeRole.Leader).ToList();
+        var byId = leaders.ToDictionary(p => p.Id);
+        // 每位領袖兩項性格；其他職位沒有性格、沒有父母。
+        Assert.All(leaders, p => Assert.Equal(2, DemoTraits.List(p.Traits).Count));
+        Assert.All(world.PersonRecords.Where(p => p.Role != DemoRepresentativeRole.Leader),
+            p => Assert.Equal((DemoTrait.None, 0L), (p.Traits, p.ParentId)));
+        // 世襲：45 年裡一定有人繼承；繼承人與父母同姓不同名、同一個聚落、比父母小 18～45 歲、在父母離任那一週接任。
+        var heirs = leaders.Where(p => p.ParentId > 0).ToList();
+        Assert.NotEmpty(heirs);
+        Assert.All(heirs, heir =>
+        {
+            var parent = byId[heir.ParentId];
+            Assert.Equal(DemoNames.FamilyOf(parent.Name), DemoNames.FamilyOf(heir.Name));
+            Assert.NotEqual(DemoNames.GivenOf(parent.Name), DemoNames.GivenOf(heir.Name));
+            Assert.Equal(parent.SettlementId, heir.SettlementId);
+            Assert.InRange(heir.BirthYear - parent.BirthYear, DemoHumanLifecycle.TempHeirMinGapYears, DemoHumanLifecycle.TempHeirMaxGapYears);
+            Assert.Equal(parent.ExitWeek, heir.AppointedWeek);
+        });
+        // 在任領袖與登記表一致（性格、父母都帶著）；人物頁寫出家族與性格。
+        var inOffice = world.Sites.Settlements.SelectMany(s => world.RepresentativesOf(s.Id)).First(r => r.Role == DemoRepresentativeRole.Leader);
+        Assert.Equal((inOffice.Traits, inOffice.ParentId), (byId[inOffice.Id].Traits, byId[inOffice.Id].ParentId));
+        var page = DemoPersonDetail.Of(world, inOffice.Id)!.Tabs[0].Lines;
+        Assert.Contains(page, l => l.StartsWith($"家族：{DemoNames.FamilyOf(inOffice.Name)}家", StringComparison.Ordinal));
+        Assert.Contains("性格：" + DemoTraits.Names(inOffice.Traits), page);
+        // 史書終章的家族：每一句都是登記表上某位領袖的姓。
+        var houses = new DemoSagaCast(world).Houses(100);
+        Assert.NotEmpty(houses);
+        Assert.All(houses, h => Assert.Contains(leaders, p => h.Contains(DemoNames.FamilyOf(p.Name) + "家（傳 ", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void LordsTemperChangesLoyalty()
+    {
+        var world = Shared.Value;
+        var sites = world.Sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        var (a, b) = (sites[0].Id, sites[1].Id);
+        var fold = new DemoRealms.Fold();
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        var plain = new DemoRealmContext(world.Sites, _ => 50, _ => 1, _ => null, _ => DemoSettlementTier.Village, _ => false);
+        DemoRealmContext With(DemoTrait traits) => plain with
+        {
+            Leader = id => id == a ? new DemoRepresentative(1, a, DemoRepresentativeRole.Leader, "甲·乙", DemoTempSex.Female, 1, 1, 0, traits) : null
+        };
+        var basis = DemoRealms.LoyaltyValue(b, a, 100, fold, plain);
+        Assert.Equal(basis + DemoTraits.TempJustLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Just | DemoTrait.Warlike)));
+        Assert.Equal(basis + DemoTraits.TempCruelLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Cruel | DemoTrait.Harsh)));
+        Assert.Equal(basis, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Warlike | DemoTrait.Lenient)));
+        Assert.Contains(DemoRealms.Loyalty(b, a, 100, fold, With(DemoTrait.Cruel | DemoTrait.Harsh)), f => f.Text == "領袖暴虐");
+    }
+}
