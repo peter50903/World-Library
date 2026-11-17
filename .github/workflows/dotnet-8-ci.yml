@@ -84,7 +84,7 @@ jobs:
             # 第 08-10e 章：文字史書 10 年冒煙（百年全文在「文字史書」步驟）。
             dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 10 > /tmp/saga-smoke.txt
             grep -q '=== 史書｜種子 1｜10 年｜地圖 小' /tmp/saga-smoke.txt
-            grep -q '^卷 1　第 1～10 年　' /tmp/saga-smoke.txt
+            grep -q '^卷 1　希望時代　第 1～10 年　' /tmp/saga-smoke.txt
             grep -q '^終章　第 10 年的世界' /tmp/saga-smoke.txt
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
