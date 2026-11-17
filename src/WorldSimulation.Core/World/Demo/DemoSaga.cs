@@ -37,6 +37,7 @@ public static class DemoSaga
         };
 
         var ledger = world.YearSummaries().ToDictionary(y => y.Year);
+        var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
         // 第 08-6c 章：一個世界時代一卷（原本固定十年一卷）。
         var number = 0;
         foreach (var span in world.Ages())
@@ -48,7 +49,7 @@ public static class DemoSaga
             lines.Add(I($"卷 {++number}　{DemoAges.Name(span.Age)}　第 {volume[0].Year}～{volume[^1].Year} 年　{DemoAges.Description(span.Age)}"));
 
             // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
-            var told = volume.SelectMany(y => y.Entries.Where(IsTold).Select(e => (y.Year, Text: Sentence(e))))
+            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: Sentence(e))))
                 .GroupBy(x => x.Text, StringComparer.Ordinal)
                 .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.Key)).ToList();
             foreach (var (toldYears, text) in told)
@@ -95,6 +96,25 @@ public static class DemoSaga
         if (ruins.Count > 0)
             yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
+    }
+
+    /// <summary>
+    /// 要逐條寫進史書的條目（依時間）：<see cref="IsTold"/> 的條目，但同一個聚落升到同一級只寫第一次
+    /// （人口在門檻上下擺盪時，不重複寫「發展為城鎮」；降級照寫）。
+    /// </summary>
+    public static IReadOnlyList<DemoChronicleEntry> ToldEntries(IEnumerable<DemoChronicleYear> years)
+    {
+        ArgumentNullException.ThrowIfNull(years);
+        var reached = new HashSet<(int Settlement, string Tier)>();
+        var result = new List<DemoChronicleEntry>();
+        foreach (var entry in years.OrderBy(y => y.Year).SelectMany(y => y.Entries).Where(IsTold))
+        {
+            var at = entry.Category == DemoChronicleCategory.Tier ? entry.Text.IndexOf(DemoSettlementChronicle.TierUpMarker, StringComparison.Ordinal) : -1;
+            if (at >= 0 && !reached.Add((entry.SettlementId, entry.Text[(at + DemoSettlementChronicle.TierUpMarker.Length)..])))
+                continue;
+            result.Add(entry);
+        }
+        return result;
     }
 
     /// <summary>戰爭沒打贏的結局（編年史列為一般事件）在條目裡的用語：叛軍被擊潰、不分勝負、敗退、無力再戰、收兵。</summary>

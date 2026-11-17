@@ -185,9 +185,7 @@ public static partial class DemoRealms
         {
             if (fighting.Contains(king) || busy.Contains(king) || ctx.Tier(king) < TempKingdomTier || Struggling(king))
                 continue;
-            var members = living.Where(id => tops[id] == king).ToList();
-            if (members.Count < 2)
-                continue;
+            var members = living.Where(id => tops[id] == king).ToList(); // 第 08-19i 章：沒有臣屬的城市也能出兵（原本至少要一個臣屬）
             var attack = RealmArmy(king, lieges, living, ctx.Residents);
             // 每個鄰近勢力取離本國最近的聚落當戰爭目標；只挑打得贏的（兵力至少 120%），最近的先。
             var pick = living.Where(t => tops[t] != king && !fighting.Contains(tops[t]) && !busy.Contains(t) && !busy.Contains(tops[t])

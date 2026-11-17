@@ -288,7 +288,7 @@ public static partial class DemoRealms
     /// 事件編號從 <paramref name="nextEventId"/> 起。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Advance(int week, TimeSpan worldTime, Fold fold, DemoRealmContext ctx,
-        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId, bool conquestEra = false, bool wars = true)
+        IReadOnlyDictionary<int, int> natural, RngRegistry rng, bool rebellions, long nextEventId, bool conquestEra = false, bool wars = true, bool cityWars = false)
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(ctx);
@@ -465,7 +465,7 @@ public static partial class DemoRealms
         }
 
         // ④ 第 08-19e 章：征服戰爭的結束與宣戰（只在征服時代宣戰；進行中的照常打完）。
-        AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, conquestEra && wars);
+        AdvanceConquest(week, fold, ctx, lieges, busy, Alive, Name, Add, rng, (conquestEra || cityWars) && wars); // 第 08-19i 章：城市不必等王國成立就能出兵
 
         // ⑤ 第 08-19f 章：王國的國王換人（王座所在聚落本週新任村長）就記繼位。
         AdvanceSuccession(week, fold, ctx, lieges, busy, Alive, Name, Add, conquestEra);
