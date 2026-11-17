@@ -724,21 +724,31 @@ public partial class ObserverRoot
         foreach (var tab in tabs)
         {
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+            Control content;
             if (tab.Badges.Count > 0)
-                scroll.AddChild(TechBadgeGrid(tab)); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
+                content = TechBadgeGrid(tab); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
             else if (tab.Pyramid.Any(b => b.Total > 0))
-                scroll.AddChild(PyramidView(tab)); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
+                content = PyramidView(tab); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
             else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
-                scroll.AddChild(peopleList); // 第 08-16 章：代表人物有人像
+                content = peopleList; // 第 08-16 章：代表人物有人像
             else if ((tab.Emblem is not null || tab.FaithSymbol is not null || tab.CultureId > 0) && HeraldryHeader(tab) is { } header)
-                scroll.AddChild(header); // 第 08-16 章：文化紋章與信仰符號
+                content = header; // 第 08-16 章：文化紋章與信仰符號
             else
-                scroll.AddChild(new Label
+                content = new Label
                 {
                     Text = string.Join("\n", tab.Lines),
                     AutowrapMode = TextServer.AutowrapMode.WordSmart,
                     SizeFlagsHorizontal = SizeFlags.ExpandFill
-                });
+                };
+            if (tab.Links.Count > 0)
+            {
+                // 第 05-2 章：分頁底下一排連結（家族、父母、發源地…）。
+                var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+                box.AddChild(content);
+                box.AddChild(LinkRow(tab.Links));
+                content = box;
+            }
+            scroll.AddChild(content);
             _detailTabs.AddChild(scroll);
         }
         _tabSoundMuted = true; // 程式切的分頁不播音效
@@ -854,10 +864,15 @@ public partial class ObserverRoot
     /// <summary>第 08-19c 章：目前打開的人物頁是誰（0＝不是人物頁）。</summary>
     private long _detailPerson;
 
-    /// <summary>第 08-19c 章：人物頁（Core 的 <see cref="DemoPersonDetail"/>）；麵包屑回所屬聚落。人已經不在任時改開聚落。</summary>
+    /// <summary>
+    /// 第 08-19c 章：人物頁（Core 的 <see cref="DemoPersonDetail"/>）；麵包屑回所屬聚落。
+    /// 第 05-2 章：已卸任、已過世的人也打得開（登記表上的紀錄；聚落已成遺跡也一樣）。
+    /// </summary>
     private void ShowPersonDetail(long id)
     {
-        var site = _world.Sites.Settlements.FirstOrDefault(s => _world.RepresentativesOf(s.Id).Any(r => r.Id == id));
+        var siteId = _world.Sites.Settlements.FirstOrDefault(s => _world.RepresentativesOf(s.Id).Any(r => r.Id == id))?.Id
+            ?? _world.PersonRecord(id)?.SettlementId;
+        var site = siteId is { } found ? _world.Sites.Settlements.FirstOrDefault(s => s.Id == found) : null;
         if (site is null || DemoPersonDetail.Of(_world, id) is not { } detail)
             return;
         _detailBelief = null;
@@ -869,6 +884,55 @@ public partial class ObserverRoot
         var home = _hexMap.SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : site.Name;
         SetCrumbs(new List<(string, Action)> { ($"聚落：{home}", () => ShowDetailAt(site.Column, site.Row)) });
         _detailPerson = 0;
+    }
+
+    /// <summary>第 05-2 章：家族頁（Core 的 <see cref="DemoHouseDetail"/>）；麵包屑回發源的聚落。</summary>
+    private void ShowHouseDetail(long founderId)
+    {
+        if (DemoHouseDetail.Of(_world, founderId) is not { } detail)
+            return;
+        var seat = detail.SettlementId is { } seatId ? _world.Sites.Settlements.FirstOrDefault(s => s.Id == seatId) : null;
+        _detailBelief = null;
+        _detailRealm = null;
+        _detailFixed = true;
+        if (seat is not null)
+            _detailCell = (seat.Column, seat.Row);
+        _detailPerson = 0;
+        RenderDetail(detail, detail.Tabs.ToList(), 0);
+        var crumbs = new List<(string, Action)>();
+        if (seat is not null)
+            crumbs.Add(($"聚落：{TitledName(seat)}", () => ShowDetailAt(seat.Column, seat.Row)));
+        SetCrumbs(crumbs);
+    }
+
+    /// <summary>第 05-2 章：詳情底下的連結按鈕。</summary>
+    private void OpenDetailLink(DemoDetailLink link)
+    {
+        switch (link.Kind)
+        {
+            case DemoLinkKind.Person:
+                ShowPersonDetail(link.Id);
+                break;
+            case DemoLinkKind.House:
+                ShowHouseDetail(link.Id);
+                break;
+            case DemoLinkKind.Settlement when _world.Sites.Settlements.FirstOrDefault(s => s.Id == link.Id) is { } site:
+                ShowDetailAt(site.Column, site.Row);
+                break;
+        }
+    }
+
+    /// <summary>第 05-2 章：一排連結按鈕（自動換行）。</summary>
+    private Control LinkRow(IReadOnlyList<DemoDetailLink> links)
+    {
+        var row = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var link in links)
+        {
+            var button = new Button { Text = link.Text + " ▸", Flat = true, FocusMode = FocusModeEnum.None };
+            button.Pressed += () => OpenDetailLink(link);
+            row.AddChild(button);
+        }
+        return row;
     }
 
     /// <summary>第 08-16 章：代表人物一人一列（人像＋文字）；人像部件缺少時回傳 null，改用純文字。</summary>

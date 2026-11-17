@@ -61,20 +61,21 @@ public static class DemoStories
     /// <summary>
     /// 代表人物小傳（兩三行）：出身與上任、在任期間聚落經歷的大事（世界首次的技術、天災、建立的子村、饑荒），玩家用語、不含數字以外的開發資訊。
     /// </summary>
-    public static IReadOnlyList<string> Biography(DemoObserverWorld world, DemoRepresentative r, IReadOnlyList<DemoSettlementEvent>? allEvents = null)
+    public static IReadOnlyList<string> Biography(DemoObserverWorld world, DemoRepresentative r, IReadOnlyList<DemoSettlementEvent>? allEvents = null,
+        int untilWeek = int.MaxValue) // 第 05-2 章：已卸任的人只看任內（到卸任那一週）
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(r);
         static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(week * 7));
         var events = allEvents ?? world.SettlementEvents();
-        var during = events.Where(e => e.Week >= r.AppointedWeek).ToList();
+        var during = events.Where(e => e.Week >= r.AppointedWeek && e.Week <= untilWeek).ToList();
         var here = during.Where(e => e.SettlementId == r.SettlementId).ToList();
         var items = new List<(int Week, string Text)>();
         foreach (var e in here.Where(e => e.Kind == DemoSettlementEventKind.KnowledgeLearned))
             items.Add((e.Week, $"第 {Year(e.Week)} 年帶領村人學會{DemoKnowledge.Name((DemoTechnology)e.Count)}"));
         foreach (var e in here.Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)))
             items.Add((e.Week, $"第 {Year(e.Week)} 年經歷{DemoEventTypes.Of(e.Kind).Name}"));
-        var children = world.Sites.Settlements.Where(s => s.IsFounded && s.FoundedFromSettlementId == r.SettlementId && s.FoundedWeek >= r.AppointedWeek).ToList();
+        var children = world.Sites.Settlements.Where(s => s.IsFounded && s.FoundedFromSettlementId == r.SettlementId && s.FoundedWeek >= r.AppointedWeek && s.FoundedWeek <= untilWeek).ToList();
         foreach (var s in children)
             items.Add((s.FoundedWeek, $"第 {Year(s.FoundedWeek)} 年送出開拓隊建立{s.Name}"));
         var famineYears = here.Where(e => e.Kind == DemoSettlementEventKind.StarvationDeath).Select(e => Year(e.Week)).Distinct().ToList();
