@@ -20,8 +20,8 @@ public static class DemoDungeons
     /// <summary>【TEMP】少於目標數時，當年出現一個的機率（%）。</summary>
     public const int TempChancePercent = 25;
 
-    /// <summary>【TEMP】離有人聚落與既有地下城的最少格數。</summary>
-    public const int TempMinDistance = 4;
+    /// <summary>【TEMP】離有人聚落與既有地下城的最少格數（第 12-2e 節：原 4 格，小地圖長滿聚落後再也沒有地方出現地下城）。</summary>
+    public const int TempMinDistance = 3;
 
     /// <summary>【TEMP】聚落詳情列出幾格內的地下城。</summary>
     public const int TempNearbyRange = 6;
