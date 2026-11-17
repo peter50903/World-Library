@@ -421,6 +421,29 @@ public static class DemoWorldChronicle
     }
 
     /// <summary>
+    /// 第 08-10d 章：一段年代的定性（戰亂、衰退、饑荒、擴張、創新、轉折、平穩、平靜的年代），由件數依固定順序判定。
+    /// 年代小結與文字史書（第 08-10e 章）共用。
+    /// </summary>
+    public static string DecadeCharacter(IReadOnlyList<DemoChronicleYear> years)
+    {
+        ArgumentNullException.ThrowIfNull(years);
+        var major = years.SelectMany(y => y.Entries.Where(e => e.Level == DemoChronicleLevel.Major)).ToList();
+        var world = major.Where(e => e.IsWorld).ToList();
+        int Count(DemoChronicleCategory c) => major.Count(e => e.Category == c);
+        var wars = world.Count(e => e.Weight is WeightWar or WeightConquest);
+        var founded = Count(DemoChronicleCategory.Founding);
+        var ruined = Count(DemoChronicleCategory.Ruin);
+        return wars >= TempWarEra ? "戰亂的年代"
+            : ruined >= 2 && ruined >= founded ? "衰退的年代"
+            : Count(DemoChronicleCategory.Famine) >= TempFamineEra ? "饑荒的年代"
+            : founded >= TempGrowthEra && founded > ruined ? "擴張的年代"
+            : world.Count(e => e.Weight == WeightKnowledge) >= TempInventionEra ? "創新的年代"
+            : world.Any(e => e.Weight == WeightEra) ? "轉折的年代"
+            : major.Count == 0 ? "平靜的年代"
+            : "平穩的年代";
+    }
+
+    /// <summary>
     /// 第 08-10d 章：年代小結（舊年份折疊時顯示，取代只數件數的 <see cref="DecadeSummary"/>）。
     /// 一句定性（戰亂、衰退、饑荒、擴張、創新、轉折、平穩、平靜的年代）＋最重要的幾件世界大事（依時間）＋各地大事合計＋出生與老死。
     /// 只組合已經發生的事實：定性由件數依固定規則判定，引述的是編年史既有條目的原文，不添加任何原因或評語。
@@ -431,18 +454,7 @@ public static class DemoWorldChronicle
         if (years.Count == 0) return "";
         var major = years.SelectMany(y => y.Entries.Where(e => e.Level == DemoChronicleLevel.Major).Select(e => (y.Year, Entry: e))).ToList();
         var world = major.Where(x => x.Entry.IsWorld).ToList();
-        int Count(DemoChronicleCategory c) => major.Count(x => x.Entry.Category == c);
-        var wars = world.Count(x => x.Entry.Weight is WeightWar or WeightConquest);
-        var founded = Count(DemoChronicleCategory.Founding);
-        var ruined = Count(DemoChronicleCategory.Ruin);
-        var character = wars >= TempWarEra ? "戰亂的年代"
-            : ruined >= 2 && ruined >= founded ? "衰退的年代"
-            : Count(DemoChronicleCategory.Famine) >= TempFamineEra ? "饑荒的年代"
-            : founded >= TempGrowthEra && founded > ruined ? "擴張的年代"
-            : world.Count(x => x.Entry.Weight == WeightKnowledge) >= TempInventionEra ? "創新的年代"
-            : world.Any(x => x.Entry.Weight == WeightEra) ? "轉折的年代"
-            : major.Count == 0 ? "平靜的年代"
-            : "平穩的年代";
+        var character = DecadeCharacter(years);
         var highlights = world.OrderByDescending(x => x.Entry.Weight).ThenBy(x => x.Year).ThenBy(x => x.Entry.Week).Take(TempStoryHighlights)
             .OrderBy(x => x.Year).ThenBy(x => x.Entry.Week)
             .Select(x => $"第 {x.Year} 年，{x.Entry.Text.Trim()}").ToList();

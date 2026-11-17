@@ -81,6 +81,11 @@ jobs:
             grep -q '=== 世界變化報告｜種子 1｜10 年｜地圖 小' /tmp/change-smoke.txt
             grep -q '^第 1～10 年｜重大 ' /tmp/change-smoke.txt
             grep -q '^總結：第一項技術 ' /tmp/change-smoke.txt
+            # 第 08-10e 章：文字史書 10 年冒煙（百年全文在「文字史書」步驟）。
+            dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 10 > /tmp/saga-smoke.txt
+            grep -q '=== 史書｜種子 1｜10 年｜地圖 小' /tmp/saga-smoke.txt
+            grep -q '^卷 1　第 1～10 年　' /tmp/saga-smoke.txt
+            grep -q '^終章　第 10 年的世界' /tmp/saga-smoke.txt
             # 測試輸出存檔：失敗時「最後一份日誌」註記步驟會列出失敗的測試與斷言（本工作階段讀不到原始日誌）。
             if ! dotnet test WorldSimulation.sln --no-build --configuration Release --logger "console;verbosity=normal" > /tmp/observer-tests.log 2>&1; then
               grep -nE '\[FAIL\]|Failed |Error Message|Assert\.|Expected|Actual' /tmp/observer-tests.log | head -80
@@ -277,6 +282,21 @@ jobs:
             for part in /tmp/change-$1-part-*; do
               echo "::notice title=世界變化報告 $1 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
             done
+          done
+
+      - name: 文字史書（第 08-10e 章：小地圖種子 1 的一百年，全文貼在註記）
+        if: hashFiles('WorldSimulation.sln') != ''
+        shell: bash
+        run: |
+          set -uo pipefail
+          if ! timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 > /tmp/saga.txt 2>&1; then
+            echo "::warning title=文字史書未完成::$(tail -10 /tmp/saga.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
+          fi
+          # 註記每則約 4 KB、每步驟最多 10 則：依行切成每則最多 3000 位元組，只貼前 10 則。
+          split -C 3000 -d /tmp/saga.txt /tmp/saga-part-
+          echo "::notice title=文字史書 大小::$(wc -l < /tmp/saga.txt) 行、$(wc -c < /tmp/saga.txt) 位元組、$(ls /tmp/saga-part-* | wc -l) 則"
+          for part in $(ls /tmp/saga-part-* | head -9); do
+            echo "::notice title=文字史書 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
           done
 
       - name: Upload M1 acceptance report (第 08 章 d 節)

@@ -20,6 +20,10 @@ if (args.Length > 0 && args[0] == "--diagnose-living")
 if (args.Length > 0 && args[0] == "--change-report")
     return ChangeReport.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
 
+// 第 08-10e 章：文字史書（跑 N 年，印出一頁歷史）。
+if (args.Length > 0 && args[0] == "--saga")
+    return Saga.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
+
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");
@@ -30,6 +34,7 @@ if (args.Length == 0 || args[0] != "--demo")
     Console.WriteLine("  --living：改用 TEMP 人類採集情境（出生、孕期、自然死亡、共享採集；Godot 預設情境）。");
     Console.WriteLine("  --seeds a,b,c：無畫面長測依序跑多個種子（第 08 章 c 節長測執行器；每年年底檢查不變量註冊表）。");
     Console.WriteLine("世界變化報告：dotnet run --project src/WorldSimulation.ObserverCli -- --change-report [--seed N | --seeds a,b,c] [--years 100] [--map small|medium|large]");
+    Console.WriteLine("文字史書：dotnet run --project src/WorldSimulation.ObserverCli -- --saga [--seed N] [--years 100] [--map small|medium|large]");
     Console.WriteLine("M1 驗收報告：dotnet run --project src/WorldSimulation.ObserverCli -- --m1-check [--years 100] [--seed N] [--preset normal|local-famine|frontier|famine]");
     return 2;
 }
