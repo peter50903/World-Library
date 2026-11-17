@@ -150,9 +150,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":73,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":74,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 73 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 74 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -168,7 +168,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 73 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 74 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -302,6 +302,9 @@ jobs:
           if timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map medium > /tmp/saga-medium.txt 2>&1; then
             grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|洞窟|古墓|地窟|深淵|迷宮|險境：|軍隊' /tmp/saga-medium.txt | cut -c1-400 | head -56 > /tmp/saga-medium-short.txt
             echo "::notice title=中地圖史書摘要::$(wc -l < /tmp/saga-medium.txt) 行%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-medium-short.txt | cut -c1-3800)"
+            # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）；全文印在這一步的紀錄裡。
+            echo "::notice title=中地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-medium.txt)、請願駁回 $(grep -c '駁回了' /tmp/saga-medium.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-medium.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-medium.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-medium.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-medium.txt)、征服 $(grep -c '歸入' /tmp/saga-medium.txt)"
+            cat /tmp/saga-medium.txt
           else
             echo "::warning title=中地圖史書未完成::$(tail -5 /tmp/saga-medium.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
           fi

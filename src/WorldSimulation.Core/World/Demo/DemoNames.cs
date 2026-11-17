@@ -108,12 +108,20 @@ public sealed class DemoNames
     /// 第 08-10g 章：世襲的人名——名字照常抽，姓沿用家族的姓；不與 <paramref name="avoidGiven"/>（父母的名）相同。
     /// </summary>
     public string PersonOfHouse(long entityId, DemoTempSex sex, string family, string? avoidGiven = null)
+        => PersonOfHouse(entityId, sex, family, avoidGiven is null ? Array.Empty<string>() : new[] { avoidGiven });
+
+    /// <summary>
+    /// 第 08-10k 節：世襲的人名——不與 <paramref name="avoidGiven"/>（這一脈的父母、祖先與兄弟姊妹用過的名）相同，
+    /// 家譜裡才不會出現兩個同名的人。抽 32 次都撞名才改用一般人名。
+    /// </summary>
+    public string PersonOfHouse(long entityId, DemoTempSex sex, string family, IReadOnlyCollection<string> avoidGiven)
     {
+        ArgumentNullException.ThrowIfNull(avoidGiven);
         var given = sex == DemoTempSex.Female ? S.FemaleGiven : S.MaleGiven;
         for (ulong attempt = 0; attempt < 32; attempt++)
         {
             var first = Pick(given, Draw(RngStreams.Character, entityId, 1 + attempt * 2));
-            if (first != avoidGiven && Length(first + family) <= S.MaxLength)
+            if (!avoidGiven.Contains(first) && Length(first + family) <= S.MaxLength)
                 return first + "·" + family;
         }
         return Person(entityId, sex);

@@ -85,6 +85,22 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 14-1 章第 7 項：用實體編號查具名人物（在任或已卸任）；沒有這個人回傳 null。</summary>
     public DemoPersonRecord? PersonRecord(long id) => _people.GetValueOrDefault(id);
 
+    /// <summary>第 08-10k 節：世襲取名要避開的名——這一脈（父母與歷代祖先）與父母其他子女用過的名。</summary>
+    private IReadOnlyCollection<string> HouseGivenNames(long parentId)
+    {
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        var seen = new HashSet<long>();
+        var id = parentId;
+        while (id > 0 && seen.Add(id) && _people.TryGetValue(id, out var person))
+        {
+            used.Add(DemoNames.GivenOf(person.Name));
+            id = person.ParentId;
+        }
+        foreach (var child in _people.Values.Where(p => p.ParentId == parentId))
+            used.Add(DemoNames.GivenOf(child.Name));
+        return used;
+    }
+
     /// <summary>第 14-1 章第 7 項：全部登記過的具名人物（依編號；只增不減）。</summary>
     public IReadOnlyCollection<DemoPersonRecord> PersonRecords => _people.Values.ToList();
 
@@ -833,7 +849,8 @@ public sealed partial class DemoObserverWorld
                 var lifecycle = DemoHumanLifecycle.Apply(outcome, _demography, new DemoPopulationDraws(_rng), new DemoNames(_rng),
                     checked(_history.LastEventId + 1), _knowledge,
                     id => _culture.MainCultureOf(id) is { } c && _culture.Culture(c)?.Traits.Contains("CT_STRONG_RULE") == true, // 第 08-8 章 B2
-                    DemoHeroes.Deeds(LatestWeek?.Events)); // 第 08-10i 章：上一週殺光地下城怪物的聚落出一位英雄
+                    DemoHeroes.Deeds(LatestWeek?.Events), // 第 08-10i 章：上一週殺光地下城怪物的聚落出一位英雄
+                    HouseGivenNames); // 第 08-10k 節：世襲取名避開這一脈用過的名
                 DemoPerf.Mark("生死");
                 // 第 08-6 章：生死之後累積知識（習得技術、時代開始的事件接在本週事件之後）。
                 var report = lifecycle.Outcome.Report;
