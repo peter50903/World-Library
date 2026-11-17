@@ -192,7 +192,8 @@ public static class DemoFaiths
     /// </summary>
     public static (DemoFaithState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(DemoFaithState state, DemoWeekReport report,
         IReadOnlyList<DemoSettlementEvent> learned, DemoWorldSites sites, DemoHexWorld map, RngRegistry registry,
-        IReadOnlyList<DemoRepresentative> representatives, Func<int, IReadOnlyCollection<string>> cultureTraits, long nextEventId)
+        IReadOnlyList<DemoRepresentative> representatives, Func<int, IReadOnlyCollection<string>> cultureTraits, long nextEventId,
+        Func<int, DemoSettlementTier>? tierOf = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -238,7 +239,7 @@ public static class DemoFaiths
             if (founder is not null)
                 reps[founder.Id] = id;
             events.Add(new DemoSettlementEvent(week, report.WorldTime, site.Id, site.Name, DemoSettlementEventKind.FaithFounded, id,
-                $"{(founder is null ? "族人" : $"{DemoRepresentative.RoleName(founder.Role)}{founder.Name}")}創立「{faith.Name}」"
+                $"{(founder is null ? "族人" : $"{DemoRepresentative.RoleName(founder.Role, tierOf?.Invoke(site.Id) ?? DemoSettlementTier.Village)}{founder.Name}")}創立「{faith.Name}」"
                 + $"（信條：{string.Join("、", tenets.Select(EntryName))}）",
                 EventId: nextEventId++, CauseEventId: e.EventId));
         }

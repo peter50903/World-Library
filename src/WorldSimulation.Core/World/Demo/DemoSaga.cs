@@ -431,6 +431,7 @@ public sealed class DemoSagaCast
         _conquests = events.Where(e => e.Kind == DemoSettlementEventKind.Conquered).Select(e => (e.Week, (int)e.Count)).ToList();
         _losses = events.Where(e => e.Kind == DemoSettlementEventKind.Independence).Select(e => (e.Week, (int)e.Count)).ToList();
         _legends = DemoHeroes.Legends(world);
+        _tierAt = (id, week) => world.ChronicleOf(id).TierAt(week); // 第 08-10l 節：領袖的稱號依當時的等級
         _people = world.PersonRecords.ToDictionary(p => p.Id);
     }
 
@@ -441,9 +442,11 @@ public sealed class DemoSagaCast
     private string H(long personId, string family)
         => DemoHouses.HouseOf(_people, personId) is { } founder ? DemoSaga.Link('h', founder, family + "家") : family + "家";
 
+    private readonly Func<int, int, DemoSettlementTier> _tierAt;
+
     private string Origin(DemoPersonRecord hero)
         => hero.ParentId > 0 && _people.TryGetValue(hero.ParentId, out var parent)
-            ? $"{DemoRepresentative.RoleName(parent.Role)}{P(parent)}的{(hero.Sex == DemoTempSex.Female ? "女兒" : "兒子")}"
+            ? $"{DemoRepresentative.RoleName(parent.Role, _tierAt(parent.SettlementId, hero.AppointedWeek))}{P(parent)}的{(hero.Sex == DemoTempSex.Female ? "女兒" : "兒子")}"
             : "士兵出身";
 
     /// <summary>

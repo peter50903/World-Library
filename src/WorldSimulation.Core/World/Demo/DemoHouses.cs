@@ -103,11 +103,11 @@ public static class DemoHouseDetail
 
         var day = world.Snapshot().DaysElapsed;
         var entries = members.Select(m => DemoPersonDetail.Entry(world, m, day,
-            $"第 {DemoHouses.GenerationOf(people, m.Id)} 代　{DemoRepresentative.RoleName(m.Role)}　{m.Name}", DemoPersonDetail.Term(m))).ToList();
+            $"第 {DemoHouses.GenerationOf(people, m.Id)} 代　{DemoPersonDetail.Title(world, m)}　{m.Name}", DemoPersonDetail.Term(m))).ToList();
 
         // 家譜：開創者在最上面，子女依出生先後縮排在父母下面。
         var tree = new List<string>();
-        string Label(DemoPersonRecord p) => $"{p.Name}（{DemoRepresentative.RoleName(p.Role)}；{DemoPersonDetail.Term(p)}）";
+        string Label(DemoPersonRecord p) => $"{p.Name}（{DemoPersonDetail.Title(world, p)}；{DemoPersonDetail.Term(p)}）";
         void Walk(DemoPersonRecord p, string indent, bool last, bool root)
         {
             tree.Add(root ? Label(p) : indent + (last ? "└ " : "├ ") + Label(p));

@@ -90,4 +90,41 @@ public sealed class DemoRepresentativeTests
             loaded.WeekReports().SelectMany(w => w.Appointments).ToList());
         Assert.All(young.Sites.Settlements, s => Assert.Equal(young.ChronicleOf(s.Id), loaded.ChronicleOf(s.Id)));
     }
+
+    // 第 08-10l 節：領袖的稱號依聚落等級——營地族長、村莊村長、城鎮鎮長、城市以上城主；小史記上任時當時的稱號，
+    // 之後依小史推得的等級顯示。
+    [Fact]
+    public void LeaderTitlesFollowTheSettlementTier()
+    {
+        Assert.Equal(new[] { "族長", "村長", "鎮長", "城主", "城主" }, Enum.GetValues<DemoSettlementTier>().Select(DemoRepresentative.LeaderTitle));
+        Assert.Equal("鎮長", DemoRepresentative.RoleName(DemoRepresentativeRole.Leader, DemoSettlementTier.Town));
+        Assert.Equal("木匠", DemoRepresentative.RoleName(DemoRepresentativeRole.Carpenter, DemoSettlementTier.City));
+        var chronicle = DemoSettlementChronicle.Empty with
+        {
+            Milestones = System.Collections.Immutable.ImmutableList.Create(
+                new DemoChronicleLine(10, "人口 30 人、有木工坊、磨坊，由營地發展為村莊"),
+                new DemoChronicleLine(30, "人口首次達到 50 人"),
+                new DemoChronicleLine(50, "人口 70 人、有市集、陶窯，由村莊發展為城鎮"),
+                new DemoChronicleLine(80, "人口降到 40 人，降為村莊"))
+        };
+        Assert.Equal(new[] { DemoSettlementTier.Camp, DemoSettlementTier.Village, DemoSettlementTier.Village, DemoSettlementTier.Town, DemoSettlementTier.Village },
+            new[] { 9, 10, 49, 60, 80 }.Select(chronicle.TierAt));
+
+        var world = Run(3, 30 * 365);
+        var appointments = 0;
+        foreach (var site in world.Sites.Settlements)
+        {
+            var history = world.ChronicleOf(site.Id);
+            Assert.Equal(history.Tier, history.TierAt(world.CommittedWeeks));
+            foreach (var line in history.Representatives)
+            {
+                var title = DemoRepresentative.LeaderTitles.FirstOrDefault(t => line.Text.EndsWith("成為" + t, StringComparison.Ordinal));
+                if (title is null)
+                    continue;
+                appointments++;
+                Assert.Equal(DemoRepresentative.LeaderTitle(history.TierAt(line.Week - 1)), title);
+            }
+        }
+        Assert.True(appointments > 0);
+    }
 }
