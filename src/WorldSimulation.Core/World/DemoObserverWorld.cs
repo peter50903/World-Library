@@ -262,7 +262,23 @@ public sealed partial class DemoObserverWorld
     public DemoEra Era => _knowledge.Era;
 
     /// <summary>第 08-6c 章：目前的世界時代（由歷史種子的輪替表推得，不另存）。</summary>
-    public DemoAge Age => DemoAges.AtWeek(_rng, CommittedWeeks);
+    public DemoAge Age => AgeAtWeek(CommittedWeeks);
+
+    /// <summary>第 08-6c 章：每週的世界時代（記下來，免得每個食物來源、每個聚落都重算一次輪替表）。</summary>
+    private readonly Dictionary<int, DemoAge> _ageAt = new();
+
+    /// <summary>第 08-6c 章：第 <paramref name="week"/> 週結算時的世界時代。</summary>
+    public DemoAge AgeAtWeek(int week)
+    {
+        lock (_ageAt)
+        {
+            if (_ageAt.TryGetValue(week, out var known))
+                return known;
+            if (_ageAt.Count > 4096)
+                _ageAt.Clear();
+            return _ageAt[week] = DemoAges.AtWeek(_rng, week);
+        }
+    }
 
     /// <summary>第 08-6c 章：從第 1 年到目前為止經歷的世界時代（最後一段是目前的時代，結束年份是預定的）。</summary>
     public IReadOnlyList<DemoAgeSpan> Ages()
@@ -543,7 +559,7 @@ public sealed partial class DemoObserverWorld
             return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
                 tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)),
                 _demography.Representatives.Any(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id), // 第 08-10i 章：英雄在世，士兵等級 +1
-                DemoAges.SoldierLevels(DemoAges.AtWeek(_rng, checked(CommittedWeeks + 1)))); // 第 08-6c 章：奇蹟時代士兵 +1
+                DemoAges.SoldierLevels(AgeAtWeek(checked(CommittedWeeks + 1)))); // 第 08-6c 章：奇蹟時代士兵 +1
         };
     }
 
@@ -563,7 +579,7 @@ public sealed partial class DemoObserverWorld
         {
             Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
             Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
-            AgeOfWeek = week => DemoAges.AtWeek(_rng, week) // 第 08-6c 章：混沌時代忠誠降低
+            AgeOfWeek = AgeAtWeek // 第 08-6c 章：混沌時代忠誠降低
         };
     }
 
@@ -755,7 +771,7 @@ public sealed partial class DemoObserverWorld
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => checked(CachedBoost(s, checked(CommittedWeeks + 1))
                     + DemoEnvironment.SourcePercent(_wildlife.Spells, s, checked(CommittedWeeks + 1))
-                    + DemoAges.SourcePercent(DemoAges.AtWeek(_rng, checked(CommittedWeeks + 1)))), // 第 08-6c 章：霜雪時代減產 // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
+                    + DemoAges.SourcePercent(AgeAtWeek(checked(CommittedWeeks + 1)))), // 第 08-6c 章：霜雪時代減產 // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
                 beastAttack: !laws.BeastAttacks ? (Func<DemoMigrationBatch, long>?)null : b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
@@ -787,7 +803,7 @@ public sealed partial class DemoObserverWorld
                     MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
                     DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
-                    DemoAges.ResearchPercent(DemoAges.AtWeek(_rng, report.Week))); // 第 08-6c 章：奇蹟時代研究加快
+                    DemoAges.ResearchPercent(AgeAtWeek(report.Week))); // 第 08-6c 章：奇蹟時代研究加快
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
@@ -803,7 +819,7 @@ public sealed partial class DemoObserverWorld
                 // 第 12-1 章 C4：地下城出現（事件接在隕石礦脈之後；用本週習得後的時代）。
                 var dungeon = !laws.Monsters ? Array.Empty<DemoSettlementEvent>() : DemoDungeons.Roll(report.Week, report.WorldTime, knowledge.Era, Map, lifecycle.Outcome.Sites,
                     lifecycle.Outcome.Sites.Settlements.Where(s => !s.IsRuin && lifecycle.Population.ResidentsOf(s.Id) > 0).Select(s => s.Id),
-                    Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count), DemoAges.AtWeek(_rng, report.Week));
+                    Dungeons, _rng, checked(landNextId + clearedOnly.Count + ruined.Count + ore.Count), AgeAtWeek(report.Week));
                 var cleared = clearedOnly.Concat(ruined).Concat(ore).Concat(dungeon).ToList();
                 DemoPerf.Mark("土地與天災");
                 // 第 08-8 章 B1：文化比例隨遷徙流動、新任代表人物抽文化；B4：分化與同化（分化事件接在土地事件之後）。
@@ -828,7 +844,7 @@ public sealed partial class DemoObserverWorld
                     residents: id => lifecycle.Population.ResidentsOf(id),
                     logs: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.LoggingTech)),
                     mines: id => knowledge.Knows(id, DemoTechnology.Of(DemoEnvironment.MiningTech)),
-                    extraOre: MeteoriteOre, age: DemoAges.AtWeek(_rng, report.Week));
+                    extraOre: MeteoriteOre, age: AgeAtWeek(report.Week));
                 DemoPerf.Mark("野生動物與環境");
                 // 第 12-2 章：擊殺怪物、地下城沉寂與再生（接在最後）。
                 var monsterEvents = DemoMonsters.Events(monsters, report.Week, report.WorldTime, lifecycle.Outcome.Sites,
