@@ -532,6 +532,18 @@ public partial class DemoHexMap
         return new PoliticalCheck(_provinceIndex.Count, realms, _labels.Count, hits, sites.Count, land);
     }
 
+    /// <summary>效能量測：重算一次省份、配色、填色與勢力名要幾毫秒（政治地圖每週最多一次）。</summary>
+    public double PoliticalBuildMs()
+    {
+        EnsurePoliticalNode();
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        _provinces = null;
+        _provinceKey = default;
+        EnsureProvinces();
+        EnsurePaint();
+        return watch.Elapsed.TotalMilliseconds;
+    }
+
     /// <summary>省份最多的勢力的首都格（截圖用）。</summary>
     public DemoHexCell? LargestRealmCapital()
     {

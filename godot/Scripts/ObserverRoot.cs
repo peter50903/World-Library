@@ -1545,7 +1545,11 @@ public partial class ObserverRoot : Control
         RefreshLegend(); // 第 08-18i 章：地圖模式圖例
         RefreshLetters(); // 第 08-18i 章：重大事件通知
         RefreshTracked(); // 第 08-18i 章：追蹤清單
-        RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
+        // 第 08-21 章（使用者 2026-11-17：巨大地圖超級卡）：實際遊玩時右側清單只在看得到時更新（換到該分頁時補上）。
+        if (RealtimeThrottle && _rightView != RightView.Outliner)
+            _outlinerStale = true;
+        else
+            RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshSaga(); // 第 05-1 章：史書（分頁開著、換了一年才重寫）
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。
@@ -1554,6 +1558,16 @@ public partial class ObserverRoot : Control
 
         // C05：舊每日糧食線退役；改為最近 12 週的週結算摘要（Core DemoWeekReport.Summary()），
         // 與聚落事件依世界時間合併（同一天：週摘要在前，再列該週事件）。
+        // 第 08-21 章：實際遊玩時開發用紀錄看不到就不整理（每次都要走一遍全部歷史事件）。
+        if (RealtimeThrottle && !_history.IsVisibleInTree())
+        {
+            Part("History");
+            RefreshEventListOrDefer();
+            Part("EventList");
+            RefreshFoodDiagnostics(); // #104
+            Part("FoodDiag");
+            return;
+        }
         var daily = _world.WeekReports().TakeLast(12).Select(w => (Time: w.WorldTime, Order: 0,
             Text: w.Summary()));
         // V0-06B: the 5 latest "settlement founded" events always stay listed, even when a busy famine
@@ -1571,7 +1585,7 @@ public partial class ObserverRoot : Control
         if (snapshot.DaysElapsed == 0)
             _history.Text = "目前沒有已結算事件。請按「下一天」開始。";
         Part("History");
-        RefreshEventList();
+        RefreshEventListOrDefer();
         Part("EventList");
         RefreshFoodDiagnostics(); // #104
         Part("FoodDiag");

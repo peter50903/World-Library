@@ -89,10 +89,11 @@ public partial class ObserverRoot
             Refresh();
         });
         var settlements = _world.Sites.Settlements.Count(s => !s.IsRuin);
+        var politicalMs = _hexMap.PoliticalBuildMs(); // 第 08-21 章：政治地圖每週重算的成本
         GD.Print("WORLD_SIM_PERF: "
             + $"Map={world.Map.Columns}x{world.Map.Rows} Settlements={settlements} Population={_world.SettledPopulation} "
             + $"CreateMs={Ms(createMs)} CoreWeekMs={Ms(coreWeekMs)} CoreAllocMBPerWeek={Ms(coreAllocMbPerWeek)} CoreGen0={coreGen0} "
             + $"InstallMs={Ms(installMs)} RefreshMs={Ms(refreshTotal / refreshDays)} RefreshAllocKB={Ms(refreshAllocKb)} DayRefreshMs={Ms(dayTotal / refreshDays)} LightDayMs={Ms(lightDays == 0 ? 0 : lightTotal / lightDays)} HudMs={Ms(hudMs)} SnapshotMs={Ms(snapMs)} {parts} "
-            + map);
+            + map + $" PoliticalMs={Ms(politicalMs)}");
     }
 }

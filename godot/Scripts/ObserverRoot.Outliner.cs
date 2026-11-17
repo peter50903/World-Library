@@ -249,6 +249,7 @@ public partial class ObserverRoot
         _restoreRight = null;
         _rightView = view;
         ApplyHudLayout();
+        RefreshStalePanels(); // 第 08-21 章
     }
 
     /// <summary>頂部「聚落清單」「世界控制台」：按另一個就切換，按目前這個就收合。</summary>
@@ -257,6 +258,7 @@ public partial class ObserverRoot
         _restoreRight = null;
         _rightView = _rightView == view ? RightView.None : view;
         ApplyHudLayout();
+        RefreshStalePanels(); // 第 08-21 章：延後的清單更新
         RefreshChronicle(); // 第 08-10b 章：切到編年史時立刻依目前世界重算。
         RefreshSaga(); // 第 05-1 章
     }
