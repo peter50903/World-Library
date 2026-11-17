@@ -60,7 +60,7 @@ public partial class ObserverRoot
             label.AddThemeConstantOverride("outline_size", 8);
             return label;
         }
-        text.AddChild(Line($"— 世界進入{DemoKnowledge.EraName(era)} —", 44));
+        text.AddChild(Line($"— {DemoKnowledge.MilestoneName(era)} —", 44)); // 第 05-1 章：文明里程碑（時代一詞留給世界時代）
         text.AddChild(Line(EraLine(era), 22));
         card.AddChild(text);
         AddChild(card);

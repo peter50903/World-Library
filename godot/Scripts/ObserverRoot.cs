@@ -457,6 +457,7 @@ public partial class ObserverRoot : Control
 
         BuildOutliner();
         BuildChronicle(); // 第 08-10b 章
+        BuildSaga(); // 第 05-1 章：史書分頁
         BuildDetailPanel();
         BuildTimeControls();
         BuildToolbar(scenarioBox, saveBox, sidebarScroll);
@@ -1542,6 +1543,7 @@ public partial class ObserverRoot : Control
         RefreshTracked(); // 第 08-18i 章：追蹤清單
         RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
+        RefreshSaga(); // 第 05-1 章：史書（分頁開著、換了一年才重寫）
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。
         _hexMap.QueueRedraw();
         Part("Panels");

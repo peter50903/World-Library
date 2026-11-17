@@ -49,6 +49,9 @@ public sealed class DemoAgesTests
         Assert.Equal(DemoAges.TempChaosLoyalty, DemoAges.Loyalty(DemoAge.Chaos));
         Assert.Equal(Enum.GetValues<DemoAge>().Length, Enum.GetValues<DemoAge>().Select(DemoAges.Name).Distinct().Count());
         Assert.Equal(Enum.GetValues<DemoAge>().Length, Enum.GetValues<DemoAge>().Select(DemoAges.Description).Distinct().Count());
+        // 第 05-1 章：文明里程碑的說法不用「時代」。
+        Assert.All(Enum.GetValues<DemoEra>(), e => Assert.DoesNotContain("時代", DemoKnowledge.MilestoneName(e), StringComparison.Ordinal));
+        Assert.Equal(3, Enum.GetValues<DemoEra>().Select(DemoKnowledge.MilestoneName).Distinct().Count());
     }
 
     [Fact]

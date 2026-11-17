@@ -221,6 +221,10 @@ public partial class ObserverRoot
         _chronicleToggle = new Button { Text = "編年史", ToggleMode = true, TooltipText = "右側編年史：依年份列出世界的重大事件，點聚落名稱定位地圖（再按一次收合）" };
         _chronicleToggle.Pressed += () => SetRightView(RightView.Chronicle);
         row.AddChild(_chronicleToggle);
+        // 第 05-1 章：右側第四分頁「史書」。
+        _sagaToggle = new Button { Text = "史書", ToggleMode = true, TooltipText = "右側史書：把這個世界到目前為止的歷史寫成一頁——每個時代一卷，有人物、英雄、家族與傳說物品（再按一次收合）" };
+        _sagaToggle.Pressed += () => SetRightView(RightView.Saga);
+        row.AddChild(_sagaToggle);
     }
 
     private static Label AddStat(HBoxContainer row, string iconPath, string tooltip)
@@ -1119,6 +1123,8 @@ public partial class ObserverRoot
             Place(_outlinerPanel, frame.Console, _rightView == RightView.Outliner);
         if (_chroniclePanel is not null)
             Place(_chroniclePanel, frame.Console, _rightView == RightView.Chronicle);
+        if (_sagaPanel is not null)
+            Place(_sagaPanel, frame.Console, _rightView == RightView.Saga);
         Place(_timePanel, frame.Time, true);
         if (_timeStatus is not null)
             Place(_timeStatus, new HudRect(frame.Time.X, Math.Max(0, frame.Time.Y - 22), frame.Time.Width, 20), true);
@@ -1127,6 +1133,7 @@ public partial class ObserverRoot
         _consoleToggle.SetPressedNoSignal(_rightView == RightView.Console);
         _outlinerToggle.SetPressedNoSignal(_rightView == RightView.Outliner);
         _chronicleToggle?.SetPressedNoSignal(_rightView == RightView.Chronicle);
+        _sagaToggle?.SetPressedNoSignal(_rightView == RightView.Saga);
     }
 
     private static void Place(Control control, HudRect rect, bool visible)
@@ -1147,7 +1154,7 @@ public partial class ObserverRoot
         var deaths = week?.Settlements.Sum(l => l.Deaths) ?? 0;
         // 試玩回饋 2026-11-08 之 3（參考 WorldBox、十字軍之王）：頂部只留時代、人口、聚落、勢力與日期；
         // 天數、糧食庫存、本週出生與死亡只在開發資訊開啟時顯示。
-        _topWorld.Text = _showDebugInfo ? $"【TEMP 示範】{_world.TempScenarioDisplayName}" : DemoKnowledge.EraName(_world.Era);
+        _topWorld.Text = _showDebugInfo ? $"【TEMP 示範】{_world.TempScenarioDisplayName}" : DemoAges.Name(_world.Age); // 第 05-1 章：頂部顯示世界時代
         if (_eraBarWeek != _world.CommittedWeeks || !ReferenceEquals(_eraBarWorld, _world))
         {
             // 第 08-19d 章：時代進度每週算一次。
