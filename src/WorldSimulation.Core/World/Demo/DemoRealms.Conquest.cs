@@ -119,7 +119,7 @@ public static partial class DemoRealms
 
     /// <summary>本週征服戰爭的交戰（攻方首都與戰爭目標；開戰的下一週起）。</summary>
     private static void ConquestBattles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
-        Dictionary<int, DemoDisasterStrike> strikes)
+        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null)
     {
         if (fold.Wars.Count == 0)
             return;
@@ -132,10 +132,10 @@ public static partial class DemoRealms
             long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, w.AttackerId, k)); // 第 08-19h 章
             if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
                 strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(attack, residents(w.TargetId), 6), $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍");
+                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100, residents(w.TargetId), 6), $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍");
             if (!taken.Contains(w.AttackerId) && !strikes.ContainsKey(w.AttackerId) && residents(w.AttackerId) > 0)
                 strikes[w.AttackerId] = new DemoDisasterStrike(w.AttackerId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(defend, residents(w.AttackerId), 7), $"出兵征討{Name(w.TargetId)}");
+                    Deaths(defend * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.DefenderId)) ?? DemoTrait.None) / 100, residents(w.AttackerId), 7), $"出兵征討{Name(w.TargetId)}");
         }
     }
 
@@ -192,7 +192,8 @@ public static partial class DemoRealms
             var need = DemoTraits.Has(temper, DemoTrait.Cautious) ? DemoTraits.TempCautiousStrengthPercent : TempConquestStrengthPercent;
             // 每個鄰近勢力取離本國最近的聚落當戰爭目標；只挑打得贏的（兵力至少 120%），最近的先。
             var pick = living.Where(t => tops[t] != king && !fighting.Contains(tops[t]) && !busy.Contains(t) && !busy.Contains(tops[t])
-                    && fold.StruggleOf(t) is null && !Struggling(tops[t]) && !fold.WarTruce(king, tops[t], week))
+                    && fold.StruggleOf(t) is null && !Struggling(tops[t])
+                    && (DemoTraits.Has(temper, DemoTrait.Deceitful) || !fold.WarTruce(king, tops[t], week))) // 第 08-10h 章：狡詐的不理會停戰
                 .Select(t => (Target: t, Defender: tops[t], Distance: members.Min(m => Distance(m, t))))
                 .Where(x => x.Distance <= TempConquestReach)
                 .GroupBy(x => x.Defender)
@@ -204,14 +205,14 @@ public static partial class DemoRealms
             if (pick is not { } p)
                 continue;
             var (target, defender, army) = p;
-            var holy = ctx.Faith(king) is { } f1 && ctx.Faith(target) is { } f2 && f1 != f2;
+            var holy = ctx.Faith(king) is { } f1 && ctx.Faith(target) is { } f2 && f1 != f2 && !DemoTraits.Has(temper, DemoTrait.Cynical); // 第 08-10h 章：多疑的不為信仰開戰
             var foreign = ctx.Culture(king) is { } c1 && ctx.Culture(target) is { } c2 && c1 != c2;
-            var chance = TempConquestChancePercent + (holy ? TempHolyWarBonusPercent : 0) + (foreign ? TempCultureWarBonusPercent : 0)
-                + (DemoTraits.Has(temper, DemoTrait.Warlike) ? DemoTraits.TempWarlikeChance : 0);
+            var chance = TempConquestChancePercent + (foreign ? TempCultureWarBonusPercent : 0) + DemoTraits.WarChance(temper)
+                + (holy ? TempHolyWarBonusPercent * (DemoTraits.Has(temper, DemoTrait.Zealous) ? DemoTraits.TempZealousHolyWarTimes : 1) : 0);
             if ((int)(Draw(rng, week, king, 5) % 100UL) >= chance)
                 continue;
             var reason = holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土";
-            if (attack * 100 >= army * TempSurrenderPercent)
+            if (attack * 100 >= army * DemoTraits.SurrenderPercent(ctx.Leader?.Invoke(fold.Seat(defender))?.Traits ?? DemoTrait.None, TempSurrenderPercent)) // 第 08-10h 章：堅毅、軟弱
             {
                 // 第 08-19i 章：兵力懸殊（五倍以上）就不戰而降，不打一場沒有懸念的仗。
                 add(target, DemoSettlementEventKind.Conquered, king, target == defender

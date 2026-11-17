@@ -703,7 +703,9 @@ public sealed partial class DemoObserverWorld
             if (_demography is not null && _knowledge.Era != DemoEra.Hope)
             {
                 // 進行中的獨立戰爭照常打完（關掉叛亂只擋新的派系與鬥爭）。
-                var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng);
+                var leadersNow = Leaders(); // 第 08-10h 章：領袖的性格影響交戰
+                var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng,
+                    id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None);
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }
