@@ -1672,7 +1672,11 @@ public partial class ObserverRoot : Control
             if (cells.TryGetValue(w.AttackerId, out var home) && cells.TryGetValue(w.TargetId, out var goal))
                 fronts.Add(new WarFront(w.AttackerId, $"{SiteName(w.AttackerId)}對{SiteName(w.DefenderId)}：征服戰爭", home, goal, w.TargetId,
                     territory.RealmOf(w.AttackerId), territory.RealmOf(w.TargetId), RealmArmy(territory.RealmOf(w.AttackerId)),
-                    RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek)));
+                    RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek))
+                {
+                    Occupied = w.Occupied, // 第 08-22a 章
+                    Score = DemoRealms.WarScore(w, week)
+                });
         foreach (var s in _struggles.Where(x => x.Armed))
             if (cells.TryGetValue(s.LiegeId, out var liege) && cells.TryGetValue(s.VassalId, out var rebel))
             {

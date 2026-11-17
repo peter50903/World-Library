@@ -161,7 +161,8 @@ public partial class DemoHexMap
         var bytes = new byte[256 * 256 * 4];
         foreach (var front in WarFronts)
         {
-            if (!_provinceIndex.TryGetValue(front.TargetSettlement, out var index))
+            // 第 08-22a 章：攻陷之後才畫佔領斜紋（圍城中只有行軍路線與軍旗）；獨立戰爭、內戰照舊整場都畫。
+            if (front.Score is not null && !front.Occupied || !_provinceIndex.TryGetValue(front.TargetSettlement, out var index))
                 continue;
             var color = FrontColor(front, true);
             var at = index * 4;

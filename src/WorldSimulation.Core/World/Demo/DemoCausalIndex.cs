@@ -389,6 +389,7 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.WarDeclared: // 第 08-19e 章：人數欄＝戰爭目標或征服者
             case DemoSettlementEventKind.Conquered:
             case DemoSettlementEventKind.WarEnded:
+            case DemoSettlementEventKind.Occupied: // 第 08-22a 章：人數欄＝攻方
             case DemoSettlementEventKind.CivilWar: // 第 08-19f 章
             case DemoSettlementEventKind.Usurped:
                 return parent is null && e.Count > 0 && e.Count != e.SettlementId ? null : "歸附、脫離與獨立是根因，事件人數欄必須是另一個聚落（上級）的編號";
