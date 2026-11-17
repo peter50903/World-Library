@@ -23,7 +23,7 @@ public sealed class DemoPersonAndLawsTests
         var before = world.ExportTempSave();
         var detail = DemoPersonDetail.Of(world, person.Id);
         Assert.NotNull(detail);
-        Assert.Equal(new[] { "人物", "生平", "同僚" }, detail!.Tabs.Select(t => t.Title));
+        Assert.Equal(new[] { "人物", "生平", "同僚" }, detail!.Tabs.Select(t => t.Title).Take(3)); // 第 05-2 章：有家人的再多「家人」頁
         Assert.Equal(person.SettlementId, detail.SettlementId);
         Assert.Contains(person.Name, detail.Title);
         Assert.Equal(person.Id, Assert.Single(detail.Tabs[0].People).Id);

@@ -101,9 +101,14 @@ public partial class ObserverRoot
         _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
         row.AddChild(_mapRealmButton);
         // 第 05-1 章：色塊檢視——不論遠近都只畫色塊、棋子與邊界（不畫地表貼圖與建築），用來看底層規則怎麼運作。
-        _schematicToggle = ToolButton("", "色塊", "色塊檢視：只用色塊、棋子與邊界畫世界（不畫地表與建築），看底層規則的運作；再按一次回到原本的畫面");
+        _schematicToggle = ToolButton(ArtAssets.UiSchematic, "色塊", "色塊檢視：只用色塊、棋子與邊界畫世界（不畫地表與建築），看底層規則的運作；再按一次回到原本的畫面");
         _schematicToggle.ToggleMode = true;
-        _schematicToggle.Toggled += on => _hexMap.Schematic = on;
+        _schematicToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 第 05-2 章：關閉時變暗
+        _schematicToggle.Toggled += on =>
+        {
+            _hexMap.Schematic = on;
+            _schematicToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
+        };
         row.AddChild(_schematicToggle);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
@@ -284,13 +289,15 @@ public partial class ObserverRoot
         _mapLineageButton.Visible = false;
         _mapKnowledgeButton.Visible = false;
         _toolDev.Visible = false;
-        _devToolsToggle = ToolButton("", "開發工具", "顯示／隱藏開發用的功能：家系與知識地圖模式、開發資訊");
+        _devToolsToggle = ToolButton(ArtAssets.UiDevTools, "開發工具", "顯示／隱藏開發用的功能：家系與知識地圖模式、開發資訊");
         _devToolsToggle.ToggleMode = true;
+        _devToolsToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 第 05-2 章：關閉時變暗（扁平圖示按鈕沒有按下底色）
         _devToolsToggle.Toggled += on =>
         {
             _mapLineageButton.Visible = on;
             _mapKnowledgeButton.Visible = on;
             _toolDev.Visible = on;
+            _devToolsToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
         };
         row.AddChild(_devToolsToggle);
 

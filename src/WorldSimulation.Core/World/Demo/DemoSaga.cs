@@ -23,8 +23,82 @@ public static class DemoSaga
         return new DemoSagaOpening(world.WorldPopulation, world.Sites.Settlements.Count(s => !s.IsRuin));
     }
 
-    /// <summary>整部史書（每個元素一行）。<paramref name="opening"/> 沒有（例：讀檔的世界）就不寫開局人數。</summary>
+    /// <summary>整部史書（每個元素一行，純文字）。<paramref name="opening"/> 沒有（例：讀檔的世界）就不寫開局人數。</summary>
     public static IReadOnlyList<string> Write(DemoObserverWorld world, DemoSagaOpening? opening = null)
+        => WriteMarked(world, opening).Select(Plain).ToList();
+
+    /// <summary>第 05-2 章：連結標記的開頭、中段、結尾（控制字元，不會出現在正文裡）。</summary>
+    public const char LinkStart = '\u0001', LinkMid = '\u0002', LinkEnd = '\u0003';
+
+    /// <summary>第 05-2 章：把 <paramref name="text"/> 標成連結（<paramref name="kind"/>：s＝聚落、p＝人物、h＝家族（開創者的人物編號））。</summary>
+    public static string Link(char kind, long id, string text)
+        => text.Length == 0 ? text : string.Concat(LinkStart.ToString(), kind.ToString(), id.ToString(CultureInfo.InvariantCulture), LinkMid.ToString(), text, LinkEnd.ToString());
+
+    /// <summary>去掉連結標記，留下正文。</summary>
+    public static string Plain(string marked)
+    {
+        ArgumentNullException.ThrowIfNull(marked);
+        if (marked.IndexOf(LinkStart, StringComparison.Ordinal) < 0)
+            return marked;
+        var sb = new System.Text.StringBuilder(marked.Length);
+        for (var i = 0; i < marked.Length; i++)
+        {
+            var c = marked[i];
+            if (c == LinkStart)
+            {
+                var mid = marked.IndexOf(LinkMid, i);
+                if (mid < 0)
+                    break;
+                i = mid;
+                continue;
+            }
+            if (c != LinkEnd)
+                sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>第 05-2 章：史書一行裡的一段（Kind＝'\0' 是正文；否則是連結）。</summary>
+    public sealed record Piece(string Text, char Kind = '\0', long Id = 0);
+
+    /// <summary>把有連結標記的一行拆成正文與連結的段落（介面用來畫可以點的名稱）。</summary>
+    public static IReadOnlyList<Piece> Pieces(string marked)
+    {
+        ArgumentNullException.ThrowIfNull(marked);
+        var spans = new List<Piece>();
+        var plain = new System.Text.StringBuilder();
+        for (var i = 0; i < marked.Length;)
+        {
+            if (marked[i] != LinkStart)
+            {
+                plain.Append(marked[i++]);
+                continue;
+            }
+            var mid = marked.IndexOf(LinkMid, i);
+            var end = mid < 0 ? -1 : marked.IndexOf(LinkEnd, mid);
+            if (mid < 0 || end < 0 || mid < i + 2)
+            {
+                plain.Append(Plain(marked[i..]));
+                break;
+            }
+            if (plain.Length > 0)
+            {
+                spans.Add(new Piece(plain.ToString()));
+                plain.Clear();
+            }
+            long.TryParse(marked.AsSpan(i + 2, mid - i - 2), NumberStyles.None, CultureInfo.InvariantCulture, out var id);
+            spans.Add(new Piece(marked[(mid + 1)..end], marked[i + 1], id));
+            i = end + 1;
+        }
+        if (plain.Length > 0)
+            spans.Add(new Piece(plain.ToString()));
+        return spans;
+    }
+
+    /// <summary>
+    /// 第 05-2 章：整部史書，名稱帶連結標記（聚落、人物、家族；遊戲裡的史書分頁點得到）。去掉標記（<see cref="Plain"/>）就是 <see cref="Write"/>。
+    /// </summary>
+    public static IReadOnlyList<string> WriteMarked(DemoObserverWorld world, DemoSagaOpening? opening = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
@@ -63,9 +137,9 @@ public static class DemoSaga
             lines.Add(I($"卷 {++number}　{DemoAges.Name(span.Age)}　第 {volume[0].Year}～{volume[^1].Year} 年　{DemoAges.Description(span.Age)}"));
 
             // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
-            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: cast.Sentence(e))))
-                .GroupBy(x => x.Text, StringComparer.Ordinal)
-                .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.Key)).ToList();
+            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: cast.MarkedSentence(e))))
+                .GroupBy(x => Plain(x.Text), StringComparer.Ordinal)
+                .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.First().Text)).ToList();
             foreach (var (toldYears, text) in told)
                 lines.Add(I($"　第 {string.Join("、", toldYears)} 年，{text}"));
             var techs = Techs(volume);
@@ -76,20 +150,68 @@ public static class DemoSaga
             var local = DemoWorldChronicle.LocalTally(volume);
             if (local.Length > 0)
                 lines.Add("　各地：" + local + "。");
-            foreach (var ruler in cast.Rulers(volume[0].Year, volume[^1].Year, lastYear))
+            foreach (var ruler in cast.RulersMarked(volume[0].Year, volume[^1].Year, lastYear))
                 lines.Add("　人物：" + ruler);
-            foreach (var hero in cast.Heroes(volume[0].Year, volume[^1].Year)) // 第 08-10i 章
+            foreach (var hero in cast.HeroesMarked(volume[0].Year, volume[^1].Year)) // 第 08-10i 章
                 lines.Add("　英雄：" + hero);
             lines.Add("　" + People(volume, ledger, causes));
         }
 
         lines.Add("");
-        lines.AddRange(Ending(world, years.Count));
-        return lines;
+        lines.AddRange(Ending(world, years.Count, cast));
+        var linker = new SettlementLinker(world); // 第 05-2 章：聚落名稱一律可以點
+        return lines.Select(linker.Apply).ToList();
+    }
+
+    /// <summary>第 05-2 章：把一行裡出現的聚落名稱標成連結（聚落名稱不重複；長的先比對；已經是連結的部分不動）。</summary>
+    private sealed class SettlementLinker
+    {
+        private readonly Dictionary<char, List<(string Name, int Id)>> _byFirst;
+
+        public SettlementLinker(DemoObserverWorld world)
+        {
+            _byFirst = world.Sites.Settlements.Where(s => s.Name.Length > 0)
+                .GroupBy(s => s.Name, StringComparer.Ordinal).Select(g => (Name: g.Key, Id: g.Min(s => s.Id)))
+                .GroupBy(x => x.Name[0])
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.Name.Length).ThenBy(x => x.Name, StringComparer.Ordinal).ToList());
+        }
+
+        public string Apply(string text)
+        {
+            var sb = new System.Text.StringBuilder(text.Length + 16);
+            for (var i = 0; i < text.Length;)
+            {
+                if (text[i] == LinkStart)
+                {
+                    var end = text.IndexOf(LinkEnd, i);
+                    if (end < 0)
+                    {
+                        sb.Append(text, i, text.Length - i);
+                        break;
+                    }
+                    sb.Append(text, i, end - i + 1);
+                    i = end + 1;
+                    continue;
+                }
+                var matched = false;
+                if (_byFirst.TryGetValue(text[i], out var names))
+                    foreach (var (name, id) in names)
+                        if (i + name.Length <= text.Length && string.CompareOrdinal(text, i, name, 0, name.Length) == 0)
+                        {
+                            sb.Append(Link('s', id, name));
+                            i += name.Length;
+                            matched = true;
+                            break;
+                        }
+                if (!matched)
+                    sb.Append(text[i++]);
+            }
+            return sb.ToString();
+        }
     }
 
     /// <summary>終章：最後一年的世界——人口與聚落、最大的幾個聚落與領袖、各勢力。</summary>
-    private static IEnumerable<string> Ending(DemoObserverWorld world, int year)
+    private static IEnumerable<string> Ending(DemoObserverWorld world, int year, DemoSagaCast cast)
     {
         static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
         var active = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
@@ -99,7 +221,7 @@ public static class DemoSaga
 
         string Titled(DemoSettlement s) => DemoSettlementHistory.TitledName(s, world.ChronicleOf(s.Id).Tier);
         string LeaderOf(DemoSettlement s)
-            => world.RepresentativesOf(s.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader) is { } leader ? "，領袖" + leader.Name : "";
+            => world.RepresentativesOf(s.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader) is { } leader ? "，領袖" + Link('p', leader.Id, leader.Name) : "";
         var largest = active.OrderByDescending(s => world.SettlementPopulation(s.Id)).ThenBy(s => s.Id).Take(EndingSettlements)
             .Select(s => I($"{Titled(s)}（{world.SettlementPopulation(s.Id)} 人{LeaderOf(s)}）")).ToList();
         if (largest.Count > 0)
@@ -113,10 +235,10 @@ public static class DemoSaga
             .Select(x => I($"{x.Name}（全盛時 {world.ChronicleOf(x.Id).Peak} 人）")).ToList();
         if (ruins.Count > 0)
             yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
-        var relics = new DemoSagaCast(world).Relics(); // 第 08-10i 章
+        var relics = cast.RelicsMarked(); // 第 08-10i 章
         if (relics.Count > 0)
             yield return "　傳說物品：" + string.Join("；", relics) + "。";
-        var houses = new DemoSagaCast(world).Houses(EndingSettlements); // 第 08-10g 章
+        var houses = cast.HousesMarked(EndingSettlements); // 第 08-10g 章
         if (houses.Count > 0)
             yield return "　家族：" + string.Join("；", houses) + "。";
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
@@ -312,15 +434,25 @@ public sealed class DemoSagaCast
         _people = world.PersonRecords.ToDictionary(p => p.Id);
     }
 
+    /// <summary>第 05-2 章：人名連結。</summary>
+    private static string P(DemoPersonRecord p) => DemoSaga.Link('p', p.Id, p.Name);
+
+    /// <summary>第 05-2 章：「某某家」連結到這個人所屬的家族（不屬於任何家族就只寫文字）。</summary>
+    private string H(long personId, string family)
+        => DemoHouses.HouseOf(_people, personId) is { } founder ? DemoSaga.Link('h', founder, family + "家") : family + "家";
+
     private string Origin(DemoPersonRecord hero)
         => hero.ParentId > 0 && _people.TryGetValue(hero.ParentId, out var parent)
-            ? $"{DemoRepresentative.RoleName(parent.Role)}{parent.Name}的{(hero.Sex == DemoTempSex.Female ? "女兒" : "兒子")}"
+            ? $"{DemoRepresentative.RoleName(parent.Role)}{P(parent)}的{(hero.Sex == DemoTempSex.Female ? "女兒" : "兒子")}"
             : "士兵出身";
 
     /// <summary>
     /// 第 08-10i 章：這一卷成名的英雄（每人一句）：哪一年、哪個聚落的誰（出身、性格）立下什麼事蹟、得到什麼；已經過世的寫出結局。
     /// </summary>
-    public IReadOnlyList<string> Heroes(int fromYear, int toYear)
+    public IReadOnlyList<string> Heroes(int fromYear, int toYear) => HeroesMarked(fromYear, toYear).Select(DemoSaga.Plain).ToList();
+
+    /// <summary>同 <see cref="Heroes"/>，名稱帶連結標記。</summary>
+    internal IReadOnlyList<string> HeroesMarked(int fromYear, int toYear)
     {
         static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
         static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
@@ -329,20 +461,23 @@ public sealed class DemoSagaCast
             var temper = DemoTraits.Names(l.Hero.Traits);
             var end = l.Hero.InOffice ? "" : I($"；第 {Year(l.Hero.ExitWeek)} 年{ExitText(l.Hero.ExitReason)}");
             var prize = l.Item.Length > 0 ? $"，得到「{l.Item}」" : "";
-            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{l.Hero.Name}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）{l.Deed.Text}{prize}{end}。");
+            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{P(l.Hero)}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）{l.Deed.Text}{prize}{end}。");
         }).ToList();
     }
 
     /// <summary>
     /// 第 08-10i 章：傳說物品的下落（每件一句）：英雄在世由英雄持有；領袖家族出身的英雄死後由家族收藏；士兵出身的英雄死後下落不明。
     /// </summary>
-    public IReadOnlyList<string> Relics()
+    public IReadOnlyList<string> Relics() => RelicsMarked().Select(DemoSaga.Plain).ToList();
+
+    /// <summary>同 <see cref="Relics"/>，名稱帶連結標記。</summary>
+    internal IReadOnlyList<string> RelicsMarked()
         => _legends.Where(l => l.Item.Length > 0).Select(l =>
         {
             var place = _nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地");
-            var holder = l.Hero.InOffice ? $"由{place}的英雄{l.Hero.Name}持有"
-                : l.Hero.ParentId > 0 ? $"{l.Hero.Name}死後由{place}的{DemoNames.FamilyOf(l.Hero.Name)}家收藏"
-                : $"{l.Hero.Name}死後下落不明";
+            var holder = l.Hero.InOffice ? $"由{place}的英雄{P(l.Hero)}持有"
+                : l.Hero.ParentId > 0 ? $"{P(l.Hero)}死後由{place}的{H(l.Hero.Id, DemoNames.FamilyOf(l.Hero.Name))}收藏"
+                : $"{P(l.Hero)}死後下落不明";
             return $"「{l.Item}」{holder}";
         }).ToList();
 
@@ -353,20 +488,30 @@ public sealed class DemoSagaCast
             : null;
 
     /// <summary>史書的一句：勢力大事註明各聚落當時的領袖；其他條目照 <see cref="DemoSaga.Sentence"/>。</summary>
-    public string Sentence(DemoChronicleEntry entry)
+    public string Sentence(DemoChronicleEntry entry) => DemoSaga.Plain(MarkedSentence(entry));
+
+    /// <summary>同 <see cref="Sentence"/>，領袖的名字帶連結標記（聚落名稱由史書最後統一標記）。</summary>
+    internal string MarkedSentence(DemoChronicleEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entry);
         var text = DemoSaga.Sentence(entry);
         if (entry.Category != DemoChronicleCategory.Realm)
             return text;
-        return Annotate(text, _names.Select(n => (n.Name, Leader: LeaderAt(n.Id, entry.Week)?.Name)).Where(n => n.Leader is not null)
-            .Select(n => (n.Name, n.Leader!)).ToList());
+        return Insert(text, _names.Select(n => (n.Name, Leader: LeaderAt(n.Id, entry.Week))).Where(n => n.Leader is not null)
+            .Select(n => (n.Name, "（" + P(n.Leader!) + "）")).ToList());
     }
 
     /// <summary>
     /// 在句子裡每個聚落名稱第一次出現的地方後面加上「（領袖）」。<paramref name="cast"/> 要由長到短排（長名稱先佔位，短名稱不會切進長名稱裡）。
     /// </summary>
     public static string Annotate(string text, IReadOnlyList<(string Name, string Leader)> cast)
+    {
+        ArgumentNullException.ThrowIfNull(cast);
+        return Insert(text, cast.Select(c => (c.Name, "（" + c.Leader + "）")).ToList());
+    }
+
+    /// <summary>在每個名稱第一次出現（不和已佔位的名稱重疊）的地方後面插入一段文字。</summary>
+    private static string Insert(string text, IReadOnlyList<(string Name, string Insert)> cast)
     {
         ArgumentNullException.ThrowIfNull(text);
         ArgumentNullException.ThrowIfNull(cast);
@@ -387,7 +532,7 @@ public sealed class DemoSagaCast
         }
         var sb = new System.Text.StringBuilder(text);
         foreach (var x in spans.OrderByDescending(x => x.End))
-            sb.Insert(x.End, "（" + x.Leader + "）");
+            sb.Insert(x.End, x.Leader);
         return sb.ToString();
     }
 
@@ -395,7 +540,10 @@ public sealed class DemoSagaCast
     /// 這一卷要寫的領袖（每人一句）：任期在這一卷結束的，或到史書最後一年仍在位而這是最後一卷的；
     /// 降服加失去的聚落至少 <see cref="DemoSaga.RulerDeeds"/> 件才寫，降服多的在前，最多 <see cref="DemoSaga.VolumeRulers"/> 位。
     /// </summary>
-    public IReadOnlyList<string> Rulers(int fromYear, int toYear, int lastYear)
+    public IReadOnlyList<string> Rulers(int fromYear, int toYear, int lastYear) => RulersMarked(fromYear, toYear, lastYear).Select(DemoSaga.Plain).ToList();
+
+    /// <summary>同 <see cref="Rulers"/>，名稱帶連結標記。</summary>
+    internal IReadOnlyList<string> RulersMarked(int fromYear, int toYear, int lastYear)
     {
         static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
         static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
@@ -421,10 +569,10 @@ public sealed class DemoSagaCast
                 var temper = DemoTraits.Names(p.Traits);
                 var next = list.SkipWhile(x => x.Id != p.Id).Skip(1).FirstOrDefault();
                 var heir = p.InOffice || next is null ? ""
-                    : next.ParentId == p.Id ? I($"，由{(next.Sex == DemoTempSex.Female ? "女兒" : "兒子")}{next.Name}繼位")
-                    : I($"，{DemoNames.FamilyOf(p.Name)}家就此失去權位，{DemoNames.FamilyOf(next.Name)}家的{next.Name}接掌");
+                    : next.ParentId == p.Id ? I($"，由{(next.Sex == DemoTempSex.Female ? "女兒" : "兒子")}{P(next)}繼位")
+                    : I($"，{H(p.Id, DemoNames.FamilyOf(p.Name))}就此失去權位，{H(next.Id, DemoNames.FamilyOf(next.Name))}的{P(next)}接掌");
                 picked.Add((conquered, lost, p.Id,
-                    I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{title}{p.Name}（{(temper.Length > 0 ? temper + "；" : "")}{reign}在位）{string.Join("、", deeds)}，{exit}{heir}。")));
+                    I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{title}{P(p)}（{(temper.Length > 0 ? temper + "；" : "")}{reign}在位）{string.Join("、", deeds)}，{exit}{heir}。")));
             }
         return picked.OrderByDescending(x => x.Conquered).ThenByDescending(x => x.Lost).ThenBy(x => x.Id).Take(DemoSaga.VolumeRulers).Select(x => x.Text).ToList();
     }
@@ -433,7 +581,10 @@ public sealed class DemoSagaCast
     /// 第 08-10g 章：掌權的家族（參考十字軍之王的家族）——一位沒有承襲父母的領袖是家族的第一代，之後一路世襲的都屬於這一家。
     /// 每個家族一句：在哪裡、姓什麼、傳了幾代、從哪一年掌權到哪一年（或至今）。代數多的在前，最多 <paramref name="take"/> 個；只有一代的不列。
     /// </summary>
-    public IReadOnlyList<string> Houses(int take)
+    public IReadOnlyList<string> Houses(int take) => HousesMarked(take).Select(DemoSaga.Plain).ToList();
+
+    /// <summary>同 <see cref="Houses"/>，家族與歷代家主帶連結標記。</summary>
+    internal IReadOnlyList<string> HousesMarked(int take)
     {
         static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
         static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
@@ -449,7 +600,7 @@ public sealed class DemoSagaCast
                     var from = line[0].AppointedWeek < 1 ? "開局" : I($"第 {Year(line[0].AppointedWeek)} 年");
                     var to = last.InOffice ? "至今" : I($"第 {Year(last.ExitWeek)} 年");
                     houses.Add((line.Count, line[0].AppointedWeek, line[0].Id,
-                        I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{DemoNames.FamilyOf(line[0].Name)}家（傳 {line.Count} 代，{from}～{to}掌權；{string.Join("→", line.Select(x => DemoNames.GivenOf(x.Name)))}）")));
+                        I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{H(line[0].Id, DemoNames.FamilyOf(line[0].Name))}（傳 {line.Count} 代，{from}～{to}掌權；{string.Join("→", line.Select(x => DemoSaga.Link('p', x.Id, DemoNames.GivenOf(x.Name))))}）")));
                 }
                 line.Clear();
             }

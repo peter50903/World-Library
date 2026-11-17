@@ -109,6 +109,64 @@ public sealed class DemoHousesTests
         Assert.All(houses, h => Assert.Contains(leaders, p => h.Contains(DemoNames.FamilyOf(p.Name) + "家（傳 ", StringComparison.Ordinal)));
     }
 
+    // 第 05-2 章：家族頁——開創者打得開，成員、家譜與連結都對得上登記表；不是開創者的編號打不開。
+    [Fact]
+    public void HousePageListsTheFoundersLine()
+    {
+        var world = Shared.Value;
+        var people = world.PersonRecords.ToDictionary(p => p.Id);
+        var founders = people.Values.Where(p => DemoHouses.HouseOf(people, p.Id) == p.Id
+            && DemoHouses.Members(people, p.Id).Count(m => m.Role == DemoRepresentativeRole.Leader) >= 2).ToList();
+        Assert.NotEmpty(founders);
+        var founder = founders[0];
+        var members = DemoHouses.Members(people, founder.Id);
+        var before = world.ExportTempSave();
+        var detail = DemoHouseDetail.Of(world, founder.Id);
+        Assert.Equal(before, world.ExportTempSave()); // 只讀
+        Assert.NotNull(detail);
+        Assert.Equal(new[] { "家族", "成員", "家譜" }, detail!.Tabs.Select(t => t.Title));
+        Assert.Equal(founder.SettlementId, detail.SettlementId);
+        Assert.Contains(DemoNames.FamilyOf(founder.Name) + "家", detail.Title, StringComparison.Ordinal);
+        Assert.Equal(members.Select(m => m.Id), detail.Tabs[1].People.Select(p => p.Id));
+        Assert.StartsWith(founder.Name + "（", detail.Tabs[2].Lines[0], StringComparison.Ordinal);
+        Assert.Equal(members.Count, detail.Tabs[2].Lines.Count);
+        Assert.All(members, m => Assert.Equal(founder.Id, DemoHouses.HouseOf(people, m.Id)));
+        Assert.All(members.Where(m => m.Id != founder.Id), m => Assert.True(DemoHouses.GenerationOf(people, m.Id) >= 2));
+        Assert.Equal(1, DemoHouses.GenerationOf(people, founder.Id));
+        Assert.All(detail.Tabs[0].Links, l => Assert.True(l.Kind == DemoLinkKind.Settlement
+            ? world.Sites.Settlements.Any(s => s.Id == l.Id) : people.ContainsKey(l.Id)));
+        // 繼承人不是開創者：打不開；不存在的編號也打不開。
+        var heir = members.First(m => m.Id != founder.Id);
+        Assert.Null(DemoHouseDetail.Of(world, heir.Id));
+        Assert.Null(DemoHouseDetail.Of(world, -1));
+    }
+
+    // 第 05-2 章：已過世的人也打得開人物頁；有父母或子女的有「家人」頁，連結指向登記表上的人。
+    [Fact]
+    public void PastPeopleHaveAPageAndTheirFamily()
+    {
+        var world = Shared.Value;
+        var people = world.PersonRecords.ToDictionary(p => p.Id);
+        var gone = people.Values.Where(p => !p.InOffice && DemoPersonDetail.Died(p)).OrderByDescending(p => p.ExitWeek).ThenBy(p => p.Id).ToList();
+        Assert.NotEmpty(gone);
+        var detail = DemoPersonDetail.Of(world, gone[0].Id);
+        Assert.NotNull(detail);
+        Assert.Contains("（已故）", detail!.Title, StringComparison.Ordinal);
+        Assert.Equal(new[] { "人物", "生平" }, detail.Tabs.Select(t => t.Title).Take(2));
+        Assert.Contains(detail.Tabs[0].Lines, l => l.Contains(DemoSagaCast.ExitText(gone[0].ExitReason), StringComparison.Ordinal));
+        Assert.Equal(gone[0].Id, Assert.Single(detail.Tabs[0].People).Id);
+        // 有父母的領袖：家人頁有父母，人物頁有父母與家族的連結。
+        var heir = people.Values.First(p => p.Role == DemoRepresentativeRole.Leader && p.ParentId > 0);
+        var page = DemoPersonDetail.Of(world, heir.Id)!;
+        var family = Assert.Single(page.Tabs, t => t.Title == "家人");
+        Assert.Contains(family.People, e => e.Id == heir.ParentId);
+        Assert.Contains(page.Tabs[0].Links, l => l.Kind == DemoLinkKind.Person && l.Id == heir.ParentId);
+        Assert.Contains(page.Tabs[0].Links, l => l.Kind == DemoLinkKind.House && l.Id == DemoHouses.HouseOf(people, heir.Id));
+        // 父母的家人頁有這個孩子。
+        var parentPage = DemoPersonDetail.Of(world, heir.ParentId)!;
+        Assert.Contains(Assert.Single(parentPage.Tabs, t => t.Title == "家人").People, e => e.Id == heir.Id);
+    }
+
     [Fact]
     public void LordsTemperChangesLoyalty()
     {

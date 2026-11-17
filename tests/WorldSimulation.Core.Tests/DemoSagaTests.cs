@@ -139,6 +139,46 @@ public sealed class DemoSagaTests
             DemoSaga.Sentence(Entry(new DemoChronicleSegment("歐文港", 1), new DemoChronicleSegment(" 人口 29 人，由營地發展為村莊"))));
     }
 
+    // 第 05-2 章：名稱的連結標記——去掉標記就是純文字的史書；每個連結都指向世界上真的存在的聚落、人物或家族，文字就是那個名稱。
+    [Fact]
+    public void MarkedSagaLinksRealNamesAndStripsToThePlainSaga()
+    {
+        var (world, opening) = Shared.Value;
+        var marked = DemoSaga.WriteMarked(world, opening);
+        Assert.Equal(DemoSaga.Write(world, opening), marked.Select(DemoSaga.Plain));
+        var pieces = marked.SelectMany(DemoSaga.Pieces).ToList();
+        Assert.Equal(string.Concat(marked.Select(DemoSaga.Plain)), string.Concat(pieces.Select(p => p.Text)));
+        var people = world.PersonRecords.ToDictionary(p => p.Id);
+        var links = pieces.Where(p => p.Kind != '\0').ToList();
+        Assert.Contains(links, l => l.Kind == 's');
+        Assert.Contains(links, l => l.Kind == 'p');
+        Assert.All(links, l =>
+        {
+            switch (l.Kind)
+            {
+                case 's':
+                    Assert.Equal(world.Sites.Settlements.Single(s => s.Id == l.Id).Name, l.Text);
+                    break;
+                case 'p':
+                    Assert.True(people.ContainsKey(l.Id));
+                    Assert.Contains(l.Text, people[l.Id].Name, StringComparison.Ordinal); // 家族一句裡只寫名
+                    break;
+                case 'h':
+                    Assert.Equal(l.Id, DemoHouses.HouseOf(people, l.Id));
+                    Assert.Equal(DemoNames.FamilyOf(people[l.Id].Name) + "家", l.Text);
+                    break;
+                default:
+                    Assert.Fail($"未知的連結種類 {l.Kind}");
+                    break;
+            }
+        });
+        // 拆段與還原：沒有標記的一行就是一段正文。
+        Assert.Equal(new[] { new DemoSaga.Piece("沒有名稱。") }, DemoSaga.Pieces("沒有名稱。"));
+        var one = DemoSaga.Link('s', 7, "伯恩坡") + "征服了" + DemoSaga.Link('s', 9, "東塔林");
+        Assert.Equal("伯恩坡征服了東塔林", DemoSaga.Plain(one));
+        Assert.Equal(new[] { new DemoSaga.Piece("伯恩坡", 's', 7), new DemoSaga.Piece("征服了"), new DemoSaga.Piece("東塔林", 's', 9) }, DemoSaga.Pieces(one));
+    }
+
     [Fact]
     public void SagaIsTheSameWhenWrittenAgainAndWithoutAnOpening()
     {
