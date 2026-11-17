@@ -41,7 +41,11 @@ public static class DemoPersonDetail
             lines.Add($"家族：{DemoNames.FamilyOf(person.Name)}家" + (person.ParentId > 0 && world.PersonRecord(person.ParentId) is { } parent
                 ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是前任{role}{parent.Name}）" : "（這一家的第一代）"));
             if (person.Traits != DemoTrait.None)
+            {
                 lines.Add("性格：" + DemoTraits.Names(person.Traits));
+                foreach (var trait in DemoTraits.List(person.Traits)) // 第 08-10h 章：每項性格一句說明
+                    lines.Add($"　{DemoTraits.Name(trait)}：{DemoTraits.Effect(trait)}");
+            }
         }
         // 勢力：聚落屬於哪個勢力；領袖另寫他統領的勢力與獨立派系。
         var territory = world.Territory();

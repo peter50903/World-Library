@@ -209,8 +209,14 @@ public static partial class DemoRealms
         }
         if (ctx.Culture(vassal) is { } c1 && ctx.Culture(liege) is { } c2 && c1 != c2)
             factors.Add(new("文化不同", -30));
-        if (ctx.Faith(vassal) is { } f1 && ctx.Faith(liege) is { } f2 && f1 != f2)
+        // 第 08-10g、08-10h 章：上級領袖（王座所在聚落的領袖）與下級自己領袖的性格。
+        var lordTraits = ctx.Leader?.Invoke(fold.Seat(liege))?.Traits ?? DemoTrait.None;
+        if (ctx.Faith(vassal) is { } f1 && ctx.Faith(liege) is { } f2 && f1 != f2 && !DemoTraits.Has(lordTraits, DemoTrait.Cynical))
+        {
             factors.Add(new("信仰不同", -15));
+            if (DemoTraits.Has(lordTraits, DemoTrait.Zealous))
+                factors.Add(new("領袖虔誠，容不下異教", DemoTraits.TempZealousFaithLoyalty));
+        }
         var mine = ctx.Residents(vassal);
         var theirs = ctx.Residents(liege);
         if (mine > theirs)
@@ -231,8 +237,10 @@ public static partial class DemoRealms
         if (fold.Conquered(vassal, week))
             factors.Add(new("剛被征服", TempConqueredLoyalty)); // 第 08-19e 章
         // 第 08-10g 章：上級領袖的性格（公正、暴虐）。
-        if (ctx.Leader?.Invoke(fold.Seat(liege)) is { } lord && DemoTraits.Loyalty(lord.Traits) != 0)
-            factors.Add(new(DemoTraits.Has(lord.Traits, DemoTrait.Just) ? "領袖公正" : "領袖暴虐", DemoTraits.Loyalty(lord.Traits)));
+        foreach (var (text, value) in DemoTraits.LordLoyalty(lordTraits))
+            factors.Add(new(text, value));
+        foreach (var (text, value) in DemoTraits.VassalLoyalty(ctx.Leader?.Invoke(vassal)?.Traits ?? DemoTrait.None))
+            factors.Add(new(text, value));
         if (ctx.AgeOfWeek?.Invoke(week) is { } age && DemoAges.Loyalty(age) != 0)
             factors.Add(new(DemoAges.Name(age), DemoAges.Loyalty(age))); // 第 08-6c 章
         CivilFactors(vassal, liege, week, fold, factors); // 第 08-19f 章：新君即位、國王出身於此、擁立了現任國王
@@ -262,7 +270,8 @@ public static partial class DemoRealms
     }
 
     /// <summary>本週獨立戰爭的交戰（首領與上級；開戰的下一週起）；<paramref name="taken"/>＝本週已有天災或怪物的聚落。</summary>
-    public static IReadOnlyDictionary<int, DemoDisasterStrike> Battles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng)
+    public static IReadOnlyDictionary<int, DemoDisasterStrike> Battles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
+        Func<int, DemoTrait>? temper = null) // 第 08-10h 章：聚落領袖的性格（勇猛、怯懦改變對方的死傷）
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(sites);
@@ -277,12 +286,12 @@ public static partial class DemoRealms
             long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, s.VassalId, k));
             if (!taken.Contains(s.VassalId) && !strikes.ContainsKey(s.VassalId) && residents(s.VassalId) > 0)
                 strikes[s.VassalId] = new DemoDisasterStrike(s.VassalId, DemoSettlementEventKind.SecessionBattle,
-                    Deaths(loyal, residents(s.VassalId), 2), s.Civil ? $"內戰：與{Name(s.LiegeId)}的王軍交戰" : $"獨立戰爭：與{Name(s.LiegeId)}的軍隊交戰");
+                    Deaths(loyal * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(s.LiegeId)) ?? DemoTrait.None) / 100, residents(s.VassalId), 2), s.Civil ? $"內戰：與{Name(s.LiegeId)}的王軍交戰" : $"獨立戰爭：與{Name(s.LiegeId)}的軍隊交戰");
             if (!taken.Contains(s.LiegeId) && !strikes.ContainsKey(s.LiegeId) && residents(s.LiegeId) > 0)
                 strikes[s.LiegeId] = new DemoDisasterStrike(s.LiegeId, DemoSettlementEventKind.SecessionBattle,
-                    Deaths(rebels, residents(s.LiegeId), 3), s.Civil ? $"出兵討伐作亂的{Name(s.VassalId)}" : $"出兵鎮壓叛離的{Name(s.VassalId)}");
+                    Deaths(rebels * DemoTraits.BattlePercent(temper?.Invoke(s.VassalId) ?? DemoTrait.None) / 100, residents(s.LiegeId), 3), s.Civil ? $"出兵討伐作亂的{Name(s.VassalId)}" : $"出兵鎮壓叛離的{Name(s.VassalId)}");
         }
-        ConquestBattles(week, fold, sites, residents, taken, rng, strikes); // 第 08-19e 章
+        ConquestBattles(week, fold, sites, residents, taken, rng, strikes, temper); // 第 08-19e 章
         return strikes;
     }
 

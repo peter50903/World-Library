@@ -23,15 +23,15 @@ public sealed class DemoHousesTests
             ulong Draw(int k) => seed * 7919UL + (ulong)k * 104729UL + seed / 3UL;
             var traits = DemoTraits.Roll(Draw);
             var list = DemoTraits.List(traits);
-            Assert.Equal(2, list.Count);
-            Assert.False(DemoTraits.Has(traits, DemoTrait.Warlike) && DemoTraits.Has(traits, DemoTrait.Cautious));
-            Assert.False(DemoTraits.Has(traits, DemoTrait.Lenient) && DemoTraits.Has(traits, DemoTrait.Harsh));
-            Assert.False(DemoTraits.Has(traits, DemoTrait.Just) && DemoTraits.Has(traits, DemoTrait.Cruel));
-            // 有父母：仍是兩項、不同組；承襲時其中一項來自父母。
-            var child = DemoTraits.Roll(Draw, DemoTrait.Warlike | DemoTrait.Cruel);
-            Assert.Equal(2, DemoTraits.List(child).Count);
-            if ((int)(Draw(4) % 100UL) < DemoTraits.TempInheritPercent)
-                Assert.True(DemoTraits.Has(child, DemoTrait.Warlike) || DemoTraits.Has(child, DemoTrait.Cruel));
+            Assert.Equal(DemoTraits.TempCount, list.Count);
+            Assert.All(list, t => Assert.False(DemoTraits.Has(traits, DemoTraits.Opposite(t)))); // 同一組不會兩邊都有
+            // 有父母：仍是三項、不同組；承襲時其中一項來自父母。
+            var parent = DemoTrait.Warlike | DemoTrait.Cruel | DemoTrait.Ambitious;
+            var child = DemoTraits.Roll(Draw, parent);
+            Assert.Equal(DemoTraits.TempCount, DemoTraits.List(child).Count);
+            Assert.All(DemoTraits.List(child), t => Assert.False(DemoTraits.Has(child, DemoTraits.Opposite(t))));
+            if ((int)(Draw(DemoTraits.TempCount * 2) % 100UL) < DemoTraits.TempInheritPercent)
+                Assert.True((child & parent) != DemoTrait.None);
             else
                 Assert.Equal(traits, child);
         }
@@ -41,6 +41,18 @@ public sealed class DemoHousesTests
         Assert.Equal(DemoTraits.TempHarshPetition, DemoTraits.Petition(DemoTrait.Harsh));
         Assert.Equal(DemoTraits.TempCruelLoyalty, DemoTraits.Loyalty(DemoTrait.Cruel | DemoTrait.Warlike));
         Assert.Equal(0, DemoTraits.Loyalty(DemoTrait.Warlike));
+        // 第 08-10h 章：十六項性格各有名稱與說明；每一項的相反是同一組的另一項。
+        Assert.Equal(16, DemoTraits.All.Count);
+        Assert.Equal(16, DemoTraits.All.Select(DemoTraits.Name).Where(n => n.Length > 0).Distinct().Count());
+        Assert.Equal(16, DemoTraits.All.Select(DemoTraits.Effect).Where(n => n.Length > 0).Distinct().Count());
+        Assert.All(DemoTraits.All, t => Assert.Equal(t, DemoTraits.Opposite(DemoTraits.Opposite(t))));
+        Assert.Equal(DemoTraits.TempBraveBattlePercent, DemoTraits.BattlePercent(DemoTrait.Brave));
+        Assert.Equal(DemoTraits.TempCravenBattlePercent, DemoTraits.BattlePercent(DemoTrait.Craven | DemoTrait.Just));
+        Assert.Equal(100, DemoTraits.BattlePercent(DemoTrait.Just));
+        Assert.Equal(DemoTraits.TempStubbornSurrenderPercent, DemoTraits.SurrenderPercent(DemoTrait.Stubborn, 500));
+        Assert.Equal(DemoTraits.TempYieldingSurrenderPercent, DemoTraits.SurrenderPercent(DemoTrait.Yielding, 500));
+        Assert.Equal(500, DemoTraits.SurrenderPercent(DemoTrait.Brave, 500));
+        Assert.Equal(DemoTraits.TempWarlikeChance, DemoTraits.WarChance(DemoTrait.Warlike | DemoTrait.Honest));
     }
 
     [Fact]
@@ -58,7 +70,7 @@ public sealed class DemoHousesTests
         var leaders = world.PersonRecords.Where(p => p.Role == DemoRepresentativeRole.Leader).ToList();
         var byId = leaders.ToDictionary(p => p.Id);
         // 每位領袖兩項性格；其他職位沒有性格、沒有父母。
-        Assert.All(leaders, p => Assert.Equal(2, DemoTraits.List(p.Traits).Count));
+        Assert.All(leaders, p => Assert.Equal(DemoTraits.TempCount, DemoTraits.List(p.Traits).Count));
         Assert.All(world.PersonRecords.Where(p => p.Role != DemoRepresentativeRole.Leader),
             p => Assert.Equal((DemoTrait.None, 0L), (p.Traits, p.ParentId)));
         // 世襲：45 年裡一定有人繼承；繼承人與父母同姓不同名、同一個聚落、比父母小 18～45 歲、在父母離任那一週接任。
@@ -103,5 +115,24 @@ public sealed class DemoHousesTests
         Assert.Equal(basis + DemoTraits.TempCruelLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Cruel | DemoTrait.Harsh)));
         Assert.Equal(basis, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Warlike | DemoTrait.Lenient)));
         Assert.Contains(DemoRealms.Loyalty(b, a, 100, fold, With(DemoTrait.Cruel | DemoTrait.Harsh)), f => f.Text == "領袖暴虐");
+        Assert.Equal(basis + DemoTraits.TempHonestLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Honest)));
+        Assert.Equal(basis + DemoTraits.TempDeceitfulLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, With(DemoTrait.Deceitful)));
+        // 下級自己的領袖：野心更不忠誠、知足更忠誠。
+        DemoRealmContext Vassal(DemoTrait traits) => plain with
+        {
+            Leader = id => id == b ? new DemoRepresentative(2, b, DemoRepresentativeRole.Leader, "丙·丁", DemoTempSex.Male, 1, 1, 0, traits) : null
+        };
+        Assert.Equal(basis + DemoTraits.TempAmbitiousLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, Vassal(DemoTrait.Ambitious)));
+        Assert.Equal(basis + DemoTraits.TempContentLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, Vassal(DemoTrait.Content)));
+        // 信仰不同：多疑的上級不在意；虔誠的上級更容不下。
+        var faiths = plain with { Faith = id => id == a ? 1 : 2 };
+        DemoRealmContext Lord(DemoTrait traits) => faiths with
+        {
+            Leader = id => id == a ? new DemoRepresentative(1, a, DemoRepresentativeRole.Leader, "甲·乙", DemoTempSex.Female, 1, 1, 0, traits) : null
+        };
+        var differs = DemoRealms.LoyaltyValue(b, a, 100, fold, faiths);
+        Assert.Equal(basis - 15, differs);
+        Assert.Equal(basis, DemoRealms.LoyaltyValue(b, a, 100, fold, Lord(DemoTrait.Cynical)));
+        Assert.Equal(differs + DemoTraits.TempZealousFaithLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, Lord(DemoTrait.Zealous)));
     }
 }
