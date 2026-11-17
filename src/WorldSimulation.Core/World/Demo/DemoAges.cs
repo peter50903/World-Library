@@ -29,7 +29,23 @@ public enum DemoAge
 }
 
 /// <summary>一段世界時代：第 <see cref="FromYear"/>～<see cref="ToYear"/> 年。</summary>
-public sealed record DemoAgeSpan(DemoAge Age, int FromYear, int ToYear);
+public sealed record DemoAgeSpan(DemoAge Age, int FromYear, int ToYear)
+{
+    /// <summary>第 08-6c 章：從第幾週結算起（輪替表的時代從那一年的第一週起）。</summary>
+    public int FromWeek { get; init; } = DemoAges.FirstWeek(FromYear);
+
+    /// <summary>第 08-6c 章：到第幾週結算為止（指定而不再輪替的時代＝<see cref="DemoAges.Forever"/>）。</summary>
+    public int ToWeek { get; init; } = DemoAges.LastWeek(ToYear);
+
+    /// <summary>第 08-6c 章：在世界法則視窗指定的（不是輪替到的）。</summary>
+    public bool Manual { get; init; }
+}
+
+/// <summary>
+/// 第 08-6c 章：世界法則視窗指定時代的紀錄——第 <see cref="AfterWeek"/> 週結算之後起，時代固定是 <see cref="Age"/>，
+/// 直到下一筆紀錄；<see cref="Age"/> 是 null＝回到自動輪替（接回輪替表在那一週的時代）。
+/// </summary>
+public sealed record DemoAgeChange(int AfterWeek, DemoAge? Age);
 
 /// <summary>
 /// 第 08-6c 章：世界時代的輪替表。由歷史種子決定（THREAT 流的實體局部亂數，不推進計數器），不另存：
@@ -47,6 +63,18 @@ public static class DemoAges
     public const int TempFrostSourcePercent = -25, TempMiracleResearchPercent = 150, TempMiracleSoldierLevels = 1;
 
     private const string Namespace = "TEMP-AGE-v1";
+
+    /// <summary>第 08-6c 章：指定而不再輪替的時代的結束年份與週次（永遠）。</summary>
+    public const int Forever = int.MaxValue;
+
+    /// <summary>第 <paramref name="year"/> 年的第一次週結算。</summary>
+    internal static int FirstWeek(int year) => year >= Forever ? Forever : DemoObserverWorld.FirstWeekOfYear(Math.Max(1, year));
+
+    /// <summary>第 <paramref name="year"/> 年的最後一次週結算。</summary>
+    internal static int LastWeek(int year) => year >= Forever - 1 ? Forever : DemoObserverWorld.FirstWeekOfYear(year + 1) - 1;
+
+    /// <summary>第 <paramref name="week"/> 週結算在第幾年。</summary>
+    internal static int YearOfWeek(int week) => week >= Forever ? Forever : DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
 
     private static ulong Draw(RngRegistry rng, int index, int k)
         => EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Threat, Namespace).GetUInt64(checked((ulong)index * 4UL + (ulong)k));
@@ -75,6 +103,56 @@ public static class DemoAges
 
     /// <summary>第 <paramref name="week"/> 週結算時的世界時代。</summary>
     public static DemoAge AtWeek(RngRegistry rng, int week) => At(rng, DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7)));
+
+    /// <summary>第 08-6c 章：套用世界法則視窗的指定之後，第 <paramref name="week"/> 週結算時的世界時代。</summary>
+    public static DemoAge AtWeek(RngRegistry rng, IReadOnlyList<DemoAgeChange> changes, int week)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        for (var i = changes.Count - 1; i >= 0; i--)
+            if (changes[i].AfterWeek < week)
+                return changes[i].Age ?? AtWeek(rng, week);
+        return AtWeek(rng, week);
+    }
+
+    /// <summary>
+    /// 第 08-6c 章：套用世界法則視窗的指定之後，從第 1 年排到涵蓋第 <paramref name="untilWeek"/> 週的那一段為止。
+    /// 指定的時代從指定後的下一週起，一直持續到改回自動輪替；改回之後接回輪替表在那一週的時代。相鄰的同一個時代合成一段。
+    /// 還沒生效的指定（下一週才開始）不列；目前這一段因此在本週結束。
+    /// </summary>
+    public static IReadOnlyList<DemoAgeSpan> Schedule(RngRegistry rng, IReadOnlyList<DemoAgeChange> changes, int untilWeek)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        ArgumentNullException.ThrowIfNull(changes);
+        untilWeek = Math.Max(1, untilWeek);
+        if (changes.Count == 0)
+            return Schedule(rng, YearOfWeek(untilWeek));
+        var spans = new List<DemoAgeSpan>();
+        void Add(DemoAge age, int from, int to, bool manual)
+        {
+            if (from > to || from > untilWeek)
+                return;
+            if (spans.Count > 0 && spans[^1].Age == age)
+                spans[^1] = spans[^1] with { ToYear = YearOfWeek(to), ToWeek = to };
+            else
+                spans.Add(new DemoAgeSpan(age, YearOfWeek(from), YearOfWeek(to)) { FromWeek = from, ToWeek = to, Manual = manual });
+        }
+        DemoAge? setting = null;
+        var start = 1;
+        for (var i = 0; i <= changes.Count; i++)
+        {
+            var end = i < changes.Count ? changes[i].AfterWeek : Forever;
+            if (setting is { } fixedAge)
+                Add(fixedAge, start, end, true);
+            else if (start <= Math.Min(end, untilWeek))
+                foreach (var s in Schedule(rng, YearOfWeek(Math.Min(end, untilWeek))))
+                    Add(s.Age, Math.Max(s.FromWeek, start), Math.Min(s.ToWeek, end), false);
+            if (i == changes.Count)
+                break;
+            setting = changes[i].Age;
+            start = changes[i].AfterWeek + 1;
+        }
+        return spans;
+    }
 
     public static string Name(DemoAge age) => age switch
     {

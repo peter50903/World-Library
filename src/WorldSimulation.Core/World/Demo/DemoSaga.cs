@@ -114,11 +114,22 @@ public static class DemoSaga
         var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
         var cast = new DemoSagaCast(world); // 第 08-10f 章：人物進入史書
         var lastYear = years.Count == 0 ? 1 : years[^1].Year;
-        // 第 08-6c 章：一個世界時代一卷（原本固定十年一卷）。
+        // 第 08-6c 章：一個世界時代一卷（原本固定十年一卷）。一年歸在它最後一週（還沒過完的年＝目前這一週）的時代那一卷；
+        // 世界法則視窗在年中指定的時代因此從下一卷開始，不到一年就換掉的時代沒有自己的一卷（更替仍寫在那年的大事裡）。
         var number = 0;
-        foreach (var span in world.Ages())
+        var ages = world.Ages();
+        var now = Math.Max(1, world.CommittedWeeks);
+        int AgeIndexOf(int year)
         {
-            var volume = years.Where(y => y.Year >= span.FromYear && y.Year <= span.ToYear).ToList();
+            var week = Math.Min(DemoAges.LastWeek(year), now);
+            var i = ages.Count - 1;
+            while (i > 0 && ages[i].FromWeek > week)
+                i--;
+            return i;
+        }
+        foreach (var (span, index) in ages.Select((s, i) => (s, i)))
+        {
+            var volume = years.Where(y => AgeIndexOf(y.Year) == index).ToList();
             if (volume.Count == 0)
                 continue;
             lines.Add("");

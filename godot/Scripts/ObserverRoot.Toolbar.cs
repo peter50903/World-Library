@@ -405,6 +405,52 @@ public partial class ObserverRoot
     /// <summary>第 08-19c 章：世界法則頁（每條法則一個勾選框；改了從下一個結算週起生效）。</summary>
     private readonly VBoxContainer _lawsPage = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 
+    /// <summary>
+    /// 第 08-6c 章：世界法則視窗最上面的世界時代——目前的時代與預定到哪一年，下拉選單選自動輪替或指定一個時代
+    /// （從下一個結算週起生效，指定的時代一直持續到改回自動輪替；存檔記下）。
+    /// </summary>
+    private void AddAgeSection()
+    {
+        var title = new Label { Text = "世界時代" };
+        title.AddThemeFontSizeOverride("font_size", 18);
+        _lawsPage.AddChild(title);
+        _lawsPage.AddChild(new Label { Text = AgeNowText(), AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill });
+        var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var picker = new OptionButton { FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "自動輪替或指定一個時代" };
+        picker.AddThemeFontSizeOverride("font_size", 16);
+        picker.AddItem("自動輪替（每 30～60 年換一個時代）", 0);
+        foreach (var age in Enum.GetValues<DemoAge>())
+            picker.AddItem($"指定：{DemoAges.Name(age)}（{DemoAges.Description(age)}）", (int)age + 1);
+        picker.Select(_world.AgeSetting is { } chosen ? (int)chosen + 1 : 0);
+        var state = new Label();
+        picker.ItemSelected += index =>
+        {
+            _world.AgeSetting = index == 0 ? null : (DemoAge)(int)(index - 1);
+            PlayUi("ui_toggle_on");
+            state.Text = "（下次結算生效）";
+        };
+        row.AddChild(picker);
+        row.AddChild(state);
+        _lawsPage.AddChild(row);
+        _lawsPage.AddChild(new Label
+        {
+            Text = "　指定的時代從下一個結算週起開始，一直持續到改回自動輪替；改回之後接回輪替表上那時的時代。",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
+        });
+        _lawsPage.AddChild(new HSeparator());
+    }
+
+    /// <summary>第 08-6c 章：目前的時代一句（指定的不再輪替；剛改過設定的下次結算照新設定）。</summary>
+    private string AgeNowText()
+    {
+        var current = _world.Ages()[^1];
+        var tail = current.ToWeek == DemoAges.Forever ? "已指定，不會再輪替。"
+            : current.ToWeek <= _world.CommittedWeeks ? "下次結算起照新的設定。"
+            : $"預定到第 {current.ToYear} 年，之後輪替到其他時代。";
+        return $"目前：{DemoAges.Name(current.Age)}——{DemoAges.Description(current.Age)}。{tail}";
+    }
+
     private void RefreshLaws()
     {
         foreach (var child in _lawsPage.GetChildren())
@@ -412,6 +458,7 @@ public partial class ObserverRoot
             _lawsPage.RemoveChild(child);
             child.QueueFree();
         }
+        AddAgeSection(); // 第 08-6c 章：世界時代
         _lawsPage.AddChild(new Label
         {
             Text = "勾選的法則會在世界裡發生。改了之後從下一個結算週起生效，存檔會記下目前的法則。",

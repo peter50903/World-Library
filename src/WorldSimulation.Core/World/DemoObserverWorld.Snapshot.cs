@@ -28,6 +28,8 @@ public sealed partial class DemoObserverWorld
 
         // ① 種子決定的部分：重算，不讀檔案。
         var candidate = new DemoObserverWorld(recipe, weekly);
+        // 第 08-6c 章：指定時代的紀錄先裝上（下面的來源帳要用每週的時代核對）。
+        candidate.InstallAgeChanges(ReadAgeChanges(state, days / 7));
         var map = candidate.Map;
         var initialSites = candidate._sites;
         for (var i = 0; i < days; i++)
@@ -663,6 +665,28 @@ public sealed partial class DemoObserverWorld
         }
         if (laws != current)
             Reject("世界法則的切換紀錄與目前的法則不一致");
+        return changes;
+    }
+
+    /// <summary>
+    /// 第 08-6c 章：讀指定時代的紀錄並檢查（週次遞增、不超過已提交週數、每一筆都真的改變了設定、時代存在）。
+    /// 沒有這一欄＝從沒指定過。
+    /// </summary>
+    internal static ImmutableList<DemoAgeChange> ReadAgeChanges(JsonElement state, int weekCount)
+    {
+        if (!state.TryGetProperty("AgeChanges", out var element) || element.ValueKind != JsonValueKind.Array)
+            return ImmutableList<DemoAgeChange>.Empty;
+        var changes = (element.Deserialize<DemoAgeChange[]>() ?? Array.Empty<DemoAgeChange>()).ToImmutableList();
+        var previous = -1;
+        DemoAge? setting = null;
+        foreach (var c in changes)
+        {
+            if (c is null || c.AfterWeek <= previous || c.AfterWeek > weekCount || c.Age == setting
+                || (c.Age is { } age && !Enum.IsDefined(age)))
+                Reject("世界時代的指定紀錄不合法");
+            previous = c!.AfterWeek;
+            setting = c.Age;
+        }
         return changes;
     }
 

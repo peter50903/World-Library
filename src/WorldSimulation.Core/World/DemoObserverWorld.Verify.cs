@@ -46,6 +46,8 @@ public sealed partial class DemoObserverWorld
             var weekBase = savedState.GetProperty("WeekBase").GetInt32();
 
             var world = new DemoObserverWorld(manifest.Recipe, weekly);
+            // 第 08-6c 章：指定時代的紀錄整份先裝上——每一筆只影響指定之後的週，重播到那裡之前用不到。
+            world.InstallAgeChanges(ReadAgeChanges(savedState, days / 7));
             // 第 14-1 章第 1 項：世界法則的切換在同一週套用（否則關過法則的存檔一定重算不出來）。
             var savedLaws = savedState.TryGetProperty("Laws", out var lawsElement) && lawsElement.ValueKind == JsonValueKind.Object
                 ? lawsElement.Deserialize<DemoWorldLaws>() ?? DemoWorldLaws.Default : DemoWorldLaws.Default;
