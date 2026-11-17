@@ -21,19 +21,22 @@ public sealed class DemoMonsterTests
         Assert.Equal(6, fold.Count(dungeon, cell, 10)); // 2 層 × 3 隻
         Assert.Equal(9, fold.Count(dungeon, cell, 10 + 3 * DemoMonsters.TempSpawnWeeks));
         Assert.Equal(16, fold.Count(dungeon, cell, 10 + 100 * DemoMonsters.TempSpawnWeeks)); // 上限 2 層 × 8 隻
-        fold.Apply(Ev(34, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell, 4)), At);
-        Assert.Equal(5, fold.Count(dungeon, cell, 34));
-        Assert.Equal(6, fold.Count(dungeon, cell, 34 + DemoMonsters.TempSpawnWeeks));
+        // 第 12-2e 節：生成週數改了，擊殺那一週的數量用生成週數算（出現時 6 隻，之後每 TempSpawnWeeks 週多一隻）。
+        var killWeek = 10 + 3 * DemoMonsters.TempSpawnWeeks + 1;
+        fold.Apply(Ev(killWeek, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell, 4)), At);
+        Assert.Equal(5, fold.Count(dungeon, cell, killWeek)); // 9 − 4
+        Assert.Equal(6, fold.Count(dungeon, cell, killWeek + DemoMonsters.TempSpawnWeeks));
         // 別的地下城的擊殺不算。
-        fold.Apply(Ev(35, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell + 1, 4)), At);
-        Assert.Equal(5, fold.Count(dungeon, cell, 35));
-        fold.Apply(Ev(40, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell, 50)), At);
-        fold.Apply(Ev(40, DemoSettlementEventKind.DungeonCleared, cell), At);
-        var asleep = fold.At(dungeon, cell, 200);
+        fold.Apply(Ev(killWeek + 1, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell + 1, 4)), At);
+        Assert.Equal(5, fold.Count(dungeon, cell, killWeek + 1));
+        var clearWeek = killWeek + 6;
+        fold.Apply(Ev(clearWeek, DemoSettlementEventKind.MonsterSlain, DemoMonsters.EncodeKills(cell, 50)), At);
+        fold.Apply(Ev(clearWeek, DemoSettlementEventKind.DungeonCleared, cell), At);
+        var asleep = fold.At(dungeon, cell, clearWeek + 160);
         Assert.True(asleep.Dormant);
-        Assert.Equal((0, 0, 40), (asleep.Monsters, asleep.Radius, asleep.DormantSinceWeek));
-        fold.Apply(Ev(40 + DemoMonsters.TempDormantWeeks, DemoSettlementEventKind.DungeonAwakened, cell), At);
-        var awake = fold.At(dungeon, cell, 40 + DemoMonsters.TempDormantWeeks);
+        Assert.Equal((0, 0, clearWeek), (asleep.Monsters, asleep.Radius, asleep.DormantSinceWeek));
+        fold.Apply(Ev(clearWeek + DemoMonsters.TempDormantWeeks, DemoSettlementEventKind.DungeonAwakened, cell), At);
+        var awake = fold.At(dungeon, cell, clearWeek + DemoMonsters.TempDormantWeeks);
         Assert.False(awake.Dormant);
         Assert.Equal(6, awake.Monsters);
         Assert.Equal(DemoMonsters.Radius(6), awake.Radius);
@@ -97,6 +100,48 @@ public sealed class DemoMonsterTests
         Assert.Equal(DemoSettlementEventKind.DungeonAwakened, Assert.Single(events).Kind);
         Assert.Equal(nest.CellId, events[0].Count);
         Assert.Equal(500, events[0].EventId);
+    }
+
+    // 第 12-2e 節：勢力的士兵組成遠征軍，能討伐離得較遠的地下城（民兵只到三格）；等級夠就殺得光。
+    [Fact]
+    public void SoldierExpeditionsReachFartherAndCanClearTheDungeon()
+    {
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample);
+        var sites = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
+        // 找一格地下城：離每個聚落都至少 6 格（範圍 2 格，離範圍至少 4 格：民兵到不了、也不會被襲擊），最近的聚落不超過 9 格（遠征軍到得了）。
+        var spot = world.Map.Cells.Select(c => new DemoCellRef(c.Column, c.Row))
+            .Select(c => (Cell: c, Near: sites.Select(s => (Site: s, D: DemoHexWorld.Distance(c, new DemoCellRef(s.Column, s.Row)))).OrderBy(x => x.D).ThenBy(x => x.Site.Id).First()))
+            .Where(x => x.Near.D is >= 6 and <= 9)
+            .Select(x => ((DemoCellRef Cell, DemoSettlement Home)?)(x.Cell, x.Near.Site)).FirstOrDefault();
+        Assert.NotNull(spot);
+        var (cell, home) = spot!.Value;
+        var dungeon = new DemoDungeon(cell, "測試洞窟", 2, 0, 99, home.Id);
+        var floor = DemoMonsters.SuppressFloor(dungeon);
+        var nest = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        var none = new HashSet<int>();
+        DemoCombatForce Villagers(int _) => new(0, 0, 100);
+        DemoCombatForce Army(int id) => id == home.Id ? new DemoCombatForce(10, 5, 100) : Villagers(id);
+        // 只有民兵：怪物已經壓到下限，而且太遠，誰都不出兵。
+        var rng = RngRegistry.Create(3);
+        for (var week = 1; week <= 200; week++)
+            Assert.Empty(DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { nest }, none, rng, Villagers).Strikes);
+        // 有遠征軍：只有那個聚落出兵，等級（5）高過怪物（3），殺得光。
+        var hunts = 0;
+        var cleared = false;
+        var current = nest;
+        for (var week = 1; week <= 400 && !cleared; week++)
+        {
+            var plan = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { current }, none, rng, Villagers, Army);
+            foreach (var strike in plan.Strikes.Values.Where(s => s.Kind == DemoSettlementEventKind.MonsterHunt))
+            {
+                Assert.Equal(home.Id, strike.SettlementId);
+                hunts++;
+            }
+            cleared = plan.Cleared.Count == 1;
+            current = current with { Monsters = Math.Max(0, current.Monsters - plan.Kills.Sum(k => k.Kills)) }; // 擊殺照事件扣掉
+        }
+        Assert.True(hunts > 0);
+        Assert.True(cleared);
     }
 
     [Fact]

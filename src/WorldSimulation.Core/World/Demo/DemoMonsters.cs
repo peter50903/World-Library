@@ -46,8 +46,8 @@ public static class DemoMonsters
     /// <summary>【TEMP】每層的初始與上限怪物數。</summary>
     public const int TempInitialPerLayer = 3, TempCapPerLayer = 8;
 
-    /// <summary>【TEMP】每幾週多生一隻。</summary>
-    public const int TempSpawnWeeks = 8;
+    /// <summary>【TEMP】每幾週多生一隻（第 12-2e 節：原 8 週，一年多 6.5 隻，士兵殺不贏）。</summary>
+    public const int TempSpawnWeeks = 13;
 
     /// <summary>【TEMP】殺光後沉寂幾週（三年）才再生。</summary>
     public const int TempDormantWeeks = 156;
@@ -55,8 +55,8 @@ public static class DemoMonsters
     /// <summary>【TEMP】襲擊機率：每隻怪物每週 1%、最多 8%（第 08-18l 章：原 3%、25%，地下城附近的村子幾乎每月被襲擊而人口流失）。</summary>
     public const int TempRaidPercentPerMonster = 1, TempMaxRaidPercent = 8;
 
-    /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格。</summary>
-    public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3;
+    /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格（居民組的民兵）；第 12-2e 節：有士兵的遠征軍走多遠。</summary>
+    public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3, TempSoldierHuntReach = 8;
 
     // 第 12-2c 節：擊殺數與傷亡改由戰鬥人員、非戰鬥人員與雙方等級決定（DemoCombat）。
 
@@ -197,11 +197,18 @@ public static class DemoMonsters
     /// 本週的怪物行動。<paramref name="nests"/>＝上週結束時的狀態（依地下城出現順序）；<paramref name="taken"/>＝本週已經有天災的聚落（不再承受怪物）。
     /// 希望時代、沒有地下城＝空。
     /// </summary>
+    /// <remarks>
+    /// 第 12-2e 節：<paramref name="force"/>＝守村的人力（本聚落自己的）；<paramref name="expedition"/>＝出兵討伐的人力
+    /// （勢力的最上層聚落帶上整個勢力的士兵；沒給＝同 <paramref name="force"/>）。有士兵的遠征軍可以討伐離範圍 <see cref="TempSoldierHuntReach"/> 格內的地下城；
+    /// 只有居民的民兵照舊只到 <see cref="TempHuntReach"/> 格。
+    /// </remarks>
     public static Plan Roll(int week, DemoEra era, DemoHexWorld map, DemoWorldSites sites, Func<int, long> residents,
-        IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null)
+        IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null,
+        Func<int, DemoCombatForce>? expedition = null)
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
+        expedition ??= force;
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(residents);
@@ -251,15 +258,17 @@ public static class DemoMonsters
                     slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}擊殺 {slain} 隻" : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能守住村子");
                 kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
             }
-            // 討伐：離範圍 TempHuntReach 格內的聚落出兵——有戰鬥人員的先（戰力高的先），沒有才由人多的聚落組民兵。
+            // 討伐：有士兵的遠征軍（勢力的士兵）走到離範圍 TempSoldierHuntReach 格內、戰力高的先；
+            // 沒有士兵時，離範圍 TempHuntReach 格內人多的聚落組民兵（第 12-2e 節）。
             var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
-                    && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents
-                    && (force(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
-                .OrderByDescending(s => force(s.Id).Soldiers * force(s.Id).SoldierLevel)
+                    && residents(s.Id) >= TempHuntMinResidents
+                    && Distance(s) <= (expedition(s.Id).Fighters > 0 ? TempSoldierHuntReach : TempHuntReach)
+                    && (expedition(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
+                .OrderByDescending(s => expedition(s.Id).Soldiers * expedition(s.Id).SoldierLevel)
                 .ThenByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
             {
-                var party = force(hunter.Id);
+                var party = expedition(hunter.Id);
                 var (hit, fallen) = DemoCombat.Clash(left, level, party, defending: false, (int)(Draw(rng, week, slot, 2) % 100UL));
                 var slain = Math.Min(hit, Room(party));
                 var deaths = Math.Min(fallen, Math.Max(0L, residents(hunter.Id) - 1));

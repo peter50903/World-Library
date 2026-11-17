@@ -505,6 +505,30 @@ public sealed partial class DemoObserverWorld
         return _territory;
     }
 
+    /// <summary>
+    /// 第 12-2e 節：出兵討伐的人力——勢力的最上層聚落帶上整個勢力（直屬與間接）的士兵，等級取最高的；其他聚落只有自己的。
+    /// 守村照舊只用本聚落的人力。
+    /// </summary>
+    private Func<int, DemoCombatForce> ExpeditionForces(Func<int, DemoCombatForce> local)
+    {
+        var lieges = Realms().Liege;
+        var living = _sites.Settlements.Where(s => !s.IsRuin).Select(s => s.Id).ToList();
+        var cache = new Dictionary<int, DemoCombatForce>();
+        return id =>
+        {
+            if (cache.TryGetValue(id, out var known))
+                return known;
+            var own = local(id);
+            if (lieges.ContainsKey(id))
+                return cache[id] = own;
+            var members = living.Where(m => m != id && DemoRealms.Top(m, lieges) == id).Select(local).Where(f => f.Soldiers > 0).ToList();
+            if (members.Count == 0)
+                return cache[id] = own;
+            var level = Math.Max(own.Soldiers > 0 ? own.SoldierLevel : 0, members.Max(f => f.SoldierLevel));
+            return cache[id] = own with { Soldiers = own.Soldiers + members.Sum(f => f.Soldiers), SoldierLevel = level };
+        };
+    }
+
     /// <summary>第 12-2c、12-2d 節：各聚落對付怪物的人力（士兵與等級、非戰鬥人員；同一次查詢內沿用）。</summary>
     private Func<int, DemoCombatForce> CombatForces(IReadOnlyList<DemoMonsterNest> nests)
     {
@@ -692,7 +716,8 @@ public sealed partial class DemoObserverWorld
             var monsters = nestsNow.Count == 0
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
-                    nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow)); // 第 12-2c 節：戰鬥人員與非戰鬥人員
+                    nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow), // 第 12-2c 節：戰鬥人員與非戰鬥人員
+                    ExpeditionForces(CombatForces(nestsNow))); // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
