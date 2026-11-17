@@ -258,7 +258,7 @@ public sealed class DemoSagaCast
             : "士兵出身";
 
     /// <summary>
-    /// 第 08-10i 章：這一卷成名的英雄（每人一句）：哪一年、哪個聚落的誰（出身、性格）殺光了哪個地下城的怪物、得到什麼；已經過世的寫出結局。
+    /// 第 08-10i 章：這一卷成名的英雄（每人一句）：哪一年、哪個聚落的誰（出身、性格）立下什麼事蹟、得到什麼；已經過世的寫出結局。
     /// </summary>
     public IReadOnlyList<string> Heroes(int fromYear, int toYear)
     {
@@ -268,7 +268,8 @@ public sealed class DemoSagaCast
         {
             var temper = DemoTraits.Names(l.Hero.Traits);
             var end = l.Hero.InOffice ? "" : I($"；第 {Year(l.Hero.ExitWeek)} 年{ExitText(l.Hero.ExitReason)}");
-            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{l.Hero.Name}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）帶隊殺光{l.Dungeon}的怪物，得到「{l.Item}」{end}。");
+            var prize = l.Item.Length > 0 ? $"，得到「{l.Item}」" : "";
+            return I($"第 {Year(l.Week)} 年，{_nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地")}的{l.Hero.Name}（{Origin(l.Hero)}{(temper.Length > 0 ? "；" + temper : "")}）{l.Deed.Text}{prize}{end}。");
         }).ToList();
     }
 
@@ -276,7 +277,7 @@ public sealed class DemoSagaCast
     /// 第 08-10i 章：傳說物品的下落（每件一句）：英雄在世由英雄持有；領袖家族出身的英雄死後由家族收藏；士兵出身的英雄死後下落不明。
     /// </summary>
     public IReadOnlyList<string> Relics()
-        => _legends.Select(l =>
+        => _legends.Where(l => l.Item.Length > 0).Select(l =>
         {
             var place = _nameOf.GetValueOrDefault(l.Hero.SettlementId, "某地");
             var holder = l.Hero.InOffice ? $"由{place}的英雄{l.Hero.Name}持有"

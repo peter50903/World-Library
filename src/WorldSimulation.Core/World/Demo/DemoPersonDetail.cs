@@ -43,7 +43,7 @@ public static class DemoPersonDetail
                 : person.Role == DemoRepresentativeRole.Hero ? "（士兵出身）" : "（這一家的第一代）"));
             // 第 08-10i 章：英雄得到的傳說物品。
             if (person.Role == DemoRepresentativeRole.Hero && DemoHeroes.Legends(world).FirstOrDefault(l => l.Hero.Id == person.Id) is { } legend)
-                lines.Add($"事蹟：第 {Year(legend.Week)} 年帶隊殺光{legend.Dungeon}的怪物，得到「{legend.Item}」");
+                lines.Add($"事蹟：第 {Year(legend.Week)} 年{legend.Deed.Text}" + (legend.Item.Length > 0 ? $"，得到「{legend.Item}」" : ""));
             if (person.Traits != DemoTrait.None)
             {
                 lines.Add("性格：" + DemoTraits.Names(person.Traits));
