@@ -605,6 +605,10 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 12-2c 節：聚落詳情用的人力。</summary>
     public DemoCombatForce CombatForceOf(int settlementId) => CombatForces(MonsterNests(CommittedWeeks))(settlementId);
 
+    /// <summary>第 12-2f 節：這個聚落出兵討伐時的人力（勢力的最上層聚落帶上整個勢力的士兵）。</summary>
+    public DemoCombatForce ExpeditionForceOf(int settlementId)
+        => ExpeditionForces(CombatForces(MonsterNests(CommittedWeeks)))(settlementId);
+
     /// <summary>第 08-19d 章：時代進度條（只讀）。</summary>
     public DemoEraProgress EraProgress() => DemoEraProgress.Of(this);
 
