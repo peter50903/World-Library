@@ -267,6 +267,43 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-6c 章：每週的世界時代（記下來，免得每個食物來源、每個聚落都重算一次輪替表）。</summary>
     private readonly Dictionary<int, DemoAge> _ageAt = new();
 
+    private ImmutableList<DemoAgeChange> _ageChanges = ImmutableList<DemoAgeChange>.Empty;
+
+    /// <summary>第 08-6c 章：世界法則視窗指定時代的紀錄（只追加，舊的在前；從沒指定過時是空的）。</summary>
+    public IReadOnlyList<DemoAgeChange> AgeChanges => _ageChanges;
+
+    /// <summary>
+    /// 第 08-6c 章：世界法則視窗指定的時代（null＝自動輪替）。從下一個結算週起生效，指定的時代一直持續到改回自動輪替；存檔記下。
+    /// 同一週內改幾次只留最後一次，改回原樣就當沒改（同世界法則的切換）。
+    /// </summary>
+    public DemoAge? AgeSetting
+    {
+        get => _ageChanges.IsEmpty ? null : _ageChanges[^1].Age;
+        set
+        {
+            if (value is { } age && !Enum.IsDefined(age))
+                throw new ArgumentOutOfRangeException(nameof(value));
+            var week = CommittedWeeks;
+            var log = _ageChanges;
+            if (!log.IsEmpty && log[^1].AfterWeek == week)
+                log = log.RemoveAt(log.Count - 1);
+            var before = log.IsEmpty ? null : log[^1].Age;
+            if (value != before)
+                log = log.Add(new DemoAgeChange(week, value));
+            InstallAgeChanges(log);
+        }
+    }
+
+    /// <summary>換掉指定時代的紀錄（每週時代的快取一併清掉）。</summary>
+    private void InstallAgeChanges(ImmutableList<DemoAgeChange> changes)
+    {
+        lock (_ageAt)
+        {
+            _ageChanges = changes;
+            _ageAt.Clear();
+        }
+    }
+
     /// <summary>第 08-6c 章：第 <paramref name="week"/> 週結算時的世界時代。</summary>
     public DemoAge AgeAtWeek(int week)
     {
@@ -276,13 +313,15 @@ public sealed partial class DemoObserverWorld
                 return known;
             if (_ageAt.Count > 4096)
                 _ageAt.Clear();
-            return _ageAt[week] = DemoAges.AtWeek(_rng, week);
+            return _ageAt[week] = DemoAges.AtWeek(_rng, _ageChanges, week);
         }
     }
 
-    /// <summary>第 08-6c 章：從第 1 年到目前為止經歷的世界時代（最後一段是目前的時代，結束年份是預定的）。</summary>
-    public IReadOnlyList<DemoAgeSpan> Ages()
-        => DemoAges.Schedule(_rng, Math.Max(1, DemoSettlementHistory.YearOfDay(Snapshot().DaysElapsed)));
+    /// <summary>
+    /// 第 08-6c 章：從第 1 年到目前為止經歷的世界時代（最後一段是目前的時代，結束年份是預定的；
+    /// 指定而不再輪替的時代結束於 <see cref="DemoAges.Forever"/>）。
+    /// </summary>
+    public IReadOnlyList<DemoAgeSpan> Ages() => DemoAges.Schedule(_rng, _ageChanges, Math.Max(1, CommittedWeeks));
 
     /// <summary>第 04-1 章：聚落自己記得的小史（沒有紀錄＝空）。</summary>
     public DemoSettlementChronicle ChronicleOf(int settlementId)
@@ -983,6 +1022,8 @@ public sealed partial class DemoObserverWorld
             sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks}/{_laws.Wars};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）
         foreach (var c in _lawChanges) // 第 14-1 章第 1 項（沒切換過時不寫）
             sb.Append(inv, $"lawlog{c.AfterWeek}={c.Laws.Disasters}/{c.Laws.Monsters}/{c.Laws.Rebellions}/{c.Laws.BeastAttacks}/{c.Laws.Wars};");
+        foreach (var c in _ageChanges) // 第 08-6c 章：指定時代（沒指定過時不寫）
+            sb.Append(inv, $"agelog{c.AfterWeek}={(c.Age is { } age ? age.ToString() : "auto")};");
         foreach (var week in _weeks.Where(w => w.Week >= windowStart))
         {
             sb.Append(inv, $"week{week.Week}@{week.WorldTime.Ticks}:ids{week.EntityIdNextOpening}-{week.EntityIdNextClosing};");

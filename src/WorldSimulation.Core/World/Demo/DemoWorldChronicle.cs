@@ -308,11 +308,10 @@ public static class DemoWorldChronicle
                 Add(line.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Representative, 0, Name(s.Id), T($"：{line.Text}"));
         }
 
-        // 第 08-6c 章：世界時代的更替（第一段希望時代是開局，不記）。
-        var nowYear = Math.Max(1, DemoSettlementHistory.YearOfDay(world.Snapshot().DaysElapsed));
-        foreach (var span in world.Ages().Skip(1).Where(a => a.FromYear <= nowYear))
-            AddWorld(checked((span.FromYear - 1) * DemoSettlementHistory.DaysPerYear / 7 + 1), WeightEra, DemoChronicleCategory.Era, 0,
-                T($"世界進入{DemoAges.Name(span.Age)}——{DemoAges.Description(span.Age)}"));
+        // 第 08-6c 章：世界時代的更替（第一段是開局，不記）。世界法則視窗指定的時代寫成「天命驟變」。
+        foreach (var span in world.Ages().Skip(1).Where(a => a.FromWeek <= world.CommittedWeeks))
+            AddWorld(span.FromWeek, WeightEra, DemoChronicleCategory.Era, 0,
+                T($"{(span.Manual ? "天命驟變，" : "")}世界進入{DemoAges.Name(span.Age)}——{DemoAges.Description(span.Age)}"));
 
         var stats = events.Where(e => e.Kind is DemoSettlementEventKind.Birth or DemoSettlementEventKind.NaturalDeath)
             .GroupBy(e => YearOf(e.Week))
