@@ -358,6 +358,14 @@ public static class DemoKnowledge
         return site is { IsFounded: true } && Before(site.FoundedFromSettlementId, site.FoundedWeek);
     }
 
+    /// <summary>第 08-6c 章：文明里程碑的說法（「時代」一詞留給世界時代）。</summary>
+    public static string MilestoneName(DemoEra era) => era switch
+    {
+        DemoEra.Pioneer => "文明踏出第一步：世上有了第一項技術",
+        DemoEra.Conquest => "第一個王國成立",
+        _ => "世界的開端"
+    };
+
     public static string EraName(DemoEra era) => era switch
     {
         DemoEra.Hope => "希望時代",

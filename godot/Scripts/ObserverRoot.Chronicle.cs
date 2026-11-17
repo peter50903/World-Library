@@ -199,7 +199,7 @@ public partial class ObserverRoot
 
             text.Append("[b]第 ").Append(year.Year.ToString(CultureInfo.InvariantCulture)).Append(" 年[/b]");
             if (year.EraStarted)
-                text.Append("　— 進入").Append(DemoKnowledge.EraName(year.Era)).Append(" —");
+                text.Append("　— ").Append(DemoKnowledge.MilestoneName(year.Era)).Append(" —");
             text.Append('\n');
             // 第 08-16 章：起因也顯示時，後續縮排接在下面（合成一段）。
             var shownIds = year.Entries.Where(ChronicleShows).Where(e => e.EventId > 0).Select(e => e.EventId).ToHashSet();

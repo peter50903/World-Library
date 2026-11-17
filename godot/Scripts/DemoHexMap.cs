@@ -305,7 +305,7 @@ public partial class DemoHexMap : Control
                 _surface.Position = Vector2.Zero;
                 _surface.Size = Size;
             }
-            if (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))
+            if (!_schematic && (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))) // 第 05-1 章：色塊檢視不畫連續地表
                 _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius, _ground);
             else
                 _surface.Hide();

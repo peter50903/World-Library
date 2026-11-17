@@ -25,8 +25,29 @@ public partial class DemoHexMap
     /// <summary>目前縮放對應的視角層（冒煙測試與工具列讀取）。</summary>
     public ViewLayer CurrentLayer => LayerFor(ViewLayout().Radius);
 
-    private static ViewLayer LayerFor(float radius)
-        => radius < TempStrategicMaxRadius ? ViewLayer.Strategic : radius < TempFootprintMinRadius ? ViewLayer.Regional : ViewLayer.Local;
+    private ViewLayer LayerFor(float radius)
+        => radius < TempStrategicMaxRadius ? ViewLayer.Strategic
+            : radius < TempFootprintMinRadius || _schematic ? ViewLayer.Regional // 第 05-1 章：色塊檢視拉近也用區域層的畫法
+            : ViewLayer.Local;
+
+    private bool _schematic;
+
+    /// <summary>
+    /// 第 05-1 章：色塊檢視（使用者 2026-11-17：用色塊拼接顯示的世界，看底層規則的運作）。
+    /// 開著時不畫連續地表、建築與城牆——不論遠近，每格一個顏色（地形色，聚落領域疊色；其他地圖模式照該模式的顏色），
+    /// 人用棋子表示（大小＝人數），勢力、戰爭與天災的標記照常。只影響顯示。
+    /// </summary>
+    public bool Schematic
+    {
+        get => _schematic;
+        set
+        {
+            if (_schematic == value)
+                return;
+            _schematic = value;
+            QueueRedraw();
+        }
+    }
 
     // 每格的平面顏色（依格的索引）與戰略圖；鍵變了才重算。
     private Color[]? _flatColors;

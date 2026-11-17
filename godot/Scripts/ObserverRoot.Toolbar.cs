@@ -22,6 +22,8 @@ public partial class ObserverRoot
     private Button _gridToggle = null!; // 第 06-2 章
     private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
     private string _foodLegendText = string.Empty;
+    private Button _devToolsToggle = null!;
+    private Button _schematicToggle = null!;
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -98,6 +100,11 @@ public partial class ObserverRoot
             "地圖模式：勢力（每個聚落有自己的勢力範圍；落在城鎮範圍內的村莊隸屬城鎮、城鎮隸屬城市，以此類推。同一勢力一個顏色，細線分出各聚落直屬的地）");
         _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
         row.AddChild(_mapRealmButton);
+        // 第 05-1 章：色塊檢視——不論遠近都只畫色塊、棋子與邊界（不畫地表貼圖與建築），用來看底層規則怎麼運作。
+        _schematicToggle = ToolButton("", "色塊", "色塊檢視：只用色塊、棋子與邊界畫世界（不畫地表與建築），看底層規則的運作；再按一次回到原本的畫面");
+        _schematicToggle.ToggleMode = true;
+        _schematicToggle.Toggled += on => _hexMap.Schematic = on;
+        row.AddChild(_schematicToggle);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
         _gridToggle.ToggleMode = true;
@@ -273,6 +280,19 @@ public partial class ObserverRoot
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
         row.AddChild(_toolDev);
+        // 第 05-1 章：開發用的東西預設收起來（家系、知識兩個地圖模式與開發資訊），按「開發工具」才出現。
+        _mapLineageButton.Visible = false;
+        _mapKnowledgeButton.Visible = false;
+        _toolDev.Visible = false;
+        _devToolsToggle = ToolButton("", "開發工具", "顯示／隱藏開發用的功能：家系與知識地圖模式、開發資訊");
+        _devToolsToggle.ToggleMode = true;
+        _devToolsToggle.Toggled += on =>
+        {
+            _mapLineageButton.Visible = on;
+            _mapKnowledgeButton.Visible = on;
+            _toolDev.Visible = on;
+        };
+        row.AddChild(_devToolsToggle);
 
         BuildModalHost();
         AddModalPage("scenario", "情境與新世界", scenarioPage);
@@ -293,10 +313,12 @@ public partial class ObserverRoot
                 "",
                 "【地圖】",
                 "滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點格或聚落開左側詳情。",
-                "左下地圖模式：地形（預設）、家系、知識、文化、信仰、勢力。",
+                "左下地圖模式：地形（預設）、文化、信仰、勢力；「色塊」切換成只畫色塊與棋子的檢視。",
+                "點地圖：先選到最具體的東西（人物、聚落、地塊）；在同一個地方再點一次，往上一層（地塊→聚落→勢力），再點回到原本。",
                 "",
                 "【介面】",
-                "頂部：世界、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「編年史」切換右側面板，再按一次收合。",
+                "頂部：世界時代、人口、糧食、本週出生／死亡、日期；♪ 開關背景音樂；右上「聚落清單」「編年史」「史書」切換右側面板，再按一次收合。",
+                "右側史書：把這個世界的歷史寫成一頁——每個時代一卷，有大事、人物與英雄，最後列出傳說物品、家族與勢力。",
                 "右側聚落清單：上方世界總覽；聚落依人口排序，色塊＝糧食狀況；點一列地圖置中並開詳情（現況、代表人物、技術、研究、歷史分頁）；遺跡另列在下方。",
                 "右側編年史：依年份列出重大事件（新的在上）；勾「一般事件」或用「類型」選單篩選；點聚落名稱定位地圖；較早的年份每 10 年折疊，點一下展開；點「本年出生…」列出各聚落。",
                 "右下：時間控制（播放、+1 日、5 檔速度）。左下功能列：地圖模式（地形／家系：聚落與採集範圍依源自哪個開局聚落著色／知識：依已習得的技術數著色／文化：依主要文化著色／信仰／勢力）、情境與新世界、存讀檔、說明、世界法則、開發資訊。",
