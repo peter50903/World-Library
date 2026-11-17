@@ -55,6 +55,12 @@ public static class DemoMonsters
     /// <summary>【TEMP】襲擊機率：每隻怪物每週 1%、最多 8%（第 08-18l 章：原 3%、25%，地下城附近的村子幾乎每月被襲擊而人口流失）。</summary>
     public const int TempRaidPercentPerMonster = 1, TempMaxRaidPercent = 8;
 
+    /// <summary>
+    /// 【TEMP】第 12-2g 節：一次襲擊最多死居民的幾 %（至少 1 人）；沒有士兵的民兵出兵討伐最多陣亡居民的幾 %。
+    /// （原本只受「至少留一人」限制：怪物佔上風時每隻交戰的怪物殺 1.5 人，一次襲擊幾乎滅村，百年史書裡怪物是第一大死因。）
+    /// </summary>
+    public const int TempRaidDeathPercent = 10, TempMilitiaDeathPercent = 5;
+
     /// <summary>【TEMP】討伐：出兵機率、至少幾名居民、比勢力範圍遠幾格（居民組的民兵）；第 12-2e 節：有士兵的遠征軍走多遠。</summary>
     public const int TempHuntPercent = 10, TempHuntMinResidents = 20, TempHuntReach = 3, TempSoldierHuntReach = 8;
 
@@ -252,7 +258,8 @@ public static class DemoMonsters
                 var guard = force(target.Id);
                 var (hit, fallen) = DemoCombat.Clash(Math.Max(1, monsters / 2), level, guard, defending: true, (int)(Draw(rng, week, slot, 3) % 100UL));
                 var slain = Math.Min(hit, Room(guard));
-                var deaths = Math.Min(Math.Max(1L, fallen), Math.Max(0L, residents(target.Id) - 1));
+                var deaths = Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * TempRaidDeathPercent / 100)),
+                    Math.Max(0L, residents(target.Id) - 1)); // 第 12-2g 節：一次襲擊最多死一成
                 left -= slain;
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
                     slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}擊殺 {slain} 隻" : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能守住村子");
@@ -271,7 +278,8 @@ public static class DemoMonsters
                 var party = expedition(hunter.Id);
                 var (hit, fallen) = DemoCombat.Clash(left, level, party, defending: false, (int)(Draw(rng, week, slot, 2) % 100UL));
                 var slain = Math.Min(hit, Room(party));
-                var deaths = Math.Min(fallen, Math.Max(0L, residents(hunter.Id) - 1));
+                var deaths = Math.Min(party.Fighters > 0 ? fallen : Math.Min(fallen, residents(hunter.Id) * TempMilitiaDeathPercent / 100),
+                    Math.Max(0L, residents(hunter.Id) - 1)); // 第 12-2g 節：民兵見勢不對就撤
                 left -= slain;
                 strikes[hunter.Id] = new DemoDisasterStrike(hunter.Id, DemoSettlementEventKind.MonsterHunt, deaths,
                     $"派{Party(party)}討伐{nest.Dungeon.Name}的 {level} 級怪物，殺死 {slain} 隻");
