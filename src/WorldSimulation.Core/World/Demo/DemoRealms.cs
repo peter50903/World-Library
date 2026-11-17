@@ -155,6 +155,7 @@ public static partial class DemoRealms
                     break;
                 case DemoSettlementEventKind.Independence:
                     _freedFrom[id] = ((int)e.Count, e.Week); // 第 08-19h 章
+                    Truce(id, (int)e.Count, e.Week); // 第 08-19i 章：放手讓它獨立之後，停戰期內不會回頭征討
                     _liege.Remove(id);
                     _joinedWeek.Remove(id);
                     _faction.Remove(id);
@@ -416,7 +417,7 @@ public static partial class DemoRealms
                 continue;
             var loyalty = LoyaltyValue(id, liege, week, fold, ctx);
             var inFaction = faction.TryGetValue(id, out var member) && member.Liege == liege;
-            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && !fold.Backed(id, week) && rebellions) // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
+            if (!inFaction && loyalty < 0 && !fold.Calm(id, week) && !fold.Conquered(id, week) && !fold.Backed(id, week) && rebellions) // 第 08-19i 章：剛被征服的還不敢作亂 // 第 08-19c 章：世界法則關掉叛亂時不再加入派系
             {
                 Add(id, DemoSettlementEventKind.FactionJoined, liege, CivilFaction(id, liege, lieges, ctx, conquestEra)
                     ? $"{Name(id)}對{Name(liege)}的國王不滿（忠誠 {loyalty}），加入篡位派系" // 第 08-19f 章

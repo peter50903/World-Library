@@ -127,7 +127,8 @@ public static class DemoSaga
         // 第 08-19h 章：開了戰就要有下文——沒打贏的結局也寫。
         if (entry.Category == DemoChronicleCategory.Realm && entry.Level == DemoChronicleLevel.Normal)
             return WarEndings.Any(w => entry.Text.Contains(w, StringComparison.Ordinal));
-        if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge)
+        // 第 08-19i 章：開戰不另寫——戰爭的結局（征服、獨立、敗退、白和平）那一句已經說了誰打誰、結果如何。
+        if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge || entry.Weight == DemoWorldChronicle.WeightWar)
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
             return true;

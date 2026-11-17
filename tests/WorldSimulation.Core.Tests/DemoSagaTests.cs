@@ -46,8 +46,10 @@ public sealed class DemoSagaTests
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
         Assert.Equal(sentences.Count, told.Count);
         Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
-        Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge),
+        Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge && e.Weight != DemoWorldChronicle.WeightWar),
             e => Assert.True(DemoSaga.IsTold(e)));
+        Assert.False(DemoSaga.IsTold(new DemoChronicleEntry(1, DemoChronicleLevel.Major, DemoChronicleCategory.Realm,
+            new[] { new DemoChronicleSegment("甲向乙宣戰") }, Weight: DemoWorldChronicle.WeightWar))); // 開戰不另寫，結局會說
         // 同一個聚落升到同一級只寫第一次；降級照寫。
         static DemoChronicleYear Year(int year, params string[] texts) => new(year, DemoEra.Pioneer, false,
             texts.Select(t => new DemoChronicleEntry(year * 52, DemoChronicleLevel.Major, DemoChronicleCategory.Tier,

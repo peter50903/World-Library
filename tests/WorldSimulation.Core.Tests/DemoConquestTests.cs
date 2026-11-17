@@ -41,7 +41,7 @@ public sealed class DemoConquestTests
         var (sites, a, b, c) = Setup();
         var fold = new DemoRealms.Fold();
         fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
-        var ctx = Ctx(sites, a, id => id == a ? 200 : id == b ? 100 : id == c ? 50 : 0, id => id == c ? 2 : 1);
+        var ctx = Ctx(sites, a, id => id == a ? 200 : id == b ? 100 : id == c ? 70 : 0, id => id == c ? 2 : 1); // 兵力 30 對 7：不到五倍，要打
         var rng = RngRegistry.Create(7);
         var all = new List<DemoSettlementEvent>();
         for (var week = 2; week < 2 + 13 * 60 && !all.Any(e => e.Kind is DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded); week++)
@@ -88,6 +88,17 @@ public sealed class DemoConquestTests
         var declared = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.WarDeclared);
         Assert.Equal((a, (long)c), (declared.SettlementId, declared.Count));
         Assert.Contains(all, e => e.Kind is DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded);
+        // 兵力五倍以上：不戰而降（沒有宣戰與交戰），而且剛被征服的不會加入派系。
+        var meek = new DemoRealms.Fold();
+        var weak = Ctx(sites, a, id => id == a ? 200 : id == c ? 20 : 0, id => id == c ? 2 : 1);
+        var quick = new List<DemoSettlementEvent>();
+        for (var week = 2; week < 2 + 13 * 60 && !quick.Any(e => e.Kind == DemoSettlementEventKind.Conquered); week++)
+            quick.AddRange(Step(meek, week, weak, RngRegistry.Create(7), conquest: false, cityWars: true));
+        var surrender = Assert.Single(quick, e => e.Kind == DemoSettlementEventKind.Conquered);
+        Assert.Contains("不戰而降", surrender.Cause, StringComparison.Ordinal);
+        Assert.DoesNotContain(quick, e => e.Kind is DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.ConquestBattle);
+        Assert.Equal(a, meek.Liege[c]);
+        Assert.True(meek.Conquered(c, surrender.Week + 1));
         // 不開這條規則、也不是征服時代：不宣戰。
         var quiet = new DemoRealms.Fold();
         for (var week = 2; week < 2 + 13 * 30; week++)

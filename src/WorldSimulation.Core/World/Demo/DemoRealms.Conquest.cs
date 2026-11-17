@@ -43,7 +43,7 @@ public static partial class DemoRealms
     public const int TempConquestCheckWeeks = 13, TempConquestReach = 10, TempConquestTruceWeeks = 260, TempConqueredWeeks = 260, TempConqueredLoyalty = -10;
 
     /// <summary>【TEMP】兵力至少是守方幾 % 才宣戰；宣戰機率；信仰不同、文化不同各加幾 %；守方本土戰力加成。</summary>
-    public const int TempConquestStrengthPercent = 120, TempConquestChancePercent = 25, TempHolyWarBonusPercent = 15, TempCultureWarBonusPercent = 10, TempHomePercent = 125;
+    public const int TempConquestStrengthPercent = 120, TempConquestChancePercent = 25, TempHolyWarBonusPercent = 15, TempCultureWarBonusPercent = 10, TempHomePercent = 125, TempSurrenderPercent = 500;
 
     public sealed partial class Fold
     {
@@ -207,6 +207,17 @@ public static partial class DemoRealms
             if ((int)(Draw(rng, week, king, 5) % 100UL) >= chance)
                 continue;
             var reason = holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土";
+            if (attack * 100 >= army * TempSurrenderPercent)
+            {
+                // 第 08-19i 章：兵力懸殊（五倍以上）就不戰而降，不打一場沒有懸念的仗。
+                add(target, DemoSettlementEventKind.Conquered, king, target == defender
+                    ? $"{name(king)}兵臨城下（兵力 {attack} 對 {army}），{name(target)}不戰而降，歸入{name(king)}"
+                    : $"{name(king)}兵臨城下（兵力 {attack} 對 {army}），{name(target)}背離{name(defender)}，歸入{name(king)}");
+                lieges[target] = king;
+                busy.Add(target);
+                busy.Add(king);
+                continue;
+            }
             var goal = target == defender ? $"要征服整個{name(defender)}" : $"要奪取{name(defender)}的{name(target)}";
             add(king, DemoSettlementEventKind.WarDeclared, target, $"{name(king)}向{name(defender)}宣戰，{reason}，{goal}（兵力 {attack} 對 {army}）");
             fighting.Add(king);
