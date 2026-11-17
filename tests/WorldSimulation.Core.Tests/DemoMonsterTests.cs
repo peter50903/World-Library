@@ -127,19 +127,19 @@ public sealed class DemoMonsterTests
         var dungeon = new DemoDungeon(new DemoCellRef(0, 0), "測試洞窟", 2, 0, 99, 1);
         var level = DemoCombat.MonsterLevel(dungeon);
         Assert.Equal(3, level);
-        // 人力：村莊沒有士兵；鎮有駐軍；靠近怪物有冒險者，擊殺越多等級越高。
+        // 人力：村莊沒有士兵；鎮有駐軍，裝備技術越多等級越高（第 12-2d 節：沒有冒險者）。
         bool None(string _) => false;
-        Assert.Equal(new DemoCombatForce(0, 0, 0, 0, 300), DemoCombat.Force(300, DemoSettlementTier.Village, None, 0, false));
-        var town = DemoCombat.Force(1000, DemoSettlementTier.Town, t => t is "TECH_ARCHERY" or "TECH_WEAPON_SMITHING", 45, true);
-        Assert.Equal((30L, 3, 20L, 4, 950L), (town.Soldiers, town.SoldierLevel, town.Adventurers, town.AdventurerLevel, town.Civilians));
-        Assert.Equal(4, town.BestLevel);
+        Assert.Equal(new DemoCombatForce(0, 0, 300), DemoCombat.Force(300, DemoSettlementTier.Village, None));
+        var town = DemoCombat.Force(1000, DemoSettlementTier.Town, t => t is "TECH_ARCHERY" or "TECH_WEAPON_SMITHING");
+        Assert.Equal((30L, 3, 970L), (town.Soldiers, town.SoldierLevel, town.Civilians));
+        Assert.Equal(3, town.BestLevel);
         Assert.True(DemoCombat.CanClear(town, level));
         // 非戰鬥人員再多人，每人戰力也遠低於怪物：擊殺占交戰怪物的比例很低、死傷多。
-        var farmers = new DemoCombatForce(0, 0, 0, 0, 10_000);
+        var farmers = new DemoCombatForce(0, 0, 10_000);
         Assert.False(DemoCombat.CanClear(farmers, level));
         // 同數量、同等級的戰鬥人員勢均力敵；等級高就佔優勢。
-        var equal = new DemoCombatForce(0, 0, 10, level, 0);
-        var stronger = new DemoCombatForce(0, 0, 10, level + 2, 0);
+        var equal = new DemoCombatForce(10, level, 0);
+        var stronger = new DemoCombatForce(10, level + 2, 0);
         int civilianKills = 0, equalKills = 0, strongKills = 0;
         long civilianDeaths = 0, equalDeaths = 0, strongDeaths = 0;
         for (var luck = 0; luck < 100; luck++)
@@ -165,7 +165,7 @@ public sealed class DemoMonsterTests
         var home = world.Sites.Settlements.First(s => !s.IsRuin);
         var dungeon = new DemoDungeon(new DemoCellRef(home.Column, home.Row), "測試洞窟", 1, 0, 99, home.Id);
         var nest = new DemoMonsterNest(dungeon, 1, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
-        var heroes = new DemoCombatForce(0, 0, 20, DemoCombat.TempMaxLevel, 100);
+        var heroes = new DemoCombatForce(20, 6, 100);
         var rng = RngRegistry.Create(8);
         var cleared = false;
         for (var week = 1; week <= 300 && !cleared; week++)

@@ -65,7 +65,7 @@ public static class DemoHumanRulesSource
         return header.Select((h, i) => (h, v: i < row.Count ? row[i] : "")).ToDictionary(x => x.h, x => x.v);
     }
 
-    /// <summary>「Age/ExpectedLife:&lt;0.6=0.05%;0.6~0.8=0.2%;…;&gt;=1.5=35%」→ (上界（不含）, 年度機率)，最後一段上界為無限大。</summary>
+    /// <summary>「Age/ExpectedLife:&lt;0.6=0.2%;0.6~0.8=1%;…;&gt;=1.5=60%」→ (上界（不含）, 年度機率)，最後一段上界為無限大。</summary>
     internal static IReadOnlyList<(double UpperRatio, double Annual)> ParseDeathBands(string formula)
     {
         var body = formula[(formula.IndexOf(':') + 1)..];

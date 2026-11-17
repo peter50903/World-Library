@@ -505,11 +505,10 @@ public sealed partial class DemoObserverWorld
         return _territory;
     }
 
-    /// <summary>第 12-2c 節：各聚落對付怪物的人力（士兵、冒險者與等級、非戰鬥人員；同一次查詢內沿用）。</summary>
+    /// <summary>第 12-2c、12-2d 節：各聚落對付怪物的人力（士兵與等級、非戰鬥人員；同一次查詢內沿用）。</summary>
     private Func<int, DemoCombatForce> CombatForces(IReadOnlyList<DemoMonsterNest> nests)
     {
         var cache = new Dictionary<int, DemoCombatForce>();
-        var areas = nests.Where(n => !n.Dormant && n.Monsters > 0).Select(n => n.Area().ToList()).ToList();
         return id =>
         {
             if (cache.TryGetValue(id, out var known))
@@ -517,10 +516,8 @@ public sealed partial class DemoObserverWorld
             var site = _sites.Settlements.FirstOrDefault(s => s.Id == id);
             if (_demography is null || site is null || site.IsRuin)
                 return cache[id] = DemoCombatForce.None;
-            var here = new DemoCellRef(site.Column, site.Row);
-            var near = areas.Any(a => a.Count > 0 && a.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempHuntReach);
             return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
-                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)), _monsterFold.KillsBy(id), near);
+                tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)));
         };
     }
 
