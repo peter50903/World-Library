@@ -76,8 +76,7 @@ public static class DemoSaga
         var active = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
         yield return I($"終章　第 {year} 年的世界");
         yield return I($"　世上有 {world.WorldPopulation} 人、{active.Count} 處有人煙的聚落、{world.Sites.Settlements.Count(s => s.IsRuin)} 處遺跡。");
-        if (world.WeeklyConfig.EraName is not null)
-            yield return "　時代：" + DemoKnowledge.EraName(world.Era) + "。";
+        yield return "　時代：" + DemoAges.Name(world.Age) + "。"; // 第 08-6c 章：世界時代
 
         string Titled(DemoSettlement s) => DemoSettlementHistory.TitledName(s, world.ChronicleOf(s.Id).Tier);
         string LeaderOf(DemoSettlement s)
