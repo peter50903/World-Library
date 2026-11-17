@@ -71,14 +71,14 @@ public sealed class DemoMonsterTests
                 {
                     raids++;
                     Assert.True(distance <= nest.Radius + DemoMonsters.TempRaidReach);
-                    Assert.InRange(strike.Deaths, 1, 59); // 第 12-2c 節：依雙方戰力，至少留一人
+                    Assert.InRange(strike.Deaths, 1, 60 * DemoMonsters.TempRaidDeathPercent / 100); // 第 12-2g 節：一次襲擊最多死一成、至少一人
                 }
                 else
                 {
                     Assert.Equal(DemoSettlementEventKind.MonsterHunt, strike.Kind);
                     hunts++;
                     Assert.True(distance <= nest.Radius + DemoMonsters.TempHuntReach);
-                    Assert.InRange(strike.Deaths, 0, 59);
+                    Assert.InRange(strike.Deaths, 0, 60 * DemoMonsters.TempMilitiaDeathPercent / 100); // 第 12-2g 節：民兵最多陣亡 5%
                 }
             }
             // 第 12-2b 節：居民只能把怪物壓到下限（每層 1 隻），殺不光、地下城不會沉寂；一個聚落一週只承受一件。
