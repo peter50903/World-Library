@@ -62,7 +62,7 @@ public static class DemoMonsters
 
     /// <summary>
     /// 【TEMP】第 12-2b 節（使用者 2026-11-08：平常只能壓制或放任怪物擴張，只有出現軍隊時才會完全壓制地下城）：
-    /// 居民的抵抗與討伐最多把怪物壓到每層 <see cref="TempSuppressFloorPerLayer"/> 隻，殺不光；第 12-2c 節：有等級不低於怪物的戰鬥人員（士兵、冒險者）才殺得光（地下城沉寂）。
+    /// 居民的抵抗與討伐最多把怪物壓到每層 <see cref="TempSuppressFloorPerLayer"/> 隻，殺不光；第 12-2c 節：有等級不低於怪物的戰鬥人員（士兵）才殺得光（地下城沉寂）。
     /// </summary>
     public const int TempSuppressFloorPerLayer = 1;
 
@@ -130,7 +130,7 @@ public static class DemoMonsters
         private readonly Dictionary<long, (int Week, int Count, bool Dormant)> _base = new();
         private readonly Dictionary<int, long> _killsBy = new();
 
-        /// <summary>第 12-2c 節：這個聚落累計殺了幾隻怪物（冒險者的經驗）。</summary>
+        /// <summary>第 12-2c 節：這個聚落累計殺了幾隻怪物（紀錄用；第 12-2d 節起不再影響戰力）。</summary>
         public long KillsBy(int settlementId) => _killsBy.GetValueOrDefault(settlementId);
 
         /// <summary>餵入一筆事件（地下城清單要已包含它所屬的地下城）。</summary>
@@ -201,7 +201,7 @@ public static class DemoMonsters
         IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null)
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
-        force ??= id => new DemoCombatForce(0, 0, 0, 0, residents(id));
+        force ??= id => new DemoCombatForce(0, 0, residents(id));
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(residents);
@@ -255,7 +255,7 @@ public static class DemoMonsters
             var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
                     && Distance(s) <= TempHuntReach && residents(s.Id) >= TempHuntMinResidents
                     && (force(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
-                .OrderByDescending(s => force(s.Id).Soldiers * force(s.Id).SoldierLevel + force(s.Id).Adventurers * force(s.Id).AdventurerLevel)
+                .OrderByDescending(s => force(s.Id).Soldiers * force(s.Id).SoldierLevel)
                 .ThenByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
             {
@@ -281,8 +281,6 @@ public static class DemoMonsters
         var parts = new List<string>();
         if (f.Soldiers > 0)
             parts.Add($"{f.SoldierLevel} 級士兵 {f.Soldiers} 人");
-        if (f.Adventurers > 0)
-            parts.Add($"{f.AdventurerLevel} 級冒險者 {f.Adventurers} 人");
         return parts.Count == 0 ? "民兵" : string.Join("與", parts);
     }
 

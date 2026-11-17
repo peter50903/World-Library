@@ -17,7 +17,6 @@ PROF_PRIEST,祭司,Priest,宗教,WIS/CHA>=基準,SK_RELIGION,宗教教育,religi
 PROF_SCHOLAR,學者,Scholar,知識,INT>=基準,SK_RESEARCH,學校／研究,research_exp+,教育、研究與知識傳承,TRUE
 PROF_TEACHER,教師,Teacher,教育,INT/WIS>=基準,SK_TEACHING,教育機構,teaching_exp+,教授自己已掌握內容,TRUE
 PROF_GUARD,守衛,Guard,司法,STR/CON>=基準,SK_MELEE,城市／國家雇用,security_exp+,巡邏與逮捕,TRUE
-PROF_ADVENTURER,冒險者,Adventurer,冒險,無固定,SK_SURVIVAL,公會／實際冒險,adventure_exp+,接受委託、探索與戰鬥,TRUE
 PROF_NECROMANCER,死靈術士,Necromancer,魔法,INT/WIS>=較高,SK_MAGIC_NECROMANCY,特殊知識／教育,necromancy_exp+,是否合法依國家法律,TRUE
 PROF_RANCHER,牧民,Rancher,生產,CON/WIS>=基準,SK_ANIMAL_HUSBANDRY,家庭傳承／工作學習,husbandry_exp+,畜牧、繁殖、牧場管理,TRUE
 PROF_SHIPWRIGHT,造船師,Shipwright,工藝,DEX/INT>=基準,SK_SHIPBUILDING,學徒／船塢工作,shipbuilding_exp+,建造與維修船舶,TRUE
