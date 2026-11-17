@@ -72,6 +72,10 @@ public partial class ObserverRoot
             var image = GetViewport().GetTexture().GetImage();
             var path = System.IO.Path.Combine(dir, name + ".png");
             image.SavePng(path);
+            // CI 另存縮小的 JPG（轉成註記給讀不到 artifact 的工作階段看）。
+            var small = (Image)image.Duplicate();
+            small.Resize(1120, image.GetHeight() * 1120 / Math.Max(1, image.GetWidth()), Image.Interpolation.Lanczos);
+            small.SaveJpg(System.IO.Path.Combine(dir, name + ".jpg"), 0.72f);
             GD.Print($"WORLD_SIM_MAP_SHOT: {path} {image.GetWidth()}x{image.GetHeight()}");
         }
         _hexMap.ShowWholeWorld();

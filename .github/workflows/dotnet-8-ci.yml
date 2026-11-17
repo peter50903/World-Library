@@ -567,7 +567,7 @@ jobs:
           engine="$(find /tmp/godot-dotnet -type f -name 'Godot*mono_linux*.x86_64' -print -quit)"
           test -n "$engine"
           mkdir -p /tmp/map-shots
-          WORLD_SIM_MAP_SHOT=/tmp/map-shots WORLD_SIM_MAP_SHOT_YEARS=30 timeout 1500 xvfb-run -a -s "-screen 0 1440x900x24" \
+          WORLD_SIM_MAP_SHOT=/tmp/map-shots WORLD_SIM_MAP_SHOT_YEARS=60 timeout 1500 xvfb-run -a -s "-screen 0 1440x900x24" \
             "$engine" --path godot --rendering-driver opengl3 --audio-driver Dummy --resolution 1440x900 2>&1 | tee /tmp/godot-mapshot.log || true
           if grep -E '(SHADER ERROR|SCRIPT ERROR|Unhandled exception)' /tmp/godot-mapshot.log; then
             echo "Godot reported a shader or script error while taking map shots."
@@ -577,12 +577,43 @@ jobs:
           ls -la /tmp/map-shots
           echo "::notice title=政治地圖截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Simulated.*' /tmp/godot-mapshot.log)"
 
+      - name: 政治地圖截圖轉成註記（準備；縮小的 JPG 以 base64 分段，API 讀得到）
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        run: |
+          mkdir -p /tmp/shot-notes
+          : > /tmp/shot-notes/all.txt
+          for f in /tmp/map-shots/*.jpg; do
+            [ -f "$f" ] || continue
+            name="$(basename "${f%.jpg}")"
+            base64 -w0 "$f" | fold -w 48000 > "/tmp/shot-notes/$name.b64"
+            n="$(wc -l < "/tmp/shot-notes/$name.b64")"
+            k=0
+            while IFS= read -r chunk; do
+              k=$((k + 1))
+              echo "::notice title=shot $name $k/$n::$chunk" >> /tmp/shot-notes/all.txt
+            done < "/tmp/shot-notes/$name.b64"
+          done
+          split -l 9 -d /tmp/shot-notes/all.txt /tmp/shot-notes/part-
+          ls -la /tmp/shot-notes
+
+      - name: 政治地圖截圖註記 1
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        run: cat /tmp/shot-notes/part-00 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 2
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        run: cat /tmp/shot-notes/part-01 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 3
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        run: cat /tmp/shot-notes/part-02 2>/dev/null || true
+
       - name: Upload political map shots (第 08-21 章)
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
         uses: actions/upload-artifact@v4
         with:
           name: map-shots
-          path: /tmp/map-shots/*.png
+          path: /tmp/map-shots/*
           if-no-files-found: ignore
 
       - name: Report Godot failure lines as annotations
