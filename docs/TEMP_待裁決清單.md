@@ -426,6 +426,9 @@
 | 視角分層（第 08-15 章） | 每格半徑 <6 像素＝戰略層（整張圖預畫、每格一色）；6～14＝區域層（純色、圖示）；≥14＝近景層（完整） | `godot/Scripts/DemoHexMap.Layers.cs` |
 | 聚落外觀（第 08-13 章第 4 節；試玩回饋 2026-11-04 之 6 放大） | 每格半徑 ≥14 像素畫建築、否則單一圖示；每 15 人一棟屋（營地每 5 人一頂帳篷，最多 3）；每格最多：營地、村莊 2 棟、城鎮 3 棟、城市與首都 4 棟；佔地最多：村莊 3 格、城鎮 5 格（一圈內）、城市 10 格、首都 16 格（兩圈內）（2026-11-05 試玩回饋）；建築約為格半徑的 0.72～1.3 倍 | `godot/Scripts/DemoHexMap.Footprint.cs` |
 | 大地圖開場每格半徑／最大每格半徑（第 08-13 章第 5 節） | 26／64 像素；最大縮放取 3 倍與「64 像素÷全圖每格半徑」較大者 | `godot/Scripts/DemoHexMap.cs`（`TempComfortHexRadius`、`TempMaxHexRadius`） |
+| 政治地圖（第 08-21 章） | 三層分界每格 30／60 像素（遠看只畫勢力名與大勢力首都、中距離城鎮以上名牌、拉近全部）；勢力名字級 11～72 像素；填色濃度 0.86→0.34（每格 24→96 像素）；最大每格半徑 64；省份最短重算間隔 250 毫秒；勢力色票 24 色 | `godot/Scripts/DemoHexMap.Political.cs`、`DemoHexMap.PoliticalOverlays.cs` |
+| 省份（第 08-21 章） | 從聚落往外長最遠：營地 25、村莊 35、城鎮 45、城市 55、首都 65（直走一格 10、斜走 14；丘陵 +6、森林 +3、河流 +12） | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs`；只影響畫面 |
+| 政治地圖截圖（第 08-21 章） | 大地圖種子 7、30 年 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` |
 
 - 設定檔現況：01 `WORLD_MAP_PRESENTATION_MODE` 寫「依玩家選擇的世界尺寸，畫面可縮放」，沒有數值。
 - 選項：**A** 保留；**B** 等世界尺寸可選後，改為依地圖大小自動計算範圍。
@@ -568,6 +571,10 @@
 | `godot/Scripts/DemoHexMap.Battles.cs` | 2 | 第 08-18h 章戰鬥動畫：長度 4 秒（行軍佔 55%）、只畫 ⚔ 的格半徑門檻 14、同時最多 8 場；第 08-18j 章死亡每 4 人多倒下一個、兵力條的格半徑門檻 18 |
 | `godot/Scripts/DemoHexMap.Wars.cs` | 1 | 第 08-18m 章戰爭表現：軍旗 14 像素、比分條寬 52 像素、佔領斜線間距 0.32 格半徑 |
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
+| `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
+| `godot/Scripts/DemoHexMap.Political.cs` | 4 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票（D9） |
+| `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 3 | 第 08-21 章政治地圖三層分界、勢力名字級（D9） |
+| `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
 | `godot/Scripts/TerrainSurface.Perf.cs` | 1 | 第 09-1 章效能量測烤幾塊地表（24） |
 | `godot/Scripts/TerrainSurface.cs` | 10 | 第 08-20h 章縮圖精度（超過 100 萬方格每方格一點、否則每 8 圖像素）；第 08-20g 章每格半徑 128 圖像素（一格 16×16 方格）、換算舊門檻的比例、整批換圖最多等 30 幀；第 08-18b 章方格地表：每方格 16、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
 | `godot/Scripts/DemoHexMap.Plan.cs` | 7 | 第 08-20g 章總體規劃（第 09-1c 章改）：街距 7、房深 5、規劃半徑 26、廣場 14×5、別的聚落中心保留 10、圍牆多擴 2、規劃地塊數 140、往外最多跳 8 格、各用途預留地、工期、工班數、一次跳超過 520 週直接蓋好 |

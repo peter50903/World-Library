@@ -74,6 +74,8 @@ public partial class DemoHexMap
         UpdateFireLoop();
         if (_surfaceStale && Time.GetTicksMsec() - _surfaceBuiltMs >= TempSurfaceRefreshMs)
             QueueRedraw();
+        if (_provincesStale && Time.GetTicksMsec() - _provincesBuiltMs >= TempProvinceRefreshMs)
+            QueueRedraw(); // 第 08-21 章：快轉時省份延後重算的那一次
         if (!WantsAnimation)
             return;
         var now = Time.GetTicksMsec();

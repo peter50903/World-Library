@@ -17,7 +17,7 @@ public partial class DemoHexMap
     public DemoTerritoryMap Territory { get; set; } = DemoTerritoryMap.Empty;
 
     /// <summary>某勢力的代表色（依最上層聚落編號固定挑色；同一世界不變）。</summary>
-    public Color RealmColor(int realmId) => TempLineagePalette[(realmId * 5 + 3) % TempLineagePalette.Length];
+    public Color RealmColor(int realmId) => _political ? PoliticalRealmColor(realmId) : TempLineagePalette[(realmId * 5 + 3) % TempLineagePalette.Length]; // 第 08-21 章：政治地圖的勢力色（圖例、戰線同色）
 
     /// <summary>勢力的邊界（與勢力模式的整片著色）。<paramref name="fill"/>＝塗色的不透明度（0＝只畫邊界）。</summary>
     private void DrawRealms(Vector2 start, float radius, float fill, bool inner)

@@ -108,7 +108,7 @@ public partial class DemoHexMap
         // ③ 區域：依地圖模式決定第一下選到什麼；在同一格再點，依序換到其他層級（第 05-1 章）。
         if (SelectArea(hit, at))
             return;
-        var owner = Territory.Cells.TryGetValue(at, out var o) ? o : null;
+        var owner = OwnerAt(at); // 第 08-21 章：政治地圖每格陸地都屬於一個省份
         var site = owner?.SettlementId ?? (Lineage.TryGetValue(at, out var line) ? (int?)line.SettlementId : null);
         if (MonsterNestAt(at) is { } nest && _mode is Mode.Terrain or Mode.Realm && World!.Contains(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row))
             hit = World.GetCell(nest.Dungeon.Cell.Column, nest.Dungeon.Cell.Row);
@@ -118,6 +118,7 @@ public partial class DemoHexMap
                 case Mode.Realm when owner is not null && RealmSelected is not null && SiteCell(owner.RealmId) is { } capital:
                     MarkCell(capital);
                     RealmSelected(owner.RealmId);
+                    _selectedRealm = owner.RealmId;
                     return;
                 case Mode.Culture when site is { } c && CultureOf.TryGetValue(c, out var culture) && CultureSelected is not null:
                     MarkCell(hit);
@@ -151,16 +152,16 @@ public partial class DemoHexMap
             _areaPick = null;
             return false;
         }
-        var owner = Territory.Cells.TryGetValue(at, out var o) ? o : null;
+        var owner = OwnerAt(at); // 第 08-21 章：政治地圖每格陸地都屬於一個省份
         var site = owner?.SettlementId ?? (Lineage.TryGetValue(at, out var line) ? (int?)line.SettlementId : null);
         Action cell = () => { MarkCell(hit); CellSelected?.Invoke(hit); };
         Action? settlement = site is { } s && SiteCell(s) is { } home ? () => { MarkCell(home); CellSelected?.Invoke(home); } : null;
         Action? realm = owner is { } own && RealmSelected is not null && SiteCell(own.RealmId) is { } capital
-            ? () => { MarkCell(capital); RealmSelected?.Invoke(own.RealmId); } : null;
+            ? () => { MarkCell(capital); RealmSelected?.Invoke(own.RealmId); _selectedRealm = own.RealmId; } : null;
         Action? culture = site is { } c && CultureOf.TryGetValue(c, out var cultureId) && CultureSelected is not null
-            ? () => { MarkCell(hit); CultureSelected?.Invoke(cultureId); } : null;
+            ? () => { MarkCell(hit); CultureSelected?.Invoke(cultureId); _selectedCulture = cultureId; } : null;
         Action? faith = site is { } f && FaithOf.TryGetValue(f, out var faithId) && FaithSelected is not null
-            ? () => { MarkCell(hit); FaithSelected?.Invoke(faithId); } : null;
+            ? () => { MarkCell(hit); FaithSelected?.Invoke(faithId); _selectedFaith = faithId; } : null;
         // 第一下照地圖模式；之後由小到大。
         Action? preferred = _mode switch
         {

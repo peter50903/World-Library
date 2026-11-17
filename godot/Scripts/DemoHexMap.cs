@@ -242,7 +242,18 @@ public partial class DemoHexMap : Control
     public float WeekFraction { get; set; }
 
     /// <summary>#89：事件詳情選到的聚落格（偏移座標），畫亮色外框；null＝不標示。只影響顯示。</summary>
-    public (int Column, int Row)? Highlight { get; set; }
+    public (int Column, int Row)? Highlight
+    {
+        get => _highlight;
+        set
+        {
+            _highlight = value;
+            // 第 08-21 章：換了框選的格，政治地圖上選到的勢力、文化、信仰也一併取消（由點選另外設定）。
+            _selectedRealm = _selectedCulture = _selectedFaith = 0;
+        }
+    }
+
+    private (int Column, int Row)? _highlight;
 
     // TEMP display-only controls. Never change simulation state or formal settings.
     private const float TempZoomStep = 1.2f;
@@ -255,6 +266,9 @@ public partial class DemoHexMap : Control
     private float _zoom = 1f;
     private Vector2 _pan = Vector2.Zero;
     private bool _middleDragging;
+
+    /// <summary>第 08-21 章：右鍵拖曳也能移動地圖（CK3 的操作）。</summary>
+    private bool _rightDragging;
 
     public DemoHexMap()
     {
@@ -275,7 +289,7 @@ public partial class DemoHexMap : Control
         AddChild(_surface);
         _surface.SetAnchorsPreset(LayoutPreset.FullRect);
         Resized += QueueRedraw;
-        MouseExited += () => _middleDragging = false;
+        MouseExited += () => _middleDragging = _rightDragging = false;
         QueueRedraw();
     }
 
@@ -287,12 +301,21 @@ public partial class DemoHexMap : Control
         if (World is null)
         {
             _surface?.Hide();
+            HidePolitical();
             return;
         }
 
         var (start, radius) = ViewLayout();
 
         _animatedOnScreen = false; // 第 09-1e 章：這一次重畫有沒有畫到會動的東西，由各畫法重新登記
+        // 第 08-21 章：CK3 式政治地圖（預設）；開發工具「舊地圖」才畫下面的像素地圖。
+        if (_political)
+        {
+            _surface?.Hide();
+            DrawPolitical(start, radius);
+            return;
+        }
+        HidePolitical();
         // 第 08-15 章：遠看（戰略層、區域層）用簡化畫法；近景層才畫圖塊、建築與格線。
         var layer = LayerFor(radius);
         // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
@@ -736,7 +759,9 @@ public partial class DemoHexMap : Control
             // Clear a missed release (e.g. when the pointer leaves the map).
             if (_middleDragging && !motion.ButtonMask.HasFlag(MouseButtonMask.Middle))
                 _middleDragging = false;
-            if (_middleDragging)
+            if (_rightDragging && !motion.ButtonMask.HasFlag(MouseButtonMask.Right))
+                _rightDragging = false;
+            if (_middleDragging || _rightDragging)
             {
                 _pan += motion.Relative;
                 QueueRedraw();
@@ -763,12 +788,19 @@ public partial class DemoHexMap : Control
             return;
         }
 
+        if (button.ButtonIndex == MouseButton.Right && _political)
+        {
+            _rightDragging = button.Pressed;
+            AcceptEvent();
+            return;
+        }
+
         if (button.Pressed && button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
         {
             // Cursor-anchored zoom: the point under the pointer does not jump.
             var next = Mathf.Clamp(
                 _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),
-                TempMinZoom, Mathf.Max(TempMaxZoom, TempMaxHexRadius / Layout().Radius));
+                TempMinZoom, _political ? Mathf.Max(1f, TempPoliticalMaxRadius / Layout().Radius) : Mathf.Max(TempMaxZoom, TempMaxHexRadius / Layout().Radius));
             if (!Mathf.IsEqualApprox(next, _zoom))
             {
                 var cursorFromCenter = button.Position - Size * 0.5f;
@@ -797,6 +829,9 @@ public partial class DemoHexMap : Control
     {
         if (World is null)
             return null;
+        // 第 08-21 章：政治地圖照著色器的省份邊界（邊界是扭曲過的，不是方格）。
+        if (_political && _provinces is not null)
+            return PoliticalCellAt(position);
         // 點選與畫面一致：畫了像素地表時，依滑鼠下那個像素屬於哪一格。
         if (_surface?.CellAtScreen(position) is int owner && owner >= 0)
             return World.GetCell(owner % World.Columns, owner / World.Columns);
@@ -813,6 +848,8 @@ public partial class DemoHexMap : Control
     {
         if (World is null || CellAt(atPosition) is not { } cell)
             return "";
+        if (_political)
+            return PoliticalTooltip(cell);
         var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
         if (VisibleSite(cell) is { } site && SettlementScale.TryGetValue(site.Id, out var scale))
             name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
@@ -927,7 +964,8 @@ public partial class DemoHexMap : Control
         if (!ReferenceEquals(_viewWorld, World) && World is not null && Size.X > 0f && Size.Y > 0f)
         {
             _viewWorld = World;
-            _zoom = baseRadius < TempComfortHexRadius ? TempComfortHexRadius / baseRadius : 1f;
+            // 第 08-21 章：政治地圖一開始看整個世界（CK3）；舊地圖照舊拉近到看得清楚的大小。
+            _zoom = _political ? 1f : baseRadius < TempComfortHexRadius ? TempComfortHexRadius / baseRadius : 1f;
             _pan = Vector2.Zero;
         }
         var viewportCenter = Size * 0.5f;

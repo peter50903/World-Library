@@ -497,6 +497,10 @@ public partial class ObserverRoot : Control
             VerifyYearChartSmoke();
         if (ChronicleSmoke)
             VerifyChronicleSmoke();
+        if (PoliticalSmoke)
+            VerifyPoliticalSmoke(); // 第 08-21 章：政治地圖
+        if (MapShotDir is { Length: > 0 } shots)
+            RunMapShot(shots); // 第 08-21 章：截圖（CI 貼 map-shot 標籤時）
 
         // V0-06A CI-only smoke (separate Godot run): advance with the real button until Core has a
         // migrant batch on the road, then check the map markers, the caused history and the panel.

@@ -24,6 +24,7 @@ public partial class ObserverRoot
     private string _foodLegendText = string.Empty;
     private Button _devToolsToggle = null!;
     private Button _schematicToggle = null!;
+    private Button _oldMapToggle = null!;
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -67,7 +68,7 @@ public partial class ObserverRoot
     private void AddMapModeButtons(HBoxContainer row)
     {
 
-        _mapTerrainButton = ToolButton(ArtAssets.UiMapTerrain, "地形", "地圖模式：地形（預設）");
+        _mapTerrainButton = ToolButton(ArtAssets.UiMapTerrain, "地形", "地圖模式：地形（細節地圖：不塗勢力色、只留邊界，看山川地形）");
         _mapTerrainButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Terrain);
         row.AddChild(_mapTerrainButton);
         _mapFoodButton = ToolButton(ArtAssets.UiMapFood, "糧食",
@@ -100,7 +101,18 @@ public partial class ObserverRoot
             "地圖模式：勢力（每個聚落有自己的勢力範圍；落在城鎮範圍內的村莊隸屬城鎮、城鎮隸屬城市，以此類推。同一勢力一個顏色，細線分出各聚落直屬的地）");
         _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
         row.AddChild(_mapRealmButton);
-        // 第 05-1 章：色塊檢視——不論遠近都只畫色塊、棋子與邊界（不畫地表貼圖與建築），用來看底層規則怎麼運作。
+        // 第 08-21 章：開發用「舊地圖」——切回原本的像素地圖（WorldBox 式）；預設是 CK3 式政治地圖。
+        _oldMapToggle = ToolButton("", "舊地圖", "開發用：切回原本的像素地圖（建築、小人、色塊檢視都在舊地圖）；再按一次回到政治地圖");
+        _oldMapToggle.ToggleMode = true;
+        _oldMapToggle.SelfModulate = new Color(1, 1, 1, 0.5f);
+        _oldMapToggle.Toggled += on =>
+        {
+            _hexMap.Political = !on;
+            _schematicToggle.Visible = on;
+            _oldMapToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
+        };
+        row.AddChild(_oldMapToggle);
+        // 第 05-1 章：色塊檢視——不論遠近都只畫色塊、棋子與邊界（不畫地表貼圖與建築），用來看底層規則怎麼運作（第 08-21 章起只在舊地圖）。
         _schematicToggle = ToolButton(ArtAssets.UiSchematic, "色塊", "色塊檢視：只用色塊、棋子與邊界畫世界（不畫地表與建築），看底層規則的運作；再按一次回到原本的畫面");
         _schematicToggle.ToggleMode = true;
         _schematicToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 第 05-2 章：關閉時變暗
@@ -109,6 +121,7 @@ public partial class ObserverRoot
             _hexMap.Schematic = on;
             _schematicToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
         };
+        _schematicToggle.Visible = false;
         row.AddChild(_schematicToggle);
         // 第 06-2 章：六角格線預設不畫，可切換。
         _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
@@ -139,7 +152,14 @@ public partial class ObserverRoot
         _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
         _foodLegend.Text = _foodLegendText;
         _hud.AddChild(_foodLegend);
-        SetMapMode(DemoHexMap.Mode.Terrain);
+        // 第 08-21 章：預設是政治地圖的勢力模式（CK3）；既有的冒煙測試照舊用舊地圖的地形模式（點選規則、座標不變）。
+        if (LegacyMapSmoke)
+        {
+            _hexMap.Political = false;
+            _oldMapToggle.SetPressedNoSignal(true);
+            _schematicToggle.Visible = true;
+        }
+        SetMapMode(LegacyMapSmoke ? DemoHexMap.Mode.Terrain : DemoHexMap.Mode.Realm);
     }
 
     /// <summary>
@@ -173,9 +193,9 @@ public partial class ObserverRoot
             DemoHexMap.Mode.Knowledge => "知識模式",
             DemoHexMap.Mode.Culture => "文化模式（人口最多的文化）",
             DemoHexMap.Mode.Faith => "信仰模式（人口最多的信仰）",
-            DemoHexMap.Mode.Realm => "勢力模式（人口最多的勢力）",
+            DemoHexMap.Mode.Realm => "勢力模式（政治地圖；人口最多的勢力）",
             DemoHexMap.Mode.Lineage => "家系模式（源自哪個開局聚落）",
-            _ => "地形模式（點地塊看地形，點聚落或名牌看聚落）"
+            _ => "地形模式（細節地圖；點地塊看地形，點聚落或名牌看聚落）"
         };
         return mode switch
         {

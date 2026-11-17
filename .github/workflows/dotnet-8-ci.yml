@@ -529,6 +529,14 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_HUMAN_OK: Births=[1-9][0-9]* ChildWorkers=0 Children=[1-9][0-9]* Save=1' /tmp/godot-human.log
+          # 第 08-21 章：CK3 式政治地圖（預設畫法）——省份、勢力配色、勢力名、點選與滑鼠提示（無畫面）。
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_POLITICAL_SMOKE=1 timeout 120 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-political.log
+          if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-political.log; then
+            echo "Godot political map smoke failed."
+            exit 1
+          fi
+          grep -Eq 'WORLD_SIM_POLITICAL_OK: Provinces=[1-9][0-9]* Realms=[1-9][0-9]* Labels=[0-9]+ Hit=[0-9]+/[1-9][0-9]* Realm=1 Tooltip=1' /tmp/godot-political.log
+          echo "::notice title=政治地圖::$(grep -o 'WORLD_SIM_POLITICAL_OK:.*' /tmp/godot-political.log)"
           # 第 09-1 章：效能量測（只印數字、不設門檻；改版前後比較用）。
           WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_PERF_SMOKE=1 timeout 900 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-perf.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-perf.log; then
@@ -549,6 +557,33 @@ jobs:
           fi
           grep -q 'RngStreams.Geography' src/WorldSimulation.Core/World/Demo/DemoHexWorld.cs
           echo "Actual Godot .NET scene loaded and ran headlessly."
+
+      - name: 政治地圖截圖（第 08-21 章；手動執行或 PR 貼「map-shot」標籤時跑）
+        if: (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot')) && hashFiles('godot/project.godot') != ''
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb libgl1-mesa-dri fonts-noto-cjk > /dev/null
+          engine="$(find /tmp/godot-dotnet -type f -name 'Godot*mono_linux*.x86_64' -print -quit)"
+          test -n "$engine"
+          mkdir -p /tmp/map-shots
+          WORLD_SIM_MAP_SHOT=/tmp/map-shots WORLD_SIM_MAP_SHOT_YEARS=30 timeout 1500 xvfb-run -a -s "-screen 0 1440x900x24" \
+            "$engine" --path godot --rendering-driver opengl3 --audio-driver Dummy --resolution 1440x900 2>&1 | tee /tmp/godot-mapshot.log || true
+          if grep -E '(SHADER ERROR|SCRIPT ERROR|Unhandled exception)' /tmp/godot-mapshot.log; then
+            echo "Godot reported a shader or script error while taking map shots."
+            exit 1
+          fi
+          grep -q 'WORLD_SIM_MAP_SHOT_OK' /tmp/godot-mapshot.log
+          ls -la /tmp/map-shots
+          echo "::notice title=政治地圖截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Simulated.*' /tmp/godot-mapshot.log)"
+
+      - name: Upload political map shots (第 08-21 章)
+        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-shots
+          path: /tmp/map-shots/*.png
+          if-no-files-found: ignore
 
       - name: Report Godot failure lines as annotations
         if: failure()
