@@ -302,6 +302,9 @@ jobs:
           if timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map medium > /tmp/saga-medium.txt 2>&1; then
             grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|洞窟|古墓|地窟|深淵|迷宮|險境：|軍隊' /tmp/saga-medium.txt | cut -c1-400 | head -56 > /tmp/saga-medium-short.txt
             echo "::notice title=中地圖史書摘要::$(wc -l < /tmp/saga-medium.txt) 行%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-medium-short.txt | cut -c1-3800)"
+            # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）；全文印在這一步的紀錄裡。
+            echo "::notice title=中地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-medium.txt)、請願駁回 $(grep -c '駁回了' /tmp/saga-medium.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-medium.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-medium.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-medium.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-medium.txt)、征服 $(grep -c '歸入' /tmp/saga-medium.txt)"
+            cat /tmp/saga-medium.txt
           else
             echo "::warning title=中地圖史書未完成::$(tail -5 /tmp/saga-medium.txt | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
           fi
