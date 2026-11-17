@@ -230,6 +230,9 @@ public static partial class DemoRealms
             factors.Add(new("上級強勢統治", 10));
         if (fold.Conquered(vassal, week))
             factors.Add(new("剛被征服", TempConqueredLoyalty)); // 第 08-19e 章
+        // 第 08-10g 章：上級領袖的性格（公正、暴虐）。
+        if (ctx.Leader?.Invoke(fold.Seat(liege)) is { } lord && DemoTraits.Loyalty(lord.Traits) != 0)
+            factors.Add(new(DemoTraits.Has(lord.Traits, DemoTrait.Just) ? "領袖公正" : "領袖暴虐", DemoTraits.Loyalty(lord.Traits)));
         if (ctx.AgeOfWeek?.Invoke(week) is { } age && DemoAges.Loyalty(age) != 0)
             factors.Add(new(DemoAges.Name(age), DemoAges.Loyalty(age))); // 第 08-6c 章
         CivilFactors(vassal, liege, week, fold, factors); // 第 08-19f 章：新君即位、國王出身於此、擁立了現任國王
@@ -376,7 +379,8 @@ public static partial class DemoRealms
                 if (week < s.EndWeek)
                     continue;
                 var differs = ctx.Culture(leader) is { } a && ctx.Culture(s.LiegeId) is { } b && a != b;
-                if ((int)(Draw(rng, week, leader, 0) % 100UL) < TempPeacefulWinPercent + (differs ? TempCultureBonusPercent : 0))
+                if ((int)(Draw(rng, week, leader, 0) % 100UL) < TempPeacefulWinPercent + (differs ? TempCultureBonusPercent : 0)
+                    + DemoTraits.Petition(ctx.Leader?.Invoke(fold.Seat(s.LiegeId))?.Traits ?? DemoTrait.None)) // 第 08-10g 章：寬厚的領袖容易讓步、嚴苛的很少
                     Independence(leader, s.LiegeId, s.Members, $"{Name(s.LiegeId)}接受了{Name(leader)}的請願，讓它們獨立");
                 else
                     Fail(s, $"{Name(s.LiegeId)}駁回了{Name(leader)}的請願");

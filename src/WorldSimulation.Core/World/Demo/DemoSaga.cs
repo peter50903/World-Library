@@ -99,6 +99,9 @@ public static class DemoSaga
             .Select(x => I($"{x.Name}（全盛時 {world.ChronicleOf(x.Id).Peak} 人）")).ToList();
         if (ruins.Count > 0)
             yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
+        var houses = new DemoSagaCast(world).Houses(EndingSettlements); // 第 08-10g 章
+        if (houses.Count > 0)
+            yield return "　家族：" + string.Join("；", houses) + "。";
         yield return realms.Count > 0 ? "　勢力：" + string.Join("；", realms) + "。" : "　世上還沒有統領其他聚落的勢力。";
     }
 
@@ -311,10 +314,51 @@ public sealed class DemoSagaCast
                 var reign = p.AppointedWeek < 1 ? I($"開局～第 {endYear} 年") : I($"第 {Year(p.AppointedWeek)}～{endYear} 年");
                 var exit = p.InOffice ? "至今仍在位" : I($"第 {endYear} 年{ExitText(p.ExitReason)}");
                 var title = conquered >= DemoSaga.ConquerorDeeds ? "征服者" : "";
+                // 第 08-10g 章：性格；誰接任——子女（同一家族）還是別的家族。
+                var temper = DemoTraits.Names(p.Traits);
+                var next = list.SkipWhile(x => x.Id != p.Id).Skip(1).FirstOrDefault();
+                var heir = p.InOffice || next is null ? ""
+                    : next.ParentId == p.Id ? I($"，由{(next.Sex == DemoTempSex.Female ? "女兒" : "兒子")}{next.Name}繼位")
+                    : I($"，{DemoNames.FamilyOf(p.Name)}家就此失去權位，{DemoNames.FamilyOf(next.Name)}家的{next.Name}接掌");
                 picked.Add((conquered, lost, p.Id,
-                    I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{title}{p.Name}（{reign}在位）{string.Join("、", deeds)}，{exit}。")));
+                    I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{title}{p.Name}（{(temper.Length > 0 ? temper + "；" : "")}{reign}在位）{string.Join("、", deeds)}，{exit}{heir}。")));
             }
         return picked.OrderByDescending(x => x.Conquered).ThenByDescending(x => x.Lost).ThenBy(x => x.Id).Take(DemoSaga.VolumeRulers).Select(x => x.Text).ToList();
+    }
+
+    /// <summary>
+    /// 第 08-10g 章：掌權的家族（參考十字軍之王的家族）——一位沒有承襲父母的領袖是家族的第一代，之後一路世襲的都屬於這一家。
+    /// 每個家族一句：在哪裡、姓什麼、傳了幾代、從哪一年掌權到哪一年（或至今）。代數多的在前，最多 <paramref name="take"/> 個；只有一代的不列。
+    /// </summary>
+    public IReadOnlyList<string> Houses(int take)
+    {
+        static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
+        var houses = new List<(int Generations, int From, long Id, string Text)>();
+        foreach (var (settlementId, list) in _leaders.OrderBy(kv => kv.Key))
+        {
+            var line = new List<DemoPersonRecord>();
+            void Close()
+            {
+                if (line.Count >= 2)
+                {
+                    var last = line[^1];
+                    var from = line[0].AppointedWeek < 1 ? "開局" : I($"第 {Year(line[0].AppointedWeek)} 年");
+                    var to = last.InOffice ? "至今" : I($"第 {Year(last.ExitWeek)} 年");
+                    houses.Add((line.Count, line[0].AppointedWeek, line[0].Id,
+                        I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{DemoNames.FamilyOf(line[0].Name)}家（傳 {line.Count} 代，{from}～{to}掌權；{string.Join("→", line.Select(x => DemoNames.GivenOf(x.Name)))}）")));
+                }
+                line.Clear();
+            }
+            foreach (var p in list)
+            {
+                if (line.Count > 0 && p.ParentId != line[^1].Id)
+                    Close();
+                line.Add(p);
+            }
+            Close();
+        }
+        return houses.OrderByDescending(h => h.Generations).ThenBy(h => h.From).ThenBy(h => h.Id).Take(take).Select(h => h.Text).ToList();
     }
 
     /// <summary>登記表的卸任原因（「老死（63 歲）」「餓死（…）」「死於天災（…）」「聚落無人」「卸任」）寫成史書用語。</summary>

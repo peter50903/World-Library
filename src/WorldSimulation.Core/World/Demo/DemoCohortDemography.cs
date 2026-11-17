@@ -44,8 +44,9 @@ public enum DemoRepresentativeRole
 /// 第 07-1 章 b 節：有名有姓的代表人物（使用者 2026-10-22：只需要知道村子重要的人）。
 /// 他本人也算在所屬年齡群的人數裡（具名化不是出生）；實體 ID 由世界唯一分配器發號。
 /// </summary>
+/// <remarks>第 08-10g 章：<see cref="ParentId"/>＝世襲時前任領袖（父母）的編號，沒有＝0；<see cref="Traits"/>＝領袖的性格（其他職位沒有）。</remarks>
 public sealed record DemoRepresentative(long Id, int SettlementId, DemoRepresentativeRole Role, string Name, DemoTempSex Sex,
-    int BirthYear, int AppointedWeek)
+    int BirthYear, int AppointedWeek, long ParentId = 0, DemoTrait Traits = DemoTrait.None)
 {
     public static string RoleName(DemoRepresentativeRole role) => role switch
     {

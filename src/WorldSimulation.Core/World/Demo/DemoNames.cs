@@ -98,6 +98,30 @@ public sealed class DemoNames
         => S.PlacePrefix.FirstOrDefault(p => settlementName.StartsWith(p, StringComparison.Ordinal))
             ?? S.PlacePrefix.FirstOrDefault(p => settlementName.Length > 1 && settlementName[1..].StartsWith(p, StringComparison.Ordinal));
 
+    /// <summary>第 08-10g 章：姓（間隔號之後；沒有間隔號回傳整個名字）。</summary>
+    public static string FamilyOf(string name) => name.Contains('·', StringComparison.Ordinal) ? name[(name.IndexOf('·', StringComparison.Ordinal) + 1)..] : name;
+
+    /// <summary>第 08-10g 章：名（間隔號之前）。</summary>
+    public static string GivenOf(string name) => name.Contains('·', StringComparison.Ordinal) ? name[..name.IndexOf('·', StringComparison.Ordinal)] : name;
+
+    /// <summary>
+    /// 第 08-10g 章：世襲的人名——名字照常抽，姓沿用家族的姓；不與 <paramref name="avoidGiven"/>（父母的名）相同。
+    /// </summary>
+    public string PersonOfHouse(long entityId, DemoTempSex sex, string family, string? avoidGiven = null)
+    {
+        var given = sex == DemoTempSex.Female ? S.FemaleGiven : S.MaleGiven;
+        for (ulong attempt = 0; attempt < 32; attempt++)
+        {
+            var first = Pick(given, Draw(RngStreams.Character, entityId, 1 + attempt * 2));
+            if (first != avoidGiven && Length(first + family) <= S.MaxLength)
+                return first + "·" + family;
+        }
+        return Person(entityId, sex);
+    }
+
+    /// <summary>第 08-10g 章：這個人自己的性格亂數（CHARACTER 流實體局部亂數，不推進計數器；索引與取名錯開）。</summary>
+    public ulong TraitDraw(long entityId, int k) => Draw(RngStreams.Character, entityId, 1000UL + (ulong)k);
+
     /// <summary>人名「名·姓」（整體不超過 TEMP 長度，不含間隔號）。</summary>
     public string Person(long entityId, DemoTempSex sex)
     {

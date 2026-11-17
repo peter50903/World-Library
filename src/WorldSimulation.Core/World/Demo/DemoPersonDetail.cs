@@ -35,6 +35,14 @@ public static class DemoPersonDetail
             faith is null ? "信仰：無" : $"信仰：{faith.Name}",
             Duty(person.Role)
         };
+        // 第 08-10g 章：家族、父母與性格（領袖）。
+        if (person.Role == DemoRepresentativeRole.Leader)
+        {
+            lines.Add($"家族：{DemoNames.FamilyOf(person.Name)}家" + (person.ParentId > 0 && world.PersonRecord(person.ParentId) is { } parent
+                ? $"（{(parent.Sex == DemoTempSex.Female ? "母親" : "父親")}是前任{role}{parent.Name}）" : "（這一家的第一代）"));
+            if (person.Traits != DemoTrait.None)
+                lines.Add("性格：" + DemoTraits.Names(person.Traits));
+        }
         // 勢力：聚落屬於哪個勢力；領袖另寫他統領的勢力與獨立派系。
         var territory = world.Territory();
         var top = territory.RealmOf(site.Id);
