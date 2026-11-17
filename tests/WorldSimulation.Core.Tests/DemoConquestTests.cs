@@ -66,6 +66,33 @@ public sealed class DemoConquestTests
     }
 
     [Fact]
+    public void HillsForestsAndRiversFavourTheDefender()
+    {
+        // 第 08-22b 章：守方據守丘陵、森林，攻方渡河，攻方造成的死傷變少。
+        var map = new DemoObserverWorld(WorldRecipe.ForSeeds(1UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample).Map;
+        var hills = map.Cells.First(c => c.Terrain == DemoTerrain.Hills);
+        var forest = map.Cells.First(c => c.Terrain == DemoTerrain.Forest);
+        var grass = map.Cells.First(c => c.Terrain == DemoTerrain.Grassland);
+        var attacker = new DemoSettlement(1, "甲", grass.Column, grass.Row);
+        var (hillPercent, hillNote) = DemoRealms.BattleTerrain(map, attacker, new DemoSettlement(2, "乙", hills.Column, hills.Row));
+        Assert.Contains("據守丘陵", hillNote, StringComparison.Ordinal);
+        Assert.True(hillPercent <= DemoRealms.TempHillsAttackPercent);
+        var (forestPercent, forestNote) = DemoRealms.BattleTerrain(map, attacker, new DemoSettlement(3, "丙", forest.Column, forest.Row));
+        Assert.Contains("據守森林", forestNote, StringComparison.Ordinal);
+        Assert.True(forestPercent <= DemoRealms.TempForestAttackPercent);
+        Assert.Equal((100, ""), DemoRealms.BattleTerrain(null, attacker, new DemoSettlement(2, "乙", hills.Column, hills.Row)));
+        // 河的兩岸：直線經過河流格就算渡河；同一岸不算。
+        bool Dry(int c, int r) => map.Contains(c, r) && DemoProvinceMap.IsLand(map.GetCell(c, r)) && !DemoProvinceMap.IsRiver(map.GetCell(c, r));
+        var river = map.Cells.First(c => DemoProvinceMap.IsRiver(c) && (Dry(c.Column - 1, c.Row) && Dry(c.Column + 1, c.Row) || Dry(c.Column, c.Row - 1) && Dry(c.Column, c.Row + 1)));
+        var (dc, dr) = Dry(river.Column - 1, river.Row) && Dry(river.Column + 1, river.Row) ? (1, 0) : (0, 1);
+        Assert.True(DemoRealms.CrossesRiver(map, river.Column - dc, river.Row - dr, river.Column + dc, river.Row + dr));
+        Assert.False(DemoRealms.CrossesRiver(map, river.Column - dc, river.Row - dr, river.Column - dc, river.Row - dr));
+        var across = DemoRealms.BattleTerrain(map, new DemoSettlement(1, "甲", river.Column - dc, river.Row - dr), new DemoSettlement(2, "乙", river.Column + dc, river.Row + dr));
+        Assert.Contains("攻方渡河", across.Note, StringComparison.Ordinal);
+        Assert.True(across.Percent <= DemoRealms.TempRiverAttackPercent);
+    }
+
+    [Fact]
     public void WarScoreCountsBattlesTheSiegeAndHoldingTheGoal()
     {
         var war = new DemoWar(1, 2, 2, 10);
