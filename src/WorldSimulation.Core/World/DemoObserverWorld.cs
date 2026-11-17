@@ -542,7 +542,8 @@ public sealed partial class DemoObserverWorld
                 return cache[id] = DemoCombatForce.None;
             return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
                 tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)),
-                _demography.Representatives.Any(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)); // 第 08-10i 章：英雄在世，士兵等級 +1
+                _demography.Representatives.Any(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id), // 第 08-10i 章：英雄在世，士兵等級 +1
+                DemoAges.SoldierLevels(DemoAges.AtWeek(_rng, checked(CommittedWeeks + 1)))); // 第 08-6c 章：奇蹟時代士兵 +1
         };
     }
 
@@ -753,7 +754,8 @@ public sealed partial class DemoObserverWorld
                 toolYieldPercent: id => DemoKnowledge.ToolYieldPercent(_knowledge, id, checked(CommittedWeeks + 1)), // e 節：工具
                 wells: id => DemoKnowledge.Wells(_knowledge, _sites.Settlements, id, checked(CommittedWeeks + 1)), // 第 08-11 章：掘井
                 sourcePercent: s => checked(CachedBoost(s, checked(CommittedWeeks + 1))
-                    + DemoEnvironment.SourcePercent(_wildlife.Spells, s, checked(CommittedWeeks + 1))), // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
+                    + DemoEnvironment.SourcePercent(_wildlife.Spells, s, checked(CommittedWeeks + 1))
+                    + DemoAges.SourcePercent(DemoAges.AtWeek(_rng, checked(CommittedWeeks + 1)))), // 第 08-6c 章：霜雪時代減產 // 第 08-12 章；第 08-8 章 B2 生計文化；第 12-1 章 C1 狩獵、C3b 熱浪野火；第 08-14 章：加成每月更新
                 beastAttack: !laws.BeastAttacks ? (Func<DemoMigrationBatch, long>?)null : b => DemoWildlife.AttackDeaths(_wildlife, Map, b, checked(CommittedWeeks + 1), _rng,
                     _knowledge.Knows(b.FromSettlementId, DemoTechnology.Of(DemoWildlife.ArcheryTech))), // 第 12-1 章 C2
                 disaster: id => strikes.GetValueOrDefault(id), // 第 12-1 章 C3
@@ -784,7 +786,8 @@ public sealed partial class DemoObserverWorld
                         .ToArray(), // 第 08-8 章 B2：文化研究效果；B3：主要信仰的信條（通靈者）
                     MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
-                    DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week)); // 第 08-16 章第 14 節：挖空的礦脈不算
+                    DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
+                    DemoAges.ResearchPercent(DemoAges.AtWeek(_rng, report.Week))); // 第 08-6c 章：奇蹟時代研究加快
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
