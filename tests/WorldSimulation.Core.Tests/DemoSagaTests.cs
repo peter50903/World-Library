@@ -41,10 +41,11 @@ public sealed class DemoSagaTests
         var years = DemoWorldChronicle.Build(world);
 
         // 世界大事（技術除外）、遺跡、城鎮以上的升降：每一句都在史書裡，同一卷裡一模一樣的句子只寫一次。
-        var sentences = world.Ages().Select(a => years.Where(y => y.Year >= a.FromYear && y.Year <= a.ToYear))
-            .SelectMany(volume => DemoSaga.ToldEntries(years).Where(e => volume.Any(y => y.Entries.Contains(e))).Select(DemoSaga.Sentence).Distinct()).ToList();
+        // 勢力大事的句子另外註明領袖（第 08-10f 章），這裡只逐句比對其他類別。
+        var toldEntries = DemoSaga.ToldEntries(years);
+        var sentences = toldEntries.Where(e => e.Category != DemoChronicleCategory.Realm).Select(DemoSaga.Sentence).Distinct().ToList();
         var told = lines.Where(l => l.StartsWith("　第 ", StringComparison.Ordinal) && l.Contains(" 年，", StringComparison.Ordinal)).ToList();
-        Assert.Equal(sentences.Count, told.Count);
+        Assert.InRange(told.Count, sentences.Count, toldEntries.Count);
         Assert.All(sentences, sentence => Assert.Contains(told, l => l.EndsWith(" 年，" + sentence, StringComparison.Ordinal)));
         Assert.All(years.SelectMany(y => y.Entries).Where(e => e.IsWorld && e.Category != DemoChronicleCategory.Knowledge && e.Weight != DemoWorldChronicle.WeightWar),
             e => Assert.True(DemoSaga.IsTold(e)));
@@ -78,6 +79,30 @@ public sealed class DemoSagaTests
         Assert.Equal(ledger.Sum(y => y.Births), lines.Where(l => l.StartsWith(people, StringComparison.Ordinal))
             .Sum(l => long.Parse(l[people.Length..l.IndexOf(" 人出生", StringComparison.Ordinal)], System.Globalization.CultureInfo.InvariantCulture)));
         Assert.Contains(lines, l => l.EndsWith($"；第 45 年末世上有 {world.WorldPopulation} 人。", StringComparison.Ordinal));
+    }
+
+    // 第 08-10f 章：勢力大事的句子裡，每個聚落第一次出現時註明當時的領袖；長名稱先佔位。
+    [Fact]
+    public void RealmSentencesNameTheLeadersOfTheDay()
+    {
+        var cast = new[] { ("柯林菲爾", "莉亞·伍德"), ("伯恩坡", "哈洛·泰恩"), ("柯林", "某甲") };
+        Assert.Equal("伯恩坡（哈洛·泰恩）兵臨城下（兵力 57 對 5），柯林菲爾（莉亞·伍德）不戰而降，歸入伯恩坡。",
+            DemoSagaCast.Annotate("伯恩坡兵臨城下（兵力 57 對 5），柯林菲爾不戰而降，歸入伯恩坡。", cast));
+        Assert.Equal("沒有提到任何聚落。", DemoSagaCast.Annotate("沒有提到任何聚落。", cast));
+        Assert.Equal("柯林（某甲）與柯林菲爾（莉亞·伍德）議和。", DemoSagaCast.Annotate("柯林與柯林菲爾議和。", cast));
+        Assert.Equal("壽終（63 歲）", DemoSagaCast.ExitText("老死（63 歲）"));
+        Assert.Equal("死於災禍或兵燹（40 歲）", DemoSagaCast.ExitText("死於天災（40 歲）"));
+        Assert.Equal("隨聚落消亡", DemoSagaCast.ExitText("聚落無人"));
+
+        // 真實世界：登記表上的領袖查得到，任期外查不到；人物句都來自登記表上的領袖。
+        var (world, opening) = Shared.Value;
+        var saga = new DemoSagaCast(world);
+        var leader = world.PersonRecords.First(p => p.Role == DemoRepresentativeRole.Leader && p.AppointedWeek >= 1);
+        Assert.NotNull(saga.LeaderAt(leader.SettlementId, leader.AppointedWeek));
+        Assert.Null(saga.LeaderAt(-1, 10));
+        var names = world.PersonRecords.Where(p => p.Role == DemoRepresentativeRole.Leader).Select(p => p.Name).ToHashSet();
+        Assert.All(DemoSaga.Write(world, opening).Where(l => l.StartsWith("　人物：", StringComparison.Ordinal)),
+            l => Assert.Contains(names, n => l.Contains(n, StringComparison.Ordinal)));
     }
 
     [Fact]

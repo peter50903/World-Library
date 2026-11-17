@@ -13,8 +13,8 @@ public sealed record DemoSagaOpening(long Population, int Settlements);
 /// </summary>
 public static class DemoSaga
 {
-    /// <summary>【TEMP】終章列幾個最大的聚落；每卷的技術一句最多點名幾項。</summary>
-    public const int EndingSettlements = 3, NamedTechs = 4;
+    /// <summary>【TEMP】終章列幾個最大的聚落；每卷的技術一句最多點名幾項；每卷最多寫幾位人物、事蹟（降服加失去的聚落）至少幾件才寫、降服幾個稱「征服者」。</summary>
+    public const int EndingSettlements = 3, NamedTechs = 4, VolumeRulers = 3, RulerDeeds = 2, ConquerorDeeds = 3;
 
     /// <summary>世界開始推進之前呼叫：開局的人口與聚落數。</summary>
     public static DemoSagaOpening Opening(DemoObserverWorld world)
@@ -38,6 +38,8 @@ public static class DemoSaga
 
         var ledger = world.YearSummaries().ToDictionary(y => y.Year);
         var toldEntries = ToldEntries(years).ToHashSet<DemoChronicleEntry>(ReferenceEqualityComparer.Instance);
+        var cast = new DemoSagaCast(world); // 第 08-10f 章：人物進入史書
+        var lastYear = years.Count == 0 ? 1 : years[^1].Year;
         // 第 08-6c 章：一個世界時代一卷（原本固定十年一卷）。
         var number = 0;
         foreach (var span in world.Ages())
@@ -49,7 +51,7 @@ public static class DemoSaga
             lines.Add(I($"卷 {++number}　{DemoAges.Name(span.Age)}　第 {volume[0].Year}～{volume[^1].Year} 年　{DemoAges.Description(span.Age)}"));
 
             // 大事：世界大事（技術另收成一句）、任何聚落淪為遺跡、城鎮以上的升降。一模一樣的句子合併年份。
-            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: Sentence(e))))
+            var told = volume.SelectMany(y => y.Entries.Where(toldEntries.Contains).Select(e => (y.Year, Text: cast.Sentence(e))))
                 .GroupBy(x => x.Text, StringComparer.Ordinal)
                 .Select(g => (Years: g.Select(x => x.Year).Distinct().ToList(), Text: g.Key)).ToList();
             foreach (var (toldYears, text) in told)
@@ -62,6 +64,8 @@ public static class DemoSaga
             var local = DemoWorldChronicle.LocalTally(volume);
             if (local.Length > 0)
                 lines.Add("　各地：" + local + "。");
+            foreach (var ruler in cast.Rulers(volume[0].Year, volume[^1].Year, lastYear))
+                lines.Add("　人物：" + ruler);
             lines.Add("　" + People(volume, ledger));
         }
 
@@ -208,3 +212,119 @@ public static class DemoSaga
             + I($"；第 {last.Year} 年末世上有 {last.PopulationClosing} 人。");
     }
 }
+
+/// <summary>
+/// 第 08-10f 章：史書裡的人物——由人物登記表（第 14-1 章第 7 項）與已提交的事件推得，不改世界、不另存。
+/// 勢力大事（征服、獨立、戰爭結局）的句子裡，每個聚落第一次出現時註明當時的領袖；
+/// 每卷另寫事蹟夠多的領袖：在位年份、降服與失去的聚落數、怎麼離開的。只陳述事實。
+/// </summary>
+public sealed class DemoSagaCast
+{
+    private readonly Dictionary<int, List<DemoPersonRecord>> _leaders;
+    private readonly List<(string Name, int Id)> _names;
+    private readonly Dictionary<int, string> _nameOf;
+    private readonly List<(int Week, int Attacker)> _conquests;
+    private readonly List<(int Week, int Liege)> _losses;
+
+    public DemoSagaCast(DemoObserverWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        _leaders = world.PersonRecords.Where(p => p.Role == DemoRepresentativeRole.Leader)
+            .GroupBy(p => p.SettlementId).ToDictionary(g => g.Key, g => g.OrderBy(p => p.AppointedWeek).ThenBy(p => p.Id).ToList());
+        _nameOf = world.Sites.Settlements.ToDictionary(x => x.Id, x => x.Name);
+        // 長的名稱先比對（「柯林菲爾」先於「柯林」），同名取編號小的。
+        _names = world.Sites.Settlements.GroupBy(x => x.Name, StringComparer.Ordinal).Select(g => (g.Key, g.Min(x => x.Id)))
+            .OrderByDescending(x => x.Key.Length).ThenBy(x => x.Key, StringComparer.Ordinal).ToList();
+        var events = world.SettlementEvents();
+        _conquests = events.Where(e => e.Kind == DemoSettlementEventKind.Conquered).Select(e => (e.Week, (int)e.Count)).ToList();
+        _losses = events.Where(e => e.Kind == DemoSettlementEventKind.Independence).Select(e => (e.Week, (int)e.Count)).ToList();
+    }
+
+    /// <summary>第 <paramref name="week"/> 週時這個聚落的領袖（那時沒有領袖＝null）。</summary>
+    public DemoPersonRecord? LeaderAt(int settlementId, int week)
+        => _leaders.TryGetValue(settlementId, out var list)
+            ? list.LastOrDefault(p => p.AppointedWeek <= week && (p.InOffice || week <= p.ExitWeek))
+            : null;
+
+    /// <summary>史書的一句：勢力大事註明各聚落當時的領袖；其他條目照 <see cref="DemoSaga.Sentence"/>。</summary>
+    public string Sentence(DemoChronicleEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        var text = DemoSaga.Sentence(entry);
+        if (entry.Category != DemoChronicleCategory.Realm)
+            return text;
+        return Annotate(text, _names.Select(n => (n.Name, Leader: LeaderAt(n.Id, entry.Week)?.Name)).Where(n => n.Leader is not null)
+            .Select(n => (n.Name, n.Leader!)).ToList());
+    }
+
+    /// <summary>
+    /// 在句子裡每個聚落名稱第一次出現的地方後面加上「（領袖）」。<paramref name="cast"/> 要由長到短排（長名稱先佔位，短名稱不會切進長名稱裡）。
+    /// </summary>
+    public static string Annotate(string text, IReadOnlyList<(string Name, string Leader)> cast)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(cast);
+        var spans = new List<(int Start, int End, string Leader)>();
+        foreach (var (name, leader) in cast)
+        {
+            if (name.Length == 0)
+                continue;
+            // 找第一個沒有和已佔位名稱重疊的出現位置。
+            for (var at = text.IndexOf(name, StringComparison.Ordinal); at >= 0; at = text.IndexOf(name, at + 1, StringComparison.Ordinal))
+            {
+                var end = at + name.Length;
+                if (spans.Any(x => at < x.End && x.Start < end))
+                    continue;
+                spans.Add((at, end, leader));
+                break;
+            }
+        }
+        var sb = new System.Text.StringBuilder(text);
+        foreach (var x in spans.OrderByDescending(x => x.End))
+            sb.Insert(x.End, "（" + x.Leader + "）");
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// 這一卷要寫的領袖（每人一句）：任期在這一卷結束的，或到史書最後一年仍在位而這是最後一卷的；
+    /// 降服加失去的聚落至少 <see cref="DemoSaga.RulerDeeds"/> 件才寫，降服多的在前，最多 <see cref="DemoSaga.VolumeRulers"/> 位。
+    /// </summary>
+    public IReadOnlyList<string> Rulers(int fromYear, int toYear, int lastYear)
+    {
+        static string I(FormattableString s) => s.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        static int Year(int week) => DemoSettlementHistory.YearOfDay(checked(Math.Max(1, week) * 7));
+        var picked = new List<(int Conquered, int Lost, long Id, string Text)>();
+        foreach (var (settlementId, list) in _leaders.OrderBy(kv => kv.Key))
+            foreach (var p in list)
+            {
+                var endYear = p.InOffice ? lastYear : Year(p.ExitWeek);
+                if (endYear < fromYear || endYear > toYear || (p.InOffice && toYear < lastYear))
+                    continue;
+                bool During(int week) => week >= p.AppointedWeek && (p.InOffice || week <= p.ExitWeek);
+                var conquered = _conquests.Count(c => c.Attacker == settlementId && During(c.Week));
+                var lost = _losses.Count(c => c.Liege == settlementId && During(c.Week));
+                if (conquered + lost < DemoSaga.RulerDeeds)
+                    continue;
+                var deeds = new List<string>();
+                if (conquered > 0) deeds.Add(I($"降服 {conquered} 個聚落"));
+                if (lost > 0) deeds.Add(I($"失去 {lost} 個聚落"));
+                var reign = p.AppointedWeek < 1 ? I($"開局～第 {endYear} 年") : I($"第 {Year(p.AppointedWeek)}～{endYear} 年");
+                var exit = p.InOffice ? "至今仍在位" : I($"第 {endYear} 年{ExitText(p.ExitReason)}");
+                var title = conquered >= DemoSaga.ConquerorDeeds ? "征服者" : "";
+                picked.Add((conquered, lost, p.Id,
+                    I($"{_nameOf.GetValueOrDefault(settlementId, "某地")}的{title}{p.Name}（{reign}在位）{string.Join("、", deeds)}，{exit}。")));
+            }
+        return picked.OrderByDescending(x => x.Conquered).ThenByDescending(x => x.Lost).ThenBy(x => x.Id).Take(DemoSaga.VolumeRulers).Select(x => x.Text).ToList();
+    }
+
+    /// <summary>登記表的卸任原因（「老死（63 歲）」「餓死（…）」「死於天災（…）」「聚落無人」「卸任」）寫成史書用語。</summary>
+    public static string ExitText(string reason)
+    {
+        ArgumentNullException.ThrowIfNull(reason);
+        if (reason.StartsWith("老死", StringComparison.Ordinal)) return "壽終" + reason["老死".Length..];
+        if (reason.StartsWith("死於天災", StringComparison.Ordinal)) return "死於災禍或兵燹" + reason["死於天災".Length..];
+        if (reason.StartsWith("餓死", StringComparison.Ordinal)) return reason;
+        return reason == "聚落無人" ? "隨聚落消亡" : "卸任";
+    }
+}
+

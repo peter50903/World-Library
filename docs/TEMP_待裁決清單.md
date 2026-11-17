@@ -631,7 +631,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoPlayerDetail.cs` | 3 | 第 08-11 章玩家詳情：拿掉 TEMP 標記的文字處理（不是數值） |
 | `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 21 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2）；第 08-12 章技術效果（D08-12）；第 08-8 章 B2 文化研究與生計來源加成（D08-8）；第 06-3 章礦脈勢力範圍（D06-3）；第 08-14 章分頻週數 4 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 3 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數）；第 08-10d 章：世界大事的輕重、年代小結的引述件數與定性門檻（顯示規則） |
-| `src/WorldSimulation.Core/World/Demo/DemoSaga.cs` | 1 | 第 08-10e 章：文字史書終章列 3 個最大的聚落、每卷技術點名 4 項（顯示規則） |
+| `src/WorldSimulation.Core/World/Demo/DemoSaga.cs` | 1 | 第 08-10e、08-10f 章：文字史書終章列 3 個最大的聚落、每卷技術點名 4 項、每卷最多 3 位人物（事蹟至少 2 件、降服 3 個稱征服者）（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoAges.cs` | 3 | 第 08-6c 章：世界時代每段 30～60 年；烈日熱浪野火 ×3、黑暗地下城機率 ×3 與上限 ×2、混沌忠誠 −15 |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 8 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11）；第 08-6b 章田數上限（營 1、村 2、鎮 2、城 3、都 3，每項農耕技術 +1，最多 6） |
