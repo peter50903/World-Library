@@ -327,11 +327,11 @@ public partial class DemoHexMap
     private readonly Dictionary<int, int> _realmProvinces = new();
 
     /// <summary>【TEMP】羊皮紙色：獨立的小聚落（單一省份的勢力）只淡淡染上自己的顏色，大勢力才是重點。</summary>
-    private static readonly Color TempParchment = new(0.72f, 0.68f, 0.56f);
+    private static readonly Color TempParchment = new(0.80f, 0.76f, 0.64f);
 
     /// <summary>勢力的填色：兩個省份以上用勢力色；只有自己一個省份的獨立聚落混一半羊皮紙色（不會滿地都是碎色塊）。</summary>
     private Color RealmFill(int realm)
-        => _realmProvinces.GetValueOrDefault(realm) >= 2 ? PoliticalRealmColor(realm) : PoliticalRealmColor(realm).Lerp(TempParchment, 0.55f);
+        => _realmProvinces.GetValueOrDefault(realm) >= 2 ? PoliticalRealmColor(realm) : PoliticalRealmColor(realm).Lerp(TempParchment, 0.6f);
 
     private void EnsurePaint()
     {

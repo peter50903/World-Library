@@ -585,7 +585,7 @@ jobs:
           for name in 1_realms_far 3_realms_close_crop 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
-            fold -w 3900 "$f" > "/tmp/shot-notes/$name.txt"
+            { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"
             n="$(wc -l < "/tmp/shot-notes/$name.txt")"
             k=0
             while IFS= read -r chunk; do
