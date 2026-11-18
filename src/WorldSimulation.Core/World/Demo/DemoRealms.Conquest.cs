@@ -162,9 +162,57 @@ public static partial class DemoRealms
     public static long RealmArmy(int top, IReadOnlyDictionary<int, int> lieges, IEnumerable<int> alive, Func<int, long> residents)
         => alive.Where(id => Top(id, lieges) == top).Sum(id => Army(residents(id)));
 
+    /// <summary>
+    /// 第 08-22b 章【TEMP】會戰的地形（參考 CK3）：守方的聚落在丘陵上，攻方造成的死傷 ×<see cref="TempHillsAttackPercent"/>%、
+    /// 在森林裡 ×<see cref="TempForestAttackPercent"/>%；攻方首都到戰爭目標的直線要過河，再 ×<see cref="TempRiverAttackPercent"/>%。
+    /// 守方造成的死傷不變（守方本來就有本土加成）。
+    /// </summary>
+    public const int TempHillsAttackPercent = 75, TempForestAttackPercent = 85, TempRiverAttackPercent = 80;
+
+    /// <summary>第 08-22b 章：攻方打這個目標時的地形（傷害百分比與說明；沒有地圖＝100%、沒有說明）。</summary>
+    public static (int Percent, string Note) BattleTerrain(DemoHexWorld? map, DemoSettlement? attacker, DemoSettlement? target)
+    {
+        if (map is null || attacker is null || target is null || !map.Contains(target.Column, target.Row))
+            return (100, "");
+        var percent = 100;
+        var notes = new List<string>();
+        switch (map.GetCell(target.Column, target.Row).Terrain)
+        {
+            case DemoTerrain.Hills:
+                percent = percent * TempHillsAttackPercent / 100;
+                notes.Add("據守丘陵");
+                break;
+            case DemoTerrain.Forest:
+                percent = percent * TempForestAttackPercent / 100;
+                notes.Add("據守森林");
+                break;
+        }
+        if (CrossesRiver(map, attacker.Column, attacker.Row, target.Column, target.Row))
+        {
+            percent = percent * TempRiverAttackPercent / 100;
+            notes.Add("攻方渡河");
+        }
+        return (percent, notes.Count == 0 ? "" : "（" + string.Join("、", notes) + "）");
+    }
+
+    /// <summary>兩格之間的直線（不含兩端）經過河流格。</summary>
+    public static bool CrossesRiver(DemoHexWorld map, int c0, int r0, int c1, int r1)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var steps = Math.Max(Math.Abs(c1 - c0), Math.Abs(r1 - r0));
+        for (var i = 1; i < steps; i++)
+        {
+            var c = (int)Math.Round(c0 + (c1 - c0) * (double)i / steps, MidpointRounding.AwayFromZero);
+            var r = (int)Math.Round(r0 + (r1 - r0) * (double)i / steps, MidpointRounding.AwayFromZero);
+            if (map.Contains(c, r) && map.GetCell(c, r) is { Terrain: DemoTerrain.Water, MainWaterway: true, Sea: false })
+                return true;
+        }
+        return false;
+    }
+
     /// <summary>本週征服戰爭的交戰（攻方首都與戰爭目標；開戰的下一週起）。</summary>
     private static void ConquestBattles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
-        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null)
+        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null, DemoHexWorld? map = null)
     {
         if (fold.Wars.Count == 0)
             return;
@@ -175,9 +223,11 @@ public static partial class DemoRealms
             var attack = RealmArmy(w.AttackerId, fold.Liege, alive, residents);
             var defend = RealmArmy(Top(w.TargetId, fold.Liege), fold.Liege, alive, residents) * TempHomePercent / 100;
             long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, w.AttackerId, k)); // 第 08-19h 章
+            var (terrain, note) = BattleTerrain(map, sites.Settlements.FirstOrDefault(s => s.Id == w.AttackerId), sites.Settlements.FirstOrDefault(s => s.Id == w.TargetId)); // 第 08-22b 章
             if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
                 strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100, residents(w.TargetId), 6), $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍");
+                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100, residents(w.TargetId), 6),
+                    $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍{note}");
             if (!taken.Contains(w.AttackerId) && !strikes.ContainsKey(w.AttackerId) && residents(w.AttackerId) > 0)
                 strikes[w.AttackerId] = new DemoDisasterStrike(w.AttackerId, DemoSettlementEventKind.ConquestBattle,
                     Deaths(defend * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.DefenderId)) ?? DemoTrait.None) / 100, residents(w.AttackerId), 7), $"出兵征討{Name(w.TargetId)}");
