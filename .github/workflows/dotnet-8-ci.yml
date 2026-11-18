@@ -320,8 +320,12 @@ jobs:
             start=$(date +%s)
             if timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map large > /tmp/saga-large.txt 2>&1; then
               elapsed=$(( $(date +%s) - start ))
-              grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|險境：|軍隊|王國' /tmp/saga-large.txt | cut -c1-400 | head -60 > /tmp/saga-large-short.txt
+              # 第 12-2h 章：先放每卷的人口與死因、終章、勢力與險境（英雄另一則），不再被英雄的句子擠掉。
+              grep -E '^卷 |世上有|勢力：|這些年裡|險境：|軍隊|王國|最大的聚落' /tmp/saga-large.txt | cut -c1-500 | head -40 > /tmp/saga-large-short.txt
               echo "::notice title=大地圖史書摘要::$(wc -l < /tmp/saga-large.txt) 行、跑了 ${elapsed} 秒%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-short.txt | cut -c1-3800)"
+              grep -E '人物：|英雄：|傳說物品：|家族：' /tmp/saga-large.txt | cut -c1-300 | head -30 > /tmp/saga-large-people.txt
+              echo "::notice title=大地圖史書人物::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-people.txt | cut -c1-3800)"
+              echo "::notice title=大地圖人類與怪物消長::$(grep '^人類與怪物消長：' /tmp/saga-large.txt | cut -c1-3800)"
               # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）。
               echo "::notice title=大地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-large.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-large.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-large.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-large.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-large.txt)、征服 $(grep -c '征服了\|歸入' /tmp/saga-large.txt)、地下城被殺光 $(grep -c '怪物被殺光' /tmp/saga-large.txt)"
               cat /tmp/saga-large.txt

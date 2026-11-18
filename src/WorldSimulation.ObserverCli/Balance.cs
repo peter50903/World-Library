@@ -15,9 +15,6 @@ public static class Balance
 {
     private const string Usage = "用法：--balance [--seeds a,b,c] [--years 1～1000] [--map small|medium|large]";
 
-    /// <summary>每幾年取一次。</summary>
-    public const int StepYears = 10;
-
     public static int Run(IReadOnlyList<string> args, TextWriter output, int daysPerYear)
     {
         var seeds = new List<ulong> { 1, 2, 3, 4, 5 };
@@ -47,83 +44,18 @@ public static class Balance
         return 0;
     }
 
-    private sealed class Step
-    {
-        public long Population, Births, MonsterDeaths, Slain;
-        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters;
-        public char Age;
-    }
-
-    /// <summary>一個種子跑完，回傳一行（每一欄是每 10 年的數字，以空格分隔）。</summary>
+    /// <summary>一個種子跑完，回傳一行（每一欄是每 10 年的數字，以空格分隔）；小地圖另外存讀檔一次。</summary>
     public static string Line(ulong seed, int years, DemoMapSize size, int daysPerYear)
     {
         var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, null, size), DemoWeeklyTempConfig.LivingForagingSample);
-        var steps = new List<Step>();
-        var current = new Step();
-        var lastWeek = 0;
+        var tracker = new BalanceTracker();
         for (var year = 1; year <= years; year++)
         {
             for (var d = 0; d < daysPerYear; d++)
                 world.AdvanceOneDay();
-            foreach (var week in world.WeekReports().Where(w => w.Week > lastWeek))
-            {
-                current.Births += week.Settlements.Sum(l => l.Births);
-                foreach (var e in week.Events)
-                {
-                    switch (e.Kind)
-                    {
-                        case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt:
-                            current.MonsterDeaths += e.Count;
-                            break;
-                        case DemoSettlementEventKind.MonsterSwarm:
-                            current.MonsterDeaths += e.Count;
-                            current.Swarms++;
-                            if (e.Cause.Contains("攻破", StringComparison.Ordinal))
-                                current.Overruns++;
-                            break;
-                        case DemoSettlementEventKind.MonsterSlain:
-                            current.Slain += DemoMonsters.DecodeKills(e.Count).Kills;
-                            break;
-                        case DemoSettlementEventKind.DungeonCleared:
-                            current.Cleared++;
-                            break;
-                        case DemoSettlementEventKind.SettlementFounded when world.Sites.RebuiltOn(e.SettlementId) is not null:
-                            current.Rebuilt++; // 第 12-2i 章：在遺跡上重建
-                            break;
-                    }
-                }
-                lastWeek = week.Week;
-            }
-            if (year % StepYears != 0 && year != years)
-                continue;
-            current.Population = world.WorldPopulation;
-            current.Living = world.Sites.Settlements.Count(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0);
-            current.Ruins = world.Sites.Settlements.Count(world.Sites.IsStandingRuin);
-            var nests = world.MonsterNests(world.CommittedWeeks);
-            current.Lairs = nests.Count(n => !n.Dormant && n.Monsters > 0);
-            current.Monsters = nests.Where(n => !n.Dormant).Sum(n => n.Monsters);
-            current.Age = DemoAges.Name(world.Age)[0];
-            steps.Add(current);
-            current = new Step();
+            tracker.ObserveYearEnd(world, year, year == years);
         }
-
-        string Row(string title, Func<Step, string> cell) => $"{title} {string.Join(' ', steps.Select(cell))}";
-        var text = new StringBuilder();
-        text.Append(CultureInfo.InvariantCulture, $"種子 {seed}（{DemoMapSizes.Name(size)}）｜");
-        text.AppendJoin('｜', new[]
-        {
-            Row("人口", s => s.Population.ToString(CultureInfo.InvariantCulture)),
-            Row("出生", s => s.Births.ToString(CultureInfo.InvariantCulture)),
-            Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
-            Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
-            Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
-            Row("重建", s => s.Rebuilt.ToString(CultureInfo.InvariantCulture)),
-            Row("獸潮/攻破", s => string.Create(CultureInfo.InvariantCulture, $"{s.Swarms}/{s.Overruns}")),
-            Row("殺怪", s => s.Slain.ToString(CultureInfo.InvariantCulture)),
-            Row("殺光", s => s.Cleared.ToString(CultureInfo.InvariantCulture)),
-            Row("巢/怪", s => string.Create(CultureInfo.InvariantCulture, $"{s.Lairs}/{s.Monsters}")),
-            Row("時代", s => s.Age.ToString())
-        });
+        var text = new StringBuilder(tracker.Line(seed, size));
         // 第 12-2i 章：小地圖跑完再存讀檔一次（遺跡上重建的聚落也要讀得回來）。
         if (size == DemoMapSize.Small)
         {
@@ -150,5 +82,94 @@ public static class Balance
             seeds.Add(s);
         }
         return seeds.Count > 0;
+    }
+}
+
+/// <summary>
+/// 第 12-2h 章：逐年觀察世界、每 10 年取一次人類與怪物的消長（<see cref="Balance"/> 與文字史書共用；只讀世界）。
+/// </summary>
+public sealed class BalanceTracker
+{
+    /// <summary>每幾年取一次。</summary>
+    public const int StepYears = 10;
+
+    private sealed class Step
+    {
+        public long Population, Births, MonsterDeaths, Slain;
+        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters;
+        public char Age;
+    }
+
+    private readonly List<Step> _steps = new();
+    private Step _current = new();
+    private int _lastWeek;
+
+    /// <summary>每年年底呼叫一次；<paramref name="last"/>＝最後一年（不滿 10 年也取一次）。</summary>
+    public void ObserveYearEnd(DemoObserverWorld world, int year, bool last)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        foreach (var week in world.WeekReports().Where(w => w.Week > _lastWeek))
+        {
+            _current.Births += week.Settlements.Sum(l => l.Births);
+            foreach (var e in week.Events)
+            {
+                switch (e.Kind)
+                {
+                    case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt:
+                        _current.MonsterDeaths += e.Count;
+                        break;
+                    case DemoSettlementEventKind.MonsterSwarm:
+                        _current.MonsterDeaths += e.Count;
+                        _current.Swarms++;
+                        if (e.Cause.Contains("攻破", StringComparison.Ordinal))
+                            _current.Overruns++;
+                        break;
+                    case DemoSettlementEventKind.MonsterSlain:
+                        _current.Slain += DemoMonsters.DecodeKills(e.Count).Kills;
+                        break;
+                    case DemoSettlementEventKind.DungeonCleared:
+                        _current.Cleared++;
+                        break;
+                    case DemoSettlementEventKind.SettlementFounded when world.Sites.RebuiltOn(e.SettlementId) is not null:
+                        _current.Rebuilt++; // 第 12-2i 章：在遺跡上重建
+                        break;
+                }
+            }
+            _lastWeek = week.Week;
+        }
+        if (year % StepYears != 0 && !last)
+            return;
+        _current.Population = world.WorldPopulation;
+        _current.Living = world.Sites.Settlements.Count(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0);
+        _current.Ruins = world.Sites.Settlements.Count(world.Sites.IsStandingRuin);
+        var nests = world.MonsterNests(world.CommittedWeeks);
+        _current.Lairs = nests.Count(n => !n.Dormant && n.Monsters > 0);
+        _current.Monsters = nests.Where(n => !n.Dormant).Sum(n => n.Monsters);
+        _current.Age = DemoAges.Name(world.Age)[0];
+        _steps.Add(_current);
+        _current = new Step();
+    }
+
+    /// <summary>一行：每一欄是每 10 年的數字，以空格分隔。</summary>
+    public string Line(ulong seed, DemoMapSize size)
+    {
+        string Row(string title, Func<Step, string> cell) => $"{title} {string.Join(' ', _steps.Select(cell))}";
+        var text = new StringBuilder();
+        text.Append(CultureInfo.InvariantCulture, $"種子 {seed}（{DemoMapSizes.Name(size)}）｜");
+        text.AppendJoin('｜', new[]
+        {
+            Row("人口", s => s.Population.ToString(CultureInfo.InvariantCulture)),
+            Row("出生", s => s.Births.ToString(CultureInfo.InvariantCulture)),
+            Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
+            Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
+            Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
+            Row("重建", s => s.Rebuilt.ToString(CultureInfo.InvariantCulture)),
+            Row("獸潮/攻破", s => string.Create(CultureInfo.InvariantCulture, $"{s.Swarms}/{s.Overruns}")),
+            Row("殺怪", s => s.Slain.ToString(CultureInfo.InvariantCulture)),
+            Row("殺光", s => s.Cleared.ToString(CultureInfo.InvariantCulture)),
+            Row("巢/怪", s => string.Create(CultureInfo.InvariantCulture, $"{s.Lairs}/{s.Monsters}")),
+            Row("時代", s => s.Age.ToString())
+        });
+        return text.ToString();
     }
 }
