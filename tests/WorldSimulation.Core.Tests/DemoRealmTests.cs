@@ -144,11 +144,12 @@ public sealed class DemoRealmTests
     public void WarDeathsScaleWithTheEnemyArmyAndRoundByChance()
     {
         Assert.Equal(0, DemoRealms.WarDeaths(0, 100, 12345));
-        // 兵力 20、運氣 1.0（draw % 101 = 50）＝剛好 1 人。
-        Assert.Equal(1, DemoRealms.WarDeaths(20, 100, 50));
-        // 兵力 2、運氣 0.5＝0.05 人：進位亂數（draw / 101 % 1000）小於 50 才死 1 人。
-        Assert.Equal(1, DemoRealms.WarDeaths(2, 100, 0));
-        Assert.Equal(0, DemoRealms.WarDeaths(2, 100, 101UL * 50));
+        // 第 08-22i 章：兵力 60、運氣 1.0（draw % 101 = 50）＝剛好 1 人；兵力 120＝2 人。
+        Assert.Equal(1, DemoRealms.WarDeaths(60, 100, 50));
+        Assert.Equal(2, DemoRealms.WarDeaths(120, 100, 50));
+        // 兵力 6、運氣 0.5＝0.05 人：進位亂數（draw / 101 % 1000）小於 50 才死 1 人。
+        Assert.Equal(1, DemoRealms.WarDeaths(6, 100, 0));
+        Assert.Equal(0, DemoRealms.WarDeaths(6, 100, 101UL * 50));
         // 最多留 1 人。
         Assert.Equal(4, DemoRealms.WarDeaths(2000, 5, 50));
         Assert.Equal(0, DemoRealms.WarDeaths(2000, 1, 50));

@@ -83,7 +83,7 @@ public static partial class DemoRealms
     public const int TempUltimatumPercent = 80, TempAcceptPercent = 150, TempPeacefulWinPercent = 35, TempCultureBonusPercent = 20, TempWarScorePercent = 150;
 
     /// <summary>【TEMP】兵力＝居民的 1/10（至少 1）；每週交戰對方每 20 名兵多殺 1 人（再乘 0.5～1.5 的運氣）。</summary>
-    public const int TempLevyDivisor = 10, TempArmyPerDeath = 20, TempMinWarArmy = 3;
+    public const int TempLevyDivisor = 10, TempArmyPerDeath = 60, TempMinWarArmy = 3; // 第 08-22i 章：交戰死亡 20 → 60（約三分之一）
 
     /// <summary>【TEMP】忠誠回到這個值以上才退出派系。</summary>
     public const int TempLeaveLoyalty = 10;
@@ -263,6 +263,7 @@ public static partial class DemoRealms
     /// <summary>
     /// 第 08-19h 章：一週交戰的死亡＝對方兵力 ÷ <see cref="TempArmyPerDeath"/> × 0.5～1.5 的運氣；不滿一人的零頭用同一個亂數決定進位
     /// （原本每週固定至少死 1 人，小村打一年會死掉大半）。最多留 1 人。
+    /// 第 08-22i 章：÷20 時打一年每邊死掉約 2.6 倍的兵力（大地圖一百年戰火是最大的死因，是怪物的十倍）；改 ÷60，一年約一倍的兵力。
     /// </summary>
     internal static long WarDeaths(long enemy, long here, ulong draw)
     {
