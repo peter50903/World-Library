@@ -31,7 +31,7 @@ public sealed class DemoTechTooltipTests
             Assert.True(DemoTechTooltip.Effects.ContainsKey(id), id);
         foreach (var (techId, _) in DemoKnowledge.TempToolLadder)
             Assert.True(DemoTechTooltip.Effects.ContainsKey(techId), techId);
-        foreach (var tier in new[] { DemoSettlementTier.Village, DemoSettlementTier.Town })
+        foreach (var tier in new[] { DemoSettlementTier.Village, DemoSettlementTier.Town, DemoSettlementTier.City }) // 第 08-24 章：城市級設施
             foreach (var facility in DemoSettlementHistory.FacilitiesOf(tier).Where(f => f.TechId is not null))
                 Assert.True(DemoTechTooltip.Effects.ContainsKey(facility.TechId!), facility.TechId);
     }

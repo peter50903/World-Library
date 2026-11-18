@@ -9,7 +9,14 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public sealed record WarFront(int Key, string Label, DemoCellRef From, DemoCellRef Target, int TargetSettlement,
     int AttackerRealm, int DefenderRealm, long AttackerArmy, long DefenderArmy, long AttackerLosses, long DefenderLosses, int Weeks,
-    Color? RebelColor = null, bool RebelsAttack = false);
+    Color? RebelColor = null, bool RebelsAttack = false)
+{
+    /// <summary>第 08-22a 章：征服戰爭的目標已被攻陷（政治地圖畫佔領斜紋）。</summary>
+    public bool Occupied { get; init; }
+
+    /// <summary>第 08-22a 章：征服戰爭的戰爭分數（−100～100；null＝不是征服戰爭，比分條照雙方死亡）。</summary>
+    public int? Score { get; init; }
+}
 
 /// <summary>
 /// 第 08-18m 章（試玩回饋 2026-11-11 之 8：勢力間的戰鬥表現參考十字軍之王與 Fantasy Map Simulator）：戰爭期間一直看得到——
@@ -94,7 +101,8 @@ public partial class DemoHexMap
             DrawString(font, bar + new Vector2(TempScoreBarWidth / 2f - swords / 2f, -4f), "⚔", HorizontalAlignment.Left, -1, 14,
                 new Color(1f, 0.9f, 0.6f, 0.75f + 0.25f * Mathf.Sin(seconds * 4f)));
             var total = front.AttackerLosses + front.DefenderLosses;
-            var share = total <= 0 ? 0.5f : front.DefenderLosses / (float)total;
+            // 第 08-22a 章：征服戰爭的比分條是戰爭分數（中間＝0，攻方色往右＝攻方佔上風）。
+            var share = front.Score is { } warScore ? 0.5f + warScore / 200f : total <= 0 ? 0.5f : front.DefenderLosses / (float)total;
             DrawRect(new Rect2(bar - new Vector2(1f, 1f), new Vector2(TempScoreBarWidth + 2f, 7f)), new Color(0.08f, 0.05f, 0.03f, 0.9f));
             DrawRect(new Rect2(bar, new Vector2(TempScoreBarWidth * share, 5f)), attackerColor);
             DrawRect(new Rect2(bar + new Vector2(TempScoreBarWidth * share, 0f), new Vector2(TempScoreBarWidth * (1f - share), 5f)), defenderColor);
@@ -152,6 +160,7 @@ public partial class DemoHexMap
     /// <summary>滑鼠所在格是戰爭目標時的說明（提示框第一行；沒有回傳空字串）。</summary>
     public string WarTip(int column, int row)
         => WarFronts.Where(f => f.Target.Column == column && f.Target.Row == row)
-            .Select(f => $"⚔ {f.Label}｜第 {f.Weeks} 週｜兵力 {TokenCount(f.AttackerArmy)} 對 {TokenCount(f.DefenderArmy)}｜攻方死 {f.AttackerLosses}、守方死 {f.DefenderLosses}")
+            .Select(f => $"⚔ {f.Label}｜第 {f.Weeks} 週" + (f.Score is { } score ? $"｜{(f.Occupied ? "已攻陷" : "圍城中")}｜戰爭分數 {score}" : "") // 第 08-22a 章
+                + $"｜兵力 {TokenCount(f.AttackerArmy)} 對 {TokenCount(f.DefenderArmy)}｜攻方死 {f.AttackerLosses}、守方死 {f.DefenderLosses}")
             .FirstOrDefault() ?? "";
 }

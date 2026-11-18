@@ -102,6 +102,73 @@ public sealed class DemoMonsterTests
         Assert.Equal(500, events[0].EventId);
     }
 
+    // 第 12-2j 章：黑暗時代每一週算兩週的繁衍；沉寂的地下城只要一年就甦醒。
+    [Fact]
+    public void DarkAgesBreedMonstersTwiceAsFastAndWakeLairsSooner()
+    {
+        var dungeon = new DemoDungeon(new DemoCellRef(3, 3), "測試洞窟", 3, 0, 1, 0);
+        var plain = new DemoMonsters.Fold();
+        var dark = new DemoMonsters.Fold { SurgeWeeks = (a, b) => b - a }; // 每一週都是黑暗時代
+        var weeks = 4 * DemoMonsters.TempSpawnWeeks;
+        Assert.Equal(DemoMonsters.Initial(dungeon) + 4, plain.Count(dungeon, 1, weeks));
+        Assert.Equal(DemoMonsters.Initial(dungeon) + 8, dark.Count(dungeon, 1, weeks));
+        Assert.Equal(DemoMonsters.Cap(dungeon), dark.Count(dungeon, 1, 100 * DemoMonsters.TempSpawnWeeks)); // 照樣有上限
+        Assert.Equal(DemoMonsters.TempDarkDormantWeeks, DemoMonsters.DormantWeeks(DemoAge.Dark));
+        Assert.Equal(DemoMonsters.TempDormantWeeks, DemoMonsters.DormantWeeks(DemoAge.Chaos));
+        Assert.Equal(DemoMonsters.TempDormantWeeks, DemoMonsters.DormantWeeks(null));
+    }
+
+    [Fact]
+    public void FullLairsSwarmAndCanWipeOutAVillageButNotATown()
+    {
+        // 第 12-2h 章：滿員的地下城全軍出擊；攻破村莊全村覆滅，城鎮（2 級地下城攻不破）守得住、最多死 25%；
+        // 世上只剩三個以下有人的聚落時人類死守（這裡用 lastStand: 0 讓小世界也攻得破）。
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        var home = world.Sites.Settlements.First(s => !s.IsRuin);
+        var spot = world.Map.Cells.Where(c => c.Terrain != DemoTerrain.Water && world.Sites.SettlementAt(c.Column, c.Row) is null)
+            .OrderBy(c => DemoHexWorld.Distance(new DemoCellRef(c.Column, c.Row), new DemoCellRef(home.Column, home.Row))).ThenBy(c => c.Row).ThenBy(c => c.Column)
+            .First();
+        var dungeon = new DemoDungeon(new DemoCellRef(spot.Column, spot.Row), "測試深淵", 2, 0, 99, home.Id);
+        var full = new DemoMonsterNest(dungeon, DemoMonsters.Cap(dungeon), false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        DemoDisasterStrike? Swarm(DemoMonsterNest nest, DemoSettlementTier tier, int weeks, out DemoMonsters.Plan? plan, int lastStand = 0)
+        {
+            plan = null;
+            for (var week = 1; week <= weeks; week++)
+            {
+                var p = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 10, new[] { nest }, new HashSet<int>(), RngRegistry.Create(11),
+                    tierOf: _ => tier, age: DemoAge.Dark, lastStand: lastStand);
+                if (p.Strikes.Values.FirstOrDefault(s => s.Kind == DemoSettlementEventKind.MonsterSwarm) is { } hit)
+                {
+                    plan = p;
+                    return hit;
+                }
+            }
+            return null;
+        }
+        var wiped = Assert.IsType<DemoDisasterStrike>(Swarm(full, DemoSettlementTier.Village, 400, out var wipedPlan));
+        Assert.True(wiped.Annihilate);
+        Assert.Equal(10, wiped.Deaths);
+        Assert.Contains("攻破了", wiped.Cause, StringComparison.Ordinal);
+        Assert.Contains(wipedPlan!.Kills, k => k.SettlementId == wiped.SettlementId && k.Kills > 0); // 出擊的怪物有耗損
+        Assert.Empty(wipedPlan.Cleared);
+        var held = Assert.IsType<DemoDisasterStrike>(Swarm(full, DemoSettlementTier.Town, 400, out _));
+        Assert.False(held.Annihilate);
+        Assert.InRange(held.Deaths, 1, 10 * DemoMonsters.TempSwarmDeathPercent / 100);
+        Assert.Contains("死守", held.Cause, StringComparison.Ordinal);
+        // 最後的據點：有人的聚落不多於 lastStand 個時，村莊也攻不破。
+        var lastStand = Assert.IsType<DemoDisasterStrike>(Swarm(full, DemoSettlementTier.Village, 400, out _, world.Sites.Settlements.Count));
+        Assert.False(lastStand.Annihilate);
+        Assert.InRange(lastStand.Deaths, 1, 10 * DemoMonsters.TempSwarmDeathPercent / 100);
+        // 沒有滿員不會出擊；黑暗、混沌時代機率加倍。
+        Assert.Null(Swarm(full with { Monsters = DemoMonsters.Cap(dungeon) - 1 }, DemoSettlementTier.Village, 200, out _));
+        // 第 12-2j 章：一層的淺洞窟滿了也不爆獸潮。
+        var shallow = dungeon with { Layers = 1 };
+        Assert.Null(Swarm(full with { Dungeon = shallow, Monsters = DemoMonsters.Cap(shallow) }, DemoSettlementTier.Village, 400, out _));
+        Assert.Equal(2 * DemoMonsters.TempSwarmPercent, DemoMonsters.SwarmPercent(DemoAge.Chaos));
+        Assert.Equal(DemoMonsters.TempSwarmPercent, DemoMonsters.SwarmPercent(DemoAge.Hope));
+        Assert.Equal(DemoSettlementTier.Town, DemoMonsters.SwarmBreaks(dungeon with { Layers = 3 }));
+    }
+
     // 第 12-2e 節：勢力的士兵組成遠征軍，能討伐離得較遠的地下城（民兵只到三格）；等級夠就殺得光。
     [Fact]
     public void SoldierExpeditionsReachFartherAndCanClearTheDungeon()

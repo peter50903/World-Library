@@ -18,6 +18,13 @@ public sealed class DemoEraProgressTests
         Assert.Null(DemoEraProgress.Kingdom(new Dictionary<int, int> { [2] = 1 }, alive, Tier, _ => true)); // 只有一個臣屬
         Assert.Null(DemoEraProgress.Kingdom(lieges, alive, _ => DemoSettlementTier.City, _ => true)); // 不是首都
         Assert.Null(DemoEraProgress.Kingdom(lieges, new[] { 1, 2 }, Tier, _ => true)); // 臣屬沒人了
+        // 第 08-24 章：世上所有的王國（編號小的在前）；第一個王國＝其中編號最小的。
+        var two = new Dictionary<int, int> { [2] = 1, [3] = 1, [5] = 4, [6] = 5, [8] = 7 };
+        DemoSettlementTier Capitals(int id) => id is 1 or 4 or 7 ? DemoSettlementTier.Capital : DemoSettlementTier.Village;
+        var all = new[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+        Assert.Equal(new[] { 1, 4 }, DemoEraProgress.Kingdoms(two, all, Capitals, _ => true)); // 7 只有一個臣屬
+        Assert.Equal(new[] { 4 }, DemoEraProgress.Kingdoms(two, all, Capitals, id => id != 1));
+        Assert.Equal(4, DemoEraProgress.Kingdom(two, all, Capitals, id => id != 1));
     }
 
     [Fact]

@@ -119,7 +119,8 @@ public partial class DemoHexMap
 
     private string? GroupName(long group) => _mode switch
     {
-        Mode.Realm or Mode.Terrain => Sites?.Settlements.FirstOrDefault(s => s.Id == group)?.Name,
+        Mode.Realm or Mode.Terrain => Sites?.Settlements.FirstOrDefault(s => s.Id == group)?.Name is { } name
+            ? (Kingdoms.Contains((int)group) ? name + "王國" : name) : null, // 第 08-24 章：王國寫「某某王國」
         Mode.Culture => CultureNames.TryGetValue((int)group, out var c) ? c : null,
         Mode.Faith => FaithNames.TryGetValue((int)group, out var f) ? f : null,
         _ => null
@@ -405,6 +406,47 @@ public partial class DemoHexMap
     /// 地下城：有怪物的畫暗紅圓底的骷髏與數量（遠看也畫，威脅要看得到）；沉寂的只在拉近時畫灰色。
     /// 地盤本身由著色器塗成暗紅斜紋。
     /// </summary>
+    /// <summary>
+    /// 第 08-23 章【TEMP，畫面】商路：中距離以上（每格 30 像素以上），從賣糧的村莊畫一條流動的金色虛線到它的市集，
+    /// 市集那一端畫一個小圓點（周圍多個村莊供應一個小鎮，一眼看得出誰養活誰）。
+    /// </summary>
+    private void DrawTradeLinks(Vector2 origin, float cellPx)
+    {
+        if (TradeLinks.Count == 0 || cellPx < TempMidCellPx || _mode is not (Mode.Realm or Mode.Terrain))
+            return;
+        var view = new Rect2(Vector2.Zero, Size).Grow(40f);
+        var width = Mathf.Clamp(cellPx * 0.05f, 1.5f, 3.5f);
+        var dash = Mathf.Clamp(cellPx * 0.18f, 5f, 14f);
+        var flow = (Time.GetTicksMsec() / 900f) % 1f; // 虛線慢慢往市集流
+        var color = new Color(0.98f, 0.82f, 0.38f, 0.8f);
+        var shadow = new Color(0.12f, 0.08f, 0.02f, 0.55f);
+        foreach (var (from, to) in TradeLinks)
+        {
+            var a = PoliticalCenter(origin, cellPx, from.Column, from.Row);
+            var b = PoliticalCenter(origin, cellPx, to.Column, to.Row);
+            if (!view.HasPoint(a) && !view.HasPoint(b))
+                continue;
+            var length = a.DistanceTo(b);
+            if (length < 1f)
+                continue;
+            var dir = (b - a) / length;
+            // 兩端各留一點空（不壓到聚落徽章）。
+            var start = a + dir * Mathf.Min(length * 0.25f, cellPx * 0.3f);
+            var end = b - dir * Mathf.Min(length * 0.25f, cellPx * 0.35f);
+            var shift = dir * (flow * dash * 2f);
+            DrawLine(start + new Vector2(0f, 1.5f), end + new Vector2(0f, 1.5f), shadow, width + 1f, true);
+            for (var t = start + shift; (t - start).Dot(dir) < (end - start).Dot(dir); t += dir * dash * 2f)
+            {
+                var segmentEnd = t + dir * dash;
+                if ((segmentEnd - start).Dot(dir) > (end - start).Dot(dir))
+                    segmentEnd = end;
+                DrawLine(t, segmentEnd, color, width, true);
+            }
+            DrawCircle(end, width * 1.6f, color);
+        }
+        _animatedOnScreen = true;
+    }
+
     private void DrawLairs(Vector2 origin, float cellPx)
     {
         if (World is null || _provinces is null)
@@ -420,6 +462,14 @@ public partial class DemoHexMap
             if (!view.HasPoint(center))
                 continue;
             var r = Mathf.Clamp(cellPx * 0.24f, 7f, 15f);
+            // 第 12-2h 章：滿員的地下城隨時會爆發獸潮——外圈閃紅光。
+            var full = nest.Monsters >= DemoMonsters.Cap(nest.Dungeon);
+            if (full)
+            {
+                var pulse = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 260f);
+                DrawArc(center, r + 5f + pulse * 3f, 0f, Mathf.Tau, 32, new Color(1f, 0.25f, 0.15f, 0.55f + 0.4f * pulse), 2.5f, true);
+                _animatedOnScreen = true;
+            }
             DrawCircle(center + new Vector2(0f, 1.5f), r + 2f, new Color(0f, 0f, 0f, 0.4f));
             DrawCircle(center, r + 1.5f, TempLairRim);
             DrawCircle(center, r, TempLairFill);
@@ -431,7 +481,7 @@ public partial class DemoHexMap
                     new Color(0.2f, 0.02f, 0.03f, 0.9f), 3);
                 continue;
             }
-            var text = $"{nest.Dungeon.Name}　怪物 {nest.Monsters}（{nest.Dungeon.Layers} 級）";
+            var text = $"{nest.Dungeon.Name}　怪物 {nest.Monsters}（{nest.Dungeon.Layers} 級）" + (full ? "　獸潮將至" : "");
             var size = 12;
             var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
             var plate = new Rect2(center.X - width / 2f - 6f, center.Y + r + 3f, width + 12f, size + 8f);

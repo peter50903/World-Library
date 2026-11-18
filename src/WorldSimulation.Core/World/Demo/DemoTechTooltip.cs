@@ -20,6 +20,7 @@ public static partial class DemoTechTooltip
         ["TECH_IRRIGATION"] = "農田收成增加",
         ["TECH_CROP_ROTATION"] = "農田收成增加",
         ["TECH_SOIL_MANAGEMENT"] = "農田收成增加",
+        ["TECH_ADVANCED_AGRONOMY"] = "農田收成大增",
         ["TECH_IMPROVED_STONE_TOOLS"] = "工具更好用，採集與耕作的收穫增加",
         ["TECH_BASIC_FORGING"] = "鐵製工具讓收穫再增加；出現鐵匠代表，可建鐵匠鋪",
         ["TECH_HEAT_TREATMENT"] = "工具更耐用，收穫再增加",
@@ -28,17 +29,22 @@ public static partial class DemoTechTooltip
         ["TECH_ARCHERY"] = "出現獵人代表，可建獵屋；從這裡出發的遷徙隊伍較少遭狼群襲擊",
         ["TECH_NET_FISHING"] = "河流與水域的漁獲增加",
         ["TECH_WELL_DIGGING"] = "不臨水的聚落可以掘井，不必遠途挑水；開拓隊可以到離水較遠的地方建村",
-        ["TECH_MILLING"] = "有農田的聚落研磨穀物（農夫代表可建磨坊）",
+        ["TECH_MILLING"] = "有農田的聚落研磨穀物，農田收成增加（農夫代表可建磨坊）",
         ["TECH_SHAMANISM"] = "出現巫祝代表，可建祭壇",
         ["TECH_SCRIBAL_METHOD"] = "出現學者代表，可建抄寫所，所有研究都變快",
         ["TECH_ANCESTOR_RITES"] = "聚落創立第一個信仰，信仰開始在世界上流傳",
-        ["TECH_CURRENCY"] = "村莊可以建市集（升為城鎮所需的設施之一）",
+        ["TECH_CURRENCY"] = "村莊可以建市集（升為城鎮所需的設施之一）；城鎮以上成為市集，向附近的村莊買糧",
+        ["TECH_BARTER"] = "會以物易物的村莊把餘糧賣給附近的市集；城鎮以上成為市集",
         ["TECH_POTTERY_FIRING"] = "村莊可以建陶窯（升為城鎮所需的設施之一）",
         ["TECH_DEFENSIVE_WORKS"] = "城鎮可以建城牆（升為城市所需的設施之一）",
         ["TECH_ORGANIZED_RELIGION"] = "城鎮可以建神殿（升為城市所需的設施之一）",
         ["TECH_FORMAL_SCHOOLING"] = "城鎮可以建學校（升為城市所需的設施之一）",
         ["TECH_CODIFIED_LAW"] = "城鎮可以建市政廳（升為城市所需的設施之一）",
-        ["TECH_KINGSHIP"] = "城市升為首都所需"
+        ["TECH_KINGSHIP"] = "城市升為首都所需；首都統領兩個以上聚落就成立王國",
+        ["TECH_FORTIFICATION"] = "城市可以建城堡（升為首都所需的設施之一）", // 第 08-24 章：城市級設施
+        ["TECH_THEOLOGY"] = "城市可以建大神殿（升為首都所需的設施之一）",
+        ["TECH_BOOK_REPRODUCTION"] = "城市可以建圖書館（升為首都所需的設施之一）",
+        ["TECH_HOSPITAL_ORGANIZATION"] = "城市可以建醫院（升為首都所需的設施之一）"
     };
 
     /// <summary>名稱、說明、目前作用、怎麼學得快、前置（多行；不含習得年份與進度，由畫面接在後面）。</summary>

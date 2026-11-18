@@ -217,6 +217,12 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-11 章：已消失的遺跡（不重要的遺跡荒廢數年後還原成原本的土地，地圖不再畫）。</summary>
     public IReadOnlySet<int> FadedRuins { get; set; } = new HashSet<int>();
 
+    /// <summary>第 08-23 章：最近一週的商路（賣糧的村莊 → 市集；政治地圖中距離以上畫成流動的金色虛線）。</summary>
+    public IReadOnlyList<(DemoCellRef From, DemoCellRef To)> TradeLinks { get; set; } = Array.Empty<(DemoCellRef, DemoCellRef)>();
+
+    /// <summary>第 12-2j 章：目前的世界時代（政治地圖的氛圍：黑暗時代長夜降臨）。</summary>
+    public DemoAge WorldAge { get; set; } = DemoAge.Hope;
+
     /// <summary>第 12-1 章 C3：一年內遭天災的聚落（地圖畫災害標記）。</summary>
     public IReadOnlySet<int> RecentDisasters { get; set; } = new HashSet<int>();
 

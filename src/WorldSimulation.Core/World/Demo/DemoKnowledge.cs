@@ -257,11 +257,15 @@ public static class DemoKnowledge
     /// <summary>
     /// 【TEMP】第 08-12 章技術效果：來源每週供應加成。農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；
     /// 河流與開放水域：結網漁撈＋20%。取相鄰（來源格或八鄰格）聚落在該週以前已習得者的最大加成。
+    /// 第 08-23 章（使用者 2026-11-18：種植技術提升，同一塊田產量上升）：輪作、土壤管理各 25 → 50%，
+    /// 另加碾磨＋25%、進階農學＋100%——一塊田最多 375（原 200），田數上限不變（08-6b：田少、產量高）。
     /// </summary>
     public static readonly ImmutableArray<(DemoCatchmentSourceKind Kind, string TechId, long Percent)> TempSourceBonuses = ImmutableArray.Create(
         (DemoCatchmentSourceKind.Farmland, "TECH_IRRIGATION", 50L),
-        (DemoCatchmentSourceKind.Farmland, "TECH_CROP_ROTATION", 25L),
-        (DemoCatchmentSourceKind.Farmland, "TECH_SOIL_MANAGEMENT", 25L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_CROP_ROTATION", 50L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_SOIL_MANAGEMENT", 50L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_MILLING", 25L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_ADVANCED_AGRONOMY", 100L),
         (DemoCatchmentSourceKind.MainRiver, "TECH_NET_FISHING", 20L),
         (DemoCatchmentSourceKind.OpenWater, "TECH_NET_FISHING", 20L));
 
@@ -391,7 +395,7 @@ public static class DemoKnowledge
     /// </summary>
     public static bool FacilityAllows(DemoTechNode node) => true;
 
-    /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。</summary>
+    /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。第 08-24 章：<see cref="Vassals"/>＝直屬臣屬聚落數。</summary>
     public sealed record Context(
         DemoSettlementTier Tier,
         long Adults,
@@ -406,7 +410,8 @@ public static class DemoKnowledge
         bool HasNeighbour,
         long Shamans = 0,
         bool NearOre = false,
-        bool NearHills = false);
+        bool NearHills = false,
+        int Vassals = 0);
 
     /// <summary>【TEMP】第 06-3 章：礦脈在聚落幾格內算「勢力範圍內有礦脈」（採礦冶金、珠寶精工的從業條件）。</summary>
     public const int TempOreRange = 2;
@@ -450,6 +455,10 @@ public static class DemoKnowledge
                 "TECH_ORAL_LAW" => c.Elders + (c.HasLeader ? 1 : 0),
                 "TECH_BARTER" or "TECH_CURRENCY" => If(c.HasNeighbour, c.Adults),
                 "TECH_CODIFIED_LAW" => c.HasLeader ? 1 : 0,
+                // 第 08-24 章：通往王權的三項原本沒有從業者，永遠研究不出來（所以從來沒有王國）。
+                "TECH_HEREDITARY_NOBILITY" => If(c.Vassals > 0 || c.Tier >= DemoSettlementTier.Town, c.Adults), // 城鎮以上或有臣屬：世家大族
+                "TECH_TAXATION" => If(c.Vassals > 0 || c.Tier >= DemoSettlementTier.Town, c.Adults), // 市集或向臣屬收糧稅
+                "TECH_KINGSHIP" => If(c.Vassals > 0, c.Adults),                             // 多個聚落共奉一主
                 // 行會：另需任一工藝第 2 階（10P 跨領域先修）；從業者＝各工藝專家。
                 "TECH_CRAFT_GUILDS" => If(DemoTechCatalog.All.Any(n => n.Tier == 2 && n.Domain.StartsWith("10", StringComparison.Ordinal) && knows(n.Id)),
                     c.Specialists),
@@ -460,6 +469,7 @@ public static class DemoKnowledge
                 "TECH_ANCESTOR_RITES" or "TECH_SHAMANISM" => c.Elders,
                 "TECH_ORAL_TRADITION" or "TECH_FESTIVAL_CALENDAR" => c.Adults,
                 "TECH_ORGANIZED_RELIGION" => c.Shamans,                         // 第 08-11 章：城鎮的神殿；從業者＝巫祝
+                "TECH_THEOLOGY" => c.Shamans + c.Elders,                        // 第 08-24 章：城市的大神殿；巫祝與長老辯論教義
                 _ => 0
             },
             _ => 0
@@ -476,7 +486,9 @@ public static class DemoKnowledge
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null,
         IReadOnlyList<DemoWeekReport>? earlierWeeks = null, IReadOnlySet<DemoCellRef>? minedOut = null,
-        int researchPercent = 100) // 第 08-6c 章：奇蹟時代研究加快
+        int researchPercent = 100, // 第 08-6c 章：奇蹟時代研究加快
+        Func<int, int>? leaderResearchPercent = null, // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+        Func<int, int>? vassalsOf = null) // 第 08-24 章：直屬臣屬聚落數（稅制、王權的從業條件）
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -542,7 +554,8 @@ public static class DemoKnowledge
                 neighbours.Count > 0,
                 reps.Count(r => r.Role == DemoRepresentativeRole.Shaman),
                 map is not null && NearOre(map, settlement, extraOre, minedOut),
-                near.Contains(DemoTerrain.Hills));
+                near.Contains(DemoTerrain.Hills),
+                vassalsOf?.Invoke(settlement.Id) ?? 0);
             var roles = reps.Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,
@@ -585,7 +598,8 @@ public static class DemoKnowledge
                 var boost = boostNow ? checked(threshold * BoostPercent(node) / 100) : 0;
                 // 第 08-14 章第 1 節：每輪累積 TempCycleWeeks 週的經驗與傳播；實踐加速與遷入帶來的經驗照原規則各算一次。
                 var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
-                    + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100) * researchPercent / 100;
+                    + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100) * researchPercent / 100
+                    * (leaderResearchPercent?.Invoke(settlement.Id) ?? 100) / 100;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boostNow };

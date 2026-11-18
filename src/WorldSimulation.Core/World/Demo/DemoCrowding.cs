@@ -105,6 +105,27 @@ public static class DemoCrowding
         => !storesFood ? need
             : checked(need + Math.Max(0, Math.Min(need * TempStoreTopUpPercent / 100, need * TempStoreTargetWeeks - foodOpening)));
 
+    /// <summary>
+    /// 第 08-23 章：上週收到的糧稅與貿易（<paramref name="income"/>），扣掉本週已經吃掉的存糧（消耗超過本週採收的部分），
+    /// 還能多養多少人的糧（不為負）。沒有收入的聚落是 0（與原本相同）。
+    /// </summary>
+    public static long ImportRoom(long income, long consumed, long produced)
+        => Math.Max(0, income - Math.Max(0, consumed - produced));
+
+    /// <summary>第 08-23 章：同上，從週帳算（上週收入記在 <see cref="DemoSettlementWeekLedger.FoodIncome"/>）。</summary>
+    public static long ImportRoom(DemoSettlementWeekLedger ledger)
+    {
+        ArgumentNullException.ThrowIfNull(ledger);
+        return ImportRoom(ledger.FoodIncome, ledger.FoodConsumed, ledger.FoodProduced);
+    }
+
+    /// <summary>第 08-23 章：生育與擁擠分家看的餘量＝來源餘量＋糧稅與貿易還能多養的部分。</summary>
+    public static long EffectiveSlack(DemoSettlementWeekLedger ledger)
+    {
+        ArgumentNullException.ThrowIfNull(ledger);
+        return checked(ledger.SourceSlack + ImportRoom(ledger));
+    }
+
     /// <summary>糧食寬裕（可以受孕）：沒缺糧，且來源餘量 ≥ 需求 × TEMP 百分比。非共享採集世界沒有來源帳，只看缺糧。</summary>
     public static bool Ample(bool shared, long shortage, long need, long slack)
         => shortage == 0 && (!shared || checked(slack * 100) >= checked(need * TempBirthSlackPercent));
@@ -128,7 +149,8 @@ public static class DemoCrowding
         var childGrowth = checked(children * (food - food * DemoSurvivalTempSettings.Current.ChildFoodPercent / 100));
         var workers = Math.Max(0, ledger.AdultWorkersOpening - ledger.WaterCarriers);
         var demand = checked(ledger.FoodConsumed + ledger.FoodShortage);
-        var budget = Math.Min(ledger.SourceSlack, checked(ledger.LabourCap(workers, config) - demand)) - childGrowth;
+        // 第 08-23 章：買進與收稅的糧不必自己採，勞力上限也加上這一份。
+        var budget = Math.Min(EffectiveSlack(ledger), checked(ledger.LabourCap(workers, config) - demand + ImportRoom(ledger))) - childGrowth;
         return budget < 0 || food <= 0 ? 0 : Math.Max(0, budget / food - pregnant);
     }
 
@@ -144,6 +166,6 @@ public static class DemoCrowding
         ArgumentNullException.ThrowIfNull(ledger);
         return report.Sources.Count > 0
             && Crowded(ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage,
-                ledger.PopulationOpening - ledger.StarvationDeaths, ledger.SourceSlack);
+                ledger.PopulationOpening - ledger.StarvationDeaths, EffectiveSlack(ledger)); // 第 08-23 章
     }
 }

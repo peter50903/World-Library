@@ -39,11 +39,18 @@ public static class Saga
 
         var world = new DemoObserverWorld(WorldRecipe.ForSeeds(seed, null, size), DemoWeeklyTempConfig.LivingForagingSample);
         var opening = DemoSaga.Opening(world);
-        for (var d = 0; d < years * daysPerYear; d++)
-            world.AdvanceOneDay();
+        var balance = new BalanceTracker(); // 第 12-2h 章：順便每 10 年取一次人類與怪物的消長（大地圖不必另跑一次）
+        for (var year = 1; year <= years; year++)
+        {
+            for (var d = 0; d < daysPerYear; d++)
+                world.AdvanceOneDay();
+            balance.ObserveYearEnd(world, year, year == years);
+        }
         output.WriteLine($"=== 史書｜種子 {seed}｜{years} 年｜地圖 {DemoMapSizes.Name(size)}（{world.Map.Columns}×{world.Map.Rows}）===");
         foreach (var line in DemoSaga.Write(world, opening))
             output.WriteLine(line);
+        output.WriteLine();
+        output.WriteLine("人類與怪物消長：" + balance.Line(seed, size));
         return 0;
     }
 }

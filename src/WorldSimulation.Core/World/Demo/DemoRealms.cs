@@ -46,6 +46,12 @@ public sealed record DemoRealmContext(
     /// <summary>第 08-6c 章：某一週的世界時代（混沌時代忠誠降低）；沒給＝希望時代（測試）。</summary>
     public Func<int, DemoAge>? AgeOfWeek { get; init; }
 
+    /// <summary>第 08-22g 章：兩個信仰的敵意（1＝誤入歧途、2＝敵對；見 <see cref="DemoFaiths.Hostility"/>）；沒給＝不同信仰一律敵對（測試）。</summary>
+    public Func<int, int, int>? FaithHostility { get; init; }
+
+    /// <summary>兩個信仰的敵意（同一個＝0）。</summary>
+    public int HostilityOf(int a, int b) => a == b ? 0 : FaithHostility?.Invoke(a, b) ?? 2;
+
     /// <summary>觀察者所知的對象人口（沒有消息模型時是即時人口）。</summary>
     public long KnownResidents(int observer, int target) => Known?.Invoke(observer, target) ?? Residents(target);
 }
@@ -81,6 +87,9 @@ public static partial class DemoRealms
 
     /// <summary>【TEMP】忠誠回到這個值以上才退出派系。</summary>
     public const int TempLeaveLoyalty = 10;
+
+    /// <summary>【TEMP】第 08-22g 章：下級的信仰與上級同源（誤入歧途）時的忠誠扣分（不同源的敵對信仰照舊 −15）。</summary>
+    public const int TempAstrayFaithLoyalty = -8;
 
     private const string Namespace = "TEMP-REALM-v2";
 
@@ -214,7 +223,8 @@ public static partial class DemoRealms
         var lordTraits = ctx.Leader?.Invoke(fold.Seat(liege))?.Traits ?? DemoTrait.None;
         if (ctx.Faith(vassal) is { } f1 && ctx.Faith(liege) is { } f2 && f1 != f2 && !DemoTraits.Has(lordTraits, DemoTrait.Cynical))
         {
-            factors.Add(new("信仰不同", -15));
+            // 第 08-22g 章：同源的信仰（誤入歧途）只扣一半。
+            factors.Add(ctx.HostilityOf(f1, f2) == 1 ? new("信仰誤入歧途", TempAstrayFaithLoyalty) : new("信仰不同", -15));
             if (DemoTraits.Has(lordTraits, DemoTrait.Zealous))
                 factors.Add(new("領袖虔誠，容不下異教", DemoTraits.TempZealousFaithLoyalty));
         }
@@ -272,7 +282,9 @@ public static partial class DemoRealms
 
     /// <summary>本週獨立戰爭的交戰（首領與上級；開戰的下一週起）；<paramref name="taken"/>＝本週已有天災或怪物的聚落。</summary>
     public static IReadOnlyDictionary<int, DemoDisasterStrike> Battles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
-        Func<int, DemoTrait>? temper = null) // 第 08-10h 章：聚落領袖的性格（勇猛、怯懦改變對方的死傷）
+        Func<int, DemoTrait>? temper = null, // 第 08-10h 章：聚落領袖的性格（勇猛、怯懦改變對方的死傷）
+        DemoHexWorld? map = null, // 第 08-22b 章：地形（守方據守丘陵、森林，攻方渡河）
+        Func<int, string?>? heroOf = null) // 第 08-22f 章：聚落在世的英雄（名字；沒有＝null）帶兵
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(sites);
@@ -292,7 +304,7 @@ public static partial class DemoRealms
                 strikes[s.LiegeId] = new DemoDisasterStrike(s.LiegeId, DemoSettlementEventKind.SecessionBattle,
                     Deaths(rebels * DemoTraits.BattlePercent(temper?.Invoke(s.VassalId) ?? DemoTrait.None) / 100, residents(s.LiegeId), 3), s.Civil ? $"出兵討伐作亂的{Name(s.VassalId)}" : $"出兵鎮壓叛離的{Name(s.VassalId)}");
         }
-        ConquestBattles(week, fold, sites, residents, taken, rng, strikes, temper); // 第 08-19e 章
+        ConquestBattles(week, fold, sites, residents, taken, rng, strikes, temper, map, heroOf); // 第 08-19e 章
         return strikes;
     }
 

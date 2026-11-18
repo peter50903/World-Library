@@ -59,7 +59,8 @@ public sealed class DemoHopeEraTests
             for (var d = 0; d < 30 * TestCalendar.DaysPerYear; d++)
                 world.AdvanceOneDay();
             // 第 08-7c 章：希望時代是序章，30 年內可能已進入開拓時代（恢復餓死）；只驗收希望時代的那些週。
-            var hopeEnds = world.Era == DemoEra.Hope ? int.MaxValue : world.Knowledge.EraWeek;
+            var hopeEnds = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.EraBegan && e.Count == (long)DemoEra.Pioneer)
+                .Select(e => e.Week).DefaultIfEmpty(int.MaxValue).Min(); // 第 08-24 章：以開拓時代開始那一週為準（之後可能還有征服時代）
             var weeks = world.WeekReports().Where(w => w.Week <= hopeEnds).ToList();
             Assert.All(weeks, w =>
             {

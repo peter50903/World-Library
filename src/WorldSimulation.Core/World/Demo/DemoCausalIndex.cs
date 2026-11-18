@@ -339,6 +339,8 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.FarmlandAbandoned:
                 // 第 08-11 章：根因（附近已無人耕作；開發度另存於土地開發狀態）。
                 return parent is null && e.Count > 0 ? null : "農田荒廢是根因，事件人數欄必須是格編號";
+            case DemoSettlementEventKind.FaithSchism: // 第 08-22d 章：根因；人數欄＝新信仰編號
+            case DemoSettlementEventKind.FaithConverted: // 第 08-22g 章：根因；人數欄＝新的主要信仰編號
             case DemoSettlementEventKind.CultureSplit:
                 // 第 08-8 章 B4：根因（斷絕往來的計時另存於文化狀態）。
                 return parent is null && e.Count > 0 ? null : "文化分化是根因，事件人數欄必須是新文化編號";
@@ -368,6 +370,7 @@ public sealed class DemoCausalIndex
                     ? null : "隕石礦脈的直接原因必須是同週同聚落的隕石事件";
             case DemoSettlementEventKind.MonsterRaid:
             case DemoSettlementEventKind.MonsterHunt:
+            case DemoSettlementEventKind.MonsterSwarm: // 第 12-2h 章
                 // 第 12-2 章：根因；人數欄＝死亡人數（與天災同一欄週帳）。
                 return parent is null && e.Count >= 0 ? null : "怪物襲擊、討伐是根因，事件人數欄是死亡人數";
             case DemoSettlementEventKind.MonsterSlain:
@@ -389,6 +392,7 @@ public sealed class DemoCausalIndex
             case DemoSettlementEventKind.WarDeclared: // 第 08-19e 章：人數欄＝戰爭目標或征服者
             case DemoSettlementEventKind.Conquered:
             case DemoSettlementEventKind.WarEnded:
+            case DemoSettlementEventKind.Occupied: // 第 08-22a 章：人數欄＝攻方
             case DemoSettlementEventKind.CivilWar: // 第 08-19f 章
             case DemoSettlementEventKind.Usurped:
                 return parent is null && e.Count > 0 && e.Count != e.SettlementId ? null : "歸附、脫離與獨立是根因，事件人數欄必須是另一個聚落（上級）的編號";
@@ -586,6 +590,6 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.Birth => "出生",
         DemoSettlementEventKind.NaturalDeath => "自然死亡",
         DemoSettlementEventKind.SettlementRuined => "成為遺跡",
-        _ => "未知"
+        _ => Enum.IsDefined(kind) ? DemoEventTypes.Of(kind).Name : "未知" // 第 08-22g 章：其他種類用正式事件類型的名稱（原本篩選選單都顯示「未知」）
     };
 }

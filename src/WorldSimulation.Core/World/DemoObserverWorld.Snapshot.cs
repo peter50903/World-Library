@@ -94,6 +94,20 @@ public sealed partial class DemoObserverWorld
         var cultureHistory = state.GetProperty("Culture").Deserialize<DemoCultureState>() ?? DemoCultureState.Empty;
         // 第 12-1 章 C1：狩獵加成依年度名單（野生動物其餘欄位在下方驗證）。
         var wildlife = state.TryGetProperty("Wildlife", out var wl) ? wl.Deserialize<DemoWildlifeState>() ?? DemoWildlifeState.Empty : DemoWildlifeState.Empty;
+        // 第 08-23 章：貿易只是移轉（全部賣的＝全部買的）；週帳記的「上週收入」＝上週收的糧稅＋買進的糧。
+        DemoWeekReport? previousReport = null;
+        foreach (var report in reports)
+        {
+            if (report.Settlements.Sum(l => l.FoodTradeOut) != report.Settlements.Sum(l => l.FoodTradeIn))
+                Reject($"第 {report.Week} 週的糧食貿易買賣不相等");
+            var before = previousReport is not null && previousReport.Week == report.Week - 1
+                ? previousReport.Settlements.ToDictionary(l => l.SettlementId, l => checked(l.FoodTaxReceived + l.FoodTradeIn))
+                : null;
+            foreach (var ledger in report.Settlements)
+                if (before is not null && ledger.FoodIncome != before.GetValueOrDefault(ledger.SettlementId))
+                    Reject($"第 {report.Week} 週聚落 #{ledger.SettlementId} 記的上週收入與上週帳不符");
+            previousReport = report;
+        }
         foreach (var report in reports)
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
                 (s, week) => (waterKnowledge.Records is null ? 0
@@ -533,7 +547,16 @@ public sealed partial class DemoObserverWorld
                 || from is null || from.FoundedWeek >= founded.FoundedWeek
                 || map.GetCell(founded.Column, founded.Row).Terrain == DemoTerrain.Water)
                 Reject($"新聚落 #{founded.Id} 的建立紀錄不合法");
-            // 資源點緊接聚落之後配號（DemoWeeklySettlement）；檢查 ID 大於既有全部、空格、非水域。
+            // 第 12-2i 章：在遺跡上重建——同一格原本的聚落必須在這之前已成為遺跡（先套用那一筆遺跡）。
+            if (sites.SettlementAt(founded.Column, founded.Row) is { } earlier)
+            {
+                var ruinedWeek = settlements.First(s => s.Id == earlier.Id).RuinedWeek;
+                if (ruinedWeek <= earlier.FoundedWeek || ruinedWeek >= founded.FoundedWeek)
+                    Reject($"新聚落 #{founded.Id} 建在還有人住的聚落上");
+                if (!earlier.IsRuin)
+                    sites = sites.WithRuin(earlier.Id, ruinedWeek);
+            }
+            // 資源點緊接聚落之後配號（DemoWeeklySettlement）；檢查 ID 大於既有全部、空格（或遺跡）、非水域。
             sites = sites.WithFoundedSettlement(founded, checked(founded.Id + 1), map);
             lastWeek = founded.FoundedWeek;
         }
@@ -545,7 +568,8 @@ public sealed partial class DemoObserverWorld
         {
             if (ruin.RuinedWeek > weekCount || ruin.RuinedWeek <= ruin.FoundedWeek)
                 Reject($"聚落 #{ruin.Id} 的遺跡週次不合法");
-            sites = sites.WithRuin(ruin.Id, ruin.RuinedWeek);
+            if (!sites.Settlements.First(s => s.Id == ruin.Id).IsRuin) // 第 12-2i 章：重建前已套用的遺跡不再套用
+                sites = sites.WithRuin(ruin.Id, ruin.RuinedWeek);
         }
         return sites;
     }
@@ -606,7 +630,7 @@ public sealed partial class DemoObserverWorld
             var destinationOk = batch.Founding
                 ? batch.ToSettlementId == 0 && batch.NewsWeek == 0
                     && batch.ToName == $"新聚落預定地{destination}"
-                    && sites.SettlementAt(destination.Column, destination.Row) is null
+                    && sites.SettlementAt(destination.Column, destination.Row) is null or { IsRuin: true } // 第 12-2i 章：前往遺跡重建
                 : to is not null && to.Name == batch.ToName && destination == new DemoCellRef(to.Column, to.Row)
                     && batch.NewsWeek >= 1 && batch.NewsWeek < batch.DepartedWeek;
             if (!destinationOk || batch.FromName != from.Name

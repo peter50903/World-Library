@@ -138,7 +138,7 @@ public static class ArtAssets
         DemoSettlementEventKind.FaithFounded => Sfx2("sfx_faith"),
         DemoSettlementEventKind.KnowledgeLearned => Sfx2("sfx_tech"),
         DemoSettlementEventKind.BeastAttack => Sfx2("sfx_beast"),
-        DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => Prefer(Sfx2("sfx_monster"), Sfx2("sfx_beast")), // 第 08-18h 章
+        DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm => Prefer(Sfx2("sfx_monster"), Sfx2("sfx_beast")), // 第 08-18h 章
         DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle => Prefer(Sfx2("sfx_war"), Sfx2("sfx_beast")), // 第 08-19b 章
         DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.Independence or DemoSettlementEventKind.Conquered => Sfx2("sfx_vassal"),
         _ => Prefer(Sfx2("sfx_tornado"), SfxTornado)

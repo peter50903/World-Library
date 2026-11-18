@@ -138,7 +138,7 @@ public static class DemoPersonDetail
         if (person.Traits != DemoTrait.None)
         {
             lines.Add("性格：" + DemoTraits.Names(person.Traits));
-            foreach (var trait in DemoTraits.List(person.Traits)) // 第 08-10h 章：每項性格一句說明
+            foreach (var trait in DemoTraits.Everything(person.Traits)) // 第 08-10h 章：每項性格一句說明；第 08-22c 章：傳說特性與身體特質
                 lines.Add($"　{DemoTraits.Name(trait)}：{DemoTraits.Effect(trait)}");
         }
     }

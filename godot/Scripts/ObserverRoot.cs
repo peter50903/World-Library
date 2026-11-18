@@ -1504,6 +1504,9 @@ public partial class ObserverRoot : Control
         _hexMap.KnowledgeDomain = _world.Sites.Settlements.Where(s => _world.Knowledge.LeadingDomain(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Knowledge.LeadingDomain(s.Id)!); // 第 08-13 章：擅長領域
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
+        _hexMap.WorldAge = _world.Age; // 第 12-2j 章：政治地圖的時代氛圍
+        _hexMap.TradeLinks = DemoFoodTrade.Links(_world); // 第 08-23 章：商路
+        _hexMap.Kingdoms = _world.KingdomHeads().ToHashSet(); // 第 08-24 章：王國的名字寫「某某王國」
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章
@@ -1672,7 +1675,11 @@ public partial class ObserverRoot : Control
             if (cells.TryGetValue(w.AttackerId, out var home) && cells.TryGetValue(w.TargetId, out var goal))
                 fronts.Add(new WarFront(w.AttackerId, $"{SiteName(w.AttackerId)}對{SiteName(w.DefenderId)}：征服戰爭", home, goal, w.TargetId,
                     territory.RealmOf(w.AttackerId), territory.RealmOf(w.TargetId), RealmArmy(territory.RealmOf(w.AttackerId)),
-                    RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek)));
+                    RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek))
+                {
+                    Occupied = w.Occupied, // 第 08-22a 章
+                    Score = DemoRealms.WarScore(w, week)
+                });
         foreach (var s in _struggles.Where(x => x.Armed))
             if (cells.TryGetValue(s.LiegeId, out var liege) && cells.TryGetValue(s.VassalId, out var rebel))
             {
@@ -1711,7 +1718,7 @@ public partial class ObserverRoot : Control
         }
         else if (_hexMap.CurrentLayer != DemoHexMap.ViewLayer.Strategic // 試玩回饋 2026-11-04 之 2：遠看全圖時不播聚落的聲音
             && fresh.FirstOrDefault(e => e.Kind is DemoSettlementEventKind.SettlementFounded or DemoSettlementEventKind.SettlementRuined
-                or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded) is { } local)
+                or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism) is { } local)
             _hexMap.PlaySfx(ArtAssets.EventSfx(local.Kind)); // 第 08-18d 章：建村、廢村、文化分裂、創立信仰
     }
 }

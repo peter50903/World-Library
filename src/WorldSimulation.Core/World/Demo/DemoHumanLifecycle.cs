@@ -92,7 +92,7 @@ internal static class DemoHumanLifecycle
             // 第 14-1 章第 5 項：編號夠大、可能等於某個年齡群抽樣鍵的代表人物改用自己的動作碼（小編號照舊，既有世界不變）。
             .Where(r => draws.Hit(r.Id, report.Week,
                 r.Id < DemoCohortDemography.MinCohortKey ? DemoPopulationAction.NaturalDeath : DemoPopulationAction.RepresentativeDeath,
-                Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day))))
+                Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day)) * DemoTraits.LifePercent(r.Traits) / 100.0)) // 第 08-22h 章：體魄與壽命
             .ToList();
         var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))
             .ToDictionary(g => g.Key, g => (long)g.Count());
@@ -104,7 +104,7 @@ internal static class DemoHumanLifecycle
         {
             var ledger = ledgerOf.GetValueOrDefault(id);
             if (ledger is null || ledger.HungerDebtClosing != 0 || ledger.PopulationClosing <= 0
-                || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, ledger.SourceSlack))
+                || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, DemoCrowding.EffectiveSlack(ledger))) // 第 08-23 章
                 return 0;
             return report.Sources.Count == 0 ? long.MaxValue
                 : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);
@@ -300,7 +300,8 @@ internal static class DemoHumanLifecycle
                 var id = DemoEntityIds.NextLong(ids);
                 var name = parent is null ? names.Person(id, pick.Sex)
                     : names.PersonOfHouse(id, pick.Sex, DemoNames.FamilyOf(parent.Name), Avoid(parent));
-                var traits = role == DemoRepresentativeRole.Leader ? DemoTraits.Roll(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None) : DemoTrait.None;
+                var traits = role == DemoRepresentativeRole.Leader // 第 08-22c 章：性格＋身體特質＋傳說特性
+                    ? DemoTraits.RollPerson(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None, DemoTraits.TempLeaderLegendPercent) : DemoTrait.None;
                 var person = new DemoRepresentative(id, settlement.Id, role, name, pick.Sex, pick.BirthYear, report.Week, parent?.Id ?? 0, traits);
                 current.Add(person);
                 here.Add(person);
@@ -322,7 +323,7 @@ internal static class DemoHumanLifecycle
                     var heroName = isKin ? names.PersonOfHouse(heroId, chosen.Sex, DemoNames.FamilyOf(lord!.Name), Avoid(lord))
                         : names.Person(heroId, chosen.Sex);
                     var hero = new DemoRepresentative(heroId, settlement.Id, DemoRepresentativeRole.Hero, heroName, chosen.Sex, chosen.BirthYear, report.Week,
-                        isKin ? lord!.Id : 0, DemoTraits.Roll(k => names.TraitDraw(heroId, k), isKin ? lord!.Traits : DemoTrait.None));
+                        isKin ? lord!.Id : 0, DemoTraits.RollPerson(k => names.TraitDraw(heroId, k), isKin ? lord!.Traits : DemoTrait.None, DemoTraits.TempHeroLegendPercent));
                     current.Add(hero);
                     here.Add(hero);
                     appointments.Add(hero);

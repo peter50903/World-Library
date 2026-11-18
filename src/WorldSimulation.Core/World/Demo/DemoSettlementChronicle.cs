@@ -101,15 +101,16 @@ public sealed record DemoSettlementChronicle(
         // 第 08-6 章：習得技術、本聚落率先讓世界進入新時代。
         // 第 08-6 章 c 節：開墾完成農田。
         foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan
-            or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded
+            or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism
+            or DemoSettlementEventKind.FaithConverted
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
             or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
             or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
-            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt
+            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm
             or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
             or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
             or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
-            or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped))
+            or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped or DemoSettlementEventKind.Occupied))
         {
             var c = builder.GetValueOrDefault(e.SettlementId) ?? Empty;
             var text = e.Kind switch
@@ -117,17 +118,18 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.KnowledgeLearned => $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}",
                 DemoSettlementEventKind.FarmlandCleared => "開墾一塊農田",
                 DemoSettlementEventKind.FarmlandAbandoned => "一塊農田無人耕作，開始荒廢",
-                DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded => DemoPlayerDetail.Clean(e.Cause),
+                DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism
+                    or DemoSettlementEventKind.FaithConverted => DemoPlayerDetail.Clean(e.Cause), // 第 08-22g 章：改宗
                 DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite
                     or DemoSettlementEventKind.Flood => $"{DemoDisasters.Name(e.Kind)}：{DemoPlayerDetail.Clean(e.Cause)}", // 第 12-1 章 C3
                 DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.DungeonAppeared => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C4
                 DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C3b
                 DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted => DemoPlayerDetail.Clean(e.Cause), // 第 08-16 章第 14 節
-                DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
+                DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
                 DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                     or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
                     or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
-                    or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped => DemoPlayerDetail.Clean(e.Cause), // 第 08-19b、08-19e、08-19f 章
+                    or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped or DemoSettlementEventKind.Occupied => DemoPlayerDetail.Clean(e.Cause), // 第 08-19b、08-19e、08-19f 章
                 _ => $"率先讓世界進入{DemoKnowledge.EraName((DemoEra)e.Count)}"
             };
             builder[e.SettlementId] = c with { Milestones = c.Milestones.Add(new DemoChronicleLine(report.Week, text)) };

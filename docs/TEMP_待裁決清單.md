@@ -546,13 +546,14 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 7 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值；第 06-3 章丘陵採集為草原一半 |
-| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週；第 08-23 章留底 8 → 2 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTrade.cs` | 4 | 第 08-23 章糧食貿易（使用者 2026-11-18：小鎮的糧食主要由多個村莊提供、販賣）：6 格內、每週賣超過留底的存糧 50%、市集存糧滿 6 週需求不再買 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則；第 08-10g 章：繼承人比前任小 18～45 歲 |
-| `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 4 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50% |
+| `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 8 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50%；第 08-22c 章身體特質（每組各 12%、遺傳 50%；強壯虛弱交戰 ±10%、聰慧遲鈍研究 ±10%、俊美醜陋忠誠 ±5）與傳說特性（領袖 2%、英雄 40%；天命忠誠 +20、交戰 ×130%，龍血交戰 ×160%，賢者研究 +50%，聖者忠誠 +25）；第 08-22h 章體魄與壽命（強壯老死機率 80%、虛弱 125%、龍血 60%） |
 | `src/WorldSimulation.Core/World/Demo/DemoHeroes.cs` | 2 | 第 08-10i 章：英雄是領袖子女的機率 50%；英雄在世士兵等級 +1；傳說物品命名 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 64 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人；C3 天災至少留一人 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 65 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人；C3 天災至少留一人；第 12-2i 章遺跡格可以重建、偏好遺跡格 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -573,8 +574,8 @@
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
 | `godot/Scripts/ObserverRoot.Saga.cs` | 1 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9） |
-| `godot/Scripts/DemoHexMap.Political.cs` | 5 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9） |
-| `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 3 | 第 08-21 章政治地圖三層分界、勢力名字級（D9） |
+| `godot/Scripts/DemoHexMap.Political.cs` | 6 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9）；第 12-2j 章世界時代的氛圍（黑暗時代夜色與四角壓暗、烈日偏暖、霜雪偏冷、混沌偏紅、奇蹟微光） |
+| `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 4 | 第 08-21 章政治地圖三層分界、勢力名字級（D9）；第 08-23 章商路（中距離以上、流動的金色虛線） |
 | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
 | `godot/Scripts/TerrainSurface.Perf.cs` | 1 | 第 09-1 章效能量測烤幾塊地表（24） |
 | `godot/Scripts/TerrainSurface.cs` | 10 | 第 08-20h 章縮圖精度（超過 100 萬方格每方格一點、否則每 8 圖像素）；第 08-20g 章每格半徑 128 圖像素（一格 16×16 方格）、換算舊門檻的比例、整批換圖最多等 30 幀；第 08-18b 章方格地表：每方格 16、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
@@ -596,18 +597,18 @@
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
 | `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 10 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 12 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章壓制下限每層 1 隻；第 12-2g 節襲擊與民兵討伐的死亡上限 |
+| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 15 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章壓制下限每層 1 隻；第 12-2g 節襲擊與民兵討伐的死亡上限；第 12-2h 章獸潮（滿員每週 4%、黑暗混沌時代加倍；怪物比全村的人多才攻得破；世上只剩 3 個以下有人的聚落攻不破；6 格內；守住最多死 25%；出擊耗損一半；村莊以下攻得破、3 級地下城連城鎮也攻得破）；第 12-2j 章黑暗時代怪物繁衍加倍、沉寂的地下城 52 週就甦醒；兩層以上的地下城才會爆發獸潮 |
 | `src/WorldSimulation.Core/World/Demo/DemoCombat.cs` | 3 | 第 12-2c、12-2d 節戰鬥人員：鎮 3%／城 5% 士兵（冒險者已移除）；非戰鬥人員戰力 20%、每隻怪物牽制 3 人 |
-| `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 8 | 第 08-19b 章分裂鬥爭（參考 WorldBox 與十字軍之王）：忠誠度各因素（基本 +10、距離、文化 −30、信仰 −15、人口、層級 −20、剛歸附 +15、剛被鎮壓 +25、直屬過多、強勢統治 +10）；派系加入 <0、退出 ≥10；不滿 26 週、請願 26 週、戰爭 8～52 週、停戰 260 週、剛歸附 52 週；通牒 80%、接受 150%、請願讓步 35%＋文化不同 20%、戰爭勝負死亡比 150%；兵力＝居民 1/10、交戰每 20 兵殺 1 人；亂數命名空間 |
-| `src/WorldSimulation.Core/World/Demo/DemoRealms.Conquest.cs` | 4 | 第 08-19e 章征服時代的王國戰爭：王國至少城市層級、有臣屬；每 13 週檢查宣戰、目標 10 格內、兵力至少守方 120%、宣戰機率 25%（信仰不同 +15%、文化不同 +10%）；守方本土戰力 125%；停戰 260 週；被征服後 260 週內忠誠 −10 |
+| `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 9 | 第 08-19b 章分裂鬥爭（參考 WorldBox 與十字軍之王）：忠誠度各因素（基本 +10、距離、文化 −30、信仰 −15、人口、層級 −20、剛歸附 +15、剛被鎮壓 +25、直屬過多、強勢統治 +10）；派系加入 <0、退出 ≥10；不滿 26 週、請願 26 週、戰爭 8～52 週、停戰 260 週、剛歸附 52 週；通牒 80%、接受 150%、請願讓步 35%＋文化不同 20%、戰爭勝負死亡比 150%；兵力＝居民 1/10、交戰每 20 兵殺 1 人；亂數命名空間；第 08-22g 章同源信仰（誤入歧途）忠誠只扣 8、聖戰加成減半 |
+| `src/WorldSimulation.Core/World/Demo/DemoRealms.Conquest.cs` | 9 | 第 08-19e 章征服時代的王國戰爭：王國至少城市層級、有臣屬；每 13 週檢查宣戰、目標 10 格內、兵力至少守方 120%、宣戰機率 25%（信仰不同 +15%、文化不同 +10%）；守方本土戰力 125%；停戰 260 週；被征服後 260 週內忠誠 −10；第 08-22a 章戰爭分數（會戰 ±40、攻陷 +30、每週 +3 最多 +60；100 征服、−60 敗退、兩年 50 以上議和）與圍城週數（營地 3、村莊 4、城鎮 6、城市 8、首都 10）；第 08-22b 章會戰地形（守方在丘陵攻方死傷 ×75%、森林 ×85%，攻方渡河 ×80%）；第 08-22e 章收復失地（20 年內、兵力只要 80%、宣戰機率 +40%）；第 08-22f 章英雄帶兵（那一方造成的死傷 ×130%） |
 | `src/WorldSimulation.Core/World/Demo/DemoRealms.Civil.cs` | 2 | 第 08-19f 章繼位與內戰：新君即位 156 週內忠誠 −15；國王出身的聚落 +20；擁立者 260 週內 +25 且不加入派系；同文化不滿者組篡位派系（兵力 150% 逼退位、80% 以上內戰、不足就等） |
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationPyramid.cs` | 1 | 第 08-18b 章第 5 節人口金字塔每幾歲一層、幾歲以上併成一層（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8） |
+| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 10 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8）；第 08-22d 章異端分裂（每年檢查、信仰滿 20 年、離聖地 12 格以上或聖地成廢墟、6%）；第 08-22g 章狂熱度（基本 40、聖地在手 +30／失去 −20、每個聚落 +2 最多 +30、每個異端 −15；分裂機率 ×(150−狂熱度)%）、改宗（上級信仰每週 0.3%，乘以狂熱度差 20～200%） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
-| `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
-| `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 2 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11）；第 12-2i 章開拓隊偏好遺跡格（選址分數 ×150%） |
+| `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11）；第 08-24 章首都門檻 1000 → 300、保留下限 850 → 255 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementStory.cs` | 1 | 第 08-10d 章 C：聚落小史分期——分出幾個聚落稱為母城、最多說幾項聞名的事（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |
@@ -639,13 +640,13 @@
 | `godot/Scripts/ObserverRoot.EventDetail.cs` | 2 | 第 05 章 b2 世界紀錄以 TEMP 重大事件種類標紅；第 03 章 b 節冒煙核對 TEMP 事件類型 |
 | `src/WorldSimulation.Core/History/WorldEvent.cs` | 4 | 第 03 章 b 節：根因分類「生命週期」暫定；第 08-6 章「知識」；第 08-8 章 B4「文化」；第 12-1 章 C3「天災」 |
 | `src/WorldSimulation.Core/World/Demo/DemoPlayerDetail.cs` | 3 | 第 08-11 章玩家詳情：拿掉 TEMP 標記的文字處理（不是數值） |
-| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 21 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2）；第 08-12 章技術效果（D08-12）；第 08-8 章 B2 文化研究與生計來源加成（D08-8）；第 06-3 章礦脈勢力範圍（D06-3）；第 08-14 章分頻週數 4 |
+| `src/WorldSimulation.Core/World/Demo/DemoKnowledge.cs` | 21 | 第 08-6 章知識傳播（D08-6a）；第 08-7c 章門檻倍率 110 與鄰近傳播（D08-7c）；第 08-9 章 A1 閘門、從業者、工具階梯（D08-7a-A1）；A2 專家、學者、實踐加速（D08-7a-A2）；第 08-12 章技術效果（D08-12）；第 08-8 章 B2 文化研究與生計來源加成（D08-8）；第 06-3 章礦脈勢力範圍（D06-3）；第 08-14 章分頻週數 4；第 08-24 章世襲貴族、稅制、王權、神學的從業者 |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldChronicle.cs` | 3 | 第 08-10b 章：編年史最近 10 年以外每 10 年折疊（畫面顯示參數）；第 08-10d 章：世界大事的輕重、年代小結的引述件數與定性門檻（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoSaga.cs` | 2 | 第 08-10e、08-10f 章：文字史書終章列 3 個最大的聚落、每卷技術點名 4 項、每卷最多 3 位人物（事蹟至少 2 件、降服 3 個稱征服者）（顯示規則）；第 08-10m 節每卷逐條寫的英雄數與合成句列出的名稱數 |
 | `src/WorldSimulation.Core/World/Demo/DemoAges.cs` | 4 | 第 08-6c 章：世界時代每段 30～60 年；烈日熱浪野火 ×3、黑暗地下城機率 ×3 與上限 ×2、混沌忠誠 −15、霜雪食物來源 −25%、奇蹟研究 ×150% 與士兵 +1 |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 8 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11）；第 08-6b 章田數上限（營 1、村 2、鎮 2、城 3、都 3，每項農耕技術 +1，最多 6） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 55 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種；第 08-19e 章宣戰、征服戰爭交戰、征服、征服失敗四種；第 08-19f 章繼位、內戰、篡位三種 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 59 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種；第 08-19e 章宣戰、征服戰爭交戰、征服、征服失敗四種；第 08-19f 章繼位、內戰、篡位三種；第 08-22a 章攻陷；第 12-2h 章獸潮；第 08-22d 章異端分裂；第 08-22g 章改宗 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 8 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明；第 08-18i 章圖例最多列 6 個 |
 | `godot/Scripts/ObserverRoot.Letters.cs` | 2 | 第 08-18i 章重大事件通知：停留 25 秒、最多 5 張、寬 300；怪物襲擊死 3 人、一週餓死 5 人以上才通知 |

@@ -52,6 +52,18 @@ public static class DemoMonsters
     /// <summary>【TEMP】殺光後沉寂幾週（三年）才再生。</summary>
     public const int TempDormantWeeks = 156;
 
+    /// <summary>
+    /// 第 12-2j 章【TEMP】黑暗時代怪物猖獗（12-2h 的原則：人類與怪物輪流佔上風，時代輪替時強弱跟著變）：
+    /// 黑暗時代每一週算兩週的繁衍（每 6.5 週多一隻）；沉寂的地下城只要 <see cref="TempDarkDormantWeeks"/> 週就甦醒。
+    /// </summary>
+    public const int TempDarkDormantWeeks = 52;
+
+    /// <summary>第 12-2j 章【TEMP】：幾層以上的地下城才會爆發獸潮（一層的淺洞窟只有零星的襲擊）。</summary>
+    public const int TempSwarmMinLayers = 2;
+
+    /// <summary>第 12-2j 章：這個時代沉寂的地下城要幾週才甦醒。</summary>
+    public static int DormantWeeks(DemoAge? age) => age == DemoAge.Dark ? TempDarkDormantWeeks : TempDormantWeeks;
+
     /// <summary>【TEMP】襲擊機率：每隻怪物每週 1%、最多 8%（第 08-18l 章：原 3%、25%，地下城附近的村子幾乎每月被襲擊而人口流失）。</summary>
     public const int TempRaidPercentPerMonster = 1, TempMaxRaidPercent = 8;
 
@@ -125,7 +137,22 @@ public static class DemoMonsters
 
     public static (long CellId, int Kills) DecodeKills(long count) => (count / 1000, (int)(count % 1000));
 
-    public static bool IsStrike(DemoSettlementEventKind kind) => kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt;
+    /// <summary>
+    /// 第 12-2h 章【TEMP】獸潮（使用者 2026-11-18：遊戲的兩個重點是文明發展與人類和怪物的領地爭奪，雙方勢均力敵、輪流佔上風；獸潮可以把村莊打成廢墟）：
+    /// 怪物滿員的地下城每週以 <see cref="TempSwarmPercent"/>%（黑暗、混沌時代加倍）全軍出擊，打離範圍 <see cref="TempSwarmReach"/> 格內最近的有人聚落。
+    /// 守方全村迎戰；怪物被擊殺不到一半、怪物比全村的人還多、而且目標是村莊以下（3 級地下城連城鎮也攻得破），聚落被攻破、全村覆滅（之後成為遺跡，怪物的地盤擴張過去）；
+    /// 但世上只剩 <see cref="TempSwarmLastStand"/> 個以下有人的聚落時，人類死守最後的據點、攻不破（文明發展是第一個重點，獸潮不會讓人類滅絕）。
+    /// 守住了也最多死 <see cref="TempSwarmDeathPercent"/>%。出擊的怪物另有一半耗損在路上（散入荒野；地下城要很久才再滿員，人類有時間恢復）。
+    /// </summary>
+    public const int TempSwarmPercent = 4, TempSwarmReach = 6, TempSwarmDeathPercent = 25, TempSwarmSpentDivisor = 2, TempSwarmLastStand = 3;
+
+    /// <summary>第 12-2h 章：這個時代的獸潮機率（黑暗、混沌時代怪物猖獗，機率加倍——人類與怪物輪流佔上風）。</summary>
+    public static int SwarmPercent(DemoAge? age) => age is DemoAge.Dark or DemoAge.Chaos ? TempSwarmPercent * 2 : TempSwarmPercent;
+
+    /// <summary>第 12-2h 章：獸潮攻得破的聚落層級（3 級地下城連城鎮也攻得破）。</summary>
+    public static DemoSettlementTier SwarmBreaks(DemoDungeon dungeon) => dungeon.Layers >= 3 ? DemoSettlementTier.Town : DemoSettlementTier.Village;
+
+    public static bool IsStrike(DemoSettlementEventKind kind) => kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm;
 
     /// <summary>
     /// 由事件推得的怪物數（依序餵入已提交的事件；<see cref="At"/> 查某週結束時的狀態）。
@@ -134,6 +161,9 @@ public static class DemoMonsters
     public sealed class Fold
     {
         private readonly Dictionary<long, (int Week, int Count, bool Dormant)> _base = new();
+
+        /// <summary>第 12-2j 章：第 a 週之後到第 b 週（含）有幾週是黑暗時代（繁衍加倍；沒給＝沒有，測試）。</summary>
+        public Func<int, int, int>? SurgeWeeks { get; init; }
         private readonly Dictionary<int, long> _killsBy = new();
 
         /// <summary>第 12-2c 節：這個聚落累計殺了幾隻怪物（紀錄用；第 12-2d 節起不再影響戰力）。</summary>
@@ -169,7 +199,9 @@ public static class DemoMonsters
             var (from, count, dormant) = _base.TryGetValue(cellId, out var b) ? b : (dungeon.AppearedWeek, Initial(dungeon), false);
             if (dormant)
                 return 0;
-            return Math.Min(Cap(dungeon), count + Math.Max(0, week - from) / TempSpawnWeeks);
+            var weeks = Math.Max(0, week - from);
+            var surge = weeks > 0 && SurgeWeeks is { } dark ? dark(from, week) : 0; // 第 12-2j 章：黑暗時代每週算兩週
+            return Math.Min(Cap(dungeon), count + (weeks + surge) / TempSpawnWeeks);
         }
 
         public DemoMonsterNest At(DemoDungeon dungeon, long cellId, int week)
@@ -210,7 +242,9 @@ public static class DemoMonsters
     /// </remarks>
     public static Plan Roll(int week, DemoEra era, DemoHexWorld map, DemoWorldSites sites, Func<int, long> residents,
         IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null,
-        Func<int, DemoCombatForce>? expedition = null)
+        Func<int, DemoCombatForce>? expedition = null,
+        Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null, // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
+        int lastStand = TempSwarmLastStand) // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
@@ -227,12 +261,13 @@ public static class DemoMonsters
         var cleared = new List<DemoMonsterNest>();
         var awakened = new List<DemoMonsterNest>();
         var living = sites.Settlements.Where(s => !s.IsRuin && residents(s.Id) > 0).OrderBy(s => s.Id).ToList();
+        var overrun = 0; // 第 12-2h 章：本週已被攻破的聚落數
         for (var slot = 0; slot < nests.Count; slot++)
         {
             var nest = nests[slot];
             if (nest.Dormant)
             {
-                if (week - nest.DormantSinceWeek >= TempDormantWeeks)
+                if (week - nest.DormantSinceWeek >= DormantWeeks(age)) // 第 12-2j 章：黑暗時代提早甦醒
                     awakened.Add(nest);
                 continue;
             }
@@ -250,6 +285,40 @@ public static class DemoMonsters
             var level = DemoCombat.MonsterLevel(nest.Dungeon);
             // 第 12-2b、12-2c 節：沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限。
             int Room(DemoCombatForce f) => DemoCombat.CanClear(f, level) ? left : Math.Max(0, left - SuppressFloor(nest.Dungeon));
+            // 第 12-2h 章：獸潮——滿員的地下城全軍出擊；這一週不再另外襲擊或被討伐。
+            if (monsters >= Cap(nest.Dungeon) && nest.Dungeon.Layers >= TempSwarmMinLayers // 第 12-2j 章：淺洞窟不爆獸潮
+                && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
+            {
+                var prey = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach)
+                    .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
+                if (prey is not null)
+                {
+                    var guard = force(prey.Id);
+                    var (hit, fallen) = DemoCombat.Clash(monsters, level, guard, defending: true, (int)(Draw(rng, week, slot, 5) % 100UL));
+                    var slain = Math.Min(hit, Room(guard));
+                    var tier = tierOf?.Invoke(prey.Id) ?? DemoSettlementTier.Camp;
+                    var people = residents(prey.Id);
+                    var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon) // 怪物比全村的人還多才攻得破
+                        && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
+                    if (broken)
+                        overrun++;
+                    var deaths = broken ? people : Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100));
+                    var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
+                    left -= slain + spent;
+                    strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
+                        ? $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）攻破了{prey.Name}，全村覆滅"
+                        : $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）來襲，{Defenders(guard)}死守，擊殺 {slain} 隻")
+                    {
+                        Annihilate = broken
+                    };
+                    kills.Add((prey.Id, nest.CellId, slain + spent, broken
+                        ? $"{nest.Dungeon.Name}的獸潮攻破{prey.Name}，怪物折損 {slain + spent} 隻（剩 {left} 隻）"
+                        : $"擊退{nest.Dungeon.Name}的獸潮，殺死 {slain} 隻、另有 {spent} 隻耗損（剩 {left} 隻）"));
+                    if (left <= 0)
+                        cleared.Add(nest);
+                    continue;
+                }
+            }
             // 襲擊：離範圍一格內最近的有人聚落；約一半的怪物出擊，全村（戰鬥與非戰鬥人員）守村。
             var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach)
                 .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();

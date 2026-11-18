@@ -638,8 +638,38 @@ public sealed partial class DemoObserverWorld
         {
             Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
             Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
-            AgeOfWeek = AgeAtWeek // 第 08-6c 章：混沌時代忠誠降低
+            AgeOfWeek = AgeAtWeek, // 第 08-6c 章：混沌時代忠誠降低
+            FaithHostility = (a, b) => DemoFaiths.Hostility(culture.Faith, a, b) // 第 08-22g 章：同源的信仰誤入歧途、不同源的敵對
         };
+    }
+
+    /// <summary>第 08-22g 章：聚落的直屬上級（沒有＝null）。</summary>
+    private static Func<int, int?> LiegeOf(DemoRealms.Fold fold) => id => fold.Liege.TryGetValue(id, out var liege) ? (int?)liege : null;
+
+    /// <summary>第 08-24 章：世上的王國（不隸屬他人、首都、會王權、勢力裡兩個以上臣屬聚落；第 08-19d 章的條件），編號小的在前。</summary>
+    public IReadOnlyList<int> KingdomHeads()
+    {
+        if (_demography is null)
+            return Array.Empty<int>();
+        var kingship = DemoTechnology.Of(DemoSettlementHistory.CapitalTechId);
+        var alive = Sites.Settlements.Where(s => !s.IsRuin && SettlementPopulation(s.Id) > 0).Select(s => s.Id);
+        return DemoEraProgress.Kingdoms(Realms().Liege, alive, id => ChronicleOf(id).Tier, id => Knowledge.Knows(id, kingship));
+    }
+
+    /// <summary>第 08-24 章：各聚落的直屬臣屬聚落數（已提交的隸屬；研究稅制、王權的從業條件）。</summary>
+    private Func<int, int> VassalCounts()
+    {
+        if (_demography is null)
+            return _ => 0;
+        var counts = Realms().Liege.GroupBy(kv => kv.Value).ToDictionary(g => g.Key, g => g.Count());
+        return id => counts.GetValueOrDefault(id);
+    }
+
+    /// <summary>第 08-22g 章：某信仰目前的狂熱度與明細（信仰頁用）。</summary>
+    public (int Value, IReadOnlyList<(string Text, int Value)> Factors) FaithFervor(int faithId)
+    {
+        var living = _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).ToList();
+        return DemoFaiths.Fervor(_culture.Faith.Faiths, faithId, living, _culture.Faith.MainFaithOf);
     }
 
     /// <summary>
@@ -665,6 +695,13 @@ public sealed partial class DemoObserverWorld
                 cache[index] = people = weeks[index].Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationClosing);
             return people.TryGetValue(target, out var known) ? known : residents(target);
         };
+    }
+
+    /// <summary>第 08-22c 章：各聚落領袖的特質讓研究變成幾 %（沒有領袖＝100）。</summary>
+    private Func<int, int> LeaderResearch(IReadOnlyList<DemoRepresentative> representatives)
+    {
+        var leaders = Leaders(representatives);
+        return id => leaders.TryGetValue(id, out var leader) ? DemoTraits.ResearchPercent(leader.Traits) : 100;
     }
 
     /// <summary>第 08-19f 章：各聚落的村長（預設用目前的代表人物）。</summary>
@@ -731,7 +768,7 @@ public sealed partial class DemoObserverWorld
         // 讀檔、壓縮或換了較早的週報（事件物件換了、或快取比目前提交的週還新）就從頭重算。
         if (!ReferenceEquals(_monsterFoldEarlier, _earlierEvents) || _monsterFoldWeek < firstWeek - 1 || _monsterFoldWeek > CommittedWeeks)
         {
-            _monsterFold = new DemoMonsters.Fold();
+            _monsterFold = new DemoMonsters.Fold { SurgeWeeks = (a, b) => DemoAges.WeeksIn(_rng, _ageChanges, DemoAge.Dark, a, b) }; // 第 12-2j 章
             foreach (var e in _earlierEvents)
                 _monsterFold.Apply(e, At);
             _monsterFoldEarlier = _earlierEvents;
@@ -793,7 +830,8 @@ public sealed partial class DemoObserverWorld
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
                     nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow), // 第 12-2c 節：戰鬥人員與非戰鬥人員
-                    ExpeditionForces(CombatForces(nestsNow))); // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
+                    ExpeditionForces(CombatForces(nestsNow)), // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
+                    id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1))); // 第 12-2h 章：獸潮
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
@@ -804,7 +842,8 @@ public sealed partial class DemoObserverWorld
                 // 進行中的獨立戰爭照常打完（關掉叛亂只擋新的派系與鬥爭）。
                 var leadersNow = Leaders(); // 第 08-10h 章：領袖的性格影響交戰
                 var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng,
-                    id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None);
+                    id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None, Map, // 第 08-22b 章：地形
+                    id => _demography.Representatives.FirstOrDefault(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)?.Name); // 第 08-22f 章：英雄帶兵
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }
@@ -838,7 +877,12 @@ public sealed partial class DemoObserverWorld
                 cultureTraits: _demography is null ? null : id => _culture.TraitsAt(id, checked(CommittedWeeks + 1)), // 第 08-8 章 B2：遷徙之民、守土
                 forbiddenSite: monsterLand.Count == 0 ? null : c => monsterLand.Contains(c), // 第 12-2a 節
                 verify: _demography is null, // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
-                liegeOf: lieges is null || lieges.Count == 0 ? null : id => lieges.TryGetValue(id, out var liege) ? liege : null); // 第 08-19g 章：糧稅
+                liegeOf: lieges is null || lieges.Count == 0 ? null : id => lieges.TryGetValue(id, out var liege) ? liege : null, // 第 08-19g 章：糧稅
+                // 第 08-23 章：市集＝城鎮以上、會以物易物或貨幣；會以物易物的村莊把餘糧賣給附近的市集（希望時代沒有）。
+                isMarket: _demography is null || _knowledge.Era == DemoEra.Hope ? null
+                    : id => ChronicleOf(id).Tier >= DemoSettlementTier.Town
+                        && (_knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)) || _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.CurrencyTech))),
+                barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)));
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
@@ -863,7 +907,9 @@ public sealed partial class DemoObserverWorld
                     MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
                     DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
-                    DemoAges.ResearchPercent(AgeAtWeek(report.Week))); // 第 08-6c 章：奇蹟時代研究加快
+                    DemoAges.ResearchPercent(AgeAtWeek(report.Week)), // 第 08-6c 章：奇蹟時代研究加快
+                    LeaderResearch(lifecycle.Population.Representatives), // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+                    VassalCounts()); // 第 08-24 章：有臣屬的勢力才研究王權
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
@@ -891,7 +937,8 @@ public sealed partial class DemoObserverWorld
                     lifecycle.Population.Representatives,
                     id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
                     checked(landNextId + cleared.Count + split.Count),
-                    id => ChronicleOf(id).Tier); // 第 08-10l 節：創立者的稱號依聚落等級
+                    id => ChronicleOf(id).Tier, // 第 08-10l 節：創立者的稱號依聚落等級
+                    LiegeOf(Realms())); // 第 08-22g 章：改宗（上級＝上週結束時的隸屬）
                 culture = culture with { Faith = faith };
                 DemoPerf.Mark("信仰");
                 // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）；C3b：熱浪、野火的開始與結束（事件接在信仰之後）。

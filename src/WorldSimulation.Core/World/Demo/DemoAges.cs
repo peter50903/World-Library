@@ -15,7 +15,7 @@ public enum DemoAge
     /// <summary>烈日時代：熱浪與野火頻仍。</summary>
     Sun = 1,
 
-    /// <summary>黑暗時代：地下城接連出現，數量上限加倍。</summary>
+    /// <summary>黑暗時代：地下城接連出現，數量上限加倍；第 12-2j 章：怪物繁衍加倍、沉寂的地下城提早甦醒。</summary>
     Dark = 2,
 
     /// <summary>混沌時代：人心浮動，下級對上級的忠誠降低。</summary>
@@ -168,7 +168,7 @@ public static class DemoAges
     public static string Description(DemoAge age) => age switch
     {
         DemoAge.Sun => "烈日當空，熱浪與野火頻仍",
-        DemoAge.Dark => "長夜降臨，地下城接連出現",
+        DemoAge.Dark => "長夜降臨，地下城接連出現，怪物繁衍加快",
         DemoAge.Chaos => "人心浮動，下級不再安分",
         DemoAge.Frost => "寒冬漫長，收成減少",
         DemoAge.Miracle => "靈光遍地，學問與英雄輩出",
@@ -177,6 +177,30 @@ public static class DemoAges
 
     /// <summary>熱浪、野火機率的倍率（百分比）。</summary>
     public static int FirePercent(DemoAge age) => age == DemoAge.Sun ? TempSunFirePercent : 100;
+
+    /// <summary>
+    /// 第 12-2j 章：第 <paramref name="after"/> 週之後到第 <paramref name="until"/> 週（含）之間，有幾週是 <paramref name="age"/>
+    /// （依時代輪替表與世界法則視窗的指定；與 <see cref="AtWeek(RngRegistry, IReadOnlyList{DemoAgeChange}, int)"/> 一致）。
+    /// </summary>
+    public static int WeeksIn(RngRegistry rng, IReadOnlyList<DemoAgeChange> changes, DemoAge age, int after, int until)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        ArgumentNullException.ThrowIfNull(changes);
+        if (until <= after)
+            return 0;
+        var spans = Schedule(rng, changes, until);
+        var total = 0;
+        for (var i = 0; i < spans.Count; i++)
+        {
+            if (spans[i].Age != age)
+                continue;
+            var start = Math.Max(after + 1, spans[i].FromWeek);
+            var end = Math.Min(until, spans[i].ToWeek);
+            if (end >= start)
+                total += end - start + 1;
+        }
+        return total;
+    }
 
     /// <summary>地下城出現機率的倍率（百分比）。</summary>
     public static int DungeonPercent(DemoAge age) => age == DemoAge.Dark ? TempDarkDungeonPercent : 100;

@@ -150,9 +150,9 @@ jobs:
             grep -q -- '--history-seed 只用於互動模式' /tmp/observer-recipe-headless.log
             # V0-07C: TEMP save slots in the text observer — save slot 2 on day 9, advance, load slot 2.
             export WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)"
-            printf '{"Version":76,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
+            printf '{"Version":89,"State":' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_3.json" # corrupt slot 3
             printf '9\nsave 2\nn\nload 2\nslots\nload 3\ns\nload 1\nsave 4\nverify 2\nverify 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-slots.log
-            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 76 版｜可讀' /tmp/observer-slots.log
+            grep -q '已儲存到 TEMP 存檔槽 2：槽 2：第 9 日｜世界種子 42｜歷史種子 [0-9]*（衍生）｜一般示範｜設定 [0-9a-f]\{8\}｜存檔第 89 版｜可讀' /tmp/observer-slots.log
             # 第 04 章 b 節：選用完整驗證。
             grep -q '完整驗證槽 2：一致（重跑耗時' /tmp/observer-slots.log
             grep -q '完整驗證槽 1：不一致——存檔槽 1 是空的' /tmp/observer-slots.log
@@ -168,7 +168,7 @@ jobs:
             # C04/C05: an older (v3, C04 format) save is refused with the single "too old" message, in the slot list and on load.
             printf '{"Version":3}' > "$WORLD_SIM_TEMP_SAVE_DIR/TEMP_slot_1.json"
             printf 'slots\nload 1\nq\n' | dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --demo --seed 42 | tee /tmp/observer-old-save.log
-            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 76 版））' /tmp/observer-old-save.log
+            grep -q '槽 1：無法辨識（版本太舊，請建立新世界（存檔第 3 版，目前第 89 版））' /tmp/observer-old-save.log
             grep -q '讀檔失敗，現在的世界沒有改變：版本太舊，請建立新世界' /tmp/observer-old-save.log
             unset WORLD_SIM_TEMP_SAVE_DIR
             # C08 §6 CLI: run exactly the card's one-year command; it must exit 0 and show the year-end date.
@@ -284,6 +284,19 @@ jobs:
             done
           done
 
+      - name: 人類與怪物消長（第 12-2h 章：多種子每 10 年；手動執行或 PR 貼「balance」標籤時跑）
+        if: (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'balance')) && hashFiles('WorldSimulation.sln') != ''
+        shell: bash
+        run: |
+          set -uo pipefail
+          # 四個程序並行（公開倉庫的執行器 4 核）：小地圖 7 個種子、中地圖 2 個種子（每行一個種子，每欄是每 10 年的數字）。
+          run() { timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --balance --seeds "$2" --years 100 --map "$1" > "/tmp/balance-$1-$3.txt" 2>&1 || echo "（未完成）" >> "/tmp/balance-$1-$3.txt"; }
+          run small 1,2,3,4 a & run small 5,6,42 b & run medium 1 a & run medium 2 b & wait
+          cat /tmp/balance-medium-b.txt >> /tmp/balance-medium-a.txt
+          for f in /tmp/balance-small-a.txt /tmp/balance-small-b.txt /tmp/balance-medium-a.txt; do
+            echo "::notice title=人類與怪物消長 $(basename "$f" .txt)::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$f" | cut -c1-3900)"
+          done
+
       - name: 文字史書（第 08-10e 章：小地圖種子 1 的一百年，全文貼在註記）
         if: hashFiles('WorldSimulation.sln') != ''
         shell: bash
@@ -307,8 +320,12 @@ jobs:
             start=$(date +%s)
             if timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map large > /tmp/saga-large.txt 2>&1; then
               elapsed=$(( $(date +%s) - start ))
-              grep -E '^卷 |人物：|英雄：|傳說物品：|家族：|世上有|勢力：|這些年裡|險境：|軍隊|王國' /tmp/saga-large.txt | cut -c1-400 | head -60 > /tmp/saga-large-short.txt
+              # 第 12-2h 章：先放每卷的人口與死因、終章、勢力與險境（英雄另一則），不再被英雄的句子擠掉。
+              grep -E '^卷 |世上有|勢力：|這些年裡|險境：|軍隊|王國|最大的聚落|繁榮的市集' /tmp/saga-large.txt | cut -c1-500 | head -40 > /tmp/saga-large-short.txt
               echo "::notice title=大地圖史書摘要::$(wc -l < /tmp/saga-large.txt) 行、跑了 ${elapsed} 秒%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-short.txt | cut -c1-3800)"
+              grep -E '人物：|英雄：|傳說物品：|家族：' /tmp/saga-large.txt | cut -c1-300 | head -30 > /tmp/saga-large-people.txt
+              echo "::notice title=大地圖史書人物::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-people.txt | cut -c1-3800)"
+              echo "::notice title=大地圖人類與怪物消長::$(grep '^人類與怪物消長：' /tmp/saga-large.txt | cut -c1-3800)"
               # 勢力的結局各幾句（史書同一卷一模一樣的句子合併，所以是下限）。
               echo "::notice title=大地圖勢力事件::請願成功 $(grep -c '接受了.*請願' /tmp/saga-large.txt)、通牒獨立 $(grep -c '自知不敵' /tmp/saga-large.txt)、獨立戰爭勝 $(grep -c '在獨立戰爭中擊敗' /tmp/saga-large.txt)、叛軍被擊潰 $(grep -c '的叛軍被' /tmp/saga-large.txt)、不分勝負 $(grep -c '不分勝負' /tmp/saga-large.txt)、征服 $(grep -c '征服了\|歸入' /tmp/saga-large.txt)、地下城被殺光 $(grep -c '怪物被殺光' /tmp/saga-large.txt)"
               cat /tmp/saga-large.txt
@@ -582,7 +599,7 @@ jobs:
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 1_realms_far 3_realms_close_crop 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
+          for name in 1_realms_far 7_trade_close_crop 3_realms_close_crop 6_dark_age 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"
