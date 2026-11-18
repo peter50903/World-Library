@@ -275,7 +275,7 @@ public static class DemoSaga
         static string I(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
         var active = world.Sites.Settlements.Where(s => !s.IsRuin).ToList();
         yield return I($"終章　第 {year} 年的世界");
-        yield return I($"　世上有 {world.WorldPopulation} 人、{active.Count} 處有人煙的聚落、{world.Sites.Settlements.Count(s => s.IsRuin)} 處遺跡。");
+        yield return I($"　世上有 {world.WorldPopulation} 人、{active.Count} 處有人煙的聚落、{world.Sites.Settlements.Count(world.Sites.IsStandingRuin)} 處遺跡。"); // 第 12-2i 章：重建過的不算
         yield return "　時代：" + DemoAges.Name(world.Age) + "。"; // 第 08-6c 章：世界時代
 
         string Titled(DemoSettlement s) => DemoSettlementHistory.TitledName(s, world.ChronicleOf(s.Id).Tier);
@@ -290,7 +290,7 @@ public static class DemoSaga
         var realms = active.Select(s => (Site: s, Vassals: territory.VassalsOf(s.Id).Count)).Where(x => x.Vassals > 0)
             .OrderByDescending(x => x.Vassals).ThenBy(x => x.Site.Id)
             .Select(x => I($"{Titled(x.Site)}統領 {x.Vassals} 個聚落")).ToList();
-        var ruins = world.Sites.Settlements.Where(x => x.IsRuin).OrderBy(x => x.RuinedWeek).ThenBy(x => x.Id)
+        var ruins = world.Sites.Settlements.Where(world.Sites.IsStandingRuin).OrderBy(x => x.RuinedWeek).ThenBy(x => x.Id) // 第 12-2i 章：重建過的不算
             .Select(x => I($"{x.Name}（全盛時 {world.ChronicleOf(x.Id).Peak} 人）")).ToList();
         if (ruins.Count > 0)
             yield return "　已成遺跡：" + string.Join("、", ruins) + "。";
@@ -349,6 +349,9 @@ public static class DemoSaga
         if (entry.Level != DemoChronicleLevel.Major || entry.Category == DemoChronicleCategory.Knowledge || entry.Weight == DemoWorldChronicle.WeightWar)
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
+            return true;
+        // 第 12-2i 章：在遺跡上重建（人類收復失去的土地）也寫——和「淪為遺跡」一來一往。
+        if (entry.Category == DemoChronicleCategory.Founding && entry.Text.Contains(DemoWorldChronicle.RebuiltMarker.Trim(), StringComparison.Ordinal))
             return true;
         // 第 08-10m 節：城鎮成立不逐條寫（世上第一座是世界大事，上面已經寫了；其餘算在「各地」的等級升降裡）；
         // 城市、首都的成立與城市降為城鎮照寫。

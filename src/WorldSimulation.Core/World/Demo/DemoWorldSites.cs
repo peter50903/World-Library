@@ -292,7 +292,7 @@ public sealed class DemoWorldSites
         var maxExisting = EntityIds().DefaultIfEmpty(0).Max();
         if (!settlement.IsFounded || settlement.Id <= maxExisting || resourcePointId <= settlement.Id)
             throw new InvalidOperationException("A founded settlement needs fresh entity IDs and a founding week.");
-        if (SettlementAt(settlement.Column, settlement.Row) is not null)
+        if (SettlementAt(settlement.Column, settlement.Row) is { IsRuin: false }) // 第 12-2i 章：遺跡上可以重建
             throw new InvalidOperationException("A settlement already stands on this cell.");
         var cell = map.GetCell(settlement.Column, settlement.Row);
         if (cell.Terrain == DemoTerrain.Water)
@@ -334,7 +334,7 @@ public sealed class DemoWorldSites
     private Dictionary<(int, int), DemoSettlement>? _byCell;
 
     /// <summary>
-    /// 某格的聚落（同格多個時取清單中第一個，與原本的線性搜尋相同）。
+    /// 某格的聚落。第 12-2i 章：遺跡上可以重建，同一格可能有好幾個聚落——取最新的（重建的聚落取代遺跡；都成了遺跡就取最後一個）。
     /// 第 08-13 章第 5 節：改用第一次查詢時建立的格索引（本物件不可變，索引不會過期）。
     /// </summary>
     public DemoSettlement? SettlementAt(int column, int row)
@@ -343,10 +343,28 @@ public sealed class DemoWorldSites
         {
             var index = new Dictionary<(int, int), DemoSettlement>(Settlements.Count);
             foreach (var s in Settlements)
-                index.TryAdd((s.Column, s.Row), s);
+                if (!index.TryGetValue((s.Column, s.Row), out var earlier) || earlier.IsRuin)
+                    index[(s.Column, s.Row)] = s;
             _byCell = index;
         }
         return _byCell.GetValueOrDefault((column, row));
+    }
+
+    /// <summary>第 12-2i 章：還留在地上的遺跡（上面沒有重建別的聚落）。</summary>
+    public bool IsStandingRuin(DemoSettlement settlement)
+    {
+        ArgumentNullException.ThrowIfNull(settlement);
+        return settlement.IsRuin && SettlementAt(settlement.Column, settlement.Row)?.Id == settlement.Id;
+    }
+
+    /// <summary>第 12-2i 章：這個聚落重建在哪個遺跡上（同一格、在它建立之前成為遺跡的最後一個；不是重建＝null）。</summary>
+    public DemoSettlement? RebuiltOn(int settlementId)
+    {
+        var settlement = Settlements.FirstOrDefault(s => s.Id == settlementId);
+        if (settlement is null || !settlement.IsFounded)
+            return null;
+        return Settlements.LastOrDefault(s => s.Id != settlement.Id && s.Column == settlement.Column && s.Row == settlement.Row
+            && s.IsRuin && s.RuinedWeek < settlement.FoundedWeek);
     }
 
     public IReadOnlyList<DemoResourcePoint> ResourcePointsOf(int settlementId)

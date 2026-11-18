@@ -7,8 +7,8 @@ namespace WorldSimulation.ObserverCli;
 
 /// <summary>
 /// 第 12-2h 章：人類與怪物的消長（使用者 2026-11-18：雙方勢均力敵、輪流佔上風）。普通世界（人類採集）每 10 年取一次，
-/// 每個種子印一行：人口、出生、怪物害死的人、有人聚落、遺跡、獸潮次數與攻破、殺死的怪物、殺光的地下城、
-/// 活著的地下城與怪物數、時代。只讀世界，不改規則；給調整獸潮、襲擊與討伐的數值用。
+/// 每個種子印一行：人口、出生、怪物害死的人、有人聚落、遺跡（第 12-2i 章：重建過的不算）、在遺跡上重建、獸潮次數與攻破、
+/// 殺死的怪物、殺光的地下城、活著的地下城與怪物數、時代。只讀世界，不改規則；給調整獸潮、襲擊與討伐的數值用。
 /// 用法：--balance [--seeds a,b,c] [--years 100] [--map small|medium|large]
 /// </summary>
 public static class Balance
@@ -50,7 +50,7 @@ public static class Balance
     private sealed class Step
     {
         public long Population, Births, MonsterDeaths, Slain;
-        public int Living, Ruins, Swarms, Overruns, Cleared, Lairs, Monsters;
+        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters;
         public char Age;
     }
 
@@ -87,6 +87,9 @@ public static class Balance
                         case DemoSettlementEventKind.DungeonCleared:
                             current.Cleared++;
                             break;
+                        case DemoSettlementEventKind.SettlementFounded when world.Sites.RebuiltOn(e.SettlementId) is not null:
+                            current.Rebuilt++; // 第 12-2i 章：在遺跡上重建
+                            break;
                     }
                 }
                 lastWeek = week.Week;
@@ -95,7 +98,7 @@ public static class Balance
                 continue;
             current.Population = world.WorldPopulation;
             current.Living = world.Sites.Settlements.Count(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0);
-            current.Ruins = world.Sites.Settlements.Count(s => s.IsRuin);
+            current.Ruins = world.Sites.Settlements.Count(world.Sites.IsStandingRuin);
             var nests = world.MonsterNests(world.CommittedWeeks);
             current.Lairs = nests.Count(n => !n.Dormant && n.Monsters > 0);
             current.Monsters = nests.Where(n => !n.Dormant).Sum(n => n.Monsters);
@@ -114,12 +117,26 @@ public static class Balance
             Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
             Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
+            Row("重建", s => s.Rebuilt.ToString(CultureInfo.InvariantCulture)),
             Row("獸潮/攻破", s => string.Create(CultureInfo.InvariantCulture, $"{s.Swarms}/{s.Overruns}")),
             Row("殺怪", s => s.Slain.ToString(CultureInfo.InvariantCulture)),
             Row("殺光", s => s.Cleared.ToString(CultureInfo.InvariantCulture)),
             Row("巢/怪", s => string.Create(CultureInfo.InvariantCulture, $"{s.Lairs}/{s.Monsters}")),
             Row("時代", s => s.Age.ToString())
         });
+        // 第 12-2i 章：小地圖跑完再存讀檔一次（遺跡上重建的聚落也要讀得回來）。
+        if (size == DemoMapSize.Small)
+        {
+            try
+            {
+                var json = world.ExportTempSave();
+                text.Append(DemoObserverWorld.ImportTempSave(json).ExportTempSave() == json ? "｜存讀檔 一致" : "｜存讀檔 不一致");
+            }
+            catch (Exception ex) when (ex is InvalidDataException or InvalidOperationException or ArgumentException)
+            {
+                text.Append("｜存讀檔 失敗：").Append(ex.Message);
+            }
+        }
         return text.ToString();
     }
 

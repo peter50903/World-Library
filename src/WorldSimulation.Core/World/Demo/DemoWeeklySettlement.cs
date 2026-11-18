@@ -928,6 +928,7 @@ internal static class DemoWeeklySettlement
                 if (map is null)
                     throw new InvalidOperationException("A founding batch needs the TEMP map.");
                 var cell = batch.Destination;
+                var ruin = weekSites.SettlementAt(cell.Column, cell.Row) is { IsRuin: true } old ? old : null; // 第 12-2i 章：在遺跡上重建
                 var foundedId = DemoEntityIds.NextInt(ids);
                 var founded = new DemoSettlement(foundedId, $"新聚落{checked(weekSites.FoundedSettlementCount + 1)}號",
                     cell.Column, cell.Row, FoundedWeek: week, FoundedFromSettlementId: batch.FromSettlementId,
@@ -935,6 +936,10 @@ internal static class DemoWeeklySettlement
                 // 第 07-1 章 b 節：希望時代的新聚落取西式奇幻音譯名（可能沿用母村名，例：新索倫）。
                 if (namer is not null)
                     founded = founded with { Name = namer(founded, weekSites.Settlements.Select(s => s.Name).ToHashSet()) };
+                // 第 12-2i 章：重建的聚落沿用遺跡的名字，冠上「新」（名字已被用過、或遺跡本來就叫「新…」就照上面取的名）。
+                if (ruin is not null && !ruin.Name.StartsWith("新", StringComparison.Ordinal)
+                    && weekSites.Settlements.All(s => s.Name != "新" + ruin.Name))
+                    founded = founded with { Name = "新" + ruin.Name };
                 weekSites = weekSites.WithFoundedSettlement(founded, DemoEntityIds.NextInt(ids), map);
                 var point = weekSites.ResourcePointsOf(founded.Id).Single();
                 reserves = reserves.Add(point.Id, 0);
@@ -945,7 +950,8 @@ internal static class DemoWeeklySettlement
                 arrivals[founded.Id] = (survivors, foodClosing, debt);
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, founded.Id, founded.Name,
                     DemoSettlementEventKind.SettlementFounded, survivors,
-                    $"來自{batch.FromName}的開拓隊，第 {batch.DepartedWeek} 週出發，沿相鄰格走了 {batch.Path.Length - 1} 格到 {cell}；"
+                    $"來自{batch.FromName}的開拓隊，第 {batch.DepartedWeek} 週出發，沿相鄰格走了 {batch.Path.Length - 1} 格到 {cell}"
+                    + (ruin is not null ? $"，在{ruin.Name}的遺跡上重建" : "") + "；"
                     + $"人口、糧食 {foodClosing}、飢餓債 {debt} 全部由隊伍帶來，新資源點存量從 0 開始（TEMP）",
                     batch.Id), emigrationEventId));
             }
@@ -1154,28 +1160,32 @@ internal static class DemoWeeklySettlement
                 // 改派開拓隊到附近 TEMP 範圍內有水源的空格（不能是聚落，也不能是別支開拓隊的目的格）。
                 // 每個聚落同時最多一支開拓隊在路上（TEMP）。
                 // 第 07 章 c 節：選址另須可及至少一個未被佔用的自然來源（非水域、可取水已由 FindFoundingSite 檢查；
-                // 主水道是水域，不能建村）。遺跡格不能直接重建【TEMP】。
+                // 主水道是水域，不能建村）。第 12-2i 章【TEMP】：遺跡格可以重建（收復被怪物、饑荒毀掉的土地；怪物佔據的地照樣不能建村）。
                 var occupiedNow = weekSites.OccupiedCells();
                 // 第 08-1 章：人類採集世界的開拓隊只選可持續餘量養得起預計人數的空地，並挑餘量最大者。
                 var partyLimit = crowded ? survivors / DemoCrowding.TempCrowdingShareDivisor : survivors / config.EmigrationShareDivisor;
                 var scoreSites = config.SharedCatchmentEnabled && config.HumanLifecycleEnabled;
-                bool SiteOk(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is null
+                bool SiteOk(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is null or { IsRuin: true }
                         && (land is null || land.StateOf(c) == DemoLandDevelopment.Undeveloped) // 第 08-6 章 c 節：不在開墾地建村
                         && !nextMigrations.Any(b => b.Founding && b.Destination == c)
                         && (forbiddenSite is null || !forbiddenSite(c)) // 第 12-2a 節：怪物佔據的地不能建村
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
                         && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
+                // 第 12-2i 章【TEMP】：人們偏好回到故地重建（舊屋、舊田、舊路還在）——遺跡格的選址分數 ×TempRebuildScorePercent%。
+                long Score(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is { IsRuin: true }
+                    ? spareMap.Value.GetValueOrDefault(c) * DemoRuins.TempRebuildScorePercent / 100
+                    : spareMap.Value.GetValueOrDefault(c);
                 // 第 08-8 章 B2：遷徙之民走得更遠找空地。
                 var searchSteps = config.FoundingSearchMaxSteps
                     + (cultureTraits is not null && cultureTraits(settlement.Id).Contains(DemoCultures.WandererTrait) ? DemoCultures.TempWandererExtraSteps : 0);
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                    searchSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                    searchSteps, SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
                     wells?.Invoke(settlement.Id) ?? false);
                 // 第 08-4 章【TEMP 規則】希望時代：附近找不到空地時，缺糧或擁擠的聚落願意走得更遠（婚嫁範圍）去開拓，
                 // 不會一直困在養不起的地方。
                 if (site.Length < 2 && config.HopeEra && searchSteps < DemoMateTempSettings.MateRouteMaxSteps)
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
                         wells?.Invoke(settlement.Id) ?? false);
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths + disasterDeaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
