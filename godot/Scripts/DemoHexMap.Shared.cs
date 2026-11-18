@@ -147,6 +147,53 @@ public partial class DemoHexMap
         return true;
     }
 
+    /// <summary>【TEMP】第 08-28 章：軍隊棋子的直徑（像素，固定大小）、行軍動畫長度（毫秒）、沒有勢力色時士兵棋子的顏色。</summary>
+    private const float TempTokenSize = 30f;
+    public const ulong TempMarchMs = 2600;
+    private static readonly Color TempTroopColor = new(0.36f, 0.47f, 0.68f);
+
+    /// <summary>怪物棋子中間的圖（紅底骷髏）。</summary>
+    private const string MonsterTokenIcon = "res://assets/icons/icon_threat.png";
+
+    /// <summary>緩動（慢慢起步、慢慢停下）。</summary>
+    private static float Ease(float t) => t * t * (3f - 2f * t);
+
+    /// <summary>
+    /// 第 08-28 章（使用者 2026-11-18：發兵或怪物侵略希望像 CK3 一樣有個視覺指示物）：一枚軍隊棋子——地上的影子、染色的木底座、
+    /// 士兵（怪物是紅底骷髏）、金邊，下方寫數量。<paramref name="foot"/>＝棋子站的地方；固定像素大小，任何縮放都看得清楚。缺素材時退回圓形與字。
+    /// </summary>
+    private void DrawArmyToken(Font font, Vector2 foot, Color color, long count, bool monster, float scale = 1f)
+    {
+        var s = TempTokenSize * scale;
+        var center = foot - new Vector2(0f, s * 0.55f);
+        DrawSetTransform(foot + new Vector2(2f, 0f), 0f, new Vector2(1f, 0.35f));
+        DrawCircle(Vector2.Zero, s * 0.5f, new Color(0f, 0f, 0f, 0.45f));
+        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        var disk = new Rect2(center - new Vector2(s, s) * 0.5f, new Vector2(s, s));
+        var tint = monster ? new Color(0.62f, 0.16f, 0.14f) : color;
+        if (PixelParts.Texture("tok_base") is { } baseTexture)
+            DrawTextureRect(baseTexture, disk, false, tint.Lightened(0.25f));
+        else
+            DrawCircle(center, s * 0.5f, tint);
+        var figure = monster ? ArtAssets.Texture(MonsterTokenIcon) : PixelParts.Texture("tok_soldier");
+        if (figure is not null)
+            DrawTextureRect(figure, disk.Grow(-s * (monster ? 0.10f : 0.06f)), false);
+        else
+            DrawString(font, center + new Vector2(-7f, 6f), monster ? "☠" : "⚔", HorizontalAlignment.Left, -1, 14, Colors.White);
+        if (PixelParts.Texture("tok_rim_gold") is { } rim)
+            DrawTextureRect(rim, disk.Grow(s * 0.05f), false, monster ? new Color(1f, 0.55f, 0.45f) : Colors.White);
+        else
+            DrawArc(center, s * 0.5f, 0f, Mathf.Tau, 24, new Color(0.95f, 0.80f, 0.35f), 2f);
+        if (count <= 0)
+            return;
+        var text = TokenCount(count);
+        var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 12).X + 8f;
+        var plate = new Rect2(new Vector2(center.X - width / 2f, foot.Y - 1f), new Vector2(width, 15f));
+        DrawRect(plate, new Color(0.10f, 0.07f, 0.04f, 0.9f));
+        DrawRect(plate, monster ? new Color(0.85f, 0.25f, 0.20f) : color.Lightened(0.2f), false, 1f);
+        DrawString(font, plate.Position + new Vector2(4f, 12f), text, HorizontalAlignment.Left, -1, 12, new Color(0.98f, 0.94f, 0.82f));
+    }
+
     /// <summary>無畫面模式與冒煙測試靜音（由觀察者介面設定）。</summary>
     public bool AudioMuted { get; set; }
 

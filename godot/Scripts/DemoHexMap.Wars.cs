@@ -26,8 +26,35 @@ public sealed record WarFront(int Key, string Label, DemoCellRef From, DemoCellR
 /// </summary>
 public partial class DemoHexMap
 {
-    /// <summary>進行中的戰線（由觀察者介面每次刷新時給）。</summary>
-    public IReadOnlyList<WarFront> WarFronts { get; set; } = Array.Empty<WarFront>();
+    /// <summary>進行中的戰線（由觀察者介面每次刷新時給）。第 08-28 章：新的戰線記下第一次看到的時間，攻方棋子照真實時間行軍。</summary>
+    public IReadOnlyList<WarFront> WarFronts
+    {
+        get => _warFronts;
+        set
+        {
+            if (!ReferenceEquals(_frontWorld, World))
+            {
+                _frontWorld = World;
+                _frontSeenMs.Clear();
+                _frontsPrimed = false;
+            }
+            _warFronts = value;
+            var now = Time.GetTicksMsec();
+            foreach (var front in value)
+                if (!_frontSeenMs.ContainsKey(front.Key))
+                    _frontSeenMs[front.Key] = _frontsPrimed ? now : 0UL; // 讀檔或換世界時已經在打的不重播
+            _frontsPrimed = true;
+        }
+    }
+
+    private IReadOnlyList<WarFront> _warFronts = Array.Empty<WarFront>();
+    private readonly Dictionary<int, ulong> _frontSeenMs = new();
+    private object? _frontWorld;
+    private bool _frontsPrimed;
+
+    /// <summary>某條戰線的攻方行軍到了幾成（0～1；舊的戰線＝1）。</summary>
+    private float MarchProgress(int key)
+        => _frontSeenMs.TryGetValue(key, out var seen) && seen > 0UL ? Math.Min(1f, (Time.GetTicksMsec() - seen) / (float)TempMarchMs) : 1f;
 
     /// <summary>【TEMP】軍旗大小（像素）、比分條寬度、斜線間距（格半徑的倍數）。</summary>
     private const float TempBannerSize = 14f, TempScoreBarWidth = 52f;
@@ -79,10 +106,13 @@ public partial class DemoHexMap
                 var side = new Vector2(-dir.Y, dir.X) * 6f;
                 DrawColoredPolygon(new[] { tip + dir * 8f, tip + side, tip - side }, attackerColor.Lightened(0.15f));
             }
-            // ③ 軍旗：攻方在路線上靠近目標處（圍攻），守方在目標。
+            // ③ 軍隊棋子（第 08-28 章，仿 CK3）：攻方在路線上靠近目標處圍攻（剛開戰時從出兵地行軍過去），守方守在目標。
             var siege = length > radius ? target - line / length * Math.Min(length * 0.5f, Math.Max(radius * 0.9f, 22f)) : target + new Vector2(-24f, 0f);
-            DrawBanner(font, siege, attackerColor, front.AttackerArmy);
-            DrawBanner(font, target + new Vector2(length > radius ? 18f : 24f, 0f), defenderColor, front.DefenderArmy);
+            var march = MarchProgress(front.Key);
+            if (march < 1f)
+                _animatedOnScreen = true;
+            DrawArmyToken(font, march < 1f && length > radius ? from.Lerp(siege, Ease(march)) : siege, attackerColor, front.AttackerArmy, false);
+            DrawArmyToken(font, target + new Vector2(length > radius ? 24f : 30f, 6f), defenderColor, front.DefenderArmy, false, 0.85f);
             // ④ 交戰圖示與比分條（攻方色＝守方死亡的比例）。
             var bar = target - new Vector2(TempScoreBarWidth / 2f, TempBannerSize * 2.6f);
             DrawCircle(bar + new Vector2(TempScoreBarWidth / 2f, -9f), 9f, new Color(0.08f, 0.05f, 0.03f, 0.85f));
@@ -98,28 +128,6 @@ public partial class DemoHexMap
             DrawLine(bar + new Vector2(TempScoreBarWidth / 2f, -1f), bar + new Vector2(TempScoreBarWidth / 2f, 6f), new Color(1f, 1f, 1f, 0.7f), 1f);
         }
     }
-
-    /// <summary>軍旗棋子：旗桿、染勢力色的旗面、下方的兵力牌（固定像素大小）。</summary>
-    private void DrawBanner(Font font, Vector2 foot, Color color, long army)
-    {
-        var s = TempBannerSize;
-        DrawSetTransform(foot + new Vector2(1f, 0f), 0f, new Vector2(1f, 0.35f));
-        DrawCircle(Vector2.Zero, s * 0.55f, new Color(0f, 0f, 0f, 0.35f));
-        DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
-        var top = foot - new Vector2(0f, s * 1.9f);
-        DrawLine(foot, top, new Color(0.18f, 0.12f, 0.07f), 2f);
-        var wave = Mathf.Sin(Time.GetTicksMsec() / 260f + foot.X * 0.05f) * 1.5f;
-        var flag = new[] { top, top + new Vector2(s, wave), top + new Vector2(s, s * 0.7f + wave), top + new Vector2(0f, s * 0.7f) };
-        DrawColoredPolygon(flag, color);
-        DrawPolyline(new[] { flag[0], flag[1], flag[2], flag[3], flag[0] }, new Color(0.1f, 0.07f, 0.04f), 1f);
-        var text = TokenCount(army);
-        var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 11).X + 6f;
-        var plate = new Rect2(foot + new Vector2(-width / 2f, 2f), new Vector2(width, 13f));
-        DrawRect(plate, new Color(0.10f, 0.07f, 0.04f, 0.85f));
-        DrawRect(plate, color, false, 1f);
-        DrawString(font, plate.Position + new Vector2(3f, 10.5f), text, HorizontalAlignment.Left, -1, 11, new Color(0.98f, 0.94f, 0.82f));
-    }
-
 
     /// <summary>滑鼠所在格是戰爭目標時的說明（提示框第一行；沒有回傳空字串）。</summary>
     public string WarTip(int column, int row)
