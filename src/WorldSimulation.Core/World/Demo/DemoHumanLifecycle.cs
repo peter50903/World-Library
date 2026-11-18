@@ -104,7 +104,7 @@ internal static class DemoHumanLifecycle
         {
             var ledger = ledgerOf.GetValueOrDefault(id);
             if (ledger is null || ledger.HungerDebtClosing != 0 || ledger.PopulationClosing <= 0
-                || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, ledger.SourceSlack))
+                || !DemoCrowding.Ample(report.Sources.Count > 0, ledger.FoodShortage, ledger.FoodConsumed + ledger.FoodShortage, DemoCrowding.EffectiveSlack(ledger))) // 第 08-23 章
                 return 0;
             return report.Sources.Count == 0 ? long.MaxValue
                 : DemoCrowding.ConceptionRoom(ledger, moved.StatsOf(id, 0, day, Rules).Pregnant);

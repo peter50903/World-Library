@@ -95,7 +95,7 @@ public sealed class BalanceTracker
 
     private sealed class Step
     {
-        public long Population, Births, MonsterDeaths, Slain, Largest;
+        public long Population, Births, MonsterDeaths, Slain, Largest, Tax, Trade;
         public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities;
         public char Age;
     }
@@ -111,6 +111,8 @@ public sealed class BalanceTracker
         foreach (var week in world.WeekReports().Where(w => w.Week > _lastWeek))
         {
             _current.Births += week.Settlements.Sum(l => l.Births);
+            _current.Tax += week.Settlements.Sum(l => l.FoodTaxReceived); // 第 08-23 章：糧稅與貿易（每 10 年合計，千為單位）
+            _current.Trade += week.Settlements.Sum(l => l.FoodTradeIn);
             foreach (var e in week.Events)
             {
                 switch (e.Kind)
@@ -169,6 +171,7 @@ public sealed class BalanceTracker
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
             Row("鎮/城", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}")),
             Row("最大", s => s.Largest.ToString(CultureInfo.InvariantCulture)),
+            Row("稅/貿(千)", s => string.Create(CultureInfo.InvariantCulture, $"{s.Tax / 1000}/{s.Trade / 1000}")),
             Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
             Row("重建", s => s.Rebuilt.ToString(CultureInfo.InvariantCulture)),
             Row("獸潮/攻破", s => string.Create(CultureInfo.InvariantCulture, $"{s.Swarms}/{s.Overruns}")),

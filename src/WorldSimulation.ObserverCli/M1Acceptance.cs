@@ -428,7 +428,7 @@ public static class M1Evaluator
                 if (!l.ReserveBalanced)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 資源點存量帳：{l.ReserveOpening}＋再生 {l.Regenerated}－採收 {l.Harvested}≠{l.ReserveClosing}");
                 if (!l.FoodBalanced)
-                    problems.Add($"{At(run, report.Week)} {Name(l)} 糧食帳：{l.FoodOpening}＋生產 {l.FoodProduced}＋帶入 {l.FoodCarriedIn}－消耗 {l.FoodConsumed}－帶出 {l.FoodCarriedOut}＋收稅 {l.FoodTaxReceived}－繳稅 {l.FoodTaxPaid}≠{l.FoodClosing}");
+                    problems.Add($"{At(run, report.Week)} {Name(l)} 糧食帳：{l.FoodOpening}＋生產 {l.FoodProduced}＋帶入 {l.FoodCarriedIn}－消耗 {l.FoodConsumed}－帶出 {l.FoodCarriedOut}＋收稅 {l.FoodTaxReceived}－繳稅 {l.FoodTaxPaid}＋買進 {l.FoodTradeIn}－賣出 {l.FoodTradeOut}≠{l.FoodClosing}");
                 if (!l.TotalResourceBalanced)
                     problems.Add($"{At(run, report.Week)} {Name(l)} 總資源（存量＋糧食）帳不平衡");
                 if (!l.HungerDebtBalanced)

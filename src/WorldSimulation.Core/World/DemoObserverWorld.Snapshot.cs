@@ -94,6 +94,20 @@ public sealed partial class DemoObserverWorld
         var cultureHistory = state.GetProperty("Culture").Deserialize<DemoCultureState>() ?? DemoCultureState.Empty;
         // 第 12-1 章 C1：狩獵加成依年度名單（野生動物其餘欄位在下方驗證）。
         var wildlife = state.TryGetProperty("Wildlife", out var wl) ? wl.Deserialize<DemoWildlifeState>() ?? DemoWildlifeState.Empty : DemoWildlifeState.Empty;
+        // 第 08-23 章：貿易只是移轉（全部賣的＝全部買的）；週帳記的「上週收入」＝上週收的糧稅＋買進的糧。
+        DemoWeekReport? previousReport = null;
+        foreach (var report in reports)
+        {
+            if (report.Settlements.Sum(l => l.FoodTradeOut) != report.Settlements.Sum(l => l.FoodTradeIn))
+                Reject($"第 {report.Week} 週的糧食貿易買賣不相等");
+            var before = previousReport is not null && previousReport.Week == report.Week - 1
+                ? previousReport.Settlements.ToDictionary(l => l.SettlementId, l => checked(l.FoodTaxReceived + l.FoodTradeIn))
+                : null;
+            foreach (var ledger in report.Settlements)
+                if (before is not null && ledger.FoodIncome != before.GetValueOrDefault(ledger.SettlementId))
+                    Reject($"第 {report.Week} 週聚落 #{ledger.SettlementId} 記的上週收入與上週帳不符");
+            previousReport = report;
+        }
         foreach (var report in reports)
             CheckSourceLedgers(report, map, sites, weekly, stocks, FarmlandBefore, WellsAt,
                 (s, week) => (waterKnowledge.Records is null ? 0

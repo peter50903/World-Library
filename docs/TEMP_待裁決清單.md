@@ -546,7 +546,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 7 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值；第 06-3 章丘陵採集為草原一半 |
-| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週；第 08-23 章留底 8 → 2 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTrade.cs` | 4 | 第 08-23 章糧食貿易（使用者 2026-11-18：小鎮的糧食主要由多個村莊提供、販賣）：6 格內、每週賣超過留底的存糧 50%、市集存糧滿 6 週需求不再買 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則；第 08-10g 章：繼承人比前任小 18～45 歲 |
 | `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 8 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50%；第 08-22c 章身體特質（每組各 12%、遺傳 50%；強壯虛弱交戰 ±10%、聰慧遲鈍研究 ±10%、俊美醜陋忠誠 ±5）與傳說特性（領袖 2%、英雄 40%；天命忠誠 +20、交戰 ×130%，龍血交戰 ×160%，賢者研究 +50%，聖者忠誠 +25）；第 08-22h 章體魄與壽命（強壯老死機率 80%、虛弱 125%、龍血 60%） |

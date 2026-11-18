@@ -4,7 +4,8 @@ namespace WorldSimulation.Core.World.Demo;
 /// 第 08-19g 章（使用者 2026-11-15：上級聚集地可以向下級聚集地徵收糧食稅金，如鎮可以向村徵集）：
 /// 每週結算的最後，隸屬於上級的聚落把期末存糧超過「留底」的部分繳 <see cref="TempTaxPercent"/>% 給直屬上級。
 /// <list type="bullet">
-/// <item>留底＝期末人口 × 每人每週糧食 × <see cref="TempKeepWeeks"/> 週：下級不會因繳稅而挨餓。</item>
+/// <item>留底＝期末人口 × 每人每週糧食 × <see cref="TempKeepWeeks"/> 週：下級不會因繳稅而挨餓。
+/// 第 08-23 章：留底 8 週 → 2 週（存糧目標只有 4 週，留底 8 週時幾乎收不到稅）；繳了稅的下級下週會多採收來補存糧。</item>
 /// <item>只繳給直屬上級（村→鎮、鎮→城）；上級收到的糧照常存進自己的糧庫（下一週才再往上繳）。</item>
 /// <item>上級已是遺跡或沒人時不收。全世界的糧食總量不變（只是移轉），週帳多兩欄：繳稅、收稅。</item>
 /// </list>
@@ -14,8 +15,8 @@ public static class DemoFoodTax
     /// <summary>【TEMP】糧稅率（%）。</summary>
     public const long TempTaxPercent = 10;
 
-    /// <summary>【TEMP】下級留底的週數（不繳稅的存糧）。</summary>
-    public const long TempKeepWeeks = 8;
+    /// <summary>【TEMP】下級留底的週數（不繳稅、不賣的存糧；第 08-23 章 8 → 2）。</summary>
+    public const long TempKeepWeeks = 2;
 
     /// <summary>這一週該繳的稅（無條件捨去）。</summary>
     public static long Due(long foodClosing, long populationClosing, long foodPerPersonPerWeek)
