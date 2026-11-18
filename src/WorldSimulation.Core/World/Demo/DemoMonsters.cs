@@ -52,6 +52,15 @@ public static class DemoMonsters
     /// <summary>【TEMP】殺光後沉寂幾週（三年）才再生。</summary>
     public const int TempDormantWeeks = 156;
 
+    /// <summary>
+    /// 第 12-2j 章【TEMP】黑暗時代怪物猖獗（12-2h 的原則：人類與怪物輪流佔上風，時代輪替時強弱跟著變）：
+    /// 黑暗時代每一週算兩週的繁衍（每 6.5 週多一隻）；沉寂的地下城只要 <see cref="TempDarkDormantWeeks"/> 週就甦醒。
+    /// </summary>
+    public const int TempDarkDormantWeeks = 52;
+
+    /// <summary>第 12-2j 章：這個時代沉寂的地下城要幾週才甦醒。</summary>
+    public static int DormantWeeks(DemoAge? age) => age == DemoAge.Dark ? TempDarkDormantWeeks : TempDormantWeeks;
+
     /// <summary>【TEMP】襲擊機率：每隻怪物每週 1%、最多 8%（第 08-18l 章：原 3%、25%，地下城附近的村子幾乎每月被襲擊而人口流失）。</summary>
     public const int TempRaidPercentPerMonster = 1, TempMaxRaidPercent = 8;
 
@@ -149,6 +158,9 @@ public static class DemoMonsters
     public sealed class Fold
     {
         private readonly Dictionary<long, (int Week, int Count, bool Dormant)> _base = new();
+
+        /// <summary>第 12-2j 章：第 a 週之後到第 b 週（含）有幾週是黑暗時代（繁衍加倍；沒給＝沒有，測試）。</summary>
+        public Func<int, int, int>? SurgeWeeks { get; init; }
         private readonly Dictionary<int, long> _killsBy = new();
 
         /// <summary>第 12-2c 節：這個聚落累計殺了幾隻怪物（紀錄用；第 12-2d 節起不再影響戰力）。</summary>
@@ -184,7 +196,9 @@ public static class DemoMonsters
             var (from, count, dormant) = _base.TryGetValue(cellId, out var b) ? b : (dungeon.AppearedWeek, Initial(dungeon), false);
             if (dormant)
                 return 0;
-            return Math.Min(Cap(dungeon), count + Math.Max(0, week - from) / TempSpawnWeeks);
+            var weeks = Math.Max(0, week - from);
+            var surge = weeks > 0 && SurgeWeeks is { } dark ? dark(from, week) : 0; // 第 12-2j 章：黑暗時代每週算兩週
+            return Math.Min(Cap(dungeon), count + (weeks + surge) / TempSpawnWeeks);
         }
 
         public DemoMonsterNest At(DemoDungeon dungeon, long cellId, int week)
@@ -250,7 +264,7 @@ public static class DemoMonsters
             var nest = nests[slot];
             if (nest.Dormant)
             {
-                if (week - nest.DormantSinceWeek >= TempDormantWeeks)
+                if (week - nest.DormantSinceWeek >= DormantWeeks(age)) // 第 12-2j 章：黑暗時代提早甦醒
                     awakened.Add(nest);
                 continue;
             }

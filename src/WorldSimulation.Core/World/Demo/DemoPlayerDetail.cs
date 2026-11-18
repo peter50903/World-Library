@@ -166,7 +166,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             // 第 12-2 章：怪物數與勢力範圍（沉寂時寫還要多久再生）。
             if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } nest)
                 lines.Add(nest.Dormant
-                    ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.TempDormantWeeks - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
+                    ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.DormantWeeks(world.Age) - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
                     : $"怪物：{nest.Monsters} 隻（{DemoCombat.MonsterLevel(nest.Dungeon)} 級）｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
         }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)

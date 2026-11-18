@@ -158,4 +158,23 @@ public sealed class DemoAgesTests
         var pending = DemoAges.Schedule(rng, new[] { new DemoAgeChange(30, DemoAge.Chaos) }, 30);
         Assert.Equal((DemoAge.Hope, 30), (pending[^1].Age, pending[^1].ToWeek));
     }
+
+    // 第 12-2j 章：某段期間有幾週是某個時代，與逐週查 AtWeek 一致（含世界法則視窗的指定與改回輪替）。
+    [Fact]
+    public void WeeksInAgreesWithTheWeekByWeekAge()
+    {
+        var rng = RngRegistry.Create(5UL);
+        var schedules = new IReadOnlyList<DemoAgeChange>[]
+        {
+            Array.Empty<DemoAgeChange>(),
+            new[] { new DemoAgeChange(700, DemoAge.Dark), new DemoAgeChange(1500, null) }
+        };
+        foreach (var changes in schedules)
+        {
+            var ages = Enumerable.Range(1, 5200).Select(w => DemoAges.AtWeek(rng, changes, w)).ToArray();
+            foreach (var age in Enum.GetValues<DemoAge>())
+                foreach (var (after, until) in new[] { (0, 5200), (100, 2600), (699, 1501), (3000, 3001), (40, 40) })
+                    Assert.Equal(ages.Skip(after).Take(until - after).Count(a => a == age), DemoAges.WeeksIn(rng, changes, age, after, until));
+        }
+    }
 }
