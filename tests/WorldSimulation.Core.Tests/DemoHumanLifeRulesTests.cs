@@ -49,7 +49,9 @@ public sealed class DemoHumanLifeRulesTests
             natural += ledgers.Sum(l => l.NaturalDeaths) + legs.Sum(m => m.NaturalDeaths);
             summaries.Add(summary);
             // 第 08-6 章 b 節：開拓時代恢復餓死；只驗收希望時代（時代開始週以前）沒有餓死。
-            var hopeUntil = world.Era == DemoEra.Hope ? int.MaxValue : world.Knowledge.EraWeek;
+            // 第 08-24 章：之後可能已有王國（征服時代，EraWeek 改成征服時代開始的週），以開拓時代開始那一週為準。
+            var hopeUntil = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.EraBegan && e.Count == (long)DemoEra.Pioneer)
+                .Select(e => e.Week).DefaultIfEmpty(int.MaxValue).Min();
             starvation += ledgers.Where(l => l.Week < hopeUntil).Sum(l => l.Deaths - l.NaturalDeaths)
                 + legs.Where(m => m.Week < hopeUntil).Sum(m => m.Deaths);
 

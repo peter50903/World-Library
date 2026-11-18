@@ -456,7 +456,7 @@ public static class DemoKnowledge
                 "TECH_BARTER" or "TECH_CURRENCY" => If(c.HasNeighbour, c.Adults),
                 "TECH_CODIFIED_LAW" => c.HasLeader ? 1 : 0,
                 // 第 08-24 章：通往王權的三項原本沒有從業者，永遠研究不出來（所以從來沒有王國）。
-                "TECH_HEREDITARY_NOBILITY" => c.Elders + (c.HasLeader ? 1 : 0),            // 長老記得各家的血緣
+                "TECH_HEREDITARY_NOBILITY" => If(c.Vassals > 0 || c.Tier >= DemoSettlementTier.Town, c.Adults), // 城鎮以上或有臣屬：世家大族
                 "TECH_TAXATION" => If(c.Vassals > 0 || c.Tier >= DemoSettlementTier.Town, c.Adults), // 市集或向臣屬收糧稅
                 "TECH_KINGSHIP" => If(c.Vassals > 0, c.Adults),                             // 多個聚落共奉一主
                 // 行會：另需任一工藝第 2 階（10P 跨領域先修）；從業者＝各工藝專家。

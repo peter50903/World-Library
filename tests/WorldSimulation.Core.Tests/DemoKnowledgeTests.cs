@@ -175,15 +175,15 @@ public sealed class DemoKnowledgeTests
         var all = Has(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.City).Select(f => f.Name)
             .Concat(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.Town).Select(f => f.Name)).ToArray());
         Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(5000, all, DemoSettlementTier.City, _ => false));
-        // 第 08-24 章：城市升首都要人口 400＋王權＋城市級設施（城堡、大神殿、糧倉、醫院）任兩種；首都保留下限 340。
+        // 第 08-24 章：城市升首都要人口 300＋王權＋城市級設施（城堡、大神殿、圖書館、醫院）任兩種；首都保留下限 255。
         static bool King(string tech) => tech == DemoSettlementHistory.CapitalTechId;
         var town = DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.Town).Select(f => f.Name).ToArray();
-        var twoCity = Has(town.Concat(new[] { "城堡", "糧倉" }).ToArray());
-        Assert.Equal(DemoSettlementTier.Capital, DemoSettlementHistory.TierFor(400, twoCity, DemoSettlementTier.City, King));
-        Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(399, twoCity, DemoSettlementTier.City, King));
+        var twoCity = Has(town.Concat(new[] { "城堡", "圖書館" }).ToArray());
+        Assert.Equal(DemoSettlementTier.Capital, DemoSettlementHistory.TierFor(300, twoCity, DemoSettlementTier.City, King));
+        Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(299, twoCity, DemoSettlementTier.City, King));
         Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(5000, Has(town.Concat(new[] { "城堡" }).ToArray()), DemoSettlementTier.City, King));
-        Assert.Equal(DemoSettlementTier.Capital, DemoSettlementHistory.TierFor(340, twoCity, DemoSettlementTier.Capital, King));
-        Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(339, twoCity, DemoSettlementTier.Capital, King));
+        Assert.Equal(DemoSettlementTier.Capital, DemoSettlementHistory.TierFor(255, twoCity, DemoSettlementTier.Capital, King));
+        Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(254, twoCity, DemoSettlementTier.Capital, King));
         Assert.Equal(DemoSettlementTier.City, DemoSettlementHistory.TierFor(5000, Has(town.Concat(new[] { "醫院" }).ToArray()), DemoSettlementTier.Capital, King));
         Assert.All(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.City), f => Assert.Equal(4, DemoTechCatalog.Get(f.TechId!).Tier));
         Assert.Equal(new[] { "營地", "村莊", "城鎮", "城市", "首都" }, Enum.GetValues<DemoSettlementTier>().Select(DemoSettlementHistory.TierName));

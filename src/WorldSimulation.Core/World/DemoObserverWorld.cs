@@ -646,6 +646,16 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-22g 章：聚落的直屬上級（沒有＝null）。</summary>
     private static Func<int, int?> LiegeOf(DemoRealms.Fold fold) => id => fold.Liege.TryGetValue(id, out var liege) ? (int?)liege : null;
 
+    /// <summary>第 08-24 章：世上的王國（不隸屬他人、首都、會王權、勢力裡兩個以上臣屬聚落；第 08-19d 章的條件），編號小的在前。</summary>
+    public IReadOnlyList<int> KingdomHeads()
+    {
+        if (_demography is null)
+            return Array.Empty<int>();
+        var kingship = DemoTechnology.Of(DemoSettlementHistory.CapitalTechId);
+        var alive = Sites.Settlements.Where(s => !s.IsRuin && SettlementPopulation(s.Id) > 0).Select(s => s.Id);
+        return DemoEraProgress.Kingdoms(Realms().Liege, alive, id => ChronicleOf(id).Tier, id => Knowledge.Knows(id, kingship));
+    }
+
     /// <summary>第 08-24 章：各聚落的直屬臣屬聚落數（已提交的隸屬；研究稅制、王權的從業條件）。</summary>
     private Func<int, int> VassalCounts()
     {

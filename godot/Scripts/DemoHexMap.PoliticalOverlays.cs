@@ -119,7 +119,8 @@ public partial class DemoHexMap
 
     private string? GroupName(long group) => _mode switch
     {
-        Mode.Realm or Mode.Terrain => Sites?.Settlements.FirstOrDefault(s => s.Id == group)?.Name,
+        Mode.Realm or Mode.Terrain => Sites?.Settlements.FirstOrDefault(s => s.Id == group)?.Name is { } name
+            ? (Kingdoms.Contains((int)group) ? name + "王國" : name) : null, // 第 08-24 章：王國寫「某某王國」
         Mode.Culture => CultureNames.TryGetValue((int)group, out var c) ? c : null,
         Mode.Faith => FaithNames.TryGetValue((int)group, out var f) ? f : null,
         _ => null

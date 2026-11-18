@@ -87,8 +87,10 @@ public sealed class DemoTechCatalogTests
         Assert.Equal(0, P("TECH_BARTER", Ctx()));
         Assert.Equal(20, P("TECH_BARTER", Ctx(neighbour: true)));
         Assert.Equal(4, P("TECH_ANCESTOR_RITES", Ctx()));
-        // 第 08-24 章：通往王權——世襲貴族＝老人＋村長；稅制要市集（城鎮以上）或有臣屬；王權要有臣屬；神學＝巫祝＋老人。
-        Assert.Equal(5, P("TECH_HEREDITARY_NOBILITY", Ctx(leader: true)));
+        // 第 08-24 章：通往王權——世襲貴族、稅制要城鎮以上或有臣屬；王權要有臣屬；神學＝巫祝＋老人。
+        Assert.Equal(0, P("TECH_HEREDITARY_NOBILITY", Ctx(DemoSettlementTier.Village, leader: true)));
+        Assert.Equal(20, P("TECH_HEREDITARY_NOBILITY", Ctx(DemoSettlementTier.Town)));
+        Assert.Equal(20, P("TECH_HEREDITARY_NOBILITY", Ctx(DemoSettlementTier.Village) with { Vassals = 1 }));
         Assert.Equal(0, P("TECH_TAXATION", Ctx(DemoSettlementTier.Village)));
         Assert.Equal(20, P("TECH_TAXATION", Ctx(DemoSettlementTier.Town)));
         Assert.Equal(20, P("TECH_TAXATION", Ctx(DemoSettlementTier.Village) with { Vassals = 1 }));
