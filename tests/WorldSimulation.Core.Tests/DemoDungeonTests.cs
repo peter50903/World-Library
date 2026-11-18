@@ -91,6 +91,23 @@ public sealed class DemoDungeonTests
     }
 
     [Fact]
+    public void NewDungeonsAppearFarFromTheExistingOnes()
+    {
+        // 第 12-2l 章：有地下城之後，新的只從離既有地下城最遠的那一批（最遠距離的 75% 以上）裡挑；還沒有地下城時照舊隨機。
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(42UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.ForagingSample);
+        var spots = world.Map.Cells.Where(c => c.Terrain is DemoTerrain.Hills or DemoTerrain.Forest).ToList();
+        var corner = new DemoCellRef(spots[0].Column, spots[0].Row);
+        var farthest = spots.Max(c => DemoHexWorld.Distance(new DemoCellRef(c.Column, c.Row), corner));
+        for (ulong draw = 0; draw < 50; draw++)
+        {
+            var pick = DemoDungeons.PickSpread(spots, new[] { corner }, draw * 7919UL);
+            Assert.True(DemoHexWorld.Distance(new DemoCellRef(pick.Column, pick.Row), corner) >= farthest * DemoDungeons.TempSpreadPercent / 100,
+                $"({pick.Column},{pick.Row}) 離既有的地下城太近");
+        }
+        Assert.Equal(spots[5], DemoDungeons.PickSpread(spots, Array.Empty<DemoCellRef>(), 5));
+    }
+
+    [Fact]
     public void CollectRebuildsNamesAndLayersFromEventsAndKeepsDistanceFromOtherDungeons()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
