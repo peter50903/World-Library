@@ -19,12 +19,9 @@ public partial class ObserverRoot
     private Button _mapCultureButton = null!; // 第 08-8 章 B1
     private Button _mapFaithButton = null!; // 第 08-8 章 B3
     private Button? _mapRealmButton; // 第 08-19 章
-    private Button _gridToggle = null!; // 第 06-2 章
     private Button _mapKnowledgeButton = null!; // 第 08-10a 章 V4
     private string _foodLegendText = string.Empty;
     private Button _devToolsToggle = null!;
-    private Button _schematicToggle = null!;
-    private Button _oldMapToggle = null!;
     private RichTextLabel _foodLegend = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
@@ -101,40 +98,6 @@ public partial class ObserverRoot
             "地圖模式：勢力（每個聚落有自己的勢力範圍；落在城鎮範圍內的村莊隸屬城鎮、城鎮隸屬城市，以此類推。同一勢力一個顏色，細線分出各聚落直屬的地）");
         _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
         row.AddChild(_mapRealmButton);
-        // 第 08-21 章：開發用「舊地圖」——切回原本的像素地圖（WorldBox 式）；預設是 CK3 式政治地圖。
-        _oldMapToggle = ToolButton("", "舊地圖", "開發用：切回原本的像素地圖（建築、小人、色塊檢視都在舊地圖）；再按一次回到政治地圖");
-        _oldMapToggle.ToggleMode = true;
-        _oldMapToggle.SelfModulate = new Color(1, 1, 1, 0.5f);
-        _oldMapToggle.Toggled += on =>
-        {
-            _hexMap.Political = !on;
-            _schematicToggle.Visible = on;
-            _oldMapToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
-        };
-        row.AddChild(_oldMapToggle);
-        // 第 05-1 章：色塊檢視——不論遠近都只畫色塊、棋子與邊界（不畫地表貼圖與建築），用來看底層規則怎麼運作（第 08-21 章起只在舊地圖）。
-        _schematicToggle = ToolButton(ArtAssets.UiSchematic, "色塊", "色塊檢視：只用色塊、棋子與邊界畫世界（不畫地表與建築），看底層規則的運作；再按一次回到原本的畫面");
-        _schematicToggle.ToggleMode = true;
-        _schematicToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 第 05-2 章：關閉時變暗
-        _schematicToggle.Toggled += on =>
-        {
-            _hexMap.Schematic = on;
-            _schematicToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
-        };
-        _schematicToggle.Visible = false;
-        row.AddChild(_schematicToggle);
-        // 第 06-2 章：六角格線預設不畫，可切換。
-        _gridToggle = ToolButton(ArtAssets.UiGrid, "格線", "顯示／隱藏六角格線（預設隱藏，地形連成一片）");
-        _gridToggle.ToggleMode = true;
-        _gridToggle.SelfModulate = new Color(1, 1, 1, 0.5f); // 關閉時變暗（扁平圖示按鈕沒有按下底色）
-        _gridToggle.Toggled += on =>
-        {
-            _hexMap.ShowGrid = on;
-            _gridToggle.SelfModulate = on ? Colors.White : new Color(1, 1, 1, 0.5f);
-        };
-        _gridToggle.Visible = false; // 第 08-18k 章：拿掉格線檢視（格線一律不畫）
-        row.AddChild(_gridToggle);
-
         _foodLegend = new RichTextLabel
         {
             BbcodeEnabled = true,
@@ -152,14 +115,8 @@ public partial class ObserverRoot
         _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
         _foodLegend.Text = _foodLegendText;
         _hud.AddChild(_foodLegend);
-        // 第 08-21 章：預設是政治地圖的勢力模式（CK3）；既有的冒煙測試照舊用舊地圖的地形模式（點選規則、座標不變）。
-        if (LegacyMapSmoke)
-        {
-            _hexMap.Political = false;
-            _oldMapToggle.SetPressedNoSignal(true);
-            _schematicToggle.Visible = true;
-        }
-        SetMapMode(LegacyMapSmoke ? DemoHexMap.Mode.Terrain : DemoHexMap.Mode.Realm);
+        // 第 08-21 章：預設是政治地圖的勢力模式（CK3）；第 08-25 章：既有的冒煙測試用地形模式（點一下就選到格）。
+        SetMapMode(SmokeTerrainMode ? DemoHexMap.Mode.Terrain : DemoHexMap.Mode.Realm);
     }
 
     /// <summary>
@@ -597,13 +554,6 @@ public partial class ObserverRoot
         _mapTerrainButton.EmitSignal(BaseButton.SignalName.Pressed);
         if (_hexMap.MapMode != DemoHexMap.Mode.Terrain)
             fail("terrain map mode did not come back.");
-        // 第 06-2 章：格線預設隱藏，按鈕切換。
-        if (_hexMap.ShowGrid)
-            fail("grid lines should be hidden by default.");
-        _gridToggle.ButtonPressed = true;
-        if (!_hexMap.ShowGrid)
-            fail("grid toggle did not show the grid.");
-        _gridToggle.ButtonPressed = false;
 
         if (new[] { _toolScenario, _toolSave, _toolHelp, _mapTerrainButton, _mapFoodButton }.Any(b => b.Icon is null)
             || _toolbarPanel.GetThemeStylebox("panel") is not StyleBoxTexture)

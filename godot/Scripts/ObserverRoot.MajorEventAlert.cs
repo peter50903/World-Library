@@ -133,8 +133,7 @@ public partial class ObserverRoot
             {
                 if (RealtimeThrottle && _sinceRefresh.Elapsed.TotalMilliseconds < TempPanelRefreshMs)
                 {
-                    // 面板稍後再更新；地圖上的聚落、隊伍與糧食狀況仍跟著世界走。
-                    _hexMap.Migrants = _world.MigrationsInTransit();
+                    // 面板稍後再更新；地圖上的聚落仍跟著世界走。
                     _hexMap.Sites = _world.Sites;
                     _hexMap.QueueRedraw();
                     return;

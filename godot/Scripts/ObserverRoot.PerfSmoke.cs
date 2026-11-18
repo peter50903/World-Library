@@ -81,13 +81,12 @@ public partial class ObserverRoot
             }
         }
 
-        // ③ 地圖：地表代碼、聚落版面、地表整張重建、烤一塊、每週增量。
-        var map = _hexMap.PerfMeasure(() =>
-        {
-            for (var d = 0; d < 7; d++)
-                _world.AdvanceOneDay();
-            Refresh();
-        });
+        // ③ 地圖：推進一週後刷新（第 08-25 章：舊像素地圖的地表、聚落版面量測已移除，政治地圖的省份重算見 PoliticalMs）。
+        var mapWatch = System.Diagnostics.Stopwatch.StartNew();
+        for (var d = 0; d < 7; d++)
+            _world.AdvanceOneDay();
+        Refresh();
+        var map = $"MapWeekMs={Ms(mapWatch.Elapsed.TotalMilliseconds)}";
         var settlements = _world.Sites.Settlements.Count(s => !s.IsRuin);
         var politicalMs = _hexMap.PoliticalBuildMs(); // 第 08-21 章：政治地圖每週重算的成本
         GD.Print("WORLD_SIM_PERF: "

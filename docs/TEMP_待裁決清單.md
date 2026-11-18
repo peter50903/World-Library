@@ -567,8 +567,6 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCrowding.cs` | 15 | 第 08-1 章：受孕需可持續餘量 ≥0（不吃老本）、擁擠外移門檻（餘量＜10%、人口≥8）、存糧目標 4 週與每週補存 50%；第 08-3 章受孕預留將來口糧；第 08-4 章共用來源餘量平分；第 08-12 章聚集餘量倍數（D08-12） |
 | `src/WorldSimulation.Core/World/Demo/DemoBeliefDetail.cs` | 2 | 第 08-16 章第 15 節文化頁、信仰頁：說明欄是【TEMP】開發註記的特性改用玩家用說明 |
 | `src/WorldSimulation.Core/World/Demo/DemoEnvironment.cs` | 8 | 第 12-1 章 C3b 熱浪與野火：年機率、持續週數、來源修正（D12-1）；08-13 燃燒外觀週數；第 08-16 章第 14 節伐木與採礦的門檻、機率、範圍、長回與挖空週數、移除週數、亂數命名空間（D08-16-14） |
-| `godot/Scripts/DemoHexMap.Migrants.cs` | 1 | 第 08-16 章遷徙小人：幾人一個小人、最多幾個、步伐速度、動畫重畫間隔（D06-4） |
-| `godot/Scripts/DemoHexMap.Disasters.cs` | 6 | 試玩回饋 2026-11-03 之 3 天災過程：動畫長度、野火延燒與燃燒週數、焦土維持、熱浪漸變、洪水／破壞痕跡／裂縫／隕石坑的持續週數（D06-4） ；火焰動畫格速、天災音效與火燒循環音量（-16／-26 dB）、同種音效間隔 8 秒、任兩音效間隔 1.5 秒；第 08-18b 章龍捲風走完路徑的週數、刮痕淡去週數、洪水高水位週數；試玩回饋 2026-11-07 之 3 疊層強度分 12 階（D08-18）；試玩回饋 2026-11-08 之 4 天災過程照真實時間播的速度（每週 700 毫秒） |
 | `godot/Scripts/DemoHexMap.Battles.cs` | 2 | 第 08-18h 章戰鬥動畫：長度 4 秒（行軍佔 55%）、只畫 ⚔ 的格半徑門檻 14、同時最多 8 場；第 08-18j 章死亡每 4 人多倒下一個、兵力條的格半徑門檻 18 |
 | `godot/Scripts/DemoHexMap.Wars.cs` | 1 | 第 08-18m 章戰爭表現：軍旗 14 像素、比分條寬 52 像素、佔領斜線間距 0.32 格半徑 |
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
@@ -577,19 +575,9 @@
 | `godot/Scripts/DemoHexMap.Political.cs` | 6 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9）；第 12-2j 章世界時代的氛圍（黑暗時代夜色與四角壓暗、烈日偏暖、霜雪偏冷、混沌偏紅、奇蹟微光） |
 | `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 4 | 第 08-21 章政治地圖三層分界、勢力名字級（D9）；第 08-23 章商路（中距離以上、流動的金色虛線） |
 | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
-| `godot/Scripts/TerrainSurface.Perf.cs` | 1 | 第 09-1 章效能量測烤幾塊地表（24） |
-| `godot/Scripts/TerrainSurface.cs` | 10 | 第 08-20h 章縮圖精度（超過 100 萬方格每方格一點、否則每 8 圖像素）；第 08-20g 章每格半徑 128 圖像素（一格 16×16 方格）、換算舊門檻的比例、整批換圖最多等 30 幀；第 08-18b 章方格地表：每方格 16、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |
-| `godot/Scripts/DemoHexMap.Plan.cs` | 7 | 第 08-20g 章總體規劃（第 09-1c 章改）：街距 7、房深 5、規劃半徑 26、廣場 14×5、別的聚落中心保留 10、圍牆多擴 2、規劃地塊數 140、往外最多跳 8 格、各用途預留地、工期、工班數、一次跳超過 520 週直接蓋好 |
-| `godot/Scripts/DemoHexMap.Extras.cs` | 1 | 第 09-1b 章住屋院子小物件的出現機率 0.55（每戶最多兩件） |
-| `godot/Scripts/DemoHexMap.Front.cs` | 1 | 第 08-20g 章水磨坊暫代畫法：每格動畫寬 80、輪子從第 48 欄起 |
-| `godot/Scripts/DemoHexMap.Layout.cs` | 6 | 第 09-1c 章畫面住屋數上限（村莊 14、城鎮 28、城市 44、首都 60）；第 08-17 章聚落版面：廣場邊長、道路長度；第 08-18b 章支路間距與機率、建地門檻（D08-18）；試玩回饋 2026-11-08 第三次 建築高出地塊的方格數（屋地往上多鋪）；第 08-18k 章每棟住屋人數（15／10／8／7）與上限 220、版面人口黏性；第 08-6b 章城牆外田地環寬 3 格、畫滿 6 塊 |
-| `godot/Scripts/DemoHexMap.Creatures.cs` | 1 | 第 08-18c 章近景動物：棲地大小、成群門檻、門檻半徑、遊走與巡獵週期（D08-18）；試玩回饋 2026-11-08 之 2 怪物巡遊一趟的秒數、每幾隻畫一隻與上限 |
 | `godot/Scripts/ObserverRoot.SimThread.cs` | 1 | 第 08-18c 章背景推進一批最多 250 毫秒（D08-18） |
-| `godot/Scripts/DemoHexMap.Houses.cs` | 2 | 第 08-18b 章名牌字級與紋章大小；第 08-18d 章名牌底板素材的不透明範圍（D08-18） |
 | `godot/Scripts/DemoHexMap.Tooltip.cs` | 1 | 第 08-18b 章第 5 節滑鼠提示底框素材的範圍（D08-18） |
-| `godot/Scripts/DemoHexMap.Select.cs` | 1 | 試玩回饋 2026-11-08 第二次之 1 角色點選範圍的最小寬高（D08-18） |
 | `godot/Scripts/PixelParts.cs` | 1 | 第 08-18d 章灰階染色的判斷門檻（D08-18） |
-| `godot/Scripts/DemoHexMap.Tokens.cs` | 2 | 第 08-17 章指示物：各職業示意比例、每聚落最多枚數、往返秒數；人數是示意 |
 | `src/WorldSimulation.Core/World/Demo/DemoContinentGenerator.cs` | 12 | 第 06-4 章高度圖大陸：陸地與丘陵比例、淺灘間隔、源頭間隔、最短河長、下壓起點、亂數命名空間（D06-4） ；第 3 步森林比例與濕度參數；第 06-5 章多塊大陸：陸地 44%、起伏 40%、海岸扭曲 2 格、大陸數 2／3～4／4～6、中心間距與半徑、海峽寬 260；第 08-20h 章大陸連成一塊時最多重來 8 次 |
 | `godot/Scripts/Heraldry.cs` | 1 | 第 08-16 章人像染色：膚色倍率、自然髮色 |
 | `src/WorldSimulation.Core/World/Demo/DemoHeraldry.cs` | 1 | 第 08-16 章人像：中年 40 歲、老年 60 歲（紋路與灰白髮） |
@@ -623,10 +611,8 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 17 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度 |
-| `godot/Scripts/DemoHexMap.Footprint.cs` | 2 | 第 08-13 章第 4 節聚落外觀：近看門檻、每屋人數、每格屋數、素材前色塊顏色 |
-| `godot/Scripts/DemoHexMap.Layers.cs` | 2 | 第 09-1d 章紙地圖的紙、墨、海顏色；紙地圖門檻 12 像素、取樣半徑 8；第 08-15 章視角分層：戰略層格半徑上限 6、戰略圖取樣半徑 4、重畫間隔 250 毫秒、各模式疊色比例 |
-| `godot/Scripts/DemoHexMap.Shapes.cs` | 1 | 第 08-15 章第 3 節不規則邊界：角點抖動 0.10、邊中段抖動 0.11、每邊 4 段、圖塊取樣放大 1.22 |
+| `godot/Scripts/DemoHexMap.cs` | 9 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度；第 08-25 章舊像素地圖移除後只剩政治地圖的縮放與配色 |
+| `godot/Scripts/DemoHexMap.Shared.cs` | 2 | 第 08-25 章：舊地圖移除後搬來的音效音量與間隔、有東西在動時的重畫間隔（原第 08-16、09-1e 章） |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |

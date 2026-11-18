@@ -11,27 +11,11 @@ namespace WorldSimulation.GodotClient;
 /// <item>著色器（<see cref="PoliticalMapShader"/>）畫地形、填色、省界、勢力界、海岸與怪物地盤；遠看填色濃、拉近淡出露出地形。</item>
 /// <item>上面再畫河流、勢力名（遠看沿勢力的長軸排開的大字）、聚落徽章與名牌、怪物巢穴、戰線與交戰。</item>
 /// </list>
-/// 只改畫面，不改世界。開發工具「舊地圖」切回原本的像素地圖。
+/// 只改畫面，不改世界。第 08-25 章：舊的像素地圖已移除，這是唯一的地圖畫法。
 /// </summary>
 public partial class DemoHexMap
 {
-    private bool _political = true;
-
-    /// <summary>第 08-21 章：用政治地圖畫（false＝舊的像素地圖）。</summary>
-    public bool Political
-    {
-        get => _political;
-        set
-        {
-            if (_political == value)
-                return;
-            _political = value;
-            _viewWorld = null; // 換畫法時鏡頭回到預設（政治地圖整張世界、舊地圖拉近）
-            QueueRedraw();
-        }
-    }
-
-    /// <summary>【TEMP】政治地圖最大放大（每格半徑像素）：沒有建築可看，比舊地圖小很多。</summary>
+    /// <summary>【TEMP】政治地圖最大放大（每格半徑像素）。</summary>
     private const float TempPoliticalMaxRadius = 64f;
 
     /// <summary>【TEMP】省份最短重算間隔（毫秒）：快轉時每週都會變，最多每這麼久重算一次。</summary>
@@ -180,7 +164,7 @@ public partial class DemoHexMap
         _politicalMaterial.SetShaderParameter("occupy", _occupyTexture);
     }
 
-    /// <summary>不畫政治地圖時藏起來（舊地圖、沒有世界）。</summary>
+    /// <summary>沒有世界時藏起來。</summary>
     private void HidePolitical() => _politicalRect?.Hide();
 
     // ── 省份 ──────────────────────────────────────────────────────────────
@@ -401,7 +385,7 @@ public partial class DemoHexMap
         return _provinceIndex.TryGetValue(province, out var i) ? i : -1;
     }
 
-    private long? SelectedGroupKey() => _mode switch
+    private long? SelectedGroupKey() => FocusGroup is { } focus && _mode is not (Mode.Food or Mode.Knowledge) ? focus : _mode switch
     {
         Mode.Realm or Mode.Terrain when _selectedRealm != 0 => _selectedRealm,
         Mode.Culture when _selectedCulture != 0 => _selectedCulture,
@@ -522,7 +506,7 @@ public partial class DemoHexMap
         var site = province == DemoProvinceMap.Wild ? null : Sites?.Settlements.FirstOrDefault(s => s.Id == province);
         var title = site is not null && SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : place;
         var home = site is not null && world.Contains(site.Column, site.Row) ? world.GetCell(site.Column, site.Row) : cell;
-        BuildTipRows(home, title, ""); // 天災狀況在舊地圖的地表資料裡，政治地圖不算（會把整張像素地表重算一次）
+        BuildTipRows(home, title, "");
         if (site is not null)
             _tipRows.Insert(0, (IcPlace, place));
         var at = new DemoCellRef(cell.Column, cell.Row);
@@ -613,10 +597,10 @@ public partial class DemoHexMap
         QueueRedraw();
     }
 
-    /// <summary>一格的歸屬：政治地圖照省份（每格陸地都有），舊地圖照勢力範圍（只有用到的地）。</summary>
+    /// <summary>一格的歸屬：照省份（每格陸地都有）；省份還沒算好時照勢力範圍（只有用到的地）。</summary>
     private DemoTerritoryCell? OwnerAt(DemoCellRef at)
     {
-        if (_political && _provinces is not null)
+        if (_provinces is not null)
         {
             var province = _provinces.ProvinceAt(at.Column, at.Row);
             return province == DemoProvinceMap.Wild ? null : new DemoTerritoryCell(province, Territory.RealmOf(province));
