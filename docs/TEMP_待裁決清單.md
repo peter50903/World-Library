@@ -573,7 +573,7 @@
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
 | `godot/Scripts/ObserverRoot.Saga.cs` | 1 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9） |
-| `godot/Scripts/DemoHexMap.Political.cs` | 5 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9） |
+| `godot/Scripts/DemoHexMap.Political.cs` | 6 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9）；第 12-2j 章世界時代的氛圍（黑暗時代夜色與四角壓暗、烈日偏暖、霜雪偏冷、混沌偏紅、奇蹟微光） |
 | `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 3 | 第 08-21 章政治地圖三層分界、勢力名字級（D9） |
 | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
 | `godot/Scripts/TerrainSurface.Perf.cs` | 1 | 第 09-1 章效能量測烤幾塊地表（24） |

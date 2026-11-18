@@ -120,6 +120,12 @@ public partial class ObserverRoot
         SetMapMode(DemoHexMap.Mode.Culture);
         await Shot("5_culture_far");
         SetMapMode(DemoHexMap.Mode.Realm);
+        // 第 12-2j 章：指定黑暗時代、推進一週，看長夜的氛圍與獸潮將至的標記。
+        world.AgeSetting = DemoAge.Dark;
+        for (var d = 0; d < 7; d++)
+            world.AdvanceOneDay();
+        Refresh();
+        await Shot("6_dark_age");
         GD.Print("WORLD_SIM_MAP_SHOT_OK");
         GetTree().Quit();
     }

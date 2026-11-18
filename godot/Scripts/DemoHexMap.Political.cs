@@ -115,6 +115,10 @@ public partial class DemoHexMap
         m.SetShaderParameter("province_lines", _mode == Mode.Terrain ? 0.25f : Mathf.Lerp(0.35f, 0.75f, Mathf.SmoothStep(24f, 96f, cellPx)));
         m.SetShaderParameter("sel_province", SelectedProvinceIndex());
         m.SetShaderParameter("sel_group", SelectedGroupIndex());
+        var (tint, vignette, shimmer) = AgeMood(WorldAge); // 第 12-2j 章：世界時代的氛圍
+        m.SetShaderParameter("age_tint", tint);
+        m.SetShaderParameter("age_vignette", vignette);
+        m.SetShaderParameter("age_shimmer", shimmer);
 
         DrawRivers(origin, cellPx);
         DrawGroupLabels(origin, cellPx);
@@ -618,4 +622,18 @@ public partial class DemoHexMap
         }
         return Territory.Cells.TryGetValue(at, out var owner) ? owner : null;
     }
+
+    /// <summary>
+    /// 第 12-2j 章【TEMP】世界時代的氛圍（畫面用，不是規則）：染色（rgb＝乘上的顏色、a＝濃淡）、四角壓暗、微光。
+    /// 希望時代沒有；黑暗時代夜色加四角壓暗（長夜降臨、怪物猖獗）；烈日偏暖；霜雪偏冷；混沌偏紅；奇蹟時代金色微光。
+    /// </summary>
+    private static (Color Tint, float Vignette, float Shimmer) AgeMood(DemoAge age) => age switch
+    {
+        DemoAge.Dark => (new Color(0.62f, 0.66f, 0.92f, 0.55f), 0.42f, 0f),
+        DemoAge.Sun => (new Color(1.10f, 0.98f, 0.80f, 0.35f), 0.08f, 0f),
+        DemoAge.Frost => (new Color(0.88f, 0.96f, 1.12f, 0.40f), 0.10f, 0f),
+        DemoAge.Chaos => (new Color(1.02f, 0.78f, 0.76f, 0.35f), 0.20f, 0f),
+        DemoAge.Miracle => (new Color(1.04f, 1.00f, 0.92f, 0.20f), 0f, 1f),
+        _ => (new Color(1f, 1f, 1f, 0f), 0f, 0f)
+    };
 }
