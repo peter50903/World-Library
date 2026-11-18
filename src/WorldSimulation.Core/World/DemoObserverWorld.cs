@@ -667,7 +667,6 @@ public sealed partial class DemoObserverWorld
         };
     }
 
-    /// <summary>第 08-19f 章：各聚落的村長（預設用目前的代表人物）。</summary>
     /// <summary>第 08-22c 章：各聚落領袖的特質讓研究變成幾 %（沒有領袖＝100）。</summary>
     private Func<int, int> LeaderResearch(IReadOnlyList<DemoRepresentative> representatives)
     {
@@ -675,6 +674,7 @@ public sealed partial class DemoObserverWorld
         return id => leaders.TryGetValue(id, out var leader) ? DemoTraits.ResearchPercent(leader.Traits) : 100;
     }
 
+    /// <summary>第 08-19f 章：各聚落的村長（預設用目前的代表人物）。</summary>
     private Dictionary<int, DemoRepresentative> Leaders(IReadOnlyList<DemoRepresentative>? representatives = null)
         => (representatives ?? _demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>())
             .Where(r => r.Role == DemoRepresentativeRole.Leader).GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.First());

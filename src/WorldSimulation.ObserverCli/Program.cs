@@ -24,6 +24,10 @@ if (args.Length > 0 && args[0] == "--change-report")
 if (args.Length > 0 && args[0] == "--saga")
     return Saga.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
 
+// 第 12-2h 章：人類與怪物的消長（多種子，每 10 年取一次，每個種子一行）。
+if (args.Length > 0 && args[0] == "--balance")
+    return Balance.Run(args.Skip(1).ToArray(), Console.Out, WorldCalendarConfig.LoadDefault().DaysPerYear);
+
 if (args.Length == 0 || args[0] != "--demo")
 {
     Console.WriteLine("觀察者文字介面 v0（示範情境，尚非正式世界規則）");
@@ -35,6 +39,7 @@ if (args.Length == 0 || args[0] != "--demo")
     Console.WriteLine("  --seeds a,b,c：無畫面長測依序跑多個種子（第 08 章 c 節長測執行器；每年年底檢查不變量註冊表）。");
     Console.WriteLine("世界變化報告：dotnet run --project src/WorldSimulation.ObserverCli -- --change-report [--seed N | --seeds a,b,c] [--years 100] [--map small|medium|large]");
     Console.WriteLine("文字史書：dotnet run --project src/WorldSimulation.ObserverCli -- --saga [--seed N] [--years 100] [--map small|medium|large]");
+    Console.WriteLine("人類與怪物消長：dotnet run --project src/WorldSimulation.ObserverCli -- --balance [--seeds a,b,c] [--years 100] [--map small|medium|large]");
     Console.WriteLine("M1 驗收報告：dotnet run --project src/WorldSimulation.ObserverCli -- --m1-check [--years 100] [--seed N] [--preset normal|local-famine|frontier|famine]");
     return 2;
 }
