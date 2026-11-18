@@ -58,6 +58,9 @@ public static class DemoMonsters
     /// </summary>
     public const int TempDarkDormantWeeks = 52;
 
+    /// <summary>第 12-2j 章【TEMP】：幾層以上的地下城才會爆發獸潮（一層的淺洞窟只有零星的襲擊）。</summary>
+    public const int TempSwarmMinLayers = 2;
+
     /// <summary>第 12-2j 章：這個時代沉寂的地下城要幾週才甦醒。</summary>
     public static int DormantWeeks(DemoAge? age) => age == DemoAge.Dark ? TempDarkDormantWeeks : TempDormantWeeks;
 
@@ -283,7 +286,8 @@ public static class DemoMonsters
             // 第 12-2b、12-2c 節：沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限。
             int Room(DemoCombatForce f) => DemoCombat.CanClear(f, level) ? left : Math.Max(0, left - SuppressFloor(nest.Dungeon));
             // 第 12-2h 章：獸潮——滿員的地下城全軍出擊；這一週不再另外襲擊或被討伐。
-            if (monsters >= Cap(nest.Dungeon) && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
+            if (monsters >= Cap(nest.Dungeon) && nest.Dungeon.Layers >= TempSwarmMinLayers // 第 12-2j 章：淺洞窟不爆獸潮
+                && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
             {
                 var prey = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach)
                     .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
