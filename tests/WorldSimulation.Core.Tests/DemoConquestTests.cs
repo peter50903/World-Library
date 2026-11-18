@@ -66,6 +66,27 @@ public sealed class DemoConquestTests
     }
 
     [Fact]
+    public void LostLandCanBeReconqueredWithLessStrength()
+    {
+        // 第 08-22e 章：c 原本是 a 的臣屬，被 b 征服走；a 的兵力只有 b 方的九成（一般宣戰要 120%），仍可宣戰收復。
+        var (sites, a, b, c) = Setup();
+        var fold = new DemoRealms.Fold();
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, c, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        fold.Apply(new DemoSettlementEvent(10, TimeSpan.Zero, c, "", DemoSettlementEventKind.Conquered, b, ""));
+        Assert.Equal(a, fold.LostBy(c, 11));
+        Assert.Null(fold.LostBy(c, 10 + DemoRealms.TempReconquestWeeks));
+        Assert.Null(fold.LostBy(a, 11));
+        var ctx = Ctx(sites, a, id => id == a ? 180 : id == b ? 150 : id == c ? 50 : 0);
+        var rng = RngRegistry.Create(7);
+        var all = new List<DemoSettlementEvent>();
+        for (var week = 11; week < 11 + 13 * 40 && !all.Any(e => e.Kind == DemoSettlementEventKind.WarDeclared); week++)
+            all.AddRange(Step(fold, week, ctx, rng));
+        var declared = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.WarDeclared);
+        Assert.Equal((a, (long)c), (declared.SettlementId, declared.Count));
+        Assert.Contains("收復失地", declared.Cause, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HillsForestsAndRiversFavourTheDefender()
     {
         // 第 08-22b 章：守方據守丘陵、森林，攻方渡河，攻方造成的死傷變少。
