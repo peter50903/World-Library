@@ -667,6 +667,13 @@ public sealed partial class DemoObserverWorld
         };
     }
 
+    /// <summary>第 08-22c 章：各聚落領袖的特質讓研究變成幾 %（沒有領袖＝100）。</summary>
+    private Func<int, int> LeaderResearch(IReadOnlyList<DemoRepresentative> representatives)
+    {
+        var leaders = Leaders(representatives);
+        return id => leaders.TryGetValue(id, out var leader) ? DemoTraits.ResearchPercent(leader.Traits) : 100;
+    }
+
     /// <summary>第 08-19f 章：各聚落的村長（預設用目前的代表人物）。</summary>
     private Dictionary<int, DemoRepresentative> Leaders(IReadOnlyList<DemoRepresentative>? representatives = null)
         => (representatives ?? _demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>())
@@ -865,7 +872,8 @@ public sealed partial class DemoObserverWorld
                     MeteoriteOre, // 第 12-1 章：隕石留下的礦脈
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
                     DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
-                    DemoAges.ResearchPercent(AgeAtWeek(report.Week))); // 第 08-6c 章：奇蹟時代研究加快
+                    DemoAges.ResearchPercent(AgeAtWeek(report.Week)), // 第 08-6c 章：奇蹟時代研究加快
+                    LeaderResearch(lifecycle.Population.Representatives)); // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);

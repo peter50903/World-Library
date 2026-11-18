@@ -300,7 +300,8 @@ internal static class DemoHumanLifecycle
                 var id = DemoEntityIds.NextLong(ids);
                 var name = parent is null ? names.Person(id, pick.Sex)
                     : names.PersonOfHouse(id, pick.Sex, DemoNames.FamilyOf(parent.Name), Avoid(parent));
-                var traits = role == DemoRepresentativeRole.Leader ? DemoTraits.Roll(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None) : DemoTrait.None;
+                var traits = role == DemoRepresentativeRole.Leader // 第 08-22c 章：性格＋身體特質＋傳說特性
+                    ? DemoTraits.RollPerson(k => names.TraitDraw(id, k), parent?.Traits ?? DemoTrait.None, DemoTraits.TempLeaderLegendPercent) : DemoTrait.None;
                 var person = new DemoRepresentative(id, settlement.Id, role, name, pick.Sex, pick.BirthYear, report.Week, parent?.Id ?? 0, traits);
                 current.Add(person);
                 here.Add(person);
@@ -322,7 +323,7 @@ internal static class DemoHumanLifecycle
                     var heroName = isKin ? names.PersonOfHouse(heroId, chosen.Sex, DemoNames.FamilyOf(lord!.Name), Avoid(lord))
                         : names.Person(heroId, chosen.Sex);
                     var hero = new DemoRepresentative(heroId, settlement.Id, DemoRepresentativeRole.Hero, heroName, chosen.Sex, chosen.BirthYear, report.Week,
-                        isKin ? lord!.Id : 0, DemoTraits.Roll(k => names.TraitDraw(heroId, k), isKin ? lord!.Traits : DemoTrait.None));
+                        isKin ? lord!.Id : 0, DemoTraits.RollPerson(k => names.TraitDraw(heroId, k), isKin ? lord!.Traits : DemoTrait.None, DemoTraits.TempHeroLegendPercent));
                     current.Add(hero);
                     here.Add(hero);
                     appointments.Add(hero);
