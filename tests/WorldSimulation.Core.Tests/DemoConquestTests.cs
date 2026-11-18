@@ -87,6 +87,27 @@ public sealed class DemoConquestTests
     }
 
     [Fact]
+    public void HeroesLeadArmiesAndAreNamedInTheBattle()
+    {
+        // 第 08-22f 章：攻方首都有在世的英雄，攻方造成的死傷 ×130%，交戰寫出英雄的名字。
+        var (sites, a, b, c) = Setup();
+        var fold = new DemoRealms.Fold();
+        fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
+        fold.Apply(new DemoSettlementEvent(5, TimeSpan.Zero, a, "", DemoSettlementEventKind.WarDeclared, c, "甲向丙宣戰"));
+        long Residents(int id) => id == a ? 2000 : id == b ? 1000 : id == c ? 1500 : 0;
+        DemoDisasterStrike Hit(Func<int, string?>? heroOf)
+            => DemoRealms.Battles(6, fold, sites, Residents, new HashSet<int>(), RngRegistry.Create(1), heroOf: heroOf)[c];
+        var plain = Hit(null);
+        var led = Hit(id => id == a ? "艾拉·洛恩" : null);
+        Assert.True(led.Deaths >= plain.Deaths * DemoRealms.TempHeroBattlePercent / 100 - 1);
+        Assert.True(led.Deaths > plain.Deaths);
+        Assert.Contains("敵方英雄艾拉·洛恩率軍", led.Cause, StringComparison.Ordinal);
+        var guarded = DemoRealms.Battles(6, fold, sites, Residents, new HashSet<int>(), RngRegistry.Create(1), heroOf: id => id == c ? "布蘭·洛威" : null);
+        Assert.Contains("遭遇敵方英雄布蘭·洛威守城", guarded[a].Cause, StringComparison.Ordinal);
+        Assert.Contains("英雄布蘭·洛威領軍守城", guarded[c].Cause, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HillsForestsAndRiversFavourTheDefender()
     {
         // 第 08-22b 章：守方據守丘陵、森林，攻方渡河，攻方造成的死傷變少。

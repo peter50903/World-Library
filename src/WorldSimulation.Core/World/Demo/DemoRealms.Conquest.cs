@@ -228,9 +228,15 @@ public static partial class DemoRealms
         return false;
     }
 
+    /// <summary>
+    /// 第 08-22f 章【TEMP】英雄帶兵（參考 CK3 的統帥）：攻方首都、戰爭目標有在世的英雄時，那一方造成的死傷 ×<see cref="TempHeroBattlePercent"/>%，
+    /// 交戰的原因寫出英雄的名字（英雄的事蹟由此流傳）。
+    /// </summary>
+    public const int TempHeroBattlePercent = 130;
+
     /// <summary>本週征服戰爭的交戰（攻方首都與戰爭目標；開戰的下一週起）。</summary>
     private static void ConquestBattles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
-        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null, DemoHexWorld? map = null)
+        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null, DemoHexWorld? map = null, Func<int, string?>? heroOf = null)
     {
         if (fold.Wars.Count == 0)
             return;
@@ -242,13 +248,19 @@ public static partial class DemoRealms
             var defend = RealmArmy(Top(w.TargetId, fold.Liege), fold.Liege, alive, residents) * TempHomePercent / 100;
             long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, w.AttackerId, k)); // 第 08-19h 章
             var (terrain, note) = BattleTerrain(map, sites.Settlements.FirstOrDefault(s => s.Id == w.AttackerId), sites.Settlements.FirstOrDefault(s => s.Id == w.TargetId)); // 第 08-22b 章
+            // 第 08-22f 章：英雄帶兵。
+            var attackHero = heroOf?.Invoke(w.AttackerId);
+            var defendHero = heroOf?.Invoke(w.TargetId);
+            var attackBoost = attackHero is null ? 100 : TempHeroBattlePercent;
+            var defendBoost = defendHero is null ? 100 : TempHeroBattlePercent;
             if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
                 strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100, residents(w.TargetId), 6),
-                    $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍{note}");
+                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100 * attackBoost / 100, residents(w.TargetId), 6),
+                    $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍" + (attackHero is null ? "" : $"，敵方英雄{attackHero}率軍") + (defendHero is null ? "" : $"，英雄{defendHero}領軍守城") + note);
             if (!taken.Contains(w.AttackerId) && !strikes.ContainsKey(w.AttackerId) && residents(w.AttackerId) > 0)
                 strikes[w.AttackerId] = new DemoDisasterStrike(w.AttackerId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(defend * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.DefenderId)) ?? DemoTrait.None) / 100, residents(w.AttackerId), 7), $"出兵征討{Name(w.TargetId)}");
+                    Deaths(defend * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.DefenderId)) ?? DemoTrait.None) / 100 * defendBoost / 100, residents(w.AttackerId), 7),
+                    $"出兵征討{Name(w.TargetId)}" + (attackHero is null ? "" : $"，英雄{attackHero}率軍") + (defendHero is null ? "" : $"，遭遇敵方英雄{defendHero}守城"));
         }
     }
 
