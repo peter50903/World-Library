@@ -517,7 +517,8 @@ public partial class ObserverRoot
         var scale = _hexMap.SettlementScale;
         var realm = DemoTerritory.Detail(_hexMap.Territory, _world.Sites, settlementId,
             id => scale.TryGetValue(id, out var s) ? s.Tier : DemoSettlementTier.Camp,
-            id => scale.TryGetValue(id, out var s) ? s.Population : 0L);
+            id => scale.TryGetValue(id, out var s) ? s.Population : 0L,
+            id => DemoRealmRoster.Lines(_world, id)); // 第 08-27 章：每個村、鎮的存糧、兵力、重要人物
         // 第 08-19b 章：勢力裡進行中的脫離鬥爭。
         var top = _hexMap.Territory.RealmOf(settlementId);
         var week = _world.CommittedWeeks;

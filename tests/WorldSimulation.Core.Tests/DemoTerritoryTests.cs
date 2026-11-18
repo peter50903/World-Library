@@ -101,7 +101,36 @@ public sealed class DemoTerritoryTests
             Assert.DoesNotContain("└", tree[0], StringComparison.Ordinal);
             foreach (var m in members.Where(x => x.Id != top))
                 Assert.Single(tree, line => line.TrimStart('　', '└', ' ').StartsWith(DemoSettlementHistory.TitledName(m, Tier(m.Id)) + "（", StringComparison.Ordinal));
+            // 第 08-27 章：每個聚落底下多幾行（資源、兵力、人物），縮排比它自己深。
+            var detailed = DemoTerritory.Detail(map, world.Sites, s.Id, Tier, People, id => new[] { $"甲{id}", $"乙{id}" }).Tabs[1].Lines;
+            Assert.Equal(members.Count * 3, detailed.Count);
+            foreach (var m in members)
+            {
+                var at = detailed.ToList().FindIndex(line => line.TrimStart('　', '└', ' ').StartsWith(DemoSettlementHistory.TitledName(m, Tier(m.Id)) + "（", StringComparison.Ordinal));
+                Assert.Equal($"甲{m.Id}", detailed[at + 1].Trim('　'));
+                Assert.Equal($"乙{m.Id}", detailed[at + 2].Trim('　'));
+                Assert.True(detailed[at + 1].TakeWhile(ch => ch == '　').Count() > detailed[at].TakeWhile(ch => ch == '　').Count());
+            }
         }
+    }
+
+    [Fact]
+    public void RealmRosterListsFoodTroopsAndPeopleOfEachSettlement()
+    {
+        // 第 08-27 章：勢力頁每個聚落底下寫人口與存糧、兵力（戰時徵兵、常備士兵）、重要人物（領袖在前）。
+        var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
+        for (var d = 0; d < 6 * TestCalendar.DaysPerYear; d++)
+            world.AdvanceOneDay();
+        var site = world.Sites.Settlements.Where(s => !s.IsRuin).OrderByDescending(s => world.SettlementPopulation(s.Id)).First();
+        var lines = DemoRealmRoster.Lines(world, site.Id);
+        var ledger = world.LatestWeek!.Settlements.Single(l => l.SettlementId == site.Id);
+        static string N(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.StartsWith($"人口 {N(world.SettlementPopulation(site.Id))}｜存糧 {N(ledger.FoodClosing)}", lines[0], StringComparison.Ordinal);
+        Assert.StartsWith($"兵力：戰時徵兵 {N(DemoRealms.Army(world.SettlementPopulation(site.Id)))} 人", lines[1], StringComparison.Ordinal);
+        var leader = world.RepresentativesOf(site.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader);
+        if (leader is not null)
+            Assert.StartsWith($"人物：{DemoRepresentative.RoleName(DemoRepresentativeRole.Leader, world.ChronicleOf(site.Id).Tier)} {leader.Name}", lines[2], StringComparison.Ordinal);
+        Assert.Empty(DemoRealmRoster.Lines(world, -1));
     }
 
     [Theory]

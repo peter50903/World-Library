@@ -194,7 +194,8 @@ public static class DemoTerritory
     /// 試玩回饋 2026-11-07 之 4：勢力詳情（遠看點地圖時打開）。標題是最上層聚落的名字；「概況」寫層級、轄下聚落數、勢力人口與範圍；
     /// 「隸屬」由上而下列出整棵隸屬樹（每層縮排，同層依層級高、人口多、編號小排列）。<paramref name="realmId"/> 不是最上層時改用它的最上層。
     /// </summary>
-    public static DemoPlayerDetail Detail(DemoTerritoryMap territory, DemoWorldSites sites, int realmId, Func<int, DemoSettlementTier> tierOf, Func<int, long> peopleOf)
+    public static DemoPlayerDetail Detail(DemoTerritoryMap territory, DemoWorldSites sites, int realmId, Func<int, DemoSettlementTier> tierOf, Func<int, long> peopleOf,
+        Func<int, IReadOnlyList<string>>? detailOf = null) // 第 08-27 章：每個聚落底下的資源儲備、兵力、重要人物
     {
         ArgumentNullException.ThrowIfNull(territory);
         ArgumentNullException.ThrowIfNull(sites);
@@ -211,6 +212,8 @@ public static class DemoTerritory
         void Walk(int id, int depth)
         {
             tree.Add($"{new string('　', depth)}{(depth > 0 ? "└ " : "")}{Name(id)}（{DemoSettlementHistory.TierName(tierOf(id))}，人口 {peopleOf(id)}）");
+            if (detailOf is not null)
+                tree.AddRange(detailOf(id).Select(line => $"{new string('　', depth + (depth > 0 ? 2 : 1))}{line}"));
             foreach (var vassal in Ordered(territory.VassalsOf(id)))
                 Walk(vassal, depth + 1);
         }
