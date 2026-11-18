@@ -38,6 +38,9 @@ public static class DemoDungeons
     /// <summary>【TEMP】第 12-2k 章：每幾格多一個目標名額。</summary>
     public const int TempCellsPerDungeon = 384;
 
+    /// <summary>【TEMP】第 12-2l 章：挑位置時只從「離既有地下城最近距離」達到最大值這個百分比以上的格裡挑（越大越分散）。</summary>
+    public const int TempSpreadPercent = 75;
+
     /// <summary>【TEMP】第 12-2k 章：每幾個目標名額，每年多擲一次。</summary>
     public const int TempTargetsPerRoll = 3;
 
@@ -123,14 +126,16 @@ public static class DemoDungeons
             return Array.Empty<DemoSettlementEvent>();
         var taken = existing.Select(d => d.Cell).ToList();
         var spots = map.Cells.Where(c => Eligible(map, sites, living, taken, c)).OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
+        var placed = taken.ToList(); // 第 12-2l 章：既有的加上今年已出現的，下一個離它們越遠越好
         var names = existing.Select(d => d.Name).ToHashSet();
         var events = new List<DemoSettlementEvent>();
         foreach (var slot in passed)
         {
             if (existing.Count + events.Count >= limit || spots.Count == 0)
                 break;
-            var spot = spots[(int)(Draw(rng, year, slot, 1) % (ulong)spots.Count)];
+            var spot = PickSpread(spots, placed, Draw(rng, year, slot, 1));
             spots.RemoveAll(c => DemoWorldSites.HexDistance(spot, c) < TempMinDistance); // 同一年的下一個也要離它夠遠
+            placed.Add(new DemoCellRef(spot.Column, spot.Row));
             var near = living.OrderBy(s => DemoWorldSites.HexDistance(map.GetCell(s.Column, s.Row), spot)).ThenBy(s => s.Id).First();
             var cellId = DemoLandClearing.CellId(map, new DemoCellRef(spot.Column, spot.Row));
             var (name, layers) = Describe(rng, year, cellId, names, events.Count); // 同一週出現的第幾個（重算時 Collect 也這樣數）
@@ -140,6 +145,25 @@ public static class DemoDungeons
                 EventId: checked(nextEventId + events.Count)));
         }
         return events;
+    }
+
+    /// <summary>
+    /// 第 12-2l 章（使用者 2026-11-18：怪物散佈的位置太集中）：挑一個出現的位置——世界上還沒有地下城時照舊在合格的格裡隨機挑；
+    /// 有了之後，只從「離既有地下城最近距離」達到最大值 <see cref="TempSpreadPercent"/>% 以上（至少 <see cref="TempMinDistance"/> 格）的格裡隨機挑，
+    /// 地下城散在地圖各處，不擠在同一片荒野。
+    /// </summary>
+    internal static DemoHexCell PickSpread(IReadOnlyList<DemoHexCell> spots, IReadOnlyList<DemoCellRef> placed, ulong draw)
+    {
+        ArgumentNullException.ThrowIfNull(spots);
+        ArgumentNullException.ThrowIfNull(placed);
+        if (placed.Count == 0)
+            return spots[(int)(draw % (ulong)spots.Count)];
+        var distance = spots.Select(c => placed.Min(p => DemoHexWorld.Distance(new DemoCellRef(c.Column, c.Row), p))).ToArray();
+        var bar = Math.Max(TempMinDistance, distance.Max() * TempSpreadPercent / 100);
+        var far = spots.Where((_, i) => distance[i] >= bar).ToList();
+        if (far.Count == 0)
+            far = spots.ToList();
+        return far[(int)(draw % (ulong)far.Count)];
     }
 
     /// <summary>從事件（由舊到新）重算地下城清單；可接續 <paramref name="known"/> 往後加。</summary>
