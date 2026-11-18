@@ -608,7 +608,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 10 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8）；第 08-22d 章異端分裂（每年檢查、信仰滿 20 年、離聖地 12 格以上或聖地成廢墟、6%）；第 08-22g 章狂熱度（基本 40、聖地在手 +30／失去 −20、每個聚落 +2 最多 +30、每個異端 −15；分裂機率 ×(150−狂熱度)%）、改宗（上級信仰每週 0.3%，乘以狂熱度差 20～200%） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 2 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11）；第 12-2i 章開拓隊偏好遺跡格（選址分數 ×150%） |
-| `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11）；第 08-24 章首都門檻 1000 → 400、保留下限 850 → 340 |
+| `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11）；第 08-24 章首都門檻 1000 → 300、保留下限 850 → 255 |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementStory.cs` | 1 | 第 08-10d 章 C：聚落小史分期——分出幾個聚落稱為母城、最多說幾項聞名的事（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
 | `src/WorldSimulation.Core/World/Demo/DemoCausalIndex.cs` | 4 | #88 43F 因果索引 M1 示範切片（每筆至多一個直接原因）；第 08-1 章擁擠開拓根因 |

@@ -179,7 +179,7 @@ public sealed class BalanceTracker
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
             Row("鎮/城/都", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}")),
             Row("法/世/稅/王", s => s.Crown),
-            Row("堡/殿/倉/醫", s => s.CityFacilities),
+            Row("堡/殿/書/醫", s => s.CityFacilities),
             Row("最大", s => s.Largest.ToString(CultureInfo.InvariantCulture)),
             Row("稅/貿(千)", s => string.Create(CultureInfo.InvariantCulture, $"{s.Tax / 1000}/{s.Trade / 1000}")),
             Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
