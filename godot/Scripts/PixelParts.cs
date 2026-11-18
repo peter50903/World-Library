@@ -4,34 +4,21 @@ namespace WorldSimulation.GodotClient;
 
 /// <summary>
 /// 第 08-16 章第 12 節：像素零件（GPT 畫、匯入工具縮成實際像素）。
-/// 地形零件（樹、草、山、礦、田、灰燼…）原本由舊的像素地表直接疊入（第 08-25 章已移除舊地圖）；
-/// 建築、火焰、天災痕跡以同樣的像素密度、最近鄰取樣畫在地表上，透視與像素大小一致。
-/// 第 08-18d 章：第五、六批素材（<see cref="Batch5"/>，res://assets/px2/）與地表同一密度（每格半徑 <see cref="TempTexelsPerRadius"/> 圖像素）；
-/// 第四批（res://assets/px/）是一半密度（每格半徑 <see cref="TempArtTexelsPerRadius"/>），畫的時候放大兩倍。
-/// 缺任何一張時該處退回舊素材或程式畫的圖樣。
+/// 第 08-18d 章：素材在 res://assets/px2/（<see cref="Batch5"/>），密度每格半徑 <see cref="TempTexelsPerRadius"/> 圖像素；
+/// 不是這裡的貼圖（介面圖示等）算一半密度（<see cref="TempArtTexelsPerRadius"/>）。
+/// 第 08-29 章：第四批（res://assets/px/）與舊地圖專用的零件已刪；缺任何一張時該處退回程式畫的圖樣。
 /// </summary>
 public static partial class PixelParts
 {
     /// <summary>第五、六批素材每格半徑幾個圖像素（原本是像素地表的密度）；第四批是一半（第 08-25 章：舊地圖移除後搬到這裡）。</summary>
     public const int TempTexelsPerRadius = 128, TempArtTexelsPerRadius = 64;
 
-    public static readonly string[] Names =
-    {
-        "px_tree_round_1", "px_tree_round_2", "px_tree_pine_1", "px_tree_pine_2", "px_bush", "px_sapling", "px_stump", "px_tree_burnt",
-        "px_grass_tuft_1", "px_grass_tuft_2", "px_flowers", "px_dry_tuft", "px_mountain_1", "px_mountain_2", "px_rock_1", "px_rock_2",
-        "px_ore_1", "px_ore_2", "px_ore_meteor", "px_mine_pit", "px_field_wheat", "px_field_green", "px_field_young", "px_field_soil",
-        "px_field_fallow", "px_fire", "px_smoke", "px_ash", "px_flood_ripple", "px_crack", "px_crater", "px_debris", "px_icon_disaster"
-    };
-
     private static HashSet<string>? _batch5;
 
-    /// <summary>這個名字有沒有第五、六批的素材（同名時優先）。</summary>
+    /// <summary>這個名字有沒有登記的像素素材。</summary>
     public static bool IsBatch5(string name) => (_batch5 ??= Batch5.ToHashSet()).Contains(name);
 
-    /// <summary>第四批的舊路徑（冒煙測試照舊確認讀得到）。</summary>
-    public static string LegacyPath(string name) => $"res://assets/px/{name}.png";
-
-    public static string Path(string name) => IsBatch5(name) ? $"res://assets/px2/{name}.png" : LegacyPath(name);
+    public static string Path(string name) => $"res://assets/px2/{name}.png";
 
     /// <summary>一張零件的像素（列優先；透明度只有 0 或 1）；<see cref="Scale"/>＝疊進地表時每個零件像素佔幾個圖像素。</summary>
     public sealed record Sprite(int Width, int Height, Color[] Pixels, int Scale)
@@ -55,8 +42,7 @@ public static partial class PixelParts
             for (var y = 0; y < image.GetHeight(); y++)
                 for (var x = 0; x < image.GetWidth(); x++)
                     pixels[y * image.GetWidth() + x] = image.GetPixel(x, y);
-            sprite = new Sprite(image.GetWidth(), image.GetHeight(), pixels,
-                IsBatch5(name) ? 1 : TempTexelsPerRadius / TempArtTexelsPerRadius);
+            sprite = new Sprite(image.GetWidth(), image.GetHeight(), pixels, 1);
         }
         Sprites[name] = sprite;
         return sprite;
