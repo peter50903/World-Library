@@ -96,7 +96,8 @@ public sealed class BalanceTracker
     private sealed class Step
     {
         public long Population, Births, MonsterDeaths, Slain, Largest, Tax, Trade;
-        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals, Kingship;
+        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals;
+        public string Crown = "", CityFacilities = "";
         public char Age, Era;
     }
 
@@ -147,10 +148,12 @@ public sealed class BalanceTracker
         // 文明發展：城鎮、城市以上幾個，最大的聚落幾人。
         _current.Towns = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Town);
         _current.Cities = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.City);
-        // 第 08-24 章：首都幾個、幾個聚落會王權、世界在哪個紀元（希望、開拓、征服＝第一個王國成立）。
+        // 第 08-24 章：首都幾個、通往王權的技術與城市級設施各有幾個聚落會、世界在哪個紀元（希望、開拓、征服＝第一個王國成立）。
         _current.Capitals = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Capital);
-        var kingship = DemoTechnology.Of(DemoSettlementHistory.CapitalTechId);
-        _current.Kingship = living.Count(s => world.Knowledge.Knows(s.Id, kingship));
+        string Knowing(params string[] techs) => string.Join('/', techs.Select(t => living.Count(s => world.Knowledge.Knows(s.Id, DemoTechnology.Of(t))))
+            .Select(n => n.ToString(CultureInfo.InvariantCulture)));
+        _current.Crown = Knowing("TECH_CODIFIED_LAW", "TECH_HEREDITARY_NOBILITY", "TECH_TAXATION", DemoSettlementHistory.CapitalTechId);
+        _current.CityFacilities = Knowing(DemoSettlementHistory.FacilitiesOf(DemoSettlementTier.City).Select(f => f.TechId!).ToArray());
         _current.Era = DemoKnowledge.EraName(world.Era)[0];
         _current.Largest = living.Count == 0 ? 0 : living.Max(s => world.SettlementPopulation(s.Id));
         _current.Ruins = world.Sites.Settlements.Count(world.Sites.IsStandingRuin);
@@ -175,7 +178,8 @@ public sealed class BalanceTracker
             Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
             Row("鎮/城/都", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}")),
-            Row("王權", s => s.Kingship.ToString(CultureInfo.InvariantCulture)),
+            Row("法/世/稅/王", s => s.Crown),
+            Row("堡/殿/倉/醫", s => s.CityFacilities),
             Row("最大", s => s.Largest.ToString(CultureInfo.InvariantCulture)),
             Row("稅/貿(千)", s => string.Create(CultureInfo.InvariantCulture, $"{s.Tax / 1000}/{s.Trade / 1000}")),
             Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),

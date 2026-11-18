@@ -395,7 +395,7 @@ public static class DemoKnowledge
     /// </summary>
     public static bool FacilityAllows(DemoTechNode node) => true;
 
-    /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。</summary>
+    /// <summary>某聚落本週的研究條件（地理、人口、等級；全部讀上週已提交的狀態）。第 08-24 章：<see cref="Vassals"/>＝直屬臣屬聚落數。</summary>
     public sealed record Context(
         DemoSettlementTier Tier,
         long Adults,
@@ -410,7 +410,8 @@ public static class DemoKnowledge
         bool HasNeighbour,
         long Shamans = 0,
         bool NearOre = false,
-        bool NearHills = false);
+        bool NearHills = false,
+        int Vassals = 0);
 
     /// <summary>【TEMP】第 06-3 章：礦脈在聚落幾格內算「勢力範圍內有礦脈」（採礦冶金、珠寶精工的從業條件）。</summary>
     public const int TempOreRange = 2;
@@ -454,6 +455,10 @@ public static class DemoKnowledge
                 "TECH_ORAL_LAW" => c.Elders + (c.HasLeader ? 1 : 0),
                 "TECH_BARTER" or "TECH_CURRENCY" => If(c.HasNeighbour, c.Adults),
                 "TECH_CODIFIED_LAW" => c.HasLeader ? 1 : 0,
+                // 第 08-24 章：通往王權的三項原本沒有從業者，永遠研究不出來（所以從來沒有王國）。
+                "TECH_HEREDITARY_NOBILITY" => c.Elders + (c.HasLeader ? 1 : 0),            // 長老記得各家的血緣
+                "TECH_TAXATION" => If(c.Vassals > 0 || c.Tier >= DemoSettlementTier.Town, c.Adults), // 市集或向臣屬收糧稅
+                "TECH_KINGSHIP" => If(c.Vassals > 0, c.Adults),                             // 多個聚落共奉一主
                 // 行會：另需任一工藝第 2 階（10P 跨領域先修）；從業者＝各工藝專家。
                 "TECH_CRAFT_GUILDS" => If(DemoTechCatalog.All.Any(n => n.Tier == 2 && n.Domain.StartsWith("10", StringComparison.Ordinal) && knows(n.Id)),
                     c.Specialists),
@@ -464,6 +469,7 @@ public static class DemoKnowledge
                 "TECH_ANCESTOR_RITES" or "TECH_SHAMANISM" => c.Elders,
                 "TECH_ORAL_TRADITION" or "TECH_FESTIVAL_CALENDAR" => c.Adults,
                 "TECH_ORGANIZED_RELIGION" => c.Shamans,                         // 第 08-11 章：城鎮的神殿；從業者＝巫祝
+                "TECH_THEOLOGY" => c.Shamans + c.Elders,                        // 第 08-24 章：城市的大神殿；巫祝與長老辯論教義
                 _ => 0
             },
             _ => 0
@@ -481,7 +487,8 @@ public static class DemoKnowledge
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null,
         IReadOnlyList<DemoWeekReport>? earlierWeeks = null, IReadOnlySet<DemoCellRef>? minedOut = null,
         int researchPercent = 100, // 第 08-6c 章：奇蹟時代研究加快
-        Func<int, int>? leaderResearchPercent = null) // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+        Func<int, int>? leaderResearchPercent = null, // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+        Func<int, int>? vassalsOf = null) // 第 08-24 章：直屬臣屬聚落數（稅制、王權的從業條件）
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -547,7 +554,8 @@ public static class DemoKnowledge
                 neighbours.Count > 0,
                 reps.Count(r => r.Role == DemoRepresentativeRole.Shaman),
                 map is not null && NearOre(map, settlement, extraOre, minedOut),
-                near.Contains(DemoTerrain.Hills));
+                near.Contains(DemoTerrain.Hills),
+                vassalsOf?.Invoke(settlement.Id) ?? 0);
             var roles = reps.Select(r => r.Role).ToList();
             var practice = new Practice(
                 context.HasFarmland,
