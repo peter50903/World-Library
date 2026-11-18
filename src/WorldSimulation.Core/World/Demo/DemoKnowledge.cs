@@ -476,7 +476,8 @@ public static class DemoKnowledge
         DemoHexWorld? map = null, Func<int, DemoSettlementTier>? tierOf = null, DemoLandDevelopmentMap? land = null,
         Func<int, IReadOnlyCollection<string>>? cultureTraits = null, IReadOnlySet<DemoCellRef>? extraOre = null,
         IReadOnlyList<DemoWeekReport>? earlierWeeks = null, IReadOnlySet<DemoCellRef>? minedOut = null,
-        int researchPercent = 100) // 第 08-6c 章：奇蹟時代研究加快
+        int researchPercent = 100, // 第 08-6c 章：奇蹟時代研究加快
+        Func<int, int>? leaderResearchPercent = null) // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -585,7 +586,8 @@ public static class DemoKnowledge
                 var boost = boostNow ? checked(threshold * BoostPercent(node) / 100) : 0;
                 // 第 08-14 章第 1 節：每輪累積 TempCycleWeeks 週的經驗與傳播；實踐加速與遷入帶來的經驗照原規則各算一次。
                 var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
-                    + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100) * researchPercent / 100;
+                    + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100) * researchPercent / 100
+                    * (leaderResearchPercent?.Invoke(settlement.Id) ?? 100) / 100;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
                 var learned = progress >= threshold;
                 records[key] = current with { Progress = progress, LearnedWeek = learned ? report.Week : 0, Boosted = current.Boosted || boostNow };
