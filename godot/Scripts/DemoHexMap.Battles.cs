@@ -4,7 +4,8 @@ using WorldSimulation.Core.World.Demo;
 namespace WorldSimulation.GodotClient;
 
 /// <summary>地圖上的一場戰鬥（事件編號、種類、週、交戰地點、出發地、死亡人數）。</summary>
-public sealed record BattleMark(long EventId, DemoSettlementEventKind Kind, int Week, DemoCellRef Place, DemoCellRef? From, long Deaths, int Seed, string Label = "");
+public sealed record BattleMark(long EventId, DemoSettlementEventKind Kind, int Week, DemoCellRef Place, DemoCellRef? From, long Deaths, int Seed, string Label = "",
+    long Strength = 0); // 第 08-28 章：棋子上的數量（怪物數、出征的士兵數；0＝不寫）
 
 /// <summary>
 /// 第 08-18h 章（試玩回饋 2026-11-08 第四次之 4：外在的戰鬥事件應該要顯現出來）：怪物襲擊、出兵討伐、脫離抗爭的交戰畫在地圖上。
@@ -92,7 +93,13 @@ public partial class DemoHexMap
             // 第 08-20f 章：只畫符號——紅色箭頭從出兵的地方指向戰場，戰場上一閃一閃的 ⚔ 與死亡人數（第 09-2 章移除小人交戰動畫）。
             var origin = mark.From is { } src && World.Contains(src.Column, src.Row) ? ScreenOf(start, radius, src) : (Vector2?)null;
             if (origin is { } o && o.DistanceTo(place) > radius * 0.5f)
+            {
                 DrawWarArrow(o, place, radius, Math.Min(1f, t * 2.5f));
+                // 第 08-28 章：怪物（襲擊、獸潮）或士兵（討伐、戰爭）的棋子沿著箭頭走到戰場，到了就停在戰場旁。
+                var monster = mark.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterSwarm;
+                DrawArmyToken(font, o.Lerp(place, Ease(Math.Min(1f, t * 1.8f))) + new Vector2(radius * 0.35f, radius * 0.25f),
+                    TempTroopColor, mark.Strength, monster, mark.Kind == DemoSettlementEventKind.MonsterSwarm ? 1.25f : 1f);
+            }
             var beat = 0.6f + 0.4f * Mathf.Sin(t * Mathf.Tau * 4f);
             DrawSwords(font, place - new Vector2(0f, radius * 0.6f), (int)(16 + 8 * beat), mark.Kind, 1f);
             if (mark.Deaths > 0)

@@ -1556,7 +1556,9 @@ public partial class ObserverRoot : Control
     {
         var reports = _world.WeekReports();
         var events = reports.Where(w => w.Week >= _world.CommittedWeeks - 1).SelectMany(w => w.Events)
-            .Where(e => e.Kind is DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle) // 第 08-18k 章（試玩回饋 2026-11-11 之 11）：跟怪物、野獸的戰鬥不畫
+            // 第 08-18k 章（試玩回饋 2026-11-11 之 11）：跟野獸的戰鬥不畫。第 08-28 章（使用者 2026-11-18）：怪物襲擊、獸潮、出兵討伐改成棋子畫回來。
+            .Where(e => e.Kind is DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle
+                or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterSwarm or DemoSettlementEventKind.MonsterHunt)
             .ToList();
         if (events.Count == 0)
             return Array.Empty<BattleMark>();
@@ -1565,6 +1567,8 @@ public partial class ObserverRoot : Control
         DemoCellRef? Gate(DemoCellRef near) => gates.Count == 0 ? null
             : gates.OrderBy(g => DemoHexWorld.Distance(g, near)).ThenBy(g => g.Row).ThenBy(g => g.Column).First();
         int Seed(DemoCellRef? c) => c is { } g ? g.Column * 31 + g.Row : 0;
+        var nests = _world.MonsterNests(_world.CommittedWeeks);
+        long MonstersAt(DemoCellRef? gate) => gate is { } g ? nests.FirstOrDefault(n => n.Dungeon.Cell == g)?.Monsters ?? 0 : 0; // 第 08-28 章：棋子上的怪物數
         var marks = new List<BattleMark>();
         foreach (var e in events)
         {
@@ -1572,11 +1576,13 @@ public partial class ObserverRoot : Control
                 continue;
             switch (e.Kind)
             {
-                case DemoSettlementEventKind.MonsterRaid:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home)), $"怪物襲擊{e.SettlementName}"));
+                case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterSwarm:
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home)),
+                        e.Kind == DemoSettlementEventKind.MonsterSwarm ? $"獸潮襲擊{e.SettlementName}" : $"怪物襲擊{e.SettlementName}", MonstersAt(Gate(home))));
                     break;
                 case DemoSettlementEventKind.MonsterHunt when Gate(home) is { } gate:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate), $"{e.SettlementName}出兵討伐地下城"));
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate), $"{e.SettlementName}出兵討伐地下城",
+                        _world.ExpeditionForceOf(e.SettlementId).Soldiers));
                     break;
                 case DemoSettlementEventKind.SecessionBattle:
                     // 上級那一筆：從上級出兵走到叛離的聚落；叛離方那一筆：守在自己的聚落。
