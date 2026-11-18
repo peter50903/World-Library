@@ -546,7 +546,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoHumanRulesSource.cs` | 3 | 第 07 章 a 節：人族生死參數來源（02 RACE_HUMAN、39C LIFE_DEATH_BANDS／REP_MISCARRIAGE；孕期 39 週、育齡上限 45、開局年齡層 0–17 35%／18–44 45%／45–59 12%／60–79 8%，config/demo/demography-temp.json）|
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationDraws.cs` | 2 | 第 04 章 a 節 TEMP 人類繁衍抽樣命名空間（規則仍 TEMP，亂數協定正式） |
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 7 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值；第 06-3 章丘陵採集為草原一半 |
-| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週；第 08-23 章留底 8 → 2 週 |
+| `src/WorldSimulation.Core/World/Demo/DemoFoodTrade.cs` | 4 | 第 08-23 章糧食貿易（使用者 2026-11-18：小鎮的糧食主要由多個村莊提供、販賣）：6 格內、每週賣超過留底的存糧 50%、市集存糧滿 6 週需求不再買 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則；第 08-10g 章：繼承人比前任小 18～45 歲 |
 | `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 8 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50%；第 08-22c 章身體特質（每組各 12%、遺傳 50%；強壯虛弱交戰 ±10%、聰慧遲鈍研究 ±10%、俊美醜陋忠誠 ±5）與傳說特性（領袖 2%、英雄 40%；天命忠誠 +20、交戰 ×130%，龍血交戰 ×160%，賢者研究 +50%，聖者忠誠 +25）；第 08-22h 章體魄與壽命（強壯老死機率 80%、虛弱 125%、龍血 60%） |
@@ -574,7 +575,7 @@
 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
 | `godot/Scripts/ObserverRoot.Saga.cs` | 1 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9） |
 | `godot/Scripts/DemoHexMap.Political.cs` | 6 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9）；第 12-2j 章世界時代的氛圍（黑暗時代夜色與四角壓暗、烈日偏暖、霜雪偏冷、混沌偏紅、奇蹟微光） |
-| `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 3 | 第 08-21 章政治地圖三層分界、勢力名字級（D9） |
+| `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 4 | 第 08-21 章政治地圖三層分界、勢力名字級（D9）；第 08-23 章商路（中距離以上、流動的金色虛線） |
 | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
 | `godot/Scripts/TerrainSurface.Perf.cs` | 1 | 第 09-1 章效能量測烤幾塊地表（24） |
 | `godot/Scripts/TerrainSurface.cs` | 10 | 第 08-20h 章縮圖精度（超過 100 萬方格每方格一點、否則每 8 圖像素）；第 08-20g 章每格半徑 128 圖像素（一格 16×16 方格）、換算舊門檻的比例、整批換圖最多等 30 幀；第 08-18b 章方格地表：每方格 16、逐塊烤圖（512、快取 64 塊、每幀 4 塊、格半徑 24 以下只畫四分之一縮圖）、自然交界參差機率 35%、細節層門檻與調色、生態區分區（D08-18）；試玩回饋 2026-11-08 之 5 山脈核心與外圍交界的參差比例、核心與外圍的山頭比例 |

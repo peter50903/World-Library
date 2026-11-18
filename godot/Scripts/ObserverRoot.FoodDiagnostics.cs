@@ -145,6 +145,9 @@ public partial class ObserverRoot
             // 第 08-19g 章：糧稅（下級繳給直屬上級）。
             if (ledger.FoodTaxPaid > 0 || ledger.FoodTaxReceived > 0)
                 output.Add($"糧稅：繳給上級 {ledger.FoodTaxPaid}，向下級收 {ledger.FoodTaxReceived}");
+            // 第 08-23 章：糧食貿易（村莊把餘糧賣給附近的市集）。
+            if (ledger.FoodTradeOut > 0 || ledger.FoodTradeIn > 0)
+                output.Add($"貿易：賣給市集 {ledger.FoodTradeOut}，向村莊買進 {ledger.FoodTradeIn}");
             // 第 04 章 c 節：讀已提交的來源帳（每源預算與未採），不重算。
             var origins = week!.Sources
                 .Select(source => (source, share: source.Shares.FirstOrDefault(x => x.SettlementId == place.Id)))

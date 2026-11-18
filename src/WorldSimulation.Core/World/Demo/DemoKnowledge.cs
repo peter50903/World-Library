@@ -257,11 +257,15 @@ public static class DemoKnowledge
     /// <summary>
     /// 【TEMP】第 08-12 章技術效果：來源每週供應加成。農田：灌溉＋50%、輪作＋25%、土壤管理＋25%；
     /// 河流與開放水域：結網漁撈＋20%。取相鄰（來源格或八鄰格）聚落在該週以前已習得者的最大加成。
+    /// 第 08-23 章（使用者 2026-11-18：種植技術提升，同一塊田產量上升）：輪作、土壤管理各 25 → 50%，
+    /// 另加碾磨＋25%、進階農學＋100%——一塊田最多 375（原 200），田數上限不變（08-6b：田少、產量高）。
     /// </summary>
     public static readonly ImmutableArray<(DemoCatchmentSourceKind Kind, string TechId, long Percent)> TempSourceBonuses = ImmutableArray.Create(
         (DemoCatchmentSourceKind.Farmland, "TECH_IRRIGATION", 50L),
-        (DemoCatchmentSourceKind.Farmland, "TECH_CROP_ROTATION", 25L),
-        (DemoCatchmentSourceKind.Farmland, "TECH_SOIL_MANAGEMENT", 25L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_CROP_ROTATION", 50L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_SOIL_MANAGEMENT", 50L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_MILLING", 25L),
+        (DemoCatchmentSourceKind.Farmland, "TECH_ADVANCED_AGRONOMY", 100L),
         (DemoCatchmentSourceKind.MainRiver, "TECH_NET_FISHING", 20L),
         (DemoCatchmentSourceKind.OpenWater, "TECH_NET_FISHING", 20L));
 

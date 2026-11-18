@@ -87,7 +87,7 @@ public static class LivingDiagnosis
                 var supply = weeks.Count == 0 ? 0 : weeks[^1].Sources.Where(x => (x.Shares ?? Array.Empty<DemoSourceShare>()).Any(sh => sh.SettlementId == s.Id)).Sum(x => x.FoodAvailable);
                 var food = world.SettlementFood(s.Id);
                 var ample = weeks.Count(w => w.Settlements.Any(l => l.SettlementId == s.Id
-                    && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, l.SourceSlack)));
+                    && DemoCrowding.Ample(true, l.FoodShortage, l.FoodConsumed + l.FoodShortage, DemoCrowding.EffectiveSlack(l)))); // 第 08-23 章
                 villages++;
                 fertileTotal += fertileWomen;
                 couplesTotal += couples;

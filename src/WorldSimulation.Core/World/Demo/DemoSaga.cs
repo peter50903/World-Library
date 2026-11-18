@@ -285,6 +285,19 @@ public static class DemoSaga
             .Select(s => I($"{Titled(s)}（{world.SettlementPopulation(s.Id)} 人{LeaderOf(s)}）")).ToList();
         if (largest.Count > 0)
             yield return "　最大的聚落：" + string.Join("、", largest) + "。";
+        // 第 08-23 章：繁榮的市集——最近一年買進最多糧的市集、有幾個村莊供糧（小鎮的糧食主要由周圍的村莊提供、販賣）。
+        var bought = world.WeekReports().TakeLast(52).SelectMany(w => w.Settlements).Where(l => l.FoodTradeIn > 0)
+            .GroupBy(l => l.SettlementId).Select(g => (Id: g.Key, Food: g.Sum(l => l.FoodTradeIn)))
+            .OrderByDescending(x => x.Food).ThenBy(x => x.Id).Take(EndingSettlements).ToList();
+        if (bought.Count > 0)
+        {
+            var suppliers = DemoFoodTrade.Suppliers(world, 52);
+            var markets = bought.Select(x => (Site: active.FirstOrDefault(s => s.Id == x.Id), x.Food)).Where(x => x.Site is not null)
+                .Select(x => I($"{Titled(x.Site!)}（{suppliers.GetValueOrDefault(new DemoCellRef(x.Site!.Column, x.Site.Row))} 處聚落供糧，一年買進 {x.Food} 糧）"))
+                .ToList();
+            if (markets.Count > 0)
+                yield return "　繁榮的市集：" + string.Join("、", markets) + "。";
+        }
 
         var territory = world.Territory();
         var realms = active.Select(s => (Site: s, Vassals: territory.VassalsOf(s.Id).Count)).Where(x => x.Vassals > 0)
