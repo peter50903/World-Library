@@ -1506,6 +1506,7 @@ public partial class ObserverRoot : Control
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
         _hexMap.WorldAge = _world.Age; // 第 12-2j 章：政治地圖的時代氛圍
         _hexMap.TradeLinks = DemoFoodTrade.Links(_world); // 第 08-23 章：商路
+        _hexMap.Kingdoms = _world.KingdomHeads().ToHashSet(); // 第 08-24 章：王國的名字寫「某某王國」
         _hexMap.RecentDisasters = _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - DemoWildlife.TempYearWeeks)
             .SelectMany(w => w.Events).Where(e => DemoDisasters.IsDisaster(e.Kind) || DemoEnvironment.IsSpell(e.Kind)).Select(e => e.SettlementId).ToHashSet(); // 第 12-1 章 C3
         _hexMap.MeteoriteOre = _world.MeteoriteOre.ToHashSet(); // 第 12-1 章

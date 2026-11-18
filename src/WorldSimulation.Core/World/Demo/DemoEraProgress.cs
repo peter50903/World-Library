@@ -74,6 +74,11 @@ public sealed record DemoEraProgress(DemoEra Current, DemoEra? Next, int Percent
     /// 第一個王國：不隸屬他人、是首都、會王權，而且勢力裡（直屬與間接）有 <see cref="TempKingdomVassals"/> 個以上臣屬聚落的聚落（編號最小的）；沒有＝null。
     /// </summary>
     public static int? Kingdom(IReadOnlyDictionary<int, int> lieges, IEnumerable<int> alive, Func<int, DemoSettlementTier> tierOf, Func<int, bool> knowsKingship)
+        => Kingdoms(lieges, alive, tierOf, knowsKingship).Cast<int?>().FirstOrDefault();
+
+    /// <summary>第 08-24 章：世上所有的王國（條件同 <see cref="Kingdom"/>；編號小的在前）。政治地圖寫「某某王國」、探針數王國用。</summary>
+    public static IReadOnlyList<int> Kingdoms(IReadOnlyDictionary<int, int> lieges, IEnumerable<int> alive, Func<int, DemoSettlementTier> tierOf,
+        Func<int, bool> knowsKingship)
     {
         ArgumentNullException.ThrowIfNull(lieges);
         ArgumentNullException.ThrowIfNull(alive);
@@ -87,7 +92,7 @@ public sealed record DemoEraProgress(DemoEra Current, DemoEra? Next, int Percent
         var members = living.Where(lieges.ContainsKey).GroupBy(Top).ToDictionary(g => g.Key, g => g.Count(id => id != g.Key));
         return living.Where(id => !lieges.ContainsKey(id) && tierOf(id) == DemoSettlementTier.Capital && knowsKingship(id)
                 && members.GetValueOrDefault(id) >= TempKingdomVassals)
-            .Order().Cast<int?>().FirstOrDefault();
+            .Order().ToList();
     }
 
     /// <summary>介面用的一行與提示（例：「開拓時代 → 征服時代 42%」）。</summary>

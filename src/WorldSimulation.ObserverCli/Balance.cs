@@ -96,7 +96,7 @@ public sealed class BalanceTracker
     private sealed class Step
     {
         public long Population, Births, MonsterDeaths, Slain, Largest, Tax, Trade;
-        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals;
+        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals, Kingdoms;
         public string Crown = "", CityFacilities = "";
         public char Age, Era;
     }
@@ -150,6 +150,7 @@ public sealed class BalanceTracker
         _current.Cities = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.City);
         // 第 08-24 章：首都幾個、通往王權的技術與城市級設施各有幾個聚落會、世界在哪個紀元（希望、開拓、征服＝第一個王國成立）。
         _current.Capitals = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Capital);
+        _current.Kingdoms = world.KingdomHeads().Count;
         string Knowing(params string[] techs) => string.Join('/', techs.Select(t => living.Count(s => world.Knowledge.Knows(s.Id, DemoTechnology.Of(t))))
             .Select(n => n.ToString(CultureInfo.InvariantCulture)));
         _current.Crown = Knowing("TECH_CODIFIED_LAW", "TECH_HEREDITARY_NOBILITY", "TECH_TAXATION", DemoSettlementHistory.CapitalTechId);
@@ -177,7 +178,7 @@ public sealed class BalanceTracker
             Row("出生", s => s.Births.ToString(CultureInfo.InvariantCulture)),
             Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
-            Row("鎮/城/都", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}")),
+            Row("鎮/城/都/國", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}/{s.Kingdoms}")),
             Row("法/世/稅/王", s => s.Crown),
             Row("堡/殿/書/醫", s => s.CityFacilities),
             Row("最大", s => s.Largest.ToString(CultureInfo.InvariantCulture)),

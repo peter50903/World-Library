@@ -61,6 +61,9 @@ public partial class DemoHexMap
     public IReadOnlyDictionary<int, string> CultureNames { get; set; } = new Dictionary<int, string>();
     public IReadOnlyDictionary<int, string> FaithNames { get; set; } = new Dictionary<int, string>();
 
+    /// <summary>第 08-24 章：王國的首都（政治地圖的勢力名字寫「某某王國」；ObserverRoot 刷新時注入）。</summary>
+    public IReadOnlySet<int> Kingdoms { get; set; } = new HashSet<int>();
+
     /// <summary>色塊層的滑鼠提示：這一格的顏色代表什麼（依地圖模式）。</summary>
     public string ColorMeaning(DemoHexCell cell)
     {
