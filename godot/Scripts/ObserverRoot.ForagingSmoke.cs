@@ -19,8 +19,8 @@ public partial class ObserverRoot
         InstallWorld(CreateTempWorld(TempScenario.Foraging), "森林／河流試玩");
         if (!_world.UsesSharedForaging || _scenarioPicker.Selected != (int)TempScenario.Foraging)
             Fail("selectable TEMP forest/river scenario is not active");
-        if (_hexMap.MainRiverTiles.Count == 0)
-            Fail("TEMP main-river tiles are not visible");
+        if (DemoForagingWorld.MainRiverTiles(_world.Map).Count == 0)
+            Fail("TEMP main-river tiles are missing");
         if (_world.Sites.Settlements.Any(s => _world.Map.GetCell(s.Column, s.Row).Terrain == DemoTerrain.Water))
             Fail("a settlement occupies a water/main-river hex");
         // 第 08 章 a 節：沒有任何格自動成為農田（土地開發狀態全部未開發）。
@@ -35,8 +35,9 @@ public partial class ObserverRoot
             Position = _hexMap.CellCenter(_world.Map.GetCell(forest.Column, forest.Row))
         });
         var eligible = DemoHexFoodCatchment.EligibleCells(_world.Map, forest);
-        if (_hexMap.FoodReachCells.Count != eligible.Count)
-            Fail("clicking a forest did not highlight its real Core catchment");
+        if (!_cellInfo.Text.Contains($"座標 ({forest.Column}, {forest.Row})", StringComparison.Ordinal)
+            || _world.QueryCell(forest.Column, forest.Row).FoodReachCells.Count != eligible.Count)
+            Fail("clicking a forest did not select it with its real Core catchment");
 
         var settlement = _world.Sites.Settlements[0];
         _hexMap._GuiInput(new InputEventMouseButton
@@ -78,7 +79,7 @@ public partial class ObserverRoot
             Fail("foraging TEMP v2 save/load did not round-trip");
         InstallWorld(restored, "森林／河流讀檔完成");
         if (_scenarioPicker.Selected != (int)TempScenario.Foraging || _foodSettlementId != 0
-            || _hexMap.MainRiverTiles.Count == 0)
+            || DemoForagingWorld.MainRiverTiles(_world.Map).Count == 0)
             Fail("load did not restore the selected river mode or reset old selection");
 
         InstallWorld(CreateTempWorld(TempScenario.CrowdedForaging), "觀察過密人口與缺糧");

@@ -30,7 +30,7 @@ public partial class DemoHexMap
     public IReadOnlyList<WarFront> WarFronts { get; set; } = Array.Empty<WarFront>();
 
     /// <summary>【TEMP】軍旗大小（像素）、比分條寬度、斜線間距（格半徑的倍數）。</summary>
-    private const float TempBannerSize = 14f, TempScoreBarWidth = 52f, TempHatchStep = 0.32f;
+    private const float TempBannerSize = 14f, TempScoreBarWidth = 52f;
 
     private Color FrontColor(WarFront front, bool attacker)
         => attacker
@@ -55,18 +55,7 @@ public partial class DemoHexMap
             var span = new Rect2(Mathf.Min(target.X, from.X), Mathf.Min(target.Y, from.Y), Mathf.Abs(target.X - from.X), Mathf.Abs(target.Y - from.Y));
             if (span.Grow(radius * 4f + 64f).Intersects(new Rect2(Vector2.Zero, Size)))
                 _animatedOnScreen = true;
-            // ① 佔領斜紋：目標聚落直屬的格（第 08-21 章：政治地圖由著色器把整個省份畫成斜紋）。
-            var step = Math.Max(4f, radius * TempHatchStep);
-            foreach (var (at, owner) in _political ? Enumerable.Empty<KeyValuePair<DemoCellRef, DemoTerritoryCell>>() : (IEnumerable<KeyValuePair<DemoCellRef, DemoTerritoryCell>>)Territory.Cells)
-            {
-                if (owner.SettlementId != front.TargetSettlement)
-                    continue;
-                var cell = World.GetCell(at.Column, at.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius))
-                    continue;
-                Hatch(BoundsOf(ScreenShape(cell, center, radius)), step, new Color(attackerColor, 0.45f), Math.Max(1f, radius * 0.06f));
-            }
+            // ① 佔領斜紋由政治地圖的著色器把整個省份畫成斜紋（第 08-21 章）。
             // ② 行軍路線：虛線往目標流動，末端箭頭。
             var line = target - from;
             var length = line.Length();
@@ -131,31 +120,6 @@ public partial class DemoHexMap
         DrawString(font, plate.Position + new Vector2(3f, 10.5f), text, HorizontalAlignment.Left, -1, 11, new Color(0.98f, 0.94f, 0.82f));
     }
 
-    private static Rect2 BoundsOf(Vector2[] points)
-    {
-        var box = new Rect2(points[0], Vector2.Zero);
-        foreach (var p in points)
-            box = box.Expand(p);
-        return box;
-    }
-
-    /// <summary>在矩形裡畫往右下的斜線（方格世界的格在畫面上是方形）。</summary>
-    private void Hatch(Rect2 box, float step, Color color, float width)
-    {
-        var x0 = box.Position.X;
-        var y0 = box.Position.Y;
-        var w = box.Size.X;
-        var h = box.Size.Y;
-        for (var t = -h; t < w; t += step)
-        {
-            // 線：(x0 + t + k, y0 + k)，k 在 [0, h]，夾在 [x0, x0 + w]。
-            var k0 = Math.Max(0f, -t);
-            var k1 = Math.Min(h, w - t);
-            if (k1 <= k0)
-                continue;
-            DrawLine(new Vector2(x0 + t + k0, y0 + k0), new Vector2(x0 + t + k1, y0 + k1), color, width);
-        }
-    }
 
     /// <summary>滑鼠所在格是戰爭目標時的說明（提示框第一行；沒有回傳空字串）。</summary>
     public string WarTip(int column, int row)

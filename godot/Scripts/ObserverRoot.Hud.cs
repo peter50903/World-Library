@@ -435,9 +435,6 @@ public partial class ObserverRoot
         _detailFixed = false;
         var detail = _world.PlayerDetail(column, row);
         var tabs = detail.Tabs.ToList();
-        // 試玩回饋 2026-11-05 之 2：遭遇天災的地塊在詳情第一頁最上面寫明狀況。
-        if (tabs.Count > 0 && _hexMap.DisasterStatus(column, row) is { Length: > 0 } status)
-            tabs[0] = tabs[0] with { Lines = new[] { status, "" }.Concat(tabs[0].Lines).ToList() };
         if (detail.SettlementId is { } settlementId && RealmTab(settlementId) is { } realmTab)
             tabs.Add(realmTab); // 試玩回饋 2026-11-08 之 1：聚落所屬勢力的概況與隸屬樹
         if (_showDebugInfo)
@@ -543,92 +540,6 @@ public partial class ObserverRoot
 
     /// <summary>第 08-19e 章：最近一次刷新時進行中的征服戰爭。</summary>
     private IReadOnlyList<DemoWar> _wars = Array.Empty<DemoWar>();
-
-    /// <summary>
-    /// 試玩回饋 2026-11-08 之 6：點到地圖上的角色。領袖開聚落的「代表人物」頁；工作團體、遷徙隊伍開它們自己的詳情；怪物開地下城。
-    /// </summary>
-    private void OnActorSelected(DemoHexMap.MapActor actor)
-    {
-        var site = _world.Sites.Settlements.FirstOrDefault(s => s.Id == actor.SettlementId);
-        switch (actor.Kind)
-        {
-            case DemoHexMap.ActorKind.Monster:
-                ShowDetailAt(actor.Cell.Column, actor.Cell.Row);
-                return;
-            case DemoHexMap.ActorKind.Leader when site is not null:
-                // 第 08-19c 章：點到領袖直接開人物頁（沒有在任的領袖時開聚落的代表人物頁）。
-                if (_world.RepresentativesOf(site.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader) is { } leader)
-                {
-                    ShowPersonDetail(leader.Id);
-                    return;
-                }
-                ShowDetailAt(site.Column, site.Row);
-                SelectDetailTab("代表人物");
-                return;
-            case DemoHexMap.ActorKind.Migrants:
-                if (_world.MigrationsInTransit().FirstOrDefault(b => b.Id == actor.BatchId) is { } batch)
-                {
-                    _detailBelief = null;
-                    _detailRealm = null;
-                    _detailFixed = true;
-                    var lines = new List<string>
-                    {
-                        $"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}：{batch.People} 人",
-                        $"從{batch.FromName}出發，前往{batch.ToName}",
-                        batch.Founding ? "抵達後會在那裡建立新的聚落" : "抵達後會住進那個聚落"
-                    };
-                    RenderDetail(new DemoPlayerDetail($"{batch.FromName}的{(batch.Founding ? "開拓隊" : "遷徙隊伍")}", new[] { new DemoDetailTab("隊伍", lines) }, null),
-                        new List<DemoDetailTab> { new("隊伍", lines) }, 0);
-                    var ends = new List<(string, Action)>();
-                    foreach (var (label, id) in new[] { ("出發地", batch.FromSettlementId), ("目的地", batch.ToSettlementId) })
-                        if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == id) is { } end)
-                            ends.Add(($"{label}：{TitledName(end)}", () => ShowDetailAt(end.Column, end.Row)));
-                    SetCrumbs(ends);
-                }
-                return;
-            case DemoHexMap.ActorKind.WorkGroup when site is not null:
-            {
-                _detailBelief = null;
-                _detailRealm = null;
-                _detailFixed = true;
-                _detailCell = (site.Column, site.Row);
-                var home = _hexMap.SettlementScale.TryGetValue(site.Id, out var scale) ? DemoSettlementHistory.TitledName(site, scale.Tier) : site.Name;
-                var name = WorkGroupName(actor.Work);
-                var place = DemoCellQuery.ShortName(_world.Map, _world.Sites, _world.Map.GetCell(actor.Cell.Column, actor.Cell.Row));
-                var lines = new List<string>
-                {
-                    $"{home}的{name}：約 {actor.People} 人",
-                    $"工作地：{place}",
-                    WorkGroupDuty(actor.Work),
-                    _world.IsStarving(site.Id) ? "聚落正在缺糧，他們的收穫攸關生死" : "聚落糧食充足"
-                };
-                RenderDetail(new DemoPlayerDetail($"{home}的{name}", new[] { new DemoDetailTab("團體", lines) }, site.Id),
-                    new List<DemoDetailTab> { new("團體", lines) }, 0);
-                SetCrumbs(new List<(string, Action)> { ($"聚落：{home}", () => ShowDetailAt(site.Column, site.Row)) });
-                return;
-            }
-        }
-    }
-
-    private static string WorkGroupName(DemoHexMap.TokenKind kind) => kind switch
-    {
-        DemoHexMap.TokenKind.Farmers => "農夫",
-        DemoHexMap.TokenKind.Woodcutters => "樵夫",
-        DemoHexMap.TokenKind.Miners => "礦工",
-        DemoHexMap.TokenKind.Hunters => "獵人",
-        DemoHexMap.TokenKind.Fishers => "漁夫",
-        _ => "居民"
-    };
-
-    private static string WorkGroupDuty(DemoHexMap.TokenKind kind) => kind switch
-    {
-        DemoHexMap.TokenKind.Farmers => "在農田耕作，是聚落主要的糧食來源",
-        DemoHexMap.TokenKind.Woodcutters => "砍伐森林取得木材，砍過的林地約十年長回",
-        DemoHexMap.TokenKind.Miners => "開採礦脈，挖空後只剩礦坑",
-        DemoHexMap.TokenKind.Hunters => "在附近獵捕野生動物，獵物多寡影響收穫",
-        DemoHexMap.TokenKind.Fishers => "在水邊捕魚",
-        _ => ""
-    };
 
     /// <summary>
     /// 第 08-18b 章第 5 節介面第二批：「人口」頁——上面是排行，下面是人口金字塔（由上到下是年老到年輕；
@@ -1372,8 +1283,7 @@ public partial class ObserverRoot
             || _consolePanel.GetThemeStylebox("panel") is not StyleBoxTexture
             || _outlinerPanel.GetThemeStylebox("panel") is not StyleBoxTexture
             || _topBar.GetThemeStylebox("panel") is not StyleBoxTexture
-            || _clickPlayer.Stream is null || _alertPlayer.Stream is null || _musicPlayer.Stream is null
-            || !_hexMap.UsesTerrainArt || !DemoHexMap.HasLandArt)
+            || _clickPlayer.Stream is null || _alertPlayer.Stream is null || _musicPlayer.Stream is null)
             Fail("art assets were loaded but not applied to the HUD/map.");
         if (!_topFood.Text.StartsWith("糧食 ", StringComparison.Ordinal))
             Fail("food stat missing from the top bar.");

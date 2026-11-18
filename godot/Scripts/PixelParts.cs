@@ -4,14 +4,17 @@ namespace WorldSimulation.GodotClient;
 
 /// <summary>
 /// 第 08-16 章第 12 節：像素零件（GPT 畫、匯入工具縮成實際像素）。
-/// 地形零件（樹、草、山、礦、田、灰燼…）由 <see cref="TerrainSurface"/> 直接疊進像素地表；
+/// 地形零件（樹、草、山、礦、田、灰燼…）原本由舊的像素地表直接疊入（第 08-25 章已移除舊地圖）；
 /// 建築、火焰、天災痕跡以同樣的像素密度、最近鄰取樣畫在地表上，透視與像素大小一致。
-/// 第 08-18d 章：第五、六批素材（<see cref="Batch5"/>，res://assets/px2/）與地表同一密度（每格半徑 <see cref="TerrainSurface.TempTexelsPerRadius"/> 圖像素）；
-/// 第四批（res://assets/px/）是一半密度（每格半徑 <see cref="TerrainSurface.TempArtTexelsPerRadius"/>），畫的時候放大兩倍。
+/// 第 08-18d 章：第五、六批素材（<see cref="Batch5"/>，res://assets/px2/）與地表同一密度（每格半徑 <see cref="TempTexelsPerRadius"/> 圖像素）；
+/// 第四批（res://assets/px/）是一半密度（每格半徑 <see cref="TempArtTexelsPerRadius"/>），畫的時候放大兩倍。
 /// 缺任何一張時該處退回舊素材或程式畫的圖樣。
 /// </summary>
 public static partial class PixelParts
 {
+    /// <summary>第五、六批素材每格半徑幾個圖像素（原本是像素地表的密度）；第四批是一半（第 08-25 章：舊地圖移除後搬到這裡）。</summary>
+    public const int TempTexelsPerRadius = 128, TempArtTexelsPerRadius = 64;
+
     public static readonly string[] Names =
     {
         "px_tree_round_1", "px_tree_round_2", "px_tree_pine_1", "px_tree_pine_2", "px_bush", "px_sapling", "px_stump", "px_tree_burnt",
@@ -53,7 +56,7 @@ public static partial class PixelParts
                 for (var x = 0; x < image.GetWidth(); x++)
                     pixels[y * image.GetWidth() + x] = image.GetPixel(x, y);
             sprite = new Sprite(image.GetWidth(), image.GetHeight(), pixels,
-                IsBatch5(name) ? 1 : TerrainSurface.TempTexelsPerRadius / TerrainSurface.TempArtTexelsPerRadius);
+                IsBatch5(name) ? 1 : TempTexelsPerRadius / TempArtTexelsPerRadius);
         }
         Sprites[name] = sprite;
         return sprite;
@@ -173,8 +176,8 @@ public static partial class PixelParts
         if (MetricsCache.TryGetValue(texture, out var known))
             return known;
         var density = texture is CanvasTexture { DiffuseTexture: { } source } && (source.ResourcePath.Contains("/px2/") || source is ImageTexture)
-            ? TerrainSurface.TempTexelsPerRadius
-            : TerrainSurface.TempArtTexelsPerRadius;
+            ? TempTexelsPerRadius
+            : TempArtTexelsPerRadius;
         known = (texture.GetWidth(), texture.GetHeight(), density);
         MetricsCache[texture] = known;
         return known;

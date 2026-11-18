@@ -16,20 +16,6 @@ public partial class DemoHexMap : Control
     /// <summary>Injected by ObserverRoot; settlement markers come only from Core.</summary>
     public DemoWorldSites? Sites { get; set; }
 
-    /// <summary>第 08 章 a 節：土地開發狀態（開墾中、農田用專屬圖塊；與地形分離，只影響顯示）。</summary>
-    public DemoLandDevelopmentMap Land { get; set; } = DemoLandDevelopmentMap.Empty;
-
-    /// <summary>Visible TEMP river bank markers, computed by Core only for the foraging scenario.</summary>
-    public IReadOnlyList<DemoCellRef> MainRiverTiles { get; set; } = Array.Empty<DemoCellRef>();
-
-    /// <summary>Selected forest or main-river source supply range, computed exclusively by Core.</summary>
-    public IReadOnlyList<DemoCellRef> FoodReachCells { get; set; } = Array.Empty<DemoCellRef>();
-
-    /// <summary>
-    /// V0-06A: migrant batches currently travelling, set by ObserverRoot from Core after every
-    /// advance. Drawn as red markers with the head count; this view never moves them itself.
-    /// </summary>
-    public IReadOnlyList<DemoMigrationBatch> Migrants { get; set; } = Array.Empty<DemoMigrationBatch>();
 
     public event Action<DemoHexCell>? CellSelected;
 
@@ -171,19 +157,6 @@ public partial class DemoHexMap : Control
         return TempLineagePalette[index % TempLineagePalette.Length];
     }
 
-    /// <summary>第 08-10a 章 V2、第 08-11 章【TEMP】聚落圖示大小：營地依人口 1.15～1.4，村莊起每升一級大一些（TEMP）。</summary>
-    private float IconSize(DemoSettlement settlement, float radius)
-    {
-        if (settlement.IsRuin || !SettlementScale.TryGetValue(settlement.Id, out var scale))
-            return radius * 1.4f;
-        return radius * (scale.Tier switch
-        {
-            DemoSettlementTier.Camp => scale.Population < 10 ? 1.15f : 1.4f,
-            DemoSettlementTier.Village => 1.65f,
-            DemoSettlementTier.Town => 1.85f,
-            _ => 2.0f
-        });
-    }
 
     /// <summary>聚落 ID → 糧食狀況（ObserverRoot 每次刷新從 Core 週帳算好注入）。</summary>
     public IReadOnlyDictionary<int, FoodStatus> FoodStatuses { get; set; } = new Dictionary<int, FoodStatus>();
@@ -197,22 +170,6 @@ public partial class DemoHexMap : Control
         _ => new Color(0.65f, 0.65f, 0.65f)
     };
 
-    /// <summary>b 節：地形是否已用素材圖塊繪製（冒煙測試用）。</summary>
-    public bool UsesTerrainArt => TerrainTexture(DemoTerrain.Grassland, false) is not null;
-
-
-    /// <summary>第 06-2 章：是否畫六角格線（預設不畫，地形看起來連成一片；功能列「格線」可切換）。只影響顯示。</summary>
-    public bool ShowGrid
-    {
-        get => _showGrid;
-        set
-        {
-            _showGrid = value;
-            QueueRedraw();
-        }
-    }
-
-    private bool _showGrid;
 
     /// <summary>第 08-11 章：已消失的遺跡（不重要的遺跡荒廢數年後還原成原本的土地，地圖不再畫）。</summary>
     public IReadOnlySet<int> FadedRuins { get; set; } = new HashSet<int>();
@@ -223,29 +180,17 @@ public partial class DemoHexMap : Control
     /// <summary>第 12-2j 章：目前的世界時代（政治地圖的氛圍：黑暗時代長夜降臨）。</summary>
     public DemoAge WorldAge { get; set; } = DemoAge.Hope;
 
-    /// <summary>第 12-1 章 C3：一年內遭天災的聚落（地圖畫災害標記）。</summary>
-    public IReadOnlySet<int> RecentDisasters { get; set; } = new HashSet<int>();
-
-    /// <summary>第 08-13 章：熱浪、野火（地形外觀）與目前週次。</summary>
-    public IReadOnlyList<DemoEnvironmentSpell> Spells { get; set; } = Array.Empty<DemoEnvironmentSpell>();
+    /// <summary>目前週次（戰鬥標記看本週與上週）。</summary>
     public int CurrentWeek { get; set; }
 
     /// <summary>第 12-1 章 C4：地下城所在格（近景與區域層畫地下城標記）。</summary>
     public IReadOnlyCollection<DemoCellRef> Dungeons { get; set; } = Array.Empty<DemoCellRef>();
 
-    /// <summary>第 12-1 章：隕石留下的礦脈格（疊礦脈圖）。</summary>
-    public IReadOnlySet<DemoCellRef> MeteoriteOre { get; set; } = new HashSet<DemoCellRef>();
 
     /// <summary>畫面上看得到的聚落（已消失的遺跡＝null）。</summary>
     private DemoSettlement? VisibleSite(DemoHexCell cell)
         => Sites?.SettlementAt(cell.Column, cell.Row) is { } s && !FadedRuins.Contains(s.Id) ? s : null;
 
-    /// <summary>【TEMP】第 08-11 章格線：不透明度與線寬（格半徑的比例，至少 1.2 像素）。</summary>
-    private const float TempGridAlpha = 0.7f;
-    private const float TempGridWidthPerRadius = 0.04f;
-
-    /// <summary>第 06-2 章：本週已過幾成（0～1）；遷徙隊伍圖示沿路線在本格與下一格之間平滑移動。只影響顯示。</summary>
-    public float WeekFraction { get; set; }
 
     /// <summary>#89：事件詳情選到的聚落格（偏移座標），畫亮色外框；null＝不標示。只影響顯示。</summary>
     public (int Column, int Row)? Highlight
@@ -264,10 +209,6 @@ public partial class DemoHexMap : Control
     // TEMP display-only controls. Never change simulation state or formal settings.
     private const float TempZoomStep = 1.2f;
     private const float TempMinZoom = 0.6f;
-    private const float TempMaxZoom = 3f;
-    /// <summary>第 08-13 章第 5 節【TEMP】大地圖：開新世界時鏡頭拉近到每格約這個半徑（像素），可縮小看全圖；最大縮放到每格這麼大。</summary>
-    private const float TempComfortHexRadius = 26f;
-    private const float TempMaxHexRadius = 160f * TerrainSurface.TempZoomScale; // 第 08-20g 章換算；第 08-20h 章（使用者 2026-11-15：無法放大仔細看城裡的建築）：64 → 160，最大時一個方格約 53 螢幕像素（素材放大 3.3 倍）
     private DemoHexWorld? _viewWorld;
     private float _zoom = 1f;
     private Vector2 _pan = Vector2.Zero;
@@ -286,14 +227,8 @@ public partial class DemoHexMap : Control
         TooltipText = " "; // 第 08-5 章：提示文字依滑鼠所在格（_GetTooltip）
     }
 
-    private TerrainSurface? _surface;
-
     public override void _Ready()
     {
-        // 第 06-4 章第 2 步：連續地表（畫在本節點的圖示與建築下面）。
-        _surface = new TerrainSurface();
-        AddChild(_surface);
-        _surface.SetAnchorsPreset(LayoutPreset.FullRect);
         Resized += QueueRedraw;
         MouseExited += () => _middleDragging = _rightDragging = false;
         QueueRedraw();
@@ -301,12 +236,10 @@ public partial class DemoHexMap : Control
 
     public override void _Draw()
     {
-        _actorHits.Clear(); // 試玩回饋 2026-11-08 第二次之 1：這一幀畫了哪些角色，由各畫法重新登記
         _plateHits.Clear(); // 第 08-18i 章：名牌的點選範圍
         using var perf = PerfMonitors.MapDraw(); // 第 09-1e 章：監看值「地圖重畫毫秒」
         if (World is null)
         {
-            _surface?.Hide();
             HidePolitical();
             return;
         }
@@ -314,445 +247,8 @@ public partial class DemoHexMap : Control
         var (start, radius) = ViewLayout();
 
         _animatedOnScreen = false; // 第 09-1e 章：這一次重畫有沒有畫到會動的東西，由各畫法重新登記
-        // 第 08-21 章：CK3 式政治地圖（預設）；開發工具「舊地圖」才畫下面的像素地圖。
-        if (_political)
-        {
-            _surface?.Hide();
-            DrawPolitical(start, radius);
-            return;
-        }
-        HidePolitical();
-        // 第 08-15 章：遠看（戰略層、區域層）用簡化畫法；近景層才畫圖塊、建築與格線。
-        var layer = LayerFor(radius);
-        // 第 06-4 章第 2 步：近景層、區域層的地形模式改畫連續地表（不再一格一張六角形圖塊）。
-        if (_surface is not null)
-        {
-            // 試玩回饋 2026-11-04：地表只畫在左上一塊——錨點沒有讓它跟著地圖變大（容器排版、視窗縮放時），
-            // 每次重畫都直接把它設成與地圖同位置、同大小。
-            if (_surface.Position != Vector2.Zero || _surface.Size != Size)
-            {
-                _surface.Position = Vector2.Zero;
-                _surface.Size = Size;
-            }
-            if (!_schematic && (layer == ViewLayer.Local || (layer == ViewLayer.Regional && _mode == Mode.Terrain))) // 第 05-1 章：色塊檢視不畫連續地表
-                _surface.Show(SurfaceCodes(), World.Columns, World.Rows, start, radius, _ground);
-            else
-                _surface.Hide();
-        }
-        if (layer != ViewLayer.Local)
-        {
-            DrawSimplified(start, radius, layer);
-            DrawHighlightAndMigrants(start, radius, migrants: false); // 試玩回饋 2026-11-05 之 3：遠看不畫遷徙與天災動畫，只看地塊與建築
-            return;
-        }
-
-        // 地形已由連續地表畫好；這裡只畫聚落圖示（近看畫建築由 DrawLayouts 畫，遠看與遺跡畫圖示）。
-        // 第 09-3 章：只走一遍聚落（原本每幀走一遍全部的格）。
-        if (Sites is not null && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
-            foreach (var site in Sites.Settlements)
-            {
-                if (FadedRuins.Contains(site.Id) || !(site.IsRuin || !UseFootprints(radius)))
-                    continue;
-                var cell = World.GetCell(site.Column, site.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius))
-                    continue; // 第 08-13 章第 5 節：畫面外的格不畫（大地圖）
-                // 第 08-16 章第 12 節：近看的遺跡畫像素零件（倒塌的石牆）。
-                if (site.IsRuin && UseFootprints(radius) && DrawPixelPart("b9_ruin", center + new Vector2(0f, radius * 0.3f), radius))
-                    continue;
-                DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-            }
-
-        // 第 08-13 章第 4 節：聚落建築與牆畫在全部地形之上（鄰格圖塊不會蓋住屋子）。
-        // 第 08-19 章：勢力邊界（地形模式只畫邊界、勢力模式整片著色）。
-        // 第 08-18k 章（試玩回饋 2026-11-11 之 10）：地形模式不畫勢力框。
-        if (_mode == Mode.Realm)
-            DrawRealms(start, radius, 0.45f, inner: false); // 試玩回饋 2026-11-07 之 4：同一勢力不畫內部分界
-        if (_mode == Mode.Realm)
-            DrawMonsterRealms(start, radius, fill: true); // 試玩回饋 2026-11-08 之 2：怪物也是一個勢力
-        if (UseFootprints(radius) && _mode is not (Mode.Lineage or Mode.Knowledge or Mode.Culture or Mode.Faith))
-        {
-            DrawLayouts(start, radius); // 第 08-17 章：對齊方格的聚落版面
-        }
-
-        // 第 05 章 b 節：糧食狀況模式——地形壓暗，聚落格塗上狀況色並加粗外框。
-        if (_mode == Mode.Food && Sites is not null)
-        {
-            foreach (var cell in World.Cells)
-            {
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius))
-                    continue;
-                var hex = ScreenShape(cell, center, radius);
-                if (VisibleSite(cell) is { IsRuin: true } ruinSite)
-                {
-                    DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
-                    DrawMarker(SettlementIcon(ruinSite), center, radius * 1.4f);
-                }
-                else if (VisibleSite(cell) is { } site)
-                {
-                    var status = FoodStatuses.TryGetValue(site.Id, out var known) ? known : FoodStatus.Unsettled;
-                    var color = FoodStatusColor(status);
-                    DrawShape(center, hex, new Color(color, 0.55f));
-                    DrawPolyline(Closed(hex), color, 3.5f);
-                    DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-                }
-                else
-                {
-                    DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
-                }
-            }
-        }
-
-        // 第 08-10a 章 V2：家系模式——地形壓暗，聚落與採集範圍塗家系色，家系之間畫合併後的邊界（參考 WorldBox／CK3 分布圖層）。
-        if (_mode == Mode.Lineage && Sites is not null)
-            DrawTerritory(start, radius, owner => LineageColor(owner.LineageRootId), owner => owner.LineageRootId);
-        // 第 08-8 章 B1：文化模式——同樣的領域，依聚落的主要文化著色。
-        if (_mode == Mode.Culture && Sites is not null)
-        {
-            DrawTerritory(start, radius, owner => CultureColor(CultureOf.GetValueOrDefault(owner.SettlementId)),
-                owner => CultureOf.GetValueOrDefault(owner.SettlementId));
-            // 第 08-16 章：每個聚落插上主要文化的紋章。
-            foreach (var site in Sites.Settlements.Where(s => !s.IsRuin && CultureOf.ContainsKey(s.Id)))
-            {
-                var cultureId = CultureOf[site.Id];
-                if (!CultureEmblems.TryGetValue(cultureId, out var emblem) || Heraldry.Emblem(emblem, CultureColor(cultureId)) is not { } shield)
-                    continue;
-                var cell = World!.GetCell(site.Column, site.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (OnScreen(center, radius))
-                    DrawTextureRect(shield, new Rect2(center - new Vector2(radius, radius) * 0.55f, new Vector2(radius, radius) * 1.1f), false);
-            }
-        }
-        // 第 08-8 章 B3：信仰模式——同樣的領域，依主要信仰著色；聖地（創立聚落）另畫標記。
-        if (_mode == Mode.Faith && Sites is not null)
-        {
-            DrawTerritory(start, radius, owner => FaithColor(FaithOf.GetValueOrDefault(owner.SettlementId)),
-                owner => FaithOf.GetValueOrDefault(owner.SettlementId));
-            // 第 08-16 章：每個有信徒的聚落畫上主要信仰的符號（深色圓底）。
-            foreach (var site in Sites.Settlements.Where(s => !s.IsRuin && FaithOf.ContainsKey(s.Id) && !HolySites.Contains(s.Id)))
-            {
-                var faithId = FaithOf[site.Id];
-                if (!FaithSymbolsById.TryGetValue(faithId, out var symbol) || Heraldry.FaithSymbol(symbol, FaithColor(faithId)) is not { } sign)
-                    continue;
-                var cell = World!.GetCell(site.Column, site.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius))
-                    continue;
-                DrawCircle(center, radius * 0.45f, new Color(0.10f, 0.08f, 0.07f, 0.85f));
-                DrawTextureRect(sign, new Rect2(center - new Vector2(radius, radius) * 0.4f, new Vector2(radius, radius) * 0.8f), false);
-            }
-            var holy = ArtAssets.Texture(ArtAssets.IconHolySite);
-            foreach (var site in Sites.Settlements.Where(s => HolySites.Contains(s.Id)))
-            {
-                var cell = World!.GetCell(site.Column, site.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (holy is not null)
-                    DrawTextureRect(holy, new Rect2(center - new Vector2(radius, radius) * 0.7f, new Vector2(radius, radius) * 1.4f), false);
-                else
-                {
-                    DrawCircle(center, radius * 0.35f, new Color(0.95f, 0.80f, 0.35f));
-                    DrawArc(center, radius * 0.35f, 0, Mathf.Tau, 24, Colors.Black, 2f);
-                }
-            }
-        }
-        // 第 08-10a 章 V4：知識模式——同樣的領域，依聚落已習得的技術數著色（看得出技術從哪裡傳開）。
-        if (_mode == Mode.Knowledge && Sites is not null)
-            DrawTerritory(start, radius, owner => KnowledgeTint(owner.SettlementId),
-                owner => (KnowledgeDomain.GetValueOrDefault(owner.SettlementId) ?? "").GetHashCode() * 8 + KnowledgeBand(KnowledgeCounts.GetValueOrDefault(owner.SettlementId)));
-
-        // 第 08-2 章：渡口不再畫褐色環與虛線（使用者 2026-10-22：不要圈和線）。第 06-1 章：渡口改畫成淺灘圖塊。
-
-        // 第 08-2 章：不再畫選取來源的供應範圍外框（使用者 2026-10-21：不需要用圈和線標示共用食物範圍）；
-        // FoodReachCells 仍由 Core 注入，只供冒煙測試核對幾何。
-
-        // 第 08-11 章：格線最後畫（原本畫在每格圖塊之後，被鄰格圖塊與地圖模式疊層蓋掉，開了也看不出來）。
-        if (_showGrid)
-        {
-            var gridColor = new Color(0.05f, 0.04f, 0.03f, TempGridAlpha);
-            foreach (var cell in World.Cells)
-            {
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (OnScreen(center, radius))
-                    DrawPolyline(Closed(ScreenShape(cell, center, radius)), gridColor, Math.Max(1.2f, radius * TempGridWidthPerRadius));
-            }
-        }
-
-        DrawHighlightAndMigrants(start, radius, migrants: true);
-    }
-
-    /// <summary>選取外框與途中隊伍（各視角層共用；戰略層不畫隊伍）。</summary>
-    private void DrawHighlightAndMigrants(Vector2 start, float radius, bool migrants)
-    {
-        // 試玩回饋 2026-11-03 之 3：天災當下的動畫與燃燒的煙（近景與區域層）。
-        if (migrants)
-            DrawDisasterEffects(start, radius);
-        // 第 12-1 章 C4：地下城標記（近景與區域層；戰略層只看色塊）。沒有素材時畫深色圓點加紅框。
-        if (migrants)
-        {
-            foreach (var d in Dungeons)
-            {
-                if (!World!.Contains(d.Column, d.Row))
-                    continue;
-                var cell = World.GetCell(d.Column, d.Row);
-                var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-                if (!OnScreen(center, radius) || DungeonDrawn(d.Column, d.Row, radius)) // 第 08-18d 章：近景畫入口素材
-                    continue;
-                if (!DrawMarker(ArtAssets.IconDungeon, center, Math.Max(radius * 1.3f, 14f)))
-                {
-                    DrawCircle(center, Math.Max(radius * 0.3f, 4f), new Color(0.10f, 0.08f, 0.10f));
-                    DrawArc(center, Math.Max(radius * 0.3f, 4f), 0, Mathf.Tau, 24, new Color(0.75f, 0.20f, 0.18f), 2f);
-                }
-            }
-        }
-
-        // #89: outline the settlement of the selected event on top of the terrain and markers.
-        if (Highlight is { } focus && World!.Contains(focus.Column, focus.Row))
-        {
-            var cell = World.GetCell(focus.Column, focus.Row);
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            // 試玩回饋 2026-11-04 之 4：畫了像素地表時，選取框沿這一格實際的像素邊緣（深色底線＋亮黃線）。
-            if (_surface?.OutlineOf(focus.Row * World.Columns + focus.Column) is { Length: > 0 } outline)
-            {
-                DrawMultiline(outline, new Color(0.1f, 0.08f, 0.05f, 0.8f), 4.5f);
-                DrawMultiline(outline, new Color(1f, 0.95f, 0.35f), 2f);
-            }
-            else
-                DrawPolyline(Closed(ScreenShape(cell, center, radius - 1.4f)), new Color(1f, 0.95f, 0.35f), 3.5f);
-        }
-
-        // 第 08-18h 章：怪物襲擊、討伐與脫離抗爭的交戰（各視角層；遠看只畫 ⚔）。
-        DrawWars(start, radius); // 第 08-18m 章：戰線（佔領斜紋、行軍路線、軍旗、比分條）
-        DrawBattles(start, radius);
-        // V0-06A: travelling migrants. 第 08-2 章：圖示畫在六角格正中央（使用者 2026-10-21），人數標籤在右下角。
-        if (!migrants)
-            return;
-        DrawMigrants(start, radius); // 第 08-16 章：沿路線走路的小人群
-    }
-
-    /// <summary>
-    /// 第 08-10a 章：領域著色——地形壓暗，聚落與採集範圍（Core <see cref="DemoLineageMap"/>）依 <paramref name="color"/> 上色；
-    /// 相鄰格 <paramref name="group"/> 不同（或沒有歸屬、在地圖外）時才畫邊界，同組連成一片。
-    /// </summary>
-    private void DrawTerritory(Vector2 start, float radius, Func<DemoLineageCell, Color> color, Func<DemoLineageCell, int> group)
-    {
-        foreach (var cell in World!.Cells)
-        {
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            if (!OnScreen(center, radius))
-                continue; // 第 08-15 章：畫面外不畫
-            var hex = ScreenShape(cell, center, radius);
-            if (!Lineage.TryGetValue(new DemoCellRef(cell.Column, cell.Row), out var owner))
-            {
-                DrawShape(center, hex, new Color(0f, 0f, 0f, 0.45f));
-                continue;
-            }
-            var fill = color(owner);
-            DrawShape(center, hex, new Color(fill, 0.55f));
-            // 邊界：相鄰格不同家系（或沒有歸屬、在地圖外）時才畫這一條邊，同家系之間不畫線，看起來是一整片。
-            foreach (var (dq, dr, _) in DemoRouteNetwork.Orthogonal)
-            {
-                var neighbour = World.AtAxial(cell.AxialQ + dq, cell.AxialR + dr);
-                var same = neighbour is not null && Lineage.TryGetValue(new DemoCellRef(neighbour.Column, neighbour.Row), out var other)
-                    && group(other) == group(owner);
-                if (same)
-                    continue;
-                DrawPolyline(EdgeOf(hex, HexCoordinates.EdgeToward(dq, dr)), fill.Darkened(0.35f), 3f);
-            }
-        }
-        foreach (var site in Sites!.Settlements)
-        {
-            var cell = World.GetCell(site.Column, site.Row);
-            var center = start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-            DrawMarker(SettlementIcon(site), center, IconSize(site, radius));
-        }
-    }
-
-    /// <summary>第 08-2 章：遷徙隊伍圖示的中心＝所在六角格的中心（冒煙測試核對）。</summary>
-    private static Vector2 MigrantMarkerCenter(Vector2 start, float radius, DemoHexCell cell)
-        => start + HexCoordinates.Center(cell.AxialQ, cell.AxialR, radius);
-
-    /// <summary>第 06-2 章【TEMP 顯示】：依本週已過幾成，在本格與路線下一格之間內插（抵達前一格或週初就停在本格）。</summary>
-    private Vector2 MigrantPosition(Vector2 start, float radius, DemoMigrationBatch batch)
-    {
-        var here = MigrantMarkerCenter(start, radius, World!.GetCell(batch.Cell.Column, batch.Cell.Row));
-        if (batch.StepIndex + 1 >= batch.Path.Length || WeekFraction <= 0f)
-            return here;
-        var next = batch.Path[batch.StepIndex + 1];
-        var there = MigrantMarkerCenter(start, radius, World.GetCell(next.Column, next.Row));
-        return here.Lerp(there, Mathf.Clamp(WeekFraction, 0f, 1f));
-    }
-
-    /// <summary>冒煙測試用：某一格遷徙圖示的畫面中心（應等於 <see cref="CellCenter"/>）。</summary>
-    public Vector2 MigrantCenter(DemoHexCell cell)
-    {
-        var (start, radius) = ViewLayout();
-        return MigrantMarkerCenter(start, radius, cell);
-    }
-
-    /// <summary>第 08 章 a 節：開發狀態的圖塊（未開發＝null，改用地形圖塊）。</summary>
-    private static Texture2D? LandTexture(DemoLandDevelopment state) => state switch
-    {
-        DemoLandDevelopment.Farmland => ArtAssets.Texture(ArtAssets.TileFarmland),
-        DemoLandDevelopment.Clearing => ArtAssets.Texture(ArtAssets.TileFarmlandClearing),
-        _ => null
-    };
-
-    /// <summary>第 08 章 a 節：冒煙測試用——農田與開墾中的圖塊都讀得到。</summary>
-    public static bool HasLandArt
-        => LandTexture(DemoLandDevelopment.Farmland) is not null && LandTexture(DemoLandDevelopment.Clearing) is not null;
-
-    private static Texture2D? TerrainTexture(DemoTerrain terrain, bool river) => terrain switch
-    {
-        DemoTerrain.Grassland => ArtAssets.Texture(ArtAssets.TileGrassland),
-        DemoTerrain.Forest => ArtAssets.Texture(ArtAssets.TileForest),
-        DemoTerrain.Hills => ArtAssets.Texture(ArtAssets.TileHills), // 第 06-3 章
-        DemoTerrain.Water => ArtAssets.Texture(river ? ArtAssets.TileRiver : ArtAssets.TileWater),
-        _ => null
-    };
-
-    /// <summary>尖頂六角頂點 → 圖塊 UV（圖塊＝六角形外接矩形：寬 √3·r、高 2r）。</summary>
-    /// <summary>TEMP 顯示參數（第 08-13 章）：取樣往內縮的比例（藏住圖塊描邊）、六角形外擴的像素（相鄰格重疊、不留細縫）。</summary>
-    public const float TempTileInset = 0.07f;
-    public const float TempTileOverlap = 0.9f;
-
-    /// <summary>【TEMP】森林聚落空地的開發度（0～255；約四成：泥土與草地相間、沒有田壟）。</summary>
-    private const byte TempSettlementGround = TerrainSurface.SettlementGround;
-
-    private readonly HashSet<DemoCellRef> _builtCells = new();
-    private byte[]? _surfaceCodes;
-    private ulong _surfaceBuiltMs;
-    private bool _surfaceStale;
-
-    /// <summary>【TEMP】地表資料最短重算間隔（毫秒）。</summary>
-    private const ulong TempSurfaceRefreshMs = 250;
-    private (DemoHexWorld? World, int Week, float Fraction, object? Land, object? Spells, object? Ore, object? Marks, object? Sites, object? Ruins, object? Scale, object? Lineage) _surfaceKey;
-
-    /// <summary>
-    /// 第 06-4 章第 2 步：每格四個位元組（列×欄數＋欄）：地表代碼、天災疊層種類、疊層強度、保留。
-    /// 地圖、時間、土地、天災、礦脈變了才重算；試玩回饋 2026-11-03 之 3：天災改成依時間漸變的疊層。
-    /// </summary>
-    private byte[] SurfaceCodes()
-    {
-        var key = (World, CurrentWeek, WeekFraction, (object?)Land, (object?)Spells, (object?)MeteoriteOre, (object?)_disasterMarks, (object?)Sites, (object?)FadedRuins, (object?)SettlementScale, (object?)Lineage);
-        if (_surfaceCodes is not null && key.Equals(_surfaceKey) && !_disasterAnimating) // 天災過程播放中要隨真實時間更新
-            return _surfaceCodes;
-        // 試玩回饋 2026-11-04 之 4（遊戲進行時拖地圖很卡）：同一張地圖最多每 TempSurfaceRefreshMs 毫秒重算一次
-        // （原本週內進度每幀都變、每幀重算並重新上傳）；換地圖立刻重算。
-        var nowMs = Time.GetTicksMsec();
-        if (_surfaceCodes is not null && ReferenceEquals(key.World, _surfaceKey.World) && nowMs - _surfaceBuiltMs < TempSurfaceRefreshMs)
-        {
-            _surfaceStale = true; // 間隔到了由 _Process 補畫一次
-            return _surfaceCodes;
-        }
-        _surfaceStale = false;
-        _surfaceBuiltMs = nowMs;
-        // 第 08-17 章：聚落版面（廣場、道路、建築地塊）決定哪些格是聚落地；只在版面條件改變時重算。
-        EnsureLayouts();
-        var data = new byte[World!.Columns * World.Rows * 4];
-        // 第 08-16 章第 14 節：伐木與採礦（每次先整理成依格查的表，不必每格掃一遍狀態表）。
-        _logged.Clear();
-        _mining.Clear();
-        foreach (var spell in Spells)
-            foreach (var c in spell.Cells)
-            {
-                if (spell.Kind == DemoSettlementEventKind.Logging && DemoEnvironment.LoggedAt(new[] { spell }, c, CurrentWeek) is var g and >= 0f)
-                    _logged[c] = _logged.TryGetValue(c, out var old) ? Math.Min(old, g) : g;
-                else if (spell.Kind == DemoSettlementEventKind.MiningBegan)
-                    _mining[c] = DemoEnvironment.MiningAt(new[] { spell }, c, CurrentWeek);
-            }
-        foreach (var cell in World.Cells)
-        {
-            var at = (cell.Row * World.Columns + cell.Column) * 4;
-            data[at] = (byte)SurfaceCode(cell);
-            var here = new DemoCellRef(cell.Column, cell.Row);
-            // 長回與開採進度分 16 階（每週都變，但只有跨階時那一格才重畫）。
-            if (data[at] == (byte)TerrainSurface.Code.Logged)
-                data[at + 3] = (byte)(Math.Clamp((int)(_logged[here] * 16f), 0, 15) * 17);
-            else if (data[at] == (byte)TerrainSurface.Code.HillsMining)
-                data[at + 3] = (byte)(Math.Clamp((int)(_mining[here] * 16f), 0, 15) * 17);
-            // 第 08-16 章：開墾中與荒廢中的開發度（第 4 個位元組），地表依此從草地漸變到農田、或從農田漸變回草地。
-            if (Land.ParcelAt(new DemoCellRef(cell.Column, cell.Row)) is { State: DemoLandDevelopment.Clearing } parcel)
-                data[at + 3] = (byte)Math.Clamp((parcel.DevelopmentPercent + 9) / 10 * 255 / 10, 0, 255); // 分 10 階（只在跨階時重烤）
-            else if (data[at] == (byte)TerrainSurface.Code.Clearing)
-                data[at + 3] = TempSettlementGround; // 森林裡的聚落：砍出的空地（泥土夾草）
-        }
-        FillOverlays(data);
-        _surfaceKey = key;
-        return _surfaceCodes = data;
-    }
-
-    private readonly Dictionary<DemoCellRef, float> _logged = new();
-    private readonly Dictionary<DemoCellRef, float> _mining = new();
-
-    private TerrainSurface.Code SurfaceCode(DemoHexCell cell)
-    {
-        var at = new DemoCellRef(cell.Column, cell.Row);
-        // 熱浪、野火不再直接換地表，改由天災疊層依時間漸變（DemoHexMap.Disasters.cs）。
-        switch (Land.StateOf(at))
-        {
-            case DemoLandDevelopment.Farmland: return TerrainSurface.Code.Farmland;
-            case DemoLandDevelopment.Clearing: return TerrainSurface.Code.Clearing;
-        }
-        // 試玩回饋 2026-11-04：森林裡的聚落像蓋在樹上——有房子的格（含村莊蓋到相鄰格的房子）把樹砍出一片空地。
-        // 試玩回饋 2026-11-05 之 8、13：草原上的聚落也一樣有泥土空地（人類聚落不再被草地吃掉）。
-        if (cell.Terrain is DemoTerrain.Forest or DemoTerrain.Grassland && _builtCells.Contains(at))
-            return TerrainSurface.Code.Clearing;
-        return cell.Terrain switch
-        {
-            DemoTerrain.Water when cell.Sea => TerrainSurface.Code.Sea,
-            DemoTerrain.Water when cell.Shallow => TerrainSurface.Code.Shallow,
-            DemoTerrain.Water => TerrainSurface.Code.River,
-            DemoTerrain.Forest => _logged.ContainsKey(at) ? TerrainSurface.Code.Logged : TerrainSurface.Code.Forest,
-            DemoTerrain.Hills when _mining.TryGetValue(at, out var mined) => mined > 1f ? TerrainSurface.Code.MinePit : TerrainSurface.Code.HillsMining,
-            DemoTerrain.Hills => cell.Ore || MeteoriteOre.Contains(at) ? TerrainSurface.Code.HillsOre : TerrainSurface.Code.Hills,
-            _ => TerrainSurface.Code.Grassland
-        };
-    }
-
-    private static Vector2[] HexUvs(Vector2[] vertices, Vector2 center, float radius)
-    {
-        var uvs = new Vector2[vertices.Length];
-        for (var i = 0; i < vertices.Length; i++)
-        {
-            var u = (vertices[i].X - center.X + radius) / (2f * radius);
-            var v = (vertices[i].Y - center.Y + radius) / (2f * radius);
-            // 往中心縮 TempTileInset：外圈的描邊不會畫出來。
-            uvs[i] = new Vector2(0.5f + (u - 0.5f) * (1f - TempTileInset), 0.5f + (v - 0.5f) * (1f - TempTileInset));
-        }
-        return uvs;
-    }
-
-    private static Vector2[] Closed(Vector2[] vertices)
-    {
-        var ring = new Vector2[vertices.Length + 1];
-        vertices.CopyTo(ring, 0);
-        ring[^1] = vertices[0];
-        return ring;
-    }
-
-    /// <summary>在中心畫一個正方形圖示；素材不存在回傳 false（呼叫端改畫圓點）。</summary>
-    /// <summary>
-    /// 第 07 章 c 節：遺跡圖示；第 08-11 章：依居住地等級換圖（營地、村莊、城鎮、城市、首都）。
-    /// 該等級的圖還沒交付時退回舊圖（營地＝新聚落圖、村莊以上＝村莊圖）。
-    /// </summary>
-    private string SettlementIcon(DemoSettlement settlement)
-    {
-        if (settlement.IsRuin)
-            return ArtAssets.IconRuin;
-        var tier = SettlementScale.TryGetValue(settlement.Id, out var scale) ? scale.Tier : DemoSettlementTier.Camp;
-        var path = ArtAssets.SettlementTierIcon(tier);
-        if (ArtAssets.Texture(path) is not null)
-            return path;
-        return tier == DemoSettlementTier.Camp ? ArtAssets.IconNewSettlement : ArtAssets.IconVillage;
-    }
-
-    private bool DrawMarker(string path, Vector2 center, float size)
-    {
-        if (ArtAssets.Texture(path) is not { } icon)
-            return false;
-        DrawTextureRect(icon, new Rect2(center - new Vector2(size, size) * 0.5f, new Vector2(size, size)), false);
-        return true;
+        // 第 08-21 章：CK3 式政治地圖；第 08-25 章：舊的像素地圖已移除，只剩這一種畫法。
+        DrawPolitical(start, radius);
     }
 
     public override void _GuiInput(InputEvent @event)
@@ -794,7 +290,7 @@ public partial class DemoHexMap : Control
             return;
         }
 
-        if (button.ButtonIndex == MouseButton.Right && _political)
+        if (button.ButtonIndex == MouseButton.Right)
         {
             _rightDragging = button.Pressed;
             AcceptEvent();
@@ -806,7 +302,7 @@ public partial class DemoHexMap : Control
             // Cursor-anchored zoom: the point under the pointer does not jump.
             var next = Mathf.Clamp(
                 _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),
-                TempMinZoom, _political ? Mathf.Max(1f, TempPoliticalMaxRadius / Layout().Radius) : Mathf.Max(TempMaxZoom, TempMaxHexRadius / Layout().Radius));
+                TempMinZoom, Mathf.Max(1f, TempPoliticalMaxRadius / Layout().Radius));
             if (!Mathf.IsEqualApprox(next, _zoom))
             {
                 var cursorFromCenter = button.Position - Size * 0.5f;
@@ -836,11 +332,8 @@ public partial class DemoHexMap : Control
         if (World is null)
             return null;
         // 第 08-21 章：政治地圖照著色器的省份邊界（邊界是扭曲過的，不是方格）。
-        if (_political && _provinces is not null)
+        if (_provinces is not null)
             return PoliticalCellAt(position);
-        // 點選與畫面一致：畫了像素地表時，依滑鼠下那個像素屬於哪一格。
-        if (_surface?.CellAtScreen(position) is int owner && owner >= 0)
-            return World.GetCell(owner % World.Columns, owner / World.Columns);
         var (start, radius) = ViewLayout();
         // 第 08-18a 章：方格沒有縫隙，直接換算欄列。
         var at = HexCoordinates.CellOf(position - start, radius);
@@ -854,63 +347,7 @@ public partial class DemoHexMap : Control
     {
         if (World is null || CellAt(atPosition) is not { } cell)
             return "";
-        if (_political)
-            return PoliticalTooltip(cell);
-        var name = DemoCellQuery.ShortName(World, VisibleSite(cell) is null ? null : Sites, cell);
-        if (VisibleSite(cell) is { } site && SettlementScale.TryGetValue(site.Id, out var scale))
-            name = DemoSettlementHistory.TitledName(site, scale.Item2); // 試玩回饋 2026-11-06 之 9：名字帶層級
-        // 第 08-15 章：色塊層（戰略、區域）再說明這一格的顏色代表什麼。
-        var status = DisasterStatus(cell.Column, cell.Row);
-        if (BattleTip(cell.Column, cell.Row) is { Length: > 0 } battle)
-            name = battle + "\n" + name; // 第 08-18i 章：戰鬥寫在提示第一行
-        else if (WarTip(cell.Column, cell.Row) is { Length: > 0 } war)
-            name = war + "\n" + name; // 第 08-18m 章：戰爭目標寫出戰況
-        BuildTipRows(cell, name, status); // 第 08-18b 章第 5 節：圖示＋數字的提示
-        if (status.Length > 0)
-            name += "\n" + status;
-        if (LayerFor(ViewLayout().Radius) == ViewLayer.Local)
-            return name;
-        var meaning = ColorMeaning(cell);
-        _tipRows.Insert(0, (IcPlace, meaning)); // 色塊層：這一格的顏色代表什麼
-        return $"{name}\n{meaning}";
-    }
-
-    /// <summary>試玩回饋 2026-11-05 之 2：這一格目前的天災狀況（依地表疊層；沒有回傳空字串）。</summary>
-    public string DisasterStatus(int column, int row)
-    {
-        if (World is null || !World.Contains(column, row))
-            return "";
-        var data = _surfaceCodes ?? SurfaceCodes();
-        var i = (row * World.Columns + column) * 4;
-        var amount = data[i + 2] / 255f;
-        var fading = amount < 0.5f;
-        var kind = (Overlay)data[i + 1];
-        // 有素材的坑、裂縫、殘骸改畫成貼圖、不在資料裡，另外查。
-        foreach (var (c, k, _) in _decals)
-            if (c.Column == column && c.Row == row)
-                kind = k;
-        // 第 08-16 章第 14 節：伐木、採礦的狀況（沒有天災時才顯示）。
-        if (kind == Overlay.None)
-            return (TerrainSurface.Code)data[i] switch
-            {
-                TerrainSurface.Code.Logged => data[i + 3] < 128 ? "🪓 森林剛被砍伐，只剩樹樁與幼苗" : "🪓 砍過的森林，樹木正慢慢長回",
-                TerrainSurface.Code.HillsMining => "⛏ 礦脈開採中",
-                TerrainSurface.Code.MinePit => "⛏ 礦脈已挖空，只剩廢棄的礦坑",
-                _ => ""
-            };
-        return kind switch
-        {
-            Overlay.Fire => "🔥 野火正在燃燒，草木與屋舍陷入火海",
-            Overlay.Scorch => fading ? "野火燒過的焦土，草木正慢慢長回" : "野火剛燒過：一片焦土，草木盡毀",
-            Overlay.Dry => fading ? "熱浪漸退，草木開始返青" : "熱浪：草木枯黃、水源減少",
-            Overlay.Flood => fading ? "洪水退去中，田地泥濘" : "洪水淹沒了這一帶",
-            Overlay.Debris => "龍捲風過境，四處散落殘骸",
-            Overlay.Scar => fading ? "龍捲風刮過的痕跡，草木正慢慢長回" : "龍捲風剛刮過：地面刮禿、樹木只剩枯枝",
-            Overlay.Cracks => "地震撕開的裂縫",
-            Overlay.Crater => "隕石墜落留下的大坑",
-            Overlay.Ore => "隕石帶來的礦石",
-            _ => ""
-        };
+        return PoliticalTooltip(cell);
     }
 
     /// <summary>
@@ -971,7 +408,7 @@ public partial class DemoHexMap : Control
         {
             _viewWorld = World;
             // 第 08-21 章：政治地圖一開始看整個世界（CK3）；舊地圖照舊拉近到看得清楚的大小。
-            _zoom = _political ? 1f : baseRadius < TempComfortHexRadius ? TempComfortHexRadius / baseRadius : 1f;
+            _zoom = 1f;
             _pan = Vector2.Zero;
         }
         var viewportCenter = Size * 0.5f;

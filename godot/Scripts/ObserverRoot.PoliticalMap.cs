@@ -12,7 +12,7 @@ namespace WorldSimulation.GodotClient;
 /// <item><c>WORLD_SIM_MAP_SHOT</c>＝輸出資料夾（要有畫面，CI 用 xvfb）：大地圖跑 <c>WORLD_SIM_MAP_SHOT_YEARS</c> 年（預設 30），
 ///   拍整個世界、中距離、近距離、地形模式、文化模式五張 PNG，給人看畫面長怎樣。</item>
 /// </list>
-/// 其他既有的冒煙測試照舊用舊地圖（<see cref="LegacyMapSmoke"/>），點選規則與座標不變。
+/// 第 08-25 章：舊的像素地圖已移除，其他既有的冒煙測試也用政治地圖（地形模式，<see cref="SmokeTerrainMode"/>）。
 /// </summary>
 public partial class ObserverRoot
 {
@@ -20,10 +20,10 @@ public partial class ObserverRoot
     private static readonly string? MapShotDir = OS.HasEnvironment("WORLD_SIM_MAP_SHOT") ? OS.GetEnvironment("WORLD_SIM_MAP_SHOT") : null;
 
     /// <summary>
-    /// 既有的冒煙測試（任何 WORLD_SIM_*_SMOKE，政治地圖的除外）照舊用舊地圖的地形模式。
+    /// 既有的冒煙測試（任何 WORLD_SIM_*_SMOKE，政治地圖的除外）用地形模式：點一下陸地就選到那一格（勢力模式第一下選到勢力）。
     /// 不引用其他靜態欄位（分散在不同檔的靜態欄位初始化順序不固定）。
     /// </summary>
-    private static readonly bool LegacyMapSmoke = !OS.HasEnvironment("WORLD_SIM_POLITICAL_SMOKE") && !OS.HasEnvironment("WORLD_SIM_MAP_SHOT")
+    private static readonly bool SmokeTerrainMode = !OS.HasEnvironment("WORLD_SIM_POLITICAL_SMOKE") && !OS.HasEnvironment("WORLD_SIM_MAP_SHOT")
         && System.Environment.GetEnvironmentVariables().Keys.Cast<object>().Select(k => k.ToString() ?? string.Empty)
             .Any(k => k.StartsWith("WORLD_SIM_", StringComparison.Ordinal) && k.EndsWith("_SMOKE", StringComparison.Ordinal));
 
@@ -34,7 +34,7 @@ public partial class ObserverRoot
             world.AdvanceOneDay();
         InstallWorld(world, "政治地圖冒煙");
         Refresh();
-        if (!_hexMap.Political || _hexMap.MapMode != DemoHexMap.Mode.Realm)
+        if (_hexMap.MapMode != DemoHexMap.Mode.Realm)
             throw new InvalidOperationException("政治地圖不是預設（應為政治地圖的勢力模式）");
         var check = _hexMap.PoliticalSmokeCheck();
         var realmClicks = 0;
