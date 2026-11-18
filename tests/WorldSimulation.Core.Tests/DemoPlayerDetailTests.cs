@@ -19,7 +19,7 @@ public sealed class DemoPlayerDetailTests
     public void SettlementsHaveFiveTabsAndNoDeveloperNumbers()
     {
         var world = World.Value;
-        foreach (var s in world.Sites.Settlements)
+        foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0)) // 第 12-2h 章：被獸潮攻破的聚落另有頁面
         {
             var detail = world.PlayerDetail(s.Column, s.Row);
             Assert.Equal(new[] { "現況", "代表人物", "技術", "研究", "歷史", "人口" }, detail.Tabs.Select(t => t.Title));
@@ -132,7 +132,7 @@ public sealed class DemoPlayerDetailTests
         // 第 08-10d 章 D：每個聚落的「技術」頁帶整棵知識樹；狀態與知識紀錄一致，前置都在樹上。
         var world = World.Value;
         var all = DemoTechnology.All.ToList();
-        foreach (var s in world.Sites.Settlements)
+        foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0)) // 第 12-2h 章：被獸潮攻破的聚落另有頁面
         {
             var tree = world.PlayerDetail(s.Column, s.Row).Tabs[2].Tree;
             Assert.Equal(all.Select(t => t.Id), tree.Select(n => n.Id));

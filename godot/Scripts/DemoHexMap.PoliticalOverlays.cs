@@ -420,6 +420,14 @@ public partial class DemoHexMap
             if (!view.HasPoint(center))
                 continue;
             var r = Mathf.Clamp(cellPx * 0.24f, 7f, 15f);
+            // 第 12-2h 章：滿員的地下城隨時會爆發獸潮——外圈閃紅光。
+            var full = nest.Monsters >= DemoMonsters.Cap(nest.Dungeon);
+            if (full)
+            {
+                var pulse = 0.5f + 0.5f * Mathf.Sin(Time.GetTicksMsec() / 260f);
+                DrawArc(center, r + 5f + pulse * 3f, 0f, Mathf.Tau, 32, new Color(1f, 0.25f, 0.15f, 0.55f + 0.4f * pulse), 2.5f, true);
+                _animatedOnScreen = true;
+            }
             DrawCircle(center + new Vector2(0f, 1.5f), r + 2f, new Color(0f, 0f, 0f, 0.4f));
             DrawCircle(center, r + 1.5f, TempLairRim);
             DrawCircle(center, r, TempLairFill);
@@ -431,7 +439,7 @@ public partial class DemoHexMap
                     new Color(0.2f, 0.02f, 0.03f, 0.9f), 3);
                 continue;
             }
-            var text = $"{nest.Dungeon.Name}　怪物 {nest.Monsters}（{nest.Dungeon.Layers} 級）";
+            var text = $"{nest.Dungeon.Name}　怪物 {nest.Monsters}（{nest.Dungeon.Layers} 級）" + (full ? "　獸潮將至" : "");
             var size = 12;
             var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, size).X;
             var plate = new Rect2(center.X - width / 2f - 6f, center.Y + r + 3f, width + 12f, size + 8f);

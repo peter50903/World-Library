@@ -72,7 +72,8 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.Succession] = new("TEMP_EV_SUCCESSION", "繼位", CauseRootCategory.Culture),
         [DemoSettlementEventKind.CivilWar] = new("TEMP_EV_CIVIL_WAR", "內戰", CauseRootCategory.Culture),
         [DemoSettlementEventKind.Usurped] = new("TEMP_EV_USURPED", "篡位", CauseRootCategory.Culture),
-        [DemoSettlementEventKind.Occupied] = new("TEMP_EV_OCCUPIED", "攻陷", CauseRootCategory.Culture) // 第 08-22a 章
+        [DemoSettlementEventKind.Occupied] = new("TEMP_EV_OCCUPIED", "攻陷", CauseRootCategory.Culture), // 第 08-22a 章
+        [DemoSettlementEventKind.MonsterSwarm] = new("TEMP_EV_MONSTER_SWARM", "獸潮", CauseRootCategory.Disaster) // 第 12-2h 章
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

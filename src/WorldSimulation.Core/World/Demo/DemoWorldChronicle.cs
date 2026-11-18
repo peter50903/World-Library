@@ -189,6 +189,11 @@ public static class DemoWorldChronicle
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.MonsterSwarm:
+                    // 第 12-2h 章：獸潮是重大事件（人類與怪物的領地爭奪，進史書）。
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Wilds, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.MonsterRaid:
                 case DemoSettlementEventKind.MonsterHunt:
                     // 第 12-2 章：怪物襲擊、討伐是一般事件；地下城沉寂、怪物再生是重大事件（擊殺數已寫在襲擊與討伐裡，不另記）。

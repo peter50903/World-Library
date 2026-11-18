@@ -56,6 +56,7 @@ public partial class ObserverRoot
             => ("⚡", $"{DemoDisasters.Name(e.Kind)}襲擊{e.SettlementName}" + (e.Count > 0 ? $"，{e.Count} 人罹難" : ""), true),
         DemoSettlementEventKind.MonsterRaid when e.Count >= TempLetterRaidDeaths => ("⚔", $"怪物襲擊{e.SettlementName}，{e.Count} 人死亡", true),
         DemoSettlementEventKind.DungeonAppeared => ("⚔", $"{e.SettlementName}附近出現了地下城", true),
+        DemoSettlementEventKind.MonsterSwarm => ("☠", DemoPlayerDetail.Clean(e.Cause), true), // 第 12-2h 章：獸潮
         DemoSettlementEventKind.SecessionArmed => ("⚔", DemoPlayerDetail.Clean(e.Cause), true),
         DemoSettlementEventKind.SecessionPeaceful => ("✊", DemoPlayerDetail.Clean(e.Cause), false),
         DemoSettlementEventKind.WarDeclared => ("⚔", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-19e 章
