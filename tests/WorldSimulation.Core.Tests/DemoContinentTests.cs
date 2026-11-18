@@ -93,22 +93,18 @@ public sealed class DemoContinentTests
     }
 }
 
-/// <summary>第 06-4 章第 3 步：森林依濕度（沿海沿河多森林、內陸多草原）。</summary>
+/// <summary>第 06-4 章第 3 步：森林依濕度；第 06-6 章改成風帶與雨影——森林成片（迎風面多、背風與內陸草原），不再沿海岸一圈。</summary>
 public sealed class DemoForestMoistureTests
 {
     [Theory]
     [InlineData(1UL, DemoMapSize.Large)]
+    [InlineData(2UL, DemoMapSize.Huge)]
     [InlineData(6UL, DemoMapSize.Medium)]
-    public void ForestsHugWaterAndGrasslandsFillTheInterior(ulong seed, DemoMapSize size)
+    public void ForestsFormLargePatches(ulong seed, DemoMapSize size)
     {
         var map = DemoHexWorld.Generate(seed, size);
-        bool NearWater(DemoHexCell c) => DemoRouteNetwork.Directions.Any(d => map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is { Terrain: DemoTerrain.Water });
         var plains = map.Cells.Where(c => c.Terrain is DemoTerrain.Forest or DemoTerrain.Grassland).ToList();
-        double ForestShare(IEnumerable<DemoHexCell> cells) => cells.DefaultIfEmpty().Average(c => c?.Terrain == DemoTerrain.Forest ? 1.0 : 0.0);
-        var shore = ForestShare(plains.Where(NearWater));
-        var inland = ForestShare(plains.Where(c => !NearWater(c)));
-        Assert.True(shore > inland + 0.2, $"岸邊森林比例 {shore:F2} 沒有明顯高於內陸 {inland:F2}");
-        Assert.InRange(ForestShare(plains), 0.40, 0.50);
+        Assert.InRange(plains.Average(c => c.Terrain == DemoTerrain.Forest ? 1.0 : 0.0), 0.40, 0.50);
         // 成片：相鄰平地同為森林或草原的比例。
         double same = 0, pairs = 0;
         foreach (var c in plains)
@@ -118,6 +114,91 @@ public sealed class DemoForestMoistureTests
                     pairs++;
                     if (n.Terrain == c.Terrain) same++;
                 }
-        Assert.True(same / pairs >= 0.6, $"同地形相鄰比例 {same / pairs:F2}"); // 第 06-5 章：多塊大陸後海岸變多，門檻 0.65→0.6
+        Assert.True(same / pairs >= 0.7, $"同地形相鄰比例 {same / pairs:F2}");
+    }
+}
+
+/// <summary>第 06-6 章：自然的世界——大陸不是橢圓（有半島與海灣）、丘陵沿山脈成串。</summary>
+public sealed class DemoNaturalWorldTests
+{
+    /// <summary>大陸的實心度（格數÷凸包面積）：橢圓約 0.92，有半島、海灣、旁支的大陸低很多。</summary>
+    [Theory]
+    [InlineData(DemoMapSize.Large, new ulong[] { 1, 2, 3, 4 })]
+    [InlineData(DemoMapSize.Huge, new ulong[] { 1, 2 })]
+    public void ContinentsHavePeninsulasAndBays(DemoMapSize size, ulong[] seeds)
+    {
+        var solidity = seeds.Select(seed =>
+        {
+            var map = DemoHexWorld.Generate(seed, size);
+            return Components(map, c => !c.Sea).Where(m => m.Count >= 50).Average(m => m.Count / HullArea(m));
+        }).ToList();
+        Assert.True(solidity.Average() <= 0.86, $"大陸實心度 {string.Join("、", solidity.Select(v => v.ToString("F2")))}（橢圓約 0.92）");
+    }
+
+    /// <summary>丘陵沿山脈成串：最長的一串丘陵（≥20 格）細長度（最遠兩格距離÷√格數）至少 2（一團圓的約 1.1～1.3）。</summary>
+    [Theory]
+    [InlineData(1UL, DemoMapSize.Large)]
+    [InlineData(2UL, DemoMapSize.Large)]
+    [InlineData(3UL, DemoMapSize.Large)]
+    [InlineData(3UL, DemoMapSize.Huge)]
+    public void HillsRunInMountainRanges(ulong seed, DemoMapSize size)
+    {
+        var map = DemoHexWorld.Generate(seed, size);
+        var ranges = Components(map, c => c.Terrain == DemoTerrain.Hills).Where(m => m.Count >= 20).ToList();
+        Assert.NotEmpty(ranges);
+        double Elongation(List<DemoHexCell> m) => m.Max(a => m.Max(b => Math.Sqrt(Math.Pow(a.Column - b.Column, 2) + Math.Pow(a.Row - b.Row, 2)))) / Math.Sqrt(m.Count);
+        var longest = ranges.Max(Elongation);
+        Assert.True(longest >= 2.0, $"最細長的山脈 {longest:F2}");
+    }
+
+    private static List<List<DemoHexCell>> Components(DemoHexWorld map, Func<DemoHexCell, bool> wanted)
+    {
+        var seen = new HashSet<(int, int)>();
+        var all = new List<List<DemoHexCell>>();
+        foreach (var start in map.Cells.Where(wanted))
+        {
+            if (!seen.Add((start.Column, start.Row)))
+                continue;
+            var part = new List<DemoHexCell>();
+            var queue = new Queue<DemoHexCell>();
+            queue.Enqueue(start);
+            while (queue.Count > 0)
+            {
+                var c = queue.Dequeue();
+                part.Add(c);
+                foreach (var d in DemoRouteNetwork.Directions)
+                    if (map.AtAxial(c.AxialQ + d.Dq, c.AxialR + d.Dr) is { } next && wanted(next) && seen.Add((next.Column, next.Row)))
+                        queue.Enqueue(next);
+            }
+            all.Add(part);
+        }
+        return all;
+    }
+
+    /// <summary>格子四角的凸包面積（單調鏈）。</summary>
+    private static double HullArea(List<DemoHexCell> cells)
+    {
+        var points = cells.SelectMany(c => new[] { (X: c.Column, Y: c.Row), (X: c.Column + 1, Y: c.Row), (X: c.Column, Y: c.Row + 1), (X: c.Column + 1, Y: c.Row + 1) })
+            .Distinct().OrderBy(p => p.X).ThenBy(p => p.Y).ToList();
+        static long Cross((int X, int Y) o, (int X, int Y) a, (int X, int Y) b) => (long)(a.X - o.X) * (b.Y - o.Y) - (long)(a.Y - o.Y) * (b.X - o.X);
+        var hull = new List<(int X, int Y)>();
+        foreach (var pass in new[] { points, Enumerable.Reverse(points).ToList() })
+        {
+            var start = hull.Count;
+            foreach (var p in pass)
+            {
+                while (hull.Count >= start + 2 && Cross(hull[^2], hull[^1], p) <= 0)
+                    hull.RemoveAt(hull.Count - 1);
+                hull.Add(p);
+            }
+            hull.RemoveAt(hull.Count - 1);
+        }
+        double area = 0;
+        for (var i = 0; i < hull.Count; i++)
+        {
+            var (a, b) = (hull[i], hull[(i + 1) % hull.Count]);
+            area += (double)a.X * b.Y - (double)b.X * a.Y;
+        }
+        return Math.Abs(area) / 2;
     }
 }
