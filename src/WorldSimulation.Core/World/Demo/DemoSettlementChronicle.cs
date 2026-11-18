@@ -102,6 +102,7 @@ public sealed record DemoSettlementChronicle(
         // 第 08-6 章 c 節：開墾完成農田。
         foreach (var e in report.Events.Where(e => e.Kind is DemoSettlementEventKind.KnowledgeLearned or DemoSettlementEventKind.EraBegan
             or DemoSettlementEventKind.FarmlandCleared or DemoSettlementEventKind.FarmlandAbandoned or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism
+            or DemoSettlementEventKind.FaithConverted
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
             or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
             or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
@@ -117,7 +118,8 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.KnowledgeLearned => $"學會{DemoKnowledge.Name((DemoTechnology)e.Count)}",
                 DemoSettlementEventKind.FarmlandCleared => "開墾一塊農田",
                 DemoSettlementEventKind.FarmlandAbandoned => "一塊農田無人耕作，開始荒廢",
-                DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism => DemoPlayerDetail.Clean(e.Cause),
+                DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism
+                    or DemoSettlementEventKind.FaithConverted => DemoPlayerDetail.Clean(e.Cause), // 第 08-22g 章：改宗
                 DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite
                     or DemoSettlementEventKind.Flood => $"{DemoDisasters.Name(e.Kind)}：{DemoPlayerDetail.Clean(e.Cause)}", // 第 12-1 章 C3
                 DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.DungeonAppeared => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C4

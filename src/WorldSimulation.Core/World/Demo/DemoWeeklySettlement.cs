@@ -324,7 +324,10 @@ public enum DemoSettlementEventKind
     MonsterSwarm = 52,
 
     /// <summary>第 08-22d 章：異端分裂——離聖地遙遠的聚落另立新的信仰（人數欄＝新信仰編號；根因）。</summary>
-    FaithSchism = 53
+    FaithSchism = 53,
+
+    /// <summary>第 08-22g 章：改宗——聚落的主要信仰換成上級的信仰（人數欄＝新的主要信仰編號；根因）。</summary>
+    FaithConverted = 54
 }
 
 /// <summary>
@@ -366,7 +369,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
-            DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism or DemoSettlementEventKind.FaithExtinct
+            DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism or DemoSettlementEventKind.FaithConverted or DemoSettlementEventKind.FaithExtinct
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                 or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown

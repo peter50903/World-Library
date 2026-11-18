@@ -203,6 +203,8 @@ public sealed class DemoHousesTests
         };
         var differs = DemoRealms.LoyaltyValue(b, a, 100, fold, faiths);
         Assert.Equal(basis - 15, differs);
+        // 第 08-22g 章：同源的信仰（誤入歧途）只扣 8。
+        Assert.Equal(basis + DemoRealms.TempAstrayFaithLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, faiths with { FaithHostility = (_, _) => 1 }));
         Assert.Equal(basis, DemoRealms.LoyaltyValue(b, a, 100, fold, Lord(DemoTrait.Cynical)));
         Assert.Equal(differs + DemoTraits.TempZealousFaithLoyalty, DemoRealms.LoyaltyValue(b, a, 100, fold, Lord(DemoTrait.Zealous)));
     }

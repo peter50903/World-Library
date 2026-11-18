@@ -349,8 +349,10 @@ public static partial class DemoRealms
             var (target, defender, army) = p;
             var holy = ctx.Faith(king) is { } f1 && ctx.Faith(target) is { } f2 && f1 != f2 && !DemoTraits.Has(temper, DemoTrait.Cynical); // 第 08-10h 章：多疑的不為信仰開戰
             var foreign = ctx.Culture(king) is { } c1 && ctx.Culture(target) is { } c2 && c1 != c2;
+            // 第 08-22g 章：聖戰的加成依兩個信仰的敵意——同源（誤入歧途）一半、不同源（敵對）全額。
+            var hostility = holy ? ctx.HostilityOf(ctx.Faith(king)!.Value, ctx.Faith(target)!.Value) : 0;
             var chance = TempConquestChancePercent + (foreign ? TempCultureWarBonusPercent : 0) + DemoTraits.WarChance(temper) + (reconquest ? TempReconquestBonusPercent : 0)
-                + (holy ? TempHolyWarBonusPercent * (DemoTraits.Has(temper, DemoTrait.Zealous) ? DemoTraits.TempZealousHolyWarTimes : 1) : 0);
+                + (holy ? TempHolyWarBonusPercent * hostility / 2 * (DemoTraits.Has(temper, DemoTrait.Zealous) ? DemoTraits.TempZealousHolyWarTimes : 1) : 0);
             if ((int)(Draw(rng, week, king, 5) % 100UL) >= chance)
                 continue;
             var reason = reconquest ? "要收復失地" : holy ? "以信仰之名發動聖戰" : foreign ? "要把異族納入版圖" : "為了擴張領土"; // 第 08-22e 章

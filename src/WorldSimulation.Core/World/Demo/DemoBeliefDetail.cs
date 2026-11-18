@@ -196,6 +196,20 @@ public static class DemoBeliefDetail
             "",
             "核心信條："
         };
+        // 第 08-22g 章：狂熱度、分裂自哪個信仰、和其他信仰的敵意（參考 CK3）。
+        var extra = new List<string>();
+        if (faith.ParentId != 0 && state.Faith(faith.ParentId) is { } parent)
+            extra.Add($"由「{parent.Name}」分裂出來的異端");
+        if (faith.ExtinctWeek == 0)
+        {
+            var (fervor, factors) = world.FaithFervor(faith.Id);
+            extra.Add($"狂熱度 {fervor}（" + string.Join("、", factors.Select(f => $"{f.Text} {(f.Value >= 0 ? "+" : "")}{f.Value}")) + "）");
+            var others = state.Faiths.Where(f => f.Id != faith.Id && f.ExtinctWeek == 0).OrderBy(f => f.Id)
+                .Select(f => $"{f.Name}（{DemoFaiths.HostilityName(DemoFaiths.Hostility(state, faith.Id, f.Id))}）").ToList();
+            if (others.Count > 0)
+                extra.Add("與其他信仰：" + string.Join("、", others));
+        }
+        core.InsertRange(4, extra);
         void Entry(string id)
         {
             var note = Description(id);
@@ -218,8 +232,10 @@ public static class DemoBeliefDetail
             believers.Insert(2, $"代表人物中有 {leaders} 人信奉");
 
         var history = new List<string>();
-        foreach (var e in world.SettlementEvents().Where(e => e.Kind is DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct && e.Count == faithId))
-            history.Add($"第 {Year(e.Week)} 年　" + (e.Kind == DemoSettlementEventKind.FaithFounded ? $"{e.SettlementName}：" : "") + DemoPlayerDetail.Clean(e.Cause));
+        // 第 08-22g 章：異端分裂（本信仰由此而生）與改宗（聚落改信本信仰）也列。
+        foreach (var e in world.SettlementEvents().Where(e => e.Kind is DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
+                     or DemoSettlementEventKind.FaithSchism or DemoSettlementEventKind.FaithConverted && e.Count == faithId))
+            history.Add($"第 {Year(e.Week)} 年　" + (e.Kind != DemoSettlementEventKind.FaithExtinct ? $"{e.SettlementName}：" : "") + DemoPlayerDetail.Clean(e.Cause));
         if (history.Count == 0)
             history.Add($"第 {Year(faith.FoundedWeek)} 年　在{Name(world, faith.FounderSettlementId)}創立");
 

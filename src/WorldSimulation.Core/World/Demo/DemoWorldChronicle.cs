@@ -163,6 +163,10 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.FaithExtinct:
                     AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
                     break;
+                case DemoSettlementEventKind.FaithConverted: // 第 08-22g 章：改宗是各地大事
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId,
+                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
                 case DemoSettlementEventKind.Earthquake:
                 case DemoSettlementEventKind.Tornado:
                 case DemoSettlementEventKind.Meteorite:
