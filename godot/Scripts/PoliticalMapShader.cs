@@ -225,10 +225,10 @@ void fragment() {
 	shade -= fmask * canopy * 0.16;
 	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
 	shade += fmask * sym * tr.z * 0.22;
-	vec3 mg = mountain_glyph(c, 1.6);
+	vec3 mtn = mountain_glyph(c, 1.6);
 	float hmask = smoothstep(0.40, 0.70, hill);
-	shade += hmask * sym * mg.x * (mg.y > 0.5 ? 0.18 : -0.20);
-	shade -= hmask * sym * mg.z * 0.35;
+	shade += hmask * sym * mtn.x * (mtn.y > 0.5 ? 0.18 : -0.20);
+	shade -= hmask * sym * mtn.z * 0.35;
 	vec3 ground = tcol * shade;
 
 	// 政治填色：省份索引查色票；荒野（0）不填。第 08-26 章：填色乘上地形的明暗與符號（森林偏深、草原偏亮），地形透得出來。
