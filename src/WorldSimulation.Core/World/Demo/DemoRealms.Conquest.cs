@@ -8,8 +8,13 @@ namespace WorldSimulation.Core.World.Demo;
 /// </summary>
 public sealed record DemoWar(int AttackerId, int DefenderId, int TargetId, int StartWeek)
 {
-    /// <summary>最晚的結束週（打滿一年不分勝負就白和平）。</summary>
-    public int EndWeek => StartWeek + DemoRealms.TempWarMaxWeeks;
+    /// <summary>最晚的結束週（第 08-22a 章：打滿兩年依戰爭分數議和）。</summary>
+    public int EndWeek => StartWeek + DemoRealms.TempConquestMaxWeeks;
+
+    /// <summary>第 08-22a 章：攻陷戰爭目標的那一週（0＝還在圍城）。</summary>
+    public int OccupiedWeek { get; init; }
+
+    public bool Occupied => OccupiedWeek > 0;
 
     public long AttackerLosses { get; init; }
     public long DefenderLosses { get; init; }
@@ -28,8 +33,9 @@ public sealed record DemoWar(int AttackerId, int DefenderId, int TargetId, int S
 ///   目標是離本國任一聚落 <see cref="TempConquestReach"/> 格內、別的勢力裡最近的聚落（守方頂層也可以，打贏就整個勢力臣服）；
 ///   本國兵力至少是守方的 <see cref="TempConquestStrengthPercent"/>% 才考慮，機率 <see cref="TempConquestChancePercent"/>%，信仰不同、文化不同再加。</item>
 /// <item><b>交戰</b>：開戰的下一週起，每週攻方首都與戰爭目標交戰（與天災同一欄週帳）；守方在本土，戰力 ×<see cref="TempHomePercent"/>%。</item>
-/// <item><b>結果</b>：打滿 <see cref="TempWarMinWeeks"/> 週後一方累計死亡達另一方的 <see cref="TempWarScorePercent"/>% 分出勝負；
-///   打滿一年白和平。攻方贏了目標改隸屬攻方首都（征服）；不論勝負雙方停戰 <see cref="TempConquestTruceWeeks"/> 週。
+/// <item><b>結果</b>（第 08-22a 章修正，參考 CK3）：攻方先圍城，打滿圍城週數（<see cref="TempSiegeWeeks"/>）而會戰沒有落下風就攻陷目標；
+///   戰爭分數（<see cref="WarScore"/>：會戰＋攻陷＋攻陷後每週加分）滿 100 攻方征服，到 −60 以下攻方敗退，打滿兩年依分數議和或白和平。
+///   攻方贏了目標改隸屬攻方首都（征服）；不論勝負雙方停戰 <see cref="TempConquestTruceWeeks"/> 週。
 ///   被征服的聚落 <see cref="TempConqueredWeeks"/> 週內對新上級忠誠 <see cref="TempConqueredLoyalty"/>（容易再叛離，第 08-19b 章）。</item>
 /// </list>
 /// 戰爭、停戰由事件推得（<see cref="Fold"/>），不另存；亂數同第 08-19b 章（實體局部亂數，不推進計數器）。
@@ -44,6 +50,41 @@ public static partial class DemoRealms
 
     /// <summary>【TEMP】兵力至少是守方幾 % 才宣戰；宣戰機率；信仰不同、文化不同各加幾 %；守方本土戰力加成。</summary>
     public const int TempConquestStrengthPercent = 120, TempConquestChancePercent = 25, TempHolyWarBonusPercent = 15, TempCultureWarBonusPercent = 10, TempHomePercent = 125, TempSurrenderPercent = 500;
+
+    /// <summary>
+    /// 第 08-22a 章【TEMP】戰爭分數（參考 CK3，−100～100）：會戰最多 ±<see cref="TempBattleScore"/>（雙方累計死亡差÷（合計＋<see cref="TempBattleDamp"/>））、
+    /// 攻陷目標 +<see cref="TempOccupyScore"/>、攻陷後每週再 +<see cref="TempTickScore"/>（最多 +<see cref="TempTickMax"/>）。
+    /// 滿 <see cref="TempWinScore"/> 攻方勝；打滿 <see cref="TempWarMinWeeks"/> 週後到 <see cref="TempLoseScore"/> 以下攻方敗退；
+    /// 打滿 <see cref="TempConquestMaxWeeks"/> 週分數 <see cref="TempTermsScore"/> 以上攻方勝（議和割讓），否則白和平。
+    /// </summary>
+    public const int TempBattleScore = 40, TempBattleDamp = 10, TempOccupyScore = 30, TempTickScore = 3, TempTickMax = 60,
+        TempWinScore = 100, TempLoseScore = -60, TempTermsScore = 50, TempConquestMaxWeeks = 104;
+
+    /// <summary>第 08-22a 章【TEMP】圍城幾週才攻陷（目標層級越高、城牆越堅固）：營地 3、村莊 4、城鎮 6、城市 8、首都 10。</summary>
+    public static int TempSiegeWeeks(DemoSettlementTier tier) => tier switch
+    {
+        DemoSettlementTier.Camp => 3,
+        DemoSettlementTier.Village => 4,
+        DemoSettlementTier.Town => 6,
+        DemoSettlementTier.City => 8,
+        _ => 10
+    };
+
+    /// <summary>會戰的分數（雙方累計死亡差換算，±<see cref="TempBattleScore"/>）。</summary>
+    public static int BattleScore(DemoWar war)
+    {
+        ArgumentNullException.ThrowIfNull(war);
+        var swing = TempBattleScore * (war.DefenderLosses - war.AttackerLosses) / Math.Max(1L, war.DefenderLosses + war.AttackerLosses + TempBattleDamp);
+        return (int)Math.Clamp(swing, -TempBattleScore, TempBattleScore);
+    }
+
+    /// <summary>第 08-22a 章：這一週的戰爭分數（正＝攻方佔上風）。</summary>
+    public static int WarScore(DemoWar war, int week)
+    {
+        ArgumentNullException.ThrowIfNull(war);
+        var occupation = war.Occupied ? TempOccupyScore + Math.Min(TempTickMax, Math.Max(0, week - war.OccupiedWeek) * TempTickScore) : 0;
+        return Math.Clamp(BattleScore(war) + occupation, -100, 100);
+    }
 
     public sealed partial class Fold
     {
@@ -85,6 +126,10 @@ public static partial class DemoRealms
                         else if (id == w.TargetId)
                             _wars[attacker] = w with { DefenderLosses = w.DefenderLosses + e.Count };
                     }
+                    break;
+                case DemoSettlementEventKind.Occupied: // 第 08-22a 章：攻方攻陷戰爭目標，之後每週加分
+                    if (_wars.TryGetValue((int)e.Count, out var sieged) && sieged.TargetId == id && !sieged.Occupied)
+                        _wars[(int)e.Count] = sieged with { OccupiedWeek = e.Week };
                     break;
                 case DemoSettlementEventKind.Conquered:
                     if (_wars.Remove((int)e.Count, out var won))
@@ -146,27 +191,34 @@ public static partial class DemoRealms
         var fighting = new HashSet<int>();
         foreach (var w in fold.Wars.Values.OrderBy(x => x.AttackerId))
         {
-            var score = $"（攻方死 {w.AttackerLosses}、守方死 {w.DefenderLosses}）";
+            // 第 08-22a 章（參考 CK3）：圍城、攻陷與戰爭分數決定勝負（原本只看雙方死亡比例）。
+            var warScore = WarScore(w, week);
+            var score = $"（戰爭分數 {warScore}；攻方死 {w.AttackerLosses}、守方死 {w.DefenderLosses}）";
             var fought = week - w.StartWeek;
             void End(string text) => add(w.AttackerId, DemoSettlementEventKind.WarEnded, w.TargetId, text);
             if (!alive(w.AttackerId) || lieges.ContainsKey(w.AttackerId))
                 End($"{name(w.AttackerId)}已無力再戰，對{name(w.TargetId)}的征服戰爭結束");
             else if (!alive(w.TargetId) || Top(w.TargetId, lieges) != w.DefenderId)
                 End($"{name(w.TargetId)}的局勢已變，{name(w.AttackerId)}收兵");
-            else if (fought >= TempWarMinWeeks && w.DefenderLosses > 0 && w.DefenderLosses * 100 >= w.AttackerLosses * TempWarScorePercent
-                && Top(w.AttackerId, lieges) != w.TargetId)
+            else if ((warScore >= TempWinScore || week >= w.EndWeek && warScore >= TempTermsScore) && Top(w.AttackerId, lieges) != w.TargetId)
             {
                 var what = w.WholeRealm ? $"{name(w.TargetId)}與它的整個勢力" : name(w.TargetId);
-                add(w.TargetId, DemoSettlementEventKind.Conquered, w.AttackerId, $"{name(w.AttackerId)}征服了{what}{score}");
+                add(w.TargetId, DemoSettlementEventKind.Conquered, w.AttackerId, warScore >= TempWinScore
+                    ? $"{name(w.AttackerId)}征服了{what}{score}"
+                    : $"{name(w.DefenderId)}戰事不利，與{name(w.AttackerId)}議和，割讓{what}{score}");
                 lieges[w.TargetId] = w.AttackerId;
                 busy.Add(w.TargetId);
             }
-            else if (fought >= TempWarMinWeeks && w.AttackerLosses > 0 && w.AttackerLosses * 100 >= w.DefenderLosses * TempWarScorePercent)
+            else if (fought >= TempWarMinWeeks && warScore <= TempLoseScore)
                 End($"{name(w.AttackerId)}的大軍在{name(w.TargetId)}城下敗退{score}");
             else if (week >= w.EndWeek)
-                End($"征服{name(w.TargetId)}的戰爭打了一年不分勝負，{name(w.AttackerId)}與{name(w.DefenderId)}白和平{score}");
+                End($"征服{name(w.TargetId)}的戰爭打了兩年不分勝負，{name(w.AttackerId)}與{name(w.DefenderId)}白和平{score}");
             else
             {
+                // 圍城：打滿圍城週數、會戰沒有落下風，就攻陷戰爭目標（之後每週加分，CK3 的佔領）。
+                var siege = TempSiegeWeeks(ctx.Tier(w.TargetId));
+                if (!w.Occupied && fought >= siege && BattleScore(w) >= 0)
+                    add(w.TargetId, DemoSettlementEventKind.Occupied, w.AttackerId, $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {fought} 週）");
                 fighting.Add(w.AttackerId);
                 fighting.Add(w.DefenderId);
                 continue;
@@ -238,6 +290,8 @@ public static partial class DemoRealms
         string Name(int id) => sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
         var goal = war.WholeRealm ? "整個勢力" : Name(war.TargetId);
         var cause = war.Cause.Length > 0 ? $"｜起因：{war.Cause}" : "";
-        return $"⚔ {Name(war.AttackerId)}對{Name(war.DefenderId)}：征服戰爭（目標：{goal}）{cause}｜第 {Math.Max(0, week - war.StartWeek)} 週｜攻方死 {war.AttackerLosses}、守方死 {war.DefenderLosses}";
+        var siege = war.Occupied ? $"已攻陷{Name(war.TargetId)}" : $"圍城中";
+        return $"⚔ {Name(war.AttackerId)}對{Name(war.DefenderId)}：征服戰爭（目標：{goal}）{cause}｜第 {Math.Max(0, week - war.StartWeek)} 週｜{siege}｜戰爭分數 {WarScore(war, week)}"
+            + $"｜攻方死 {war.AttackerLosses}、守方死 {war.DefenderLosses}";
     }
 }

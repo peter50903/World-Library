@@ -315,7 +315,10 @@ public enum DemoSettlementEventKind
 
     /// <summary>第 08-19f 章：篡位派系掀起內戰、篡位成功（人數欄＝上級聚落編號；根因）。</summary>
     CivilWar = 49,
-    Usurped = 50
+    Usurped = 50,
+
+    /// <summary>第 08-22a 章：征服戰爭的目標被攻陷（圍城期滿；人數欄＝攻方聚落編號；根因）。</summary>
+    Occupied = 51
 }
 
 /// <summary>
@@ -371,6 +374,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.ConquestBattle
                 or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
                 or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped
+                or DemoSettlementEventKind.Occupied
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };

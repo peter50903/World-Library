@@ -224,6 +224,7 @@ public static class DemoWorldChronicle
                 case DemoSettlementEventKind.FactionJoined:
                 case DemoSettlementEventKind.ConquestBattle:
                 case DemoSettlementEventKind.WarEnded:
+                case DemoSettlementEventKind.Occupied: // 第 08-22a 章：攻陷是一般事件（征服才寫進史書）
                     Add(e.Week, DemoChronicleLevel.Normal, DemoChronicleCategory.Realm, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;

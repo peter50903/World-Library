@@ -57,6 +57,37 @@ public sealed class DemoConquestTests
         Assert.Empty(fold.Wars);
         Assert.Contains(DemoRealms.Loyalty(c, a, won.Week + 1, fold, ctx), f => f.Text == "剛被征服" && f.Value == DemoRealms.TempConqueredLoyalty);
         Assert.True(won.Week - declared.Week >= DemoRealms.TempWarMinWeeks);
+        // 第 08-22a 章：先圍城、攻陷，戰爭分數滿了才征服。
+        var occupied = Assert.Single(all, e => e.Kind == DemoSettlementEventKind.Occupied);
+        Assert.Equal((c, (long)a), (occupied.SettlementId, occupied.Count));
+        Assert.True(occupied.Week - declared.Week >= DemoRealms.TempSiegeWeeks(DemoSettlementTier.Village));
+        Assert.True(occupied.Week < won.Week);
+        Assert.Contains("戰爭分數", won.Cause, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WarScoreCountsBattlesTheSiegeAndHoldingTheGoal()
+    {
+        var war = new DemoWar(1, 2, 2, 10);
+        Assert.Equal(0, DemoRealms.WarScore(war, 12));
+        var winning = war with { DefenderLosses = 90 };
+        Assert.Equal(36, DemoRealms.BattleScore(winning)); // 40×90÷(90＋10)
+        Assert.Equal(-36, DemoRealms.BattleScore(war with { AttackerLosses = 100 })); // 40×(−100)÷110
+        var held = winning with { OccupiedWeek = 20 };
+        Assert.Equal(36 + DemoRealms.TempOccupyScore, DemoRealms.WarScore(held, 20));
+        Assert.Equal(36 + DemoRealms.TempOccupyScore + 5 * DemoRealms.TempTickScore, DemoRealms.WarScore(held, 25));
+        Assert.Equal(100, DemoRealms.WarScore(held, 60)); // 封頂
+        // 攻陷只記第一次；勢力頁寫出攻陷與戰爭分數。
+        var (sites, a, _, c) = Setup();
+        var fold = new DemoRealms.Fold();
+        fold.Apply(new DemoSettlementEvent(5, TimeSpan.Zero, a, "", DemoSettlementEventKind.WarDeclared, c, ""));
+        Assert.Contains("圍城中", DemoRealms.DescribeWar(fold.Wars[a], sites, 6), StringComparison.Ordinal);
+        fold.Apply(new DemoSettlementEvent(9, TimeSpan.Zero, c, "", DemoSettlementEventKind.Occupied, a, ""));
+        fold.Apply(new DemoSettlementEvent(11, TimeSpan.Zero, c, "", DemoSettlementEventKind.Occupied, a, ""));
+        Assert.Equal(9, fold.Wars[a].OccupiedWeek);
+        var text = DemoRealms.DescribeWar(fold.Wars[a], sites, 12);
+        Assert.Contains("已攻陷", text, StringComparison.Ordinal);
+        Assert.Contains($"戰爭分數 {DemoRealms.TempOccupyScore + 3 * DemoRealms.TempTickScore}", text, StringComparison.Ordinal);
     }
 
     [Fact]

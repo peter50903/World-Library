@@ -181,7 +181,7 @@ public static class DemoSaga
     }
 
     /// <summary>第 08-10m 節：勢力戰爭句子裡的死傷數（「（叛軍死 3、上級死 1）」「（攻方死 2、守方死 6）」）。</summary>
-    private static readonly Regex Casualties = new("（(?:叛軍|攻方)死 \\d+、(?:上級|守方)死 \\d+）", RegexOptions.CultureInvariant);
+    private static readonly Regex Casualties = new("（(?:戰爭分數 -?\\d+；)?(?:叛軍|攻方)死 \\d+、(?:上級|守方)死 \\d+）", RegexOptions.CultureInvariant); // 第 08-22a 章：征服戰爭多寫戰爭分數
 
     /// <summary>
     /// 第 08-10m 節：把一卷裡的勢力大事合成幾句——請願獲准而獨立的（兩件以上）合成一句；跟著首領脫離的不另寫；
