@@ -54,6 +54,43 @@ public sealed class DemoDungeonTests
     }
 
     [Fact]
+    public void BiggerMapsTargetMoreDungeonsAndRollSeveralTimesAYear()
+    {
+        // 第 12-2k 章：目標數＝1＋格數÷384（小 1、中 2、大 10、巨大 30）；每 3 個名額每年擲一次（小、中 1，大 4，巨大 10）。
+        var medium = new DemoObserverWorld(WorldRecipe.ForSeeds(42UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.ForagingSample).Map;
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(42UL, null, DemoMapSize.Large), DemoWeeklyTempConfig.ForagingSample);
+        Assert.Equal(2, DemoDungeons.TargetCount(medium));
+        Assert.Equal(10, DemoDungeons.TargetCount(world.Map));
+        Assert.Equal(1, DemoDungeons.RollsPerYear(medium));
+        Assert.Equal(4, DemoDungeons.RollsPerYear(world.Map));
+
+        // 大地圖（黑暗時代：機率 ×3、上限 ×2）：同一年可以出現幾個，彼此離得夠遠、不重名；從事件重算的名字與事件文字一致。
+        var first = world.Sites.Settlements.OrderBy(s => s.Id).First();
+        var rng = RngRegistry.Create(5);
+        var known = new List<DemoDungeon>();
+        var most = 0;
+        for (var year = 1; year <= 60 && known.Count < DemoDungeons.TargetCount(world.Map); year++)
+        {
+            var events = DemoDungeons.Roll(Week(year), TimeSpan.Zero, DemoEra.Pioneer, world.Map, world.Sites, new[] { first.Id }, known, rng, 100 * year,
+                DemoAge.Dark);
+            Assert.InRange(events.Count, 0, DemoDungeons.RollsPerYear(world.Map));
+            Assert.Equal(Enumerable.Range(0, events.Count).Select(i => 100L * year + i), events.Select(e => e.EventId));
+            most = Math.Max(most, events.Count);
+            var before = known.Count;
+            DemoDungeons.Collect(events, world.Map, rng, known);
+            foreach (var (e, d) in events.Zip(known.Skip(before)))
+                Assert.Contains("：" + d.Name + "（" + d.Layers.ToString(System.Globalization.CultureInfo.InvariantCulture) + " 層地下城）", e.Cause, StringComparison.Ordinal);
+        }
+        Assert.True(most >= 2, $"大地圖一年最多只出現 {most} 個");
+        Assert.InRange(known.Count, 2, DemoDungeons.TargetCount(world.Map) * DemoAges.DungeonTargetPercent(DemoAge.Dark) / 100);
+        Assert.Equal(known.Count, known.Select(d => d.Name).Distinct().Count());
+        foreach (var a in known)
+            foreach (var b in known.Where(b => b != a))
+                Assert.True(DemoWorldSites.HexDistance(world.Map.GetCell(a.Cell.Column, a.Cell.Row), world.Map.GetCell(b.Cell.Column, b.Cell.Row))
+                    >= DemoDungeons.TempMinDistance);
+    }
+
+    [Fact]
     public void CollectRebuildsNamesAndLayersFromEventsAndKeepsDistanceFromOtherDungeons()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);

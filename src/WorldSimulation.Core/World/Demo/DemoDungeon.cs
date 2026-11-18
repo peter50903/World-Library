@@ -10,6 +10,7 @@ public sealed record DemoDungeon(DemoCellRef Cell, string Name, int Layers, int 
 /// 第 12-1 章 C4【TEMP 規則】地下城出現（開拓時代只做出現與記錄；怪物、核心、攻略、溢出留給第 12 章）：
 /// 開拓時代起每年第 <see cref="TempYearWeek"/> 週，世界上的地下城少於目標數時以 <see cref="TempChancePercent"/>% 出現 1 個，
 /// 位置在丘陵或森林、離每個有人聚落與既有地下城至少 <see cref="TempMinDistance"/> 格。
+/// 第 12-2k 章：目標數依地圖格數（<see cref="TargetCount"/>），大地圖每年擲 <see cref="RollsPerYear"/> 次、每次最多 1 個。
 /// 名字與層數只依年份與格編號由事件流的實體局部亂數決定（不推進計數器），所以清單可以從事件重算，存檔不必改版。
 /// </summary>
 public static class DemoDungeons
@@ -34,12 +35,24 @@ public static class DemoDungeons
 
     private const string Namespace = "TEMP-DUNGEON-v1";
 
-    /// <summary>【TEMP】目標數＝1＋欄數÷24，最多 3（小 1、中 2、大與巨大 3）。</summary>
+    /// <summary>【TEMP】第 12-2k 章：每幾格多一個目標名額。</summary>
+    public const int TempCellsPerDungeon = 384;
+
+    /// <summary>【TEMP】第 12-2k 章：每幾個目標名額，每年多擲一次。</summary>
+    public const int TempTargetsPerRoll = 3;
+
+    /// <summary>
+    /// 目標數＝1＋格數÷<see cref="TempCellsPerDungeon"/>（小 1、中 2、大 10、巨大 30）。
+    /// 第 12-2k 章：原為 1＋欄數÷24、最多 3——大地圖兩百個聚落只有 3 個地下城，怪物在大地圖上幾乎不成氣候。
+    /// </summary>
     public static int TargetCount(DemoHexWorld map)
     {
         ArgumentNullException.ThrowIfNull(map);
-        return Math.Min(3, 1 + map.Columns / 24);
+        return 1 + map.Columns * map.Rows / TempCellsPerDungeon;
     }
+
+    /// <summary>第 12-2k 章：每年檢查時擲幾次（每 <see cref="TempTargetsPerRoll"/> 個目標名額一次：小、中 1，大 4，巨大 10）。</summary>
+    public static int RollsPerYear(DemoHexWorld map) => (TargetCount(map) + TempTargetsPerRoll - 1) / TempTargetsPerRoll;
 
     private static ulong Draw(RngRegistry rng, int year, ulong k)
     {
@@ -49,17 +62,26 @@ public static class DemoDungeons
         return EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace + "-WIDE").GetUInt64(checked((ulong)year * 4096UL + k));
     }
 
-    /// <summary>名字與層數：只依出現年份、格編號與已用過的名字決定（重算結果相同）。</summary>
-    public static (string Name, int Layers) Describe(RngRegistry rng, int year, long cellId, ISet<string> taken)
+    /// <summary>第 12-2k 章：同一年第 <paramref name="slot"/> 次（第 0 次＝原本的抽樣，結果不變；之後的另用一個命名空間）。</summary>
+    private static ulong Draw(RngRegistry rng, int year, int slot, ulong k)
+        => slot == 0 ? Draw(rng, year, k)
+            : EntityLocalRandom.Create(rng, EntityId.From(1UL), RngStreams.Event, Namespace + "-SLOT")
+                .GetUInt64(checked(((ulong)year * 64UL + (ulong)slot) * 128UL + k));
+
+    /// <summary>
+    /// 名字與層數：只依出現年份、格編號與已用過的名字決定（重算結果相同）。
+    /// 第 12-2k 章：<paramref name="slot"/>＝同一週出現的第幾個（第 0 個與原本相同）。
+    /// </summary>
+    public static (string Name, int Layers) Describe(RngRegistry rng, int year, long cellId, ISet<string> taken, int slot = 0)
     {
         ArgumentNullException.ThrowIfNull(taken);
         var prefixes = DemoNameTempSettings.Current.PlacePrefix;
         var max = DemoNameTempSettings.Current.MaxLength;
-        var layers = TempMinLayers + (int)(Draw(rng, year, 10) % (ulong)(TempMaxLayers - TempMinLayers + 1));
+        var layers = TempMinLayers + (int)(Draw(rng, year, slot, 10) % (ulong)(TempMaxLayers - TempMinLayers + 1));
         for (ulong attempt = 0; attempt < 32; attempt++)
         {
-            var name = prefixes[(int)(Draw(rng, year, 20 + attempt * 2) % (ulong)prefixes.Count)]
-                + TempSuffixes[(int)(Draw(rng, year, 21 + attempt * 2) % (ulong)TempSuffixes.Length)];
+            var name = prefixes[(int)(Draw(rng, year, slot, 20 + attempt * 2) % (ulong)prefixes.Count)]
+                + TempSuffixes[(int)(Draw(rng, year, slot, 21 + attempt * 2) % (ulong)TempSuffixes.Length)];
             if (DemoNames.Length(name) <= max && !taken.Contains(name))
                 return (name, layers);
         }
@@ -78,7 +100,8 @@ public static class DemoDungeons
     }
 
     /// <summary>
-    /// 本週出現的地下城事件（不是檢查週、希望時代、已達目標數、機率不過、沒有有人聚落或合格格＝空；最多 1 件）。
+    /// 本週出現的地下城事件（不是檢查週、希望時代、已達目標數、機率不過、沒有有人聚落或合格格＝空）。
+    /// 第 12-2k 章：一年擲 <see cref="RollsPerYear"/> 次、每次最多 1 個，總數不超過目標數。
     /// 事件掛在最近的有人聚落（同距離取編號小的），人數欄＝格編號，根因。
     /// </summary>
     public static IReadOnlyList<DemoSettlementEvent> Roll(int week, TimeSpan worldTime, DemoEra era, DemoHexWorld map, DemoWorldSites sites,
@@ -87,28 +110,36 @@ public static class DemoDungeons
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(existing);
-        if (era == DemoEra.Hope || week % DemoWildlife.TempYearWeeks != TempYearWeek || existing.Count >= TargetCount(map) * DemoAges.DungeonTargetPercent(age) / 100)
+        var limit = TargetCount(map) * DemoAges.DungeonTargetPercent(age) / 100;
+        if (era == DemoEra.Hope || week % DemoWildlife.TempYearWeeks != TempYearWeek || existing.Count >= limit)
             return Array.Empty<DemoSettlementEvent>();
         var year = week / DemoWildlife.TempYearWeeks;
-        if ((int)(Draw(rng, year, 0) % 100UL) >= TempChancePercent * DemoAges.DungeonPercent(age) / 100)
+        var chance = TempChancePercent * DemoAges.DungeonPercent(age) / 100;
+        var passed = Enumerable.Range(0, RollsPerYear(map)).Where(slot => (int)(Draw(rng, year, slot, 0) % 100UL) < chance).ToList();
+        if (passed.Count == 0)
             return Array.Empty<DemoSettlementEvent>();
         var living = livingIds.OrderBy(i => i).Select(i => sites.Settlements.First(s => s.Id == i)).ToList();
         if (living.Count == 0)
             return Array.Empty<DemoSettlementEvent>();
         var taken = existing.Select(d => d.Cell).ToList();
         var spots = map.Cells.Where(c => Eligible(map, sites, living, taken, c)).OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
-        if (spots.Count == 0)
-            return Array.Empty<DemoSettlementEvent>();
-        var spot = spots[(int)(Draw(rng, year, 1) % (ulong)spots.Count)];
-        var near = living.OrderBy(s => DemoWorldSites.HexDistance(map.GetCell(s.Column, s.Row), spot)).ThenBy(s => s.Id).First();
-        var cellId = DemoLandClearing.CellId(map, new DemoCellRef(spot.Column, spot.Row));
-        var (name, layers) = Describe(rng, year, cellId, existing.Select(d => d.Name).ToHashSet());
-        return new[]
+        var names = existing.Select(d => d.Name).ToHashSet();
+        var events = new List<DemoSettlementEvent>();
+        foreach (var slot in passed)
         {
-            new DemoSettlementEvent(week, worldTime, near.Id, near.Name, DemoSettlementEventKind.DungeonAppeared, cellId,
+            if (existing.Count + events.Count >= limit || spots.Count == 0)
+                break;
+            var spot = spots[(int)(Draw(rng, year, slot, 1) % (ulong)spots.Count)];
+            spots.RemoveAll(c => DemoWorldSites.HexDistance(spot, c) < TempMinDistance); // 同一年的下一個也要離它夠遠
+            var near = living.OrderBy(s => DemoWorldSites.HexDistance(map.GetCell(s.Column, s.Row), spot)).ThenBy(s => s.Id).First();
+            var cellId = DemoLandClearing.CellId(map, new DemoCellRef(spot.Column, spot.Row));
+            var (name, layers) = Describe(rng, year, cellId, names, events.Count); // 同一週出現的第幾個（重算時 Collect 也這樣數）
+            names.Add(name);
+            events.Add(new DemoSettlementEvent(week, worldTime, near.Id, near.Name, DemoSettlementEventKind.DungeonAppeared, cellId,
                 $"附近的{(spot.Terrain == DemoTerrain.Hills ? "丘陵" : "森林")}裂開了一道入口：{name}（{layers} 層地下城）出現在 ({spot.Column},{spot.Row})【TEMP】",
-                EventId: nextEventId)
-        };
+                EventId: checked(nextEventId + events.Count)));
+        }
+        return events;
     }
 
     /// <summary>從事件（由舊到新）重算地下城清單；可接續 <paramref name="known"/> 往後加。</summary>
@@ -119,7 +150,8 @@ public static class DemoDungeons
         foreach (var e in events.Where(e => e.Kind == DemoSettlementEventKind.DungeonAppeared))
         {
             var year = e.Week / DemoWildlife.TempYearWeeks;
-            var (name, layers) = Describe(rng, year, e.Count, known.Select(d => d.Name).ToHashSet());
+            var slot = known.Count(d => d.AppearedWeek == e.Week); // 第 12-2k 章：同一週出現的第幾個
+            var (name, layers) = Describe(rng, year, e.Count, known.Select(d => d.Name).ToHashSet(), slot);
             known.Add(new DemoDungeon(DemoLandClearing.CellOf(map, e.Count), name, layers, e.Week, e.EventId, e.SettlementId));
         }
     }
