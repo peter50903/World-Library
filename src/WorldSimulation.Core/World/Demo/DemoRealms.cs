@@ -46,6 +46,12 @@ public sealed record DemoRealmContext(
     /// <summary>第 08-6c 章：某一週的世界時代（混沌時代忠誠降低）；沒給＝希望時代（測試）。</summary>
     public Func<int, DemoAge>? AgeOfWeek { get; init; }
 
+    /// <summary>第 08-22g 章：兩個信仰的敵意（1＝誤入歧途、2＝敵對；見 <see cref="DemoFaiths.Hostility"/>）；沒給＝不同信仰一律敵對（測試）。</summary>
+    public Func<int, int, int>? FaithHostility { get; init; }
+
+    /// <summary>兩個信仰的敵意（同一個＝0）。</summary>
+    public int HostilityOf(int a, int b) => a == b ? 0 : FaithHostility?.Invoke(a, b) ?? 2;
+
     /// <summary>觀察者所知的對象人口（沒有消息模型時是即時人口）。</summary>
     public long KnownResidents(int observer, int target) => Known?.Invoke(observer, target) ?? Residents(target);
 }
@@ -81,6 +87,9 @@ public static partial class DemoRealms
 
     /// <summary>【TEMP】忠誠回到這個值以上才退出派系。</summary>
     public const int TempLeaveLoyalty = 10;
+
+    /// <summary>【TEMP】第 08-22g 章：下級的信仰與上級同源（誤入歧途）時的忠誠扣分（不同源的敵對信仰照舊 −15）。</summary>
+    public const int TempAstrayFaithLoyalty = -8;
 
     private const string Namespace = "TEMP-REALM-v2";
 
@@ -214,7 +223,8 @@ public static partial class DemoRealms
         var lordTraits = ctx.Leader?.Invoke(fold.Seat(liege))?.Traits ?? DemoTrait.None;
         if (ctx.Faith(vassal) is { } f1 && ctx.Faith(liege) is { } f2 && f1 != f2 && !DemoTraits.Has(lordTraits, DemoTrait.Cynical))
         {
-            factors.Add(new("信仰不同", -15));
+            // 第 08-22g 章：同源的信仰（誤入歧途）只扣一半。
+            factors.Add(ctx.HostilityOf(f1, f2) == 1 ? new("信仰誤入歧途", TempAstrayFaithLoyalty) : new("信仰不同", -15));
             if (DemoTraits.Has(lordTraits, DemoTrait.Zealous))
                 factors.Add(new("領袖虔誠，容不下異教", DemoTraits.TempZealousFaithLoyalty));
         }

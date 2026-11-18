@@ -340,6 +340,7 @@ public sealed class DemoCausalIndex
                 // 第 08-11 章：根因（附近已無人耕作；開發度另存於土地開發狀態）。
                 return parent is null && e.Count > 0 ? null : "農田荒廢是根因，事件人數欄必須是格編號";
             case DemoSettlementEventKind.FaithSchism: // 第 08-22d 章：根因；人數欄＝新信仰編號
+            case DemoSettlementEventKind.FaithConverted: // 第 08-22g 章：根因；人數欄＝新的主要信仰編號
             case DemoSettlementEventKind.CultureSplit:
                 // 第 08-8 章 B4：根因（斷絕往來的計時另存於文化狀態）。
                 return parent is null && e.Count > 0 ? null : "文化分化是根因，事件人數欄必須是新文化編號";
@@ -589,6 +590,6 @@ public sealed class DemoCausalIndex
         DemoSettlementEventKind.Birth => "出生",
         DemoSettlementEventKind.NaturalDeath => "自然死亡",
         DemoSettlementEventKind.SettlementRuined => "成為遺跡",
-        _ => "未知"
+        _ => Enum.IsDefined(kind) ? DemoEventTypes.Of(kind).Name : "未知" // 第 08-22g 章：其他種類用正式事件類型的名稱（原本篩選選單都顯示「未知」）
     };
 }

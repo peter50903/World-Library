@@ -638,8 +638,19 @@ public sealed partial class DemoObserverWorld
         {
             Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
             Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
-            AgeOfWeek = AgeAtWeek // 第 08-6c 章：混沌時代忠誠降低
+            AgeOfWeek = AgeAtWeek, // 第 08-6c 章：混沌時代忠誠降低
+            FaithHostility = (a, b) => DemoFaiths.Hostility(culture.Faith, a, b) // 第 08-22g 章：同源的信仰誤入歧途、不同源的敵對
         };
+    }
+
+    /// <summary>第 08-22g 章：聚落的直屬上級（沒有＝null）。</summary>
+    private static Func<int, int?> LiegeOf(DemoRealms.Fold fold) => id => fold.Liege.TryGetValue(id, out var liege) ? (int?)liege : null;
+
+    /// <summary>第 08-22g 章：某信仰目前的狂熱度與明細（信仰頁用）。</summary>
+    public (int Value, IReadOnlyList<(string Text, int Value)> Factors) FaithFervor(int faithId)
+    {
+        var living = _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0).ToList();
+        return DemoFaiths.Fervor(_culture.Faith.Faiths, faithId, living, _culture.Faith.MainFaithOf);
     }
 
     /// <summary>
@@ -901,7 +912,8 @@ public sealed partial class DemoObserverWorld
                     lifecycle.Population.Representatives,
                     id => culture.MainCultureOf(id) is { } c && culture.Culture(c) is { } main ? main.Traits : (IReadOnlyCollection<string>)Array.Empty<string>(),
                     checked(landNextId + cleared.Count + split.Count),
-                    id => ChronicleOf(id).Tier); // 第 08-10l 節：創立者的稱號依聚落等級
+                    id => ChronicleOf(id).Tier, // 第 08-10l 節：創立者的稱號依聚落等級
+                    LiegeOf(Realms())); // 第 08-22g 章：改宗（上級＝上週結束時的隸屬）
                 culture = culture with { Faith = faith };
                 DemoPerf.Mark("信仰");
                 // 第 12-1 章 C1：野生動物年結算（狩獵用本週習得後的知識）；C3b：熱浪、野火的開始與結束（事件接在信仰之後）。

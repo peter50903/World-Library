@@ -9,9 +9,10 @@ namespace WorldSimulation.Core.World.Demo;
 /// <summary>
 /// 第 08-8 章 B3：一個信仰（48A：零信徒不刪除，<see cref="ExtinctWeek"/> 記滅絕週次；同 ID 復興時歸零）。
 /// <see cref="Tenets"/>＝核心信條（P04A，2～4 條）；<see cref="Doctrines"/>＝制度教義（P04B～P04J，依 06K）。
+/// 第 08-22g 章：<see cref="ParentId"/>＝由哪個信仰分裂出來（異端；不是＝0），用來判斷同源（誤入歧途）。
 /// </summary>
 public sealed record DemoFaith(int Id, string Name, int FounderSettlementId, long FounderId, int FoundedWeek,
-    ImmutableList<string> Tenets, ImmutableList<string> Doctrines, int ExtinctWeek = 0);
+    ImmutableList<string> Tenets, ImmutableList<string> Doctrines, int ExtinctWeek = 0, int ParentId = 0);
 
 /// <summary>
 /// 第 08-8 章 B3：信仰狀態。聚落與途中隊伍的背景人口只存信仰比例（千分比；信仰編號 0＝無信仰，沿用文化的比例紀錄型別）；
@@ -44,7 +45,7 @@ public sealed record DemoFaithState(
         => Representatives.FirstOrDefault(r => r.RepresentativeId == representativeId)?.CultureId ?? 0;
 
     public string Fingerprint()
-        => string.Concat(Faiths.Select(f => $"rel{f.Id}:{f.Name}:{f.FounderSettlementId}/{f.FounderId}@{f.FoundedWeek}:{string.Join('+', f.Tenets)}|{string.Join('+', f.Doctrines)}x{f.ExtinctWeek};"))
+        => string.Concat(Faiths.Select(f => $"rel{f.Id}:{f.Name}:{f.FounderSettlementId}/{f.FounderId}@{f.FoundedWeek}:{string.Join('+', f.Tenets)}|{string.Join('+', f.Doctrines)}x{f.ExtinctWeek}^{f.ParentId};"))
            + string.Concat(Settlements.Select(s => $"sr{s.SettlementId}=" + string.Join(',', s.Shares.Select(x => $"{x.CultureId}:{x.Permille}")) + ";"))
            + string.Concat(Batches.Select(s => $"br{s.BatchId}=" + string.Join(',', s.Shares.Select(x => $"{x.CultureId}:{x.Permille}")) + ";"))
            + string.Concat(Representatives.Select(r => $"rr{r.RepresentativeId}={r.CultureId};"));
@@ -72,6 +73,23 @@ public static class DemoFaiths
 
     /// <summary>第 08-22d 章【TEMP】異端分裂：每幾週檢查一次（每個聚落錯開）；信仰創立滿幾週後才會分裂；離聖地幾格以上算遙遠；每次的機率。</summary>
     public const int TempSchismCheckWeeks = 52, TempSchismMinWeeks = 1040, TempSchismDistance = 12, TempSchismPercent = 6;
+
+    /// <summary>
+    /// 第 08-22g 章【TEMP】狂熱度（0～100，參考 CK3；由現況算、不另存）：基本 <see cref="TempFervorBase"/>；
+    /// 聖地在手（創立聚落還有人住、主要信仰還是它）+<see cref="TempFervorHolySite"/>，否則 <see cref="TempFervorHolySiteLost"/>；
+    /// 每個以它為主要信仰的聚落 +<see cref="TempFervorPerSettlement"/>（最多 +<see cref="TempFervorBreadthMax"/>）；
+    /// 每個還有信徒、從它分裂出去的異端 <see cref="TempFervorPerHeresy"/>。
+    /// 狂熱度低的信仰容易分裂出異端（機率 ×(150−狂熱度)%），改宗時也守不住信徒。
+    /// </summary>
+    public const int TempFervorBase = 40, TempFervorHolySite = 30, TempFervorHolySiteLost = -20, TempFervorPerSettlement = 2,
+        TempFervorBreadthMax = 30, TempFervorPerHeresy = -15;
+
+    /// <summary>
+    /// 第 08-22g 章【TEMP】改宗（參考 CK3：統治者讓領地改信）：上級的主要信仰和自己不同時，每週有 <see cref="TempLiegeConvertRate"/>／10000
+    /// 的人（其他信仰的信徒與無信仰者）改信上級的信仰，再乘以（100＋上級信仰的狂熱度−自己信仰的狂熱度）%（限 20～200%）。
+    /// 主要信仰因此換成上級的信仰時記「改宗」。
+    /// </summary>
+    public const int TempLiegeConvertRate = 30;
 
     /// <summary>【TEMP】每週改信比例（萬分比，乘以無信仰者的千分比）：創立聚落 2%、鄰近聚落 0.5%。</summary>
     public const int TempFounderRate = 200;
@@ -182,6 +200,49 @@ public static class DemoFaiths
         return (tenets.ToImmutableList(), doctrines.ToImmutableList());
     }
 
+    /// <summary>第 08-22g 章：兩個信仰的敵意——0＝同一個信仰、1＝誤入歧途（同源：追到最早的母信仰是同一個）、2＝敵對（不同源）。</summary>
+    public static int Hostility(DemoFaithState state, int a, int b)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (a == b)
+            return 0;
+        return state.Faith(a) is { } fa && state.Faith(b) is { } fb && Root(state, fa) == Root(state, fb) ? 1 : 2;
+    }
+
+    /// <summary>敵意的名稱。</summary>
+    public static string HostilityName(int level) => level switch { 0 => "同一信仰", 1 => "誤入歧途", _ => "敵對" };
+
+    private static int Root(DemoFaithState state, DemoFaith faith)
+    {
+        for (var hops = 0; hops < 64 && faith.ParentId != 0 && state.Faith(faith.ParentId) is { } parent; hops++)
+            faith = parent;
+        return faith.Id;
+    }
+
+    /// <summary>
+    /// 第 08-22g 章：某信仰的狂熱度與明細。<paramref name="living"/>＝有人住的聚落；<paramref name="mainOf"/>＝聚落的主要信仰。
+    /// </summary>
+    public static (int Value, IReadOnlyList<(string Text, int Value)> Factors) Fervor(IReadOnlyList<DemoFaith> faiths, int faithId,
+        IReadOnlyCollection<DemoSettlement> living, Func<int, int?> mainOf)
+    {
+        ArgumentNullException.ThrowIfNull(faiths);
+        ArgumentNullException.ThrowIfNull(living);
+        ArgumentNullException.ThrowIfNull(mainOf);
+        var faith = faiths.FirstOrDefault(f => f.Id == faithId);
+        var factors = new List<(string, int)> { ("基本", TempFervorBase) };
+        if (faith is null)
+            return (TempFervorBase, factors);
+        var holy = living.Any(s => s.Id == faith.FounderSettlementId) && mainOf(faith.FounderSettlementId) == faith.Id;
+        factors.Add(holy ? ("聖地在手", TempFervorHolySite) : ("失去聖地", TempFervorHolySiteLost));
+        var settlements = living.Count(s => mainOf(s.Id) == faith.Id);
+        if (settlements > 0)
+            factors.Add(($"{settlements} 個聚落以它為主要信仰", Math.Min(TempFervorBreadthMax, TempFervorPerSettlement * settlements)));
+        var heresies = faiths.Count(f => f.ParentId == faith.Id && f.ExtinctWeek == 0);
+        if (heresies > 0)
+            factors.Add(($"分裂出 {heresies} 個異端", TempFervorPerHeresy * heresies));
+        return (Math.Clamp(factors.Sum(f => f.Item2), 0, 100), factors);
+    }
+
     /// <summary>傳播倍率（萬分比率乘數，百分比）：積極傳教×2、封閉信仰×0.5。</summary>
     public static int SpreadPercent(DemoFaith faith)
         => faith.Doctrines.Contains("RDX_MISSIONARY") ? 200 : faith.Doctrines.Contains("RDX_ISOLATIONIST") ? 50 : 100;
@@ -196,7 +257,8 @@ public static class DemoFaiths
     public static (DemoFaithState State, IReadOnlyList<DemoSettlementEvent> Events) Advance(DemoFaithState state, DemoWeekReport report,
         IReadOnlyList<DemoSettlementEvent> learned, DemoWorldSites sites, DemoHexWorld map, RngRegistry registry,
         IReadOnlyList<DemoRepresentative> representatives, Func<int, IReadOnlyCollection<string>> cultureTraits, long nextEventId,
-        Func<int, DemoSettlementTier>? tierOf = null)
+        Func<int, DemoSettlementTier>? tierOf = null,
+        Func<int, int?>? liegeOf = null) // 第 08-22g 章：上級（改宗）
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(report);
@@ -223,6 +285,10 @@ public static class DemoFaiths
             .OrderBy(s => s.Id).ToList();
         int? Main(int id) => Of(id).Where(x => x.CultureId != 0).OrderByDescending(x => x.Permille).ThenBy(x => x.CultureId)
             .Select(x => (int?)x.CultureId).FirstOrDefault();
+        // 第 08-22g 章：本週開始時各信仰的狂熱度（分裂與改宗都用它）。
+        var mainAtStart = living.ToDictionary(s => s.Id, s => Main(s.Id));
+        var fervor = state.Faiths.Where(f => f.ExtinctWeek == 0)
+            .ToDictionary(f => f.Id, f => Fervor(state.Faiths, f.Id, living, id => mainAtStart.GetValueOrDefault(id)).Value);
 
         // 創立：本週習得祖靈祭祀、6 格內沒有信徒聚落的聚落由村長創立新信仰（一聚落一週最多一個）。
         var rites = DemoTechnology.Of(AncestorRites);
@@ -258,13 +324,14 @@ public static class DemoFaiths
             var holy = sites.Settlements.FirstOrDefault(x => x.Id == old.FounderSettlementId);
             if (holy is not null && !holy.IsRuin && DemoKnowledge.Distance(map, s, holy) < TempSchismDistance)
                 continue;
-            if ((int)(Draw(registry, s.Id, 5000UL + (ulong)week) % 100UL) >= TempSchismPercent)
+            // 第 08-22g 章：狂熱度低的信仰容易分裂（×(150−狂熱度)%）。
+            if ((int)(Draw(registry, s.Id, 5000UL + (ulong)week) % 100UL) >= TempSchismPercent * (150 - fervor.GetValueOrDefault(old.Id, TempFervorBase)) / 100)
                 continue;
             var id = faiths.Max(f => f.Id) + 1;
             var founder = representatives.Concat(report.Appointments).Where(r => r.SettlementId == s.Id)
                 .OrderBy(r => r.Role).ThenBy(r => r.Id).FirstOrDefault();
             var (tenets, doctrines) = Draw(cultureTraits(s.Id), i => Draw(registry, id, 1000 + i));
-            var heresy = new DemoFaith(id, $"{s.Name}教派", s.Id, founder?.Id ?? 0, week, tenets, doctrines);
+            var heresy = new DemoFaith(id, $"{s.Name}教派", s.Id, founder?.Id ?? 0, week, tenets, doctrines, ParentId: old.Id); // 第 08-22g 章：記下母信仰
             faiths.Add(heresy);
             settlements[s.Id] = Of(s.Id).Select(x => x.CultureId == fid ? x with { CultureId = id } : x).ToList();
             foreach (var r in representatives.Concat(report.Appointments).Where(r => r.SettlementId == s.Id && reps.GetValueOrDefault(r.Id) == fid))
@@ -297,6 +364,28 @@ public static class DemoFaiths
             if (!ReferenceEquals(after, before))
                 settlements[s.Id] = after;
         }
+        // 第 08-22g 章【TEMP】改宗：上級的主要信仰和自己不同時，慢慢改信上級的信仰（含其他信仰的信徒）；主要信仰換掉時記「改宗」。
+        if (liegeOf is not null)
+            foreach (var s in living)
+            {
+                if (liegeOf(s.Id) is not { } liege || mains.GetValueOrDefault(liege) is not { } theirs || theirs == mains[s.Id]
+                    || faiths.FirstOrDefault(f => f.Id == theirs) is not { } target)
+                    continue;
+                var ours = mains[s.Id] is { } m ? fervor.GetValueOrDefault(m, TempFervorBase) : 0;
+                var rate = TempLiegeConvertRate * Math.Clamp(100 + fervor.GetValueOrDefault(theirs, TempFervorBase) - ours, 20, 200) / 100;
+                var before = Of(s.Id);
+                var after = ConvertAll(before, theirs, rate);
+                if (ReferenceEquals(after, before))
+                    continue;
+                settlements[s.Id] = after;
+                if (Main(s.Id) == theirs && mains[s.Id] is { } was)
+                {
+                    var lord = sites.Settlements.FirstOrDefault(x => x.Id == liege)?.Name ?? "";
+                    events.Add(new DemoSettlementEvent(week, report.WorldTime, s.Id, s.Name, DemoSettlementEventKind.FaithConverted, theirs,
+                        $"多數人改信上級{lord}的「{target.Name}」（原本信「{faiths.FirstOrDefault(f => f.Id == was)?.Name ?? ""}」）",
+                        EventId: nextEventId++));
+                }
+            }
         foreach (var id in settlements.Keys.Where(id => settlements[id].All(x => x.CultureId == 0)).ToList())
             settlements.Remove(id);
         foreach (var id in batches.Keys.Where(id => batches[id].All(x => x.CultureId == 0)).ToList())
@@ -327,6 +416,27 @@ public static class DemoFaiths
             Batches = batches.OrderBy(kv => kv.Key).Select(kv => new DemoBatchCulture(kv.Key, kv.Value.ToImmutableList())).ToImmutableList(),
             Representatives = reps.OrderBy(kv => kv.Key).Select(kv => new DemoRepresentativeCulture(kv.Key, kv.Value)).ToImmutableList()
         }, events);
+    }
+
+    /// <summary>
+    /// 第 08-22g 章：其他信仰（含無信仰）的人各有 <paramref name="rate"/>／10000 改信 <paramref name="faithId"/>
+    /// （合計至少 1‰，從人數最多的一群扣）；沒有其他信仰的人或 rate ≤ 0 時回傳原本的清單。
+    /// </summary>
+    public static IReadOnlyList<DemoCultureShare> ConvertAll(IReadOnlyList<DemoCultureShare> shares, int faithId, int rate)
+    {
+        ArgumentNullException.ThrowIfNull(shares);
+        var others = shares.Where(x => x.CultureId != faithId && x.Permille > 0).ToList();
+        if (others.Count == 0 || rate <= 0)
+            return shares;
+        var moved = others.Select(x => (Share: x, Moved: (int)((long)x.Permille * rate / 10000))).ToList();
+        if (moved.All(x => x.Moved == 0))
+        {
+            var largest = others.OrderByDescending(x => x.Permille).ThenBy(x => x.CultureId).First();
+            moved = moved.Select(x => x.Share.CultureId == largest.CultureId ? (Share: x.Share, Moved: 1) : x).ToList();
+        }
+        var result = moved.Where(x => x.Share.Permille - x.Moved > 0).Select(x => x.Share with { Permille = x.Share.Permille - x.Moved }).ToList();
+        result.Add(new DemoCultureShare(faithId, (shares.FirstOrDefault(x => x.CultureId == faithId)?.Permille ?? 0) + moved.Sum(x => x.Moved)));
+        return result.OrderBy(x => x.CultureId).ToImmutableList();
     }
 
     /// <summary>無信仰者的 <paramref name="rate"/>／10000 改信（至少 1‰，無信仰者用完為止）；沒有變化時回傳原本的清單。</summary>
