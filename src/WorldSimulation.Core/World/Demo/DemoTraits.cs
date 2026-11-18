@@ -130,6 +130,18 @@ public static class DemoTraits
     public const int TempStrongBattlePercent = 110, TempFrailBattlePercent = 90, TempCleverResearch = 10, TempDullResearch = -10, TempSageResearch = 50,
         TempComelyLoyalty = 5, TempHomelyLoyalty = -5, TempChosenLoyalty = 20, TempSaintLoyalty = 25, TempChosenBattlePercent = 130, TempDragonbloodBattlePercent = 160;
 
+    /// <summary>
+    /// 第 08-22h 章【TEMP】體魄與壽命（08-22 第 2 節第 3 項：體魄影響會戰與壽命；使用者 2026-11-18：身體特質只做小幅變動）：
+    /// 具名人物每週老死的機率乘以幾 %——強壯 <see cref="TempStrongLifePercent"/>%、虛弱 <see cref="TempFrailLifePercent"/>%、
+    /// 龍血 <see cref="TempDragonbloodLifePercent"/>%（傳說特性，可以和體魄相乘）。
+    /// </summary>
+    public const int TempStrongLifePercent = 80, TempFrailLifePercent = 125, TempDragonbloodLifePercent = 60;
+
+    /// <summary>第 08-22h 章：這個人每週老死的機率乘以幾 %（沒有相關特質＝100）。</summary>
+    public static int LifePercent(DemoTrait traits)
+        => (Has(traits, DemoTrait.Strong) ? TempStrongLifePercent : Has(traits, DemoTrait.Frail) ? TempFrailLifePercent : 100)
+           * (Has(traits, DemoTrait.Dragonblood) ? TempDragonbloodLifePercent : 100) / 100;
+
     private static readonly (DemoTrait A, DemoTrait B)[] BodyAxes =
     {
         (DemoTrait.Strong, DemoTrait.Frail), (DemoTrait.Clever, DemoTrait.Dull), (DemoTrait.Comely, DemoTrait.Homely)
@@ -242,14 +254,14 @@ public static class DemoTraits
         DemoTrait.Honest => "說話算話，下級信任",
         DemoTrait.Zealous => "更常對異教發動聖戰，容不下異教的下級",
         DemoTrait.Cynical => "不為信仰開戰，也不在意下級信什麼",
-        DemoTrait.Strong => "身體特質：打仗時讓對方死傷多一成（會遺傳）",
-        DemoTrait.Frail => "身體特質：打仗時讓對方死傷少一成（會遺傳）",
+        DemoTrait.Strong => "身體特質：打仗時讓對方死傷多一成，比較長壽（會遺傳）",
+        DemoTrait.Frail => "身體特質：打仗時讓對方死傷少一成，比較短命（會遺傳）",
         DemoTrait.Clever => "身體特質：領導的聚落研究快一成（會遺傳）",
         DemoTrait.Dull => "身體特質：領導的聚落研究慢一成（會遺傳）",
         DemoTrait.Comely => "身體特質：下級稍微忠誠（會遺傳）",
         DemoTrait.Homely => "身體特質：下級稍微不忠誠（會遺傳）",
         DemoTrait.Chosen => "傳說特性：天命所歸，下級忠誠大增，打仗時讓對方死傷多三成（不會遺傳）",
-        DemoTrait.Dragonblood => "傳說特性：龍的血脈，打仗時讓對方死傷多六成（不會遺傳）",
+        DemoTrait.Dragonblood => "傳說特性：龍的血脈，打仗時讓對方死傷多六成，長壽（不會遺傳）",
         DemoTrait.Sage => "傳說特性：賢者，領導的聚落研究快五成（不會遺傳）",
         DemoTrait.Saint => "傳說特性：聖者，下級忠誠大增（不會遺傳）",
         _ => ""
