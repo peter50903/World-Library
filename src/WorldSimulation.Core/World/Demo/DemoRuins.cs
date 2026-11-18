@@ -28,8 +28,8 @@ public static class DemoRuins
     }
 
     private static bool IsFaded(DemoObserverWorld world, DemoSettlement settlement, int day)
-        => settlement.IsRuin && day / 7 - settlement.RuinedWeek >= TempFadeYears * DemoSettlementHistory.DaysPerYear / 7
-           && !IsImportant(world, settlement);
+        => settlement.IsRuin && (!world.Sites.IsStandingRuin(settlement) // 第 12-2i 章：上面已經重建了
+           || day / 7 - settlement.RuinedWeek >= TempFadeYears * DemoSettlementHistory.DaysPerYear / 7 && !IsImportant(world, settlement));
 
     /// <summary>目前已消失的遺跡編號。</summary>
     public static IReadOnlySet<int> Faded(DemoObserverWorld world)

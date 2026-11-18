@@ -236,7 +236,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
         {
             $"{DemoSettlementHistory.TitledName(settlement, world.ChronicleOf(settlement.Id).Tier)}（{tier}）",
             settlement.IsFounded
-                ? $"第 {YearOfWeek(settlement.FoundedWeek)} 年由{names.GetValueOrDefault(settlement.FoundedFromSettlementId, "未知聚落")}的開拓隊建立"
+                ? $"第 {YearOfWeek(settlement.FoundedWeek)} 年由{names.GetValueOrDefault(settlement.FoundedFromSettlementId, "未知聚落")}的開拓隊"
+                  + (world.Sites.RebuiltOn(settlement.Id) is { } ruin ? $"在{ruin.Name}的遺跡上重建" : "建立") // 第 12-2i 章
                 : "開局時已有人定居",
             $"家系：{names.GetValueOrDefault(DemoLineageMap.LineageRoot(world.Sites, settlement.Id), "未知")}"
         };

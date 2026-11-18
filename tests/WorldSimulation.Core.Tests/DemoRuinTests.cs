@@ -32,6 +32,29 @@ public sealed class DemoRuinTests
         Assert.Throws<InvalidOperationException>(() => ruined.WithRuin(first.Id, 20));
     }
 
+    // 第 12-2i 章：遺跡格可以重建；重建的聚落取代那一格（格索引、佔格、不再算留在地上的遺跡），遺跡的紀錄保留。
+    [Fact]
+    public void RuinCellsCanBeRebuiltAndTheNewSettlementTakesTheCell()
+    {
+        var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.ForagingSample);
+        var sites = world.Sites;
+        var first = sites.Settlements[0];
+        var id = checked((int)sites.EntityIds().Max() + 1);
+        var rebuilt = new DemoSettlement(id, "新" + first.Name, first.Column, first.Row, FoundedWeek: 20, FoundedFromSettlementId: first.Id, FoundedByBatchId: 1);
+        Assert.Throws<InvalidOperationException>(() => sites.WithFoundedSettlement(rebuilt, id + 1, world.Map)); // 有人住的聚落上不能建
+
+        var ruined = sites.WithRuin(first.Id, 10);
+        Assert.True(ruined.IsStandingRuin(ruined.Settlements[0]));
+        var after = ruined.WithFoundedSettlement(rebuilt, id + 1, world.Map);
+        Assert.Equal(id, after.SettlementAt(first.Column, first.Row)!.Id);
+        Assert.Equal(first.Id, after.RebuiltOn(id)!.Id);
+        Assert.Null(after.RebuiltOn(first.Id));
+        Assert.True(after.Settlements[0].IsRuin); // 遺跡的紀錄保留
+        Assert.False(after.IsStandingRuin(after.Settlements[0]));
+        Assert.Contains(new DemoCellRef(first.Column, first.Row), after.OccupiedCells());
+        Assert.Single(after.ResourcePointsOf(id));
+    }
+
     [Fact]
     public void FoundingSiteMustReachAFreeNaturalSource()
     {

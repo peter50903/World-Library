@@ -83,6 +83,9 @@ public static class DemoWorldChronicle
     /// <summary>【TEMP】第 08-10d 章：世界大事的輕重（時代＞征服、獨立、篡位＞開戰、內戰＞世界第一個某級聚落＞城鎮以上淪為遺跡＞信仰與文化＞世界首次的技術）。</summary>
     public const int WeightEra = 100, WeightConquest = 90, WeightWar = 80, WeightFirstTier = 70, WeightRuin = 60, WeightBelief = 50, WeightKnowledge = 40;
 
+    /// <summary>第 12-2i 章：在遺跡上重建的那一句（史書用它認出「收復」）。</summary>
+    public const string RebuiltMarker = " 的遺跡上重建 ";
+
     /// <summary>【TEMP】第 08-10d 章：年代小結最多引述幾件世界大事；一段年代裡幾場戰事算「戰亂」、幾處餓死紀錄算「饑荒」、建立幾個聚落算「擴張」、幾項首創技術算「創新」。</summary>
     public const int TempStoryHighlights = 3, TempWarEra = 2, TempFamineEra = 3, TempGrowthEra = 3, TempInventionEra = 3;
 
@@ -133,9 +136,13 @@ public static class DemoWorldChronicle
                     var from = parents.GetValueOrDefault(e.SettlementId);
                     // 第 08-16 章：接上起因（例：熱浪讓家鄉鬧饑荒，一群人帶著存糧出走）。
                     var why = DemoStories.WhyFounded(e, byId) is { } reason ? new[] { T("——" + reason) } : Array.Empty<DemoChronicleSegment>();
+                    // 第 12-2i 章：在遺跡上重建（收復失去的土地）另寫一句。
+                    var rebuilt = world.Sites.RebuiltOn(e.SettlementId);
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Founding, e.EventId,
-                        (from > 0 ? new[] { Name(from), T(" 的開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }
-                                  : new[] { T("開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }).Concat(why).ToArray());
+                        (rebuilt is not null
+                            ? new[] { from > 0 ? Name(from) : T("開拓隊"), T(from > 0 ? " 的開拓隊在 " : "在 "), Name(rebuilt.Id), T(RebuiltMarker), Name(e.SettlementId), T($"（{e.Count} 人）") }
+                            : from > 0 ? new[] { Name(from), T(" 的開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }
+                                       : new[] { T("開拓隊建立 "), Name(e.SettlementId), T($"（{e.Count} 人）") }).Concat(why).ToArray());
                     break;
                 case DemoSettlementEventKind.SettlementRuined:
                     // 第 08-10d 章：曾經長到城鎮規模的聚落淪為遺跡是世界大事；小聚落的興廢是各地大事。
