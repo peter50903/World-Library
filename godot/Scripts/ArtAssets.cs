@@ -10,40 +10,14 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public static class ArtAssets
 {
-    // 地形圖塊（尖頂六角，第 06 章）
+    // 地形圖塊（第 06 章；第 08-29 章：舊地圖的地形、天災、遷徙素材已刪）
     public const string TileGrassland = "res://assets/tiles/grassland.png";
-    public const string TileForest = "res://assets/tiles/forest.png";
-    public const string TileHills = "res://assets/tiles/hills.png"; // 第 06-3 章
-    // 第 08-13 章：天災反映在地形上（待製作；未交付前在原地形圖塊上染色）。
-    public const string TileBurning = "res://assets/tiles/burning.png";
-    public const string TileScorched = "res://assets/tiles/scorched.png";
-    public const string TileGrasslandDry = "res://assets/tiles/grassland_dry.png";
-    public const string OverlayOreVein = "res://assets/tiles/overlay_ore_vein.png"; // 第 06-3 章
-    public const string TileWater = "res://assets/tiles/water.png";
-    public const string TileRiver = "res://assets/tiles/river.png";
-    // 第 06-1 章：河流淺灘（渡口）；缺少時用河流圖塊調淡＋踏石。water.png 是海洋（深海圖塊）。
-    public const string TileRiverShallow = "res://assets/tiles/river_shallow.png";
-    public const string TileFarmland = "res://assets/tiles/farmland.png"; // 第 08 章 a 節
-    public const string TileFarmlandClearing = "res://assets/tiles/farmland_clearing.png";
 
     // 地圖標記（第 07 章）
     public const string IconVillage = "res://assets/icons/icon_settlement_village.png";
-    public const string IconNewSettlement = "res://assets/icons/icon_settlement_new.png";
-    public const string IconMigrants = "res://assets/icons/icon_migrant_band.png";
     public const string IconBirth = "res://assets/icons/icon_birth.png";
     public const string IconDeath = "res://assets/icons/icon_death.png";
     public const string IconFood = "res://assets/icons/icon_food.png";
-    public const string IconRuin = "res://assets/icons/icon_ruin.png"; // 第 07 章 c 節
-    public const string IconDisaster = "res://assets/icons/icon_disaster.png"; // 第 12-1 章 C3
-    public const string IconDungeon = "res://assets/icons/icon_dungeon.png"; // 第 12-1 章 C4
-    /// <summary>第 12-1 章第 7 節：天災特效（美術收件匣 2026-11-04；缺少時由程式畫）。</summary>
-    public const string FxFire = "res://assets/fx/fire.png";
-    public const string FxSmoke = "res://assets/fx/smoke.png";
-    public const string FxMeteor = "res://assets/fx/meteor.png";
-    public const string FxTornado = "res://assets/fx/tornado.png";
-    public const string FxCrater = "res://assets/fx/crater.png";
-    public const string FxCracks = "res://assets/fx/cracks.png";
-    public const string FxDebris = "res://assets/fx/debris.png";
 
     /// <summary>第 08-16 章：天災與事件音效（美術收件匣 2026-11-04）。</summary>
     public const string SfxFire = "res://assets/audio/sfx_fire.ogg";
@@ -53,9 +27,6 @@ public static class ArtAssets
     public const string SfxTornado = "res://assets/audio/sfx_tornado.ogg";
     public const string SfxFounding = "res://assets/audio/sfx_founding.ogg";
     public const string SfxEra = "res://assets/audio/sfx_era.ogg";
-
-    /// <summary>第 08-16 章：遷徙人群走路動畫（4 幀，每幀 128×64；缺少時由程式畫小人）。</summary>
-    public const string FxMigrantsWalk = "res://assets/fx/migrants_walk.png";
 
     /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
     public static string TechDomainIcon(string domain) => $"res://assets/icons/tech_{domain.ToLowerInvariant()}.png";
@@ -90,16 +61,12 @@ public static class ArtAssets
     /// <summary>第 08-10a 章 V5：文化地圖模式圖示（UI_ICON_MAPMODE_CULTURE；文化模式完成前不用）。</summary>
     public const string UiMapCulture = "res://assets/ui/ui_icon_mapmode_culture.png";
 
-    /// <summary>第 08-8 章 B3：信仰模式按鈕與聖地標記。</summary>
+    /// <summary>第 08-8 章 B3：信仰模式按鈕。</summary>
     public const string UiMapFaith = "res://assets/ui/ui_icon_mapmode_faith.png";
-    public const string IconHolySite = "res://assets/icons/icon_holy_site.png";
-    /// <summary>第 06-2 章：格線開關圖示（UI_ICON_GRID）。</summary>
-    public const string UiGrid = "res://assets/ui/ui_icon_grid.png";
     public const string UiChartFrame = "res://assets/ui/ui_chart_frame.png"; // 第 08 章 b 節
     public const string UiDev = "res://assets/ui/ui_icon_dev.png"; // 第 08-3 章（缺少時按鈕顯示「開發」）
     public const string UiChart = "res://assets/ui/ui_icon_chart.png"; // 第 08 章 b 節（缺少時按鈕顯示「圖表」）
     public const string UiLaws = "res://assets/ui/ui_icon_laws.png"; // 第 08-19c 章（缺少時按鈕顯示「法則」）
-    public const string UiSchematic = "res://assets/ui/ui_icon_schematic.png"; // 第 05-2 章（UI_ICON_SCHEMATIC，缺少時按鈕顯示「色塊」）
     public const string UiDevTools = "res://assets/ui/ui_icon_devtools.png"; // 第 05-2 章（UI_ICON_DEVTOOLS，缺少時按鈕顯示「開發工具」）
 
     // 音訊
@@ -152,27 +119,18 @@ public static class ArtAssets
         .Concat(new[] { "sfx_quake", "sfx_meteor", "sfx_flood", "sfx_tornado", "sfx_found_village", "sfx_era", "sfx_ruin", "sfx_culture_split",
             "sfx_faith", "sfx_tech", "sfx_beast", "amb_fire", "ui_click", "ui_open", "ui_close", "ui_tab" }.Select(Sfx2));
 
-    /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到）。</summary>
+    /// <summary>本版畫面實際使用的全部素材（冒煙測試逐一確認讀得到；第 08-29 章：tools/asset_usage.py --check 另外確認登記的都有人用）。</summary>
     public static readonly string[] Used =
     new[]
     {
-        TileGrassland, TileForest, TileWater, TileRiver, TileRiverShallow, TileFarmland, TileFarmlandClearing,
-        IconVillage, IconNewSettlement, IconMigrants, IconBirth, IconDeath, IconFood, IconRuin,
-        UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
+        TileGrassland, IconVillage, IconBirth, IconDeath, IconFood, UiPlay, UiPause, UiStep, UiFast, UiPanelFrame, UiTopBar,
         UiToolbar, UiScenario, UiSave, UiHelp, UiMapTerrain, UiMapFood, UiChartFrame, UiChart, UiDev,
-        UiMapLineage, UiMapKnowledge, UiGrid, // 美術收件匣 2026-10-28
+        UiMapLineage, UiMapKnowledge, // 美術收件匣 2026-10-28
         UiMapCulture, // 第 08-8 章 B1：文化模式
-        UiMapFaith, IconHolySite, // 第 08-8 章 B3：信仰模式與聖地（美術收件匣 2026-10-30）
-        TileHills, OverlayOreVein, // 第 06-3 章：丘陵與礦脈
-        IconDisaster, // 第 12-1 章 C3：天災標記
-        IconDungeon, // 第 12-1 章 C4：地下城標記
-        FxMigrantsWalk, // 第 08-16 章：遷徙人群走路動畫（美術收件匣 2026-11-04）
-        FxFire, FxSmoke, FxMeteor, FxTornado, FxCrater, FxCracks, FxDebris, // 第 12-1 章第 7 節：天災特效
+        UiMapFaith, // 第 08-8 章 B3：信仰模式（美術收件匣 2026-10-30）
         SfxFire, SfxEarthquake, SfxMeteor, SfxFlood, SfxTornado, SfxFounding, SfxEra, // 第 08-16 章：天災與事件音效
-        TileBurning, TileScorched, TileGrasslandDry, // 第 08-13 章第 6 節：天災反映在地圖上（美術收件匣 2026-11-01）
         SfxClick, SfxEventAlert, MusicObserverLoop
-    }.Concat(PixelParts.Names.Select(PixelParts.LegacyPath)) // 第 08-16 章第 12 節：像素零件
-        .Concat(PixelParts.Batch5.Select(PixelParts.Path)) // 第 08-18d 章：第五、六批像素素材
+    }.Concat(PixelParts.Batch5.Select(PixelParts.Path)) // 第 08-18d 章：像素素材（第 08-29 章：只留用到與保留的）
         .Concat(Batch5Audio)
         .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
         .Concat(new[] { ObserverRoot.EraArt(DemoEra.Hope), ObserverRoot.EraArt(DemoEra.Pioneer), ObserverRoot.EraArt((DemoEra)2) }) // 第 08-16 章：時代插圖

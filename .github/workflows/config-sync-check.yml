@@ -36,3 +36,5 @@ jobs:
         run: python3 tools/temp_inventory.py --selftest
       - name: TEMP 盤點（docs/TEMP_待裁決清單.md 須列出所有含 TEMP 的程式檔）
         run: python3 tools/temp_inventory.py --check
+      - name: 素材盤點（第 08-29 章：程式寫到與登記的素材都要有檔案、登記清單沒有用不到的）
+        run: python3 tools/asset_usage.py --check
