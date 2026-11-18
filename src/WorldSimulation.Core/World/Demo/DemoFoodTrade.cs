@@ -79,4 +79,35 @@ public static class DemoFoodTrade
             nextFood[b] = ledgers[bi].FoodClosing;
         }
     }
+
+    /// <summary>
+    /// 第 08-23 章：最近一週的商路（賣糧的聚落 → 它最近、那一週有買糧的市集；地圖畫商路用）。
+    /// 只依同一條規則（6 格內最近、同距離取人多的）重算，不另存；遺跡與沒人的聚落不列。
+    /// </summary>
+    public static IReadOnlyList<(DemoCellRef From, DemoCellRef To)> Links(DemoObserverWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        var reports = world.WeekReports();
+        if (reports.Count == 0)
+            return Array.Empty<(DemoCellRef, DemoCellRef)>();
+        var last = reports[reports.Count - 1];
+        var byId = world.Sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => s.Id);
+        var markets = last.Settlements.Where(l => l.FoodTradeIn > 0 && byId.ContainsKey(l.SettlementId))
+            .Select(l => (Site: byId[l.SettlementId], People: l.PopulationClosing)).ToList();
+        if (markets.Count == 0)
+            return Array.Empty<(DemoCellRef, DemoCellRef)>();
+        var links = new List<(DemoCellRef, DemoCellRef)>();
+        foreach (var seller in last.Settlements.Where(l => l.FoodTradeOut > 0 && byId.ContainsKey(l.SettlementId)).OrderBy(l => l.SettlementId))
+        {
+            var from = new DemoCellRef(byId[seller.SettlementId].Column, byId[seller.SettlementId].Row);
+            var market = markets
+                .Select(x => (x.Site, x.People, Distance: DemoHexWorld.Distance(from, new DemoCellRef(x.Site.Column, x.Site.Row))))
+                .Where(x => x.Distance <= TempTradeReach)
+                .OrderBy(x => x.Distance).ThenByDescending(x => x.People).ThenBy(x => x.Site.Id)
+                .Select(x => x.Site).FirstOrDefault();
+            if (market is not null)
+                links.Add((from, new DemoCellRef(market.Column, market.Row)));
+        }
+        return links;
+    }
 }

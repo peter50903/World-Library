@@ -121,6 +121,7 @@ public partial class DemoHexMap
         m.SetShaderParameter("age_shimmer", shimmer);
 
         DrawRivers(origin, cellPx);
+        DrawTradeLinks(origin, cellPx); // 第 08-23 章：商路
         DrawGroupLabels(origin, cellPx);
         DrawLairs(origin, cellPx);
         DrawHoldings(origin, cellPx);
