@@ -129,9 +129,10 @@ public static class DemoMonsters
     /// 第 12-2h 章【TEMP】獸潮（使用者 2026-11-18：遊戲的兩個重點是文明發展與人類和怪物的領地爭奪，雙方勢均力敵、輪流佔上風；獸潮可以把村莊打成廢墟）：
     /// 怪物滿員的地下城每週以 <see cref="TempSwarmPercent"/>%（黑暗、混沌時代加倍）全軍出擊，打離範圍 <see cref="TempSwarmReach"/> 格內最近的有人聚落。
     /// 守方全村迎戰；怪物被擊殺不到一半、怪物比全村的人還多、而且目標是村莊以下（3 級地下城連城鎮也攻得破），聚落被攻破、全村覆滅（之後成為遺跡，怪物的地盤擴張過去）；
-    /// 守住了也最多死 <see cref="TempSwarmDeathPercent"/>%。出擊的怪物另有三分之一耗損在路上（不會連著每週出擊）。
+    /// 但世上只剩 <see cref="TempSwarmLastStand"/> 個以下有人的聚落時，人類死守最後的據點、攻不破（文明發展是第一個重點，獸潮不會讓人類滅絕）。
+    /// 守住了也最多死 <see cref="TempSwarmDeathPercent"/>%。出擊的怪物另有一半耗損在路上（散入荒野；地下城要很久才再滿員，人類有時間恢復）。
     /// </summary>
-    public const int TempSwarmPercent = 4, TempSwarmReach = 6, TempSwarmDeathPercent = 35, TempSwarmSpentDivisor = 3;
+    public const int TempSwarmPercent = 4, TempSwarmReach = 6, TempSwarmDeathPercent = 25, TempSwarmSpentDivisor = 2, TempSwarmLastStand = 3;
 
     /// <summary>第 12-2h 章：這個時代的獸潮機率（黑暗、混沌時代怪物猖獗，機率加倍——人類與怪物輪流佔上風）。</summary>
     public static int SwarmPercent(DemoAge? age) => age is DemoAge.Dark or DemoAge.Chaos ? TempSwarmPercent * 2 : TempSwarmPercent;
@@ -225,7 +226,8 @@ public static class DemoMonsters
     public static Plan Roll(int week, DemoEra era, DemoHexWorld map, DemoWorldSites sites, Func<int, long> residents,
         IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null,
         Func<int, DemoCombatForce>? expedition = null,
-        Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null) // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
+        Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null, // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
+        int lastStand = TempSwarmLastStand) // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
@@ -242,6 +244,7 @@ public static class DemoMonsters
         var cleared = new List<DemoMonsterNest>();
         var awakened = new List<DemoMonsterNest>();
         var living = sites.Settlements.Where(s => !s.IsRuin && residents(s.Id) > 0).OrderBy(s => s.Id).ToList();
+        var overrun = 0; // 第 12-2h 章：本週已被攻破的聚落數
         for (var slot = 0; slot < nests.Count; slot++)
         {
             var nest = nests[slot];
@@ -277,7 +280,10 @@ public static class DemoMonsters
                     var slain = Math.Min(hit, Room(guard));
                     var tier = tierOf?.Invoke(prey.Id) ?? DemoSettlementTier.Camp;
                     var people = residents(prey.Id);
-                    var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon); // 怪物比全村的人還多才攻得破
+                    var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon) // 怪物比全村的人還多才攻得破
+                        && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
+                    if (broken)
+                        overrun++;
                     var deaths = broken ? people : Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100));
                     var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
                     left -= slain + spent;

@@ -284,6 +284,19 @@ jobs:
             done
           done
 
+      - name: 人類與怪物消長（第 12-2h 章：多種子每 10 年；手動執行或 PR 貼「balance」標籤時跑）
+        if: (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'balance')) && hashFiles('WorldSimulation.sln') != ''
+        shell: bash
+        run: |
+          set -uo pipefail
+          # 四個程序並行（公開倉庫的執行器 4 核）：小地圖 7 個種子、中地圖 2 個種子（每行一個種子，每欄是每 10 年的數字）。
+          run() { timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --balance --seeds "$2" --years 100 --map "$1" > "/tmp/balance-$1-$3.txt" 2>&1 || echo "（未完成）" >> "/tmp/balance-$1-$3.txt"; }
+          run small 1,2,3,4 a & run small 5,6,42 b & run medium 1 a & run medium 2 b & wait
+          cat /tmp/balance-medium-b.txt >> /tmp/balance-medium-a.txt
+          for f in /tmp/balance-small-a.txt /tmp/balance-small-b.txt /tmp/balance-medium-a.txt; do
+            echo "::notice title=人類與怪物消長 $(basename "$f" .txt)::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$f" | cut -c1-3900)"
+          done
+
       - name: 文字史書（第 08-10e 章：小地圖種子 1 的一百年，全文貼在註記）
         if: hashFiles('WorldSimulation.sln') != ''
         shell: bash
