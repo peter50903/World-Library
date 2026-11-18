@@ -171,7 +171,8 @@ public sealed class DemoHousesTests
     public void LordsTemperChangesLoyalty()
     {
         var world = Shared.Value;
-        var sites = world.Sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        // 第 12-2h 章：獸潮可能攻破聚落；這裡只用編號（人口由假的情境給），遺跡也可以。
+        var sites = world.Sites.Settlements.OrderBy(s => s.Id).ToList();
         var (a, b) = (sites[0].Id, sites[1].Id);
         var fold = new DemoRealms.Fold();
         fold.Apply(new DemoSettlementEvent(1, TimeSpan.Zero, b, "", DemoSettlementEventKind.VassalJoined, a, ""));
