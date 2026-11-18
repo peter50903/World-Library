@@ -4,7 +4,11 @@ using WorldSimulation.Core.Rng;
 namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>第 12-1 章 C3：本週打在某聚落的天災（死亡人數為上限，結算時至少留一人）。</summary>
-public sealed record DemoDisasterStrike(int SettlementId, DemoSettlementEventKind Kind, long Deaths, string Cause);
+public sealed record DemoDisasterStrike(int SettlementId, DemoSettlementEventKind Kind, long Deaths, string Cause)
+{
+    /// <summary>第 12-2h 章：獸潮攻破聚落——不留倖存者（其他天災、襲擊結算時至少留一人）。</summary>
+    public bool Annihilate { get; init; }
+}
 
 /// <summary>
 /// 第 12-1 章 C3a【TEMP 規則】天災（使用者 2026-10-31 採用 WorldBox v09 研究的結構，不照搬數值）：

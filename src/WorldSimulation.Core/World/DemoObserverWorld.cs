@@ -793,7 +793,8 @@ public sealed partial class DemoObserverWorld
                 ? DemoMonsters.Plan.Empty
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
                     nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow), // 第 12-2c 節：戰鬥人員與非戰鬥人員
-                    ExpeditionForces(CombatForces(nestsNow))); // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
+                    ExpeditionForces(CombatForces(nestsNow)), // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
+                    id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1))); // 第 12-2h 章：獸潮
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural

@@ -105,7 +105,7 @@ public sealed record DemoSettlementChronicle(
             or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood
             or DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire
             or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
-            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt
+            or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm
             or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
             or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
             or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
@@ -123,7 +123,7 @@ public sealed record DemoSettlementChronicle(
                 DemoSettlementEventKind.MeteoriteOre or DemoSettlementEventKind.DungeonAppeared => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C4
                 DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.Wildfire => DemoPlayerDetail.Clean(e.Cause), // 第 12-1 章 C3b
                 DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted => DemoPlayerDetail.Clean(e.Cause), // 第 08-16 章第 14 節
-                DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
+                DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm => DemoPlayerDetail.Clean(e.Cause), // 第 12-2 章
                 DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                     or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed or DemoSettlementEventKind.FactionJoined
                     or DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded

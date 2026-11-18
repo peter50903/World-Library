@@ -318,7 +318,10 @@ public enum DemoSettlementEventKind
     Usurped = 50,
 
     /// <summary>第 08-22a 章：征服戰爭的目標被攻陷（圍城期滿；人數欄＝攻方聚落編號；根因）。</summary>
-    Occupied = 51
+    Occupied = 51,
+
+    /// <summary>第 12-2h 章：獸潮——滿員的地下城全軍出擊（人數欄＝死亡人數，與天災同一欄週帳；攻破時全村覆滅；根因）。</summary>
+    MonsterSwarm = 52
 }
 
 /// <summary>
@@ -366,7 +369,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown
                 or DemoSettlementEventKind.DungeonAppeared or DemoSettlementEventKind.Logging
                 or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
-                or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSlain
+                or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSlain or DemoSettlementEventKind.MonsterSwarm
                 or DemoSettlementEventKind.DungeonCleared or DemoSettlementEventKind.DungeonAwakened
                 or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                 or DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed
@@ -1062,7 +1065,7 @@ internal static class DemoWeeklySettlement
             var removedByDeath = deaths * config.HungerDebtPerStarvationDeath;
             // 第 12-1 章 C3：本週的天災（希望時代不發生）；至少留一人【TEMP】，天災死者不減飢餓債。
             var strike = hope ? null : disaster?.Invoke(settlement.Id);
-            var disasterDeaths = strike is null ? 0 : Math.Max(0, Math.Min(people - deaths - 1, strike.Deaths));
+            var disasterDeaths = strike is null ? 0 : Math.Max(0, Math.Min(people - deaths - (strike.Annihilate ? 0 : 1), strike.Deaths)); // 第 12-2h 章：獸潮攻破時全村覆滅
             var survivors = people - deaths - disasterDeaths;
             if (strike is not null)
                 events.Add(Stamp(new DemoSettlementEvent(week, worldTime, settlement.Id, settlement.Name, strike.Kind, disasterDeaths,

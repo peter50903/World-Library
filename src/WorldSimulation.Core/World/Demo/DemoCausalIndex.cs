@@ -368,6 +368,7 @@ public sealed class DemoCausalIndex
                     ? null : "隕石礦脈的直接原因必須是同週同聚落的隕石事件";
             case DemoSettlementEventKind.MonsterRaid:
             case DemoSettlementEventKind.MonsterHunt:
+            case DemoSettlementEventKind.MonsterSwarm: // 第 12-2h 章
                 // 第 12-2 章：根因；人數欄＝死亡人數（與天災同一欄週帳）。
                 return parent is null && e.Count >= 0 ? null : "怪物襲擊、討伐是根因，事件人數欄是死亡人數";
             case DemoSettlementEventKind.MonsterSlain:

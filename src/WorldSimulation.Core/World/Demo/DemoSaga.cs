@@ -419,7 +419,7 @@ public static class DemoSaga
     {
         DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle => "戰火",
         DemoSettlementEventKind.StarvationDeath or DemoSettlementEventKind.MigrantStarvationDeath => "餓死",
-        DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt => "怪物",
+        DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm => "怪物",
         DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado or DemoSettlementEventKind.Meteorite
             or DemoSettlementEventKind.Flood => "天災",
         DemoSettlementEventKind.BeastAttack => "野獸",
