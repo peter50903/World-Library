@@ -321,7 +321,10 @@ public enum DemoSettlementEventKind
     Occupied = 51,
 
     /// <summary>第 12-2h 章：獸潮——滿員的地下城全軍出擊（人數欄＝死亡人數，與天災同一欄週帳；攻破時全村覆滅；根因）。</summary>
-    MonsterSwarm = 52
+    MonsterSwarm = 52,
+
+    /// <summary>第 08-22d 章：異端分裂——離聖地遙遠的聚落另立新的信仰（人數欄＝新信仰編號；根因）。</summary>
+    FaithSchism = 53
 }
 
 /// <summary>
@@ -363,7 +366,7 @@ public sealed record DemoSettlementEvent(
             DemoSettlementEventKind.EraBegan => $"第 {day} 天  |  {Cause}",
             DemoSettlementEventKind.FarmlandCleared => $"第 {day} 天  |  {SettlementName} {Cause}",
             DemoSettlementEventKind.FarmlandAbandoned => $"第 {day} 天  |  {SettlementName} {Cause}",
-            DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithExtinct
+            DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism or DemoSettlementEventKind.FaithExtinct
                 or DemoSettlementEventKind.BeastAttack or DemoSettlementEventKind.Earthquake or DemoSettlementEventKind.Tornado
                 or DemoSettlementEventKind.Meteorite or DemoSettlementEventKind.Flood or DemoSettlementEventKind.MeteoriteOre
                 or DemoSettlementEventKind.Heatwave or DemoSettlementEventKind.HeatwaveEnded or DemoSettlementEventKind.Wildfire or DemoSettlementEventKind.ForestRegrown

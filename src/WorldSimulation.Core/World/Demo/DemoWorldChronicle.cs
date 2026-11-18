@@ -149,6 +149,7 @@ public static class DemoWorldChronicle
                         Name(e.SettlementId), T(" 附近的一塊農田無人耕作，開始荒廢"));
                     break;
                 case DemoSettlementEventKind.FaithFounded:
+                case DemoSettlementEventKind.FaithSchism: // 第 08-22d 章：異端分裂和創立信仰一樣是世界大事
                     AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Faith, e.EventId,
                         Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
                     break;

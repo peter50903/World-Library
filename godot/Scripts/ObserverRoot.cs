@@ -1715,7 +1715,7 @@ public partial class ObserverRoot : Control
         }
         else if (_hexMap.CurrentLayer != DemoHexMap.ViewLayer.Strategic // 試玩回饋 2026-11-04 之 2：遠看全圖時不播聚落的聲音
             && fresh.FirstOrDefault(e => e.Kind is DemoSettlementEventKind.SettlementFounded or DemoSettlementEventKind.SettlementRuined
-                or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded) is { } local)
+                or DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism) is { } local)
             _hexMap.PlaySfx(ArtAssets.EventSfx(local.Kind)); // 第 08-18d 章：建村、廢村、文化分裂、創立信仰
     }
 }
