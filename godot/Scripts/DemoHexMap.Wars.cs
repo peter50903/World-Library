@@ -111,8 +111,11 @@ public partial class DemoHexMap
             var march = MarchProgress(front.Key);
             if (march < 1f)
                 _animatedOnScreen = true;
-            DrawArmyToken(font, march < 1f && length > radius ? from.Lerp(siege, Ease(march)) : siege, attackerColor, front.AttackerArmy, false);
-            DrawArmyToken(font, target + new Vector2(length > radius ? 24f : 30f, 6f), defenderColor, front.DefenderArmy, false, 0.85f);
+            // 第 08-30 章：征服戰爭的攻方到了就架起攻城器械（圍城棋子）。
+            if (march >= 1f && front.Score is not null)
+                DrawArmyToken(font, siege + new Vector2(18f, 3f), attackerColor, 0, TokenKind.Siege);
+            DrawArmyToken(font, march < 1f && length > radius ? from.Lerp(siege, Ease(march)) : siege, attackerColor, front.AttackerArmy, TokenKind.Army);
+            DrawArmyToken(font, target + new Vector2(length > radius ? 24f : 30f, 6f), defenderColor, front.DefenderArmy, TokenKind.Army, 0.85f);
             // ④ 交戰圖示與比分條（攻方色＝守方死亡的比例）。
             var bar = target - new Vector2(TempScoreBarWidth / 2f, TempBannerSize * 2.6f);
             DrawCircle(bar + new Vector2(TempScoreBarWidth / 2f, -9f), 9f, new Color(0.08f, 0.05f, 0.03f, 0.85f));

@@ -96,9 +96,14 @@ public partial class DemoHexMap
             {
                 DrawWarArrow(o, place, radius, Math.Min(1f, t * 2.5f));
                 // 第 08-28 章：怪物（襲擊、獸潮）或士兵（討伐、戰爭）的棋子沿著箭頭走到戰場，到了就停在戰場旁。
-                var monster = mark.Kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterSwarm;
+                var kind = mark.Kind switch
+                {
+                    DemoSettlementEventKind.MonsterSwarm => TokenKind.Swarm,
+                    DemoSettlementEventKind.MonsterRaid => TokenKind.Monster,
+                    _ => TokenKind.Army
+                };
                 DrawArmyToken(font, o.Lerp(place, Ease(Math.Min(1f, t * 1.8f))) + new Vector2(radius * 0.35f, radius * 0.25f),
-                    TempTroopColor, mark.Strength, monster, mark.Kind == DemoSettlementEventKind.MonsterSwarm ? 1.25f : 1f);
+                    TempTroopColor, mark.Strength, kind, kind == TokenKind.Swarm ? 1.2f : 1f);
             }
             var beat = 0.6f + 0.4f * Mathf.Sin(t * Mathf.Tau * 4f);
             DrawSwords(font, place - new Vector2(0f, radius * 0.6f), (int)(16 + 8 * beat), mark.Kind, 1f);
