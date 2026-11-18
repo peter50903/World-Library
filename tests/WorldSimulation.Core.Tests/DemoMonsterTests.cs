@@ -161,6 +161,9 @@ public sealed class DemoMonsterTests
         Assert.InRange(lastStand.Deaths, 1, 10 * DemoMonsters.TempSwarmDeathPercent / 100);
         // 沒有滿員不會出擊；黑暗、混沌時代機率加倍。
         Assert.Null(Swarm(full with { Monsters = DemoMonsters.Cap(dungeon) - 1 }, DemoSettlementTier.Village, 200, out _));
+        // 第 12-2j 章：一層的淺洞窟滿了也不爆獸潮。
+        var shallow = dungeon with { Layers = 1 };
+        Assert.Null(Swarm(full with { Dungeon = shallow, Monsters = DemoMonsters.Cap(shallow) }, DemoSettlementTier.Village, 400, out _));
         Assert.Equal(2 * DemoMonsters.TempSwarmPercent, DemoMonsters.SwarmPercent(DemoAge.Chaos));
         Assert.Equal(DemoMonsters.TempSwarmPercent, DemoMonsters.SwarmPercent(DemoAge.Hope));
         Assert.Equal(DemoSettlementTier.Town, DemoMonsters.SwarmBreaks(dungeon with { Layers = 3 }));
