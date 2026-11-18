@@ -39,6 +39,19 @@ public sealed class DemoSagaTests
         var alive = world.Sites.Settlements.Where(s => !s.IsRuin).Select(s => s.Id).ToHashSet();
         var traded = world.WeekReports().TakeLast(52).Any(w => w.Settlements.Any(l => l.FoodTradeIn > 0 && alive.Contains(l.SettlementId)));
         Assert.Equal(traded ? 1 : 0, lines.Count(l => l.StartsWith("　繁榮的市集：", StringComparison.Ordinal)));
+        // 商路（地圖用）：每一條從上週賣糧的聚落，到 6 格內、上週買糧的市集；最近一週的供糧聚落數就是商路依市集分組。
+        var last = world.WeekReports()[^1];
+        var at = world.Sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => new DemoCellRef(s.Column, s.Row), s => s.Id);
+        var links = DemoFoodTrade.Links(world);
+        foreach (var (from, to) in links)
+        {
+            Assert.InRange(DemoHexWorld.Distance(from, to), 1, DemoFoodTrade.TempTradeReach);
+            Assert.Contains(last.Settlements, l => l.SettlementId == at[from] && l.FoodTradeOut > 0);
+            Assert.Contains(last.Settlements, l => l.SettlementId == at[to] && l.FoodTradeIn > 0);
+        }
+        Assert.Equal(links.Select(l => l.From).Distinct().Count(), links.Count); // 一個聚落只賣給一個市集
+        Assert.Equal(links.GroupBy(l => l.To).Select(g => (g.Key, g.Count())).OrderBy(x => x.Key.Row).ThenBy(x => x.Key.Column),
+            DemoFoodTrade.Suppliers(world, 1).Select(kv => (kv.Key, kv.Value)).OrderBy(x => x.Key.Row).ThenBy(x => x.Key.Column));
     }
 
     // 第 08-10m 節：同一卷的請願獨立合成一句、跟著首領脫離的不另寫、同一個征服者收服兩處以上合成一句（單獨一次照常逐條寫）。

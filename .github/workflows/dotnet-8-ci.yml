@@ -321,7 +321,7 @@ jobs:
             if timeout 1500 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 --map large > /tmp/saga-large.txt 2>&1; then
               elapsed=$(( $(date +%s) - start ))
               # 第 12-2h 章：先放每卷的人口與死因、終章、勢力與險境（英雄另一則），不再被英雄的句子擠掉。
-              grep -E '^卷 |世上有|勢力：|這些年裡|險境：|軍隊|王國|最大的聚落' /tmp/saga-large.txt | cut -c1-500 | head -40 > /tmp/saga-large-short.txt
+              grep -E '^卷 |世上有|勢力：|這些年裡|險境：|軍隊|王國|最大的聚落|繁榮的市集' /tmp/saga-large.txt | cut -c1-500 | head -40 > /tmp/saga-large-short.txt
               echo "::notice title=大地圖史書摘要::$(wc -l < /tmp/saga-large.txt) 行、跑了 ${elapsed} 秒%0A$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-short.txt | cut -c1-3800)"
               grep -E '人物：|英雄：|傳說物品：|家族：' /tmp/saga-large.txt | cut -c1-300 | head -30 > /tmp/saga-large-people.txt
               echo "::notice title=大地圖史書人物::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' /tmp/saga-large-people.txt | cut -c1-3800)"
@@ -599,7 +599,7 @@ jobs:
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 1_realms_far 6_dark_age 3_realms_close_crop 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
+          for name in 1_realms_far 7_trade_close_crop 3_realms_close_crop 6_dark_age 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"

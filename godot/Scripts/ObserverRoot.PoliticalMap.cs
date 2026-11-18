@@ -114,6 +114,14 @@ public partial class ObserverRoot
             _hexMap.ZoomToCell(c, 96f);
             await Shot("3_realms_close");
         }
+        // 第 08-23 章：商路——拉近到上週有最多聚落賣糧給它的市集。
+        var market = DemoFoodTrade.Links(world).GroupBy(l => l.To).OrderByDescending(g => g.Count()).ThenBy(g => g.Key.Row).ThenBy(g => g.Key.Column)
+            .Select(g => (DemoCellRef?)g.Key).FirstOrDefault();
+        if (market is { } m)
+        {
+            _hexMap.ZoomToCell(world.Map.GetCell(m.Column, m.Row), 64f);
+            await Shot("7_trade_close");
+        }
         _hexMap.ShowWholeWorld();
         SetMapMode(DemoHexMap.Mode.Terrain);
         await Shot("4_terrain_far");
