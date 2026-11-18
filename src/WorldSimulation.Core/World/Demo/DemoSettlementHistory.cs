@@ -26,13 +26,13 @@ public static class DemoSettlementHistory
     /// <summary>【TEMP】人口第一次達到這些規模時記一筆。</summary>
     public static readonly IReadOnlyList<long> TempMilestones = new long[] { 10, 25, 50, 100 };
 
-    /// <summary>【TEMP】第 08-11 章：升到該等級的人口門檻（營地 0、村莊 10、城鎮 60、城市 200、首都 1000）。</summary>
+    /// <summary>【TEMP】第 08-11 章：升到該等級的人口門檻（營地 0、村莊 10、城鎮 60、城市 200、首都 400；第 08-24 章：首都 1000→400）。</summary>
     public static long TempUpPopulation(DemoSettlementTier tier) => tier switch
     {
         DemoSettlementTier.Village => 10,
         DemoSettlementTier.Town => 60,
         DemoSettlementTier.City => 200,
-        DemoSettlementTier.Capital => 1000,
+        DemoSettlementTier.Capital => 400,
         _ => 0
     };
 
@@ -42,7 +42,7 @@ public static class DemoSettlementHistory
         DemoSettlementTier.Village => 8,
         DemoSettlementTier.Town => 50,
         DemoSettlementTier.City => 170,
-        DemoSettlementTier.Capital => 850,
+        DemoSettlementTier.Capital => 340,
         _ => 0
     };
 
@@ -52,7 +52,10 @@ public static class DemoSettlementHistory
     /// <summary>首都另需的技術（王權）。</summary>
     public const string CapitalTechId = "TECH_KINGSHIP";
 
-    /// <summary>第 08-11 章：各等級的設施（升到下一級要任兩種）。首都級設施待第 10 章。</summary>
+    /// <summary>
+    /// 第 08-11 章：各等級的設施（升到下一級要任兩種）。
+    /// 第 08-24 章：城市級設施（城市升首都要任兩種）跟城鎮級一樣以技術代表，建築系統（第 10 章）出現後改看真的建築。
+    /// </summary>
     public static IReadOnlyList<DemoTierFacility> FacilitiesOf(DemoSettlementTier tier) => tier switch
     {
         DemoSettlementTier.Camp => new DemoTierFacility[]
@@ -69,6 +72,11 @@ public static class DemoSettlementHistory
         {
             new("城牆", null, "TECH_DEFENSIVE_WORKS"), new("神殿", null, "TECH_ORGANIZED_RELIGION"),
             new("學校", null, "TECH_FORMAL_SCHOOLING"), new("市政廳", null, "TECH_CODIFIED_LAW")
+        },
+        DemoSettlementTier.City => new DemoTierFacility[]
+        {
+            new("城堡", null, "TECH_FORTIFICATION"), new("大神殿", null, "TECH_THEOLOGY"),
+            new("糧倉", null, "TECH_GRANARY_MANAGEMENT"), new("醫院", null, "TECH_HOSPITAL_ORGANIZATION")
         },
         _ => Array.Empty<DemoTierFacility>()
     };

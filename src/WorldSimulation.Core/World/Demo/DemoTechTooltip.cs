@@ -40,7 +40,11 @@ public static partial class DemoTechTooltip
         ["TECH_ORGANIZED_RELIGION"] = "城鎮可以建神殿（升為城市所需的設施之一）",
         ["TECH_FORMAL_SCHOOLING"] = "城鎮可以建學校（升為城市所需的設施之一）",
         ["TECH_CODIFIED_LAW"] = "城鎮可以建市政廳（升為城市所需的設施之一）",
-        ["TECH_KINGSHIP"] = "城市升為首都所需"
+        ["TECH_KINGSHIP"] = "城市升為首都所需；首都統領兩個以上聚落就成立王國",
+        ["TECH_FORTIFICATION"] = "城市可以建城堡（升為首都所需的設施之一）", // 第 08-24 章：城市級設施
+        ["TECH_THEOLOGY"] = "城市可以建大神殿（升為首都所需的設施之一）",
+        ["TECH_GRANARY_MANAGEMENT"] = "城市可以建糧倉（升為首都所需的設施之一）",
+        ["TECH_HOSPITAL_ORGANIZATION"] = "城市可以建醫院（升為首都所需的設施之一）"
     };
 
     /// <summary>名稱、說明、目前作用、怎麼學得快、前置（多行；不含習得年份與進度，由畫面接在後面）。</summary>

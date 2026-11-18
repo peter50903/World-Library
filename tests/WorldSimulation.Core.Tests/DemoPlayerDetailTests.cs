@@ -66,7 +66,8 @@ public sealed class DemoPlayerDetailTests
         Assert.Contains(DemoTechnology.Of("TECH_CURRENCY"), DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Village));
         Assert.Contains(DemoTechnology.Of(DemoSettlementHistory.CapitalTechId), DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.City));
         Assert.Empty(DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.Capital));
-        Assert.All(new[] { DemoSettlementTier.Camp, DemoSettlementTier.Village, DemoSettlementTier.Town },
+        Assert.Contains(DemoTechnology.Of("TECH_FORTIFICATION"), DemoPlayerDetail.KeyTechnologies(DemoSettlementTier.City)); // 第 08-24 章：城市級設施
+        Assert.All(new[] { DemoSettlementTier.Camp, DemoSettlementTier.Village, DemoSettlementTier.Town, DemoSettlementTier.City },
             t => Assert.InRange(DemoPlayerDetail.KeyTechnologies(t).Count, 3, 5));
     }
 

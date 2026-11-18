@@ -96,8 +96,8 @@ public sealed class BalanceTracker
     private sealed class Step
     {
         public long Population, Births, MonsterDeaths, Slain, Largest, Tax, Trade;
-        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities;
-        public char Age;
+        public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals, Kingship;
+        public char Age, Era;
     }
 
     private readonly List<Step> _steps = new();
@@ -147,6 +147,11 @@ public sealed class BalanceTracker
         // 文明發展：城鎮、城市以上幾個，最大的聚落幾人。
         _current.Towns = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Town);
         _current.Cities = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.City);
+        // 第 08-24 章：首都幾個、幾個聚落會王權、世界在哪個紀元（希望、開拓、征服＝第一個王國成立）。
+        _current.Capitals = living.Count(s => world.ChronicleOf(s.Id).Tier >= DemoSettlementTier.Capital);
+        var kingship = DemoTechnology.Of(DemoSettlementHistory.CapitalTechId);
+        _current.Kingship = living.Count(s => world.Knowledge.Knows(s.Id, kingship));
+        _current.Era = DemoKnowledge.EraName(world.Era)[0];
         _current.Largest = living.Count == 0 ? 0 : living.Max(s => world.SettlementPopulation(s.Id));
         _current.Ruins = world.Sites.Settlements.Count(world.Sites.IsStandingRuin);
         var nests = world.MonsterNests(world.CommittedWeeks);
@@ -169,7 +174,8 @@ public sealed class BalanceTracker
             Row("出生", s => s.Births.ToString(CultureInfo.InvariantCulture)),
             Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
-            Row("鎮/城", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}")),
+            Row("鎮/城/都", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}")),
+            Row("王權", s => s.Kingship.ToString(CultureInfo.InvariantCulture)),
             Row("最大", s => s.Largest.ToString(CultureInfo.InvariantCulture)),
             Row("稅/貿(千)", s => string.Create(CultureInfo.InvariantCulture, $"{s.Tax / 1000}/{s.Trade / 1000}")),
             Row("遺跡", s => s.Ruins.ToString(CultureInfo.InvariantCulture)),
@@ -178,7 +184,8 @@ public sealed class BalanceTracker
             Row("殺怪", s => s.Slain.ToString(CultureInfo.InvariantCulture)),
             Row("殺光", s => s.Cleared.ToString(CultureInfo.InvariantCulture)),
             Row("巢/怪", s => string.Create(CultureInfo.InvariantCulture, $"{s.Lairs}/{s.Monsters}")),
-            Row("時代", s => s.Age.ToString())
+            Row("時代", s => s.Age.ToString()),
+            Row("紀元", s => s.Era.ToString())
         });
         return text.ToString();
     }
