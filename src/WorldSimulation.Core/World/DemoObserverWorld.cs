@@ -860,10 +860,10 @@ public sealed partial class DemoObserverWorld
                 verify: _demography is null, // 第 08-14 章第 2 節：生死步驟會驗證最終週帳
                 liegeOf: lieges is null || lieges.Count == 0 ? null : id => lieges.TryGetValue(id, out var liege) ? liege : null, // 第 08-19g 章：糧稅
                 // 第 08-23 章：市集＝城鎮以上、會以物易物或貨幣；會以物易物的村莊把餘糧賣給附近的市集（希望時代沒有）。
-                market: _demography is null || _knowledge.Era == DemoEra.Hope ? null
+                isMarket: _demography is null || _knowledge.Era == DemoEra.Hope ? null
                     : id => ChronicleOf(id).Tier >= DemoSettlementTier.Town
                         && (_knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)) || _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.CurrencyTech))),
-                barter: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)));
+                barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)));
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
