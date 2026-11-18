@@ -95,7 +95,7 @@ public sealed class BalanceTracker
 
     private sealed class Step
     {
-        public long Population, Births, MonsterDeaths, Slain, Largest, Tax, Trade;
+        public long Population, Births, MonsterDeaths, WarDeaths, Slain, Largest, Tax, Trade;
         public int Living, Ruins, Rebuilt, Swarms, Overruns, Cleared, Lairs, Monsters, Towns, Cities, Capitals, Kingdoms;
         public string Crown = "", CityFacilities = "";
         public char Age, Era;
@@ -116,6 +116,8 @@ public sealed class BalanceTracker
             _current.Trade += week.Settlements.Sum(l => l.FoodTradeIn);
             foreach (var e in week.Events)
             {
+                if (e.Count > 0 && DemoSaga.DeathCause(e.Kind) == "戰火")
+                    _current.WarDeaths += e.Count; // 第 08-22i 章：戰火的死亡
                 switch (e.Kind)
                 {
                     case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt:
@@ -177,6 +179,7 @@ public sealed class BalanceTracker
             Row("人口", s => s.Population.ToString(CultureInfo.InvariantCulture)),
             Row("出生", s => s.Births.ToString(CultureInfo.InvariantCulture)),
             Row("怪物害死", s => s.MonsterDeaths.ToString(CultureInfo.InvariantCulture)),
+            Row("戰死", s => s.WarDeaths.ToString(CultureInfo.InvariantCulture)),
             Row("聚落", s => s.Living.ToString(CultureInfo.InvariantCulture)),
             Row("鎮/城/都/國", s => string.Create(CultureInfo.InvariantCulture, $"{s.Towns}/{s.Cities}/{s.Capitals}/{s.Kingdoms}")),
             Row("法/世/稅/王", s => s.Crown),
