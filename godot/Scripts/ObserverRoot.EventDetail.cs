@@ -78,8 +78,33 @@ public partial class ObserverRoot
     }
 
     /// <summary>週報有變（或換了世界）才重建因果索引；清單保留目前選取。#96：清單只顯示符合篩選的事件。</summary>
+    /// <summary>右側清單延後的更新（第 08-21 章：實際遊玩時分頁看不到就不重建，換到該分頁或點事件時補上）。</summary>
+    private bool _eventListStale, _outlinerStale;
+
+    /// <summary>世界紀錄分頁開著（或冒煙測試）才重建事件清單與因果索引；否則記下來，之後補。</summary>
+    private void RefreshEventListOrDefer()
+    {
+        if (RealtimeThrottle && _rightView != RightView.Console)
+            _eventListStale = true;
+        else
+            RefreshEventList();
+    }
+
+    /// <summary>換到右側某分頁時補上延後的更新。</summary>
+    private void RefreshStalePanels()
+    {
+        if (_eventListStale && _rightView == RightView.Console)
+            RefreshEventList();
+        if (_outlinerStale && _rightView == RightView.Outliner)
+        {
+            _outlinerStale = false;
+            RefreshOutliner();
+        }
+    }
+
     private void RefreshEventList()
     {
+        _eventListStale = false;
         if (!ReferenceEquals(_causalWorld, _world) || _causalWeeks != _world.CommittedWeeks) // 第 08-14 章：舊週報會被壓縮，改看已提交週數
         {
             if (!ReferenceEquals(_causalWorld, _world))
@@ -160,6 +185,8 @@ public partial class ObserverRoot
     /// <summary>顯示一筆事件的詳情與因果，並把地圖置中到該聚落。</summary>
     private void SelectEvent(long eventId)
     {
+        if (_eventListStale)
+            RefreshEventList(); // 第 08-21 章：因果索引可能延後了，先補上
         var e = _causal?.Find(eventId);
         if (_causal is null || e is null)
         {
