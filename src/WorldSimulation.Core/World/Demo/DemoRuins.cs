@@ -10,6 +10,9 @@ public static class DemoRuins
     /// <summary>【TEMP】不重要的遺跡荒廢幾年後消失。</summary>
     public const int TempFadeYears = 5;
 
+    /// <summary>【TEMP】第 12-2i 章：開拓隊選址時遺跡格的分數加成（%；人們偏好回到故地重建）。</summary>
+    public const int TempRebuildScorePercent = 150;
+
     /// <summary>重要的遺跡：曾發展為村莊以上（聚落小史有升級紀錄）。</summary>
     public static bool IsImportant(DemoObserverWorld world, DemoSettlement settlement)
     {

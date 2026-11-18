@@ -552,7 +552,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 7 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50%；第 08-22c 章身體特質（每組各 12%、遺傳 50%；強壯虛弱交戰 ±10%、聰慧遲鈍研究 ±10%、俊美醜陋忠誠 ±5）與傳說特性（領袖 2%、英雄 40%；天命忠誠 +20、交戰 ×130%，龍血交戰 ×160%，賢者研究 +50%，聖者忠誠 +25） |
 | `src/WorldSimulation.Core/World/Demo/DemoHeroes.cs` | 2 | 第 08-10i 章：英雄是領袖子女的機率 50%；英雄在世士兵等級 +1；傳說物品命名 |
 | `src/WorldSimulation.Core/World/Demo/DemoHexFoodCatchment.cs` | 9 | #112 森林／河流共享供糧的獨立 TEMP 模型；第 08-3 章兩階段分配（先需求、獨享來源先分，再補存糧） |
-| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 64 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人；C3 天災至少留一人 |
+| `src/WorldSimulation.Core/World/Demo/DemoWeeklySettlement.cs` | 65 | D3、D4、D5、D6、第 3 節；#88 事件「至多一個直接原因」簡化；第 08-1 章擁擠外移、婚嫁遷移、婚嫁 12 格與路糧、開拓選址 6 格；第 08-2 章希望時代不餓死、開局存糧 4 週；第 08-3 章希望時代外移目的地要有來源餘量；第 08-4 章希望時代遷徙餘量；第 08-6 章希望時代飢餓債上限；第 06-2 章勞力饑荒 CI 情境（D06-2）；第 08-12 章擁擠時先搬進養得起的聚落（D08-12）；第 12-1 章 C2 獸襲至少留一人；C3 天災至少留一人；第 12-2i 章遺跡格可以重建、偏好遺跡格 |
 | `src/WorldSimulation.Core/World/Demo/DemoSurvivalTempSettings.cs` | 3 | 第 06 章 d 節 TEMP 生存參數（兒童食量 50%、每 10 人 1 名取水者、老年 60 歲、餓死權重 兒童 2／成人 1／老人 2；config/demo/survival-temp.json）；缺水倍率與週腐敗讀 29 |
 | `src/WorldSimulation.Core/World/DemoObserverWorld.Save.cs` | 24 | D8、第 3 節；第 04-1 章存檔大小上限 |
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
@@ -606,7 +606,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 7 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8）；第 08-22d 章異端分裂（每年檢查、信仰滿 20 年、離聖地 12 格以上或聖地成廢墟、6%） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
-| `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
+| `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 2 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11）；第 12-2i 章開拓隊偏好遺跡格（選址分數 ×150%） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementStory.cs` | 1 | 第 08-10d 章 C：聚落小史分期——分出幾個聚落稱為母城、最多說幾項聞名的事（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementChronicle.cs` | 1 | 第 08-6 章 d 節聚落等級升降（D08-6d） |
