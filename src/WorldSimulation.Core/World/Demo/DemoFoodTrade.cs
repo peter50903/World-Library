@@ -88,10 +88,25 @@ public static class DemoFoodTrade
     {
         ArgumentNullException.ThrowIfNull(world);
         var reports = world.WeekReports();
-        if (reports.Count == 0)
-            return Array.Empty<(DemoCellRef, DemoCellRef)>();
-        var last = reports[reports.Count - 1];
+        return reports.Count == 0 ? Array.Empty<(DemoCellRef, DemoCellRef)>()
+            : LinksIn(reports[reports.Count - 1], world.Sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => s.Id));
+    }
+
+    /// <summary>
+    /// 第 08-23 章：最近 <paramref name="weeks"/> 週，每個市集有幾個不同的聚落賣糧給它（每週照 <see cref="Links"/> 的規則重算後合併；
+    /// 史書終章「繁榮的市集」用）。
+    /// </summary>
+    public static IReadOnlyDictionary<DemoCellRef, int> Suppliers(DemoObserverWorld world, int weeks)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        var reports = world.WeekReports();
         var byId = world.Sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => s.Id);
+        return reports.Skip(Math.Max(0, reports.Count - weeks)).SelectMany(r => LinksIn(r, byId)).Distinct()
+            .GroupBy(l => l.To).ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    private static IReadOnlyList<(DemoCellRef From, DemoCellRef To)> LinksIn(DemoWeekReport last, IReadOnlyDictionary<int, DemoSettlement> byId)
+    {
         var markets = last.Settlements.Where(l => l.FoodTradeIn > 0 && byId.ContainsKey(l.SettlementId))
             .Select(l => (Site: byId[l.SettlementId], People: l.PopulationClosing)).ToList();
         if (markets.Count == 0)

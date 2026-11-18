@@ -35,6 +35,10 @@ public sealed class DemoSagaTests
         Assert.Single(lines, l => l.StartsWith("　最強的軍隊：", StringComparison.Ordinal) || l == "　世上還沒有軍隊。");
         if (world.Dungeons.Count > 0)
             Assert.Single(lines, l => l.StartsWith("　險境：", StringComparison.Ordinal) && world.Dungeons.All(d => l.Contains(d.Name, StringComparison.Ordinal)));
+        // 第 08-23 章：最近一年有市集買糧，終章就寫出繁榮的市集（最多一行）。
+        var alive = world.Sites.Settlements.Where(s => !s.IsRuin).Select(s => s.Id).ToHashSet();
+        var traded = world.WeekReports().TakeLast(52).Any(w => w.Settlements.Any(l => l.FoodTradeIn > 0 && alive.Contains(l.SettlementId)));
+        Assert.Equal(traded ? 1 : 0, lines.Count(l => l.StartsWith("　繁榮的市集：", StringComparison.Ordinal)));
     }
 
     // 第 08-10m 節：同一卷的請願獨立合成一句、跟著首領脫離的不另寫、同一個征服者收服兩處以上合成一句（單獨一次照常逐條寫）。
