@@ -27,6 +27,10 @@ uniform float politics = 0.85;
 uniform float province_lines = 0.6;
 uniform int sel_province = -1;
 uniform int sel_group = -1;
+// 第 12-2j 章：世界時代的氛圍（黑暗時代長夜降臨、烈日偏暖、霜雪偏冷……）；a＝濃淡。
+uniform vec4 age_tint = vec4(1.0, 1.0, 1.0, 0.0);
+uniform float age_vignette = 0.0;
+uniform float age_shimmer = 0.0;
 
 varying vec2 map_pos;
 
@@ -225,9 +229,14 @@ void fragment() {
 	if (cell.x < 0.0 || cell.y < 0.0 || cell.x > grid.x || cell.y > grid.y) {
 		col = mix(col, vec3(0.10, 0.13, 0.17), 0.5);
 	}
+	// 第 12-2j 章：世界時代的氛圍——整片染色、畫面四角壓暗（黑暗時代）、緩慢流動的微光（奇蹟時代）。
+	col = mix(col, col * age_tint.rgb, age_tint.a);
+	float vig = smoothstep(0.30, 0.80, length(SCREEN_UV - vec2(0.5)) * 1.15);
+	col *= 1.0 - age_vignette * vig;
+	col += age_shimmer * (vnoise(c * 0.35 + vec2(TIME * 0.08, TIME * 0.05)) - 0.4) * vec3(0.10, 0.08, 0.02);
 	// 紙張紋理（很淡）。
 	col *= 0.97 + 0.05 * vnoise(c * 0.9 + vec2(11.0, 2.0));
-	COLOR = vec4(col, 1.0);
+	COLOR = vec4(clamp(col, vec3(0.0), vec3(1.0)), 1.0);
 }
 """;
 }

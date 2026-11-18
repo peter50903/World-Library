@@ -92,7 +92,7 @@ internal static class DemoHumanLifecycle
             // 第 14-1 章第 5 項：編號夠大、可能等於某個年齡群抽樣鍵的代表人物改用自己的動作碼（小編號照舊，既有世界不變）。
             .Where(r => draws.Hit(r.Id, report.Week,
                 r.Id < DemoCohortDemography.MinCohortKey ? DemoPopulationAction.NaturalDeath : DemoPopulationAction.RepresentativeDeath,
-                Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day))))
+                Rules.WeeklyNaturalDeathChance(DemoCohortDemography.AgeAt(r.BirthYear, day)) * DemoTraits.LifePercent(r.Traits) / 100.0)) // 第 08-22h 章：體魄與壽命
             .ToList();
         var minimumDeaths = repDeaths.GroupBy(r => (r.SettlementId, 0, r.BirthYear, r.Sex))
             .ToDictionary(g => g.Key, g => (long)g.Count());

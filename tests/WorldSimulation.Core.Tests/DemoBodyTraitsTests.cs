@@ -61,4 +61,18 @@ public sealed class DemoBodyTraitsTests
         Assert.Contains(DemoTraits.LordLoyalty(DemoTrait.Chosen | DemoTrait.Homely), x => x.Text == "領袖天命所歸" && x.Value == DemoTraits.TempChosenLoyalty);
         Assert.Equal(DemoTraits.TempChosenLoyalty + DemoTraits.TempHomelyLoyalty, DemoTraits.Loyalty(DemoTrait.Chosen | DemoTrait.Homely));
     }
+
+    // 第 08-22h 章：體魄與壽命——強壯比較長壽、虛弱比較短命、龍血長壽（可以和體魄相乘）。
+    [Fact]
+    public void ConstitutionChangesHowLongNamedPeopleLive()
+    {
+        Assert.Equal(100, DemoTraits.LifePercent(DemoTrait.None));
+        Assert.Equal(100, DemoTraits.LifePercent(DemoTrait.Clever | DemoTrait.Brave));
+        Assert.Equal(DemoTraits.TempStrongLifePercent, DemoTraits.LifePercent(DemoTrait.Strong));
+        Assert.Equal(DemoTraits.TempFrailLifePercent, DemoTraits.LifePercent(DemoTrait.Frail));
+        Assert.Equal(DemoTraits.TempDragonbloodLifePercent, DemoTraits.LifePercent(DemoTrait.Dragonblood));
+        Assert.Equal(DemoTraits.TempStrongLifePercent * DemoTraits.TempDragonbloodLifePercent / 100, DemoTraits.LifePercent(DemoTrait.Strong | DemoTrait.Dragonblood));
+        Assert.True(DemoTraits.LifePercent(DemoTrait.Strong) < 100 && DemoTraits.LifePercent(DemoTrait.Frail) > 100);
+        Assert.Contains("長壽", DemoTraits.Effect(DemoTrait.Strong), StringComparison.Ordinal);
+    }
 }
