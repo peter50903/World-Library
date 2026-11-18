@@ -218,17 +218,18 @@ void fragment() {
 	float lit = clamp(0.5 - dot(grad, vec2(0.55, 0.55)) * 0.9, 0.0, 1.0);
 	float shade = 1.0 + grain + meadow * (1.0 - forest) + (lit - 0.5) * (0.10 + hill * 0.55);
 	// ② 符號從每格 9 像素開始淡入：森林一叢叢的樹（有影子與亮面），丘陵是紙地圖的山形（左亮右暗、深色輪廓）。
+	// 符號用沒扭曲的格座標（扭曲過的座標會把圓形的樹冠拉成條紋）；哪裡是森林、丘陵照扭曲後的地形。
 	float sym = clamp((cell_px - 9.0) / 15.0, 0.0, 1.0);
 	float canopy = clamp((vnoise(c * 5.5 + vec2(2.0, 9.0)) - 0.45) * 5.0, 0.0, 1.0);
-	vec3 tr = tree_glyph(c, 3.0);
+	vec3 tr = tree_glyph(cell, 3.0);
 	float fmask = smoothstep(0.35, 0.65, forest);
-	shade -= fmask * canopy * 0.16;
-	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
-	shade += fmask * sym * tr.z * 0.22;
-	vec3 mtn = mountain_glyph(c, 1.6);
+	shade -= fmask * canopy * 0.14;
+	shade -= fmask * sym * (tr.y * 0.38 + tr.x * 0.16);
+	shade += fmask * sym * tr.z * 0.30;
+	vec3 mtn = mountain_glyph(cell, 1.6);
 	float hmask = smoothstep(0.40, 0.70, hill);
-	shade += hmask * sym * mtn.x * (mtn.y > 0.5 ? 0.18 : -0.20);
-	shade -= hmask * sym * mtn.z * 0.35;
+	shade += hmask * sym * mtn.x * (mtn.y > 0.5 ? 0.24 : -0.26);
+	shade -= hmask * sym * mtn.z * 0.45;
 	vec3 ground = tcol * shade;
 
 	// 政治填色：省份索引查色票；荒野（0）不填。第 08-26 章：填色乘上地形的明暗與符號（森林偏深、草原偏亮），地形透得出來。
