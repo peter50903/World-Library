@@ -1174,17 +1174,21 @@ internal static class DemoWeeklySettlement
                         && (forbiddenSite is null || !forbiddenSite(c)) // 第 12-2a 節：怪物佔據的地不能建村
                         && (!config.SharedCatchmentEnabled || DemoForagingWorld.ReachesFreeSource(map!, occupiedNow, c))
                         && (!scoreSites || spareMap.Value.GetValueOrDefault(c) >= checked(partyLimit * config.FoodPerPersonPerWeek));
+                // 第 12-2i 章【TEMP】：人們偏好回到故地重建（舊屋、舊田、舊路還在）——遺跡格的選址分數 ×TempRebuildScorePercent%。
+                long Score(DemoCellRef c) => weekSites.SettlementAt(c.Column, c.Row) is { IsRuin: true }
+                    ? spareMap.Value.GetValueOrDefault(c) * DemoRuins.TempRebuildScorePercent / 100
+                    : spareMap.Value.GetValueOrDefault(c);
                 // 第 08-8 章 B2：遷徙之民走得更遠找空地。
                 var searchSteps = config.FoundingSearchMaxSteps
                     + (cultureTraits is not null && cultureTraits(settlement.Id).Contains(DemoCultures.WandererTrait) ? DemoCultures.TempWandererExtraSteps : 0);
                 var site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                    searchSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                    searchSteps, SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
                     wells?.Invoke(settlement.Id) ?? false);
                 // 第 08-4 章【TEMP 規則】希望時代：附近找不到空地時，缺糧或擁擠的聚落願意走得更遠（婚嫁範圍）去開拓，
                 // 不會一直困在養不起的地方。
                 if (site.Length < 2 && config.HopeEra && searchSteps < DemoMateTempSettings.MateRouteMaxSteps)
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
-                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? c => spareMap.Value.GetValueOrDefault(c) : null,
+                        DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
                         wells?.Invoke(settlement.Id) ?? false);
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths + disasterDeaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
