@@ -102,6 +102,22 @@ public sealed class DemoMonsterTests
         Assert.Equal(500, events[0].EventId);
     }
 
+    // 第 12-2j 章：黑暗時代每一週算兩週的繁衍；沉寂的地下城只要一年就甦醒。
+    [Fact]
+    public void DarkAgesBreedMonstersTwiceAsFastAndWakeLairsSooner()
+    {
+        var dungeon = new DemoDungeon(new DemoCellRef(3, 3), "測試洞窟", 3, 0, 1, 0);
+        var plain = new DemoMonsters.Fold();
+        var dark = new DemoMonsters.Fold { SurgeWeeks = (a, b) => b - a }; // 每一週都是黑暗時代
+        var weeks = 4 * DemoMonsters.TempSpawnWeeks;
+        Assert.Equal(DemoMonsters.Initial(dungeon) + 4, plain.Count(dungeon, 1, weeks));
+        Assert.Equal(DemoMonsters.Initial(dungeon) + 8, dark.Count(dungeon, 1, weeks));
+        Assert.Equal(DemoMonsters.Cap(dungeon), dark.Count(dungeon, 1, 100 * DemoMonsters.TempSpawnWeeks)); // 照樣有上限
+        Assert.Equal(DemoMonsters.TempDarkDormantWeeks, DemoMonsters.DormantWeeks(DemoAge.Dark));
+        Assert.Equal(DemoMonsters.TempDormantWeeks, DemoMonsters.DormantWeeks(DemoAge.Chaos));
+        Assert.Equal(DemoMonsters.TempDormantWeeks, DemoMonsters.DormantWeeks(null));
+    }
+
     [Fact]
     public void FullLairsSwarmAndCanWipeOutAVillageButNotATown()
     {

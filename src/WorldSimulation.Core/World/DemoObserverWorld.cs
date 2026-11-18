@@ -749,7 +749,7 @@ public sealed partial class DemoObserverWorld
         // 讀檔、壓縮或換了較早的週報（事件物件換了、或快取比目前提交的週還新）就從頭重算。
         if (!ReferenceEquals(_monsterFoldEarlier, _earlierEvents) || _monsterFoldWeek < firstWeek - 1 || _monsterFoldWeek > CommittedWeeks)
         {
-            _monsterFold = new DemoMonsters.Fold();
+            _monsterFold = new DemoMonsters.Fold { SurgeWeeks = (a, b) => DemoAges.WeeksIn(_rng, _ageChanges, DemoAge.Dark, a, b) }; // 第 12-2j 章
             foreach (var e in _earlierEvents)
                 _monsterFold.Apply(e, At);
             _monsterFoldEarlier = _earlierEvents;
