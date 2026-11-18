@@ -599,7 +599,7 @@ jobs:
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 1_realms_far 7_trade_close_crop 3_realms_close_crop 6_dark_age 2_realms_mid 4_terrain_far 5_culture_far 3_realms_close; do
+          for name in 1_realms_far 2_realms_mid_crop 3_realms_close_crop 4_terrain_far 7_trade_close_crop 6_dark_age 2_realms_mid 5_culture_far 3_realms_close; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"

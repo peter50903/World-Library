@@ -73,7 +73,7 @@ public partial class DemoHexMap
 
     /// <summary>【TEMP】遠看填色濃、拉近淡出露出地形；地形模式只留邊界。</summary>
     private float PoliticsStrength(float cellPx)
-        => _mode == Mode.Terrain ? 0f : Mathf.Lerp(0.86f, 0.34f, Mathf.SmoothStep(24f, 96f, cellPx));
+        => _mode == Mode.Terrain ? 0f : Mathf.Lerp(0.78f, 0.30f, Mathf.SmoothStep(16f, 72f, cellPx)); // 第 08-26 章：拉近時填色更淡，地形透出來
 
     private void DrawPolitical(Vector2 start, float radius)
     {

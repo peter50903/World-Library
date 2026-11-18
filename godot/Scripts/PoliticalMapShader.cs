@@ -55,6 +55,51 @@ float vnoise(vec2 p) {
 	return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
+// 第 08-26 章：碎形雜訊（起伏的高度場）。
+float fbm(vec2 p) {
+	float v = 0.0;
+	float a = 0.5;
+	for (int i = 0; i < 4; i++) {
+		v += a * vnoise(p);
+		p = p * 2.03 + vec2(1.7, 9.2);
+		a *= 0.5;
+	}
+	return v;
+}
+
+// 第 08-26 章：紙地圖的山形（每 1/density 格一座，位置與大小依座標雜湊）：x＝在山形裡、y＝左半邊（向光）、z＝輪廓。
+vec3 mountain_glyph(vec2 c, float density) {
+	vec2 g = c * density;
+	vec2 id = floor(g);
+	vec2 f = fract(g);
+	float cx = 0.5 + (hash(id) - 0.5) * 0.30;
+	float base = 0.82 - hash(id + 4.7) * 0.10;
+	float h = 0.42 + 0.20 * hash(id + 8.1);
+	float w = 0.30 + 0.10 * hash(id + 2.3);
+	float apex = base - h;
+	float t = clamp((f.y - apex) / h, 0.0, 1.0);
+	float half_w = t * w;
+	float dx = abs(f.x - cx);
+	float in_y = step(apex, f.y) * step(f.y, base);
+	float inside = in_y * (1.0 - smoothstep(half_w - 0.015, half_w + 0.015, dx));
+	float edge = in_y * (1.0 - smoothstep(0.0, 0.035, abs(dx - half_w)));
+	return vec3(inside, step(f.x, cx), edge);
+}
+
+// 第 08-26 章：一叢樹（每 1/density 格一棵）：x＝樹冠、y＝影子（樹冠外的右下）、z＝亮面。
+vec3 tree_glyph(vec2 c, float density) {
+	vec2 g = c * density;
+	vec2 id = floor(g);
+	vec2 f = fract(g);
+	vec2 ctr = vec2(0.5) + (vec2(hash(id + 1.3), hash(id + 5.9)) - 0.5) * 0.36;
+	float r = 0.24 + 0.10 * hash(id + 9.4);
+	vec2 d = f - ctr;
+	float crown = 1.0 - smoothstep(r - 0.04, r + 0.02, length(d * vec2(1.0, 1.15)));
+	float shadow = (1.0 - smoothstep(r - 0.04, r + 0.02, length((d - vec2(0.09, 0.12)) * vec2(1.0, 1.15)))) * (1.0 - crown);
+	float lit = clamp(1.0 - length(d + vec2(0.08, 0.09)) / max(r, 0.001), 0.0, 1.0) * crown;
+	return vec3(crown, shadow, lit);
+}
+
 vec2 warp(vec2 c) {
 	vec2 w = vec2(vnoise(c * 1.7), vnoise(c * 1.7 + vec2(17.3, 5.1))) - 0.5;
 	vec2 w2 = vec2(vnoise(c * 4.1 + vec2(3.1, 8.2)), vnoise(c * 4.1 + vec2(9.7, 1.3))) - 0.5;
@@ -65,11 +110,12 @@ int idx16(vec2 rg) {
 	return int(rg.x * 255.0 + 0.5) + int(rg.y * 255.0 + 0.5) * 256;
 }
 
+// 第 08-26 章：森林更深、丘陵偏褐、草原偏亮，遠看也分得出來。
 vec3 terrain_color(int t) {
-	if (t == 1) return vec3(0.34, 0.43, 0.27);
+	if (t == 1) return vec3(0.27, 0.39, 0.22);
 	if (t == 2) return vec3(0.20, 0.27, 0.33);
-	if (t == 3) return vec3(0.57, 0.51, 0.37);
-	return vec3(0.56, 0.58, 0.37);
+	if (t == 3) return vec3(0.58, 0.50, 0.38);
+	return vec3(0.63, 0.65, 0.40);
 }
 
 void fragment() {
@@ -163,20 +209,33 @@ void fragment() {
 	hill = lw > 0.0 ? hill / lw : 0.0;
 	forest = lw > 0.0 ? forest / lw : 0.0;
 	float grain = vnoise(c * 3.0) * 0.06 + vnoise(c * 14.0) * 0.05 * zoom_fine - 0.055;
-	float e = 0.08;
-	float relief = (vnoise(c * 2.2 - e) - vnoise(c * 2.2 + e)) * 3.2;
-	float relief2 = (vnoise(c * 6.0 - e) - vnoise(c * 6.0 + e)) * 1.6 * zoom_fine;
-	float canopy = clamp((vnoise(c * 5.5 + vec2(2.0, 9.0)) - 0.48) * 6.0, 0.0, 1.0);
-	float trees = step(0.62, vnoise(c * 18.0 + vec2(5.0, 1.0))) * zoom_fine;
-	float meadow = (vnoise(c * 0.55 + vec2(4.0, 1.0)) - 0.5) * 0.10;
-	float shade = 1.0 + grain + meadow + hill * (relief * 0.55 + relief2 * 0.5) - forest * (canopy * 0.22 + trees * 0.18);
+	float meadow = (vnoise(c * 0.55 + vec2(4.0, 1.0)) - 0.5) * 0.12;
+	// 第 08-26 章（使用者 2026-11-18：從地圖上看不出地形）：
+	// ① 起伏：雜訊高度場的斜率當光照（左上來光），平地淡淡的、丘陵明顯。
+	float e = 0.06;
+	float h0 = fbm(c * 1.4);
+	vec2 grad = vec2(fbm(c * 1.4 + vec2(e, 0.0)) - h0, fbm(c * 1.4 + vec2(0.0, e)) - h0) / e;
+	float lit = clamp(0.5 - dot(grad, vec2(0.55, 0.55)) * 0.9, 0.0, 1.0);
+	float shade = 1.0 + grain + meadow * (1.0 - forest) + (lit - 0.5) * (0.10 + hill * 0.55);
+	// ② 符號從每格 9 像素開始淡入：森林一叢叢的樹（有影子與亮面），丘陵是紙地圖的山形（左亮右暗、深色輪廓）。
+	float sym = clamp((cell_px - 9.0) / 15.0, 0.0, 1.0);
+	float canopy = clamp((vnoise(c * 5.5 + vec2(2.0, 9.0)) - 0.45) * 5.0, 0.0, 1.0);
+	vec3 tr = tree_glyph(c, 3.0);
+	float fmask = smoothstep(0.35, 0.65, forest);
+	shade -= fmask * canopy * 0.16;
+	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
+	shade += fmask * sym * tr.z * 0.22;
+	vec3 mg = mountain_glyph(c, 1.6);
+	float hmask = smoothstep(0.40, 0.70, hill);
+	shade += hmask * sym * mg.x * (mg.y > 0.5 ? 0.18 : -0.20);
+	shade -= hmask * sym * mg.z * 0.35;
 	vec3 ground = tcol * shade;
 
-	// 政治填色：省份索引查色票；荒野（0）不填。
+	// 政治填色：省份索引查色票；荒野（0）不填。第 08-26 章：填色乘上地形的明暗與符號（森林偏深、草原偏亮），地形透得出來。
 	vec4 fill = texelFetch(palette, ivec2(bp % 256, bp / 256), 0);
 	float has_fill = (bp != 0 && fill.a > 0.5) ? 1.0 : 0.0;
-	float luma = dot(ground, vec3(0.299, 0.587, 0.114)) / 0.55;
-	vec3 political = fill.rgb * (1.0 + 0.35 * (luma - 1.0));
+	float tone = 1.0 + 0.35 * (dot(tcol, vec3(0.299, 0.587, 0.114)) / 0.55 - 1.0);
+	vec3 political = fill.rgb * shade * tone;
 	vec3 col = mix(ground, political, politics * has_fill);
 
 	// 勢力界內側的亮帶（CK3 的邊界光暈）。
