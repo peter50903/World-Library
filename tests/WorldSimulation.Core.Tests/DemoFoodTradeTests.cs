@@ -20,7 +20,7 @@ public sealed class DemoFoodTradeTests
 
     private static (DemoWorldSites Sites, int Market, int Near1, int Near2, int Far) Place()
     {
-        var world = new DemoObserverWorld(DemoScenario.Sample(42), DemoWeeklyTempConfig.ForagingSample);
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(42UL, null, DemoMapSize.Medium), DemoWeeklyTempConfig.ForagingSample); // 中地圖：找得到 6 格外的空地
         var sites = world.Sites;
         var market = sites.Settlements[0];
         var home = new DemoCellRef(market.Column, market.Row);
@@ -28,7 +28,7 @@ public sealed class DemoFoodTradeTests
             .OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
         int D(DemoHexCell c) => DemoHexWorld.Distance(new DemoCellRef(c.Column, c.Row), home);
         var cells = land.Where(c => D(c) is >= 2 and <= 4).Take(2)
-            .Append(land.First(c => D(c) > DemoFoodTrade.TempTradeReach + 2)).ToList();
+            .Append(land.First(c => D(c) > DemoFoodTrade.TempTradeReach)).ToList();
         var id = checked((int)sites.EntityIds().Max() + 1);
         var ids = new List<int>();
         foreach (var c in cells)

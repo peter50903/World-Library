@@ -31,10 +31,10 @@ public sealed class DemoTechEffectTests
         Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 10));
         Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 12));
         Assert.Equal(50, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 13));
-        Assert.Equal(75, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 21));
+        Assert.Equal(100, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, farm, 21)); // 第 08-23 章：輪作 25 → 50%
         Assert.Equal(0, DemoKnowledge.SourcePercent(state, world.Sites, world.Map, forest, 21));
         var boosted = DemoForagingWorld.WithPercent(new[] { farm }, s => DemoKnowledge.SourcePercent(state, world.Sites, world.Map, s, 21));
-        Assert.Equal(DemoLandClearing.TempFarmlandWeeklySupply * 175 / 100, Assert.Single(boosted).FoodAvailable);
+        Assert.Equal(DemoLandClearing.TempFarmlandWeeklySupply * 200 / 100, Assert.Single(boosted).FoodAvailable);
     }
 
     [Fact]
