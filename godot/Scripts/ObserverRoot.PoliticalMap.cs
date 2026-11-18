@@ -99,7 +99,7 @@ public partial class ObserverRoot
             image.SavePng(path);
             // CI 另存小縮圖（252 色、壓縮後 base64），轉成註記給讀不到 artifact 的工作階段看；近景另存畫面中央一塊原尺寸。
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 288, 180, null));
-            if (name.Contains("close", StringComparison.Ordinal))
+            if (name.Contains("close", StringComparison.Ordinal) || name.Contains("mid", StringComparison.Ordinal)) // 第 08-26 章：中距離也另存一塊原尺寸
                 System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
                     new Rect2I(image.GetWidth() / 2 - 160, image.GetHeight() / 2 - 100, 320, 200)));
             GD.Print($"WORLD_SIM_MAP_SHOT: {path} {image.GetWidth()}x{image.GetHeight()}");
