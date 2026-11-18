@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using WorldSimulation.Core.Rng;
 using WorldSimulation.Core.World;
 using WorldSimulation.Core.World.Demo;
 using Xunit;
@@ -25,6 +26,44 @@ public sealed class DemoFaithTests
             foreach (var pool in mandatory)
                 Assert.Single(doctrines, d => DemoFaiths.Pool.First(e => e.EntryId == d).PoolId == pool);
         }
+    }
+
+    [Fact]
+    public void FarFromTheHolySiteASettlementSplitsIntoAHeresy()
+    {
+        // 第 08-22d 章：聖地遙遠的聚落，信仰創立滿二十年後每年 6% 另立異端；本聚落的信徒全部改信。
+        var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1UL, null, DemoMapSize.Large), DemoWeeklyTempConfig.LivingForagingSample);
+        var alive = world.Sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        var (holy, far) = alive.SelectMany(a => alive.Select(b => (a, b)))
+            .First(p => p.a.Id != p.b.Id && DemoKnowledge.Distance(world.Map, p.a, p.b) >= DemoFaiths.TempSchismDistance);
+        var faith = new DemoFaith(1, "測試祖靈信仰", holy.Id, 0, 1, ImmutableList.Create("DOC_MERCY"), ImmutableList<string>.Empty);
+        var believers = ImmutableList.Create(new DemoCultureShare(1, 1000));
+        var state = DemoFaithState.Empty with
+        {
+            Faiths = ImmutableList.Create(faith),
+            Settlements = ImmutableList.Create(new DemoSettlementCulture(Math.Min(holy.Id, far.Id), believers), new DemoSettlementCulture(Math.Max(holy.Id, far.Id), believers))
+        };
+        DemoSettlementWeekLedger Ledger(int week, DemoSettlement s) => new(week, s.Id, s.Name, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 50);
+        DemoSettlementEvent? schism = null;
+        for (var year = 0; year < 200 && schism is null; year++)
+        {
+            var week = DemoFaiths.TempSchismMinWeeks + 1 + year * DemoFaiths.TempSchismCheckWeeks;
+            week += (far.Id % DemoFaiths.TempSchismCheckWeeks - week % DemoFaiths.TempSchismCheckWeeks + DemoFaiths.TempSchismCheckWeeks) % DemoFaiths.TempSchismCheckWeeks;
+            var report = new DemoWeekReport(week, TimeSpan.FromDays(week * 7), new[] { Ledger(week, holy), Ledger(week, far) });
+            var (next, events) = DemoFaiths.Advance(state, report, Array.Empty<DemoSettlementEvent>(), world.Sites, world.Map, RngRegistry.Create(3),
+                Array.Empty<DemoRepresentative>(), _ => Array.Empty<string>(), 1000);
+            Assert.DoesNotContain(events, e => e.Kind == DemoSettlementEventKind.FaithSchism && e.SettlementId == holy.Id); // 聖地自己不分裂
+            schism = events.FirstOrDefault(e => e.Kind == DemoSettlementEventKind.FaithSchism);
+            if (schism is not null)
+                state = next;
+        }
+        Assert.NotNull(schism);
+        Assert.Equal(far.Id, schism!.SettlementId);
+        Assert.Contains("另立異端", schism.Cause, StringComparison.Ordinal);
+        var heresy = Assert.Single(state.Faiths, f => f.Id == schism.Count);
+        Assert.Equal((far.Id, $"{far.Name}教派"), (heresy.FounderSettlementId, heresy.Name));
+        Assert.Contains(state.Settlements.Single(s => s.SettlementId == far.Id).Shares, x => x.CultureId == heresy.Id && x.Permille == 1000);
+        Assert.Contains(state.Settlements.Single(s => s.SettlementId == holy.Id).Shares, x => x.CultureId == 1);
     }
 
     [Fact]

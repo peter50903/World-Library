@@ -604,7 +604,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoPopulationPyramid.cs` | 1 | 第 08-18b 章第 5 節人口金字塔每幾歲一層、幾歲以上併成一層（D08-18） |
 | `src/WorldSimulation.Core/World/Demo/DemoDisaster.cs` | 7 | 第 12-1 章 C3a 天災：結算週、發生機率、時代候選池與門檻、毀農田比例（D12-1） |
 | `src/WorldSimulation.Core/World/Demo/DemoWildlife.cs` | 8 | 第 12-1 章 C1 野生動物：結算週期、成長與捕食、狩獵、豐富門檻與加成、承載；C2 獸襲門檻與機率、亂數命名空間（D12-1） |
-| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 5 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8） |
+| `src/WorldSimulation.Core/World/Demo/DemoFaith.cs` | 7 | 第 08-8 章 B3 信仰：勢力範圍 3 格（08-13）、改信速度、創立者文化加權（D08-8）；第 08-22d 章異端分裂（每年檢查、信仰滿 20 年、離聖地 12 格以上或聖地成廢墟、6%） |
 | `src/WorldSimulation.Core/World/Demo/DemoCulture.cs` | 9 | 第 08-8 章 B1 文化：開局分群範圍、加權倍數、抽特性與比例流動；B4 分化 30 年與往來範圍 3 格、同化每 10 年 20%（D08-8） ；遷徙之民多走格數 |
 | `src/WorldSimulation.Core/World/Demo/DemoRuins.cs` | 1 | 第 08-11 章不重要的遺跡荒廢 5 年後從地圖消失（D08-11） |
 | `src/WorldSimulation.Core/World/Demo/DemoSettlementHistory.cs` | 5 | 第 08-3 章：聚落規模門檻（10 人稱村莊）與人口里程碑 10／25／50／100；第 08-6 章 d 節村莊要有木匠、降級門檻（D08-6d）；第 08-11 章居住地五級（D08-11） |
@@ -645,7 +645,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoAges.cs` | 4 | 第 08-6c 章：世界時代每段 30～60 年；烈日熱浪野火 ×3、黑暗地下城機率 ×3 與上限 ×2、混沌忠誠 −15、霜雪食物來源 −25%、奇蹟研究 ×150% 與士兵 +1 |
 | `src/WorldSimulation.Core/World/Demo/DemoLineageMap.cs` | 1 | 第 08-10a 章 V2：家系地圖每個聚落佔本格與相鄰陸地格、搶格時本格優先其次編號小（顯示規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 8 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11）；第 08-6b 章田數上限（營 1、村 2、鎮 2、城 3、都 3，每項農耕技術 +1，最多 6） |
-| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 57 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種；第 08-19e 章宣戰、征服戰爭交戰、征服、征服失敗四種；第 08-19f 章繼位、內戰、篡位三種；第 08-22a 章攻陷；第 12-2h 章獸潮 |
+| `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 58 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種；第 08-19e 章宣戰、征服戰爭交戰、征服、征服失敗四種；第 08-19f 章繼位、內戰、篡位三種；第 08-22a 章攻陷；第 12-2h 章獸潮；第 08-22d 章異端分裂 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
 | `godot/Scripts/ObserverRoot.Toolbar.cs` | 8 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明；第 08-18i 章圖例最多列 6 個 |
 | `godot/Scripts/ObserverRoot.Letters.cs` | 2 | 第 08-18i 章重大事件通知：停留 25 秒、最多 5 張、寬 300；怪物襲擊死 3 人、一週餓死 5 人以上才通知 |

@@ -67,7 +67,7 @@ public partial class ObserverRoot
         DemoSettlementEventKind.Succession => ("★", $"{e.SettlementName}：{DemoPlayerDetail.Clean(e.Cause)}", false),
         DemoSettlementEventKind.Independence when !e.Cause.StartsWith("隨", StringComparison.Ordinal) => ("★", DemoPlayerDetail.Clean(e.Cause), false),
         DemoSettlementEventKind.EraBegan => ("★", DemoKnowledge.MilestoneName((DemoEra)e.Count), false),
-        DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded => ("✦", $"{e.SettlementName}{DemoPlayerDetail.Clean(e.Cause)}", false),
+        DemoSettlementEventKind.CultureSplit or DemoSettlementEventKind.FaithFounded or DemoSettlementEventKind.FaithSchism => ("✦", $"{e.SettlementName}{DemoPlayerDetail.Clean(e.Cause)}", false),
         DemoSettlementEventKind.StarvationDeath when e.Count >= TempLetterStarved => ("☠", $"{e.SettlementName}有 {e.Count} 人餓死", true),
         _ => null
     };

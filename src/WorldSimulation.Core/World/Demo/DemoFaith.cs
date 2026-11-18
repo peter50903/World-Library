@@ -70,6 +70,9 @@ public static class DemoFaiths
     /// <summary>【TEMP】信仰的勢力範圍（格）：接觸既有信仰、鄰近傳播都用這個距離（原 6 格；第 08-13 章改 3 格，遠方聚落各自創立信仰）。</summary>
     public const int TempRange = 3;
 
+    /// <summary>第 08-22d 章【TEMP】異端分裂：每幾週檢查一次（每個聚落錯開）；信仰創立滿幾週後才會分裂；離聖地幾格以上算遙遠；每次的機率。</summary>
+    public const int TempSchismCheckWeeks = 52, TempSchismMinWeeks = 1040, TempSchismDistance = 12, TempSchismPercent = 6;
+
     /// <summary>【TEMP】每週改信比例（萬分比，乘以無信仰者的千分比）：創立聚落 2%、鄰近聚落 0.5%。</summary>
     public const int TempFounderRate = 200;
     public const int TempNeighbourRate = 50;
@@ -242,6 +245,35 @@ public static class DemoFaiths
                 $"{(founder is null ? "族人" : $"{DemoRepresentative.RoleName(founder.Role, tierOf?.Invoke(site.Id) ?? DemoSettlementTier.Village)}{founder.Name}")}創立「{faith.Name}」"
                 + $"（信條：{string.Join("、", tenets.Select(EntryName))}）",
                 EventId: nextEventId++, CauseEventId: e.EventId));
+        }
+
+        // 第 08-22d 章【TEMP】異端分裂（參考 CK3 的異端；使用者 2026-11-18 定案要加入）：信仰創立滿 TempSchismMinWeeks 週後，
+        // 主要信仰的聖地遙遠（TempSchismDistance 格以上）或已成廢墟的聚落，每年一次以 TempSchismPercent% 另立新的信仰——
+        // 信條與教義依自己的文化重抽，本聚落原本的信徒與代表人物全部改信新信仰。一週最多一個。
+        foreach (var s in living.Where(s => week % TempSchismCheckWeeks == s.Id % TempSchismCheckWeeks))
+        {
+            if (Main(s.Id) is not { } fid || faiths.FirstOrDefault(x => x.Id == fid) is not { } old || old.FounderSettlementId == s.Id
+                || week - old.FoundedWeek < TempSchismMinWeeks || faiths.Any(x => x.FounderSettlementId == s.Id && x.ExtinctWeek == 0))
+                continue;
+            var holy = sites.Settlements.FirstOrDefault(x => x.Id == old.FounderSettlementId);
+            if (holy is not null && !holy.IsRuin && DemoKnowledge.Distance(map, s, holy) < TempSchismDistance)
+                continue;
+            if ((int)(Draw(registry, s.Id, 5000UL + (ulong)week) % 100UL) >= TempSchismPercent)
+                continue;
+            var id = faiths.Max(f => f.Id) + 1;
+            var founder = representatives.Concat(report.Appointments).Where(r => r.SettlementId == s.Id)
+                .OrderBy(r => r.Role).ThenBy(r => r.Id).FirstOrDefault();
+            var (tenets, doctrines) = Draw(cultureTraits(s.Id), i => Draw(registry, id, 1000 + i));
+            var heresy = new DemoFaith(id, $"{s.Name}教派", s.Id, founder?.Id ?? 0, week, tenets, doctrines);
+            faiths.Add(heresy);
+            settlements[s.Id] = Of(s.Id).Select(x => x.CultureId == fid ? x with { CultureId = id } : x).ToList();
+            foreach (var r in representatives.Concat(report.Appointments).Where(r => r.SettlementId == s.Id && reps.GetValueOrDefault(r.Id) == fid))
+                reps[r.Id] = id;
+            events.Add(new DemoSettlementEvent(week, report.WorldTime, s.Id, s.Name, DemoSettlementEventKind.FaithSchism, id,
+                $"{(founder is null ? "族人" : $"{DemoRepresentative.RoleName(founder.Role, tierOf?.Invoke(s.Id) ?? DemoSettlementTier.Village)}{founder.Name}")}"
+                + $"不再遵奉遠方聖地{holy?.Name ?? ""}的「{old.Name}」，另立異端「{heresy.Name}」（信條：{string.Join("、", tenets.Select(EntryName))}）",
+                EventId: nextEventId++));
+            break;
         }
 
         // 改信（只改無信仰者；信仰之間的改宗留給第 11 章）。
