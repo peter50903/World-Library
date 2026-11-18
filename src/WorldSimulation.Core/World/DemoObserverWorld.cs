@@ -646,6 +646,15 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-22g 章：聚落的直屬上級（沒有＝null）。</summary>
     private static Func<int, int?> LiegeOf(DemoRealms.Fold fold) => id => fold.Liege.TryGetValue(id, out var liege) ? (int?)liege : null;
 
+    /// <summary>第 08-24 章：各聚落的直屬臣屬聚落數（已提交的隸屬；研究稅制、王權的從業條件）。</summary>
+    private Func<int, int> VassalCounts()
+    {
+        if (_demography is null)
+            return _ => 0;
+        var counts = Realms().Liege.GroupBy(kv => kv.Value).ToDictionary(g => g.Key, g => g.Count());
+        return id => counts.GetValueOrDefault(id);
+    }
+
     /// <summary>第 08-22g 章：某信仰目前的狂熱度與明細（信仰頁用）。</summary>
     public (int Value, IReadOnlyList<(string Text, int Value)> Factors) FaithFervor(int faithId)
     {
@@ -889,7 +898,8 @@ public sealed partial class DemoObserverWorld
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
                     DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
                     DemoAges.ResearchPercent(AgeAtWeek(report.Week)), // 第 08-6c 章：奇蹟時代研究加快
-                    LeaderResearch(lifecycle.Population.Representatives)); // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+                    LeaderResearch(lifecycle.Population.Representatives), // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+                    VassalCounts()); // 第 08-24 章：有臣屬的勢力才研究王權
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。
                 var landNextId = checked(nextId + learned.Count);
