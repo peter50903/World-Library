@@ -236,7 +236,8 @@ public static partial class DemoRealms
 
     /// <summary>本週征服戰爭的交戰（攻方首都與戰爭目標；開戰的下一週起）。</summary>
     private static void ConquestBattles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
-        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null, DemoHexWorld? map = null, Func<int, string?>? heroOf = null)
+        Dictionary<int, DemoDisasterStrike> strikes, Func<int, DemoTrait>? temper = null, DemoHexWorld? map = null, Func<int, string?>? heroOf = null,
+        Func<int, DemoDefense>? defense = null)
     {
         if (fold.Wars.Count == 0)
             return;
@@ -253,6 +254,13 @@ public static partial class DemoRealms
             var defendHero = heroOf?.Invoke(w.TargetId);
             var attackBoost = attackHero is null ? 100 : TempHeroBattlePercent;
             var defendBoost = defendHero is null ? 100 : TempHeroBattlePercent;
+            // 第 08-34 章：戰爭目標的城牆讓攻方造成的死傷變少。
+            var walls = defense?.Invoke(w.TargetId) ?? new DemoDefense(0, false, 100, 0, 0, null);
+            if (walls.Wall is not null)
+            {
+                terrain = terrain * walls.WarDamagePercent / 100;
+                note = note.Length == 0 ? $"（據{walls.Wall}而守）" : note.Insert(note.Length - 1, $"、據{walls.Wall}而守");
+            }
             if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
                 strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
                     Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100 * attackBoost / 100, residents(w.TargetId), 6),
@@ -296,7 +304,7 @@ public static partial class DemoRealms
             else
             {
                 // 圍城：打滿圍城週數、會戰沒有落下風，就攻陷戰爭目標（之後每週加分，CK3 的佔領）。
-                var siege = TempSiegeWeeks(ctx.Tier(w.TargetId));
+                var siege = Math.Max(2, TempSiegeWeeks(ctx.Tier(w.TargetId)) + (ctx.Defense?.Invoke(w.TargetId).SiegeWeeks ?? 0)); // 第 08-34 章：城牆
                 if (!w.Occupied && fought >= siege && BattleScore(w) >= 0)
                     add(w.TargetId, DemoSettlementEventKind.Occupied, w.AttackerId, $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {fought} 週）");
                 fighting.Add(w.AttackerId);

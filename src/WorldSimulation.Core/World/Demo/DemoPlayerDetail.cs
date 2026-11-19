@@ -263,6 +263,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.Realms().WarOf(settlement.Id) is { } war) // 第 08-19e 章
                 now.Add(DemoRealms.DescribeWar(war, world.Sites, world.CommittedWeeks));
             now.Add(DemoCombat.Describe(world.CombatForceOf(settlement.Id))); // 第 12-2c 節
+            if (world.Defense(settlement.Id) is { Any: true } defense)
+                now.Add(defense.Describe()); // 第 08-34 章：城牆、塔樓
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");

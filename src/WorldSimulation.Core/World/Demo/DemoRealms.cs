@@ -49,6 +49,9 @@ public sealed record DemoRealmContext(
     /// <summary>第 08-22g 章：兩個信仰的敵意（1＝誤入歧途、2＝敵對；見 <see cref="DemoFaiths.Hostility"/>）；沒給＝不同信仰一律敵對（測試）。</summary>
     public Func<int, int, int>? FaithHostility { get; init; }
 
+    /// <summary>第 08-34 章：聚落的城防（圍城週數依城牆增減）；沒給＝不增減（測試）。</summary>
+    public Func<int, DemoDefense>? Defense { get; init; }
+
     /// <summary>兩個信仰的敵意（同一個＝0）。</summary>
     public int HostilityOf(int a, int b) => a == b ? 0 : FaithHostility?.Invoke(a, b) ?? 2;
 
@@ -285,7 +288,8 @@ public static partial class DemoRealms
     public static IReadOnlyDictionary<int, DemoDisasterStrike> Battles(int week, Fold fold, DemoWorldSites sites, Func<int, long> residents, IReadOnlySet<int> taken, RngRegistry rng,
         Func<int, DemoTrait>? temper = null, // 第 08-10h 章：聚落領袖的性格（勇猛、怯懦改變對方的死傷）
         DemoHexWorld? map = null, // 第 08-22b 章：地形（守方據守丘陵、森林，攻方渡河）
-        Func<int, string?>? heroOf = null) // 第 08-22f 章：聚落在世的英雄（名字；沒有＝null）帶兵
+        Func<int, string?>? heroOf = null, // 第 08-22f 章：聚落在世的英雄（名字；沒有＝null）帶兵
+        Func<int, DemoDefense>? defense = null) // 第 08-34 章：戰爭目標的城牆讓攻方死傷變少
     {
         ArgumentNullException.ThrowIfNull(fold);
         ArgumentNullException.ThrowIfNull(sites);
@@ -305,7 +309,7 @@ public static partial class DemoRealms
                 strikes[s.LiegeId] = new DemoDisasterStrike(s.LiegeId, DemoSettlementEventKind.SecessionBattle,
                     Deaths(rebels * DemoTraits.BattlePercent(temper?.Invoke(s.VassalId) ?? DemoTrait.None) / 100, residents(s.LiegeId), 3), s.Civil ? $"出兵討伐作亂的{Name(s.VassalId)}" : $"出兵鎮壓叛離的{Name(s.VassalId)}");
         }
-        ConquestBattles(week, fold, sites, residents, taken, rng, strikes, temper, map, heroOf); // 第 08-19e 章
+        ConquestBattles(week, fold, sites, residents, taken, rng, strikes, temper, map, heroOf, defense); // 第 08-19e 章
         return strikes;
     }
 

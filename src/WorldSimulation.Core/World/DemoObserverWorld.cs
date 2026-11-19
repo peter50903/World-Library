@@ -281,6 +281,9 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-32 章：某聚落的建築（還沒有紀錄＝null）。</summary>
     public DemoHolding? HoldingOf(int settlementId) => _buildings.Of(settlementId);
 
+    /// <summary>第 08-34 章：某聚落的城防（由目前的城牆、城門、塔樓算出；週結算時用的是上一週的建築）。</summary>
+    public DemoDefense Defense(int settlementId) => DemoDefense.Of(_buildings.Of(settlementId));
+
     /// <summary>
     /// 第 08-33 章：領地面板的資料——建築、等級、附近已開墾的農田塊數、附近地形、正在蓋的住宅種類、居民數（聚落不存在＝null）。
     /// 只讀，不改世界。
@@ -662,7 +665,8 @@ public sealed partial class DemoObserverWorld
             Leader = id => leaders.GetValueOrDefault(id), // 第 08-19f 章：國王＝王座所在聚落的村長
             Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
             AgeOfWeek = AgeAtWeek, // 第 08-6c 章：混沌時代忠誠降低
-            FaithHostility = (a, b) => DemoFaiths.Hostility(culture.Faith, a, b) // 第 08-22g 章：同源的信仰誤入歧途、不同源的敵對
+            FaithHostility = (a, b) => DemoFaiths.Hostility(culture.Faith, a, b), // 第 08-22g 章：同源的信仰誤入歧途、不同源的敵對
+            Defense = Defense // 第 08-34 章：圍城週數依城牆增減
         };
     }
 
@@ -854,7 +858,8 @@ public sealed partial class DemoObserverWorld
                 : DemoMonsters.Roll(checked(CommittedWeeks + 1), _knowledge.Era, Map, _sites, id => _population.GetValueOrDefault(id),
                     nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow), // 第 12-2c 節：戰鬥人員與非戰鬥人員
                     ExpeditionForces(CombatForces(nestsNow)), // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
-                    id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1))); // 第 12-2h 章：獸潮
+                    id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1)), // 第 12-2h 章：獸潮
+                    defense: Defense); // 第 08-34 章：城牆、塔樓
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
@@ -866,7 +871,8 @@ public sealed partial class DemoObserverWorld
                 var leadersNow = Leaders(); // 第 08-10h 章：領袖的性格影響交戰
                 var battles = DemoRealms.Battles(checked(CommittedWeeks + 1), Realms(), _sites, id => _population.GetValueOrDefault(id), strikes.Keys.ToHashSet(), _rng,
                     id => leadersNow.GetValueOrDefault(id)?.Traits ?? DemoTrait.None, Map, // 第 08-22b 章：地形
-                    id => _demography.Representatives.FirstOrDefault(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)?.Name); // 第 08-22f 章：英雄帶兵
+                    id => _demography.Representatives.FirstOrDefault(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id)?.Name, // 第 08-22f 章：英雄帶兵
+                    Defense); // 第 08-34 章：城牆
                 if (battles.Count > 0)
                     strikes = strikes.Concat(battles).ToDictionary(kv => kv.Key, kv => kv.Value);
             }

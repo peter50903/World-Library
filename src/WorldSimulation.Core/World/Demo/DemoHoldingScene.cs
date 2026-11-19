@@ -187,6 +187,8 @@ public static class DemoHoldingReport
             }
             else if (inZone.Count > 0)
                 lines.Add($"── {ZoneName(zone)} ──");
+            if (zone == DemoHoldingZone.Walls && DemoDefense.Of(h) is { Any: true } defense)
+                lines.Add("・" + defense.Describe()); // 第 08-34 章：城牆、塔樓的作用
             foreach (var r in inZone)
                 lines.Add($"・{r.Name}" + (r.Count > 1 ? string.Create(inv, $" ×{r.Count}") : "") + $"：{StateText(r.Status, r.Percent)}");
         }
