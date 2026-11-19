@@ -307,6 +307,9 @@ public static class DemoBuildings
         };
     }
 
+    /// <summary>這種事件會打壞建築（第 08-35 章：建築毀損的直接原因）。</summary>
+    public static bool IsDamaging(DemoSettlementEventKind kind) => Damaging.Contains(kind);
+
     private static readonly HashSet<DemoSettlementEventKind> Damaging = new()
     {
         DemoSettlementEventKind.SettlementRuined, DemoSettlementEventKind.MonsterRaid, DemoSettlementEventKind.MonsterSwarm,
@@ -573,6 +576,75 @@ public static class DemoBuildings
             }
         return new DemoBuildingNearby(forest, hills, ore, coast);
     }
+
+    /// <summary>
+    /// 第 08-35 章：重要建築——建成、毀損會寫進聚落小史與世界編年史
+    /// （城牆、城堡、市政廳、神殿、學校、高等學院、魔法學院、醫院、國家銀行、港口）。
+    /// </summary>
+    public static bool IsLandmark(string defId) => defId is WallWood or WallStone or "BUILD_CASTLE" or "BUILD_TOWN_HALL" or "BUILD_CHURCH"
+        or "BUILD_SCHOOL" or "BUILD_ACADEMY" or "BUILD_MAGIC_ACADEMY" or "BUILD_HOSPITAL" or "BUILD_BANK" or "BUILD_PORT";
+
+    /// <summary>
+    /// 第 08-35 章：這一週的建設大事——重要建築建成（含重建、木牆改建的石牆）與毀損（聚落成為遺跡時的全部毀損不另記）。
+    /// 事件編號從 <paramref name="firstEventId"/> 起連續；毀損的直接原因＝同週同聚落第一件打壞建築的事件（怪物、戰爭、天災）。
+    /// </summary>
+    public static IReadOnlyList<DemoSettlementEvent> Milestones(DemoBuildingsState before, DemoBuildingsState after, int week, TimeSpan worldTime,
+        IEnumerable<DemoSettlement> settlements, Func<int, DemoSettlementTier> tier, IReadOnlyList<DemoSettlementEvent> weekEvents, long firstEventId)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+        ArgumentNullException.ThrowIfNull(settlements);
+        ArgumentNullException.ThrowIfNull(tier);
+        ArgumentNullException.ThrowIfNull(weekEvents);
+        var events = new List<DemoSettlementEvent>();
+        var nextId = firstEventId;
+        var byId = settlements.ToDictionary(s => s.Id);
+        foreach (var h in after.Holdings)
+        {
+            if (!byId.TryGetValue(h.SettlementId, out var site) || !h.Buildings.Any(b => IsLandmark(b.DefId)))
+                continue;
+            var old = before.Of(h.SettlementId)?.Buildings.ToDictionary(b => b.Id);
+            DemoSettlementEvent? cause = null;
+            var causeKnown = false;
+            foreach (var b in h.Buildings.Where(b => IsLandmark(b.DefId)).OrderBy(b => b.Id))
+            {
+                var was = old?.GetValueOrDefault(b.Id);
+                var name = DemoHoldingReport.Name(b.DefId, tier(h.SettlementId));
+                if (b.Status == DemoBuildingStatus.Standing && (was is null || was.Status != DemoBuildingStatus.Standing || was.DefId != b.DefId))
+                {
+                    events.Add(new DemoSettlementEvent(week, worldTime, site.Id, site.Name, DemoSettlementEventKind.BuildingCompleted, b.Id,
+                        $"建成{name}", EventId: nextId++));
+                }
+                else if (b.Status == DemoBuildingStatus.Ruined && was is not null && was.Status != DemoBuildingStatus.Ruined)
+                {
+                    if (!causeKnown)
+                    {
+                        cause = weekEvents.FirstOrDefault(e => e.SettlementId == site.Id && IsDamaging(e.Kind));
+                        causeKnown = true;
+                    }
+                    if (cause is { Kind: DemoSettlementEventKind.SettlementRuined })
+                        continue; // 成為遺跡時全部毀損，遺跡事件已寫
+                    events.Add(new DemoSettlementEvent(week, worldTime, site.Id, site.Name, DemoSettlementEventKind.BuildingRuined, b.Id,
+                        $"{name}{RuinedHow(cause?.Kind)}", EventId: nextId++, CauseEventId: cause?.EventId ?? 0));
+                }
+            }
+        }
+        return events;
+    }
+
+    /// <summary>毀損的說法（依打壞它的事件）。</summary>
+    private static string RuinedHow(DemoSettlementEventKind? kind) => kind switch
+    {
+        DemoSettlementEventKind.MonsterSwarm => "被獸潮攻破",
+        DemoSettlementEventKind.MonsterRaid => "被怪物打毀",
+        DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.ConquestBattle or DemoSettlementEventKind.CivilWar
+            or DemoSettlementEventKind.Occupied or DemoSettlementEventKind.Conquered => "毀於戰火",
+        DemoSettlementEventKind.Earthquake => "在地震中倒塌",
+        DemoSettlementEventKind.Tornado => "被龍捲風摧毀",
+        DemoSettlementEventKind.Flood => "被洪水沖毀",
+        DemoSettlementEventKind.Meteorite => "被隕石擊毀",
+        _ => "毀損"
+    };
 
     /// <summary>【TEMP】每個聚落附近的農田格數（農田算給 3 格內最近的聚落；同距離取編號小的）。</summary>
     public static IReadOnlyDictionary<int, int> FieldsNear(DemoLandDevelopmentMap land, IEnumerable<DemoSettlement> settlements)

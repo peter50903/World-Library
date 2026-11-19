@@ -49,6 +49,7 @@ public partial class ObserverRoot
         DemoChronicleCategory.Wilds => "野外",
         DemoChronicleCategory.Disaster => "天災",
         DemoChronicleCategory.Realm => "勢力",
+        DemoChronicleCategory.Building => "建設", // 第 08-35 章
         _ => category.ToString()
     };
 

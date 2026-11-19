@@ -327,7 +327,13 @@ public enum DemoSettlementEventKind
     FaithSchism = 53,
 
     /// <summary>第 08-22g 章：改宗——聚落的主要信仰換成上級的信仰（人數欄＝新的主要信仰編號；根因）。</summary>
-    FaithConverted = 54
+    FaithConverted = 54,
+
+    /// <summary>第 08-35 章：建成一座重要建築（城牆、城堡、神殿、學院…；見 <see cref="DemoBuildings.IsLandmark"/>）；人數欄＝建築編號。</summary>
+    BuildingCompleted = 55,
+
+    /// <summary>第 08-35 章：一座重要建築毀損（耐久度歸零）；人數欄＝建築編號；直接原因＝同週同聚落打壞它的事件。</summary>
+    BuildingRuined = 56
 }
 
 /// <summary>
@@ -384,6 +390,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.Conquered or DemoSettlementEventKind.WarEnded
                 or DemoSettlementEventKind.Succession or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.Usurped
                 or DemoSettlementEventKind.Occupied
+                or DemoSettlementEventKind.BuildingCompleted or DemoSettlementEventKind.BuildingRuined // 第 08-35 章
                 => $"第 {day} 天  |  {SettlementName} {Cause}",
             _ => $"第 {day} 天  |  {SettlementName} 未知事件"
         };
