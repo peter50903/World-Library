@@ -27,6 +27,7 @@ uniform float politics = 0.85;
 uniform float province_lines = 0.6;
 uniform int sel_province = -1;
 uniform int sel_group = -1;
+uniform int sel_nest = 0;
 // 第 12-2j 章：世界時代的氛圍（黑暗時代長夜降臨、烈日偏暖、霜雪偏冷……）；a＝濃淡。
 uniform vec4 age_tint = vec4(1.0, 1.0, 1.0, 0.0);
 uniform float age_vignette = 0.0;
@@ -134,6 +135,7 @@ void fragment() {
 	int gid[4];
 	int ter[4];
 	float blight[4];
+	int nest[4];
 	for (int k = 0; k < 4; k++) {
 		ivec2 at = i0 + offs[k];
 		if (at.x < 0 || at.y < 0 || at.x >= size.x || at.y >= size.y) {
@@ -141,13 +143,15 @@ void fragment() {
 			gid[k] = 65535;
 			ter[k] = 2;
 			blight[k] = 0.0;
+			nest[k] = 0;
 		} else {
 			vec4 a = texelFetch(ids, at, 0);
 			vec4 b = texelFetch(land, at, 0);
 			pid[k] = idx16(a.rg);
 			gid[k] = idx16(a.ba);
 			ter[k] = int(b.r * 255.0 + 0.5);
-			blight[k] = b.g > 0.5 ? 1.0 : 0.0;
+			nest[k] = int(b.g * 255.0 + 0.5);
+			blight[k] = nest[k] > 0 ? 1.0 : 0.0;
 		}
 	}
 	// 水與陸：水的權重和陸上最大的省份權重比。
@@ -197,8 +201,10 @@ void fragment() {
 	float hill = 0.0;
 	float forest = 0.0;
 	float bl = 0.0;
+	float ns = 0.0;
 	for (int k = 0; k < 4; k++) {
 		bl += ws[k] * blight[k];
+		if (sel_nest > 0 && nest[k] == sel_nest) ns += ws[k];
 		if (ter[k] == 2) continue;
 		tcol += ws[k] * terrain_color(ter[k]);
 		lw += ws[k];
@@ -273,6 +279,14 @@ void fragment() {
 	float bmask = smoothstep(0.42, 0.58, bl);
 	float stripes = step(0.5, fract((c.x + c.y) * 2.5));
 	col = mix(col, mix(vec3(0.30, 0.06, 0.07), vec3(0.20, 0.03, 0.04), stripes), bmask * 0.55);
+	// 第 08-31 章：選到的怪物地盤——整片提亮、邊緣金色（跟選到的勢力範圍一樣，不畫格子的方框）。
+	if (sel_nest > 0) {
+		float nmask = smoothstep(0.42, 0.58, ns);
+		col = mix(col, min(col * 1.35 + 0.06, vec3(1.0)), nmask * 0.5);
+		float nd = abs(ns - 0.5) / max(fwidth(ns), 1e-4);
+		float ngold = (1.0 - smoothstep(1.2, 2.6, nd)) * step(0.001, ns) * step(ns, 0.999);
+		col = mix(col, vec3(0.98, 0.84, 0.36), ngold * (0.75 + 0.25 * sin(TIME * 3.0)));
+	}
 
 	// 水：深淺變化、近岸較淺；海岸線深色細線。
 	float depth = vnoise(c * 0.8 + vec2(7.0, 3.0));

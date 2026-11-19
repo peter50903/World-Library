@@ -99,6 +99,7 @@ public partial class DemoHexMap
         m.SetShaderParameter("province_lines", _mode == Mode.Terrain ? 0.25f : Mathf.Lerp(0.35f, 0.75f, Mathf.SmoothStep(24f, 96f, cellPx)));
         m.SetShaderParameter("sel_province", SelectedProvinceIndex());
         m.SetShaderParameter("sel_group", SelectedGroupIndex());
+        m.SetShaderParameter("sel_nest", SelectedNestIndex()); // 第 08-31 章：選到的怪物地盤
         var (tint, vignette, shimmer) = AgeMood(WorldAge); // 第 12-2j 章：世界時代的氛圍
         m.SetShaderParameter("age_tint", tint);
         m.SetShaderParameter("age_vignette", vignette);
@@ -111,12 +112,17 @@ public partial class DemoHexMap
         DrawHoldings(origin, cellPx);
         DrawWars(start, radius);
         DrawBattles(start, radius);
-        // 選到的不是省份（荒野、水、地下城）時框出那一格。
-        if (Highlight is { } focus && SelectedProvinceIndex() < 0 && World.Contains(focus.Column, focus.Row))
+        // 第 08-31 章（使用者 2026-11-19：不要圈出正方形的地塊）：選到的勢力範圍、勢力、怪物地盤由著色器整片框起；
+        // 沒有範圍可框的（遺跡、沒有地盤的地下城）在標記外圍畫一圈金環，不畫格子的方框。
+        if (Highlight is { } focus && SelectedProvinceIndex() < 0 && SelectedGroupIndex() < 0 && SelectedNestIndex() <= 0
+            && World.Contains(focus.Column, focus.Row))
         {
-            var corner = origin + new Vector2(focus.Column, focus.Row) * cellPx;
-            DrawRect(new Rect2(corner, new Vector2(cellPx, cellPx)), new Color(0.1f, 0.08f, 0.05f, 0.8f), false, 4f);
-            DrawRect(new Rect2(corner, new Vector2(cellPx, cellPx)), new Color(1f, 0.92f, 0.45f), false, 2f);
+            var center = PoliticalCenter(origin, cellPx, focus.Column, focus.Row);
+            var ring = Mathf.Clamp(cellPx * 0.42f, 9f, 20f);
+            var pulse = 0.75f + 0.25f * Mathf.Sin(Time.GetTicksMsec() / 320f);
+            DrawArc(center, ring + 1.5f, 0f, Mathf.Tau, 40, new Color(0.1f, 0.08f, 0.05f, 0.8f), 4f, true);
+            DrawArc(center, ring, 0f, Mathf.Tau, 40, new Color(0.98f, 0.84f, 0.36f, pulse), 2f, true);
+            _animatedOnScreen = true;
         }
     }
 
@@ -254,7 +260,7 @@ public partial class DemoHexMap
         }
     }
 
-    /// <summary>地形與怪物地盤（省份變了才重建）：R＝地形（0 草原、1 森林、2 水、3 丘陵；河流算草原）、G＝怪物地盤。</summary>
+    /// <summary>地形與怪物地盤（省份變了才重建）：R＝地形（0 草原、1 森林、2 水、3 丘陵；河流算草原）、G＝怪物地盤的編號（1 起；0＝不是）。</summary>
     private void BuildLand()
     {
         var world = World!;
@@ -270,7 +276,7 @@ public partial class DemoHexMap
                 DemoTerrain.Hills => 3,
                 _ => 0
             });
-            bytes[at + 1] = (byte)(provinces.NestAt(cell.Column, cell.Row) != 0 ? 255 : 0);
+            bytes[at + 1] = (byte)Math.Min(255, provinces.NestAt(cell.Column, cell.Row)); // 第 08-31 章：存地盤編號（選到時整片框起）
             bytes[at + 3] = 255;
         }
         _landTexture = Upload(_landTexture, world.Columns, world.Rows, bytes);
@@ -395,6 +401,17 @@ public partial class DemoHexMap
 
     private int SelectedGroupIndex()
         => SelectedGroupKey() is { } key && _groupIndex.TryGetValue(key, out var i) ? i : -1;
+
+    /// <summary>第 08-31 章：選到的怪物地盤在省份圖的編號（1 起，超過 255 不框；0＝沒有）。</summary>
+    private int SelectedNestIndex()
+    {
+        if (_selectedNest == 0 || _provinces is null)
+            return 0;
+        for (var i = 0; i < _provinces.Nests.Count && i < 255; i++)
+            if (_provinces.Nests[i].Dungeon.EventId == _selectedNest && _provinces.Nests[i].Cells.Count > 0)
+                return i + 1;
+        return 0;
+    }
 
     // ── 與著色器相同的扭曲（點選與疊在上面的圖示對齊邊界） ─────────────────────────
 

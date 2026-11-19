@@ -348,7 +348,7 @@ public partial class ObserverRoot : Control
         });
         side.AddChild(new Label
         {
-            Text = "地圖操作：滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點格查詢（TEMP）。",
+            Text = "地圖操作：滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點聚落或勢力範圍查詢（TEMP）。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         });
 
