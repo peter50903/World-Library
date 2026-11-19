@@ -85,7 +85,10 @@ public partial class ObserverRoot
         var world = new DemoObserverWorld(WorldRecipe.ForSeeds(TempShotSeed, null, DemoMapSize.Large), DemoWeeklyTempConfig.LivingForagingSample);
         for (var d = 0; d < years * 52 * 7; d++)
             world.AdvanceOneDay();
-        GD.Print($"WORLD_SIM_MAP_SHOT: Simulated={years}y Ms={watch.ElapsedMilliseconds}");
+        // 第 08-42 章：港口、航線（封鎖幾條）與海上地下城的數量（CI 註記裡看得到這張地圖有沒有海上的東西）。
+        var lanes = world.SeaLanes();
+        var seaNests = world.MonsterNests(world.CommittedWeeks).Count(n => n.AtSea);
+        GD.Print($"WORLD_SIM_MAP_SHOT: Simulated={years}y Ms={watch.ElapsedMilliseconds} Ports={world.Ports().Count} Lanes={lanes.Count} Blocked={lanes.Count(l => l.Blocked)} SeaNests={seaNests}");
         InstallWorld(world, "截圖");
         Refresh();
         System.IO.Directory.CreateDirectory(dir);
