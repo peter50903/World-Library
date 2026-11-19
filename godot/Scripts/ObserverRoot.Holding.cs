@@ -105,11 +105,14 @@ public partial class ObserverRoot
         FillHoldingCards(_holdingCards, scene, compact: false);
     }
 
-    /// <summary>由 <see cref="Refresh"/> 呼叫：大圖開著、又過了一週就更新。</summary>
+    /// <summary>由 <see cref="Refresh"/> 呼叫：大圖開著、又過了一週就更新（第 08-39 章：快轉時滑鼠在視窗上或剛更新過就晚點再更新）。</summary>
     private void RefreshHoldingIfOpen()
     {
-        if (_modalOpen == "holding" && _world.LatestWeek?.Week != _holdingWeek)
+        if (_modalOpen == "holding" && _world.LatestWeek?.Week != _holdingWeek && !HoldingBusy())
+        {
             RefreshHoldingWindow();
+            _holdingRebuilt.Restart();
+        }
     }
 
     /// <summary>詳情「領地」分頁：縮圖（點一下打開大圖）＋領地資訊＋縮小的建築卡片。</summary>
