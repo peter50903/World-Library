@@ -776,7 +776,8 @@ public partial class ObserverRoot : Control
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = afterDrag
         });
-        if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal))
+        // 第 08-31 章：地塊不能選了；改看點到的是哪一格（決定選到哪一片範圍）。
+        if (_hexMap.LastClickCell != new DemoCellRef(cell.Column, cell.Row))
             throw new InvalidOperationException("Map click after panning selected the wrong Core cell.");
 
         // 第 08-18a 章：方格之間沒有縫——格邊稍偏一點就是隔壁那一格；地圖外點不到任何格。
@@ -786,7 +787,7 @@ public partial class ObserverRoot : Control
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = seam + nudge
         });
-        if (!_cellInfo.Text.Contains($"座標 ({neighbor.Column}, {neighbor.Row})", StringComparison.Ordinal))
+        if (_hexMap.LastClickCell != new DemoCellRef(neighbor.Column, neighbor.Row))
             throw new InvalidOperationException("Map click just past a square edge did not select the next cell.");
         _cellInfo.Text = "MAP_OUTSIDE_UNSELECTED";
         var corner = _world.Map.GetCell(0, 0);
@@ -795,7 +796,7 @@ public partial class ObserverRoot : Control
             ButtonIndex = MouseButton.Left, Pressed = true,
             Position = _hexMap.CellCenter(corner) - (_hexMap.CellCenter(neighbor) - _hexMap.CellCenter(cell)) * 1.5f
         });
-        if (_cellInfo.Text != "MAP_OUTSIDE_UNSELECTED")
+        if (_cellInfo.Text != "MAP_OUTSIDE_UNSELECTED" || _hexMap.LastClickCell is not null)
             throw new InvalidOperationException("Map selected a cell outside the map.");
 
         if (_world.Snapshot().DaysElapsed != dayBefore
