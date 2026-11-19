@@ -22,7 +22,7 @@ public sealed class DemoHoldingSceneTests
         Assert.Equal("廚房", DemoHoldingReport.Name("BUILD_KITCHEN", DemoSettlementTier.City));
         Assert.Equal("神殿", DemoHoldingReport.Name("BUILD_CHURCH", DemoSettlementTier.Town));
         // 建築表每一種都有分區與名稱。
-        Assert.All(DemoBuildingCatalog.All, d => Assert.False(string.IsNullOrWhiteSpace(DemoHoldingReport.Name(d.Id, DemoSettlementTier.City))));
+        Assert.All(DemoBuildingCatalog.All.Values, d => Assert.False(string.IsNullOrWhiteSpace(DemoHoldingReport.Name(d.Id, DemoSettlementTier.City))));
     }
 
     [Fact]
