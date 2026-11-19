@@ -448,6 +448,91 @@ public partial class DemoHexMap
         _animatedOnScreen = true;
     }
 
+    /// <summary>
+    /// 第 08-42 章：航線——沿海路畫的虛線（暢通＝淡色、慢慢流動；封鎖＝暗紅，在第一格被怪物佔的海畫一個叉）。
+    /// 路徑用兩次切角（Chaikin）磨圓，不是一格一格的折線。
+    /// </summary>
+    private void DrawSeaLanes(Vector2 origin, float cellPx)
+    {
+        if (SeaLanes.Count == 0 || _mode is not (Mode.Realm or Mode.Terrain) || Sites is null)
+            return;
+        var view = new Rect2(Vector2.Zero, Size).Grow(60f);
+        var width = Mathf.Clamp(cellPx * 0.045f, 1.2f, 3f);
+        var dash = Mathf.Clamp(cellPx * 0.22f, 4f, 14f);
+        var flow = (Time.GetTicksMsec() / 1400f) % 1f;
+        var open = new Color(0.96f, 0.94f, 0.86f, 0.85f);
+        var closed = new Color(0.78f, 0.16f, 0.12f, 0.9f);
+        var shadow = new Color(0.05f, 0.08f, 0.12f, 0.45f);
+        var byId = Sites.Settlements.ToDictionary(s => s.Id);
+        foreach (var lane in SeaLanes)
+        {
+            if (!byId.TryGetValue(lane.From, out var a) || !byId.TryGetValue(lane.To, out var b) || lane.Path.Count == 0)
+                continue;
+            var points = new List<Vector2> { PoliticalCenter(origin, cellPx, a.Column, a.Row) };
+            points.AddRange(lane.Path.Select(c => PoliticalCenter(origin, cellPx, c.Column, c.Row)));
+            points.Add(PoliticalCenter(origin, cellPx, b.Column, b.Row));
+            var box = new Rect2(points[0], Vector2.Zero);
+            foreach (var p in points)
+                box = box.Expand(p);
+            if (!view.Intersects(box))
+                continue;
+            for (var pass = 0; pass < 2; pass++)
+            {
+                var smooth = new List<Vector2> { points[0] };
+                for (var i = 0; i + 1 < points.Count; i++)
+                {
+                    smooth.Add(points[i].Lerp(points[i + 1], 0.25f));
+                    smooth.Add(points[i].Lerp(points[i + 1], 0.75f));
+                }
+                smooth.Add(points[^1]);
+                points = smooth;
+            }
+            var color = lane.Blocked ? closed : open;
+            // 兩端留一點空（不壓到港口的徽章），沿路依長度畫虛線。
+            var total = 0f;
+            for (var i = 0; i + 1 < points.Count; i++)
+                total += points[i].DistanceTo(points[i + 1]);
+            var skip = Mathf.Min(total * 0.2f, cellPx * 0.45f);
+            var phase = lane.Blocked ? 0f : flow * dash * 2f;
+            var walked = 0f;
+            for (var i = 0; i + 1 < points.Count; i++)
+            {
+                var p0 = points[i];
+                var p1 = points[i + 1];
+                var len = p0.DistanceTo(p1);
+                if (len < 0.01f)
+                    continue;
+                // 這一小段落在第幾個虛線週期：只畫「實」的那一半。
+                for (var t = 0f; t < len; )
+                {
+                    var at = walked + t;
+                    var cycle = (at - phase) % (dash * 2f);
+                    if (cycle < 0f)
+                        cycle += dash * 2f;
+                    var step = cycle < dash ? Mathf.Min(dash - cycle, len - t) : Mathf.Min(dash * 2f - cycle, len - t);
+                    if (cycle < dash && at > skip && at < total - skip)
+                    {
+                        var q0 = p0.Lerp(p1, t / len);
+                        var q1 = p0.Lerp(p1, (t + step) / len);
+                        DrawLine(q0 + new Vector2(0f, 1.2f), q1 + new Vector2(0f, 1.2f), shadow, width + 1f, true);
+                        DrawLine(q0, q1, color, width, true);
+                    }
+                    t += Mathf.Max(step, 0.5f);
+                }
+                walked += len;
+            }
+            if (lane.Blocked && lane.BlockedAt >= 0 && lane.BlockedAt < lane.Path.Count)
+            {
+                var c = PoliticalCenter(origin, cellPx, lane.Path[lane.BlockedAt].Column, lane.Path[lane.BlockedAt].Row);
+                var r = Mathf.Clamp(cellPx * 0.22f, 4f, 10f);
+                DrawCircle(c, r * 1.25f, new Color(0.10f, 0.02f, 0.02f, 0.75f));
+                DrawLine(c - new Vector2(r, r) * 0.7f, c + new Vector2(r, r) * 0.7f, closed.Lightened(0.25f), Mathf.Max(1.5f, width * 1.2f), true);
+                DrawLine(c + new Vector2(-r, r) * 0.7f, c + new Vector2(r, -r) * 0.7f, closed.Lightened(0.25f), Mathf.Max(1.5f, width * 1.2f), true);
+            }
+        }
+        _animatedOnScreen = true;
+    }
+
     private void DrawLairs(Vector2 origin, float cellPx)
     {
         if (World is null || _provinces is null)

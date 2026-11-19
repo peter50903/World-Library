@@ -848,9 +848,56 @@ public sealed partial class DemoObserverWorld
         return nests.Select(n =>
         {
             var nest = _monsterFold.At(n.Dungeon, n.Cell, week);
-            return nest with { Cells = DemoMonsters.Claim(Map, nest.Dungeon.Cell, nest.Dormant ? 0 : nest.Monsters, c => human.ContainsKey(c)) };
+            // 第 08-42 章：海上地下城（外海或小島）的怪物佔海。
+            if (!_seaDungeon.TryGetValue(n.Cell, out var sea))
+                _seaDungeon[n.Cell] = sea = DemoDungeons.AtSea(Map, n.Dungeon.Cell);
+            return nest with { Cells = DemoMonsters.Claim(Map, nest.Dungeon.Cell, nest.Dormant ? 0 : nest.Monsters, c => human.ContainsKey(c), sea), AtSea = sea };
         }).ToList();
     }
+
+    /// <summary>第 08-42 章：地下城在不在海上（地圖不變，算一次就記住）。</summary>
+    private readonly Dictionary<long, bool> _seaDungeon = new();
+
+    /// <summary>第 08-42 章：海運——依這些怪物算出的暢通航線，賣糧的聚落賣得到的對岸市集（沒有航線＝null）。</summary>
+    private Func<int, IEnumerable<(int Market, int Distance)>>? SeaTrade(IReadOnlyList<DemoMonsterNest> nests)
+    {
+        var lanes = SeaLanesFor(nests);
+        if (lanes.All(l => l.Blocked))
+            return null;
+        var ports = Ports().ToDictionary(p => p.Id, p => new DemoCellRef(p.Column, p.Row));
+        var place = _sites.Settlements.Where(s => !s.IsRuin).ToDictionary(s => s.Id, s => new DemoCellRef(s.Column, s.Row));
+        return id => place.TryGetValue(id, out var here) ? DemoSeaLanes.Offers(lanes, ports, here) : Enumerable.Empty<(int, int)>();
+    }
+
+    /// <summary>第 08-42 章：有完好港口的聚落。</summary>
+    public bool IsPort(int settlementId)
+        => _buildings.Of(settlementId)?.Buildings.Any(b => b.DefId == DemoSeaLanes.PortBuilding && b.Status == DemoBuildingStatus.Standing) == true;
+
+    /// <summary>第 08-42 章：有人、有完好港口的聚落（依編號）。</summary>
+    public IReadOnlyList<DemoSettlement> Ports()
+        => _sites.Settlements.Where(s => !s.IsRuin && _population.GetValueOrDefault(s.Id) > 0 && IsPort(s.Id)).OrderBy(s => s.Id).ToList();
+
+    /// <summary>第 08-42 章：出得了海（有港口，或靠海又會基礎造船）——海戰只有這些聚落打得了。</summary>
+    public bool CanSail(int settlementId)
+        => _sites.Settlements.FirstOrDefault(s => s.Id == settlementId) is { IsRuin: false } site
+            && (IsPort(settlementId) || (DemoMonsters.Coastal(Map, site) && _knowledge.Knows(settlementId, DemoTechnology.Of(TempBoatTech))));
+
+    /// <summary>【TEMP】第 08-42 章：沒有港口時，靠海的聚落會這項技術就造得出船出海作戰。</summary>
+    public const string TempBoatTech = "TECH_BASIC_BOATBUILDING";
+
+    private (int Week, long Event, IReadOnlyList<DemoSeaLane> Lanes)? _lanes;
+
+    /// <summary>第 08-42 章：目前的航線（港口之間的海路；被海上怪物擋住的是封鎖的）。同一週沿用。</summary>
+    public IReadOnlyList<DemoSeaLane> SeaLanes()
+    {
+        if (_lanes is { } cached && cached.Week == CommittedWeeks && cached.Event == _history.LastEventId)
+            return cached.Lanes;
+        var lanes = SeaLanesFor(_knowledge.Era == DemoEra.Hope ? Array.Empty<DemoMonsterNest>() : MonsterNests(CommittedWeeks));
+        _lanes = (CommittedWeeks, _history.LastEventId, lanes);
+        return lanes;
+    }
+
+    private IReadOnlyList<DemoSeaLane> SeaLanesFor(IReadOnlyList<DemoMonsterNest> nests) => DemoSeaLanes.Build(Map, Ports(), nests);
 
     /// <summary>
     /// 推進到下一個排程日，整天是一次原子提交（第 03 章 a 節，44F Stage 4～6）：
@@ -894,7 +941,8 @@ public sealed partial class DemoObserverWorld
                     ExpeditionForces(CombatForces(nestsNow)), // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
                     id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1)), // 第 12-2h 章：獸潮
                     defense: Defense, // 第 08-34 章：城牆、塔樓；第 08-37 章：城堡
-                    healPercent: id => BuildingBonus(id).HealPercent); // 第 08-37 章：診療所、醫院
+                    healPercent: id => BuildingBonus(id).HealPercent, // 第 08-37 章：診療所、醫院
+                    sails: CanSail); // 第 08-42 章：海戰
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
@@ -947,6 +995,7 @@ public sealed partial class DemoObserverWorld
                     : id => ChronicleOf(id).Tier >= DemoSettlementTier.Town
                         && (_knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)) || _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.CurrencyTech))),
                 barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)),
+                seaMarkets: SeaTrade(nestsNow), // 第 08-42 章：海運（本週開始時的航線）
                 spoilageCutPercent: id => BuildingBonus(id).SpoilageCutPercent); // 第 08-37 章：糧倉
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);

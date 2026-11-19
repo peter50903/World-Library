@@ -34,8 +34,11 @@ public static class DemoFoodTrade
     }
 
     /// <summary>依期末存糧買賣：改寫週帳（賣出、買進、期末存糧）與下週的期初存糧。</summary>
+    /// <remarks>第 08-42 章：<paramref name="sea"/>＝海運（賣糧的聚落經港口與暢通的航線賣得到的對岸市集與路程，<see cref="DemoSeaLanes.Offers"/>）；
+    /// 和陸路的市集一起比路程（近的先）。</remarks>
     public static void Trade(List<DemoSettlementWeekLedger> ledgers, IDictionary<int, long> nextFood, DemoWorldSites sites,
-        Func<int, bool> isMarket, Func<int, bool> trades, long foodPerPersonPerWeek)
+        Func<int, bool> isMarket, Func<int, bool> trades, long foodPerPersonPerWeek,
+        Func<int, IEnumerable<(int Market, int Distance)>>? sea = null)
     {
         ArgumentNullException.ThrowIfNull(ledgers);
         ArgumentNullException.ThrowIfNull(nextFood);
@@ -63,9 +66,13 @@ public static class DemoFoodTrade
             if (offer <= 0)
                 continue;
             var here = place[seller];
-            var buyer = markets.Where(m => room[m] > 0)
+            var options = markets.Where(m => room[m] > 0)
                 .Select(m => (Id: m, Distance: DemoHexWorld.Distance(here, place[m])))
-                .Where(x => x.Distance <= TempTradeReach)
+                .Where(x => x.Distance <= TempTradeReach);
+            if (sea is not null) // 第 08-42 章：海運
+                options = options.Concat(sea(seller).Where(x => x.Market != seller && room.TryGetValue(x.Market, out var r) && r > 0)
+                    .Select(x => (Id: x.Market, x.Distance)));
+            var buyer = options
                 .OrderBy(x => x.Distance).ThenByDescending(x => ledgers[index[x.Id]].PopulationClosing).ThenBy(x => x.Id)
                 .Select(x => (int?)x.Id).FirstOrDefault();
             if (buyer is not { } b)

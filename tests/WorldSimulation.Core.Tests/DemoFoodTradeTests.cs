@@ -42,6 +42,26 @@ public sealed class DemoFoodTradeTests
     }
 
     [Fact]
+    public void FarVillagesShipGrainBySeaOnlyThroughOpenLanes()
+    {
+        // 第 08-42 章：6 格外的村莊經港口與暢通的航線賣給對岸的市集（路程照海運折算，和陸路的市集一起比遠近）。
+        var (sites, market, near1, near2, far) = Place();
+        List<DemoSettlementWeekLedger> Ledgers() => new() { Ledger(market, 100, 50), Ledger(near1, 280, 10), Ledger(near2, 180, 10), Ledger(far, 1000, 10) };
+        var ledgers = Ledgers();
+        var next = ledgers.ToDictionary(l => l.SettlementId, l => l.FoodClosing);
+        DemoFoodTrade.Trade(ledgers, next, sites, id => id == market, _ => true, 4,
+            sea: id => id == far ? new[] { (market, 8) } : Array.Empty<(int, int)>());
+        Assert.Equal(460, ledgers[3].FoodTradeOut); // (1000 − 80) × 50%
+        Assert.Equal(610, ledgers[0].FoodTradeIn);  // 100 ＋ 50 ＋ 460
+        Assert.All(ledgers, l => Assert.True(l.FoodBalanced && l.TotalResourceBalanced && l.NonNegative));
+        // 航線被封鎖（海運沒有對岸的市集）：照舊賣不出去。
+        var blocked = Ledgers();
+        DemoFoodTrade.Trade(blocked, blocked.ToDictionary(l => l.SettlementId, l => l.FoodClosing), sites, id => id == market, _ => true, 4,
+            sea: _ => Array.Empty<(int, int)>());
+        Assert.Equal(0, blocked[3].FoodTradeOut);
+    }
+
+    [Fact]
     public void VillagesSellToTheNearestMarketAndLedgersStayBalanced()
     {
         var (sites, market, near1, near2, far) = Place();

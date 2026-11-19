@@ -604,6 +604,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCatchmentTempSettings.cs` | 7 | #112 讀取森林20／河流5的 TEMP JSON，非正式設定值；第 06-3 章丘陵採集為草原一半 |
 | `src/WorldSimulation.Core/World/Demo/DemoFoodTax.cs` | 2 | 第 08-19g 章糧稅率 10%、留底 8 週；第 08-23 章留底 8 → 2 週 |
 | `src/WorldSimulation.Core/World/Demo/DemoFoodTrade.cs` | 4 | 第 08-23 章糧食貿易（使用者 2026-11-18：小鎮的糧食主要由多個村莊提供、販賣）：6 格內、每週賣超過留底的存糧 50%、市集存糧滿 6 週需求不再買 |
+| `src/WorldSimulation.Core/World/Demo/DemoSeaLanes.cs` | 3 | 第 08-42 章航線與海運：航線最長 30 格海路、每個港口最多連 3 個港口；海運每 3 格海路算 1 格路程、最遠 12 格 |
 | `src/WorldSimulation.Core/World/Demo/DemoForagingWorld.cs` | 3 | #113 可玩示範的 TEMP 主河道位置與共享資源來源，正式水系尚未實作 |
 | `src/WorldSimulation.Core/World/Demo/DemoHumanLifecycle.cs` | 9 | #105 TEMP人族週帳出生／老死／身分重播驗證；第 08-1 章糧食寬裕才受孕；第 08-2 章只有老死；第 07-1 章改為群體人口；第 07-1 章 b 節代表人物補任規則；第 08-10g 章：繼承人比前任小 18～45 歲 |
 | `src/WorldSimulation.Core/World/Demo/DemoTraits.cs` | 8 | 第 08-10g、08-10h 章：領袖性格八組十六項的效果（宣戰、請願、忠誠、交戰死傷、不戰而降門檻、聖戰）、每人 3 項、承襲機率 50%；第 08-22c 章身體特質（每組各 12%、遺傳 50%；強壯虛弱交戰 ±10%、聰慧遲鈍研究 ±10%、俊美醜陋忠誠 ±5）與傳說特性（領袖 2%、英雄 40%；天命忠誠 +20、交戰 ×130%，龍血交戰 ×160%，賢者研究 +50%，聖者忠誠 +25）；第 08-22h 章體魄與壽命（強壯老死機率 80%、虛弱 125%、龍血 60%） |
@@ -615,7 +616,7 @@
 | `src/WorldSimulation.Core/World/DemoSaveManifest.cs` | 6 | 第 04 章 b 節存檔標頭檢查（TEMP 存檔、TEMP 示範設定雜湊；檢查本身為正式規則） |
 | `src/WorldSimulation.Core/World/Demo/DemoWorldSites.cs` | 23 | D7；第 08-1 章宜居開局；第 08-2 章開局間距與供應下限；第 07-1 章 c 節開局聚落數依地圖放大；第 08-4 章間隔宜居格用完就少放 |
 | `src/WorldSimulation.Core/World/Demo/DemoMigration.cs` | 14 | D5、D6、D7；第 08-11 章挑水與掘井（D08-11） |
-| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 21 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-14 章遊戲中壓縮週期 104 週；第 08-19d 章征服時代開始事件 |
+| `src/WorldSimulation.Core/World/DemoObserverWorld.cs` | 22 | D3（期初存量）、第 3 節 #103 承載估計（C05：D10 已退役）；第 08-1 章承載上限、人類採集開局聚落 6～10 人；第 04-1 章存檔保留週數；第 08-14 章遊戲中壓縮週期 104 週；第 08-19d 章征服時代開始事件；第 08-42 章沒有港口時靠海、會基礎造船就出得了海 |
 | `src/WorldSimulation.Core/World/Demo/DemoEraProgress.cs` | 1 | 第 08-19d 章王國至少 2 個臣屬聚落 |
 | `src/WorldSimulation.Core/World/DemoSaveSlots.cs` | 9 | D8 |
 | `src/WorldSimulation.Core/World/Demo/DemoCenturyRun.cs` | 4 | c1、第 3 節 #103 承載估計 |
@@ -644,8 +645,8 @@
 | `godot/Scripts/ObserverRoot.EraCard.cs` | 1 | 第 08-16 章時代插圖：停留 3.5 秒、淡入淡出 0.8 秒 |
 | `src/WorldSimulation.Core/World/Demo/DemoStories.cs` | 1 | 第 08-16 章故事：遺跡回看 104 週、小傳最多 3 件事 |
 | `src/WorldSimulation.Core/World/Demo/DemoTechTooltip.cs` | 4 | 試玩回饋 2026-11-03 之 2：技術說明濾掉 TEMP 等開發用字句（不是數值，只是比對字串） |
-| `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 12 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1）；第 12-2k 章目標數每 384 格一個、每 3 個名額每年多擲一次；第 12-2l 章分散（最遠距離的 75% 以上） |
-| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 15 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章壓制下限每層 1 隻；第 12-2g 節襲擊與民兵討伐的死亡上限；第 12-2h 章獸潮（滿員每週 4%、黑暗混沌時代加倍；怪物比全村的人多才攻得破；世上只剩 3 個以下有人的聚落攻不破；6 格內；守住最多死 25%；出擊耗損一半；村莊以下攻得破、3 級地下城連城鎮也攻得破）；第 12-2j 章黑暗時代怪物繁衍加倍、沉寂的地下城 52 週就甦醒；兩層以上的地下城才會爆發獸潮 |
+| `src/WorldSimulation.Core/World/Demo/DemoDungeon.cs` | 15 | 第 12-1 章 C4 地下城出現：檢查週、機率、間距、詳情範圍、層數、名字後綴、目標數、亂數命名空間（D12-1）；第 12-2k 章目標數每 384 格一個、每 3 個名額每年多擲一次；第 12-2l 章分散（最遠距離的 75% 以上）；第 08-42 章海上地下城（外海＝周圍 2 格沒有陸地、每 4 個地下城最多一個在海上、名字後綴、小島不到 16 格也算海上） |
+| `src/WorldSimulation.Core/World/Demo/DemoMonsters.cs` | 16 | 第 12-2 章地下城怪物：每層初始與上限、生成週數、沉寂週數、襲擊機率、討伐機率與門檻與距離、勢力範圍半徑、亂數命名空間（D12-2）；第 12-2a 節每隻怪物佔幾格、最遠幾格、襲擊距離；第 08-18h 章壓制下限每層 1 隻；第 12-2g 節襲擊與民兵討伐的死亡上限；第 12-2h 章獸潮（滿員每週 4%、黑暗混沌時代加倍；怪物比全村的人多才攻得破；世上只剩 3 個以下有人的聚落攻不破；6 格內；守住最多死 25%；出擊耗損一半；村莊以下攻得破、3 級地下城連城鎮也攻得破）；第 12-2j 章黑暗時代怪物繁衍加倍、沉寂的地下城 52 週就甦醒；兩層以上的地下城才會爆發獸潮；第 08-42 章海上的怪物每隻佔 2 格、最遠 6 格 |
 | `src/WorldSimulation.Core/World/Demo/DemoCombat.cs` | 3 | 第 12-2c、12-2d 節戰鬥人員：鎮 3%／城 5% 士兵（冒險者已移除）；非戰鬥人員戰力 20%、每隻怪物牽制 3 人 |
 | `src/WorldSimulation.Core/World/Demo/DemoRealms.cs` | 9 | 第 08-19b 章分裂鬥爭（參考 WorldBox 與十字軍之王）：忠誠度各因素（基本 +10、距離、文化 −30、信仰 −15、人口、層級 −20、剛歸附 +15、剛被鎮壓 +25、直屬過多、強勢統治 +10）；派系加入 <0、退出 ≥10；不滿 26 週、請願 26 週、戰爭 8～52 週、停戰 260 週、剛歸附 52 週；通牒 80%、接受 150%、請願讓步 35%＋文化不同 20%、戰爭勝負死亡比 150%；兵力＝居民 1/10、交戰每 20 兵殺 1 人；亂數命名空間；第 08-22g 章同源信仰（誤入歧途）忠誠只扣 8、聖戰加成減半；第 08-22i 章交戰死亡 ÷20 → ÷60 |
 | `src/WorldSimulation.Core/World/Demo/DemoRealms.Conquest.cs` | 9 | 第 08-19e 章征服時代的王國戰爭：王國至少城市層級、有臣屬；每 13 週檢查宣戰、目標 10 格內、兵力至少守方 120%、宣戰機率 25%（信仰不同 +15%、文化不同 +10%）；守方本土戰力 125%；停戰 260 週；被征服後 260 週內忠誠 −10；第 08-22a 章戰爭分數（會戰 ±40、攻陷 +30、每週 +3 最多 +60；100 征服、−60 敗退、兩年 50 以上議和）與圍城週數（營地 3、村莊 4、城鎮 6、城市 8、首都 10）；第 08-22b 章會戰地形（守方在丘陵攻方死傷 ×75%、森林 ×85%，攻方渡河 ×80%）；第 08-22e 章收復失地（20 年內、兵力只要 80%、宣戰機率 +40%）；第 08-22f 章英雄帶兵（那一方造成的死傷 ×130%） |

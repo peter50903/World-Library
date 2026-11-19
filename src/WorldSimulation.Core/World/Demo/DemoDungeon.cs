@@ -33,6 +33,19 @@ public static class DemoDungeons
     /// <summary>【TEMP】名字後綴（接在地名前綴後面）。</summary>
     public static readonly string[] TempSuffixes = { "洞窟", "古墓", "地窟", "深淵", "迷宮" };
 
+    /// <summary>【TEMP】第 08-42 章：海上地下城的名字後綴。</summary>
+    public static readonly string[] TempSeaSuffixes = { "海淵", "漩渦", "沉船", "礁窟", "海底神殿" };
+
+    /// <summary>
+    /// 【TEMP】第 08-42 章（使用者 2026-11-19：地下城若是在海中無陸地靠近，怪物要能在海上擴張、自由移動，會擋住船的航線，人類要靠海戰消滅）：
+    /// 海上地下城出現在外海——那一格與周圍 <see cref="TempSeaShore"/> 格內都是海、沒有陸地；
+    /// 每 <see cref="TempSeaDungeonEvery"/> 個地下城最多一個在海上（第 4、8……個起才可能，開拓初期照舊都在陸地）。
+    /// </summary>
+    public const int TempSeaShore = 2, TempSeaDungeonEvery = 4;
+
+    /// <summary>【TEMP】第 08-42 章：地下城所在的島（相連的陸地）不到幾格也算海上地下城（小島上的怪物也會下海）。</summary>
+    public const int TempSeaIslandCells = 16;
+
     private const string Namespace = "TEMP-DUNGEON-v1";
 
     /// <summary>【TEMP】第 12-2k 章：每幾格多一個目標名額。</summary>
@@ -75,16 +88,17 @@ public static class DemoDungeons
     /// 名字與層數：只依出現年份、格編號與已用過的名字決定（重算結果相同）。
     /// 第 12-2k 章：<paramref name="slot"/>＝同一週出現的第幾個（第 0 個與原本相同）。
     /// </summary>
-    public static (string Name, int Layers) Describe(RngRegistry rng, int year, long cellId, ISet<string> taken, int slot = 0)
+    public static (string Name, int Layers) Describe(RngRegistry rng, int year, long cellId, ISet<string> taken, int slot = 0, bool sea = false)
     {
         ArgumentNullException.ThrowIfNull(taken);
+        var suffixes = sea ? TempSeaSuffixes : TempSuffixes; // 第 08-42 章：海上地下城
         var prefixes = DemoNameTempSettings.Current.PlacePrefix;
         var max = DemoNameTempSettings.Current.MaxLength;
         var layers = TempMinLayers + (int)(Draw(rng, year, slot, 10) % (ulong)(TempMaxLayers - TempMinLayers + 1));
         for (ulong attempt = 0; attempt < 32; attempt++)
         {
             var name = prefixes[(int)(Draw(rng, year, slot, 20 + attempt * 2) % (ulong)prefixes.Count)]
-                + TempSuffixes[(int)(Draw(rng, year, slot, 21 + attempt * 2) % (ulong)TempSuffixes.Length)];
+                + suffixes[(int)(Draw(rng, year, slot, 21 + attempt * 2) % (ulong)suffixes.Length)];
             if (DemoNames.Length(name) <= max && !taken.Contains(name))
                 return (name, layers);
         }
@@ -100,6 +114,65 @@ public static class DemoDungeons
         if (living.Any(s => DemoWorldSites.HexDistance(map.GetCell(s.Column, s.Row), cell) < TempMinDistance))
             return false;
         return !dungeons.Any(d => DemoWorldSites.HexDistance(map.GetCell(d.Column, d.Row), cell) < TempMinDistance);
+    }
+
+    /// <summary>第 08-42 章：外海的格（海，而且周圍 <see cref="TempSeaShore"/> 格內沒有陸地）。</summary>
+    public static bool OpenSea(DemoHexWorld map, DemoHexCell cell)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(cell);
+        if (cell.Terrain != DemoTerrain.Water || !cell.Sea)
+            return false;
+        for (var dr = -TempSeaShore; dr <= TempSeaShore; dr++)
+            for (var dc = -TempSeaShore; dc <= TempSeaShore; dc++)
+                if (map.Contains(cell.Column + dc, cell.Row + dr) && map.GetCell(cell.Column + dc, cell.Row + dr).Terrain != DemoTerrain.Water)
+                    return false;
+        return true;
+    }
+
+    /// <summary>第 08-42 章：某格可以出現海上地下城（外海、離既有地下城夠遠；外海離聚落本來就夠遠）。</summary>
+    public static bool EligibleSea(DemoHexWorld map, IReadOnlyCollection<DemoCellRef> dungeons, DemoHexCell cell)
+        => OpenSea(map, cell) && !dungeons.Any(d => DemoWorldSites.HexDistance(map.GetCell(d.Column, d.Row), cell) < TempMinDistance);
+
+    /// <summary>第 08-42 章：已有 <paramref name="total"/> 個地下城、其中 <paramref name="sea"/> 個在海上時，下一個可不可以在海上。</summary>
+    public static bool SeaAllowed(int total, int sea) => (sea + 1) * TempSeaDungeonEvery <= total + 1;
+
+    /// <summary>
+    /// 第 08-42 章：海上地下城——在海上，或所在的島不到 <see cref="TempSeaIslandCells"/> 格（怪物下海、在海上擴張）。
+    /// </summary>
+    public static bool AtSea(DemoHexWorld map, DemoCellRef cell)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        if (!map.Contains(cell.Column, cell.Row))
+            return false;
+        if (map.GetCell(cell.Column, cell.Row).Terrain == DemoTerrain.Water)
+            return true;
+        return Island(map, cell, TempSeaIslandCells).Count < TempSeaIslandCells;
+    }
+
+    /// <summary>第 08-42 章：和這一格相連（八方向）的陸地，最多找 <paramref name="limit"/> 格。</summary>
+    public static HashSet<DemoCellRef> Island(DemoHexWorld map, DemoCellRef cell, int limit)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        var island = new HashSet<DemoCellRef>();
+        if (!map.Contains(cell.Column, cell.Row) || map.GetCell(cell.Column, cell.Row).Terrain == DemoTerrain.Water)
+            return island;
+        var queue = new Queue<DemoCellRef>();
+        island.Add(cell);
+        queue.Enqueue(cell);
+        while (queue.Count > 0 && island.Count < limit)
+        {
+            var here = queue.Dequeue();
+            for (var dr = -1; dr <= 1; dr++)
+                for (var dc = -1; dc <= 1; dc++)
+                {
+                    var n = new DemoCellRef(here.Column + dc, here.Row + dr);
+                    if (island.Count >= limit || !map.Contains(n.Column, n.Row) || map.GetCell(n.Column, n.Row).Terrain == DemoTerrain.Water || !island.Add(n))
+                        continue;
+                    queue.Enqueue(n);
+                }
+        }
+        return island;
     }
 
     /// <summary>
@@ -126,22 +199,33 @@ public static class DemoDungeons
             return Array.Empty<DemoSettlementEvent>();
         var taken = existing.Select(d => d.Cell).ToList();
         var spots = map.Cells.Where(c => Eligible(map, sites, living, taken, c)).OrderBy(c => c.Row).ThenBy(c => c.Column).ToList();
+        // 第 08-42 章：每 TempSeaDungeonEvery 個地下城最多一個在外海（合格的海格另列，輪到可以時才一起挑）。
+        var sea = existing.Count(d => map.GetCell(d.Cell.Column, d.Cell.Row).Terrain == DemoTerrain.Water);
+        var seaSpots = !SeaAllowed(existing.Count + passed.Count - 1, sea) ? new List<DemoHexCell>()
+            : map.Cells.Where(c => EligibleSea(map, taken, c)).ToList();
         var placed = taken.ToList(); // 第 12-2l 章：既有的加上今年已出現的，下一個離它們越遠越好
         var names = existing.Select(d => d.Name).ToHashSet();
         var events = new List<DemoSettlementEvent>();
         foreach (var slot in passed)
         {
-            if (existing.Count + events.Count >= limit || spots.Count == 0)
+            var pool = SeaAllowed(existing.Count + events.Count, sea) && seaSpots.Count > 0
+                ? spots.Concat(seaSpots).OrderBy(c => c.Row).ThenBy(c => c.Column).ToList() : spots;
+            if (existing.Count + events.Count >= limit || pool.Count == 0)
                 break;
-            var spot = PickSpread(spots, placed, Draw(rng, year, slot, 1));
+            var spot = PickSpread(pool, placed, Draw(rng, year, slot, 1));
             spots.RemoveAll(c => DemoWorldSites.HexDistance(spot, c) < TempMinDistance); // 同一年的下一個也要離它夠遠
+            seaSpots.RemoveAll(c => DemoWorldSites.HexDistance(spot, c) < TempMinDistance);
+            var atSea = spot.Terrain == DemoTerrain.Water;
+            if (atSea)
+                sea++;
             placed.Add(new DemoCellRef(spot.Column, spot.Row));
             var near = living.OrderBy(s => DemoWorldSites.HexDistance(map.GetCell(s.Column, s.Row), spot)).ThenBy(s => s.Id).First();
             var cellId = DemoLandClearing.CellId(map, new DemoCellRef(spot.Column, spot.Row));
-            var (name, layers) = Describe(rng, year, cellId, names, events.Count); // 同一週出現的第幾個（重算時 Collect 也這樣數）
+            var (name, layers) = Describe(rng, year, cellId, names, events.Count, atSea); // 同一週出現的第幾個（重算時 Collect 也這樣數）
             names.Add(name);
+            var opening = atSea ? "外海的浪底" : spot.Terrain == DemoTerrain.Hills ? "附近的丘陵" : "附近的森林";
             events.Add(new DemoSettlementEvent(week, worldTime, near.Id, near.Name, DemoSettlementEventKind.DungeonAppeared, cellId,
-                $"附近的{(spot.Terrain == DemoTerrain.Hills ? "丘陵" : "森林")}裂開了一道入口：{name}（{layers} 層地下城）出現在 ({spot.Column},{spot.Row})【TEMP】",
+                $"{opening}裂開了一道入口：{name}（{layers} 層地下城）出現在 ({spot.Column},{spot.Row})【TEMP】",
                 EventId: checked(nextEventId + events.Count)));
         }
         return events;
@@ -175,8 +259,10 @@ public static class DemoDungeons
         {
             var year = e.Week / DemoWildlife.TempYearWeeks;
             var slot = known.Count(d => d.AppearedWeek == e.Week); // 第 12-2k 章：同一週出現的第幾個
-            var (name, layers) = Describe(rng, year, e.Count, known.Select(d => d.Name).ToHashSet(), slot);
-            known.Add(new DemoDungeon(DemoLandClearing.CellOf(map, e.Count), name, layers, e.Week, e.EventId, e.SettlementId));
+            var cell = DemoLandClearing.CellOf(map, e.Count);
+            var sea = map.Contains(cell.Column, cell.Row) && map.GetCell(cell.Column, cell.Row).Terrain == DemoTerrain.Water; // 第 08-42 章
+            var (name, layers) = Describe(rng, year, e.Count, known.Select(d => d.Name).ToHashSet(), slot, sea);
+            known.Add(new DemoDungeon(cell, name, layers, e.Week, e.EventId, e.SettlementId));
         }
     }
 

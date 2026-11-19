@@ -53,7 +53,7 @@ public sealed class DemoReplaySaveTests
 
         foreach (var mutate in new Action<JsonNode>[]
         {
-            doc => doc["Version"] = 99,
+            doc => doc["Version"] = 999, // 第 08-42 章：存檔已到第 99 版，改用不可能的版本
             doc => doc["Manifest"]!["Recipe"]!["WorldSeed"] = 99UL,
             doc => doc["Manifest"]!["Recipe"]!["HistorySeedInput"] = 5UL,
             doc => doc["Manifest"]!["Recipe"]!["RulesVersion"] = "RULES-X",

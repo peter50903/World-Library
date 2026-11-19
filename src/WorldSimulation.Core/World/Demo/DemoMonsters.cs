@@ -13,6 +13,9 @@ public sealed record DemoMonsterNest(DemoDungeon Dungeon, int Monsters, bool Dor
 
     public IReadOnlyList<DemoCellRef> Cells { get; init; } = Array.Empty<DemoCellRef>();
 
+    /// <summary>第 08-42 章：海上地下城（在外海或小島上）——怪物在海上擴張、移動，只能靠海戰討伐。</summary>
+    public bool AtSea { get; init; }
+
     public int Radius => Monsters <= 0 ? 0
         : Cells.Count > 0 ? Cells.Max(c => DemoHexWorld.Distance(c, Dungeon.Cell)) : DemoMonsters.Radius(Monsters);
 
@@ -99,33 +102,48 @@ public static class DemoMonsters
     /// <summary>【TEMP】第 12-2a 節：每隻怪物佔幾格、離地下城最遠幾格；離範圍幾格內的聚落會被襲擊。</summary>
     public const int TempCellsPerMonster = 1, TempMaxReach = 4, TempRaidReach = 1;
 
+    /// <summary>【TEMP】第 08-42 章：海上的怪物在海上自由移動——每隻佔 2 格、最遠到 6 格（只佔海與自己的小島，不上大陸）。</summary>
+    public const int TempSeaCellsPerMonster = 2, TempSeaMaxReach = 6;
+
     /// <summary>
     /// 第 12-2a 節（使用者 2026-11-08：地下城的勢力範圍只限怪物出去後移動、控制的範圍；範圍內不可以有人類居住，除非被討伐完畢）：
     /// 怪物佔據的格——從地下城所在格開始，往外（八方向）一格一格佔：離地下城近的先、同距離依列、欄排序；
     /// 不進水、不進人類的勢力範圍（<paramref name="human"/>）、離地下城最多 <see cref="TempMaxReach"/> 格；
     /// 佔的格數＝怪物數×<see cref="TempCellsPerMonster"/>。被人類圍住時範圍就小。沒有怪物＝空。
     /// </summary>
-    public static IReadOnlyList<DemoCellRef> Claim(DemoHexWorld map, DemoCellRef dungeon, int monsters, Func<DemoCellRef, bool> human)
+    /// <remarks>第 08-42 章：<paramref name="atSea"/>＝海上地下城——改成佔海（與地下城所在的小島），每隻 <see cref="TempSeaCellsPerMonster"/> 格、
+    /// 最遠 <see cref="TempSeaMaxReach"/> 格。</remarks>
+    public static IReadOnlyList<DemoCellRef> Claim(DemoHexWorld map, DemoCellRef dungeon, int monsters, Func<DemoCellRef, bool> human, bool atSea = false)
     {
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(human);
         var cells = new List<DemoCellRef>();
         if (monsters <= 0 || !map.Contains(dungeon.Column, dungeon.Row))
             return cells;
-        var want = monsters * TempCellsPerMonster;
+        var want = monsters * (atSea ? TempSeaCellsPerMonster : TempCellsPerMonster);
+        var reach = atSea ? TempSeaMaxReach : TempMaxReach;
+        var island = atSea ? DemoDungeons.Island(map, dungeon, DemoDungeons.TempSeaIslandCells) : null;
+        bool Open(DemoCellRef n)
+        {
+            var cell = map.GetCell(n.Column, n.Row);
+            return island is null ? cell.Terrain != DemoTerrain.Water : (cell.Terrain == DemoTerrain.Water && cell.Sea) || island.Contains(n);
+        }
         var seen = new HashSet<DemoCellRef> { dungeon };
         var frontier = new List<DemoCellRef> { dungeon };
         while (frontier.Count > 0 && cells.Count < want)
         {
-            var next = frontier.OrderBy(c => DemoHexWorld.Distance(c, dungeon)).ThenBy(c => c.Row).ThenBy(c => c.Column).First();
+            // 第 08-42 章：海上的怪物照直線距離往外佔（一片圓形的海，不是方塊）。
+            var next = frontier.OrderBy(c => atSea ? (c.Column - dungeon.Column) * (c.Column - dungeon.Column) + (c.Row - dungeon.Row) * (c.Row - dungeon.Row)
+                    : DemoHexWorld.Distance(c, dungeon))
+                .ThenBy(c => c.Row).ThenBy(c => c.Column).First();
             frontier.Remove(next);
             cells.Add(next);
             for (var dr = -1; dr <= 1; dr++)
                 for (var dc = -1; dc <= 1; dc++)
                 {
                     var n = new DemoCellRef(next.Column + dc, next.Row + dr);
-                    if (!map.Contains(n.Column, n.Row) || !seen.Add(n) || DemoHexWorld.Distance(n, dungeon) > TempMaxReach
-                        || map.GetCell(n.Column, n.Row).Terrain == DemoTerrain.Water || human(n))
+                    if (!map.Contains(n.Column, n.Row) || !seen.Add(n) || DemoHexWorld.Distance(n, dungeon) > reach
+                        || !Open(n) || human(n))
                         continue;
                     frontier.Add(n);
                 }
@@ -246,7 +264,8 @@ public static class DemoMonsters
         Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null, // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
         int lastStand = TempSwarmLastStand, // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
         Func<int, DemoDefense>? defense = null, // 第 08-34 章：城牆、塔樓（沒給＝沒有）
-        Func<int, int>? healPercent = null) // 第 08-37 章：診療所、醫院讓怪物害死的人少幾 %
+        Func<int, int>? healPercent = null, // 第 08-37 章：診療所、醫院讓怪物害死的人少幾 %
+        Func<int, bool>? sails = null) // 第 08-42 章：出得了海的聚落（有港口，或靠海又會造船）；沒給＝沒有人出得了海
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
@@ -291,13 +310,17 @@ public static class DemoMonsters
             }
             var left = monsters;
             var level = DemoCombat.MonsterLevel(nest.Dungeon);
+            // 第 08-42 章：海上的怪物只打得到沿岸的聚落，也只有出得了海的聚落討伐得到（海戰）。
+            var sea = nest.AtSea;
+            bool Reachable(DemoSettlement s) => !sea || Coastal(map, s);
+            var beast = sea ? "海怪" : "怪物";
             // 第 12-2b、12-2c 節：沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限。
             int Room(DemoCombatForce f) => DemoCombat.CanClear(f, level) ? left : Math.Max(0, left - SuppressFloor(nest.Dungeon));
             // 第 12-2h 章：獸潮——滿員的地下城全軍出擊；這一週不再另外襲擊或被討伐。
             if (monsters >= Cap(nest.Dungeon) && nest.Dungeon.Layers >= TempSwarmMinLayers // 第 12-2j 章：淺洞窟不爆獸潮
                 && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
             {
-                var prey = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach)
+                var prey = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach && Reachable(s))
                     .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
                 if (prey is not null)
                 {
@@ -315,22 +338,23 @@ public static class DemoMonsters
                     var deaths = broken ? people : Healed(Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100)), prey.Id);
                     var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
                     left -= slain + spent;
+                    var swarm = sea ? "海怪潮" : "獸潮";
                     strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
-                        ? $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）攻破了{prey.Name}，全村覆滅"
-                        : $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}死守，擊殺 {slain} 隻")
+                        ? $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）攻破了{prey.Name}，全村覆滅"
+                        : $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}死守，擊殺 {slain} 隻")
                     {
                         Annihilate = broken
                     };
                     kills.Add((prey.Id, nest.CellId, slain + spent, broken
-                        ? $"{nest.Dungeon.Name}的獸潮攻破{prey.Name}，怪物折損 {slain + spent} 隻（剩 {left} 隻）"
-                        : $"擊退{nest.Dungeon.Name}的獸潮，殺死 {slain} 隻、另有 {spent} 隻耗損（剩 {left} 隻）"));
+                        ? $"{nest.Dungeon.Name}的{swarm}攻破{prey.Name}，{beast}折損 {slain + spent} 隻（剩 {left} 隻）"
+                        : $"擊退{nest.Dungeon.Name}的{swarm}，殺死 {slain} 隻、另有 {spent} 隻耗損（剩 {left} 隻）"));
                     if (left <= 0)
                         cleared.Add(nest);
                     continue;
                 }
             }
             // 襲擊：離範圍一格內最近的有人聚落；約一半的怪物出擊，全村（戰鬥與非戰鬥人員）守村。
-            var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach)
+            var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach && Reachable(s))
                 .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
             if (target is not null && (int)(Draw(rng, week, slot, 0) % 100UL) < Math.Min(TempMaxRaidPercent, monsters * TempRaidPercentPerMonster))
             {
@@ -342,14 +366,17 @@ public static class DemoMonsters
                 var deaths = Healed(Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * deathPercent / 100)),
                     Math.Max(0L, residents(target.Id) - 1)), target.Id); // 第 12-2g 節：一次襲擊最多死一成
                 left -= slain;
+                var seaward = sea ? "從海上" : "";
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
-                    slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}擊殺 {slain} 隻"
-                        : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能{(walls.Wall is null ? "守住村子" : "據城牆死守")}");
-                kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
+                    slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級{beast}{seaward}來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}擊殺 {slain} 隻"
+                        : $"{nest.Dungeon.Name}的 {level} 級{beast}{seaward}來襲，{Defenders(guard)}只能{(walls.Wall is null ? "守住村子" : "據城牆死守")}");
+                kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的{beast}，殺死 {slain} 隻（剩 {left} 隻）"));
             }
             // 討伐：有士兵的遠征軍（勢力的士兵）走到離範圍 TempSoldierHuntReach 格內、戰力高的先；
             // 沒有士兵時，離範圍 TempHuntReach 格內人多的聚落組民兵（第 12-2e 節）。
+            // 第 08-42 章：海上的怪物只能靠海戰——出得了海的聚落派船隊。
             var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
+                    && (!sea || sails?.Invoke(s.Id) == true)
                     && residents(s.Id) >= TempHuntMinResidents
                     && Distance(s) <= (expedition(s.Id).Fighters > 0 ? TempSoldierHuntReach : TempHuntReach)
                     && (expedition(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
@@ -363,9 +390,11 @@ public static class DemoMonsters
                 var deaths = Math.Min(party.Fighters > 0 ? fallen : Math.Min(fallen, residents(hunter.Id) * TempMilitiaDeathPercent / 100),
                     Math.Max(0L, residents(hunter.Id) - 1)); // 第 12-2g 節：民兵見勢不對就撤
                 left -= slain;
-                strikes[hunter.Id] = new DemoDisasterStrike(hunter.Id, DemoSettlementEventKind.MonsterHunt, deaths,
-                    $"派{Party(party)}討伐{nest.Dungeon.Name}的 {level} 級怪物，殺死 {slain} 隻");
-                kills.Add((hunter.Id, nest.CellId, slain, $"討伐{nest.Dungeon.Name}，殺死 {slain} 隻怪物（剩 {left} 隻）"));
+                strikes[hunter.Id] = new DemoDisasterStrike(hunter.Id, DemoSettlementEventKind.MonsterHunt, deaths, sea
+                    ? $"派{Party(party)}的船隊出海，與{nest.Dungeon.Name}的 {level} 級海怪海戰，擊沉 {slain} 隻"
+                    : $"派{Party(party)}討伐{nest.Dungeon.Name}的 {level} 級怪物，殺死 {slain} 隻");
+                kills.Add((hunter.Id, nest.CellId, slain, sea ? $"海戰：擊沉{nest.Dungeon.Name}的海怪 {slain} 隻（剩 {left} 隻）"
+                    : $"討伐{nest.Dungeon.Name}，殺死 {slain} 隻怪物（剩 {left} 隻）"));
             }
             if (left <= 0)
                 cleared.Add(nest); // 第 12-2c 節：只有等級不低於怪物的戰鬥人員殺得光
@@ -374,6 +403,19 @@ public static class DemoMonsters
     }
 
     private static string Defenders(DemoCombatForce f) => f.Fighters > 0 ? $"{Party(f)}帶著村民" : "村民";
+
+    /// <summary>第 08-42 章：聚落靠海（周圍一格內有海）。</summary>
+    public static bool Coastal(DemoHexWorld map, DemoSettlement s)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(s);
+        for (var dr = -1; dr <= 1; dr++)
+            for (var dc = -1; dc <= 1; dc++)
+                if ((dr != 0 || dc != 0) && map.Contains(s.Column + dc, s.Row + dr)
+                    && map.GetCell(s.Column + dc, s.Row + dr) is { Terrain: DemoTerrain.Water, Sea: true })
+                    return true;
+        return false;
+    }
 
     private static string Party(DemoCombatForce f)
     {

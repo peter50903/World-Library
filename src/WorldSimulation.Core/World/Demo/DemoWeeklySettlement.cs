@@ -761,6 +761,7 @@ internal static class DemoWeeklySettlement
         Func<int, int?>? liegeOf = null,
         Func<int, bool>? isMarket = null, // 第 08-23 章：市集（城鎮以上、會以物易物或貨幣）
         Func<int, bool>? barters = null, // 第 08-23 章：會以物易物的聚落才賣糧
+        Func<int, IEnumerable<(int Market, int Distance)>>? seaMarkets = null, // 第 08-42 章：海運（經港口與暢通的航線賣到對岸的市集）
         Func<int, int>? spoilageCutPercent = null) // 第 08-37 章：糧倉讓存糧腐敗少幾 %
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
@@ -1374,7 +1375,7 @@ internal static class DemoWeeklySettlement
             DemoFoodTax.Collect(ledgers, nextFood, liegeOf, config.FoodPerPersonPerWeek);
         // 第 08-23 章（使用者 2026-11-18：理想的情況是一個小鎮主要的糧食由多個村莊提供、販賣）：糧稅之後，村莊把餘糧賣給附近的市集。
         if (isMarket is not null && barters is not null && map is not null)
-            DemoFoodTrade.Trade(ledgers, nextFood, weekSites, isMarket, barters, config.FoodPerPersonPerWeek);
+            DemoFoodTrade.Trade(ledgers, nextFood, weekSites, isMarket, barters, config.FoodPerPersonPerWeek, seaMarkets);
 
         // 第 07 章 c 節：人口連續為 0 滿 TEMP 週數的聚落成為遺跡（仍有隊伍正前往時延後）。
         var ruinRule = DemoSettlementTempSettings.Current;
