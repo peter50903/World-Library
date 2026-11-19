@@ -76,13 +76,19 @@ public sealed class DemoBuildingHistoryTests
     [Fact]
     public void RealWorldsRecordTheirLandmarksInHistory()
     {
-        // 中地圖四十年：有聚落建成重要建築，事件、聚落小史與世界編年史都看得到，因果合法。
+        // 中地圖跑到第一座重要建築蓋好為止（中地圖四十年多半還沒有；最多一百年）：
+        // 它有「建成」事件，聚落小史與世界編年史都看得到，因果合法。
         var world = new DemoObserverWorld(WorldRecipe.ForSeeds(1, null, DemoMapSize.Medium), DemoWeeklyTempConfig.LivingForagingSample);
-        for (var d = 0; d < 40 * TestCalendar.DaysPerYear; d++)
-            world.AdvanceOneDay();
-        var built = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.BuildingCompleted).ToList();
-        Assert.NotEmpty(built);
-        var first = built[0];
+        DemoBuilding? landmark = null;
+        for (var year = 0; year < 100 && landmark is null; year++)
+        {
+            for (var d = 0; d < TestCalendar.DaysPerYear; d++)
+                world.AdvanceOneDay();
+            landmark = world.Buildings.Holdings.SelectMany(h => h.Buildings)
+                .FirstOrDefault(b => DemoBuildings.IsLandmark(b.DefId) && b.Status == DemoBuildingStatus.Standing);
+        }
+        Assert.NotNull(landmark);
+        var first = Assert.Single(world.SettlementEvents(), e => e.Kind == DemoSettlementEventKind.BuildingCompleted && e.Count == landmark!.Id);
         Assert.Contains(world.ChronicleOf(first.SettlementId).Milestones, l => l.Text == first.Cause);
         Assert.Contains(DemoWorldChronicle.Build(world).SelectMany(y => y.Entries), x => x.Category == DemoChronicleCategory.Building);
         Assert.Empty(world.BuildCausalIndex().Problems);
