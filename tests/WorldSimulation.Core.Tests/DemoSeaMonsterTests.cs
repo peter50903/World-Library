@@ -73,7 +73,8 @@ public sealed class DemoSeaMonsterTests
         Assert.Equal(1, DemoHexWorld.Distance(to, lane.Path[^1]));
         for (var i = 1; i < lane.Path.Count; i++)
             Assert.Equal(1, DemoHexWorld.Distance(lane.Path[i - 1], lane.Path[i]));
-        Assert.Equal(DemoSeaLanes.Build(map, ports, Array.Empty<DemoMonsterNest>()), DemoSeaLanes.Build(map, ports, Array.Empty<DemoMonsterNest>()));
+        static string Key(DemoSeaLane l) => $"{l.From}-{l.To}:" + string.Join(";", l.Path.Select(c => $"{c.Column},{c.Row}"));
+        Assert.Equal(DemoSeaLanes.Build(map, ports, Array.Empty<DemoMonsterNest>()).Select(Key), DemoSeaLanes.Build(map, ports, Array.Empty<DemoMonsterNest>()).Select(Key));
 
         // 海上怪物佔了航線中間的一格：封鎖；陸地的、沉寂的地下城不擋。
         var mid = lane.Path[lane.Path.Count / 2];

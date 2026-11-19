@@ -132,7 +132,7 @@ public sealed class DemoSaveManifestTests
                 manifest["RulesVersion"] = "TEMP-RULES-9";
                 manifest["Recipe"]!["RulesVersion"] = "TEMP-RULES-9";
             }),
-            "structure-version" => Edit(() => manifest["StructureVersion"] = 99),
+            "structure-version" => Edit(() => manifest["StructureVersion"] = 999),
             "previous-version" => Edit(() => doc["Version"] = DemoObserverWorld.TempSaveVersion - 1),
             "world-time" => Edit(() => manifest["WorldTimeTicks"] = manifest["WorldTimeTicks"]!.GetValue<long>() + 1),
             "manifest-recipe-mismatch" => Edit(() => manifest["CodeVersion"] = "different"),
