@@ -1398,6 +1398,39 @@ public partial class ObserverRoot : Control
     /// 第 09-3 章：推進幾天後的畫面更新。世界的狀態（聚落、事件、文化、勢力…）只在每週結算時改變，
     /// 同一週裡只更新日期、時間控制與遷徙隊伍的週內位置，不重建清單、字典與文字（量測：完整更新約 35 毫秒、配置 3.4 MB）。
     /// </summary>
+    /// <summary>【TEMP】第 08-39 章：播放中詳情最多多久重建一次（毫秒）。</summary>
+    private const double TempDetailRefreshMs = 2000;
+
+    private readonly System.Diagnostics.Stopwatch _detailRebuilt = System.Diagnostics.Stopwatch.StartNew();
+
+    /// <summary>
+    /// 第 08-39 章：播放中要不要先別重建詳情——滑鼠在詳情面板上（正在看、正在點），或離上次重建不到 <see cref="TempDetailRefreshMs"/> 毫秒。
+    /// CI 冒煙（不節流）時一律照舊重建。
+    /// </summary>
+    private bool DetailBusy() => Busy(_detailPanel, _detailRebuilt);
+
+    /// <summary>第 08-39 章：領地大圖也一樣（滑鼠在視窗上、或剛更新過就先不重建卡片）。</summary>
+    private bool HoldingBusy() => Busy(_modalPanel, _holdingRebuilt);
+
+    private readonly System.Diagnostics.Stopwatch _holdingRebuilt = System.Diagnostics.Stopwatch.StartNew();
+
+    private bool Busy(Control panel, System.Diagnostics.Stopwatch since)
+    {
+        if (!RealtimeThrottle || !_playback.Playing)
+            return false;
+        if (panel.IsVisibleInTree() && panel.GetGlobalRect().HasPoint(GetViewport().GetMousePosition()))
+            return true;
+        return since.Elapsed.TotalMilliseconds < TempDetailRefreshMs;
+    }
+
+    /// <summary>第 08-39 章：重建後回到原本的捲動位置（新分頁排好版之後才設得進去）。</summary>
+    private async void RestoreScroll(ScrollContainer scroll, int value)
+    {
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (IsInstanceValid(scroll))
+            scroll.ScrollVertical = value;
+    }
+
     private void RefreshAfterDays()
     {
         if (!ReferenceEquals(_refreshedWeek.World, _world) || _refreshedWeek.Week != _world.CommittedWeeks)
@@ -1428,16 +1461,21 @@ public partial class ObserverRoot : Control
             _refreshPartWatch.Restart();
         var snapshot = _world.Snapshot();
         // 第 08-11 章：詳情開著時每週結算後更新一次（不在每幀重建分頁）。
+        // 第 08-39 章（試玩回饋 2026-11-19 之 3：快轉時詳情不能用）：播放中滑鼠在詳情上（正在看、正在點）就先不重建，
+        // 其他時候最多每 TempDetailRefreshMs 毫秒重建一次；重建後捲動位置不變。暫停時照舊立刻更新。
         if (_detailOpen && !_detailFixed && _detailCell is { } open && open.Column < _world.Map.Columns && open.Row < _world.Map.Rows
-            && _world.LatestWeek?.Week is { } week && week != _detailWeek)
+            && _world.LatestWeek?.Week is { } week && week != _detailWeek && !DetailBusy())
         {
             _detailWeek = week;
+            var scrolled = (_detailTabs.GetCurrentTabControl() as ScrollContainer)?.ScrollVertical ?? 0;
             if (_detailRealm is { } realm)
                 ShowRealmDetail(realm); // 試玩回饋 2026-11-07 之 4
             else if (_detailBelief is { } belief)
                 ShowBeliefDetail(belief.Faith, belief.Id); // 第 08-16 章第 15 節
             else
                 ShowDetailAt(open.Column, open.Row);
+            if (scrolled > 0 && _detailTabs.GetCurrentTabControl() is ScrollContainer again)
+                RestoreScroll(again, scrolled);
         }
         RefreshHoldingIfOpen(); // 第 08-33 章：領地大圖開著時每週更新
         _status.Text =

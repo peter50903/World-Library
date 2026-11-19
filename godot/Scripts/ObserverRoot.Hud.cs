@@ -627,6 +627,7 @@ public partial class ObserverRoot
 
     private void RenderDetail(DemoPlayerDetail detail, List<DemoDetailTab> tabs, int keep)
     {
+        _detailRebuilt.Restart(); // 第 08-39 章：快轉時隔一陣子才再重建
         foreach (var child in _detailTabs.GetChildren())
         {
             _detailTabs.RemoveChild(child);

@@ -26,6 +26,10 @@ public partial class ObserverRoot
         _letters = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
         _letters.AddThemeConstantOverride("separation", 4);
         _hud.AddChild(_letters);
+        // 第 08-39 章（試玩回饋 2026-11-19 之 5：右上角的通知擋住視窗的關閉鈕）：通知放在疊加視窗底下——
+        // 視窗打開時被遮罩蓋住（變暗、點不到），不會擋住視窗右上角的 ✕。
+        if (_modalBackdrop is not null)
+            _hud.MoveChild(_letters, _modalBackdrop.GetIndex());
         ResetLetters();
     }
 
