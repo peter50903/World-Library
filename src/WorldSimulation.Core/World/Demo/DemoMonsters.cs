@@ -132,7 +132,10 @@ public static class DemoMonsters
         var frontier = new List<DemoCellRef> { dungeon };
         while (frontier.Count > 0 && cells.Count < want)
         {
-            var next = frontier.OrderBy(c => DemoHexWorld.Distance(c, dungeon)).ThenBy(c => c.Row).ThenBy(c => c.Column).First();
+            // 第 08-42 章：海上的怪物照直線距離往外佔（一片圓形的海，不是方塊）。
+            var next = frontier.OrderBy(c => atSea ? (c.Column - dungeon.Column) * (c.Column - dungeon.Column) + (c.Row - dungeon.Row) * (c.Row - dungeon.Row)
+                    : DemoHexWorld.Distance(c, dungeon))
+                .ThenBy(c => c.Row).ThenBy(c => c.Column).First();
             frontier.Remove(next);
             cells.Add(next);
             for (var dr = -1; dr <= 1; dr++)
