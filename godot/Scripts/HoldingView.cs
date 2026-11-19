@@ -27,6 +27,11 @@ public partial class HoldingView : Control
     /// <summary>縮圖被點了（打開大圖）。</summary>
     public event Action? Opened;
 
+    /// <summary>Godot 重新載入腳本時需要無參數建構子。</summary>
+    public HoldingView() : this(false)
+    {
+    }
+
     public HoldingView(bool thumbnail)
     {
         _thumbnail = thumbnail;
