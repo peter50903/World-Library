@@ -639,21 +639,23 @@ public partial class ObserverRoot : Control
             }
             GD.Print($"WORLD_SIM_CONFIG_OK: Sheets={config.SheetCount} Hash16={config.ConfigHash[..16]}");
 
-            // Godot runs the same input handler used by real mouse clicks;
-            // selected terrain must be from Core's immutable demo cell.
+            // Godot runs the same input handler used by real mouse clicks.
+            // 第 08-31 章（使用者 2026-11-19：取消選擇地塊）：點空地只會選到那一片勢力範圍的聚落，不在範圍內就不選——不會出現地塊。
             var cell = _world.Map.GetCell(2, 2);
+            var infoBefore = _cellInfo.Text;
             _hexMap._GuiInput(new InputEventMouseButton
             {
                 ButtonIndex = MouseButton.Left,
                 Pressed = true,
                 Position = _hexMap.CellCenter(cell)
             });
-            if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal)
-                || !_cellInfo.Text.Contains(DemoCellQuery.TerrainName(cell), StringComparison.Ordinal))
+            var siteHere = _world.Sites.Settlements.Any(s => s.Column == cell.Column && s.Row == cell.Row);
+            if (!siteHere && _cellInfo.Text != infoBefore
+                && (_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal) || !_cellInfo.Text.Contains("目前人口：", StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Godot selection did not display Core's actual TEMP terrain data.");
+                throw new InvalidOperationException("第 08-31 章：點空地選到了地塊（只能選到勢力範圍的聚落，或不選）。");
             }
-            GD.Print($"WORLD_SIM_HEX_CLICK_OK: Col={cell.Column} Row={cell.Row}");
+            GD.Print($"WORLD_SIM_HEX_CLICK_OK: Col={cell.Column} Row={cell.Row} Tile=0");
 
             // V0-03B: clicking a settlement's cell shows Core's TEMP settlement,
             // resource point and population group.
