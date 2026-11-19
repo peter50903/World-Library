@@ -291,6 +291,18 @@ public sealed partial class DemoObserverWorld
         if (!land.FarmlandCells().ToHashSet().SetEquals(FarmlandBefore(int.MaxValue)))
             Reject("農田與開墾完成、荒廢事件不一致");
         candidate._land = land;
+        // 第 08-32 章：建築——聚落存在、依編號排序、建築編號不重複且小於下一個編號、在建築表裡、耐久度與進度合法、庫存不為負。
+        var buildings = state.TryGetProperty("Buildings", out var bd) && bd.ValueKind == JsonValueKind.Object
+            ? bd.Deserialize<DemoBuildingsState>() ?? DemoBuildingsState.Empty : DemoBuildingsState.Empty;
+        if (buildings.Holdings is null || buildings.Holdings.Any(h => h?.Buildings is null)
+            || buildings.Holdings.Zip(buildings.Holdings.Skip(1)).Any(p => p.Second.SettlementId <= p.First.SettlementId)
+            || buildings.Holdings.Any(h => sites.Settlements.All(s => s.Id != h.SettlementId)
+                || h.Dwellings < 0 || h.LargeDwellings < 0 || h.RuinedDwellings < 0 || h.DwellingProgress < 0 || h.Wood < 0 || h.Stone < 0 || h.Iron < 0
+                || h.Buildings.Any(b => b is null || b.DefId is null || !DemoBuildingCatalog.Contains(b.DefId) || b.Id <= 0 || b.Id >= buildings.NextBuildingId
+                    || b.Durability is < 0 or > 1000 || b.Progress < 0 || b.SinceWeek < 0 || b.SinceWeek > weekCount || !Enum.IsDefined(b.Status)))
+            || buildings.Holdings.SelectMany(h => h.Buildings).GroupBy(b => b.Id).Any(g => g.Count() > 1))
+            Reject("建築狀態不合法");
+        candidate._buildings = buildings with { Holdings = buildings.Holdings.Select(h => h with { Buildings = h.Buildings.ToArray() }).ToArray() };
         candidate._reserves = reserves.ToImmutableSortedDictionary();
         candidate._settlementFood = food.ToImmutableSortedDictionary();
         candidate._population = population.ToImmutableSortedDictionary();

@@ -74,6 +74,7 @@ public sealed partial class DemoObserverWorld
         private DemoKnowledgeState _knowledge; // 第 08-6 章：知識樹與時代
         private DemoCultureState _culture; // 第 08-8 章 B1：文化
         private DemoWildlifeState _wildlife; // 第 12-1 章 C1：野生動物
+        private DemoBuildingsState _buildings; // 第 08-32 章：正式建築
         private DemoLandDevelopmentMap _land; // 第 08-6 章 c 節：開墾
         private ImmutableSortedDictionary<long, DemoPersonRecord> _people; // 第 14-1 章第 7 項：人物登記表
         private IReadOnlyDictionary<long, IReadOnlyList<long>>? _participants;
@@ -100,6 +101,7 @@ public sealed partial class DemoObserverWorld
             _knowledge = world._knowledge;
             _culture = world._culture;
             _wildlife = world._wildlife;
+            _buildings = world._buildings;
             _land = world._land;
             _people = world._people;
         }
@@ -240,7 +242,7 @@ public sealed partial class DemoObserverWorld
         }
 
         /// <summary>第 08-8 章 B1：生死與遷徙之後的文化（只在結算週、歷史步驟之前）。</summary>
-        public void StageCulture(DemoCultureState culture, DemoWildlifeState? wildlife = null)
+        public void StageCulture(DemoCultureState culture, DemoWildlifeState? wildlife = null, DemoBuildingsState? buildings = null)
         {
             ArgumentNullException.ThrowIfNull(culture);
             RequireWeekly(nameof(StageCulture));
@@ -248,6 +250,7 @@ public sealed partial class DemoObserverWorld
                 throw new InvalidOperationException($"提交順序錯誤：{nameof(StageCulture)} 必須在生死之後、歷史之前呼叫（目前 {_step}）。");
             _culture = culture;
             _wildlife = wildlife ?? _wildlife; // 第 12-1 章 C1：野生動物與文化同一步暫存
+            _buildings = buildings ?? _buildings; // 第 08-32 章：建築也在這一步暫存
         }
 
         /// <summary>週結算結果（<see cref="StagePopulation"/> 之後為生死後結果）；給世界組裝週報。</summary>
@@ -284,6 +287,7 @@ public sealed partial class DemoObserverWorld
             world._knowledge = _knowledge;
             world._culture = _culture;
             world._wildlife = _wildlife;
+            world._buildings = _buildings;
             world._land = _land;
             world._people = _people;
             PublishedWeek = SettlesWeek ? _weeks[^1] : null;
