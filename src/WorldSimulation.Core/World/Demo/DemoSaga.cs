@@ -363,6 +363,9 @@ public static class DemoSaga
             return false;
         if (entry.IsWorld || entry.Category == DemoChronicleCategory.Ruin)
             return true;
+        // 第 08-35 章：城牆、城堡被獸潮攻破也寫（人類與怪物一來一往）。
+        if (entry.Category == DemoChronicleCategory.Building && entry.Text.Contains("被獸潮攻破", StringComparison.Ordinal))
+            return true;
         // 第 12-2i 章：在遺跡上重建（人類收復失去的土地）也寫——和「淪為遺跡」一來一往。
         if (entry.Category == DemoChronicleCategory.Founding && entry.Text.Contains(DemoWorldChronicle.RebuiltMarker.Trim(), StringComparison.Ordinal))
             return true;

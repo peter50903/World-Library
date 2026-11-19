@@ -1014,6 +1014,12 @@ public sealed partial class DemoObserverWorld
                 // 第 08-32 章：正式建築——本週的破壞（怪物、戰爭、天災、成為遺跡）與施工（接在最後；只讀本週結果）。
                 var buildings = DemoBuildings.Advance(_buildings, BuildingWeek(withKnowledge.Report, lifecycle.Outcome.Sites, lifecycle.Population,
                     knowledge, land, CombatForces(nestsNow)));
+                // 第 08-35 章：建設大事（重要建築建成、毀損）接在本週事件最後。
+                var milestones = DemoBuildings.Milestones(_buildings, buildings, report.Week, report.WorldTime, lifecycle.Outcome.Sites.Settlements,
+                    id => ChronicleOf(id).Tier, withKnowledge.Report.Events,
+                    withKnowledge.Report.Events.Count == 0 ? nextId : checked(withKnowledge.Report.Events[^1].EventId + 1));
+                if (milestones.Count > 0)
+                    withKnowledge = withKnowledge with { Report = withKnowledge.Report with { Events = withKnowledge.Report.Events.Concat(milestones).ToArray() } };
                 DemoPerf.Mark("建築");
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);

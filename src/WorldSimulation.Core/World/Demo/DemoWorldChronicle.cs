@@ -25,7 +25,10 @@ public enum DemoChronicleCategory
     Faith = 12,
     Wilds = 13,
     Disaster = 14,
-    Realm = 15
+    Realm = 15,
+
+    /// <summary>第 08-35 章：建設（重要建築建成、毀損）。</summary>
+    Building = 16
 }
 
 /// <summary>條目文字的一段；<see cref="SettlementId"/>＞0 的段落是可點擊的聚落名稱（參考 CK3 名稱底線）。</summary>
@@ -81,6 +84,12 @@ public static class DemoWorldChronicle
     public const int TempFoldAfterYears = 10;
 
     /// <summary>【TEMP】第 08-10d 章：世界大事的輕重（時代＞征服、獨立、篡位＞開戰、內戰＞世界第一個某級聚落＞城鎮以上淪為遺跡＞信仰與文化＞世界首次的技術）。</summary>
+    /// <summary>第 08-35 章：世上第一座就是世界大事的建築（事件原因的寫法）。</summary>
+    public static readonly IReadOnlySet<string> WorldFirstBuildings = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "建成城堡", "建成石牆", "建成高等學院", "建成魔法學院", "建成國家銀行"
+    };
+
     public const int WeightEra = 100, WeightConquest = 90, WeightWar = 80, WeightFirstTier = 70, WeightRuin = 60, WeightBelief = 50, WeightKnowledge = 40;
 
     /// <summary>第 12-2i 章：在遺跡上重建的那一句（史書用它認出「收復」）。</summary>
@@ -111,6 +120,7 @@ public static class DemoWorldChronicle
         var events = world.SettlementEvents();
         var byId = events.Where(e => e.EventId > 0).GroupBy(e => e.EventId).ToDictionary(g => g.Key, g => g.First()); // 第 08-16 章：因果故事
         var knownTechs = new HashSet<DemoTechnology>();
+        var firstBuilt = new HashSet<string>(StringComparer.Ordinal); // 第 08-35 章：世上第一座
         var eraStarts = new Dictionary<int, DemoEra>();
         foreach (var e in events.OrderBy(e => e.Week).ThenBy(e => e.EventId))
         {
@@ -162,6 +172,19 @@ public static class DemoWorldChronicle
                     break;
                 case DemoSettlementEventKind.FaithExtinct:
                     AddWorld(e.Week, WeightBelief, DemoChronicleCategory.Faith, e.EventId, T(DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.BuildingCompleted:
+                    // 第 08-35 章：重要建築建成是各地大事；世上第一座城堡、石牆、高等學院、魔法學院、國家銀行是世界大事。
+                    if (WorldFirstBuildings.Contains(e.Cause) && firstBuilt.Add(e.Cause))
+                        AddWorld(e.Week, WeightKnowledge, DemoChronicleCategory.Building, e.EventId,
+                            Name(e.SettlementId), T($" {DemoPlayerDetail.Clean(e.Cause)}（世上第一座）"));
+                    else
+                        Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Building, e.EventId,
+                            Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                    break;
+                case DemoSettlementEventKind.BuildingRuined:
+                    Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Building, e.EventId,
+                        Name(e.SettlementId), T(" 的" + DemoPlayerDetail.Clean(e.Cause)));
                     break;
                 case DemoSettlementEventKind.FaithConverted: // 第 08-22g 章：改宗是各地大事
                     Add(e.Week, DemoChronicleLevel.Major, DemoChronicleCategory.Faith, e.EventId,

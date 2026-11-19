@@ -411,6 +411,13 @@ public sealed class DemoCausalIndex
                 return parent is { Kind: DemoSettlementEventKind.MiningBegan } && e.Week == parent.Week + DemoEnvironment.TempMiningWeeks
                     && e.Count == parent.Count
                     ? null : "礦脈挖空的直接原因必須是同一格三十年前的開始採礦";
+            case DemoSettlementEventKind.BuildingCompleted:
+                // 第 08-35 章：根因；人數欄＝建築編號。
+                return parent is null && e.Count > 0 ? null : "建成是根因，事件人數欄必須是建築編號";
+            case DemoSettlementEventKind.BuildingRuined:
+                // 第 08-35 章：直接原因＝同週同聚落打壞它的事件（怪物、戰爭、天災；沒有時是根因）。
+                return e.Count > 0 && (parent is null || parent.Week == e.Week && parent.SettlementId == e.SettlementId && DemoBuildings.IsDamaging(parent.Kind))
+                    ? null : "建築毀損的直接原因必須是同週同聚落的怪物、戰爭或天災，人數欄必須是建築編號";
 
             default:
                 return "未知的事件種類";
