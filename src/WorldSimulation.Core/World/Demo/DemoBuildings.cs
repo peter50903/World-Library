@@ -365,7 +365,9 @@ public static class DemoBuildings
     {
         var adults = week.Adults(site.Id);
         var builders = adults >= 2 ? Math.Max(1, adults * TempBuilderPercent / 100) : 0;
-        var budget = builders * TempHoursPerBuilder;
+        // 第 08-37 章：建築加成（工坊多做工時；木材場、採石場、礦場採得快；倉庫多備料）——看上一週完好的建築。
+        var bonus = DemoBuildingBonus.Of(h);
+        var budget = builders * TempHoursPerBuilder * (100 + bonus.BuildPercent) / 100;
         if (budget <= 0)
             return h;
         var tier = week.Tier(site.Id);
@@ -376,6 +378,8 @@ public static class DemoBuildings
         var ruinedHouses = h.RuinedDwellings;
         var houseProgress = h.DwellingProgress;
         var nearby = week.Nearby(site);
+        int WoodHours() => Faster(nearby.Forest ? TempWoodHours : TempWoodHoursFar, bonus.FastWood);
+        int StoneHours() => Faster(nearby.Hills ? TempStoneHours : TempStoneHoursFar, bonus.FastStone);
 
         // ① 修理（耐久度最低的先修）。
         var damaged = Enumerable.Range(0, buildings.Count).Where(j => buildings[j].Status == DemoBuildingStatus.Standing && buildings[j].Durability < 1000)
@@ -437,10 +441,10 @@ public static class DemoBuildings
             if (wood < def.Wood || stone < def.Stone || iron < needIron)
             {
                 // 缺料：剩下的人手去採（木、石、鐵依序補到夠），本週不開工。
-                budget = Gather(budget, def.Wood - wood, nearby.Forest ? TempWoodHours : TempWoodHoursFar, ref wood);
-                budget = Gather(budget, def.Stone - stone, nearby.Hills ? TempStoneHours : TempStoneHoursFar, ref stone);
+                budget = Gather(budget, def.Wood - wood, WoodHours(), ref wood);
+                budget = Gather(budget, def.Stone - stone, StoneHours(), ref stone);
                 if (needIron > 0)
-                    Gather(budget, needIron - iron, TempIronHours, ref iron);
+                    Gather(budget, needIron - iron, Faster(TempIronHours, bonus.FastIron), ref iron);
                 break;
             }
             wood -= def.Wood;
@@ -481,15 +485,18 @@ public static class DemoBuildings
         // ④ 沒有要蓋的：閒時備料（木、石各補到等級的上限）。
         if (idle && budget > 0)
         {
-            var cap = TempStockPerTier * ((int)tier + 1);
-            budget = Gather(budget, cap - wood, nearby.Forest ? TempWoodHours : TempWoodHoursFar, ref wood);
-            Gather(budget, cap - stone, nearby.Hills ? TempStoneHours : TempStoneHoursFar, ref stone);
+            var cap = TempStockPerTier * ((int)tier + 1) * (100 + bonus.StockPercent) / 100;
+            budget = Gather(budget, cap - wood, WoodHours(), ref wood);
+            Gather(budget, cap - stone, StoneHours(), ref stone);
         }
 
         var same = buildings.Count == h.Buildings.Count && buildings.Zip(h.Buildings).All(p => ReferenceEquals(p.First, p.Second))
             && (wood, stone, iron, dwellings, large, ruinedHouses, houseProgress) == (h.Wood, h.Stone, h.Iron, h.Dwellings, h.LargeDwellings, h.RuinedDwellings, h.DwellingProgress);
         return same ? h : new DemoHolding(h.SettlementId, buildings.ToArray(), dwellings, large, ruinedHouses, houseProgress, wood, stone, iron);
     }
+
+    /// <summary>第 08-37 章：有木材場、採石場、礦場時採集工時減半（至少 1 小時）。</summary>
+    private static int Faster(int hours, bool fast) => fast ? Math.Max(1, hours / 2) : hours;
 
     /// <summary>第 08-36 章：同一種（城牆木造、石造算同一種；城門也是）。</summary>
     public static bool SameFamily(string a, string b) => Family(a) == Family(b);
