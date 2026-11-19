@@ -585,7 +585,7 @@ public partial class ObserverRoot
     private HFlowContainer _detailTabRow = null!;
 
     /// <summary>【TEMP】分頁按鈕的排列順序（玩家最常看的放前面；沒列到的照原順序排在後面）。</summary>
-    private static readonly string[] TempTabOrder = { "現況", "代表人物", "人物", "人口", "勢力", "概況", "隸屬" };
+    private static readonly string[] TempTabOrder = { "現況", "領地", "代表人物", "人物", "人口", "勢力", "概況", "隸屬" }; // 第 08-33 章：領地排第二
 
     private void BuildTabButtons(IReadOnlyList<string> titles)
     {
@@ -637,7 +637,9 @@ public partial class ObserverRoot
         {
             var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
             Control content;
-            if (tab.Badges.Count > 0)
+            if (tab.HoldingId is { } holdingId && _world.HoldingScene(holdingId) is { } holdingScene)
+                content = HoldingTabContent(holdingScene); // 第 08-33 章：領地圖縮圖＋分區建築列表
+            else if (tab.Badges.Count > 0)
                 content = TechBadgeGrid(tab); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
             else if (tab.Pyramid.Any(b => b.Total > 0))
                 content = PyramidView(tab); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
@@ -1270,6 +1272,7 @@ public partial class ObserverRoot
         var outliner = VerifyOutlinerSmoke(Fail);
 
         var toolbar = VerifyToolbarSmoke(Fail, PressKey);
+        GD.Print($"WORLD_SIM_HOLDING_OK: {VerifyHoldingSmoke(Fail)}"); // 第 08-33 章：領地面板
 
         if (_world.ExportTempSave() != before)
             Fail("HUD operations changed the world.");

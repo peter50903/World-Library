@@ -22,7 +22,7 @@ public sealed class DemoPlayerDetailTests
         foreach (var s in world.Sites.Settlements.Where(s => !s.IsRuin && world.SettlementPopulation(s.Id) > 0)) // 第 12-2h 章：被獸潮攻破的聚落另有頁面
         {
             var detail = world.PlayerDetail(s.Column, s.Row);
-            Assert.Equal(new[] { "現況", "代表人物", "技術", "研究", "歷史", "人口" }, detail.Tabs.Select(t => t.Title));
+            Assert.Equal(new[] { "現況", "代表人物", "技術", "研究", "歷史", "人口", "領地" }, detail.Tabs.Select(t => t.Title)); // 第 08-33 章：領地（介面排第二）
             Assert.Equal(s.Id, detail.SettlementId);
             Assert.StartsWith(s.Name, detail.Title, StringComparison.Ordinal);
             foreach (var word in new[] { "TEMP", "座標", "路線", "實體 ID", "供糧", "資源點" })

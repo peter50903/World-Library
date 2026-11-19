@@ -71,11 +71,27 @@ public static partial class PixelParts
         return null;
     }
 
+    private static readonly Dictionary<string, Image?> Images = new();
+
+    /// <summary>第 08-33 章：零件的像素圖（RGBA8，快取；領地圖烤成一張貼圖用）。缺少時回傳 null。</summary>
+    public static Image? ImageOf(string name)
+    {
+        if (!Images.TryGetValue(name, out var image))
+            Images[name] = image = Pixels(name);
+        return image;
+    }
+
     private static Image? Pixels(string name)
     {
-        if (ArtAssets.Texture(Path(name))?.GetImage() is not { } image)
+        if (ArtAssets.Texture(Path(name))?.GetImage() is not { } source)
             return null;
-        image = (Image)image.Duplicate();
+        if (source.IsEmpty())
+        {
+            source.Dispose();
+            return null; // 沒有像素資料（例如無畫面執行時的貼圖）
+        }
+        var image = (Image)source.Duplicate();
+        source.Dispose(); // 引擎給的那份用完就放掉（不留到結束時才回收）
         if (image.IsCompressed())
             image.Decompress();
         image.Convert(Image.Format.Rgba8);
@@ -186,5 +202,8 @@ public static partial class PixelParts
         MetricsCache.Clear();
         TintedCache.Clear();
         Sprites.Clear();
+        foreach (var image in Images.Values)
+            image?.Dispose();
+        Images.Clear();
     }
 }

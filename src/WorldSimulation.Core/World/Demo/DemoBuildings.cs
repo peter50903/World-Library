@@ -553,6 +553,27 @@ public static class DemoBuildings
         return null;
     }
 
+    /// <summary>附近 2 格（切比雪夫距離）有沒有森林、丘陵、礦脈（含隕石礦），1 格內有沒有海（第 08-33 章領地面板也用）。</summary>
+    public static DemoBuildingNearby NearbyOf(DemoHexWorld map, DemoSettlement site, IReadOnlySet<DemoCellRef>? extraOre = null)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(site);
+        bool forest = false, hills = false, ore = false, coast = false;
+        for (var dr = -2; dr <= 2; dr++)
+            for (var dc = -2; dc <= 2; dc++)
+            {
+                int c = site.Column + dc, r = site.Row + dr;
+                if (!map.Contains(c, r))
+                    continue;
+                var cell = map.GetCell(c, r);
+                forest |= cell.Terrain == DemoTerrain.Forest;
+                hills |= cell.Terrain == DemoTerrain.Hills;
+                ore |= cell.Ore || extraOre?.Contains(new DemoCellRef(c, r)) == true;
+                coast |= cell.Sea && Math.Max(Math.Abs(dr), Math.Abs(dc)) <= 1;
+            }
+        return new DemoBuildingNearby(forest, hills, ore, coast);
+    }
+
     /// <summary>【TEMP】每個聚落附近的農田格數（農田算給 3 格內最近的聚落；同距離取編號小的）。</summary>
     public static IReadOnlyDictionary<int, int> FieldsNear(DemoLandDevelopmentMap land, IEnumerable<DemoSettlement> settlements)
     {
@@ -610,19 +631,6 @@ public sealed record DemoBuildingWeek(
     {
         if (_nearby.TryGetValue(site.Id, out var known))
             return known;
-        bool forest = false, hills = false, ore = false, coast = false;
-        for (var dr = -2; dr <= 2; dr++)
-            for (var dc = -2; dc <= 2; dc++)
-            {
-                int c = site.Column + dc, r = site.Row + dr;
-                if (!Map.Contains(c, r))
-                    continue;
-                var cell = Map.GetCell(c, r);
-                forest |= cell.Terrain == DemoTerrain.Forest;
-                hills |= cell.Terrain == DemoTerrain.Hills;
-                ore |= cell.Ore || ExtraOre?.Contains(new DemoCellRef(c, r)) == true;
-                coast |= cell.Sea && Math.Max(Math.Abs(dr), Math.Abs(dc)) <= 1;
-            }
-        return _nearby[site.Id] = new DemoBuildingNearby(forest, hills, ore, coast);
+        return _nearby[site.Id] = DemoBuildings.NearbyOf(Map, site, ExtraOre);
     }
 }

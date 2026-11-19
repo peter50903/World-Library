@@ -122,6 +122,38 @@ public partial class ObserverRoot
             _hexMap.ZoomToCell(world.Map.GetCell(m.Column, m.Row), 64f);
             await Shot("7_trade_close");
         }
+        // 第 08-33 章：領地大圖——建築最多的聚落與建築最多的村莊（整張縮圖＋中央一塊原尺寸）。
+        async Task HoldingShot(string name)
+        {
+            for (var i = 0; i < 6; i++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var image = GetViewport().GetTexture().GetImage();
+            var view = _holdingView.GetGlobalRect();
+            var rect = new Rect2I((Vector2I)view.Position, (Vector2I)view.Size).Intersection(new Rect2I(0, 0, image.GetWidth(), image.GetHeight()));
+            if (rect.Size.X < 32 || rect.Size.Y < 32)
+                return;
+            image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, name + ".png"));
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 320, Math.Max(32, 320 * rect.Size.Y / rect.Size.X), rect));
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
+                new Rect2I(rect.Position + rect.Size / 2 - new Vector2I(160, 100), new Vector2I(320, 200))));
+            var scene = _world.HoldingScene(_holdingSettlement);
+            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Picture={_holdingView.Picture?.Size} Tier={scene?.Tier} "
+                + $"Buildings={scene?.Holding.Buildings.Count} Houses={scene?.Holding.Dwellings}+{scene?.Holding.LargeDwellings} Fields={scene?.Fields}");
+        }
+        var holdings = world.Sites.Settlements.Where(s => !s.IsRuin)
+            .OrderByDescending(s => world.HoldingOf(s.Id)?.Buildings.Count ?? 0).ThenBy(s => s.Id).ToList();
+        foreach (var (site, name) in new[]
+                 {
+                     (holdings.FirstOrDefault(), "8_holding_big"),
+                     (holdings.FirstOrDefault(s => world.ChronicleOf(s.Id).Tier == DemoSettlementTier.Village), "9_holding_village")
+                 })
+        {
+            if (site is null)
+                continue;
+            OpenHolding(site.Id);
+            await HoldingShot(name);
+            CloseModal();
+        }
         _hexMap.ShowWholeWorld();
         SetMapMode(DemoHexMap.Mode.Terrain);
         await Shot("4_terrain_far");
