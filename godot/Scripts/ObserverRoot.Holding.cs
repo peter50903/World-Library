@@ -120,6 +120,8 @@ public partial class ObserverRoot
             stock.AddChild(new Label { Text = $"{label} {amount}　", TooltipText = $"建材庫存：{label}" });
         }
         list.AddChild(stock);
+        if (scene.Progress is { } progress)
+            AddTierProgress(list, progress); // 第 08-36 章
         var rows = DemoHoldingReport.Rows(scene);
         foreach (var zone in Enum.GetValues<DemoHoldingZone>())
         {
@@ -150,6 +152,42 @@ public partial class ObserverRoot
         }
         if (rows.Count == 0)
             list.AddChild(new Label { Text = "（住宅以外還沒有任何建築）" });
+    }
+
+    /// <summary>
+    /// 第 08-36 章：升下一級還差什麼——標題（下一級的圖示、人口與本級設施幾項）與每項本級設施
+    /// （完成、施工中、毀損待重建、可以開工；還沒解鎖的變淡並寫缺什麼）。
+    /// </summary>
+    private static void AddTierProgress(VBoxContainer list, DemoTierProgress progress)
+    {
+        list.AddChild(new HSeparator());
+        var head = new HBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "人口夠，本級設施任兩種「解鎖（有這種專家或學會技術）並蓋好建築」，下次週結算就升級；被打壞的建築不會讓等級馬上下降"
+        };
+        head.AddThemeConstantOverride("separation", 4);
+        if (ArtAssets.Texture(ArtAssets.SettlementTierIcon(progress.Next)) is { } crest)
+            head.AddChild(Picture(crest, 22));
+        var title = new Label { Text = progress.Headline, AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        title.AddThemeFontSizeOverride("font_size", 16);
+        head.AddChild(title);
+        list.AddChild(head);
+        foreach (var step in progress.Steps)
+        {
+            var state = step.State switch
+            {
+                DemoTierStepState.Building => "b12_ic_state_building",
+                DemoTierStepState.Ruined => "b12_ic_state_destroyed",
+                DemoTierStepState.Ready => "b12_ic_state_idle",
+                _ => null
+            };
+            var row = IconRow(CategoryIcon(DemoBuildings.FacilityBuildings[step.Facility.Name].DefId), step.Line, state,
+                step.State == DemoTierStepState.Locked ? "還沒解鎖：要有這種專家（代表人物），或學會這項技術" : null);
+            if (step.State == DemoTierStepState.Locked)
+                row.Modulate = new Color(1, 1, 1, 0.55f);
+            list.AddChild(row);
+        }
     }
 
     /// <summary>一列：分類圖示＋文字＋（狀態圖示）。</summary>

@@ -224,7 +224,7 @@ public sealed partial class DemoObserverWorld
             _history = _world._history.AppendCommitted(DemoEventProjection.ToWorldEvents(report, _sites, _participants));
             _chronicle = DemoSettlementChronicle.Advance(_world._chronicle, report,
                 _world._demography?.Representatives ?? (IReadOnlyList<DemoRepresentative>)Array.Empty<DemoRepresentative>(),
-                _knowledge); // 第 08-11 章：等級設施看知識
+                _knowledge, _buildings); // 第 08-11 章：等級設施看知識；第 08-36 章：看真的建築（本週施工後）
             _debtSources = AdvanceDebtSources(_world._debtSources, report);
             _people = DemoPersonRegister.Advance(_world._people, report, _demography?.Representatives); // 第 14-1 章第 7 項：與歷史同一步
         }

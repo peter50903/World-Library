@@ -297,7 +297,23 @@ public sealed partial class DemoObserverWorld
         var fields = site.IsRuin ? 0 : DemoBuildings.FieldsNear(_land, _sites.Settlements.Where(s => !s.IsRuin)).GetValueOrDefault(settlementId);
         var house = DemoBuildings.HouseFor(tier, tech => DemoTechCatalog.Contains(tech) && _knowledge.Knows(settlementId, DemoTechnology.Of(tech)));
         return new DemoHoldingScene(site, tier, _buildings.Of(settlementId) ?? DemoHolding.EmptyFor(settlementId), fields,
-            DemoBuildings.NearbyOf(Map, site, MeteoriteOre), house, _population.GetValueOrDefault(settlementId));
+            DemoBuildings.NearbyOf(Map, site, MeteoriteOre), house, _population.GetValueOrDefault(settlementId))
+        {
+            Progress = TierProgress(settlementId) // 第 08-36 章
+        };
+    }
+
+    /// <summary>
+    /// 第 08-36 章：升下一級還差什麼（人口、本級設施的解鎖與建築、首都另需王權）；首都、遺跡、不存在＝null。只讀。
+    /// </summary>
+    public DemoTierProgress? TierProgress(int settlementId)
+    {
+        var site = _sites.Settlements.FirstOrDefault(s => s.Id == settlementId);
+        if (site is null || site.IsRuin)
+            return null;
+        var roles = RepresentativesOf(settlementId).Select(r => r.Role).ToHashSet();
+        return DemoTierProgress.Of(ChronicleOf(settlementId).Tier, _population.GetValueOrDefault(settlementId), _buildings.Of(settlementId),
+            roles.Contains, tech => DemoTechCatalog.Contains(tech) && _knowledge.Knows(settlementId, DemoTechnology.Of(tech)));
     }
 
     /// <summary>第 08-6 章：目前時代。</summary>
