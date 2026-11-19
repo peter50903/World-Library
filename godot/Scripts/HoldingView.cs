@@ -45,7 +45,7 @@ public partial class HoldingView : Control
     public HoldingLayout.Picture? Picture => _picture;
 
     /// <summary>第 08-38 章：鋪滿（CK3 的領地插圖：裁掉多的部分，可以拖曳看其他地方）；否則整張放得下。</summary>
-    public bool Cover { get; init; }
+    public bool Cover { get; set; }
 
     /// <summary>第 08-38 章：插圖左上角的名稱與一行說明（null＝不畫）。</summary>
     public string? Caption { get; set; }
