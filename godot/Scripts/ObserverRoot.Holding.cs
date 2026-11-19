@@ -14,11 +14,14 @@ namespace WorldSimulation.GodotClient;
 ///   每張有插圖（施工中是工地、毀損是廢墟）、名稱、進度或耐久度條、狀態與作用。</item>
 /// <item>聚落詳情的「領地」分頁：縮圖、資訊與縮小的卡片（點縮圖或按鈕打開大圖）。</item>
 /// </list>
+/// 第 08-40 章（使用者 2026-11-19：領地圖不用拼出來的畫面，直接放符合等級的示意圖，保留建築插槽，詳情的領地參考 CK3）：
+/// 插圖改成第十三批的等級示意圖（<see cref="HoldingArt"/>）；詳情分頁照 CK3 的領地欄——示意圖與名牌、一排數值、建築格、
+/// 一格一格的建築插槽（不分區）；大圖保留分區卡片。
 /// 只有蓋好、正在蓋、毀損的建築才有卡片（沒蓋的不畫）；卡片越多＝建築越多＝城越大。資料來自 Core 的 <c>DemoObserverWorld.HoldingScene</c>，只讀。
 /// </summary>
 public partial class ObserverRoot
 {
-    private HoldingView _holdingView = null!;
+    private HoldingArt _holdingArt = null!;
     private VBoxContainer _holdingInfo = null!;
     private VBoxContainer _holdingCards = null!;
     private VBoxContainer _holdingPage = null!;
@@ -38,13 +41,12 @@ public partial class ObserverRoot
         _holdingPage.AddThemeConstantOverride("separation", 8);
         var top = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, TempHoldingBannerHeight) };
         top.AddThemeConstantOverride("separation", 12);
-        _holdingView = new HoldingView(false)
+        _holdingArt = new HoldingArt
         {
-            Cover = true,
-            CustomMinimumSize = new Vector2(TempHoldingBannerWidth, 0),
-            SizeFlagsVertical = SizeFlags.ExpandFill
+            CustomMinimumSize = new Vector2(TempHoldingBannerWidth, TempHoldingBannerHeight),
+            SizeFlagsVertical = SizeFlags.ShrinkBegin
         };
-        top.AddChild(_holdingView);
+        top.AddChild(_holdingArt);
         var infoScroll = new ScrollContainer
         {
             HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
@@ -67,9 +69,9 @@ public partial class ObserverRoot
         AddModalPage("holding", "領地", _holdingPage);
     }
 
-    /// <summary>【TEMP】大圖視窗：插圖的寬與高（上排）、視窗最大寬高；詳情裡縮圖的高度。</summary>
-    private const float TempHoldingBannerWidth = 640f, TempHoldingBannerHeight = 380f, TempHoldingWindowWidth = 1280f, TempHoldingWindowHeight = 820f,
-        TempHoldingThumbHeight = 170f;
+    /// <summary>【TEMP】大圖視窗：示意圖的寬與高（上排，2:1）、視窗最大寬高；詳情裡示意圖的高度。</summary>
+    private const float TempHoldingBannerWidth = 640f, TempHoldingBannerHeight = 320f, TempHoldingWindowWidth = 1280f, TempHoldingWindowHeight = 820f,
+        TempHoldingThumbHeight = 160f;
 
     /// <summary>【TEMP】建築卡片的寬與插圖高（大圖、詳情分頁的縮小版）。</summary>
     private const float TempCardWidth = 148f, TempCardArtHeight = 112f, TempCompactCardWidth = 98f, TempCompactArtHeight = 66f;
@@ -98,9 +100,8 @@ public partial class ObserverRoot
         }
         _holdingWeek = _world.LatestWeek?.Week;
         _modalTitle.Text = $"領地：{TitledName(scene.Site)}（{DemoSettlementHistory.TierName(scene.Site, scene.Tier)}）";
-        _holdingView.Caption = TitledName(scene.Site);
-        _holdingView.Subcaption = $"{DemoSettlementHistory.TierName(scene.Site, scene.Tier)}｜居民 {scene.Residents} 人｜建築格 {scene.SlotsUsed}/{scene.Slots}";
-        _holdingView.ShowScene(scene);
+        _holdingArt.ShowScene(scene, TitledName(scene.Site),
+            $"{DemoSettlementHistory.TierName(scene.Site, scene.Tier)}｜居民 {scene.Residents} 人｜建築格 {scene.SlotsUsed}/{scene.Slots}", clickable: false);
         FillHoldingInfo(_holdingInfo, scene, compact: false);
         FillHoldingCards(_holdingCards, scene, compact: false);
     }
@@ -115,31 +116,75 @@ public partial class ObserverRoot
         }
     }
 
-    /// <summary>詳情「領地」分頁：縮圖（點一下打開大圖）＋領地資訊＋縮小的建築卡片。</summary>
+    /// <summary>
+    /// 第 08-40 章：詳情「領地」分頁，照 CK3 的領地欄——上面是等級示意圖與名牌（點一下打開大圖），一排數值（居民、住宅、農田、守軍、城防、建材），
+    /// 等級與建築格，升級進度一行，下面是一格一格的建築插槽（不分區，依分區順序排）。
+    /// </summary>
     private Control HoldingTabContent(DemoHoldingScene scene)
     {
         var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         column.AddThemeConstantOverride("separation", 6);
-        var thumb = new HoldingView(true)
-        {
-            Cover = true,
-            CustomMinimumSize = new Vector2(0, TempHoldingThumbHeight),
-            SizeFlagsHorizontal = SizeFlags.ExpandFill
-        };
-        thumb.ShowScene(scene);
         var id = scene.Site.Id;
-        thumb.Opened += () => OpenHolding(id);
-        column.AddChild(thumb);
-        var open = new Button { Text = "打開領地", FocusMode = FocusModeEnum.None, TooltipText = "大圖：插圖可以滾輪縮放、拖曳、雙擊回到全圖；下面是建築卡片" };
+        var art = new HoldingArt { CustomMinimumSize = new Vector2(0, TempHoldingThumbHeight), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        art.ShowScene(scene, TitledName(scene.Site), $"{DemoSettlementHistory.TierName(scene.Site, scene.Tier)}｜建築格 {scene.SlotsUsed}/{scene.Slots}",
+            clickable: true);
+        art.Opened += () => OpenHolding(id);
+        column.AddChild(art);
+        column.AddChild(HoldingStats(scene, _world.CombatForceOf(id).Soldiers));
+        column.AddChild(SlotPips(scene.SlotsUsed, scene.Slots, compact: true));
+        if (scene.Progress is { } progress)
+            column.AddChild(IconRow("ic_stat_22", progress.Headline, null,
+                string.Join("\n", progress.Steps.Select(s => s.Line)) + "\n（人口夠、本級設施任兩種解鎖並蓋好建築，下次週結算就升級）"));
+        if (scene.Bonus.Line() is { } bonus)
+            column.AddChild(IconRow("b12_ic_cat_admin", bonus, null, "完好的建築才有作用；同一種只算一次（城牆、塔樓、城堡看城防）"));
+        var rows = DemoHoldingReport.Rows(scene);
+        if (rows.Count > 0)
+        {
+            column.AddChild(IconRow("b12_ic_cat_industry", "建築", null, "只列蓋好、正在蓋、毀損的建築；住宅與農田不佔建築格（見上面的數值）", 20));
+            var slots = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            slots.AddThemeConstantOverride("h_separation", 5);
+            slots.AddThemeConstantOverride("v_separation", 5);
+            foreach (var r in rows)
+                slots.AddChild(BuildingCard(r, scene, compact: true));
+            column.AddChild(slots);
+        }
+        else
+            column.AddChild(new Label { Text = "（住宅以外還沒有任何建築）" });
+        var open = new Button { Text = "打開領地", FocusMode = FocusModeEnum.None, TooltipText = "大圖：示意圖、領地資訊與分區的建築卡片" };
         open.Pressed += () => OpenHolding(id);
         column.AddChild(open);
-        var info = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        FillHoldingInfo(info, scene, compact: true);
-        column.AddChild(info);
-        var cards = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        FillHoldingCards(cards, scene, compact: true);
-        column.AddChild(cards);
         return column;
+    }
+
+    /// <summary>第 08-40 章：CK3 領地欄的一排數值（圖示＋數字，滑鼠移上去看說明）。</summary>
+    private static HFlowContainer HoldingStats(DemoHoldingScene scene, long soldiers)
+    {
+        var h = scene.Holding;
+        var flow = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        flow.AddThemeConstantOverride("h_separation", 10);
+        flow.AddThemeConstantOverride("v_separation", 4);
+        void Stat(string icon, string text, string tip)
+        {
+            var box = new HBoxContainer { TooltipText = tip };
+            box.AddThemeConstantOverride("separation", 3);
+            if (PixelParts.Texture(icon) is { } texture)
+                box.AddChild(Picture(texture, 18));
+            box.AddChild(new Label { Text = text });
+            flow.AddChild(box);
+        }
+        Stat("ic_stat_01", $"{scene.Residents}", "居民");
+        Stat(scene.Residents > h.Housing ? "b12_ic_state_crowded" : "b12_ic_cat_housing", $"{h.Housing}", DemoHoldingReport.HousingLine(scene));
+        if (scene.Fields > 0)
+            Stat("b12_ic_cat_field", $"{scene.Fields}", $"附近已開墾的農田 {scene.Fields} 塊（不佔建築格）");
+        if (soldiers > 0)
+            Stat("b12_ic_cat_military", $"{soldiers}", "守軍（士兵）");
+        if (DemoDefense.Of(h) is { Any: true } defense)
+            Stat("b12_ic_cat_defense", $"+{defense.MonsterPercent}%", defense.Describe());
+        Stat("ic_stat_25", $"{h.Wood}", "建材庫存：木");
+        Stat("ic_stat_26", $"{h.Stone}", "建材庫存：石");
+        if (h.Iron > 0)
+            Stat("b12_ic_res_iron", $"{h.Iron}", "建材庫存：鐵");
+        return flow;
     }
 
     private static void ClearChildren(Node node)
@@ -279,10 +324,10 @@ public partial class ObserverRoot
         var list = new List<Control>();
         var basic = scene.Tier == DemoSettlementTier.Camp ? "棚屋" : "住宅";
         if (h.Dwellings > 0)
-            list.Add(Card(basic, $"每棟 {DemoBuildings.HouseCapacity} 人", null, HoldingLayout.HouseCard(scene.Tier, false), null, false, backdrop,
+            list.Add(Card(basic, $"每棟 {DemoBuildings.HouseCapacity} 人", null, HoldingSprites.HouseCard(scene.Tier, false), null, false, backdrop,
                 DemoBuildingStatus.Standing, 100, false, false, h.Dwellings, $"{basic}：住得下 {(long)h.Dwellings * DemoBuildings.HouseCapacity} 人（住宅不佔建築格）", compact));
         if (h.LargeDwellings > 0)
-            list.Add(Card("大型住宅", $"每棟 {DemoBuildings.LargeHouseCapacity} 人", null, HoldingLayout.HouseCard(scene.Tier, true), null, false,
+            list.Add(Card("大型住宅", $"每棟 {DemoBuildings.LargeHouseCapacity} 人", null, HoldingSprites.HouseCard(scene.Tier, true), null, false,
                 backdrop, DemoBuildingStatus.Standing, 100, false, false, h.LargeDwellings,
                 $"大型住宅：住得下 {(long)h.LargeDwellings * DemoBuildings.LargeHouseCapacity} 人", compact));
         if (h.RuinedDwellings > 0)
@@ -290,9 +335,9 @@ public partial class ObserverRoot
                 h.RuinedDwellings, "被怪物、戰火或天災毀掉的住宅；重建時先補回這些", compact));
         if (scene.HousePercent > 0)
         {
-            var house = HoldingLayout.HouseCard(scene.Tier, scene.House.Id == DemoBuildings.HouseLarge);
+            var house = HoldingSprites.HouseCard(scene.Tier, scene.House.Id == DemoBuildings.HouseLarge);
             list.Add(Card($"新的{scene.House.Name.Split('/')[0]}", $"施工中 {scene.HousePercent}%", null, house,
-                HoldingLayout.SiteSprite(HoldingLayout.SizeOf(house).X, scene.HousePercent / 100f), false, backdrop, DemoBuildingStatus.Building,
+                HoldingSprites.SiteSprite(HoldingSprites.SizeOf(house).X, scene.HousePercent / 100f), false, backdrop, DemoBuildingStatus.Building,
                 scene.HousePercent, true, false, 1, $"住宅一次蓋一棟（{scene.House.Hours} 工時）", compact));
         }
         return list;
@@ -302,7 +347,7 @@ public partial class ObserverRoot
     private static PanelContainer BuildingCard(DemoHoldingRow r, DemoHoldingScene scene, bool compact)
     {
         var progress = r.Status == DemoBuildingStatus.Building ? r.Percent / 100f : 1f;
-        var (sprite, overlay, tiled) = HoldingLayout.CardArt(r.DefId, r.BuildingId, r.Status, progress, scene.Tier);
+        var (sprite, overlay, tiled) = HoldingSprites.CardArt(r.DefId, r.BuildingId, r.Status, progress, scene.Tier);
         var effect = DemoHoldingReport.EffectText(r); // 第 08-37 章
         var state = DemoHoldingReport.StateText(r.Status, r.Percent);
         var tip = DemoBuildingCatalog.Contains(r.DefId)
@@ -513,8 +558,8 @@ public partial class ObserverRoot
     };
 
     /// <summary>
-    /// 第 08-33 章冒煙：最大的聚落打開「領地」分頁——縮圖畫出每一棟建築（有排版、有烤圖），按鈕打開大圖、列表列出每一棟、
-    /// Esc 關掉；全程不改世界。回傳摘要。
+    /// 第 08-33 章冒煙：最大的聚落打開「領地」分頁與大圖；第 08-40 章：分頁有等級示意圖（第十三批，沒交件時是暫代圖）、
+    /// 分頁的建築插槽與大圖的卡片都涵蓋每一棟建築；Esc 關掉；全程不改世界。回傳摘要。
     /// </summary>
     private string VerifyHoldingSmoke(Action<string> fail)
     {
@@ -526,35 +571,35 @@ public partial class ObserverRoot
         if (_detailTabs.GetTabTitle(_detailTabs.CurrentTab) != "領地")
             fail("settlement detail has no 領地 tab.");
         var scene = _world.HoldingScene(site.Id) ?? throw new InvalidOperationException("no holding scene");
-        var thumb = FindHoldingView(_detailTabs.GetCurrentTabControl());
-        var picture = thumb?.Picture;
-        if (thumb is null || picture is null || picture.Pieces.Count == 0 || picture.Size.X <= 0)
-        {
-            fail("holding tab did not draw a holding picture.");
-            return "";
-        }
-        var shown = thumb.ShownBuildings;
-        var missing = scene.Holding.Buildings.Select(b => b.Id).Where(id => !shown.Contains(id)).ToList();
-        if (missing.Count > 0)
-            fail($"holding picture is missing buildings: {string.Join(",", missing)}");
-        var houses = picture.Pieces.Count(p => p.Kind == HoldingLayout.Kind.House);
-        if (houses == 0 && scene.Holding.Dwellings + scene.Holding.LargeDwellings > 0)
-            fail("holding picture shows no dwellings.");
-        // 第 08-38 章：分頁與大圖的卡片都要涵蓋每一棟建築。
+        var art = FindHoldingArt(_detailTabs.GetCurrentTabControl());
+        if (art is null || !art.WantedPath.StartsWith("res://assets/holding/b13_", StringComparison.Ordinal))
+            fail("holding tab has no tier illustration.");
         var tabCards = CardCount(_detailTabs.GetCurrentTabControl());
         if (tabCards != scene.Holding.Buildings.Count)
-            fail($"holding tab shows {tabCards}/{scene.Holding.Buildings.Count} buildings as cards.");
+            fail($"holding tab shows {tabCards}/{scene.Holding.Buildings.Count} buildings as slots.");
         OpenHolding(site.Id);
-        if (_modalOpen != "holding" || !_holdingPage.Visible || _holdingView.Picture is null || _holdingInfo.GetChildCount() < 3)
-            fail("holding window did not open with the picture and the info.");
+        if (_modalOpen != "holding" || !_holdingPage.Visible || _holdingArt.WantedPath.Length == 0 || _holdingInfo.GetChildCount() < 3)
+            fail("holding window did not open with the illustration and the info.");
         var cards = CardCount(_holdingCards);
         if (cards != scene.Holding.Buildings.Count)
             fail($"holding window shows {cards}/{scene.Holding.Buildings.Count} buildings as cards.");
-        _holdingView.ZoomAt(_holdingView.Size / 2, 2f);
         CloseModal();
         if (_world.ExportTempSave() != before)
             fail("holding panel changed the world.");
-        return $"Holding={site.Id} Buildings={scene.Holding.Buildings.Count} Houses={houses} Pieces={picture.Pieces.Count} Size={picture.Size.X}x{picture.Size.Y} LayoutMs={thumb.LayoutMs:0} Cards={cards}";
+        var wanted = System.IO.Path.GetFileNameWithoutExtension(art?.WantedPath ?? "");
+        return $"Holding={site.Id} Buildings={scene.Holding.Buildings.Count} Cards={cards} Art={wanted} Delivered={(art?.ArtPath is not null ? "yes" : "no")}";
+    }
+
+    private static HoldingArt? FindHoldingArt(Node? node)
+    {
+        if (node is null)
+            return null;
+        if (node is HoldingArt art)
+            return art;
+        foreach (var child in node.GetChildren())
+            if (FindHoldingArt(child) is { } found)
+                return found;
+        return null;
     }
 
     /// <summary>第 08-38 章：一個節點底下的卡片共代表幾棟建築（住宅、農田的卡片不算）。</summary>
@@ -566,17 +611,5 @@ public partial class ObserverRoot
         foreach (var child in node.GetChildren())
             count += CardCount(child);
         return count;
-    }
-
-    private static HoldingView? FindHoldingView(Node? node)
-    {
-        if (node is null)
-            return null;
-        if (node is HoldingView view)
-            return view;
-        foreach (var child in node.GetChildren())
-            if (FindHoldingView(child) is { } found)
-                return found;
-        return null;
     }
 }

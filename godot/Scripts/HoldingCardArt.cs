@@ -71,7 +71,7 @@ public partial class HoldingCardArt : Control
     {
         if (name is null || PixelParts.Texture(name, _tiled) is not { } texture)
             return;
-        var frames = HoldingLayout.FramesOf(name);
+        var frames = HoldingSprites.FramesOf(name);
         var frame = new Vector2(texture.GetWidth() / (float)frames, texture.GetHeight());
         if (frame.X <= 0 || frame.Y <= 0)
             return;

@@ -164,7 +164,6 @@ public static class ArtAssets
     public static void ReleaseCache()
     {
         PixelParts.ReleaseCache();
-        HoldingView.ReleaseCache(); // 第 08-33 章：領地圖的排版快取
         foreach (var resource in Cache.Values.Where(r => r is not null).Concat(Created))
             resource!.Dispose();
         Cache.Clear();
