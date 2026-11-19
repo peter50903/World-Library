@@ -471,9 +471,15 @@ public partial class DemoHexMap
                 _animatedOnScreen = true;
             }
             DrawCircle(center + new Vector2(0f, 1.5f), r + 2f, new Color(0f, 0f, 0f, 0.4f));
-            DrawCircle(center, r + 1.5f, TempLairRim);
-            DrawCircle(center, r, TempLairFill);
-            DrawSkull(center, r * 0.62f);
+            // 第 08-30 章：地下城標記換成第十二批（暗色圓座上的岩洞口）；缺素材時退回紅底骷髏。
+            if (PixelParts.Texture("b12_map_lair") is { } lair)
+                DrawTextureRect(lair, new Rect2(center - new Vector2(r, r) * 1.3f, new Vector2(r, r) * 2.6f), false);
+            else
+            {
+                DrawCircle(center, r + 1.5f, TempLairRim);
+                DrawCircle(center, r, TempLairFill);
+                DrawSkull(center, r * 0.62f);
+            }
             if (cellPx < TempMidCellPx)
             {
                 // 遠看：數量寫在圖示右下角。
@@ -500,9 +506,15 @@ public partial class DemoHexMap
             if (!view.HasPoint(center))
                 continue;
             var r = Mathf.Clamp(cellPx * 0.18f, 6f, 11f);
-            DrawCircle(center, r + 1f, new Color(0.55f, 0.52f, 0.48f));
-            DrawCircle(center, r, new Color(0.22f, 0.21f, 0.20f));
-            DrawSkull(center, r * 0.6f, new Color(0.7f, 0.68f, 0.64f));
+            // 沉寂的地下城：同一個標記，灰暗半透明。
+            if (PixelParts.Texture("b12_map_lair") is { } quiet)
+                DrawTextureRect(quiet, new Rect2(center - new Vector2(r, r) * 1.3f, new Vector2(r, r) * 2.6f), false, new Color(0.62f, 0.6f, 0.58f, 0.8f));
+            else
+            {
+                DrawCircle(center, r + 1f, new Color(0.55f, 0.52f, 0.48f));
+                DrawCircle(center, r, new Color(0.22f, 0.21f, 0.20f));
+                DrawSkull(center, r * 0.6f, new Color(0.7f, 0.68f, 0.64f));
+            }
         }
     }
 
