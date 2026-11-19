@@ -281,6 +281,22 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-32 章：某聚落的建築（還沒有紀錄＝null）。</summary>
     public DemoHolding? HoldingOf(int settlementId) => _buildings.Of(settlementId);
 
+    /// <summary>
+    /// 第 08-33 章：領地面板的資料——建築、等級、附近已開墾的農田塊數、附近地形、正在蓋的住宅種類、居民數（聚落不存在＝null）。
+    /// 只讀，不改世界。
+    /// </summary>
+    public DemoHoldingScene? HoldingScene(int settlementId)
+    {
+        var site = _sites.Settlements.FirstOrDefault(s => s.Id == settlementId);
+        if (site is null)
+            return null;
+        var tier = ChronicleOf(settlementId).Tier;
+        var fields = site.IsRuin ? 0 : DemoBuildings.FieldsNear(_land, _sites.Settlements.Where(s => !s.IsRuin)).GetValueOrDefault(settlementId);
+        var house = DemoBuildings.HouseFor(tier, tech => DemoTechCatalog.Contains(tech) && _knowledge.Knows(settlementId, DemoTechnology.Of(tech)));
+        return new DemoHoldingScene(site, tier, _buildings.Of(settlementId) ?? DemoHolding.EmptyFor(settlementId), fields,
+            DemoBuildings.NearbyOf(Map, site, MeteoriteOre), house, _population.GetValueOrDefault(settlementId));
+    }
+
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
 

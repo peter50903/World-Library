@@ -279,6 +279,7 @@ public partial class ObserverRoot
         row.AddChild(_devToolsToggle);
 
         BuildModalHost();
+        BuildHoldingPage(); // 第 08-33 章：領地大圖（從聚落詳情打開）
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
         AddModalPage("chart", "年度圖表", BuildYearChartPage());
@@ -475,6 +476,14 @@ public partial class ObserverRoot
         if (_modalBackdrop is null || !_modalBackdrop.Visible)
             return;
         var size = _hud.Size;
+        if (_modalOpen == "holding")
+        {
+            // 第 08-33 章：領地大圖用大視窗；圖的高度要給定（視窗內容在捲動容器裡）。
+            var panel = new Vector2(Math.Min(TempHoldingWindowWidth, size.X - 32f), Math.Min(TempHoldingWindowHeight, size.Y - 64f));
+            _modalPanel.CustomMinimumSize = panel;
+            _holdingPage.CustomMinimumSize = new Vector2(0, Math.Max(200f, panel.Y - 80f));
+            return;
+        }
         _modalPanel.CustomMinimumSize = new Vector2(Math.Min(640f, size.X - 32f), Math.Min(520f, size.Y - 96f)); // TEMP
     }
 

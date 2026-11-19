@@ -34,6 +34,9 @@ public sealed record DemoDetailTab(string Title, IReadOnlyList<string> Lines)
 
     /// <summary>第 05-2 章：分頁底下的連結（打開聚落、人物或家族）；介面畫成一排按鈕。</summary>
     public IReadOnlyList<DemoDetailLink> Links { get; init; } = Array.Empty<DemoDetailLink>();
+
+    /// <summary>第 08-33 章：「領地」分頁的聚落編號（介面畫成領地圖與有圖示的建築列表；null＝不是領地分頁）。</summary>
+    public int? HoldingId { get; init; }
 }
 
 /// <summary>第 05-2 章：詳情連結打開什麼。</summary>
@@ -384,9 +387,20 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             new DemoDetailTab("技術", techs) { Badges = knownBadges, KeyBadgeCount = keyBadges.Count, KeyTitle = keyTitle, Tree = DemoTechTree.Build(world, settlement.Id) },
             new DemoDetailTab("研究", research) { Badges = researchBadges },
             new DemoDetailTab("歷史", history),
-            PopulationTab(world, settlement)
+            PopulationTab(world, settlement),
+            HoldingTab(world, settlement)
         }, settlement.Id);
     }
+
+    /// <summary>
+    /// 第 08-33 章：「領地」頁（使用者 2026-11-18：像 CK3 的領地面板，只列有蓋、正在蓋、被破壞耐久度歸零的建築，
+    /// 從城牆、農田、城內建築、兵營、城堡依序寫細）。介面另畫成領地圖（排在第二個分頁）。
+    /// </summary>
+    private static DemoDetailTab HoldingTab(DemoObserverWorld world, DemoSettlement settlement)
+        => new("領地", world.HoldingScene(settlement.Id) is { } scene ? DemoHoldingReport.Lines(scene) : new[] { "（沒有建築紀錄）" })
+        {
+            HoldingId = settlement.Id
+        };
 
     /// <summary>第 08-18b 章第 5 節介面第二批：「人口」頁——排行與人口金字塔（有年齡群時；畫面另畫成橫條圖）。</summary>
     private static DemoDetailTab PopulationTab(DemoObserverWorld world, DemoSettlement settlement)
