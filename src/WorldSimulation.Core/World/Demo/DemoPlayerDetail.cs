@@ -266,6 +266,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             if (world.Defense(settlement.Id) is { Any: true } defense)
                 now.Add(defense.Describe()); // 第 08-34 章：城牆、塔樓
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
+            if (world.TierProgress(settlement.Id) is { } progress)
+                now.Add(progress.Headline); // 第 08-36 章：升下一級還差什麼（詳見「領地」）
             if (world.PopulationStats(settlement.Id) is { Total: > 0 } st)
                 now.Add($"兒童 {st.Children}｜成年 {st.Adults}｜老人 {st.Elders}");
             now.Add(world.IsStarving(settlement.Id) ? "糧食：短缺，有人挨餓" : "糧食：充足");
@@ -340,7 +342,7 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             .Concat(known.Where(r => !keySet.Contains(r.Technology)).Select(r => Badge(r.Technology, YearOfWeek(r.LearnedWeek), 100))).ToList();
         var nextTier = world.ChronicleOf(settlement.Id).Tier + 1;
         var keyTitle = keyTechs.Count == 0 ? "" : settlement.IsRuin ? "關鍵技術"
-            : $"升為{DemoSettlementHistory.TierName(nextTier)}的關鍵技術（有其中兩項設施才能升級）";
+            : $"升為{DemoSettlementHistory.TierName(nextTier)}的關鍵技術（其中兩項設施解鎖、建築蓋好才能升級）"; // 第 08-36 章
         if (keyTechs.Count > 0)
             techs.Insert(0, keyTitle + "：" + string.Join("、", keyTechs.Select(t =>
                 DemoKnowledge.Name(t) + (known.Any(r => r.Technology == t) ? "（已會）" : ""))));

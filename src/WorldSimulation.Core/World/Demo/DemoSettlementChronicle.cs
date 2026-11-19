@@ -72,7 +72,7 @@ public sealed record DemoSettlementChronicle(
 
     public static ImmutableSortedDictionary<int, DemoSettlementChronicle> Advance(
         ImmutableSortedDictionary<int, DemoSettlementChronicle> chronicles, DemoWeekReport report,
-        IReadOnlyList<DemoRepresentative> inOffice, DemoKnowledgeState? knowledge = null)
+        IReadOnlyList<DemoRepresentative> inOffice, DemoKnowledgeState? knowledge = null, DemoBuildingsState? buildings = null)
     {
         ArgumentNullException.ThrowIfNull(chronicles);
         ArgumentNullException.ThrowIfNull(report);
@@ -167,10 +167,14 @@ public sealed record DemoSettlementChronicle(
             var c = builder.GetValueOrDefault(ledger.SettlementId) ?? Empty;
             var id = ledger.SettlementId;
             bool Knows(string tech) => knowledge?.Knows(id, DemoTechnology.Of(tech)) == true;
-            bool Has(DemoTierFacility f) => f.Role is { } role
+            bool Unlocked(DemoTierFacility f) => f.Role is { } role
                 ? officeAt.TryGetValue(id, out var roles) && roles.Contains(role)
                 : f.TechId is { } tech && Knows(tech);
-            var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, Has, c.Tier, Knows);
+            // 第 08-36 章：有建築時，升級要「解鎖（專家或技術）＋建築蓋好」；保留等級只要建築還在（毀損待重建也算）。
+            var holding = buildings?.Of(id);
+            bool Has(DemoTierFacility f) => buildings is null ? Unlocked(f) : Unlocked(f) && DemoBuildings.FacilityBuilt(holding, f, standingOnly: true);
+            bool Keeps(DemoTierFacility f) => buildings is null ? Unlocked(f) : DemoBuildings.FacilityBuilt(holding, f, standingOnly: false);
+            var tier = DemoSettlementHistory.TierFor(ledger.PopulationClosing, Has, c.Tier, Knows, Keeps);
             if (tier == c.Tier)
                 continue;
             string Names(DemoSettlementTier t) => string.Join("、", DemoSettlementHistory.FacilitiesOf(t).Where(Has).Select(f => f.Name));

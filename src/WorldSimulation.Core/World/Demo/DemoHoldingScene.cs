@@ -50,6 +50,9 @@ public sealed record DemoHoldingScene(
     public int SlotsUsed => Holding.Buildings.Count(b => !DemoBuildings.IsWallwork(b.DefId));
 
     public int Slots => DemoBuildings.Slots(Tier);
+
+    /// <summary>第 08-36 章：升下一級還差什麼（首都、遺跡＝null）。</summary>
+    public DemoTierProgress? Progress { get; init; }
 }
 
 /// <summary>第 08-33 章：領地列表的一列（同一種、完好的建築合併成「×N」）。<see cref="Percent"/>：施工中＝進度，完成＝耐久度，毀損＝0。</summary>
@@ -176,6 +179,12 @@ public static class DemoHoldingReport
         if (scene.Nearby.Coast) near.Add("海岸");
         if (near.Count > 0)
             lines.Add("附近：" + string.Join("、", near));
+        if (scene.Progress is { } progress)
+        {
+            // 第 08-36 章：升下一級還差什麼（本級設施要解鎖，建築也要蓋好）。
+            lines.Add($"── {progress.Headline} ──");
+            lines.AddRange(progress.Steps.Select(s => "・" + s.Line));
+        }
         var rows = Rows(scene);
         foreach (var zone in Enum.GetValues<DemoHoldingZone>())
         {

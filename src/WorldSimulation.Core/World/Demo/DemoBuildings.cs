@@ -98,6 +98,8 @@ public sealed record DemoBuildingsState(IReadOnlyList<DemoHolding> Holdings, int
 ///   住宅、城牆、城門以外的建築不超過等級的<b>建築格</b>（<see cref="Slots"/>）——格越多，城越大。</item>
 /// </list>
 /// 第一版只改建築狀態，不回頭影響人口、糧食、等級與戰鬥（等級照舊看設施，之後的章節再改看真的建築）。
+/// 第 08-34 章：城牆、城門、塔樓開始有作用。第 08-36 章：等級改看真的建築（<see cref="FacilityBuilt(DemoHolding, DemoTierFacility, bool)"/>），
+/// 升下一級要的本級設施建築先保留建築格（<see cref="Reserve"/>）；廢墟原地重建不必另有空格。
 /// </summary>
 public static class DemoBuildings
 {
@@ -161,6 +163,36 @@ public static class DemoBuildings
 
     /// <summary>不佔建築格的（住宅以棟數另計）。</summary>
     public static bool IsWallwork(string defId) => defId is WallWood or WallStone or GateWood or GateStone;
+
+    /// <summary>
+    /// 第 08-36 章：某項等級設施的建築有沒有（數量照 <see cref="FacilityBuildings"/>：大神殿＝第 2 座神殿；城牆木造、石造都算）。
+    /// <paramref name="standingOnly"/>＝只算完好可用的（升級用）；否則施工中、毀損待重建的也算（建築還在，保留等級與建築格用）。
+    /// </summary>
+    public static bool FacilityBuilt(DemoHolding? holding, DemoTierFacility facility, bool standingOnly)
+        => holding is not null && FacilityBuilt(holding.Buildings, facility, standingOnly);
+
+    public static bool FacilityBuilt(IReadOnlyList<DemoBuilding> buildings, DemoTierFacility facility, bool standingOnly)
+    {
+        ArgumentNullException.ThrowIfNull(buildings);
+        ArgumentNullException.ThrowIfNull(facility);
+        if (!FacilityBuildings.TryGetValue(facility.Name, out var map))
+            return false;
+        var family = Family(map.DefId);
+        return buildings.Count(b => Family(b.DefId) == family && (!standingOnly || b.Status == DemoBuildingStatus.Standing)) >= map.Count;
+    }
+
+    /// <summary>
+    /// 第 08-36 章【TEMP 規則】升下一級還差幾種本級設施的建築（每種要一格）：已解鎖且建築已在（完好、施工中、毀損待重建）的算有。
+    /// 這些格先保留給本級設施，其他建築不能佔（首都沒有下一級＝0）。
+    /// </summary>
+    public static int Reserve(IReadOnlyList<DemoBuilding> buildings, DemoSettlementTier tier, Func<DemoTierFacility, bool> unlocked)
+    {
+        ArgumentNullException.ThrowIfNull(unlocked);
+        if (tier >= DemoSettlementTier.Capital)
+            return 0;
+        var ready = DemoSettlementHistory.FacilitiesOf(tier).Count(f => unlocked(f) && FacilityBuilt(buildings, f, standingOnly: false));
+        return Math.Max(0, DemoSettlementHistory.TempFacilitiesNeeded - ready);
+    }
 
     private const string Namespace = "TEMP-BUILDINGS-v1";
 
@@ -459,6 +491,9 @@ public static class DemoBuildings
         return same ? h : new DemoHolding(h.SettlementId, buildings.ToArray(), dwellings, large, ruinedHouses, houseProgress, wood, stone, iron);
     }
 
+    /// <summary>第 08-36 章：同一種（城牆木造、石造算同一種；城門也是）。</summary>
+    public static bool SameFamily(string a, string b) => Family(a) == Family(b);
+
     /// <summary>同一圈城牆、同一座城門（木造、石造算同一個）。</summary>
     private static string Family(string defId) => defId is WallWood or WallStone ? "WALL" : defId is GateWood or GateStone ? "GATE" : defId;
 
@@ -494,17 +529,19 @@ public static class DemoBuildings
         if (!houseBusy && housing < week.Residents(id))
             return "DWELLING"; // 住宅一次蓋一棟
         var used = buildings.Count(b => !IsWallwork(b.DefId));
-        var free = used < Slots(tier);
-        string? Want(string defId, int count, bool techCheck = true)
+        // 第 08-36 章：升下一級要的本級設施建築先保留建築格；廢墟原地重建不必另有空格。
+        var reserve = Reserve(buildings, tier, f => week.HasFacility(id, f));
+        string? Want(string defId, int count, bool techCheck = true, bool reserved = false)
         {
             if (Have(defId) >= count || !DemoBuildingCatalog.Contains(defId))
                 return null;
             if (techCheck && !DemoBuildingCatalog.Get(defId).Techs.All(Knows))
                 return null;
-            return IsWallwork(defId) || free ? defId : null;
+            var rebuild = buildings.Any(b => b.DefId == defId && b.Status == DemoBuildingStatus.Ruined);
+            return IsWallwork(defId) || rebuild || used < Slots(tier) - (reserved ? 0 : reserve) ? defId : null;
         }
 
-        // 等級設施（各級都算：鎮也保有村的設施）。
+        // 等級設施（各級都算：鎮也保有村的設施）；本級的可以用保留的建築格（第 08-36 章）。
         var facilityWants = new SortedDictionary<string, int>(StringComparer.Ordinal);
         for (var t = DemoSettlementTier.Camp; t <= tier; t++)
             foreach (var f in DemoSettlementHistory.FacilitiesOf(t))
@@ -513,7 +550,7 @@ public static class DemoBuildings
         foreach (var t in new[] { DemoSettlementTier.Camp, DemoSettlementTier.Village, DemoSettlementTier.Town, DemoSettlementTier.City })
             foreach (var f in DemoSettlementHistory.FacilitiesOf(t))
                 if (FacilityBuildings.TryGetValue(f.Name, out var map) && facilityWants.TryGetValue(map.DefId, out var count) && map.DefId != WallWood
-                    && Want(map.DefId, count, techCheck: false) is { } facility)
+                    && Want(map.DefId, count, techCheck: false, reserved: t == tier && week.HasFacility(id, f)) is { } facility)
                     return facility;
 
         // 城牆與城門（會石工與築城、城市以上改成石造）。

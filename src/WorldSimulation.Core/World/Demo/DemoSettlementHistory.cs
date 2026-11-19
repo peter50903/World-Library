@@ -13,7 +13,10 @@ public enum DemoSettlementTier
     Capital = 4
 }
 
-/// <summary>第 08-11 章：一種等級設施（建築系統出現前，以對應的專家或技術代表）。</summary>
+/// <summary>
+/// 第 08-11 章：一種等級設施（建築系統出現前，以對應的專家或技術代表）。
+/// 第 08-36 章起：專家或技術是<b>解鎖條件</b>，對應的建築（<see cref="DemoBuildings.FacilityBuildings"/>）蓋好才算有。
+/// </summary>
 public sealed record DemoTierFacility(string Name, DemoRepresentativeRole? Role, string? TechId);
 
 /// <summary>
@@ -55,6 +58,7 @@ public static class DemoSettlementHistory
     /// <summary>
     /// 第 08-11 章：各等級的設施（升到下一級要任兩種）。
     /// 第 08-24 章：城市級設施（城市升首都要任兩種）跟城鎮級一樣以技術代表，建築系統（第 10 章）出現後改看真的建築。
+    /// 第 08-36 章：已改看真的建築（解鎖＋蓋好；見 <see cref="TierFor"/>）。
     /// </summary>
     public static IReadOnlyList<DemoTierFacility> FacilitiesOf(DemoSettlementTier tier) => tier switch
     {
@@ -85,13 +89,16 @@ public static class DemoSettlementHistory
     /// 第 08-11 章【TEMP 規則】依人口與設施決定等級，每週最多升或降一級：
     /// 目前等級的人口低於保留下限、或撐起目前等級的前一級設施不足兩種 → 降一級；
     /// 否則本級設施有兩種、人口達下一級門檻（首都另需王權）→ 升一級。
+    /// 第 08-36 章：<paramref name="has"/>＝升級用（解鎖且建築完好）；<paramref name="keep"/>＝保留等級用（建築還在就算，
+    /// 毀損待重建、重建中也算——被打壞不會馬上降級；省略＝同 <paramref name="has"/>）。
     /// </summary>
     public static DemoSettlementTier TierFor(long population, Func<DemoTierFacility, bool> has, DemoSettlementTier current,
-        Func<string, bool>? knows = null)
+        Func<string, bool>? knows = null, Func<DemoTierFacility, bool>? keep = null)
     {
         ArgumentNullException.ThrowIfNull(has);
+        keep ??= has;
         if (current > DemoSettlementTier.Camp
-            && (population < TempKeepPopulation(current) || FacilitiesOf(current - 1).Count(has) < TempFacilitiesNeeded))
+            && (population < TempKeepPopulation(current) || FacilitiesOf(current - 1).Count(keep) < TempFacilitiesNeeded))
             return current - 1;
         var next = current + 1;
         if (current < DemoSettlementTier.Capital && FacilitiesOf(current).Count(has) >= TempFacilitiesNeeded
