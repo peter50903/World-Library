@@ -145,9 +145,9 @@ public static class DemoHoldingReport
         ArgumentNullException.ThrowIfNull(scene);
         var h = scene.Holding;
         var kind = scene.Tier == DemoSettlementTier.Camp && h.LargeDwellings == 0 ? "棚屋" : "住宅";
+        var large = h.LargeDwellings > 0 ? string.Create(CultureInfo.InvariantCulture, $"（大型 {h.LargeDwellings} 棟）") : "";
         var text = string.Create(CultureInfo.InvariantCulture,
-            $"{kind} {h.Dwellings + h.LargeDwellings} 棟" + (h.LargeDwellings > 0 ? $"（大型 {h.LargeDwellings} 棟）" : "")
-            + $"，住得下 {h.Housing} 人／居民 {scene.Residents} 人");
+            $"{kind} {h.Dwellings + h.LargeDwellings} 棟{large}，住得下 {h.Housing} 人／居民 {scene.Residents} 人");
         if (scene.Residents > h.Housing)
             text += "，不夠住";
         if (h.RuinedDwellings > 0)
