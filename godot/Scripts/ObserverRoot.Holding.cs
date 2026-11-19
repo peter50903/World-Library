@@ -153,7 +153,7 @@ public partial class ObserverRoot
     }
 
     /// <summary>一列：分類圖示＋文字＋（狀態圖示）。</summary>
-    private static HBoxContainer IconRow(string icon, string text, string? state, string? tooltip, float size = 18)
+    private static HBoxContainer IconRow(string icon, string text, string? state = null, string? tooltip = null, float size = 18)
     {
         var row = new HBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = tooltip ?? "" };
         row.AddThemeConstantOverride("separation", 4);
