@@ -128,14 +128,17 @@ public partial class ObserverRoot
             for (var i = 0; i < 6; i++)
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var image = GetViewport().GetTexture().GetImage();
-            var view = _holdingView.GetGlobalRect();
-            var rect = new Rect2I((Vector2I)view.Position, (Vector2I)view.Size).Intersection(new Rect2I(0, 0, image.GetWidth(), image.GetHeight()));
+            var screen = new Rect2I(0, 0, image.GetWidth(), image.GetHeight());
+            // 第 08-38 章：整個視窗頁（插圖＋資訊＋卡片）；放大圖是卡片區左上角的原尺寸。
+            var page = _holdingPage.GetGlobalRect();
+            var rect = new Rect2I((Vector2I)page.Position, (Vector2I)page.Size).Intersection(screen);
             if (rect.Size.X < 32 || rect.Size.Y < 32)
                 return;
             image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, name + ".png"));
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 320, Math.Max(32, 320 * rect.Size.Y / rect.Size.X), rect));
+            var cards = _holdingCards.GetGlobalRect();
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
-                new Rect2I(rect.Position + rect.Size / 2 - new Vector2I(160, 100), new Vector2I(320, 200))));
+                new Rect2I((Vector2I)cards.Position, new Vector2I(320, 200)).Intersection(screen)));
             var scene = _world.HoldingScene(_holdingSettlement);
             GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Picture={_holdingView.Picture?.Size} Tier={scene?.Tier} "
                 + $"Buildings={scene?.Holding.Buildings.Count} Houses={scene?.Holding.Dwellings}+{scene?.Holding.LargeDwellings} Fields={scene?.Fields}");

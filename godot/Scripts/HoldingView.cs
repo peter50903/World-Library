@@ -44,6 +44,14 @@ public partial class HoldingView : Control
 
     public HoldingLayout.Picture? Picture => _picture;
 
+    /// <summary>第 08-38 章：鋪滿（CK3 的領地插圖：裁掉多的部分，可以拖曳看其他地方）；否則整張放得下。</summary>
+    public bool Cover { get; init; }
+
+    /// <summary>第 08-38 章：插圖左上角的名稱與一行說明（null＝不畫）。</summary>
+    public string? Caption { get; set; }
+
+    public string? Subcaption { get; set; }
+
     /// <summary>畫面上的建築編號（冒煙測試：每棟建築都要畫出來）。</summary>
     public IReadOnlySet<int> ShownBuildings => _picture?.Pieces.Where(p => p.BuildingId >= 0).Select(p => p.BuildingId).ToHashSet() ?? new HashSet<int>();
 
@@ -181,6 +189,12 @@ public partial class HoldingView : Control
     {
         if (_picture is null || _picture.Size.X <= 0 || _picture.Size.Y <= 0 || Size.X <= 0 || Size.Y <= 0)
             return 1f; // 還沒排版（沒有大小）時當作原尺寸
+        if (Cover)
+        {
+            // 第 08-38 章：鋪滿；小的圖放大到最接近的整數倍（像素不變形，蓋不滿的邊用草地色補）。
+            var cover = Math.Max(Size.X / _picture.Size.X, Size.Y / _picture.Size.Y);
+            return cover >= 1f ? Math.Max(1f, MathF.Round(cover)) : cover;
+        }
         var fit = Math.Min(Size.X / _picture.Size.X, Size.Y / _picture.Size.Y);
         return fit >= 1f ? MathF.Floor(fit) : fit;
     }
@@ -224,7 +238,7 @@ public partial class HoldingView : Control
 
     public override void _Draw()
     {
-        DrawRect(new Rect2(Vector2.Zero, Size), new Color(0.16f, 0.13f, 0.09f));
+        DrawRect(new Rect2(Vector2.Zero, Size), Cover ? new Color(0.24f, 0.42f, 0.18f) : new Color(0.16f, 0.13f, 0.09f)); // 鋪滿時的邊是草地
         if (_dirty && _picture is not null)
         {
             _dirty = false;
@@ -243,6 +257,21 @@ public partial class HoldingView : Control
                 DrawTextureRectRegion(texture, p.Rect, new Rect2(w * frame, 0, w, texture.GetHeight()));
             }
         DrawSetTransform(Vector2.Zero, 0f, Vector2.One);
+        if (Caption is not null)
+        {
+            // 第 08-38 章：左上角的名稱（深色漸層墊底）。
+            var font = ThemeDB.FallbackFont;
+            var band = new Vector2(Math.Min(Size.X, 560f), 62f);
+            DrawPolygon(new[] { Vector2.Zero, new Vector2(band.X, 0), band, new Vector2(0, band.Y) },
+                new[] { new Color(0, 0, 0, 0.66f), new Color(0, 0, 0, 0f), new Color(0, 0, 0, 0f), new Color(0, 0, 0, 0.3f) });
+            DrawString(font, new Vector2(15, 33), Caption, HorizontalAlignment.Left, -1, 26, new Color(0, 0, 0, 0.8f));
+            DrawString(font, new Vector2(14, 32), Caption, HorizontalAlignment.Left, -1, 26, new Color(1f, 0.9f, 0.62f));
+            if (Subcaption is not null)
+            {
+                DrawString(font, new Vector2(15, 53), Subcaption, HorizontalAlignment.Left, -1, 15, new Color(0, 0, 0, 0.8f));
+                DrawString(font, new Vector2(14, 52), Subcaption, HorizontalAlignment.Left, -1, 15, new Color(0.98f, 0.94f, 0.84f));
+            }
+        }
         if (_thumbnail)
         {
             var font = ThemeDB.FallbackFont;
