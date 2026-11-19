@@ -173,7 +173,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             lines.Add(note); // 第 12-1 章 C1
         foreach (var batch in world.MigrationsInTransit().Where(b => b.Cell.Column == cell.Column && b.Cell.Row == cell.Row))
             lines.Add($"{(batch.Founding ? "開拓隊" : "遷徙隊伍")}：{batch.People} 人，從{batch.FromName}前往{batch.ToName}");
-        return new DemoPlayerDetail(lines[0], new[] { new DemoDetailTab("地點", lines) }, null);
+        // 第 08-31 章：地圖上不再選地塊，點到怪物的地盤開的是地下城——標題寫地下城的名字。
+        var title = world.Dungeons.FirstOrDefault(d => d.Cell.Column == cell.Column && d.Cell.Row == cell.Row) is { } den ? $"{den.Name}（地下城）" : lines[0];
+        return new DemoPlayerDetail(title, new[] { new DemoDetailTab("地點", lines) }, null);
     }
 
     /// <summary>

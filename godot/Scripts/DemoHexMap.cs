@@ -201,6 +201,7 @@ public partial class DemoHexMap : Control
             _highlight = value;
             // 第 08-21 章：換了框選的格，政治地圖上選到的勢力、文化、信仰也一併取消（由點選另外設定）。
             _selectedRealm = _selectedCulture = _selectedFaith = 0;
+            _selectedNest = 0; // 第 08-31 章
         }
     }
 
@@ -317,14 +318,22 @@ public partial class DemoHexMap : Control
         if (!button.Pressed || button.ButtonIndex != MouseButton.Left || _middleDragging)
             return;
 
-        if (CellAt(button.Position) is { } hit)
+        var clicked = CellAt(button.Position);
+        LastClickCell = clicked is null ? null : new DemoCellRef(clicked.Column, clicked.Row);
+        if (clicked is { } hit)
         {
-            // 第 08-5 章（使用者 2026-10-23）：點格查看詳情時，地圖上的這一格以框標示。
+            // 第 08-5 章（使用者 2026-10-23）：點選時框出選到的東西（第 08-31 章：框勢力範圍，不框格子）。
             // 試玩回饋 2026-11-07 之 2：依遠近點到勢力、文化、信仰或聚落、格，並把選到的移到畫面中央（DemoHexMap.Select.cs）。
             Select(button.Position, hit);
             AcceptEvent();
         }
     }
+
+    /// <summary>
+    /// 第 08-31 章：上一次左鍵點到的格（冒煙測試檢查平移、縮放後的點選換算；地塊本身已不能選，點到的格決定選到哪一片範圍）。
+    /// 點在地圖外＝null。只是紀錄，不影響畫面與世界。
+    /// </summary>
+    public DemoCellRef? LastClickCell { get; private set; }
 
     /// <summary>畫面位置所在的格（格與格之間的縫隙不算）；不在任何格上回傳 null。</summary>
     private DemoHexCell? CellAt(Vector2 position)

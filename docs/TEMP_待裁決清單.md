@@ -616,7 +616,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCellQuery.cs` | 19 | D7（C07 點格查詢：自 Godot 搬入的 TEMP 地形／資源名與資訊框文字）；第 06-1 章海洋與河流、淺灘；第 08-6 章 c 節農田與開墾中；第 06-3 章丘陵名稱 |
 | `src/WorldSimulation.ObserverCli/M1Acceptance.cs` | 27 | D1、D2、D3、D5、第 3 節 |
 | `src/WorldSimulation.ObserverCli/Program.cs` | 14 | D8、c1、第 3 節 #103 承載估計；C05 開場說明 |
-| `godot/Scripts/ObserverRoot.cs` | 62 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
+| `godot/Scripts/ObserverRoot.cs` | 61 | D7、D8、第 3 節；#87 播放速度；#95 重大事件種類（C05：D10 已退役）；第 02 章 a 節種子輸入；第 08-3 章開發資訊視窗尺寸 |
 | `src/WorldSimulation.Core/World/WorldRecipe.cs` | 4 | 第 02 章 a 節：規則版本 `TEMP-RULES-0`（設定雜湊已於 b 節換成正式雜湊） |
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |

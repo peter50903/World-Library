@@ -348,7 +348,7 @@ public partial class ObserverRoot : Control
         });
         side.AddChild(new Label
         {
-            Text = "地圖操作：滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點格查詢（TEMP）。",
+            Text = "地圖操作：滾輪放大／縮小，按住滑鼠中鍵拖曳，左鍵點聚落或勢力範圍查詢（TEMP）。",
             AutowrapMode = TextServer.AutowrapMode.WordSmart
         });
 
@@ -639,21 +639,23 @@ public partial class ObserverRoot : Control
             }
             GD.Print($"WORLD_SIM_CONFIG_OK: Sheets={config.SheetCount} Hash16={config.ConfigHash[..16]}");
 
-            // Godot runs the same input handler used by real mouse clicks;
-            // selected terrain must be from Core's immutable demo cell.
+            // Godot runs the same input handler used by real mouse clicks.
+            // 第 08-31 章（使用者 2026-11-19：取消選擇地塊）：點空地只會選到那一片勢力範圍的聚落，不在範圍內就不選——不會出現地塊。
             var cell = _world.Map.GetCell(2, 2);
+            var infoBefore = _cellInfo.Text;
             _hexMap._GuiInput(new InputEventMouseButton
             {
                 ButtonIndex = MouseButton.Left,
                 Pressed = true,
                 Position = _hexMap.CellCenter(cell)
             });
-            if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal)
-                || !_cellInfo.Text.Contains(DemoCellQuery.TerrainName(cell), StringComparison.Ordinal))
+            var siteHere = _world.Sites.Settlements.Any(s => s.Column == cell.Column && s.Row == cell.Row);
+            if (!siteHere && _cellInfo.Text != infoBefore
+                && (_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal) || !_cellInfo.Text.Contains("目前人口：", StringComparison.Ordinal)))
             {
-                throw new InvalidOperationException("Godot selection did not display Core's actual TEMP terrain data.");
+                throw new InvalidOperationException("第 08-31 章：點空地選到了地塊（只能選到勢力範圍的聚落，或不選）。");
             }
-            GD.Print($"WORLD_SIM_HEX_CLICK_OK: Col={cell.Column} Row={cell.Row}");
+            GD.Print($"WORLD_SIM_HEX_CLICK_OK: Col={cell.Column} Row={cell.Row} Tile=0");
 
             // V0-03B: clicking a settlement's cell shows Core's TEMP settlement,
             // resource point and population group.
@@ -774,7 +776,8 @@ public partial class ObserverRoot : Control
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = afterDrag
         });
-        if (!_cellInfo.Text.Contains($"座標 ({cell.Column}, {cell.Row})", StringComparison.Ordinal))
+        // 第 08-31 章：地塊不能選了；改看點到的是哪一格（決定選到哪一片範圍）。
+        if (_hexMap.LastClickCell != new DemoCellRef(cell.Column, cell.Row))
             throw new InvalidOperationException("Map click after panning selected the wrong Core cell.");
 
         // 第 08-18a 章：方格之間沒有縫——格邊稍偏一點就是隔壁那一格；地圖外點不到任何格。
@@ -784,7 +787,7 @@ public partial class ObserverRoot : Control
         {
             ButtonIndex = MouseButton.Left, Pressed = true, Position = seam + nudge
         });
-        if (!_cellInfo.Text.Contains($"座標 ({neighbor.Column}, {neighbor.Row})", StringComparison.Ordinal))
+        if (_hexMap.LastClickCell != new DemoCellRef(neighbor.Column, neighbor.Row))
             throw new InvalidOperationException("Map click just past a square edge did not select the next cell.");
         _cellInfo.Text = "MAP_OUTSIDE_UNSELECTED";
         var corner = _world.Map.GetCell(0, 0);
@@ -793,7 +796,7 @@ public partial class ObserverRoot : Control
             ButtonIndex = MouseButton.Left, Pressed = true,
             Position = _hexMap.CellCenter(corner) - (_hexMap.CellCenter(neighbor) - _hexMap.CellCenter(cell)) * 1.5f
         });
-        if (_cellInfo.Text != "MAP_OUTSIDE_UNSELECTED")
+        if (_cellInfo.Text != "MAP_OUTSIDE_UNSELECTED" || _hexMap.LastClickCell is not null)
             throw new InvalidOperationException("Map selected a cell outside the map.");
 
         if (_world.Snapshot().DaysElapsed != dayBefore
