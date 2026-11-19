@@ -244,7 +244,8 @@ public static class DemoMonsters
         IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null,
         Func<int, DemoCombatForce>? expedition = null,
         Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null, // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
-        int lastStand = TempSwarmLastStand) // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
+        int lastStand = TempSwarmLastStand, // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
+        Func<int, DemoDefense>? defense = null) // 第 08-34 章：城牆、塔樓（沒給＝沒有）
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
@@ -294,11 +295,13 @@ public static class DemoMonsters
                 if (prey is not null)
                 {
                     var guard = force(prey.Id);
-                    var (hit, fallen) = DemoCombat.Clash(monsters, level, guard, defending: true, (int)(Draw(rng, week, slot, 5) % 100UL));
+                    var walls = defense?.Invoke(prey.Id) ?? DemoDefense.None;
+                    var (hit, fallen) = DemoCombat.Clash(monsters, level, guard, defending: true, (int)(Draw(rng, week, slot, 5) % 100UL), walls.MonsterPercent);
                     var slain = Math.Min(hit, Room(guard));
                     var tier = tierOf?.Invoke(prey.Id) ?? DemoSettlementTier.Camp;
                     var people = residents(prey.Id);
                     var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon) // 怪物比全村的人還多才攻得破
+                        && !walls.HoldsSwarm // 第 08-34 章：城牆耐久三成以上、城門完好時攻不破
                         && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
                     if (broken)
                         overrun++;
@@ -307,7 +310,7 @@ public static class DemoMonsters
                     left -= slain + spent;
                     strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
                         ? $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）攻破了{prey.Name}，全村覆滅"
-                        : $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）來襲，{Defenders(guard)}死守，擊殺 {slain} 隻")
+                        : $"{nest.Dungeon.Name}的獸潮（{monsters} 隻 {level} 級怪物）來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}死守，擊殺 {slain} 隻")
                     {
                         Annihilate = broken
                     };
@@ -325,13 +328,16 @@ public static class DemoMonsters
             if (target is not null && (int)(Draw(rng, week, slot, 0) % 100UL) < Math.Min(TempMaxRaidPercent, monsters * TempRaidPercentPerMonster))
             {
                 var guard = force(target.Id);
-                var (hit, fallen) = DemoCombat.Clash(Math.Max(1, monsters / 2), level, guard, defending: true, (int)(Draw(rng, week, slot, 3) % 100UL));
+                var walls = defense?.Invoke(target.Id) ?? DemoDefense.None;
+                var (hit, fallen) = DemoCombat.Clash(Math.Max(1, monsters / 2), level, guard, defending: true, (int)(Draw(rng, week, slot, 3) % 100UL), walls.MonsterPercent);
                 var slain = Math.Min(hit, Room(guard));
-                var deaths = Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * TempRaidDeathPercent / 100)),
+                var deathPercent = walls.Wall is null ? TempRaidDeathPercent : TempRaidDeathPercent / 2; // 第 08-34 章：有城牆一次最多死 5%
+                var deaths = Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * deathPercent / 100)),
                     Math.Max(0L, residents(target.Id) - 1)); // 第 12-2g 節：一次襲擊最多死一成
                 left -= slain;
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
-                    slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}擊殺 {slain} 隻" : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能守住村子");
+                    slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}擊殺 {slain} 隻"
+                        : $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}只能{(walls.Wall is null ? "守住村子" : "據城牆死守")}");
                 kills.Add((target.Id, nest.CellId, slain, $"擊退{nest.Dungeon.Name}的怪物，殺死 {slain} 隻（剩 {left} 隻）"));
             }
             // 討伐：有士兵的遠征軍（勢力的士兵）走到離範圍 TempSoldierHuntReach 格內、戰力高的先；

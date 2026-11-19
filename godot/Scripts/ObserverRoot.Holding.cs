@@ -132,6 +132,9 @@ public partial class ObserverRoot
             list.AddChild(header);
             if (fields)
                 list.AddChild(IconRow("b12_ic_cat_field", $"附近已開墾的農田 {scene.Fields} 塊", null, "農田是開墾出來的地，不佔建築格"));
+            if (zone == DemoHoldingZone.Walls && DemoDefense.Of(h) is { Any: true } defense)
+                list.AddChild(IconRow("b12_ic_cat_defense", defense.Describe(), null,
+                    "第 08-34 章：城牆與城門、塔樓讓守方佔便宜（怪物來襲、大軍攻城）；被打壞的下週才少")); // 城防
             foreach (var r in inZone)
             {
                 var state = r.Status switch

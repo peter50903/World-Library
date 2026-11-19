@@ -54,8 +54,9 @@ public static class DemoCombat
     /// 一次交戰：<paramref name="engaged"/> 隻 <paramref name="monsterLevel"/> 級怪物對上 <paramref name="force"/>。
     /// <paramref name="defending"/>＝守村（戰鬥與非戰鬥人員都上，非戰鬥人員每隻怪物最多牽制 3 人）；否則是討伐（只派戰鬥人員，沒有才派非戰鬥人員組民兵）。
     /// <paramref name="luck"/>＝0～99 的運氣。回傳擊殺數與我方死亡。
+    /// 第 08-34 章：<paramref name="defensePercent"/>＝守村時城牆、塔樓讓我方戰力增加幾 %（見 <see cref="DemoDefense"/>）。
     /// </summary>
-    public static (int Kills, long Deaths) Clash(int engaged, int monsterLevel, DemoCombatForce force, bool defending, int luck)
+    public static (int Kills, long Deaths) Clash(int engaged, int monsterLevel, DemoCombatForce force, bool defending, int luck, int defensePercent = 0)
     {
         ArgumentNullException.ThrowIfNull(force);
         if (engaged <= 0)
@@ -63,6 +64,8 @@ public static class DemoCombat
         var fighters = force.Soldiers * force.SoldierLevel * 100;
         var civilians = defending || force.Fighters == 0 ? Math.Min(force.Civilians, (long)engaged * TempCiviliansPerMonster) : 0;
         var ours = fighters + civilians * TempCivilianStrengthPercent;
+        if (defending && defensePercent > 0)
+            ours = ours * (100 + defensePercent) / 100; // 第 08-34 章：據城牆、塔樓而守
         var theirs = (long)engaged * monsterLevel * 100;
         if (ours <= 0)
             return (0, Math.Min(force.Civilians, (long)engaged * monsterLevel / 2));
