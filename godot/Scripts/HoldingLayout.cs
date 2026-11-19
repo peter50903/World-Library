@@ -161,6 +161,44 @@ public static class HoldingLayout
         return width >= 80 ? "b12_ruin_wood_m" : "b12_ruin_wood_s";
     }
 
+    /// <summary>
+    /// 第 08-38 章：建築卡片的插圖（素材、蓋在前面的工地、是否一整排）：完好＝正面像素圖；施工中＝淡淡的建築＋工地；毀損＝廢墟。
+    /// 城牆是一整排牆面（木柵、石牆，首都是磚牆），城門、塔樓照常。
+    /// </summary>
+    public static (string Sprite, string? Overlay, bool Tiled) CardArt(string defId, int buildingId, DemoBuildingStatus status, float progress,
+        DemoSettlementTier tier)
+    {
+        if (defId is DemoBuildings.WallWood or DemoBuildings.WallStone or DemoBuildings.GateWood or DemoBuildings.GateStone)
+        {
+            var stone = defId is DemoBuildings.WallStone or DemoBuildings.GateStone;
+            var kind = stone ? (tier >= DemoSettlementTier.Capital ? "brick" : "stone") : "palisade";
+            var material = stone ? "stone" : "palisade";
+            var gate = defId is DemoBuildings.GateWood or DemoBuildings.GateStone;
+            var whole = gate ? $"b11_{kind}_gate_h" : $"b11_{kind}_h";
+            return status switch
+            {
+                DemoBuildingStatus.Ruined => (gate ? $"b12_ruin_{material}_gate_h" : $"b12_ruin_{material}_h", null, !gate),
+                DemoBuildingStatus.Building => (whole, gate ? SiteSprite(SizeOf(whole).X, progress) : $"b12_site_{material}_h", !gate),
+                _ => (whole, null, !gate)
+            };
+        }
+        var sprite = BuildingSprite(defId, buildingId, tier);
+        var width = SizeOf(sprite).X;
+        return status switch
+        {
+            DemoBuildingStatus.Ruined => (RuinSprite(defId, width), null, false),
+            DemoBuildingStatus.Building => (sprite, SiteSprite(width, progress), false),
+            _ => (sprite, null, false)
+        };
+    }
+
+    /// <summary>第 08-38 章：住宅卡片的插圖（營地是帳篷；首都的大型住宅是連棟，卡片上用磚房）。</summary>
+    public static string HouseCard(DemoSettlementTier tier, bool large)
+    {
+        var sprite = HouseSprite(tier, large, 1);
+        return sprite == "ROW" ? "b11_brick_house_1" : sprite;
+    }
+
     private static string HouseSprite(DemoSettlementTier tier, bool large, int v) => (tier, large) switch
     {
         (DemoSettlementTier.Camp, _) => "b11_tent_" + (v % 2 + 1),
