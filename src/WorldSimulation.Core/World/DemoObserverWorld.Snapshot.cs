@@ -429,7 +429,7 @@ public sealed partial class DemoObserverWorld
                 wellsAt(place.Id, report.Week), people, adults); // 第 08-11 章
             if (ledger.WaterCarriers != carriers
                 || ledger.WaterShortage != DemoSurvivalTempSettings.DehydrationDebt(people - served, weekly.FoodPerPersonPerWeek)
-                || ledger.FoodSpoiled != DemoSurvivalTempSettings.Spoilage(ledger.FoodOpening)
+                || !SpoilageMatches(ledger.FoodSpoiled, ledger.FoodOpening) // 第 08-37 章：糧倉
                 || ledger.FoodConsumed + ledger.FoodShortage != survival.Demand(adults, people - adults, weekly.FoodPerPersonPerWeek))
                 Reject($"第 {w} 週聚落 #{ledger.SettlementId} 的取水、缺水、腐敗或需求與規則重算不符");
         }
@@ -458,6 +458,13 @@ public sealed partial class DemoObserverWorld
         foreach (var report in reports)
             batches.Add(DemoEventProjection.ToWorldEvents(report, sites, null));
         return EventHistory.Rebuild(batches);
+    }
+
+    /// <summary>第 08-37 章：有糧倉的聚落腐敗少一半（週報不記那一週有沒有糧倉，兩種都接受）。</summary>
+    private static bool SpoilageMatches(long spoiled, long opening)
+    {
+        var full = DemoSurvivalTempSettings.Spoilage(opening);
+        return spoiled == full || spoiled == full - full * DemoBuildingBonus.TempGranarySpoilageCut / 100;
     }
 
     private static List<DemoWeekReport> ReadWeekReports(JsonElement array)
