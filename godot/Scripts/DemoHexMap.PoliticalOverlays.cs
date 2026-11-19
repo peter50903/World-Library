@@ -13,8 +13,8 @@ public partial class DemoHexMap
     /// <summary>【TEMP】三層的分界（每格像素）。</summary>
     private const float TempMidCellPx = 30f, TempCloseCellPx = 60f;
 
-    /// <summary>【TEMP】勢力名最大字級（像素）與最小（太小就不畫）。</summary>
-    private const float TempLabelMaxPx = 72f, TempLabelMinPx = 11f;
+    /// <summary>【TEMP】勢力名最大字級（像素）與最小（太小就不畫）。第 08-41 章：72→56，大勢力的名字不再壓滿整片。</summary>
+    private const float TempLabelMaxPx = 56f, TempLabelMinPx = 11f;
 
     private static readonly Color TempPlateFill = new(0.09f, 0.11f, 0.20f, 0.93f);
     private static readonly Color TempPlateGold = new(0.80f, 0.66f, 0.36f);
@@ -268,9 +268,10 @@ public partial class DemoHexMap
             var size = (int)px;
             var fill = _mode is Mode.Realm or Mode.Terrain ? PoliticalRealmColor((int)label.Group)
                 : _mode == Mode.Culture ? CultureColor((int)label.Group) : FaithColor((int)label.Group);
-            var ink = new Color(0.14f, 0.10f, 0.13f, 0.92f * fade);
-            var glow = new Color(fill.Lightened(0.35f), 0.45f * fade);
-            var outline = Math.Max(2, size / 9);
+            // 第 08-41 章：紙地圖的墨色字＋淡淡的紙色暈邊（CK3 遠看的地名），不再用勢力色的亮邊。
+            var ink = new Color(0.17f, 0.11f, 0.08f, 0.88f * fade);
+            var glow = new Color(new Color(0.94f, 0.89f, 0.76f).Lerp(fill, 0.25f), 0.42f * fade);
+            var outline = Math.Max(2, size / 12);
             for (var i = 0; i < label.Positions.Length; i++)
             {
                 var at = origin + label.Positions[i] * cellPx;

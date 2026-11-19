@@ -279,9 +279,68 @@ public partial class DemoHexMap
             bytes[at + 1] = (byte)Math.Min(255, provinces.NestAt(cell.Column, cell.Row)); // 第 08-31 章：存地盤編號（選到時整片框起）
             bytes[at + 3] = 255;
         }
+        var coast = CoastDistance(world, provinces);
+        for (var i = 0; i < coast.Length; i++)
+            bytes[i * 4 + 2] = coast[i];
         _landTexture = Upload(_landTexture, world.Columns, world.Rows, bytes);
         _politicalMaterial!.SetShaderParameter("land", _landTexture);
         _rivers = null; // 換世界時河流重算
+    }
+
+    /// <summary>【TEMP】第 08-41 章：到海岸的距離算到幾格為止（再遠都當最深的海、最內陸）。</summary>
+    private const int TempCoastReach = 16;
+
+    private bool[]? _coastWater;
+    private byte[]? _coastBytes;
+
+    /// <summary>
+    /// 第 08-41 章：每格到海岸的有號距離（格；海為正、陸為負，海岸線在兩格中間＝0），編成 128＋8×距離存進 land 貼圖的 B。
+    /// 著色器用它畫由淺到深的海、近岸的等距線與沙灘。水陸的判斷跟 ids 貼圖一樣（不是陸地、也沒有省份＝水）；水陸沒變就沿用上次算的。
+    /// </summary>
+    private byte[] CoastDistance(DemoHexWorld world, DemoProvinceMap provinces)
+    {
+        int columns = world.Columns, rows = world.Rows;
+        var water = new bool[columns * rows];
+        for (var r = 0; r < rows; r++)
+            for (var c = 0; c < columns; c++)
+                water[r * columns + c] = !DemoProvinceMap.IsLand(world.GetCell(c, r)) && provinces.ProvinceAt(c, r) == DemoProvinceMap.Wild;
+        if (_coastBytes is not null && _coastWater is not null && _coastWater.AsSpan().SequenceEqual(water))
+            return _coastBytes;
+        var result = new byte[water.Length];
+        for (var r = 0; r < rows; r++)
+            for (var c = 0; c < columns; c++)
+            {
+                var self = water[r * columns + c];
+                var best = float.MaxValue; // 最近的對岸格（距離平方）
+                void Try(int x, int y)
+                {
+                    if (x < 0 || y < 0 || x >= columns || y >= rows || water[y * columns + x] == self)
+                        return;
+                    var dx = x - c;
+                    var dy = y - r;
+                    best = Math.Min(best, dx * dx + dy * dy);
+                }
+                // 一圈一圈往外找；這一圈最近也有 k 格，已找到更近的就停。
+                for (var k = 1; k <= TempCoastReach && (float)k * k < best; k++)
+                {
+                    for (var d = -k; d <= k; d++)
+                    {
+                        Try(c + d, r - k);
+                        Try(c + d, r + k);
+                    }
+                    for (var d = -k + 1; d <= k - 1; d++)
+                    {
+                        Try(c - k, r + d);
+                        Try(c + k, r + d);
+                    }
+                }
+                var distance = best == float.MaxValue ? TempCoastReach : Math.Min(TempCoastReach, MathF.Sqrt(best) - 0.5f);
+                var signed = self ? distance : -distance;
+                result[r * columns + c] = (byte)Math.Clamp((int)MathF.Round(128f + 8f * signed), 0, 255);
+            }
+        _coastWater = water;
+        _coastBytes = result;
+        return result;
     }
 
     private static ImageTexture Upload(ImageTexture? texture, int width, int height, byte[] bytes)
