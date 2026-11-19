@@ -28,6 +28,7 @@ public partial class ObserverRoot
             Fail("undeveloped grassland was automatically turned into farmland");
 
         // Click a real Core forest cell; its gold catchment outlines must be the six-neighbour geometry.
+        // 第 08-31 章：地塊不能選了——點到的是這一格（決定選到哪一片範圍），供糧範圍照 Core。
         var forest = _world.SharedFoodSources().First(s => s.Kind == DemoCatchmentSourceKind.Forest);
         _hexMap._GuiInput(new InputEventMouseButton
         {
@@ -35,7 +36,7 @@ public partial class ObserverRoot
             Position = _hexMap.CellCenter(_world.Map.GetCell(forest.Column, forest.Row))
         });
         var eligible = DemoHexFoodCatchment.EligibleCells(_world.Map, forest);
-        if (!_cellInfo.Text.Contains($"座標 ({forest.Column}, {forest.Row})", StringComparison.Ordinal)
+        if (_hexMap.LastClickCell != new DemoCellRef(forest.Column, forest.Row)
             || _world.QueryCell(forest.Column, forest.Row).FoodReachCells.Count != eligible.Count)
             Fail("clicking a forest did not select it with its real Core catchment");
 
