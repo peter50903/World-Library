@@ -284,6 +284,16 @@ public sealed partial class DemoObserverWorld
     /// <summary>第 08-34 章：某聚落的城防（由目前的城牆、城門、塔樓算出；週結算時用的是上一週的建築）。</summary>
     public DemoDefense Defense(int settlementId) => DemoDefense.Of(_buildings.Of(settlementId));
 
+    /// <summary>第 08-37 章：某聚落完好的建築帶來的加成（研究、存糧、施工、士兵、醫護）。只讀。</summary>
+    public DemoBuildingBonus BuildingBonus(int settlementId) => DemoBuildingBonus.Of(_buildings.Of(settlementId));
+
+    /// <summary>第 08-37 章：全世界的建築加成（同一次查詢內沿用；研究每個技術都會問一次）。</summary>
+    private Func<int, DemoBuildingBonus> BuildingBonuses()
+    {
+        var cache = new Dictionary<int, DemoBuildingBonus>();
+        return id => cache.TryGetValue(id, out var known) ? known : (cache[id] = BuildingBonus(id));
+    }
+
     /// <summary>
     /// 第 08-33 章：領地面板的資料——建築、等級、附近已開墾的農田塊數、附近地形、正在蓋的住宅種類、居民數（聚落不存在＝null）。
     /// 只讀，不改世界。
@@ -656,7 +666,8 @@ public sealed partial class DemoObserverWorld
             return cache[id] = DemoCombat.Force(_demography.AdultsIn(id, DemoHumanLifecycle.Rules), ChronicleOf(id).Tier,
                 tech => DemoTechCatalog.All.Any(n => n.Id == tech) && _knowledge.Knows(id, DemoTechnology.Of(tech)),
                 _demography.Representatives.Any(r => r.Role == DemoRepresentativeRole.Hero && r.SettlementId == id), // 第 08-10i 章：英雄在世，士兵等級 +1
-                DemoAges.SoldierLevels(AgeAtWeek(checked(CommittedWeeks + 1)))); // 第 08-6c 章：奇蹟時代士兵 +1
+                DemoAges.SoldierLevels(AgeAtWeek(checked(CommittedWeeks + 1))), // 第 08-6c 章：奇蹟時代士兵 +1
+                BuildingBonus(id).SoldierPercent); // 第 08-37 章：兵營、靶場、馬廄
         };
     }
 
@@ -738,6 +749,13 @@ public sealed partial class DemoObserverWorld
                 cache[index] = people = weeks[index].Settlements.ToDictionary(l => l.SettlementId, l => l.PopulationClosing);
             return people.TryGetValue(target, out var known) ? known : residents(target);
         };
+    }
+
+    /// <summary>第 08-37 章：抄寫室、學校、高等學院、魔法學院讓研究再加幾 %（乘在領袖的倍率上）。</summary>
+    private Func<int, int> WithBuildingResearch(Func<int, int> leader)
+    {
+        var bonuses = BuildingBonuses();
+        return id => leader(id) * (100 + bonuses(id).ResearchPercent) / 100;
     }
 
     /// <summary>第 08-22c 章：各聚落領袖的特質讓研究變成幾 %（沒有領袖＝100）。</summary>
@@ -875,7 +893,8 @@ public sealed partial class DemoObserverWorld
                     nestsNow, natural.Keys.ToHashSet(), _rng, CombatForces(nestsNow), // 第 12-2c 節：戰鬥人員與非戰鬥人員
                     ExpeditionForces(CombatForces(nestsNow)), // 第 12-2e 節：勢力的最上層聚落帶整個勢力的士兵出征
                     id => ChronicleOf(id).Tier, AgeAtWeek(checked(CommittedWeeks + 1)), // 第 12-2h 章：獸潮
-                    defense: Defense); // 第 08-34 章：城牆、塔樓
+                    defense: Defense, // 第 08-34 章：城牆、塔樓；第 08-37 章：城堡
+                    healPercent: id => BuildingBonus(id).HealPercent); // 第 08-37 章：診療所、醫院
             // 第 12-2a 節：怪物佔據的格與地下城所在格不能建村（討伐完畢、範圍消失後才可以）。
             var monsterLand = nestsNow.SelectMany(n => n.Cells.Append(n.Dungeon.Cell)).ToHashSet();
             var strikes = monsters.Strikes.Count == 0 ? natural
@@ -927,7 +946,8 @@ public sealed partial class DemoObserverWorld
                 isMarket: _demography is null || _knowledge.Era == DemoEra.Hope ? null
                     : id => ChronicleOf(id).Tier >= DemoSettlementTier.Town
                         && (_knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)) || _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.CurrencyTech))),
-                barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)));
+                barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)),
+                spoilageCutPercent: id => BuildingBonus(id).SpoilageCutPercent); // 第 08-37 章：糧倉
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);
             Checkpoint(DemoCommitStage.AfterLedgerStaged);
@@ -953,7 +973,7 @@ public sealed partial class DemoObserverWorld
                     _weeks.Count <= DemoKnowledge.TempCycleWeeks ? _weeks : _weeks.GetRange(_weeks.Count - DemoKnowledge.TempCycleWeeks, DemoKnowledge.TempCycleWeeks), // 第 08-14 章：最近一輪的週報
                     DemoEnvironment.ExhaustedOre(_wildlife.Spells, report.Week), // 第 08-16 章第 14 節：挖空的礦脈不算
                     DemoAges.ResearchPercent(AgeAtWeek(report.Week)), // 第 08-6c 章：奇蹟時代研究加快
-                    LeaderResearch(lifecycle.Population.Representatives), // 第 08-22c 章：領袖的聰慧、遲鈍、賢者
+                    WithBuildingResearch(LeaderResearch(lifecycle.Population.Representatives)), // 第 08-22c 章：領袖的聰慧、遲鈍、賢者；第 08-37 章：學府
                     VassalCounts()); // 第 08-24 章：有臣屬的勢力才研究王權
                 DemoPerf.Mark("知識");
                 // 第 08-6 章 c 節：已習得農耕的聚落開墾相鄰草原（開墾完成的事件接在知識事件之後）。

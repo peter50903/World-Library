@@ -122,6 +122,14 @@ public partial class ObserverRoot
         list.AddChild(stock);
         if (scene.Progress is { } progress)
             AddTierProgress(list, progress); // 第 08-36 章
+        if (scene.Bonus.Any)
+        {
+            // 第 08-37 章：建築的作用（相加後），每項配分類圖示。
+            list.AddChild(new HSeparator());
+            list.AddChild(IconRow("b12_ic_cat_admin", "建築加成", null, "完好的建築才有作用；同一種蓋好幾座只算一次（城牆、塔樓、城堡看城防）", 22));
+            foreach (var (kind, text) in scene.Bonus.Parts())
+                list.AddChild(IconRow(BonusIcon(kind), text));
+        }
         var rows = DemoHoldingReport.Rows(scene);
         foreach (var zone in Enum.GetValues<DemoHoldingZone>())
         {
@@ -146,8 +154,11 @@ public partial class ObserverRoot
                     _ when r.Percent < 100 => "b12_ic_state_damaged",
                     _ => null
                 };
-                list.AddChild(IconRow(CategoryIcon(r.DefId), $"{r.Name}{(r.Count > 1 ? $" ×{r.Count}" : "")}：{DemoHoldingReport.StateText(r.Status, r.Percent)}",
-                    state, DemoBuildingCatalog.Contains(r.DefId) ? DemoBuildingCatalog.Get(r.DefId).Name : null));
+                var effect = DemoHoldingReport.EffectText(r); // 第 08-37 章
+                var name = DemoBuildingCatalog.Contains(r.DefId) ? DemoBuildingCatalog.Get(r.DefId).Name : null;
+                list.AddChild(IconRow(CategoryIcon(r.DefId),
+                    $"{r.Name}{(r.Count > 1 ? $" ×{r.Count}" : "")}：{DemoHoldingReport.StateText(r.Status, r.Percent)}{(effect is null ? "" : "｜" + effect)}",
+                    state, effect is null ? name : $"{name}\n作用：{effect}"));
             }
         }
         if (rows.Count == 0)
@@ -205,6 +216,17 @@ public partial class ObserverRoot
             row.AddChild(Picture(badge, 18));
         return row;
     }
+
+    /// <summary>第 08-37 章：建築加成的圖示（第十二批分類圖示）。</summary>
+    private static string BonusIcon(DemoBonusKind kind) => kind switch
+    {
+        DemoBonusKind.Research => "b12_ic_cat_edu",
+        DemoBonusKind.Storage => "b12_ic_cat_storage",
+        DemoBonusKind.Construction => "b12_ic_cat_industry",
+        DemoBonusKind.Gathering => "b12_ic_cat_resource",
+        DemoBonusKind.Soldiers => "b12_ic_cat_military",
+        _ => "b12_ic_cat_health"
+    };
 
     private static string ZoneIcon(DemoHoldingZone zone) => zone switch
     {

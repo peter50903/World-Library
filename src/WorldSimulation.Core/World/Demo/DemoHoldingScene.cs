@@ -53,6 +53,9 @@ public sealed record DemoHoldingScene(
 
     /// <summary>第 08-36 章：升下一級還差什麼（首都、遺跡＝null）。</summary>
     public DemoTierProgress? Progress { get; init; }
+
+    /// <summary>第 08-37 章：完好的建築帶來的加成。</summary>
+    public DemoBuildingBonus Bonus => DemoBuildingBonus.Of(Holding);
 }
 
 /// <summary>第 08-33 章：領地列表的一列（同一種、完好的建築合併成「×N」）。<see cref="Percent"/>：施工中＝進度，完成＝耐久度，毀損＝0。</summary>
@@ -142,6 +145,13 @@ public static class DemoHoldingReport
             .ThenBy(r => r.Name, StringComparer.Ordinal).ThenBy(r => r.BuildingId).ToList();
     }
 
+    /// <summary>第 08-37 章：一列建築的作用（只有完好的才有；城牆、城門、塔樓看城防那一行）。</summary>
+    public static string? EffectText(DemoHoldingRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        return row.Status == DemoBuildingStatus.Standing ? DemoBuildingBonus.EffectOf(row.DefId) : null;
+    }
+
     /// <summary>住宅一行：棟數、住得下幾人、居民幾人、毀損與正在蓋的。</summary>
     public static string HousingLine(DemoHoldingScene scene)
     {
@@ -185,6 +195,12 @@ public static class DemoHoldingReport
             lines.Add($"── {progress.Headline} ──");
             lines.AddRange(progress.Steps.Select(s => "・" + s.Line));
         }
+        if (scene.Bonus.Any)
+        {
+            // 第 08-37 章：建築的作用（相加後）。
+            lines.Add("── 建築加成 ──");
+            lines.AddRange(scene.Bonus.Parts().Select(p => "・" + p.Text));
+        }
         var rows = Rows(scene);
         foreach (var zone in Enum.GetValues<DemoHoldingZone>())
         {
@@ -199,7 +215,8 @@ public static class DemoHoldingReport
             if (zone == DemoHoldingZone.Walls && DemoDefense.Of(h) is { Any: true } defense)
                 lines.Add("・" + defense.Describe()); // 第 08-34 章：城牆、塔樓的作用
             foreach (var r in inZone)
-                lines.Add($"・{r.Name}" + (r.Count > 1 ? string.Create(inv, $" ×{r.Count}") : "") + $"：{StateText(r.Status, r.Percent)}");
+                lines.Add($"・{r.Name}" + (r.Count > 1 ? string.Create(inv, $" ×{r.Count}") : "") + $"：{StateText(r.Status, r.Percent)}"
+                    + (EffectText(r) is { } effect ? "｜" + effect : ""));
         }
         if (rows.Count == 0)
             lines.Add("（住宅以外還沒有任何建築）");

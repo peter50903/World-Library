@@ -69,7 +69,9 @@ public sealed class DemoSurvivalTests
             var children = ledger.PopulationOpening - adults;
             sawChildren |= children > 0;
             Assert.Equal(adults * 4 + children * 4 * survival.ChildFoodPercent / 100, ledger.FoodConsumed + ledger.FoodShortage);
-            Assert.Equal((long)Math.Floor(ledger.FoodOpening * DemoSurvivalTempSettings.FoodLossPerWeek), ledger.FoodSpoiled);
+            // 第 08-37 章：有糧倉的聚落腐敗少一半。
+            var spoils = (long)Math.Floor(ledger.FoodOpening * DemoSurvivalTempSettings.FoodLossPerWeek);
+            Assert.Contains(ledger.FoodSpoiled, new[] { spoils, spoils - spoils * DemoBuildingBonus.TempGranarySpoilageCut / 100 });
             Assert.True(ledger.NoMagicFood && ledger.IsBalanced); // M1_NO_MAGIC_FOOD
         }
         Assert.True(sawChildren, "三年內應有兒童出生，才能驗兒童食量。");

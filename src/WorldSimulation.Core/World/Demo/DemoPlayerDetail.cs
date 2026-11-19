@@ -265,6 +265,8 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             now.Add(DemoCombat.Describe(world.CombatForceOf(settlement.Id))); // 第 12-2c 節
             if (world.Defense(settlement.Id) is { Any: true } defense)
                 now.Add(defense.Describe()); // 第 08-34 章：城牆、塔樓
+            if (world.BuildingBonus(settlement.Id).Line() is { } bonus)
+                now.Add(bonus); // 第 08-37 章：建築的作用
             now.Add($"人口 {world.SettlementPopulation(settlement.Id)}");
             if (world.TierProgress(settlement.Id) is { } progress)
                 now.Add(progress.Headline); // 第 08-36 章：升下一級還差什麼（詳見「領地」）

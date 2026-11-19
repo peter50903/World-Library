@@ -245,11 +245,18 @@ public static class DemoMonsters
         Func<int, DemoCombatForce>? expedition = null,
         Func<int, DemoSettlementTier>? tierOf = null, DemoAge? age = null, // 第 12-2h 章：獸潮（攻破看聚落層級；黑暗、混沌時代較常發生）
         int lastStand = TempSwarmLastStand, // 第 12-2h 章：世上只剩幾個有人的聚落時攻不破
-        Func<int, DemoDefense>? defense = null) // 第 08-34 章：城牆、塔樓（沒給＝沒有）
+        Func<int, DemoDefense>? defense = null, // 第 08-34 章：城牆、塔樓（沒給＝沒有）
+        Func<int, int>? healPercent = null) // 第 08-37 章：診療所、醫院讓怪物害死的人少幾 %
     {
         // 第 12-2c 節：沒給人力時，成年人都算非戰鬥人員（測試與舊呼叫）。
         force ??= id => new DemoCombatForce(0, 0, residents(id));
         expedition ??= force;
+        // 第 08-37 章：診療所、醫院救回一部分人（至少還是死 1 人）。
+        long Healed(long lost, int whom)
+        {
+            var heal = Math.Clamp(healPercent?.Invoke(whom) ?? 0, 0, 90);
+            return lost <= 1 || heal == 0 ? lost : Math.Max(1L, lost - lost * heal / 100);
+        }
         ArgumentNullException.ThrowIfNull(map);
         ArgumentNullException.ThrowIfNull(sites);
         ArgumentNullException.ThrowIfNull(residents);
@@ -305,7 +312,7 @@ public static class DemoMonsters
                         && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
                     if (broken)
                         overrun++;
-                    var deaths = broken ? people : Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100));
+                    var deaths = broken ? people : Healed(Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100)), prey.Id);
                     var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
                     left -= slain + spent;
                     strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
@@ -332,8 +339,8 @@ public static class DemoMonsters
                 var (hit, fallen) = DemoCombat.Clash(Math.Max(1, monsters / 2), level, guard, defending: true, (int)(Draw(rng, week, slot, 3) % 100UL), walls.MonsterPercent);
                 var slain = Math.Min(hit, Room(guard));
                 var deathPercent = walls.Wall is null ? TempRaidDeathPercent : TempRaidDeathPercent / 2; // 第 08-34 章：有城牆一次最多死 5%
-                var deaths = Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * deathPercent / 100)),
-                    Math.Max(0L, residents(target.Id) - 1)); // 第 12-2g 節：一次襲擊最多死一成
+                var deaths = Healed(Math.Min(Math.Min(Math.Max(1L, fallen), Math.Max(1L, residents(target.Id) * deathPercent / 100)),
+                    Math.Max(0L, residents(target.Id) - 1)), target.Id); // 第 12-2g 節：一次襲擊最多死一成
                 left -= slain;
                 strikes[target.Id] = new DemoDisasterStrike(target.Id, DemoSettlementEventKind.MonsterRaid, deaths,
                     slain > 0 ? $"{nest.Dungeon.Name}的 {level} 級怪物來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}擊殺 {slain} 隻"

@@ -760,7 +760,8 @@ internal static class DemoWeeklySettlement
         Func<DemoCellRef, bool>? forbiddenSite = null,
         Func<int, int?>? liegeOf = null,
         Func<int, bool>? isMarket = null, // 第 08-23 章：市集（城鎮以上、會以物易物或貨幣）
-        Func<int, bool>? barters = null) // 第 08-23 章：會以物易物的聚落才賣糧
+        Func<int, bool>? barters = null, // 第 08-23 章：會以物易物的聚落才賣糧
+        Func<int, int>? spoilageCutPercent = null) // 第 08-37 章：糧倉讓存糧腐敗少幾 %
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
         var hope = hopeRules ?? config.HopeEra;
@@ -1069,6 +1070,8 @@ internal static class DemoWeeklySettlement
                 ? plannedWater
                 : (Adults: people, Children: 0L, Carriers: 0L, WaterShortage: 0L);
             var spoiled = config.SharedCatchmentEnabled ? DemoSurvivalTempSettings.Spoilage(foodOpening) : 0L;
+            if (spoiled > 0 && spoilageCutPercent?.Invoke(settlement.Id) is int cut && cut > 0)
+                spoiled -= spoiled * Math.Min(100, cut) / 100; // 第 08-37 章：糧倉
             var available = checked(foodOpening - spoiled + harvested);
             var demand = config.SharedCatchmentEnabled
                 ? survival.Demand(waterPlan.Adults, waterPlan.Children, config.FoodPerPersonPerWeek)
