@@ -1512,6 +1512,7 @@ public partial class ObserverRoot : Control
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
         _hexMap.WorldAge = _world.Age; // 第 12-2j 章：政治地圖的時代氛圍
         _hexMap.TradeLinks = DemoFoodTrade.Links(_world); // 第 08-23 章：商路
+        _hexMap.SeaLanes = _world.SeaLanes(); // 第 08-42 章：航線
         _hexMap.Kingdoms = _world.KingdomHeads().ToHashSet(); // 第 08-24 章：王國的名字寫「某某王國」
         var dungeonCells = _world.Dungeons.Select(d => d.Cell).ToArray();
         if (!dungeonCells.SequenceEqual(_hexMap.Dungeons))

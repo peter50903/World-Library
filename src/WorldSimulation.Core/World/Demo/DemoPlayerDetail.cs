@@ -286,6 +286,15 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
                 && n.Cells.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempRaidReach).Select(n => $"{n.Dungeon.Name}（{n.Monsters} 隻）").ToList();
             if (threats.Count > 0)
                 now.Add("⚔ 緊鄰怪物的地盤：" + string.Join("、", threats));
+            // 第 08-42 章：港口的航線（暢通幾條、被哪個海上地下城封鎖）。
+            if (world.IsPort(settlement.Id))
+            {
+                var lanes = world.SeaLanes().Where(l => l.From == settlement.Id || l.To == settlement.Id).ToList();
+                now.Add(lanes.Count == 0 ? "⚓ 港口：還沒有航線（附近的海上沒有別的港口）"
+                    : "⚓ 航線：" + string.Join("、", lanes.Select(l => NameOf(world, l.From == settlement.Id ? l.To : l.From) + (l.Blocked ? $"（被{l.BlockedName}的海怪封鎖）" : ""))));
+            }
+            else if (world.CanSail(settlement.Id))
+                now.Add("⚓ 會造船：出得了海，可以和海怪海戰");
         }
         // 第 08-8 章 B1：文化比例（由多到少）與主要文化的特性。
         var shares = world.Culture.SharesOf(settlement.Id).OrderByDescending(s => s.Permille).ThenBy(s => s.CultureId).ToList();

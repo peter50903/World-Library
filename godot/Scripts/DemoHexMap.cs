@@ -177,6 +177,9 @@ public partial class DemoHexMap : Control
     /// <summary>第 08-23 章：最近一週的商路（賣糧的村莊 → 市集；政治地圖中距離以上畫成流動的金色虛線）。</summary>
     public IReadOnlyList<(DemoCellRef From, DemoCellRef To)> TradeLinks { get; set; } = Array.Empty<(DemoCellRef, DemoCellRef)>();
 
+    /// <summary>第 08-42 章：航線（港口之間的海路；被海上怪物擋住的畫成紅色、標出封鎖的地方）。</summary>
+    public IReadOnlyList<DemoSeaLane> SeaLanes { get; set; } = Array.Empty<DemoSeaLane>();
+
     /// <summary>第 12-2j 章：目前的世界時代（政治地圖的氛圍：黑暗時代長夜降臨）。</summary>
     public DemoAge WorldAge { get; set; } = DemoAge.Hope;
 
