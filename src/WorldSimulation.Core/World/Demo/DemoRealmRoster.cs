@@ -5,7 +5,7 @@ namespace WorldSimulation.Core.World.Demo;
 /// <summary>
 /// 第 08-27 章（使用者 2026-11-18：各勢力要寫村、鎮……的資源儲備、重要人物、兵力）：勢力頁隸屬樹裡，每個聚落底下的幾行——
 /// 人口與存糧（夠吃幾週）、兵力（戰時徵兵與常備士兵）、重要人物（領袖、專家、英雄）。只讀世界，不改世界。
-/// 資源儲備目前只有糧食（模擬裡還沒有木材、石材等庫存；正式建築系統會加上建材）。
+/// 資源儲備：糧食；第 08-32 章起加上建材（木、石、鐵）與建築數。
 /// </summary>
 public static class DemoRealmRoster
 {
@@ -23,6 +23,15 @@ public static class DemoRealmRoster
             : ledger.FoodConsumed > 0 ? $"存糧 {N(ledger.FoodClosing)}（約 {ledger.FoodClosing / ledger.FoodConsumed} 週）"
             : $"存糧 {N(ledger.FoodClosing)}";
         lines.Add($"人口 {N(people)}｜{food}");
+        // 第 08-32 章：建材庫存與建築（正式建築系統）。
+        if (world.HoldingOf(settlementId) is { } holding)
+        {
+            var standing = holding.Buildings.Count(b => b.Status == DemoBuildingStatus.Standing);
+            var building = holding.Buildings.Count(b => b.Status == DemoBuildingStatus.Building);
+            var ruined = holding.Buildings.Count(b => b.Status == DemoBuildingStatus.Ruined);
+            lines.Add($"建材：木 {N(holding.Wood)}、石 {N(holding.Stone)}、鐵 {N(holding.Iron)}｜住宅 {N(holding.Dwellings + holding.LargeDwellings)} 棟、建築 {standing} 座"
+                + (building > 0 ? $"（{building} 座施工中）" : "") + (ruined > 0 ? $"、廢墟 {ruined} 處" : ""));
+        }
         var levy = DemoRealms.Army(people);
         var force = world.CombatForceOf(settlementId);
         lines.Add(force.Soldiers > 0

@@ -81,6 +81,7 @@ public sealed partial class DemoObserverWorld
     private DemoWildlifeState _wildlife = DemoWildlifeState.Empty; // 第 12-1 章 C1：野生動物
     private DemoWorldLaws _laws = DemoWorldLaws.Default; // 第 08-19c 章：世界法則
     private ImmutableSortedDictionary<long, DemoPersonRecord> _people = DemoPersonRegister.Empty; // 第 14-1 章第 7 項：人物登記表
+    private DemoBuildingsState _buildings = DemoBuildingsState.Empty; // 第 08-32 章：正式建築
 
     /// <summary>第 14-1 章第 7 項：用實體編號查具名人物（在任或已卸任）；沒有這個人回傳 null。</summary>
     public DemoPersonRecord? PersonRecord(long id) => _people.GetValueOrDefault(id);
@@ -273,6 +274,12 @@ public sealed partial class DemoObserverWorld
 
     /// <summary>第 12-1 章 C1：野生動物（聚合）。</summary>
     public DemoWildlifeState Wildlife => _wildlife;
+
+    /// <summary>第 08-32 章：全世界的建築（施工中、完成、毀損）與聚落的建材庫存。</summary>
+    public DemoBuildingsState Buildings => _buildings;
+
+    /// <summary>第 08-32 章：某聚落的建築（還沒有紀錄＝null）。</summary>
+    public DemoHolding? HoldingOf(int settlementId) => _buildings.Of(settlementId);
 
     /// <summary>第 08-6 章：目前時代。</summary>
     public DemoEra Era => _knowledge.Era;
@@ -982,9 +989,13 @@ public sealed partial class DemoObserverWorld
                 var added = learned.Concat(cleared).Concat(split).Concat(faithEvents).Concat(environmentEvents).Concat(monsterEvents).Concat(realmEvents).Concat(eraEvents).ToArray();
                 var withKnowledge = added.Length == 0 ? lifecycle.Outcome
                     : lifecycle.Outcome with { Report = report with { Events = report.Events.Concat(added).ToArray() } };
+                // 第 08-32 章：正式建築——本週的破壞（怪物、戰爭、天災、成為遺跡）與施工（接在最後；只讀本週結果）。
+                var buildings = DemoBuildings.Advance(_buildings, BuildingWeek(withKnowledge.Report, lifecycle.Outcome.Sites, lifecycle.Population,
+                    knowledge, land, CombatForces(nestsNow)));
+                DemoPerf.Mark("建築");
                 commit.StagePopulation(withKnowledge, lifecycle.Population);
                 commit.StageKnowledge(knowledge, land);
-                commit.StageCulture(culture, wildlife);
+                commit.StageCulture(culture, wildlife, buildings);
             }
             else
             {
@@ -1037,6 +1048,28 @@ public sealed partial class DemoObserverWorld
     private static Func<int, long, long, DemoEmigrationMode, long> PlanFamilies(DemoCohortDemography demography, int week)
         => (settlementId, deaths, limit, mode) => DemoHumanLifecycle.PlanEmigrants(demography, week, settlementId, limit, mode, deaths);
 
+    /// <summary>第 08-32 章：建築推進一週要讀的世界資訊（本週生死、知識、開墾之後的結果）。</summary>
+    private DemoBuildingWeek BuildingWeek(DemoWeekReport report, DemoWorldSites sites, DemoCohortDemography population,
+        DemoKnowledgeState knowledge, DemoLandDevelopmentMap land, Func<int, DemoCombatForce> forces)
+    {
+        var roles = population.Representatives.GroupBy(r => r.SettlementId).ToDictionary(g => g.Key, g => g.Select(r => r.Role).ToHashSet());
+        var food = report.Settlements.GroupBy(l => l.SettlementId).ToDictionary(g => g.Key, g => g.Last().FoodClosing);
+        var fields = DemoBuildings.FieldsNear(land, sites.Settlements.Where(s => !s.IsRuin));
+        bool Knows(int id, string tech) => DemoTechCatalog.Contains(tech) && knowledge.Knows(id, DemoTechnology.Of(tech));
+        return new DemoBuildingWeek(report.Week, Map, sites.Settlements,
+            id => population.ResidentsOf(id),
+            id => population.AdultsIn(id, DemoHumanLifecycle.Rules),
+            id => ChronicleOf(id).Tier,
+            Knows,
+            (id, f) => f.Role is { } role ? roles.TryGetValue(id, out var held) && held.Contains(role) : f.TechId is { } tech && Knows(id, tech),
+            id => forces(id).Soldiers,
+            id => fields.GetValueOrDefault(id),
+            id => food.GetValueOrDefault(id),
+            // 第 08-23 章：市集＝城鎮以上、會以物易物或貨幣。
+            id => ChronicleOf(id).Tier >= DemoSettlementTier.Town && (Knows(id, DemoFoodTrade.BarterTech) || Knows(id, DemoFoodTrade.CurrencyTech)),
+            report.Events, _rng, MeteoriteOre);
+    }
+
     /// <summary>
     /// Deterministic text fingerprint of the WHOLE mutable world state — Entity (stocks and
     /// population), RNG, Scheduler (clock and queue), History and Ledger.
@@ -1086,6 +1119,7 @@ public sealed partial class DemoObserverWorld
         foreach (var kv in _debtSources) sb.Append(inv, $"debtsrc{kv.Key}={kv.Value};");
         sb.Append(inv, $"{_knowledge.Fingerprint()}"); // 第 08-6 章
         sb.Append(inv, $"{_culture.Fingerprint()}"); // 第 08-8 章 B1
+        sb.Append(inv, $"{_buildings.Fingerprint()}"); // 第 08-32 章
         foreach (var p in _people.Values) sb.Append(inv, $"person{p};"); // 第 14-1 章第 7 項
         if (!_laws.IsDefault)
             sb.Append(inv, $"laws={_laws.Disasters}/{_laws.Monsters}/{_laws.Rebellions}/{_laws.BeastAttacks}/{_laws.Wars};"); // 第 08-19c 章（全開時不寫，舊存檔的指紋不變）

@@ -126,10 +126,13 @@ public sealed class DemoTerritoryTests
         var ledger = world.LatestWeek!.Settlements.Single(l => l.SettlementId == site.Id);
         static string N(long v) => v.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
         Assert.StartsWith($"人口 {N(world.SettlementPopulation(site.Id))}｜存糧 {N(ledger.FoodClosing)}", lines[0], StringComparison.Ordinal);
-        Assert.StartsWith($"兵力：戰時徵兵 {N(DemoRealms.Army(world.SettlementPopulation(site.Id)))} 人", lines[1], StringComparison.Ordinal);
+        // 第 08-32 章：第二行是建材與建築。
+        var holding = world.HoldingOf(site.Id)!;
+        Assert.StartsWith($"建材：木 {N(holding.Wood)}、石 {N(holding.Stone)}、鐵 {N(holding.Iron)}｜住宅 {N(holding.Dwellings + holding.LargeDwellings)} 棟", lines[1], StringComparison.Ordinal);
+        Assert.StartsWith($"兵力：戰時徵兵 {N(DemoRealms.Army(world.SettlementPopulation(site.Id)))} 人", lines[2], StringComparison.Ordinal);
         var leader = world.RepresentativesOf(site.Id).FirstOrDefault(r => r.Role == DemoRepresentativeRole.Leader);
         if (leader is not null)
-            Assert.StartsWith($"人物：{DemoRepresentative.RoleName(DemoRepresentativeRole.Leader, world.ChronicleOf(site.Id).Tier)} {leader.Name}", lines[2], StringComparison.Ordinal);
+            Assert.StartsWith($"人物：{DemoRepresentative.RoleName(DemoRepresentativeRole.Leader, world.ChronicleOf(site.Id).Tier)} {leader.Name}", lines[3], StringComparison.Ordinal);
         Assert.Empty(DemoRealmRoster.Lines(world, -1));
     }
 
