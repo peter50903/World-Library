@@ -88,7 +88,9 @@ public sealed class DemoBuildingHistoryTests
                 .FirstOrDefault(b => DemoBuildings.IsLandmark(b.DefId) && b.Status == DemoBuildingStatus.Standing);
         }
         Assert.NotNull(landmark);
-        var first = Assert.Single(world.SettlementEvents(), e => e.Kind == DemoSettlementEventKind.BuildingCompleted && e.Count == landmark!.Id);
+        var completed = world.SettlementEvents().Where(e => e.Kind == DemoSettlementEventKind.BuildingCompleted && e.Count == landmark!.Id).ToList();
+        Assert.NotEmpty(completed); // 毀損後重建、木牆改石牆會再記一次
+        var first = completed[0];
         Assert.Contains(world.ChronicleOf(first.SettlementId).Milestones, l => l.Text == first.Cause);
         Assert.Contains(DemoWorldChronicle.Build(world).SelectMany(y => y.Entries), x => x.Category == DemoChronicleCategory.Building);
         Assert.Empty(world.BuildCausalIndex().Problems);
