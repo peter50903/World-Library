@@ -136,7 +136,9 @@ public partial class ObserverRoot
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 320, Math.Max(32, 320 * rect.Size.Y / rect.Size.X), rect));
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
                 new Rect2I(rect.Position + rect.Size / 2 - new Vector2I(160, 100), new Vector2I(320, 200))));
-            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} {_holdingView.Picture?.Size}");
+            var scene = _world.HoldingScene(_holdingSettlement);
+            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Picture={_holdingView.Picture?.Size} Tier={scene?.Tier} "
+                + $"Buildings={scene?.Holding.Buildings.Count} Houses={scene?.Holding.Dwellings}+{scene?.Holding.LargeDwellings} Fields={scene?.Fields}");
         }
         var holdings = world.Sites.Settlements.Where(s => !s.IsRuin)
             .OrderByDescending(s => world.HoldingOf(s.Id)?.Buildings.Count ?? 0).ThenBy(s => s.Id).ToList();

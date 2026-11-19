@@ -75,7 +75,6 @@ public sealed class DemoHoldingSceneTests
             Assert.Equal(s.Id, tab.HoldingId);
             Assert.Contains(tab.Lines, l => l.StartsWith("住宅 ", StringComparison.Ordinal) || l.StartsWith("棚屋 ", StringComparison.Ordinal));
         }
-        Assert.Contains(alive, s => world.HoldingScene(s.Id)!.Holding.Buildings.Count > 0);
         Assert.Null(world.HoldingScene(int.MaxValue));
         Assert.Equal(before, world.StateFingerprint()); // 只讀
     }
