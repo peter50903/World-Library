@@ -11,7 +11,7 @@
 1. godot/Scripts/*.cs（去掉註解）直接寫的 "res://assets/…" 路徑；
 2. ArtAssets.cs 的常數 `const string X = "res://assets/…"`，X 在宣告與登記清單以外有被引用；
 3. 字串常值等於某個素材的檔名主幹（px2/、px/、audio/sfx2/、audio/music2/ 底下，去掉副檔名），而且出現在登記清單以外；
-4. 程式組檔名的整族：icons/tech_*.png（ArtAssets.TechDomainIcon）、emblems/、portraits/（Heraldry）、fonts/；
+4. 程式組檔名的整族：icons/tech_*.png（ArtAssets.TechDomainIcon）、emblems/、portraits/（Heraldry）、fonts/、holding/b13_*（第 08-40 章領地示意圖）；
 5. assets/保留素材.csv 的樣式：已排定要用、還沒接上畫面的素材（寫明用途與章節）。
 登記清單只是冒煙測試逐一讀取的清單，本身不算用到：ArtAssets.Used、ArtAssets.Batch5Audio、PixelParts.Batch5、PixelParts.Names。
 """
@@ -30,7 +30,7 @@ ASSETS = ROOT / "godot" / "assets"
 MANIFEST = ROOT / "assets" / "manifest.csv"
 RESERVED = ROOT / "assets" / "保留素材.csv"
 NAMED_DIRS = ("px2", "px", "audio/sfx2", "audio/music2")
-FAMILIES = ("icons/tech_*.png", "emblems/*", "portraits/*", "fonts/*")
+FAMILIES = ("icons/tech_*.png", "emblems/*", "portraits/*", "fonts/*", "holding/b13_*.png")
 
 
 def strip_comments(text: str) -> str:
@@ -155,7 +155,10 @@ def survey() -> dict:
 
     for lit in literals(code):
         if lit.startswith("res://assets/") and "{" not in lit:
-            mark(lit[len("res://assets/"):], "程式路徑")
+            path = lit[len("res://assets/"):]
+            if any(pattern.startswith(path) for pattern in FAMILIES):
+                continue  # 程式組檔名的整族（例：第 08-40 章 holding/b13_{等級}_{地形}_{款式}.png）只寫了開頭
+            mark(path, "程式路徑")
     for name, path in consts.items():
         if re.search(r"\b" + re.escape(name) + r"\b", code):
             mark(path, f"ArtAssets.{name}")

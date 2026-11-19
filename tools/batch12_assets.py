@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""第 08-29 章：第十二批素材（領地面板與建築）。
+"""第 08-29 章：第十二批素材（領地面板與建築）；第 08-40 章：也用來匯入第十三批（領地示意圖，加 --prefix B13_）。
 
   python3 tools/batch12_assets.py --list                  # 列出還沒交件的 B12_ 列（檔名、尺寸、提示詞）
   python3 tools/batch12_assets.py --import <交件資料夾>    # 匯入：縮到「規格」尺寸存到 godot/assets/<檔名>，狀態改「已交付」
+  python3 tools/batch12_assets.py --prefix B13_ --import <交件資料夾>   # 第十三批（領地示意圖）
 
 交件檔名＝manifest「檔名」最後一段（例 b12_smelter.png），交件資料夾的子資料夾也會找；
 任何解析度都可以，長寬比要大致對。依「類型」處理：
@@ -10,6 +11,7 @@
 - 圖示：裁掉透明邊，等比縮進規格，置中；
 - 牆段、介面：直接縮到規格（要跟第十一批同尺寸的牆段對齊、可以替換）；
 - 縮小後限色（牆段、圖示 32 色，其他 48 色），透明度以一半為界（像素風不要半透明邊）。
+- 第 08-40 章「插圖」（領地示意圖）：不透明；依規格的長寬比從中間裁（鋪滿），縮到規格，限 192 色存成 PNG。
 需要 Pillow。
 """
 from __future__ import annotations
@@ -80,9 +82,23 @@ def fit(im, width: int, height: int, anchor: str):
     return canvas
 
 
+def illustration(path: Path, width: int, height: int):
+    """第 08-40 章：領地示意圖——依長寬比從中間裁（鋪滿），縮到規格，限色（檔案小一點）。"""
+    from PIL import Image
+
+    im = Image.open(path).convert("RGB")
+    scale = max(width / im.width, height / im.height)
+    crop_w, crop_h = round(width / scale), round(height / scale)
+    left, top = (im.width - crop_w) // 2, (im.height - crop_h) // 2
+    im = im.crop((left, top, left + crop_w, top + crop_h)).resize((width, height), Image.Resampling.LANCZOS)
+    return im.quantize(colors=192, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).convert("RGB")
+
+
 def process(path: Path, kind: str, width: int, height: int):
     from PIL import Image
 
+    if kind == "插圖":
+        return illustration(path, width, height)
     im = Image.open(path).convert("RGBA")
     if kind in ("牆段", "介面"):
         im = im.resize((width, height), Image.Resampling.BOX if im.width > width else Image.Resampling.NEAREST)
@@ -94,12 +110,13 @@ def process(path: Path, kind: str, width: int, height: int):
 
 def main(argv: list[str]) -> int:
     fields, all_rows = rows()
-    batch = [r for r in all_rows if r["ID"].startswith(PREFIX)]
+    prefix = argv[argv.index("--prefix") + 1] if "--prefix" in argv and argv.index("--prefix") + 1 < len(argv) else PREFIX
+    batch = [r for r in all_rows if r["ID"].startswith(prefix)]
     if "--list" in argv or not argv:
         todo = [r for r in batch if r["狀態"] == "待製作"]
         for r in todo:
             print(f"{r['檔名']}｜{r['規格']}｜{r['類型']}｜{r['提示詞']}")
-        print(f"第十二批 {len(batch)} 張，待製作 {len(todo)} 張", file=sys.stderr)
+        print(f"{prefix} {len(batch)} 張，待製作 {len(todo)} 張", file=sys.stderr)
         return 0
     if "--import" not in argv or argv.index("--import") + 1 >= len(argv):
         print(__doc__)
@@ -118,7 +135,7 @@ def main(argv: list[str]) -> int:
         width, height = size_of(r["規格"])
         out = ASSETS / r["檔名"]
         out.parent.mkdir(parents=True, exist_ok=True)
-        process(match, r["類型"], width, height).save(out)
+        process(match, r["類型"], width, height).save(out, optimize=True)
         if r["狀態"] != "已套用":
             r["狀態"] = "已交付"
         done.append(r["檔名"])

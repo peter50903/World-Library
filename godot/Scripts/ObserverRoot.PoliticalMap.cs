@@ -140,7 +140,7 @@ public partial class ObserverRoot
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
                 new Rect2I((Vector2I)cards.Position, new Vector2I(320, 200)).Intersection(screen)));
             var scene = _world.HoldingScene(_holdingSettlement);
-            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Picture={_holdingView.Picture?.Size} Tier={scene?.Tier} "
+            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Art={System.IO.Path.GetFileName(_holdingArt.WantedPath)} Delivered={_holdingArt.ArtPath is not null} Tier={scene?.Tier} "
                 + $"Buildings={scene?.Holding.Buildings.Count} Houses={scene?.Holding.Dwellings}+{scene?.Holding.LargeDwellings} Fields={scene?.Fields}");
         }
         var holdings = world.Sites.Settlements.Where(s => !s.IsRuin)
