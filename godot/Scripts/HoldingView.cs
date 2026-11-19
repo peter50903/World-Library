@@ -174,8 +174,8 @@ public partial class HoldingView : Control
     /// <summary>整張放得下的比例（放大到整數倍以上時取整數，像素不變形）。</summary>
     private float FitScale()
     {
-        if (_picture is null || _picture.Size.X <= 0 || _picture.Size.Y <= 0)
-            return 1f;
+        if (_picture is null || _picture.Size.X <= 0 || _picture.Size.Y <= 0 || Size.X <= 0 || Size.Y <= 0)
+            return 1f; // 還沒排版（沒有大小）時當作原尺寸
         var fit = Math.Min(Size.X / _picture.Size.X, Size.Y / _picture.Size.Y);
         return fit >= 1f ? MathF.Floor(fit) : fit;
     }
