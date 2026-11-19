@@ -23,6 +23,7 @@ public partial class HoldingCardArt : Control
     {
         MouseFilter = MouseFilterEnum.Ignore;
         ClipContents = true;
+        TextureFilter = TextureFilterEnum.Linear; // 縮小的大建築用線性取樣（放大的照樣用最近鄰，見 DrawSprite）
     }
 
     /// <summary>設定要畫的東西（<paramref name="overlay"/>＝施工中蓋在前面的工地；<paramref name="tiled"/>＝城牆、田地一整排）。</summary>
@@ -87,6 +88,8 @@ public partial class HoldingCardArt : Control
         var scale = fit >= 1f ? Math.Min(4f, MathF.Floor(fit)) : fit;
         var drawn = frame * scale;
         var at = new Vector2(MathF.Round((Size.X - drawn.X) / 2f), MathF.Round(groundY + 3 - drawn.Y));
-        DrawTextureRectRegion(texture, new Rect2(at, drawn), new Rect2(0, 0, frame.X, frame.Y), modulate);
+        // 放大：像素素材（最近鄰）；縮小：原圖跟著這個控制項用線性取樣，不會掉像素。
+        Texture2D source = scale < 1f && texture.DiffuseTexture is { } raw ? raw : texture;
+        DrawTextureRectRegion(source, new Rect2(at, drawn), new Rect2(0, 0, frame.X, frame.Y), modulate);
     }
 }

@@ -72,7 +72,7 @@ public partial class ObserverRoot
         TempHoldingThumbHeight = 170f;
 
     /// <summary>【TEMP】建築卡片的寬與插圖高（大圖、詳情分頁的縮小版）。</summary>
-    private const float TempCardWidth = 148f, TempCardArtHeight = 96f, TempCompactCardWidth = 98f, TempCompactArtHeight = 62f;
+    private const float TempCardWidth = 148f, TempCardArtHeight = 112f, TempCompactCardWidth = 98f, TempCompactArtHeight = 66f;
 
     /// <summary>打開某聚落的領地大圖。</summary>
     private void OpenHolding(int settlementId)
