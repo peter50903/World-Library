@@ -457,13 +457,13 @@ public partial class ObserverRoot
             var box = new CheckBox { Text = name, ButtonPressed = on, FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
             box.AddThemeFontSizeOverride("font_size", 16);
             var state = new Label { Text = on ? "開啟" : "關閉" };
-            state.AddThemeColorOverride("font_color", on ? new Color(0.20f, 0.45f, 0.15f) : new Color(0.60f, 0.12f, 0.08f));
+            state.AddThemeColorOverride("font_color", on ? new Color(0.10f, 0.32f, 0.08f) : new Color(0.52f, 0.10f, 0.06f));
             box.Toggled += pressed =>
             {
                 _world.Laws = _world.Laws.With(key, pressed);
                 PlayUi(pressed ? "ui_toggle_on" : "ui_toggle_off");
                 state.Text = (pressed ? "開啟" : "關閉") + "（下次結算生效）";
-                state.AddThemeColorOverride("font_color", pressed ? new Color(0.20f, 0.45f, 0.15f) : new Color(0.60f, 0.12f, 0.08f));
+                state.AddThemeColorOverride("font_color", pressed ? new Color(0.10f, 0.32f, 0.08f) : new Color(0.52f, 0.10f, 0.06f));
             };
             row.AddChild(box);
             row.AddChild(state);

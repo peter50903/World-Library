@@ -102,6 +102,23 @@ public partial class ObserverRoot
         theme.SetColor("font_color", "CheckBox", TempInk);
         theme.SetColor("font_hover_color", "CheckBox", TempInk);
         theme.SetColor("font_pressed_color", "CheckBox", TempInk);
+        // 第 08-48 章（使用者 2026-11-25：文字跟底圖顏色要不一樣）：面板裡的按鈕原本是 Godot 預設的深灰半透明底配深色字，看不清楚——
+        // 改成淺羊皮紙底、深棕框、深色字（自己設了底色的按鈕，例如消息卡片，照舊用自己的）。
+        StyleBoxFlat ButtonBox(Color bg) => new()
+        {
+            BgColor = bg,
+            BorderColor = new Color(0.45f, 0.32f, 0.18f),
+            BorderWidthLeft = 1, BorderWidthRight = 1, BorderWidthTop = 1, BorderWidthBottom = 1,
+            CornerRadiusTopLeft = 3, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, CornerRadiusBottomRight = 3,
+            ContentMarginLeft = 8, ContentMarginRight = 8, ContentMarginTop = 3, ContentMarginBottom = 3
+        };
+        theme.SetStylebox("normal", "Button", ButtonBox(new Color(0.88f, 0.79f, 0.62f)));
+        theme.SetStylebox("hover", "Button", ButtonBox(new Color(0.94f, 0.87f, 0.71f)));
+        theme.SetStylebox("pressed", "Button", ButtonBox(new Color(0.78f, 0.67f, 0.48f)));
+        theme.SetStylebox("disabled", "Button", ButtonBox(new Color(0.82f, 0.77f, 0.68f)));
+        foreach (var item in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color" })
+            theme.SetColor(item, "Button", TempInk);
+        theme.SetColor("font_disabled_color", "Button", new Color(0.40f, 0.34f, 0.26f));
         // 第 08-5 章：滑鼠提示是深色底，不能沿用羊皮紙的深色字（使用者 2026-10-23：功能列提示看不清楚）。
         theme.SetColor("font_color", "TooltipLabel", TempParchmentText);
         theme.SetStylebox("panel", "TooltipPanel", new StyleBoxFlat
@@ -1038,6 +1055,7 @@ public partial class ObserverRoot
             var glyph = new Label { Text = b.Glyph, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
                 MouseFilter = MouseFilterEnum.Ignore };
             glyph.AddThemeFontSizeOverride("font_size", 24);
+            glyph.AddThemeColorOverride("font_color", TempParchmentText); // 第 08-48 章：黑色描邊上用淺色字
             glyph.AddThemeColorOverride("font_outline_color", Colors.Black);
             glyph.AddThemeConstantOverride("outline_size", 4);
             glyph.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -1048,6 +1066,7 @@ public partial class ObserverRoot
             var tier = new Label { Text = TierNumerals[Math.Clamp(b.Tier, 0, 5)], MouseFilter = MouseFilterEnum.Ignore,
                 HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom };
             tier.AddThemeFontSizeOverride("font_size", 13);
+            tier.AddThemeColorOverride("font_color", TempParchmentText); // 第 08-48 章：黑色描邊上用淺色字
             tier.AddThemeColorOverride("font_outline_color", Colors.Black);
             tier.AddThemeConstantOverride("outline_size", 3);
             tier.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -1275,6 +1294,7 @@ public partial class ObserverRoot
         var toolbar = VerifyToolbarSmoke(Fail, PressKey);
         GD.Print($"WORLD_SIM_HOLDING_OK: {VerifyHoldingSmoke(Fail)}"); // 第 08-33 章：領地面板
         VerifyWarSmoke(Fail); // 第 08-47 章：戰爭總覽
+        VerifyContrastSmoke(Fail); // 第 08-48 章：文字與底色的對比
 
         if (_world.ExportTempSave() != before)
             Fail("HUD operations changed the world.");
