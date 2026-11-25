@@ -134,11 +134,17 @@ int idx16(vec2 rg) {
 
 // 第 08-26 章：森林更深、丘陵偏褐、草原偏亮，遠看也分得出來。
 // 第 08-41 章：配色往 CK3 的地形圖靠——草原橄欖綠、森林深綠、丘陵土褐，彩度壓低、明暗拉開。
+// 第 08-53 章（使用者 2026-11-26：世界地圖還是很醜，詳細參考 CK3）：CK3 細節層的地形一眼看得懂——草原明亮的黃綠、森林深綠、
+// 丘陵土褐，色塊之間是柔和的漸層（不是一塊塊的迷彩）。
 vec3 terrain_color(int t) {
-	if (t == 1) return vec3(0.23, 0.35, 0.20);
+	if (t == 1) return vec3(0.24, 0.38, 0.22);
 	if (t == 2) return vec3(0.20, 0.30, 0.38);
-	if (t == 3) return vec3(0.55, 0.47, 0.35);
-	return vec3(0.55, 0.60, 0.35);
+	if (t == 3) return vec3(0.58, 0.51, 0.39);
+	return vec3(0.60, 0.65, 0.40);
+}
+
+float luma(vec3 c) {
+	return dot(c, vec3(0.30, 0.59, 0.11));
 }
 
 void fragment() {
@@ -224,66 +230,82 @@ void fragment() {
 	float sdpx = abs(sd) / fw; // 離海岸線幾像素
 
 	// 地形（只混陸地格，海岸不會被水色染暗）。
+	// 第 08-53 章：地形色用平滑的權重（不用畫邊界的扭曲座標），草原、森林、丘陵之間是柔和的漸層，不再是一塊塊鋸齒迷彩。
+	vec2 cs = cell + (vec2(vnoise(cell * 1.3), vnoise(cell * 1.3 + vec2(7.1, 2.9))) - 0.5) * 0.35;
+	vec2 qs = cs - 0.5;
+	vec2 fls = floor(qs);
+	vec2 fs = qs - fls;
+	vec2 us = fs * fs * (3.0 - 2.0 * fs);
+	float wt[4] = float[](
+		(1.0 - us.x) * (1.0 - us.y), us.x * (1.0 - us.y),
+		(1.0 - us.x) * us.y, us.x * us.y);
+	ivec2 j0 = ivec2(fls);
 	vec3 tcol = vec3(0.0);
 	float lw = 0.0;
 	float hill = 0.0;
 	float forest = 0.0;
+	for (int k = 0; k < 4; k++) {
+		ivec2 at = clamp(j0 + offs[k], ivec2(0), size - ivec2(1));
+		int t = int(texelFetch(land, at, 0).r * 255.0 + 0.5);
+		if (t == 2) continue;
+		tcol += wt[k] * terrain_color(t);
+		lw += wt[k];
+		hill += wt[k] * (t == 3 ? 1.0 : 0.0);
+		forest += wt[k] * (t == 1 ? 1.0 : 0.0);
+	}
+	tcol = lw > 0.0 ? tcol / lw : terrain_color(0);
+	hill = lw > 0.0 ? hill / lw : 0.0;
+	forest = lw > 0.0 ? forest / lw : 0.0;
 	float bl = 0.0;
 	float ns = 0.0;
 	for (int k = 0; k < 4; k++) {
 		bl += ws[k] * blight[k];
 		if (sel_nest > 0 && nest[k] == sel_nest) ns += ws[k];
-		if (ter[k] == 2) continue;
-		tcol += ws[k] * terrain_color(ter[k]);
-		lw += ws[k];
-		hill += ws[k] * (ter[k] == 3 ? 1.0 : 0.0);
-		forest += ws[k] * (ter[k] == 1 ? 1.0 : 0.0);
 	}
-	tcol = lw > 0.0 ? tcol / lw : terrain_color(0);
-	hill = lw > 0.0 ? hill / lw : 0.0;
-	forest = lw > 0.0 ? forest / lw : 0.0;
-	float grain = vnoise(c * 3.0) * 0.05 + vnoise(c * 14.0) * 0.05 * zoom_fine - 0.05;
-	float meadow = (vnoise(c * 0.55 + vec2(4.0, 1.0)) - 0.5) * 0.10;
-	// 第 08-26 章：起伏——雜訊高度場的斜率當光照（左上來光），平地淡淡的、丘陵明顯。
+	// 很淡的低頻明暗（不再有高頻顆粒與草地雜斑）。
+	float grain = (vnoise(c * 2.0) - 0.5) * 0.05;
+	// 第 08-26 章：起伏——雜訊高度場的斜率當光照（左上來光）；第 08-53 章：平地幾乎平的，丘陵越密越明顯（CK3 的地勢陰影）。
 	float e = 0.06;
 	float h0 = fbm(c * 1.4);
 	vec2 grad = vec2(fbm(c * 1.4 + vec2(e, 0.0)) - h0, fbm(c * 1.4 + vec2(0.0, e)) - h0) / e;
 	float lit = clamp(0.5 - dot(grad, vec2(0.55, 0.55)) * 0.9, 0.0, 1.0);
-	float shade = 1.0 + grain + meadow * (1.0 - forest) + (lit - 0.5) * (0.10 + hill * 0.55);
-	// 第 08-26 章：符號從每格 9 像素開始淡入（森林一叢叢的樹、丘陵是紙地圖的山形）。
-	float sym = clamp((cell_px - 9.0) / 15.0, 0.0, 1.0);
-	float canopy = clamp((vnoise(c * 5.5 + vec2(2.0, 9.0)) - 0.45) * 5.0, 0.0, 1.0);
-	vec3 tr = tree_glyph(cell, 3.0);
-	float fmask = smoothstep(0.35, 0.65, forest);
-	shade -= fmask * canopy * 0.14;
-	shade -= fmask * sym * (tr.y * 0.38 + tr.x * 0.16);
-	shade += fmask * sym * tr.z * 0.30;
-	vec3 mtn = mountain_glyph(cell, 1.6);
-	float hmask = smoothstep(0.40, 0.70, hill);
-	shade += hmask * sym * mtn.x * (mtn.y > 0.5 ? 0.24 : -0.26);
-	shade -= hmask * sym * mtn.z * 0.45;
+	float shade = 1.0 + grain + (lit - 0.5) * (0.04 + hill * 0.60 + forest * 0.10);
+	// 第 08-53 章：森林是柔和的深色（中心較深），樹叢只在拉近時畫；山形只在紙地圖與拉近時畫，中距離只看地勢陰影。
+	float fmask = smoothstep(0.30, 0.70, forest);
+	float hmask = smoothstep(0.45, 0.75, hill);
+	shade -= fmask * 0.06;
+	float sym = clamp((cell_px - 40.0) / 24.0, 0.0, 1.0);
+	vec3 tr = tree_glyph(cell, 2.2);
+	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
+	shade += fmask * sym * tr.z * 0.22;
+	float msym = clamp((cell_px - 56.0) / 24.0, 0.0, 1.0);
+	vec3 mtn = mountain_glyph(cell, 0.9);
+	shade += hmask * msym * mtn.x * (mtn.y > 0.5 ? 0.18 : -0.20);
+	shade -= hmask * msym * mtn.z * 0.35;
 	vec3 ground = tcol * shade;
 	// 第 08-41 章：沙灘——陸地靠海的一窄條偏暖（丘陵、森林少一點）。
 	float beach = (1.0 - smoothstep(0.0, 0.42, -sd)) * (1.0 - is_water) * (1.0 - hill * 0.6) * (1.0 - fmask * 0.5);
-	ground = mix(ground, vec3(0.78, 0.72, 0.52) * (0.95 + grain), beach * 0.6);
+	ground = mix(ground, vec3(0.80, 0.74, 0.54) * (0.97 + grain), beach * 0.55);
 
 	// 政治填色：省份索引查色票；荒野（0）不填。
 	vec4 fill = texelFetch(palette, ivec2(bp % 256, bp / 256), 0);
 	float has_fill = (bp != 0 && fill.a > 0.5) ? 1.0 : 0.0;
 	float realm_w = clamp(cell_px * 0.07, 1.2, 3.2);
-	// 第 08-41 章：勢力色保留本色，只帶一點地形的明暗（原本乘上地形色會變髒）；靠近勢力界的一圈更濃（CK3 的邊界色帶）。
+	// 第 08-41 章：靠近勢力界的一圈更濃（CK3 的邊界色帶）。
+	// 第 08-53 章：勢力色只借地形的明暗（不借色相）——CK3 的勢力層是乾淨的勢力色，地形只是光影；原本與地形色對半混成泥巴色。
 	float band_w = clamp(cell_px * 0.55, 3.0, 16.0);
 	float band = (1.0 - smoothstep(realm_w, realm_w + band_w, dg)) * has_fill;
-	vec3 political = fill.rgb * (0.86 + 0.14 * shade);
-	float wash = politics * has_fill * (0.80 + 0.20 * band);
-	vec3 col = mix(ground, political, clamp(wash, 0.0, 1.0));
+	vec3 political = fill.rgb * clamp(0.62 + 0.80 * luma(ground), 0.70, 1.18);
+	float wash = has_fill * clamp(politics + band * 0.25, 0.0, 0.92);
+	vec3 col = mix(ground, political, wash);
 
 	// 第 08-41 章：紙地圖（遠看）——羊皮紙底、勢力是淡淡的水彩（邊界附近較濃）、丘陵畫墨線山形。
-	vec3 parch = vec3(0.87, 0.81, 0.66) * (0.96 + 0.07 * vnoise(c * 1.3 + vec2(3.0, 7.0)));
+	vec3 parch = vec3(0.87, 0.81, 0.66) * (0.97 + 0.05 * vnoise(c * 1.3 + vec2(3.0, 7.0)));
 	parch = mix(parch, vec3(0.72, 0.75, 0.56), fmask * 0.45);
 	parch = mix(parch, vec3(0.80, 0.70, 0.54), hmask * 0.50);
 	float pband = (1.0 - smoothstep(realm_w, realm_w + clamp(cell_px * 1.4, 3.0, 9.0), dg)) * has_fill;
-	vec3 pcol = mix(parch, fill.rgb, (politics > 0.01 ? 1.0 : 0.0) * has_fill * (0.38 + 0.34 * pband));
+	// 第 08-53 章：紙地圖的勢力色濃一點（CK3 遠看只剩獨立勢力，一塊一塊清楚），邊界色帶再加深。
+	vec3 pcol = mix(parch, fill.rgb, (politics > 0.01 ? 1.0 : 0.0) * has_fill * (0.50 + 0.30 * pband));
 	vec3 pm = mountain_glyph(cell, 0.6);
 	pcol = mix(pcol, pcol * 1.08, hmask * pm.x * (pm.y > 0.5 ? 1.0 : 0.0));
 	pcol = mix(pcol, pcol * 0.86, hmask * pm.x * (pm.y > 0.5 ? 0.0 : 1.0));
@@ -322,14 +344,15 @@ void fragment() {
 	// 第 08-41 章：水——離岸越遠越深（不再是一塊塊的雜訊斑）、近岸三道等距線、岸邊一圈淺色浪花；紙地圖改成淡藍灰與墨色等距線。
 	float depth = smoothstep(0.0, 1.0, pow(clamp(sd / 7.0, 0.0, 1.0), 0.7));
 	vec3 sea = mix(vec3(0.33, 0.49, 0.54), vec3(0.12, 0.21, 0.31), depth);
-	sea += (vnoise(c * 2.6 + vec2(TIME * 0.03, 0.0)) - 0.5) * 0.025;
+	sea += (vnoise(c * 1.2 + vec2(TIME * 0.02, 0.0)) - 0.5) * 0.02;
+	// 第 08-53 章：近岸只留兩道淡淡的等距線（原本三道很亮，遠看像一圈光暈）。
 	float rw = clamp(cell_px * 0.05, 0.8, 1.6);
-	float rings = ring(sd, fw, 0.85, rw) * 0.55 + ring(sd, fw, 1.75, rw) * 0.35 + ring(sd, fw, 2.9, rw) * 0.2;
-	sea = mix(sea, sea * 1.22 + 0.04, rings);
+	float rings = ring(sd, fw, 0.85, rw) * 0.35 + ring(sd, fw, 1.9, rw) * 0.18;
+	sea = mix(sea, sea * 1.18 + 0.03, rings);
 	float foam = (1.0 - smoothstep(0.0, 0.3, sd)) * is_water;
 	sea = mix(sea, vec3(0.62, 0.72, 0.72), foam * 0.4);
 	vec3 psea = mix(vec3(0.71, 0.78, 0.79), vec3(0.57, 0.66, 0.71), depth);
-	psea = mix(psea, vec3(0.40, 0.50, 0.55), ring(sd, fw, 0.9, 1.0) * 0.6 + ring(sd, fw, 2.0, 1.0) * 0.4 + ring(sd, fw, 3.4, 1.0) * 0.25);
+	psea = mix(psea, vec3(0.40, 0.50, 0.55), ring(sd, fw, 0.9, 1.0) * 0.45 + ring(sd, fw, 2.1, 1.0) * 0.2);
 	sea = mix(sea, psea, paper);
 	col = mix(col, sea, is_water);
 	// 海岸線：地形圖是深色細線，紙地圖是墨線（拉近時粗一點）。
@@ -360,7 +383,7 @@ void fragment() {
 	col *= 1.0 - age_vignette * vig;
 	col += age_shimmer * (vnoise(c * 0.35 + vec2(TIME * 0.08, TIME * 0.05)) - 0.4) * vec3(0.10, 0.08, 0.02);
 	// 紙張紋理（很淡；紙地圖明顯一點）。
-	col *= 0.97 + (0.05 + 0.05 * paper) * vnoise(c * 0.9 + vec2(11.0, 2.0));
+	col *= 0.985 + (0.025 + 0.035 * paper * (1.0 - is_water)) * vnoise(c * 0.9 + vec2(11.0, 2.0)); // 第 08-53 章：海上不再斑駁
 	COLOR = vec4(clamp(col, vec3(0.0), vec3(1.0)), 1.0);
 }
 """;
