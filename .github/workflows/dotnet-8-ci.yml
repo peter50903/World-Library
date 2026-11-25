@@ -616,7 +616,7 @@ jobs:
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 2_realms_mid_crop 3_realms_close_crop 1_realms_far 13_faith_far 8_holding_big 2_realms_mid 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
+          for name in 14_faith_window 3_realms_close_crop 2_realms_mid_crop 1_realms_far 13_faith_far 8_holding_big 2_realms_mid 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"
