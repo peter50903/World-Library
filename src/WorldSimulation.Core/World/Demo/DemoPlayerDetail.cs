@@ -276,6 +276,9 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             // 第 12-1 章 C1：附近獵物多寡（不揭示數字）。
             if (!world.Wildlife.Prey.IsDefaultOrEmpty)
                 now.Add("附近獵物：" + DemoWildlife.PreyLevel(world.Wildlife, world.Map, settlement) switch { 2 => "豐富", 1 => "普通", _ => "稀少" });
+            // 第 08-43 章：地形帶動的技術。
+            if (DemoKnowledge.TerrainLine(DemoKnowledge.TerrainAround(world.Map, settlement)) is { } terrainLine)
+                now.Add(terrainLine);
             // 第 12-1 章 C4：附近的地下城。
             var nearDungeons = DemoDungeons.Near(world.Dungeons, world.Map, settlement).Select(d => d.Name).ToList();
             if (nearDungeons.Count > 0)

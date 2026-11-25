@@ -27,11 +27,11 @@ public sealed class DemoDirectSnapshotTests
     }
 
     [Fact]
-    public void NewSaves_AreVersion99()
+    public void NewSaves_AreVersion100()
     {
         var world = new DemoObserverWorld(DemoScenario.Sample(42));
         world.AdvanceOneDay();
-        Assert.Equal(99, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
+        Assert.Equal(100, JsonNode.Parse(world.ExportTempSave())!["Version"]!.GetValue<int>());
     }
 
     [Theory]
