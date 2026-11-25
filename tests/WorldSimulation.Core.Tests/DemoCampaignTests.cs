@@ -61,6 +61,32 @@ public sealed class DemoCampaignTests
     }
 
     [Fact]
+    public void StatusFollowsTheMarchAndTheSiege()
+    {
+        // 第 08-46 章：戰況——行軍中（軍隊在路線上、還要幾週）、到了城下圍城（圍了幾週／要幾週）。
+        var world = World.Value;
+        var (map, sites) = (world.Map, world.Sites);
+        var alive = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        DemoCellRef At(DemoSettlement s) => new(s.Column, s.Row);
+        var (a, c) = alive.SelectMany(x => alive.Where(y => y.Id != x.Id).Select(y => (x, y)))
+            .First(p => DemoRealms.WarRoute(map, At(p.x), At(p.y)).Count - 1 >= 3 * DemoRealms.TempMarchCellsPerWeek);
+        var fold = new DemoRealms.Fold();
+        fold.Apply(Ev(5, a.Id, DemoSettlementEventKind.WarDeclared, c.Id));
+        var war = fold.Wars[a.Id];
+        var march = DemoRealms.Campaign(war, map, sites).MarchWeeks;
+        DemoWarStatus At2(int week) => DemoRealms.Status(war, week, map, sites, fold.Liege, _ => true, _ => DemoSettlementTier.Village);
+        var going = At2(6);
+        Assert.Equal(DemoWarStage.Marching, going.Stage);
+        Assert.Equal(going.Campaign.ArmyAt(5, 6), going.ArmyAt);
+        Assert.Equal(5 + march - 6, going.MarchLeft);
+        var arrived = At2(5 + march);
+        Assert.Equal((DemoWarStage.Besieging, c.Id, 0, DemoRealms.TempSiegeWeeks(DemoSettlementTier.Village)),
+            (arrived.Stage, arrived.Besieged, arrived.SiegeDone, arrived.SiegeNeed));
+        Assert.Equal(At(c), arrived.ArmyAt);
+        Assert.Equal(3, At2(5 + march + 3).SiegeDone);
+    }
+
+    [Fact]
     public void AfterTheTargetFallsTheArmyOccupiesNearbyHoldingsForWarScore()
     {
         var world = World.Value;

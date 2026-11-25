@@ -111,6 +111,7 @@ public partial class DemoHexMap
         DrawGroupLabels(origin, cellPx);
         DrawLairs(origin, cellPx);
         DrawHoldings(origin, cellPx);
+        DrawBattlefields(start, radius); // 第 08-46 章：野戰的戰場
         DrawWars(start, radius);
         DrawBattles(start, radius);
         // 第 08-31 章（使用者 2026-11-19：不要圈出正方形的地塊）：選到的勢力範圍、勢力、怪物地盤由著色器整片框起；
@@ -155,17 +156,23 @@ public partial class DemoHexMap
             return;
         _occupyKey = key;
         var bytes = new byte[256 * 256 * 4];
-        foreach (var front in WarFronts)
+        void Stripe(int settlement, Color color)
         {
-            // 第 08-22a 章：攻陷之後才畫佔領斜紋（圍城中只有行軍路線與軍旗）；獨立戰爭、內戰照舊整場都畫。
-            if (front.Score is not null && !front.Occupied || !_provinceIndex.TryGetValue(front.TargetSettlement, out var index))
-                continue;
-            var color = FrontColor(front, true);
+            if (!_provinceIndex.TryGetValue(settlement, out var index))
+                return;
             var at = index * 4;
             bytes[at] = (byte)Mathf.Clamp(color.R * 255f, 0f, 255f);
             bytes[at + 1] = (byte)Mathf.Clamp(color.G * 255f, 0f, 255f);
             bytes[at + 2] = (byte)Mathf.Clamp(color.B * 255f, 0f, 255f);
             bytes[at + 3] = 255;
+        }
+        foreach (var front in WarFronts)
+        {
+            // 第 08-22a 章：攻陷之後才畫佔領斜紋（圍城中只有行軍路線與軍旗）；獨立戰爭、內戰照舊整場都畫。
+            if (front.Score is null || front.Occupied)
+                Stripe(front.TargetSettlement, FrontColor(front, true));
+            foreach (var held in front.Holdings) // 第 08-46 章：之後又佔領的一座一座畫上去
+                Stripe(held, FrontColor(front, true));
         }
         _occupyTexture = Upload(_occupyTexture, 256, 256, bytes);
         _politicalMaterial.SetShaderParameter("occupy", _occupyTexture);

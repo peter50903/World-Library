@@ -340,7 +340,7 @@ public static partial class DemoRealms
                 if (besieged != 0 && week > arrive)
                 {
                     var since = besieged == w.TargetId ? arrive : Math.Max(arrive, w.LastOccupiedWeek);
-                    var siege = Math.Max(2, TempSiegeWeeks(ctx.Tier(besieged)) + (ctx.Defense?.Invoke(besieged).SiegeWeeks ?? 0)); // 第 08-34 章：城牆
+                    var siege = SiegeNeed(besieged, ctx.Tier, ctx.Defense); // 第 08-34 章：城牆
                     if (week - since >= siege && BattleScore(w) >= 0)
                         add(besieged, DemoSettlementEventKind.Occupied, w.AttackerId, besieged == w.TargetId
                             ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {week - since} 週）"

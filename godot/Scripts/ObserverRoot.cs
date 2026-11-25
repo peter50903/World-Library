@@ -1513,6 +1513,7 @@ public partial class ObserverRoot : Control
         _hexMap.WorldAge = _world.Age; // 第 12-2j 章：政治地圖的時代氛圍
         _hexMap.TradeLinks = DemoFoodTrade.Links(_world); // 第 08-23 章：商路
         _hexMap.SeaLanes = _world.SeaLanes(); // 第 08-42 章：航線
+        _hexMap.Battlefields = Battlefields(); // 第 08-46 章：野戰的戰場
         _hexMap.Kingdoms = _world.KingdomHeads().ToHashSet(); // 第 08-24 章：王國的名字寫「某某王國」
         var dungeonCells = _world.Dungeons.Select(d => d.Cell).ToArray();
         if (!dungeonCells.SequenceEqual(_hexMap.Dungeons))
@@ -1636,6 +1637,12 @@ public partial class ObserverRoot : Control
                         ? new BattleMark(e.EventId, e.Kind, e.Week, cells[asLiege.VassalId], home, e.Count, 0, label)
                         : new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, 0, label));
                     break;
+                case DemoSettlementEventKind.ConquestBattle when FieldOf(e) is { } field:
+                    // 第 08-46 章：野戰畫在兩軍相遇的那一格（守方那一筆畫一次就好）。
+                    if (_wars.Any(x => x.AttackerId == e.SettlementId))
+                        break;
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, field, null, e.Count, 0, "野戰"));
+                    break;
                 case DemoSettlementEventKind.ConquestBattle:
                     // 第 08-19e 章：攻方那一筆從首都出兵走到戰爭目標；目標那一筆守在自己的聚落。
                     var campaign = _wars.FirstOrDefault(x => x.AttackerId == e.SettlementId && cells.ContainsKey(x.TargetId));
@@ -1649,6 +1656,23 @@ public partial class ObserverRoot : Control
         }
         return marks;
     }
+
+    /// <summary>第 08-46 章：野戰的地點（交戰原因寫「野戰：……在 (欄,列) ……」；不是野戰＝null）。</summary>
+    private static DemoCellRef? FieldOf(DemoSettlementEvent e)
+    {
+        if (e.Kind != DemoSettlementEventKind.ConquestBattle || !e.Cause.StartsWith("野戰", StringComparison.Ordinal))
+            return null;
+        var m = System.Text.RegularExpressions.Regex.Match(e.Cause, @"\((\d+),(\d+)\)");
+        return m.Success ? new DemoCellRef(int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture), int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture)) : null;
+    }
+
+    /// <summary>第 08-46 章：近兩年的野戰戰場（守方那一筆；同一格留最新的）。</summary>
+    private IReadOnlyList<(DemoCellRef Place, int Year, string Text)> Battlefields()
+        => _world.WeekReports().Where(w => w.Week > _world.CommittedWeeks - 104).SelectMany(w => w.Events)
+            .Where(e => FieldOf(e) is not null && e.Cause.Contains("守軍出城", StringComparison.Ordinal))
+            .GroupBy(e => FieldOf(e)!.Value).Select(g => g.OrderBy(e => e.Week).Last())
+            .Select(e => (FieldOf(e)!.Value, DemoSettlementHistory.YearOfDay(checked(e.Week * 7)), $"{DemoPlayerDetail.Clean(e.Cause)}（{e.SettlementName}死 {e.Count} 人）"))
+            .ToList();
 
     /// <summary>
     /// 第 08-18m 章：進行中的戰線。征服戰爭＝攻方首都出兵圍攻戰爭目標；獨立戰爭與內戰＝上級出兵圍攻叛軍首領（叛軍旗用金色、內戰用紫色）。
@@ -1670,7 +1694,9 @@ public partial class ObserverRoot : Control
                     RealmArmy(territory.RealmOf(w.TargetId)), w.AttackerLosses, w.DefenderLosses, Math.Max(0, week - w.StartWeek))
                 {
                     Occupied = w.Occupied, // 第 08-22a 章
-                    Score = DemoRealms.WarScore(w, week)
+                    Score = DemoRealms.WarScore(w, week),
+                    Status = _world.WarStatus(w), // 第 08-46 章：行軍、圍城進度
+                    Holdings = w.Holdings
                 });
         foreach (var s in _struggles.Where(x => x.Armed))
             if (cells.TryGetValue(s.LiegeId, out var liege) && cells.TryGetValue(s.VassalId, out var rebel))
