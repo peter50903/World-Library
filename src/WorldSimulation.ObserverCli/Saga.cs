@@ -79,7 +79,7 @@ public static class Saga
         int Ends(string text) => ended.Count(r => !r.Won && r.EndText.Contains(text, StringComparison.Ordinal));
         var conquered = ended.Count(r => r.Won && !r.EndText.Contains("議和", StringComparison.Ordinal));
         var ceded = ended.Count(r => r.Won && r.EndText.Contains("議和", StringComparison.Ordinal));
-        var routed = Ends("敗退");
+        var routed = Ends("敗退") + Ends("撤兵"); // 第 08-49 章：野戰潰敗、兵力不支撤兵也算敗退
         var white = Ends("白和平");
         var other = ended.Count - conquered - ceded - routed - white;
         var weeks = ended.Count == 0 ? 0 : ended.Average(r => r.EndWeek - r.StartWeek);
