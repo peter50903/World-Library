@@ -693,7 +693,8 @@ public sealed partial class DemoObserverWorld
             Known = KnownResidents(sites, residents), // 第 14-1 章★4：別人的兵力只知道舊消息
             AgeOfWeek = AgeAtWeek, // 第 08-6c 章：混沌時代忠誠降低
             FaithHostility = (a, b) => DemoFaiths.Hostility(culture.Faith, a, b), // 第 08-22g 章：同源的信仰誤入歧途、不同源的敵對
-            Defense = Defense // 第 08-34 章：圍城週數依城牆增減
+            Defense = Defense, // 第 08-34 章：圍城週數依城牆增減
+            Map = Map // 第 08-45 章：行軍
         };
     }
 
