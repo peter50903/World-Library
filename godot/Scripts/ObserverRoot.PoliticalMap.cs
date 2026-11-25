@@ -149,7 +149,7 @@ public partial class ObserverRoot
             if (rect.Size.X < 32 || rect.Size.Y < 32)
                 return;
             image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, name + ".png"));
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 240, Math.Max(32, 240 * rect.Size.Y / rect.Size.X), rect));
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 170, Math.Max(32, 170 * rect.Size.Y / rect.Size.X), rect));
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
                 new Rect2I((Vector2I)page.Position + new Vector2I(0, 40), new Vector2I(Math.Min(320, rect.Size.X), 200)).Intersection(screen)));
             var art = FindHoldingArt(_detailTabs.GetCurrentTabControl());
