@@ -33,6 +33,23 @@ public partial class DemoHexMap
     private void Select(Vector2 position, DemoHexCell hit)
     {
         var at = new DemoCellRef(hit.Column, hit.Row);
+        // ⓪ 第 08-52 章（試玩回饋 2026-11-26 之 2：看不到戰況）：點到軍隊棋子、圍城器械、比分條＝看這場戰爭的戰況。
+        if (WarHit(position) is { } war && WarSelected is not null)
+        {
+            _areaPick = null;
+            WarSelected.Invoke(war);
+            return;
+        }
+        // 第 08-52 章：點到遠征軍或獸潮的棋子＝那個地下城。
+        if (FrontHit(position) is { } front && World!.Contains(front.Dungeon.Cell.Column, front.Dungeon.Cell.Row))
+        {
+            _areaPick = null;
+            var lair = World.GetCell(front.Dungeon.Cell.Column, front.Dungeon.Cell.Row);
+            MarkCell(lair);
+            _selectedNest = front.Dungeon.EventId;
+            CellSelected?.Invoke(lair);
+            return;
+        }
         // ⓪ 第 08-18i 章：名牌（整條都算）固定開聚落。
         if (PlateUnder(position) is { } plateSite && SiteCell(plateSite) is { } plated)
         {

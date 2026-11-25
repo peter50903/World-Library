@@ -23,6 +23,20 @@ public partial class DemoHexMap
 
     private DemoSettlement? SiteOf(int id) => Sites?.Settlements.FirstOrDefault(s => s.Id == id);
 
+    /// <summary>第 08-52 章：這一次重畫時遠征軍、獸潮棋子的位置（點到就選那個地下城）。</summary>
+    private readonly List<(Rect2 Rect, DemoMonsterNest Nest)> _frontHits = new();
+
+    private DemoMonsterNest? FrontHit(Vector2 position)
+    {
+        for (var i = _frontHits.Count - 1; i >= 0; i--)
+            if (_frontHits[i].Rect.HasPoint(position))
+                return _frontHits[i].Nest;
+        return null;
+    }
+
+    private void AddFrontHit(Vector2 foot, float height, DemoMonsterNest nest)
+        => _frontHits.Add((new Rect2(foot - new Vector2(height * 0.5f, height), new Vector2(height, height + 16f)), nest));
+
     /// <summary>行動走到幾成（上一週的位置慢慢走到這一週，同 08-46 的軍隊棋子）。</summary>
     private float TripProgress((long, bool) key, float progress)
     {
@@ -78,6 +92,7 @@ public partial class DemoHexMap
     /// <summary>第 08-51 章：遠征軍、獸潮與地盤的變化（畫在戰線之後、戰鬥標記之前）。</summary>
     private void DrawMonsterFronts(Vector2 start, float radius)
     {
+        _frontHits.Clear();
         if (World is null)
             return;
         DrawTerritoryFlash(start, radius);
@@ -103,6 +118,7 @@ public partial class DemoHexMap
                         var stop = at.DistanceTo(lair) > radius ? lair + (at - lair).Normalized() * radius * 0.7f : lair;
                         DrawMarchPath(new[] { at, stop }, TempExpeditionColor, seconds, 1f, true);
                         DrawArmyToken(font, at, TempExpeditionColor, 0, TokenKind.Army);
+                        AddFrontHit(at, TempTokenHeight, nest);
                         DrawTag(font, at + new Vector2(0f, -TempTokenHeight - 8f), $"遠征{nest.Dungeon.Name}・還要 {exp.ArriveWeek - CurrentWeek} 週", TempExpeditionColor);
                     }
                     else
@@ -111,6 +127,7 @@ public partial class DemoHexMap
                         var done = Math.Clamp(CurrentWeek - exp.ArriveWeek + 1, 1, layers);
                         DrawMarchPath(new[] { from, lair }, TempExpeditionColor, seconds, 0.35f, false); // 補給線（淡）
                         DrawArmyToken(font, lair + new Vector2(-Math.Max(16f, radius * 0.9f), 8f), TempExpeditionColor, 0, TokenKind.Army);
+                        AddFrontHit(lair + new Vector2(-Math.Max(16f, radius * 0.9f), 8f), TempTokenHeight, nest);
                         var top = lair - new Vector2(0f, Math.Max(26f, radius * 1.3f));
                         DrawLayerPips(top, layers, done);
                         DrawTag(font, top - new Vector2(0f, 14f), $"遠征軍攻到第 {done}/{layers} 層", TempExpeditionColor);
@@ -127,6 +144,7 @@ public partial class DemoHexMap
                 var stop = at.DistanceTo(to) > radius ? to + (at - to).Normalized() * radius * 0.7f : to;
                 DrawMarchPath(new[] { at, stop }, TempSwarmColor, seconds, 1f, true);
                 DrawArmyToken(font, at, TempSwarmColor, nest.Monsters, TokenKind.Swarm, 1.2f);
+                AddFrontHit(at, TempTokenHeight * 1.2f, nest);
                 DrawTag(font, at + new Vector2(0f, -TempTokenHeight * 1.2f - 8f), $"{(nest.AtSea ? "海怪潮" : "獸潮")}→{prey.Name}・還要 {Math.Max(1, wave.ArriveWeek - CurrentWeek)} 週", TempSwarmColor);
             }
         }

@@ -71,7 +71,7 @@ public partial class ObserverRoot
 
     /// <summary>【TEMP】大圖視窗：示意圖的寬與高（上排，2:1）、視窗最大寬高；詳情裡示意圖的高度。</summary>
     private const float TempHoldingBannerWidth = 640f, TempHoldingBannerHeight = 320f, TempHoldingWindowWidth = 1280f, TempHoldingWindowHeight = 820f,
-        TempHoldingThumbHeight = 160f;
+        TempHoldingThumbHeight = 200f;
 
     /// <summary>【TEMP】建築卡片的寬與插圖高（大圖、詳情分頁的縮小版）。</summary>
     private const float TempCardWidth = 148f, TempCardArtHeight = 112f, TempCompactCardWidth = 98f, TempCompactArtHeight = 66f;
@@ -126,9 +126,9 @@ public partial class ObserverRoot
         column.AddThemeConstantOverride("separation", 6);
         var id = scene.Site.Id;
         var art = new HoldingArt { CustomMinimumSize = new Vector2(0, TempHoldingThumbHeight), SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        // 第 08-52 章（試玩回饋 2026-11-26 之 3）：不再另開領地視窗，示意圖就在聚落頁最上面。
         art.ShowScene(scene, TitledName(scene.Site), $"{DemoSettlementHistory.TierName(scene.Site, scene.Tier)}｜建築格 {scene.SlotsUsed}/{scene.Slots}",
-            clickable: true);
-        art.Opened += () => OpenHolding(id);
+            clickable: false);
         column.AddChild(art);
         column.AddChild(HoldingStats(scene, _world.CombatForceOf(id).Soldiers));
         column.AddChild(SlotPips(scene.SlotsUsed, scene.Slots, compact: true));
@@ -150,9 +150,6 @@ public partial class ObserverRoot
         }
         else
             column.AddChild(new Label { Text = "（住宅以外還沒有任何建築）" });
-        var open = new Button { Text = "打開領地", FocusMode = FocusModeEnum.None, TooltipText = "大圖：示意圖、領地資訊與分區的建築卡片" };
-        open.Pressed += () => OpenHolding(id);
-        column.AddChild(open);
         return column;
     }
 

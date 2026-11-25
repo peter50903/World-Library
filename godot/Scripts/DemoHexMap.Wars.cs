@@ -159,6 +159,7 @@ public partial class DemoHexMap
             }
             DrawMarchPath(points, attackerColor, seconds, 1f, true);
             DrawArmyToken(font, army, attackerColor, front.AttackerArmy, TokenKind.Army);
+            AddWarHit(army, TempTokenHeight, front.Key);
             DrawArmyToken(font, target + new Vector2(24f, 6f), defenderColor, front.DefenderArmy, TokenKind.Army, 0.85f);
             DrawTag(font, army + new Vector2(0f, -TempTokenHeight - 8f), $"行軍・還要 {status.MarchLeft} 週", attackerColor);
         }
@@ -178,6 +179,9 @@ public partial class DemoHexMap
                 DrawArmyToken(font, place + new Vector2(-ring - 6f, 6f), attackerColor, 0, TokenKind.Siege);
             }
             DrawArmyToken(font, place + new Vector2(-ring * 0.55f, ring * 0.35f), attackerColor, front.AttackerArmy, TokenKind.Army);
+            AddWarHit(place + new Vector2(-ring * 0.55f, ring * 0.35f), TempTokenHeight, front.Key);
+            if (status.Stage == DemoWarStage.Besieging)
+                AddWarHit(place + new Vector2(-ring - 6f, 6f), TempTokenHeight * 0.75f, front.Key);
             DrawArmyToken(font, place + new Vector2(ring * 0.75f, 6f), defenderColor, front.DefenderArmy, TokenKind.Army, 0.85f);
         }
         // 比分條（中間＝0，攻方色往右＝攻方佔上風）與分數。
@@ -195,6 +199,7 @@ public partial class DemoHexMap
                 : $"｜圍城 {Math.Min(status.SiegeDone, status.SiegeNeed)}/{status.SiegeNeed} 週")
             : "";
         DrawTag(font, bar + new Vector2(TempWarBarWidth / 2f, -8f), $"⚔ {(score > 0 ? "+" : "")}{score}{siegeText}", new Color(0.95f, 0.85f, 0.55f));
+        _warHits.Add((new Rect2(bar - new Vector2(4f, 22f), new Vector2(TempWarBarWidth + 8f, 34f)), front.Key)); // 第 08-52 章：比分條與戰況字
     }
 
     /// <summary>第 08-46 章：小字標籤（置中、深色描邊）。</summary>
@@ -207,8 +212,27 @@ public partial class DemoHexMap
         DrawString(font, at, text, HorizontalAlignment.Left, -1, size, color.Lightened(0.35f));
     }
 
+    /// <summary>第 08-52 章：點到軍隊、圍城或比分條時通知觀察者介面（戰線的鍵：征服戰爭＝攻方聚落，獨立戰爭＝負的叛離聚落）。</summary>
+    public event Action<int>? WarSelected;
+
+    /// <summary>第 08-52 章：這一次重畫時戰線上可以點的地方（畫面座標、戰線的鍵）。</summary>
+    private readonly List<(Rect2 Rect, int Key)> _warHits = new();
+
+    /// <summary>第 08-52 章：滑鼠位置點到的戰線（後畫的在上面，先算）；沒有＝null。</summary>
+    private int? WarHit(Vector2 position)
+    {
+        for (var i = _warHits.Count - 1; i >= 0; i--)
+            if (_warHits[i].Rect.HasPoint(position))
+                return _warHits[i].Key;
+        return null;
+    }
+
+    private void AddWarHit(Vector2 foot, float height, int key)
+        => _warHits.Add((new Rect2(foot - new Vector2(height * 0.5f, height), new Vector2(height, height + 16f)), key));
+
     private void DrawWars(Vector2 start, float radius)
     {
+        _warHits.Clear();
         if (World is null || WarFronts.Count == 0)
             return;
         var font = ThemeDB.FallbackFont;
@@ -263,6 +287,7 @@ public partial class DemoHexMap
             if (march >= 1f && front.Score is not null)
                 DrawArmyToken(font, siege + new Vector2(18f, 3f), attackerColor, 0, TokenKind.Siege);
             DrawArmyToken(font, march < 1f && length > radius ? from.Lerp(siege, Ease(march)) : siege, attackerColor, front.AttackerArmy, TokenKind.Army);
+            AddWarHit(march < 1f && length > radius ? from.Lerp(siege, Ease(march)) : siege, TempTokenHeight, front.Key);
             DrawArmyToken(font, target + new Vector2(length > radius ? 24f : 30f, 6f), defenderColor, front.DefenderArmy, TokenKind.Army, 0.85f);
             // ④ 交戰圖示與比分條（攻方色＝守方死亡的比例）。
             var bar = target - new Vector2(TempScoreBarWidth / 2f, TempBannerSize * 2.6f);
@@ -274,6 +299,7 @@ public partial class DemoHexMap
             // 第 08-22a 章：征服戰爭的比分條是戰爭分數（中間＝0，攻方色往右＝攻方佔上風）。
             var share = front.Score is { } warScore ? 0.5f + warScore / 200f : total <= 0 ? 0.5f : front.DefenderLosses / (float)total;
             DrawRect(new Rect2(bar - new Vector2(1f, 1f), new Vector2(TempScoreBarWidth + 2f, 7f)), new Color(0.08f, 0.05f, 0.03f, 0.9f));
+            _warHits.Add((new Rect2(bar - new Vector2(4f, 20f), new Vector2(TempScoreBarWidth + 8f, 30f)), front.Key));
             DrawRect(new Rect2(bar, new Vector2(TempScoreBarWidth * share, 5f)), attackerColor);
             DrawRect(new Rect2(bar + new Vector2(TempScoreBarWidth * share, 0f), new Vector2(TempScoreBarWidth * (1f - share), 5f)), defenderColor);
             DrawLine(bar + new Vector2(TempScoreBarWidth / 2f, -1f), bar + new Vector2(TempScoreBarWidth / 2f, 6f), new Color(1f, 1f, 1f, 0.7f), 1f);

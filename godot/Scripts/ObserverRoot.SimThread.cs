@@ -112,9 +112,9 @@ public partial class ObserverRoot
     {
         if (_simTask is null || @event is not (InputEventMouseButton or InputEventKey or InputEventScreenTouch))
             return;
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown or MouseButton.Middle }
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown or MouseButton.Middle or MouseButton.Right }
             && GetViewport().GuiGetHoveredControl() == _hexMap)
-            return;
+            return; // 第 08-52 章：右鍵在地圖上也只是拖曳畫面（原本按下右鍵要等背景這一批算完，最多約 0.25 秒）
         WaitForSimulation();
     }
 

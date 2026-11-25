@@ -683,7 +683,7 @@
 | `src/WorldSimulation.Core/World/Demo/DemoCarryingCapacity.cs` | 11 | 第 3 節 #103 承載估計（D3／D4 推導）；第 08-1 章地圖理論承載上限 |
 | `godot/Scripts/ObserverRoot.HumanSmoke.cs` | 1 | #105 真Godot出生/存讀冒煙 |
 | `godot/Scripts/HudLayout.cs` | 11 | 第 05 章觀察者介面版面尺寸（間距、面板寬高、事件列比例、工具列與地圖模式列）；第 08-3 章功能列置底、移除事件列 |
-| `godot/Scripts/ObserverRoot.Hud.cs` | 13 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色；第 08-18h 章詳情頁內文顏色與字級（15）；第 08-19d 章時代進度條寬度；第 08-18i 章分頁按鈕排列順序 |
+| `godot/Scripts/ObserverRoot.Hud.cs` | 14 | 第 05 章面板配色、速度檔位說明、背景音樂音量；第 08-11 章技術小圖示尺寸、每列個數與領域配色；第 08-18h 章詳情頁內文顏色與字級（15）；第 08-19d 章時代進度條寬度；第 08-18i 章分頁按鈕排列順序；第 08-52 章聚落頁各段的順序 |
 | `godot/Scripts/TechTreeView.cs` | 1 | 第 08-10d 章 D：知識樹版面（欄數、節點高、間距、字級；畫面顯示參數） |
 | `godot/Scripts/ArtAssets.cs` | 4 | 第 05 章 b 節九宮格面板、頂部木條與工具列木板的邊框寬度；第 08 章 b 節圖表外框邊框寬度 |
 | `godot/Scripts/YearChart.cs` | 3 | 第 08 章 b 節年度長條圖邊距、配色；第 08-1 章理論上限線 |
@@ -699,8 +699,8 @@
 | `src/WorldSimulation.Core/World/Demo/DemoLandClearing.cs` | 8 | 第 08-6 章 c 節農田開墾（D08-6c）；第 08-11 章農田荒廢（D08-11）；第 08-6b 章田數上限（營 1、村 2、鎮 2、城 3、都 3，每項農耕技術 +1，最多 6） |
 | `src/WorldSimulation.Core/World/Demo/DemoEventTypes.cs` | 64 | 第 03 章 b 節 TEMP 事件類型對照（見下方 #03b）；第 08-6 章習得技術、時代開始、開墾農田；第 08-11 章農田荒廢事件；第 08-8 章 B4 文化分化事件；B3 創立信仰、信仰失傳事件；第 12-1 章 C2 野獸襲擊事件；C3 地震、龍捲風、隕石、洪水事件；隕石礦脈事件；C3b 熱浪、野火的開始與結束事件；C4 地下城出現事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 08-16 章第 14 節伐木、開始採礦、礦脈挖空事件；第 12-2 章怪物襲擊、討伐、擊殺、沉寂、再生五種；第 08-19b 章歸附、獨立戰爭、請願抗議、獨立戰爭交戰、獨立、脫離失敗、加入與退出獨立派系八種；第 08-19e 章宣戰、征服戰爭交戰、征服、征服失敗四種；第 08-19f 章繼位、內戰、篡位三種；第 08-22a 章攻陷；第 12-2h 章獸潮；第 08-22d 章異端分裂；第 08-22g 章改宗；第 08-35 章 TEMP_EV_BUILDING_COMPLETED、TEMP_EV_BUILDING_RUINED；第 08-50 章遠征出發、獸潮出巢、遠征撤回 |
 | `godot/Scripts/MapFoodStatus.cs` | 2 | 第 05 章 b 節糧食狀況分級門檻（存糧不足 2 週＝緊張，顯示用） |
-| `godot/Scripts/ObserverRoot.Toolbar.cs` | 8 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明；第 08-18i 章圖例最多列 6 個 |
-| `godot/Scripts/ObserverRoot.Letters.cs` | 2 | 第 08-18i 章重大事件通知：停留 25 秒、最多 5 張、寬 300；怪物襲擊死 3 人、一週餓死 5 人以上才通知 |
+| `godot/Scripts/ObserverRoot.Toolbar.cs` | 10 | 第 05 章 b 節工具列按鈕尺寸、視窗大小、糧食圖例說明；第 08-18i 章圖例最多列 6 個；第 08-52 章模式說明與圖例小框的寬高 |
+| `godot/Scripts/ObserverRoot.Letters.cs` | 3 | 第 08-18i 章重大事件通知：停留 25 秒、最多 5 張、寬 300；怪物襲擊死 3 人、一週餓死 5 人以上才通知；第 08-52 章通知 8 秒淡出、最多 3 封 |
 | `godot/Scripts/ObserverRoot.ForagingSmoke.cs` | 4 | #113 Godot 真引擎可選採集生存情境、共享取食與存讀測試 |
 | `godot/Scripts/ObserverRoot.HistoryFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
 | `godot/Scripts/ObserverRoot.FoodDiagnostics.cs` | 5 | 第 3 節 #103 承載估計（#104 畫面只讀顯示） |

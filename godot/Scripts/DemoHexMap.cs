@@ -255,6 +255,14 @@ public partial class DemoHexMap : Control
         DrawPolitical(start, radius);
     }
 
+    /// <summary>第 08-52 章：正在拖曳地圖（中鍵或右鍵按著），或剛滾過滾輪（毫秒內）；快轉時這段時間先不做整套畫面更新。</summary>
+    public bool Panning => _middleDragging || _rightDragging || Time.GetTicksMsec() - _lastWheelMs < TempPanQuietMs;
+
+    /// <summary>【TEMP】滾輪縮放後多久內還算在移動畫面（毫秒）。</summary>
+    private const ulong TempPanQuietMs = 400;
+
+    private ulong _lastWheelMs;
+
     public override void _GuiInput(InputEvent @event)
     {
         if (World is null)
@@ -303,6 +311,7 @@ public partial class DemoHexMap : Control
 
         if (button.Pressed && button.ButtonIndex is MouseButton.WheelUp or MouseButton.WheelDown)
         {
+            _lastWheelMs = Time.GetTicksMsec();
             // Cursor-anchored zoom: the point under the pointer does not jump.
             var next = Mathf.Clamp(
                 _zoom * (button.ButtonIndex == MouseButton.WheelUp ? TempZoomStep : 1f / TempZoomStep),

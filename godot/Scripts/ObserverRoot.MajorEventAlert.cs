@@ -131,7 +131,8 @@ public partial class ObserverRoot
         {
             if (alert is null)
             {
-                if (RealtimeThrottle && _sinceRefresh.Elapsed.TotalMilliseconds < TempPanelRefreshMs)
+                // 第 08-52 章（試玩回饋 2026-11-26 之 4：五倍速移動畫面很卡）：正在拖曳或縮放地圖時，整套更新延到停手之後。
+                if (RealtimeThrottle && (_sinceRefresh.Elapsed.TotalMilliseconds < TempPanelRefreshMs || _hexMap.Panning))
                 {
                     // 面板稍後再更新；地圖上的聚落仍跟著世界走。
                     _hexMap.Sites = _world.Sites;
