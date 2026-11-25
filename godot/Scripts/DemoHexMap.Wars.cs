@@ -175,7 +175,6 @@ public partial class DemoHexMap
                 var done = status.SiegeDone / (float)status.SiegeNeed;
                 if (done > 0f)
                     DrawArc(place, ring, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * done, Math.Max(8, (int)(40 * done)), attackerColor.Lightened(0.2f), 4f, true);
-                DrawTag(font, place + new Vector2(0f, ring + 14f), $"圍城 {status.SiegeDone}/{status.SiegeNeed} 週", attackerColor);
                 DrawArmyToken(font, place + new Vector2(-ring - 6f, 6f), attackerColor, 0, TokenKind.Siege);
             }
             DrawArmyToken(font, place + new Vector2(-ring * 0.55f, ring * 0.35f), attackerColor, front.AttackerArmy, TokenKind.Army);
@@ -189,7 +188,11 @@ public partial class DemoHexMap
         DrawRect(new Rect2(bar, new Vector2(TempWarBarWidth * share, 6f)), attackerColor);
         DrawRect(new Rect2(bar + new Vector2(TempWarBarWidth * share, 0f), new Vector2(TempWarBarWidth * (1f - share), 6f)), defenderColor);
         DrawLine(bar + new Vector2(TempWarBarWidth / 2f, -2f), bar + new Vector2(TempWarBarWidth / 2f, 8f), new Color(1f, 1f, 1f, 0.8f), 1f);
-        DrawTag(font, bar + new Vector2(TempWarBarWidth / 2f, -8f), $"⚔ {(score > 0 ? "+" : "")}{score}", new Color(0.95f, 0.85f, 0.55f));
+        // 圍城進度寫在分數旁（不壓到聚落名牌）；圍滿了但會戰落下風時攻不下（08-22a）。
+        var siegeText = status.Stage == DemoWarStage.Besieging && status.SiegeNeed > 0
+            ? $"｜圍城 {status.SiegeDone}/{status.SiegeNeed} 週" + (status.SiegeDone >= status.SiegeNeed && score < 0 ? "・戰況不利攻不下" : "")
+            : "";
+        DrawTag(font, bar + new Vector2(TempWarBarWidth / 2f, -8f), $"⚔ {(score > 0 ? "+" : "")}{score}{siegeText}", new Color(0.95f, 0.85f, 0.55f));
     }
 
     /// <summary>第 08-46 章：小字標籤（置中、深色描邊）。</summary>
