@@ -38,7 +38,7 @@ public sealed class DemoSeaColonyTests
         Assert.All(path.Skip(1).Take(path.Length - 2), c => Assert.True(IsSea(map, c)));
         Assert.All(path.Zip(path.Skip(1)), p => Assert.True(DemoSeaLanes.Passable(map, p.First, p.Second), $"{p.First}→{p.Second} 走不通"));
         // 同樣的輸入同樣的結果；家門口的海全被怪物佔了就出不了海。
-        Assert.Equal(path, DemoSeaLanes.Voyage(map, home, DemoSeaLanes.TempPortVoyageReach, empty, _ => true));
+        Assert.Equal(path.ToArray(), DemoSeaLanes.Voyage(map, home, DemoSeaLanes.TempPortVoyageReach, empty, _ => true).ToArray());
         var blocked = Enumerable.Range(-1, 3).SelectMany(dr => Enumerable.Range(-1, 3).Select(dc => new DemoCellRef(home.Column + dc, home.Row + dr))).ToHashSet();
         Assert.Empty(DemoSeaLanes.Voyage(map, home, DemoSeaLanes.TempPortVoyageReach, blocked, _ => true));
         // 沒有允許的空地、或出不了海＝空。
