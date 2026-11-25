@@ -522,7 +522,7 @@ jobs:
             exit 1
           fi
           grep -Eq 'WORLD_SIM_FORAGING_OK: Weeks=5 Harvest=[0-9]+ Forest20=1 River5=1 NoFreeFarm=1 SaveRoundTrip=1 CrowdedStarved=1 SourceLedger=1' /tmp/godot-foraging.log
-          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUD_SMOKE=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-hud.log
+          WORLD_SIM_TEMP_SAVE_DIR="$(mktemp -d)" WORLD_SIM_HUD_SMOKE=1 WORLD_SIM_CONTRAST_STRICT=1 timeout 90 "$engine" --headless --path godot --quit-after 6 2>&1 | tee /tmp/godot-hud.log
           if grep -E '(SCRIPT ERROR|ERROR:|Unhandled exception|Exception:)' /tmp/godot-hud.log; then
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
