@@ -171,6 +171,25 @@ public partial class ObserverRoot
             await HoldingShot(name);
             CloseModal();
         }
+        // 第 08-47 章：戰爭總覽視窗（整個視窗頁縮圖）。
+        OpenWar();
+        for (var i = 0; i < 6; i++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        {
+            var image = GetViewport().GetTexture().GetImage();
+            var screen = new Rect2I(0, 0, image.GetWidth(), image.GetHeight());
+            var page = _modalPanel.GetGlobalRect();
+            var rect = new Rect2I((Vector2I)page.Position, (Vector2I)page.Size).Intersection(screen);
+            if (rect.Size.X >= 32 && rect.Size.Y >= 32)
+            {
+                image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, "11_war_window.png"));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "11_war_window.thumb"), Thumb(image, 320, Math.Max(32, 320 * rect.Size.Y / rect.Size.X), rect));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "11_war_window_crop.thumb"), Thumb(image, 320, 200,
+                    new Rect2I((Vector2I)page.Position, new Vector2I(320, 200)).Intersection(screen)));
+            }
+            GD.Print($"WORLD_SIM_MAP_SHOT: 11_war_window {rect.Size.X}x{rect.Size.Y} Wars={_wars.Count}");
+        }
+        CloseModal();
         _hexMap.ShowWholeWorld();
         SetMapMode(DemoHexMap.Mode.Terrain);
         await Shot("4_terrain_far");
