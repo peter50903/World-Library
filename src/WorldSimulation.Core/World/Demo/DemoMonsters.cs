@@ -501,7 +501,7 @@ public static class DemoMonsters
                     && (!sea || sails?.Invoke(s.Id) == true)
                     && residents(s.Id) >= TempHuntMinResidents
                     && Distance(s) <= (expedition(s.Id).Fighters > 0 ? TempSoldierHuntReach : TempHuntReach)
-                    && (expedition(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
+                    && (DemoCombat.CanClear(expedition(s.Id), level) || left > SuppressFloor(nest.Dungeon))) // 第 08-50 章：殺不光又已壓到下限就不白跑
                 .OrderByDescending(s => expedition(s.Id).Soldiers * expedition(s.Id).SoldierLevel)
                 .ThenByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
             if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent

@@ -85,16 +85,20 @@ public sealed class DemoExpeditionTests
     }
 
     [Fact]
-    public void AnExpeditionThatCannotKillAnythingTurnsBack()
+    public void AWeakExpeditionTurnsBackAndDoesNotSetOutInVain()
     {
-        // 等級太低：只能壓到下限；怪物已在下限時攻第一層一隻也殺不到，就撤回。
+        // 等級太低：只能壓到下限。怪物已在下限時根本不出兵；比下限多一隻時出兵，打到殺不動就撤回（「攻不下」）。
         var world = new DemoObserverWorld(DemoScenario.Sample(3), DemoWeeklyTempConfig.LivingForagingSample);
         var home = world.Sites.Settlements.First(s => !s.IsRuin);
         var dungeon = new DemoDungeon(new DemoCellRef(home.Column, home.Row), "測試洞窟", 2, 0, 99, home.Id);
         var floor = DemoMonsters.SuppressFloor(dungeon);
-        var nest = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = DemoLandClearing.CellId(world.Map, dungeon.Cell) };
+        var cellId = DemoLandClearing.CellId(world.Map, dungeon.Cell);
         var weak = new DemoCombatForce(5, 1, 100);
         var rng = RngRegistry.Create(4);
+        var atFloor = new DemoMonsterNest(dungeon, floor, false, 0) { CellId = cellId };
+        for (var week = 1; week <= 200; week++)
+            Assert.Empty(DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 100, new[] { atFloor }, new HashSet<int>(), rng, _ => weak).Departures);
+        var nest = atFloor with { Monsters = floor + 1 };
         var returned = false;
         for (var week = 1; week <= 400 && !returned; week++)
         {
@@ -103,10 +107,10 @@ public sealed class DemoExpeditionTests
             if (plan.Returns.Count > 0)
             {
                 Assert.Contains("攻不下", Assert.Single(plan.Returns).Text, StringComparison.Ordinal);
-                Assert.Contains("第 1/2 層", plan.Strikes.Values.Single(s => s.Kind == DemoSettlementEventKind.MonsterHunt).Cause, StringComparison.Ordinal);
+                Assert.Contains("/2 層", plan.Strikes.Values.Single(s => s.Kind == DemoSettlementEventKind.MonsterHunt).Cause, StringComparison.Ordinal);
                 returned = true;
             }
-            nest = MonsterTrips.After(nest, plan, week);
+            nest = MonsterTrips.After(nest with { Monsters = Math.Max(0, nest.Monsters - plan.Kills.Sum(k => k.Kills)) }, plan, week);
         }
         Assert.True(returned);
         Assert.Null(nest.Expedition);
