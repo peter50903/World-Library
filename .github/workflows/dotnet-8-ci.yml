@@ -609,13 +609,14 @@ jobs:
           echo "::notice title=政治地圖截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Simulated.*' /tmp/godot-mapshot.log)"
           echo "::notice title=戰況截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: War.*' /tmp/godot-mapshot.log | head -1)"
           echo "::notice title=遠征與獸潮截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Front.*' /tmp/godot-mapshot.log | head -1)"
+          echo "::notice title=信仰模式截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Faiths.*' /tmp/godot-mapshot.log | head -1)"
 
       - name: 政治地圖截圖轉成註記（準備；註記一則只收 4KB，縮圖量化壓縮後分段）
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 8_holding_big 1_realms_far 2_realms_mid 3_realms_close_crop 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 2_realms_mid_crop 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
+          for name in 13_faith_far 8_holding_big 1_realms_far 2_realms_mid 3_realms_close_crop 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 2_realms_mid_crop 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"

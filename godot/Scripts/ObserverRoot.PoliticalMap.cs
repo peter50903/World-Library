@@ -195,6 +195,11 @@ public partial class ObserverRoot
         await Shot("4_terrain_far");
         SetMapMode(DemoHexMap.Mode.Culture);
         await Shot("5_culture_far");
+        // 第 08-54 章：信仰模式（信仰家族的顏色、名字上的符號、聖地、跟統治者不同的條紋）。
+        SetMapMode(DemoHexMap.Mode.Faith);
+        await Shot("13_faith_far");
+        GD.Print($"WORLD_SIM_MAP_SHOT: Faiths={world.Culture.Faith.Faiths.Count(f => f.ExtinctWeek == 0)} Schisms={world.Culture.Faith.Faiths.Count(f => f.ParentId != 0)} "
+            + $"HolySites={_hexMap.HolySiteFaiths.Count}");
         SetMapMode(DemoHexMap.Mode.Realm);
         // 第 12-2j 章：指定黑暗時代、推進一週，看長夜的氛圍與獸潮將至的標記。
         world.AgeSetting = DemoAge.Dark;
