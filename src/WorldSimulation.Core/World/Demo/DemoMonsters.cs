@@ -16,6 +16,12 @@ public sealed record DemoMonsterNest(DemoDungeon Dungeon, int Monsters, bool Dor
     /// <summary>第 08-42 章：海上地下城（在外海或小島上）——怪物在海上擴張、移動，只能靠海戰討伐。</summary>
     public bool AtSea { get; init; }
 
+    /// <summary>第 08-50 章：正在路上或正在逐層攻打這個地下城的遠征軍（沒有＝null）。</summary>
+    public DemoMonsterTrip? Expedition { get; init; }
+
+    /// <summary>第 08-50 章：從這個地下城出巢、還在路上的獸潮（沒有＝null）。</summary>
+    public DemoMonsterTrip? Swarm { get; init; }
+
     public int Radius => Monsters <= 0 ? 0
         : Cells.Count > 0 ? Cells.Max(c => DemoHexWorld.Distance(c, Dungeon.Cell)) : DemoMonsters.Radius(Monsters);
 
@@ -28,6 +34,16 @@ public sealed record DemoMonsterNest(DemoDungeon Dungeon, int Monsters, bool Dor
         var c = Dungeon.Cell;
         return Enumerable.Range(-r, 2 * r + 1).SelectMany(dr => Enumerable.Range(-r, 2 * r + 1).Select(dc => new DemoCellRef(c.Column + dc, c.Row + dr)));
     }
+}
+
+/// <summary>
+/// 第 08-50 章：一趟要走好幾週的行動——遠征軍（<see cref="SettlementId"/>＝出兵的聚落，從聚落走到地下城）或獸潮
+/// （<see cref="SettlementId"/>＝被盯上的聚落，從地下城走到聚落）。<see cref="ArriveWeek"/>＝抵達、開打的那一週。
+/// </summary>
+public sealed record DemoMonsterTrip(int SettlementId, int DepartWeek, int ArriveWeek)
+{
+    /// <summary>第 <paramref name="week"/> 週結束時走了幾成（0～1）。</summary>
+    public float Progress(int week) => ArriveWeek <= DepartWeek ? 1f : Math.Clamp((week - DepartWeek) / (float)(ArriveWeek - DepartWeek), 0f, 1f);
 }
 
 /// <summary>
@@ -168,6 +184,17 @@ public static class DemoMonsters
     public static int SwarmPercent(DemoAge? age) => age is DemoAge.Dark or DemoAge.Chaos ? TempSwarmPercent * 2 : TempSwarmPercent;
 
     /// <summary>第 12-2h 章：獸潮攻得破的聚落層級（3 級地下城連城鎮也攻得破）。</summary>
+    /// <summary>
+    /// 第 08-50 章【TEMP】（使用者 2026-11-18：人類與怪物的領地爭奪要看得見）：有士兵的討伐變成遠征——遠征軍每週走
+    /// <see cref="TempExpeditionCellsPerWeek"/> 格到地下城，到了每週攻一層（只打這一層的怪物：剩下的怪物÷還沒打的層數），
+    /// 攻到底殺光就沉寂；某一層一隻都殺不到、或各層打完還沒殺光就撤回。獸潮每週走 <see cref="TempSwarmCellsPerWeek"/> 格，到了才開打。
+    /// </summary>
+    public const int TempExpeditionCellsPerWeek = 3, TempSwarmCellsPerWeek = 2;
+
+    /// <summary>第 08-50 章：從 <paramref name="from"/> 走到 <paramref name="to"/> 要幾週（至少 1 週）。</summary>
+    public static int MarchWeeks(DemoCellRef from, DemoCellRef to, int cellsPerWeek)
+        => Math.Max(1, (DemoHexWorld.Distance(from, to) + cellsPerWeek - 1) / Math.Max(1, cellsPerWeek));
+
     public static DemoSettlementTier SwarmBreaks(DemoDungeon dungeon) => dungeon.Layers >= 3 ? DemoSettlementTier.Town : DemoSettlementTier.Village;
 
     public static bool IsStrike(DemoSettlementEventKind kind) => kind is DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSwarm;
@@ -179,6 +206,7 @@ public static class DemoMonsters
     public sealed class Fold
     {
         private readonly Dictionary<long, (int Week, int Count, bool Dormant)> _base = new();
+        private readonly Dictionary<long, DemoMonsterTrip> _expeditions = new(), _swarms = new(); // 第 08-50 章
 
         /// <summary>第 12-2j 章：第 a 週之後到第 b 週（含）有幾週是黑暗時代（繁衍加倍；沒給＝沒有，測試）。</summary>
         public Func<int, int, int>? SurgeWeeks { get; init; }
@@ -204,6 +232,23 @@ public static class DemoMonsters
                 }
                 case DemoSettlementEventKind.DungeonCleared when dungeonAt(e.Count) is not null:
                     _base[e.Count] = (e.Week, 0, true);
+                    _expeditions.Remove(e.Count); // 第 08-50 章：殺光了，遠征結束
+                    _swarms.Remove(e.Count);
+                    break;
+                case DemoSettlementEventKind.ExpeditionSetOut or DemoSettlementEventKind.SwarmSetOut:
+                {
+                    var (cell, weeks) = DecodeKills(e.Count);
+                    if (dungeonAt(cell) is null)
+                        return;
+                    var trip = new DemoMonsterTrip(e.SettlementId, e.Week, e.Week + weeks);
+                    if (e.Kind == DemoSettlementEventKind.ExpeditionSetOut)
+                        _expeditions[cell] = trip;
+                    else
+                        _swarms[cell] = trip;
+                    break;
+                }
+                case DemoSettlementEventKind.ExpeditionReturned:
+                    _expeditions.Remove(e.Count);
                     break;
                 case DemoSettlementEventKind.DungeonAwakened when dungeonAt(e.Count) is { } awake:
                     _base[e.Count] = (e.Week, Initial(awake), false);
@@ -225,7 +270,13 @@ public static class DemoMonsters
         public DemoMonsterNest At(DemoDungeon dungeon, long cellId, int week)
         {
             var dormant = _base.TryGetValue(cellId, out var b) && b.Dormant;
-            return new DemoMonsterNest(dungeon, Count(dungeon, cellId, week), dormant, dormant ? b.Week : 0) { CellId = cellId };
+            // 第 08-50 章：遠征軍從出發到最後一層打完（抵達週＋層數−1）都算在場；獸潮到抵達週為止。
+            var expedition = _expeditions.TryGetValue(cellId, out var x) && week >= x.DepartWeek && week < x.ArriveWeek + dungeon.Layers - 1 ? x : null;
+            var swarm = _swarms.TryGetValue(cellId, out var y) && week >= y.DepartWeek && week < y.ArriveWeek ? y : null;
+            return new DemoMonsterNest(dungeon, Count(dungeon, cellId, week), dormant, dormant ? b.Week : 0)
+            {
+                CellId = cellId, Expedition = dormant ? null : expedition, Swarm = dormant ? null : swarm
+            };
         }
     }
 
@@ -236,6 +287,13 @@ public static class DemoMonsters
         IReadOnlyList<DemoMonsterNest> Cleared,
         IReadOnlyList<DemoMonsterNest> Awakened)
     {
+        /// <summary>第 08-50 章：本週出發的遠征與獸潮（事件記在出兵或被盯上的聚落；人數欄＝格編號×1000＋行軍週數）。</summary>
+        public IReadOnlyList<(int SettlementId, DemoSettlementEventKind Kind, long CellId, int Weeks, string Text)> Departures { get; init; }
+            = Array.Empty<(int, DemoSettlementEventKind, long, int, string)>();
+
+        /// <summary>第 08-50 章：本週撤回的遠征軍。</summary>
+        public IReadOnlyList<(int SettlementId, long CellId, string Text)> Returns { get; init; } = Array.Empty<(int, long, string)>();
+
         public static Plan Empty { get; } = new(new Dictionary<int, DemoDisasterStrike>(), Array.Empty<(int, long, int, string)>(),
             Array.Empty<DemoMonsterNest>(), Array.Empty<DemoMonsterNest>());
     }
@@ -257,6 +315,7 @@ public static class DemoMonsters
     /// 第 12-2e 節：<paramref name="force"/>＝守村的人力（本聚落自己的）；<paramref name="expedition"/>＝出兵討伐的人力
     /// （勢力的最上層聚落帶上整個勢力的士兵；沒給＝同 <paramref name="force"/>）。有士兵的遠征軍可以討伐離範圍 <see cref="TempSoldierHuntReach"/> 格內的地下城；
     /// 只有居民的民兵照舊只到 <see cref="TempHuntReach"/> 格。
+    /// 第 08-50 章：有士兵的討伐（陸上）改成遠征、獸潮改成先出巢——都要走幾週才開打（見 <see cref="TempExpeditionCellsPerWeek"/>）。
     /// </remarks>
     public static Plan Roll(int week, DemoEra era, DemoHexWorld map, DemoWorldSites sites, Func<int, long> residents,
         IReadOnlyList<DemoMonsterNest> nests, IReadOnlySet<int> taken, RngRegistry rng, Func<int, DemoCombatForce>? force = null,
@@ -289,6 +348,9 @@ public static class DemoMonsters
         var awakened = new List<DemoMonsterNest>();
         var living = sites.Settlements.Where(s => !s.IsRuin && residents(s.Id) > 0).OrderBy(s => s.Id).ToList();
         var overrun = 0; // 第 12-2h 章：本週已被攻破的聚落數
+        var departures = new List<(int, DemoSettlementEventKind, long, int, string)>(); // 第 08-50 章
+        var returns = new List<(int, long, string)>();
+        var marching = nests.Where(n => n.Expedition is not null).Select(n => n.Expedition!.SettlementId).ToHashSet();
         for (var slot = 0; slot < nests.Count; slot++)
         {
             var nest = nests[slot];
@@ -316,42 +378,101 @@ public static class DemoMonsters
             var beast = sea ? "海怪" : "怪物";
             // 第 12-2b、12-2c 節：沒有等級不低於怪物的戰鬥人員時，最多壓到壓制下限。
             int Room(DemoCombatForce f) => DemoCombat.CanClear(f, level) ? left : Math.Max(0, left - SuppressFloor(nest.Dungeon));
-            // 第 12-2h 章：獸潮——滿員的地下城全軍出擊；這一週不再另外襲擊或被討伐。
-            if (monsters >= Cap(nest.Dungeon) && nest.Dungeon.Layers >= TempSwarmMinLayers // 第 12-2j 章：淺洞窟不爆獸潮
-                && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
+            // 第 08-50 章：獸潮在路上——到了才開打；還沒到時這個地下城的怪物都在外面，不做別的事。
+            var exp = nest.Expedition;
+            var wave = nest.Swarm;
+            if (wave is not null && week < wave.ArriveWeek)
+                continue;
+            DemoSettlement? prey = null;
+            if (wave is not null)
             {
-                var prey = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach && Reachable(s))
-                    .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
-                if (prey is not null)
+                var preyId = wave.SettlementId;
+                prey = living.FirstOrDefault(s => s.Id == preyId && !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id));
+                if (prey is null)
+                    continue; // 撲空：目標已無人、或本週另有災禍，怪物散回巢穴
+            }
+            else if (exp is null || week < exp.ArriveWeek) // 遠征軍打到城下時怪物死守，不出巢
+            {
+                // 第 12-2h 章：獸潮——滿員的地下城全軍出擊；第 08-50 章起先出巢、走到了才打。
+                if (monsters >= Cap(nest.Dungeon) && nest.Dungeon.Layers >= TempSwarmMinLayers // 第 12-2j 章：淺洞窟不爆獸潮
+                    && (int)(Draw(rng, week, slot, 4) % 100UL) < SwarmPercent(age))
                 {
-                    var guard = force(prey.Id);
-                    var walls = defense?.Invoke(prey.Id) ?? DemoDefense.None;
-                    var (hit, fallen) = DemoCombat.Clash(monsters, level, guard, defending: true, (int)(Draw(rng, week, slot, 5) % 100UL), walls.MonsterPercent);
-                    var slain = Math.Min(hit, Room(guard));
-                    var tier = tierOf?.Invoke(prey.Id) ?? DemoSettlementTier.Camp;
-                    var people = residents(prey.Id);
-                    var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon) // 怪物比全村的人還多才攻得破
-                        && !walls.HoldsSwarm // 第 08-34 章：城牆耐久三成以上、城門完好時攻不破
-                        && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
-                    if (broken)
-                        overrun++;
-                    var deaths = broken ? people : Healed(Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100)), prey.Id);
-                    var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
-                    left -= slain + spent;
-                    var swarm = sea ? "海怪潮" : "獸潮";
-                    strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
-                        ? $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）攻破了{prey.Name}，全村覆滅"
-                        : $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}死守，擊殺 {slain} 隻")
+                    var victim = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempSwarmReach && Reachable(s))
+                        .OrderBy(Distance).ThenBy(s => s.Id).FirstOrDefault();
+                    if (victim is not null)
                     {
-                        Annihilate = broken
-                    };
-                    kills.Add((prey.Id, nest.CellId, slain + spent, broken
-                        ? $"{nest.Dungeon.Name}的{swarm}攻破{prey.Name}，{beast}折損 {slain + spent} 隻（剩 {left} 隻）"
-                        : $"擊退{nest.Dungeon.Name}的{swarm}，殺死 {slain} 隻、另有 {spent} 隻耗損（剩 {left} 隻）"));
-                    if (left <= 0)
-                        cleared.Add(nest);
+                        var weeks = MarchWeeks(nest.Dungeon.Cell, new DemoCellRef(victim.Column, victim.Row), TempSwarmCellsPerWeek);
+                        departures.Add((victim.Id, DemoSettlementEventKind.SwarmSetOut, nest.CellId, weeks,
+                            $"{nest.Dungeon.Name}的{(sea ? "海怪潮" : "獸潮")}（{monsters} 隻 {level} 級{beast}）出巢，朝{victim.Name}湧來，約 {weeks} 週後到"));
+                        continue;
+                    }
+                }
+            }
+            if (prey is not null)
+            {
+                var guard = force(prey.Id);
+                var walls = defense?.Invoke(prey.Id) ?? DemoDefense.None;
+                var (hit, fallen) = DemoCombat.Clash(monsters, level, guard, defending: true, (int)(Draw(rng, week, slot, 5) % 100UL), walls.MonsterPercent);
+                var slain = Math.Min(hit, Room(guard));
+                var tier = tierOf?.Invoke(prey.Id) ?? DemoSettlementTier.Camp;
+                var people = residents(prey.Id);
+                var broken = slain * 2 < monsters && monsters > people && tier <= SwarmBreaks(nest.Dungeon) // 怪物比全村的人還多才攻得破
+                    && !walls.HoldsSwarm // 第 08-34 章：城牆耐久三成以上、城門完好時攻不破
+                    && living.Count - overrun > lastStand; // 世上只剩幾個有人的聚落時人類死守
+                if (broken)
+                    overrun++;
+                var deaths = broken ? people : Healed(Math.Min(Math.Max(1L, fallen), Math.Max(1L, people * TempSwarmDeathPercent / 100)), prey.Id);
+                var spent = Math.Min(monsters - slain, monsters / TempSwarmSpentDivisor);
+                left -= slain + spent;
+                var swarm = sea ? "海怪潮" : "獸潮";
+                strikes[prey.Id] = new DemoDisasterStrike(prey.Id, DemoSettlementEventKind.MonsterSwarm, deaths, broken
+                    ? $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）攻破了{prey.Name}，全村覆滅"
+                    : $"{nest.Dungeon.Name}的{swarm}（{monsters} 隻 {level} 級{beast}）來襲，{Defenders(guard)}{(walls.Wall is null ? "" : "據城牆")}死守，擊殺 {slain} 隻")
+                {
+                    Annihilate = broken
+                };
+                kills.Add((prey.Id, nest.CellId, slain + spent, broken
+                    ? $"{nest.Dungeon.Name}的{swarm}攻破{prey.Name}，{beast}折損 {slain + spent} 隻（剩 {left} 隻）"
+                    : $"擊退{nest.Dungeon.Name}的{swarm}，殺死 {slain} 隻、另有 {spent} 隻耗損（剩 {left} 隻）"));
+                if (left <= 0)
+                    cleared.Add(nest);
+                continue;
+            }
+            // 第 08-50 章：遠征軍到了地下城——每週攻一層，只打這一層的怪物（剩下的÷還沒打的層數）；這一週怪物死守、不出巢。
+            if (exp is not null && week >= exp.ArriveWeek)
+            {
+                var layer = week - exp.ArriveWeek;
+                var lastLayer = layer + 1 >= nest.Dungeon.Layers;
+                var homeId = exp.SettlementId;
+                var home = living.FirstOrDefault(s => s.Id == homeId);
+                var party = home is null ? DemoCombatForce.None : expedition(home.Id);
+                if (home is null || party.Fighters <= 0)
+                {
+                    returns.Add((exp.SettlementId, nest.CellId, $"遠征{nest.Dungeon.Name}的軍隊失去後援，撤回"));
                     continue;
                 }
+                if (taken.Contains(home.Id) || strikes.ContainsKey(home.Id))
+                {
+                    if (lastLayer)
+                        returns.Add((home.Id, nest.CellId, $"家鄉有難，遠征{nest.Dungeon.Name}的軍隊撤回"));
+                    continue; // 家鄉本週另有災禍：這一層沒打
+                }
+                var layersLeft = Math.Max(1, nest.Dungeon.Layers - layer);
+                var (hit, fallen) = DemoCombat.Clash((left + layersLeft - 1) / layersLeft, level, party, defending: false, (int)(Draw(rng, week, slot, 2) % 100UL));
+                var slain = Math.Min(hit, Room(party));
+                var deaths = Math.Min(fallen, Math.Max(0L, residents(home.Id) - 1));
+                left -= slain;
+                var floor = $"第 {layer + 1}/{nest.Dungeon.Layers} 層";
+                strikes[home.Id] = new DemoDisasterStrike(home.Id, DemoSettlementEventKind.MonsterHunt, deaths,
+                    $"遠征軍（{Party(party)}）攻打{nest.Dungeon.Name}{floor}，殺死 {slain} 隻 {level} 級怪物");
+                kills.Add((home.Id, nest.CellId, slain, $"遠征軍攻打{nest.Dungeon.Name}{floor}，殺死 {slain} 隻怪物（剩 {left} 隻）"));
+                if (left <= 0)
+                    cleared.Add(nest);
+                else if (slain == 0)
+                    returns.Add((home.Id, nest.CellId, $"遠征軍攻不下{nest.Dungeon.Name}{floor}，撤回"));
+                else if (lastLayer)
+                    returns.Add((home.Id, nest.CellId, $"遠征軍打完{nest.Dungeon.Name}的 {nest.Dungeon.Layers} 層，怪物還剩 {left} 隻，撤回"));
+                continue;
             }
             // 襲擊：離範圍一格內最近的有人聚落；約一半的怪物出擊，全村（戰鬥與非戰鬥人員）守村。
             var target = living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id) && Distance(s) <= TempRaidReach && Reachable(s))
@@ -375,15 +496,27 @@ public static class DemoMonsters
             // 討伐：有士兵的遠征軍（勢力的士兵）走到離範圍 TempSoldierHuntReach 格內、戰力高的先；
             // 沒有士兵時，離範圍 TempHuntReach 格內人多的聚落組民兵（第 12-2e 節）。
             // 第 08-42 章：海上的怪物只能靠海戰——出得了海的聚落派船隊。
-            var hunter = left <= 0 ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
+            var hunter = left <= 0 || exp is not null ? null : living.Where(s => !taken.Contains(s.Id) && !strikes.ContainsKey(s.Id)
+                    && !marching.Contains(s.Id) // 第 08-50 章：一個聚落同時只派一支遠征軍
                     && (!sea || sails?.Invoke(s.Id) == true)
                     && residents(s.Id) >= TempHuntMinResidents
                     && Distance(s) <= (expedition(s.Id).Fighters > 0 ? TempSoldierHuntReach : TempHuntReach)
-                    && (expedition(s.Id).Fighters > 0 || left > SuppressFloor(nest.Dungeon)))
+                    && (DemoCombat.CanClear(expedition(s.Id), level) || left > SuppressFloor(nest.Dungeon))) // 第 08-50 章：殺不光又已壓到下限就不白跑
                 .OrderByDescending(s => expedition(s.Id).Soldiers * expedition(s.Id).SoldierLevel)
                 .ThenByDescending(s => residents(s.Id)).ThenBy(s => s.Id).FirstOrDefault();
-            if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
+            if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent
+                && !sea && expedition(hunter.Id).Fighters > 0)
             {
+                // 第 08-50 章：有士兵的討伐是遠征——先走到地下城，之後每週攻一層。
+                var party = expedition(hunter.Id);
+                var weeks = MarchWeeks(new DemoCellRef(hunter.Column, hunter.Row), nest.Dungeon.Cell, TempExpeditionCellsPerWeek);
+                marching.Add(hunter.Id);
+                departures.Add((hunter.Id, DemoSettlementEventKind.ExpeditionSetOut, nest.CellId, weeks,
+                    $"派{Party(party)}遠征{nest.Dungeon.Name}（{nest.Dungeon.Layers} 層、{left} 隻 {level} 級怪物），約 {weeks} 週後抵達"));
+            }
+            else if (hunter is not null && (int)(Draw(rng, week, slot, 1) % 100UL) < TempHuntPercent)
+            {
+                // 民兵（沒有士兵）與海戰照舊當週打完。
                 var party = expedition(hunter.Id);
                 var (hit, fallen) = DemoCombat.Clash(left, level, party, defending: false, (int)(Draw(rng, week, slot, 2) % 100UL));
                 var slain = Math.Min(hit, Room(party));
@@ -399,7 +532,7 @@ public static class DemoMonsters
             if (left <= 0)
                 cleared.Add(nest); // 第 12-2c 節：只有等級不低於怪物的戰鬥人員殺得光
         }
-        return new Plan(strikes, kills, cleared, awakened);
+        return new Plan(strikes, kills, cleared, awakened) { Departures = departures, Returns = returns };
     }
 
     private static string Defenders(DemoCombatForce f) => f.Fighters > 0 ? $"{Party(f)}帶著村民" : "村民";
@@ -437,6 +570,10 @@ public static class DemoMonsters
                 EventId: checked(nextEventId + events.Count)));
         foreach (var (settlementId, cellId, slain, text) in plan.Kills.Where(k => k.Kills > 0))
             Add(settlementId, DemoSettlementEventKind.MonsterSlain, EncodeKills(cellId, slain), text);
+        foreach (var (settlementId, kind, cellId, weeks, text) in plan.Departures) // 第 08-50 章
+            Add(settlementId, kind, EncodeKills(cellId, weeks), text);
+        foreach (var (settlementId, cellId, text) in plan.Returns)
+            Add(settlementId, DemoSettlementEventKind.ExpeditionReturned, cellId, text);
         foreach (var nest in plan.Cleared)
             Add(nest.Dungeon.NearSettlementId, DemoSettlementEventKind.DungeonCleared, nest.CellId, $"{nest.Dungeon.Name}的怪物被殺光，地下城沉寂下來");
         foreach (var nest in plan.Awakened)

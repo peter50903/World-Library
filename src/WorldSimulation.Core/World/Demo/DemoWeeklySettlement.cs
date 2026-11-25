@@ -333,7 +333,16 @@ public enum DemoSettlementEventKind
     BuildingCompleted = 55,
 
     /// <summary>第 08-35 章：一座重要建築毀損（耐久度歸零）；人數欄＝建築編號；直接原因＝同週同聚落打壞它的事件。</summary>
-    BuildingRuined = 56
+    BuildingRuined = 56,
+
+    /// <summary>第 08-50 章：派兵遠征地下城（人數欄＝格編號×1000＋行軍週數；根因）。</summary>
+    ExpeditionSetOut = 57,
+
+    /// <summary>第 08-50 章：獸潮出巢、朝這個聚落湧來（人數欄＝地下城格編號×1000＋行軍週數；根因）。</summary>
+    SwarmSetOut = 58,
+
+    /// <summary>第 08-50 章：遠征軍撤回（攻不下、或各層打完怪物還在；人數欄＝格編號；根因）。</summary>
+    ExpeditionReturned = 59
 }
 
 /// <summary>
@@ -383,6 +392,7 @@ public sealed record DemoSettlementEvent(
                 or DemoSettlementEventKind.MiningBegan or DemoSettlementEventKind.OreExhausted
                 or DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterHunt or DemoSettlementEventKind.MonsterSlain or DemoSettlementEventKind.MonsterSwarm
                 or DemoSettlementEventKind.DungeonCleared or DemoSettlementEventKind.DungeonAwakened
+                or DemoSettlementEventKind.ExpeditionSetOut or DemoSettlementEventKind.SwarmSetOut or DemoSettlementEventKind.ExpeditionReturned // 第 08-50 章
                 or DemoSettlementEventKind.VassalJoined or DemoSettlementEventKind.SecessionArmed or DemoSettlementEventKind.SecessionPeaceful
                 or DemoSettlementEventKind.SecessionBattle or DemoSettlementEventKind.Independence or DemoSettlementEventKind.SecessionFailed
                 or DemoSettlementEventKind.FactionJoined or DemoSettlementEventKind.FactionLeft

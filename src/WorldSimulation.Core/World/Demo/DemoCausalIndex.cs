@@ -375,6 +375,10 @@ public sealed class DemoCausalIndex
                 return parent is null && e.Count >= 0 ? null : "怪物襲擊、討伐是根因，事件人數欄是死亡人數";
             case DemoSettlementEventKind.MonsterSlain:
                 return parent is null && DemoMonsters.DecodeKills(e.Count) is { CellId: > 0, Kills: > 0 } ? null : "擊殺怪物是根因，事件人數欄是格編號×1000＋擊殺數";
+            case DemoSettlementEventKind.ExpeditionSetOut:
+            case DemoSettlementEventKind.SwarmSetOut: // 第 08-50 章
+                return parent is null && DemoMonsters.DecodeKills(e.Count) is { CellId: > 0, Kills: > 0 } ? null : "遠征出發、獸潮出巢是根因，事件人數欄是格編號×1000＋行軍週數";
+            case DemoSettlementEventKind.ExpeditionReturned:
             case DemoSettlementEventKind.DungeonCleared:
             case DemoSettlementEventKind.DungeonAwakened:
                 return parent is null && e.Count > 0 ? null : "地下城沉寂、怪物再生是根因，事件人數欄必須是格編號";
