@@ -60,6 +60,34 @@ public partial class DemoHexMap
         }
     }
 
+    /// <summary>第 08-46 章：近兩年的野戰戰場（地點、第幾年、說明），地圖上留一個小小的交叉雙劍。</summary>
+    public IReadOnlyList<(DemoCellRef Place, int Year, string Text)> Battlefields { get; set; } = Array.Empty<(DemoCellRef, int, string)>();
+
+    /// <summary>第 08-46 章：戰場記號（中距離以上才畫；淡淡的，不搶戰線）。</summary>
+    private void DrawBattlefields(Vector2 start, float radius)
+    {
+        if (World is null || Battlefields.Count == 0 || HexCoordinates.Side(radius) < TempMidCellPx)
+            return;
+        var font = ThemeDB.FallbackFont;
+        foreach (var (place, year, _) in Battlefields)
+        {
+            if (!World.Contains(place.Column, place.Row))
+                continue;
+            var at = ScreenOf(start, radius, place);
+            if (!OnScreen(at, radius))
+                continue;
+            DrawSwords(font, at, 11, DemoSettlementEventKind.ConquestBattle, 0.6f);
+            var label = $"{year} 年";
+            var width = font.GetStringSize(label, HorizontalAlignment.Left, -1, 10).X;
+            DrawStringOutline(font, at + new Vector2(-width / 2f, 18f), label, HorizontalAlignment.Left, -1, 10, 3, new Color(0f, 0f, 0f, 0.7f));
+            DrawString(font, at + new Vector2(-width / 2f, 18f), label, HorizontalAlignment.Left, -1, 10, new Color(0.95f, 0.88f, 0.7f, 0.85f));
+        }
+    }
+
+    /// <summary>第 08-46 章：滑鼠在戰場上的說明（沒有＝空字串）。</summary>
+    public string BattlefieldTip(int column, int row)
+        => Battlefields.Where(b => b.Place.Column == column && b.Place.Row == row).Select(b => $"⚔ 第 {b.Year} 年的戰場｜{b.Text}").FirstOrDefault() ?? "";
+
     /// <summary>【TEMP】同時最多播幾場戰鬥。</summary>
     private const int TempMaxBattles = 8;
 

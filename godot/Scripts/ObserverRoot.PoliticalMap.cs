@@ -117,6 +117,17 @@ public partial class ObserverRoot
             _hexMap.ZoomToCell(c, 96f);
             await Shot("3_realms_close");
         }
+        // 第 08-46 章：戰況——有進行中的征服戰爭就拉近到軍隊（行軍中）或被圍的聚落。
+        var war = world.Realms().Wars.Values.OrderBy(w => w.AttackerId).FirstOrDefault();
+        if (war is not null)
+        {
+            var status = world.WarStatus(war);
+            GD.Print($"WORLD_SIM_MAP_SHOT: War={war.AttackerId}->{war.TargetId} Stage={status.Stage} March={status.MarchLeft} Siege={status.SiegeDone}/{status.SiegeNeed} Holdings={war.Holdings.Count}");
+            _hexMap.ZoomToCell(world.Map.GetCell(status.ArmyAt.Column, status.ArmyAt.Row), 44f);
+            await Shot("10_war_mid");
+        }
+        else
+            GD.Print("WORLD_SIM_MAP_SHOT: War=none");
         // 第 08-23 章：商路——拉近到上週有最多聚落賣糧給它的市集。
         var market = DemoFoodTrade.Links(world).GroupBy(l => l.To).OrderByDescending(g => g.Count()).ThenBy(g => g.Key.Row).ThenBy(g => g.Key.Column)
             .Select(g => (DemoCellRef?)g.Key).FirstOrDefault();

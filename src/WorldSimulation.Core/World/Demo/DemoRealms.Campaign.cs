@@ -14,8 +14,50 @@ public sealed record DemoCampaign(IReadOnlyList<DemoCellRef> Route, int MarchWee
         => Route.Count == 0 ? default : Route[Math.Clamp((week - startWeek) * DemoRealms.TempMarchCellsPerWeek, 0, Route.Count - 1)];
 }
 
+/// <summary>第 08-46 章：戰爭進行到哪一步（行軍中、圍城中、佔領完畢守著）。</summary>
+public enum DemoWarStage
+{
+    Marching,
+    Besieging,
+    Holding
+}
+
+/// <summary>
+/// 第 08-46 章：某一週的戰況（畫面與詳情用，由戰爭與地圖推得）：<see cref="ArmyAt"/>＝攻方軍隊所在格；
+/// <see cref="Besieged"/>＝正在圍的聚落（0＝沒有）；<see cref="SiegeDone"/>／<see cref="SiegeNeed"/>＝圍了幾週、要幾週；
+/// <see cref="MarchLeft"/>＝還要走幾週到城下。
+/// </summary>
+public sealed record DemoWarStatus(DemoWarStage Stage, DemoCampaign Campaign, DemoCellRef ArmyAt, int Besieged, int SiegeDone, int SiegeNeed, int MarchLeft);
+
 public static partial class DemoRealms
 {
+    /// <summary>第 08-45 章：圍下一座要幾週（層級＋城牆，至少 2 週）。</summary>
+    public static int SiegeNeed(int settlementId, Func<int, DemoSettlementTier> tier, Func<int, DemoDefense>? defense)
+    {
+        ArgumentNullException.ThrowIfNull(tier);
+        return Math.Max(2, TempSiegeWeeks(tier(settlementId)) + (defense?.Invoke(settlementId).SiegeWeeks ?? 0));
+    }
+
+    /// <summary>第 08-46 章：第 <paramref name="week"/> 週的戰況（規則與 <see cref="Battles"/>、圍城相同）。</summary>
+    public static DemoWarStatus Status(DemoWar war, int week, DemoHexWorld? map, DemoWorldSites sites, IReadOnlyDictionary<int, int> lieges,
+        Func<int, bool> alive, Func<int, DemoSettlementTier> tier, Func<int, DemoDefense>? defense = null)
+    {
+        ArgumentNullException.ThrowIfNull(war);
+        ArgumentNullException.ThrowIfNull(sites);
+        var campaign = Campaign(war, map, sites);
+        var arrive = war.StartWeek + campaign.MarchWeeks;
+        DemoCellRef Cell(int id) => sites.Settlements.FirstOrDefault(s => s.Id == id) is { } s ? new DemoCellRef(s.Column, s.Row) : default;
+        if (week < arrive)
+            return new DemoWarStatus(DemoWarStage.Marching, campaign, campaign.ArmyAt(war.StartWeek, week), war.TargetId, 0,
+                SiegeNeed(war.TargetId, tier, defense), arrive - week);
+        var besieged = NextHolding(war, sites, lieges, alive);
+        if (besieged == 0)
+            return new DemoWarStatus(DemoWarStage.Holding, campaign, Cell(war.TargetId), 0, 0, 0, 0);
+        var since = besieged == war.TargetId ? arrive : Math.Max(arrive, war.LastOccupiedWeek);
+        var need = SiegeNeed(besieged, tier, defense);
+        return new DemoWarStatus(DemoWarStage.Besieging, campaign, Cell(besieged), besieged, Math.Clamp(week - since, 0, need), need, 0);
+    }
+
     /// <summary>
     /// 【TEMP】第 08-45 章（使用者 2026-11-25：戰爭的表現還有加強的空間；參考 CK3 的行軍、野戰與圍城）：
     /// 軍隊每週走 <see cref="TempMarchCellsPerWeek"/> 格；守方兵力（含本土加成）至少攻方的 <see cref="TempSallyPercent"/>% 就在半路出城迎擊，

@@ -856,6 +856,12 @@ public sealed partial class DemoObserverWorld
         }).ToList();
     }
 
+    /// <summary>第 08-46 章：一場征服戰爭目前的戰況（行軍到哪、圍哪一座、圍了幾週）。</summary>
+    public DemoWarStatus WarStatus(DemoWar war)
+        => DemoRealms.Status(war, CommittedWeeks, Map, _sites, Realms().Liege,
+            id => _sites.Settlements.Any(s => s.Id == id && !s.IsRuin) && _population.GetValueOrDefault(id) > 0,
+            id => ChronicleOf(id).Tier, Defense);
+
     /// <summary>第 08-42 章：地下城在不在海上（地圖不變，算一次就記住）。</summary>
     private readonly Dictionary<long, bool> _seaDungeon = new();
 
