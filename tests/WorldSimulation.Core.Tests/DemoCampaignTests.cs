@@ -87,6 +87,30 @@ public sealed class DemoCampaignTests
     }
 
     [Fact]
+    public void ALosingBesiegerStillTakesTheTownWhenItStarves()
+    {
+        // 第 08-47 章：會戰落下風時圍滿週數攻不下，圍到兩倍週數城內糧盡、照樣攻陷。
+        var sites = World.Value.Sites;
+        var alive = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        var (a, c) = (alive[0], alive[1]);
+        var fold = new DemoRealms.Fold();
+        fold.Apply(Ev(5, a.Id, DemoSettlementEventKind.WarDeclared, c.Id));
+        fold.Apply(Ev(6, a.Id, DemoSettlementEventKind.ConquestBattle, 20)); // 攻方死得多：會戰分數為負
+        fold.Apply(Ev(6, c.Id, DemoSettlementEventKind.ConquestBattle, 5));
+        Assert.True(DemoRealms.BattleScore(fold.Wars[a.Id]) < 0);
+        var ctx = new DemoRealmContext(sites, id => id == a.Id ? 200 : id == c.Id ? 70 : 0, _ => 1, _ => null,
+            id => id == a.Id ? DemoSettlementTier.City : DemoSettlementTier.Village, _ => false);
+        var siege = DemoRealms.TempSiegeWeeks(DemoSettlementTier.Village);
+        IReadOnlyList<DemoSettlementEvent> At(int week)
+            => DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold, ctx, new Dictionary<int, int>(), RngRegistry.Create(3), false, week * 100 + 50, conquestEra: false, wars: false);
+        Assert.DoesNotContain(At(5 + siege), e => e.Kind == DemoSettlementEventKind.Occupied);
+        Assert.DoesNotContain(At(5 + siege * DemoRealms.TempStarveTimes - 1), e => e.Kind == DemoSettlementEventKind.Occupied);
+        var taken = Assert.Single(At(5 + siege * DemoRealms.TempStarveTimes), e => e.Kind == DemoSettlementEventKind.Occupied);
+        Assert.Equal((c.Id, (long)a.Id), (taken.SettlementId, taken.Count));
+        Assert.Contains("城內糧盡", taken.Cause, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AfterTheTargetFallsTheArmyOccupiesNearbyHoldingsForWarScore()
     {
         var world = World.Value;

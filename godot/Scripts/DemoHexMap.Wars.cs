@@ -172,7 +172,7 @@ public partial class DemoHexMap
             if (status.Stage == DemoWarStage.Besieging && status.SiegeNeed > 0)
             {
                 DrawArc(place, ring, 0f, Mathf.Tau, 40, new Color(0.08f, 0.05f, 0.03f, 0.8f), 6f, true);
-                var done = status.SiegeDone / (float)status.SiegeNeed;
+                var done = Math.Min(1f, status.SiegeDone / (float)status.SiegeNeed);
                 if (done > 0f)
                     DrawArc(place, ring, -Mathf.Pi / 2f, -Mathf.Pi / 2f + Mathf.Tau * done, Math.Max(8, (int)(40 * done)), attackerColor.Lightened(0.2f), 4f, true);
                 DrawArmyToken(font, place + new Vector2(-ring - 6f, 6f), attackerColor, 0, TokenKind.Siege);
@@ -190,7 +190,9 @@ public partial class DemoHexMap
         DrawLine(bar + new Vector2(TempWarBarWidth / 2f, -2f), bar + new Vector2(TempWarBarWidth / 2f, 8f), new Color(1f, 1f, 1f, 0.8f), 1f);
         // 圍城進度寫在分數旁（不壓到聚落名牌）；圍滿了但會戰落下風時攻不下（08-22a）。
         var siegeText = status.Stage == DemoWarStage.Besieging && status.SiegeNeed > 0
-            ? $"｜圍城 {status.SiegeDone}/{status.SiegeNeed} 週" + (status.SiegeDone >= status.SiegeNeed && score < 0 ? "・戰況不利攻不下" : "")
+            ? (status.SiegeDone >= status.SiegeNeed && score < 0
+                ? $"｜圍城 {status.SiegeDone} 週・守軍頑抗，圍到 {status.SiegeNeed * DemoRealms.TempStarveTimes} 週糧盡" // 第 08-47 章
+                : $"｜圍城 {Math.Min(status.SiegeDone, status.SiegeNeed)}/{status.SiegeNeed} 週")
             : "";
         DrawTag(font, bar + new Vector2(TempWarBarWidth / 2f, -8f), $"⚔ {(score > 0 ? "+" : "")}{score}{siegeText}", new Color(0.95f, 0.85f, 0.55f));
     }

@@ -84,6 +84,15 @@ public static partial class DemoRealms
         return (int)Math.Clamp(swing, -TempBattleScore, TempBattleScore);
     }
 
+    /// <summary>第 08-47 章：戰爭分數的各項（戰爭視窗的分項）：會戰、攻陷目標、佔領時間、又佔的聚落（加總前，未封頂）。</summary>
+    public static (int Battle, int Occupy, int Time, int Holdings) WarScoreParts(DemoWar war, int week)
+    {
+        ArgumentNullException.ThrowIfNull(war);
+        return (BattleScore(war), war.Occupied ? TempOccupyScore : 0,
+            war.Occupied ? Math.Min(TempTickMax, Math.Max(0, week - war.OccupiedWeek) * TempTickScore) : 0,
+            war.Holdings.Count * TempHoldingScore);
+    }
+
     /// <summary>第 08-22a 章：這一週的戰爭分數（正＝攻方佔上風）。</summary>
     public static int WarScore(DemoWar war, int week)
     {
@@ -341,10 +350,15 @@ public static partial class DemoRealms
                 {
                     var since = besieged == w.TargetId ? arrive : Math.Max(arrive, w.LastOccupiedWeek);
                     var siege = SiegeNeed(besieged, ctx.Tier, ctx.Defense); // 第 08-34 章：城牆
-                    if (week - since >= siege && BattleScore(w) >= 0)
+                    // 第 08-47 章：會戰落下風時圍到兩倍週數，城內糧盡也會攻陷。
+                    var starved = BattleScore(w) < 0;
+                    if (week - since >= siege && (!starved || week - since >= siege * TempStarveTimes))
+                    {
+                        var how = starved ? $"（圍城 {week - since} 週，城內糧盡）" : $"（圍城 {week - since} 週）";
                         add(besieged, DemoSettlementEventKind.Occupied, w.AttackerId, besieged == w.TargetId
-                            ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {week - since} 週）"
-                            : $"{name(w.AttackerId)}的軍隊佔領了{name(w.DefenderId)}的{name(besieged)}（圍城 {week - since} 週）");
+                            ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}{how}"
+                            : $"{name(w.AttackerId)}的軍隊佔領了{name(w.DefenderId)}的{name(besieged)}{how}");
+                    }
                 }
                 fighting.Add(w.AttackerId);
                 fighting.Add(w.DefenderId);

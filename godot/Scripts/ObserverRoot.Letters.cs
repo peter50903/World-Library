@@ -67,6 +67,8 @@ public partial class ObserverRoot
         DemoSettlementEventKind.Conquered => ("⚔", DemoPlayerDetail.Clean(e.Cause), true),
         DemoSettlementEventKind.Occupied => ("🏰", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-22a 章：攻陷
         DemoSettlementEventKind.CivilWar => ("⚔", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-19f 章
+        DemoSettlementEventKind.ConquestBattle when e.Cause.StartsWith("野戰", StringComparison.Ordinal) && e.Cause.Contains("守軍出城", StringComparison.Ordinal)
+            => ("⚔", DemoPlayerDetail.Clean(e.Cause), true), // 第 08-47 章：野戰
         DemoSettlementEventKind.Usurped => ("★", DemoPlayerDetail.Clean(e.Cause), true),
         DemoSettlementEventKind.Succession => ("★", $"{e.SettlementName}：{DemoPlayerDetail.Clean(e.Cause)}", false),
         DemoSettlementEventKind.Independence when !e.Cause.StartsWith("隨", StringComparison.Ordinal) => ("★", DemoPlayerDetail.Clean(e.Cause), false),
@@ -107,7 +109,8 @@ public partial class ObserverRoot
             ClipText = true,
             CustomMinimumSize = new Vector2(TempLetterWidth, 30),
             FocusMode = FocusModeEnum.None,
-            TooltipText = $"第 {DemoSettlementHistory.YearOfDay(Math.Max(1, (int)e.WorldTime.TotalDays))} 年：{DemoPlayerDetail.Clean(e.Cause)}\n左鍵：定位並打開　右鍵：關掉"
+            TooltipText = $"第 {DemoSettlementHistory.YearOfDay(Math.Max(1, (int)e.WorldTime.TotalDays))} 年：{DemoPlayerDetail.Clean(e.Cause)}\n"
+                + (e.Kind is DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Occupied or DemoSettlementEventKind.ConquestBattle ? "左鍵：打開戰爭總覽" : "左鍵：定位並打開") + "　右鍵：關掉"
         };
         var tint = bad ? new Color(0.45f, 0.10f, 0.07f, 0.92f) : new Color(0.30f, 0.22f, 0.08f, 0.92f);
         button.AddThemeStyleboxOverride("normal", new StyleBoxFlat
@@ -123,10 +126,18 @@ public partial class ObserverRoot
         button.AddThemeColorOverride("font_color", new Color(1f, 0.95f, 0.85f));
         button.AddThemeColorOverride("font_hover_color", Colors.White);
         var settlementId = e.SettlementId;
+        var warLetter = e.Kind is DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.Occupied or DemoSettlementEventKind.ConquestBattle;
         button.GuiInput += input =>
         {
             if (input is not InputEventMouseButton { Pressed: true } click)
                 return;
+            // 第 08-47 章：宣戰、攻陷、野戰的消息打開戰爭總覽（戰爭還在打時）。
+            if (click.ButtonIndex == MouseButton.Left && warLetter && _wars.Count > 0)
+            {
+                OpenWar();
+                DropLetter(button);
+                return;
+            }
             if (click.ButtonIndex == MouseButton.Left && _world.Sites.Settlements.FirstOrDefault(s => s.Id == settlementId) is { } site)
             {
                 _hexMap.FocusCell(_world.Map.GetCell(site.Column, site.Row));

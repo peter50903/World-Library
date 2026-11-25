@@ -55,7 +55,7 @@ public static partial class DemoRealms
             return new DemoWarStatus(DemoWarStage.Holding, campaign, Cell(war.TargetId), 0, 0, 0, 0);
         var since = besieged == war.TargetId ? arrive : Math.Max(arrive, war.LastOccupiedWeek);
         var need = SiegeNeed(besieged, tier, defense);
-        return new DemoWarStatus(DemoWarStage.Besieging, campaign, Cell(besieged), besieged, Math.Clamp(week - since, 0, need), need, 0);
+        return new DemoWarStatus(DemoWarStage.Besieging, campaign, Cell(besieged), besieged, Math.Clamp(week - since, 0, need * TempStarveTimes), need, 0);
     }
 
     /// <summary>
@@ -65,6 +65,12 @@ public static partial class DemoRealms
     /// 最多再佔 <see cref="TempMaxHoldings"/> 座，每座戰爭分數 +<see cref="TempHoldingScore"/>（議和只割讓戰爭目標，其餘歸還）。
     /// </summary>
     public const int TempMarchCellsPerWeek = 3, TempSallyPercent = 70, TempFieldBattlePercent = 200, TempOccupyRange = 4, TempMaxHoldings = 3, TempHoldingScore = 10;
+
+    /// <summary>
+    /// 【TEMP】第 08-47 章（戰爭總覽看到圍城圍滿了卻因會戰落下風攻不下、一路圍到兩年白和平）：會戰落下風時，圍到圍城週數的
+    /// <see cref="TempStarveTimes"/> 倍，城內糧盡，照樣攻陷（參考 CK3：圍城靠時間與消耗，不必先贏會戰）。
+    /// </summary>
+    public const int TempStarveTimes = 2;
 
     /// <summary>第 08-45 章：這場戰爭的行軍（沒有地圖或找不到雙方＝<see cref="DemoCampaign.None"/>）。</summary>
     public static DemoCampaign Campaign(DemoWar war, DemoHexWorld? map, DemoWorldSites sites)
