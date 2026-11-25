@@ -44,11 +44,14 @@ public sealed class DemoSeaColonyTests
         // 沒有允許的空地、或出不了海＝空。
         Assert.Empty(DemoSeaLanes.Voyage(map, home, DemoSeaLanes.TempPortVoyageReach, empty, _ => false));
         Assert.Empty(DemoSeaLanes.Voyage(map, home, 0, empty, _ => true));
-        // 海上一步最多 3 格；兩格陸地沒有路線段不能直接走。
+        // 原地不算一步。
         var sea = map.Cells.First(c => DemoDungeons.OpenSea(map, c));
         var a = new DemoCellRef(sea.Column, sea.Row);
-        var b = map.Cells.Select(c => new DemoCellRef(c.Column, c.Row)).First(c => IsSea(map, c) && DemoHexWorld.Distance(a, c) == 3);
+        // 海上一步只走相鄰一格（與陸路一樣不瞬移）。
+        var b = map.Cells.Select(c => new DemoCellRef(c.Column, c.Row)).First(c => IsSea(map, c) && DemoHexWorld.Distance(a, c) == 1);
+        var far = map.Cells.Select(c => new DemoCellRef(c.Column, c.Row)).First(c => IsSea(map, c) && DemoHexWorld.Distance(a, c) == 2);
         Assert.True(DemoSeaLanes.Passable(map, a, b));
+        Assert.False(DemoSeaLanes.Passable(map, a, far));
         Assert.False(DemoSeaLanes.Passable(map, a, a));
     }
 }
