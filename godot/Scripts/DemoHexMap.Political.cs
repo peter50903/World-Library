@@ -73,7 +73,9 @@ public partial class DemoHexMap
 
     /// <summary>【TEMP】遠看填色濃、拉近淡出露出地形；地形模式只留邊界。</summary>
     private float PoliticsStrength(float cellPx)
-        => _mode == Mode.Terrain ? 0f : Mathf.Lerp(0.78f, 0.30f, Mathf.SmoothStep(16f, 72f, cellPx)); // 第 08-26 章：拉近時填色更淡，地形透出來
+        // 第 08-26 章：拉近時填色更淡，地形透出來。第 08-53 章（照 CK3 的勢力層與細節層）：中距離是乾淨的勢力色（只借地形明暗），
+        // 拉到細節層才幾乎拿掉勢力色、只留邊界與邊界色帶。
+        => _mode == Mode.Terrain ? 0f : Mathf.Lerp(0.82f, 0.12f, Mathf.SmoothStep(30f, 90f, cellPx));
 
     private void DrawPolitical(Vector2 start, float radius)
     {
