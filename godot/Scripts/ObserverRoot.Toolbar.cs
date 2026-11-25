@@ -258,6 +258,10 @@ public partial class ObserverRoot
         var laws = ToolButton(ArtAssets.UiLaws, "法則", "世界法則：開關天災、地下城與怪物、叛亂與獨立、野獸襲擊");
         laws.Pressed += () => ToggleModal("laws");
         row.AddChild(laws);
+        // 第 08-47 章：戰爭總覽（參考 CK3 的戰爭視窗）。
+        var war = ToolButton("res://assets/ui/ui_icon_war.png", "戰爭", "戰爭總覽：進行中的征服戰爭——雙方、目標、戰況、戰爭分數、會戰與佔領；最近結束的戰爭");
+        war.Pressed += () => ToggleModal("war");
+        row.AddChild(war);
         // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
@@ -280,6 +284,7 @@ public partial class ObserverRoot
 
         BuildModalHost();
         BuildHoldingPage(); // 第 08-33 章：領地大圖（從聚落詳情打開）
+        BuildWarPage(); // 第 08-47 章：戰爭總覽
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
         AddModalPage("chart", "年度圖表", BuildYearChartPage());
@@ -378,6 +383,8 @@ public partial class ObserverRoot
             RefreshYearChart();
         if (key == "laws")
             RefreshLaws();
+        if (key == "war")
+            RefreshWarWindow(); // 第 08-47 章
     }
 
     /// <summary>第 08-19c 章：世界法則頁（每條法則一個勾選框；改了從下一個結算週起生效）。</summary>
@@ -482,6 +489,11 @@ public partial class ObserverRoot
             var panel = new Vector2(Math.Min(TempHoldingWindowWidth, size.X - 32f), Math.Min(TempHoldingWindowHeight, size.Y - 64f));
             _modalPanel.CustomMinimumSize = panel;
             _holdingPage.CustomMinimumSize = new Vector2(0, Math.Max(200f, panel.Y - 80f));
+            return;
+        }
+        if (_modalOpen == "war")
+        {
+            _modalPanel.CustomMinimumSize = new Vector2(Math.Min(TempWarWindowWidth, size.X - 32f), Math.Min(TempWarWindowHeight, size.Y - 64f)); // 第 08-47 章
             return;
         }
         _modalPanel.CustomMinimumSize = new Vector2(Math.Min(640f, size.X - 32f), Math.Min(520f, size.Y - 96f)); // TEMP

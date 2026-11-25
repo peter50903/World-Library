@@ -122,6 +122,10 @@ public static class DemoWorldChronicle
         var knownTechs = new HashSet<DemoTechnology>();
         var firstBuilt = new HashSet<string>(StringComparer.Ordinal); // 第 08-35 章：世上第一座
         var eraStarts = new Dictionary<int, DemoEra>();
+        // 第 08-47 章：一場征服戰爭寫成完整的一段（接在結束的那一條後面：行軍、野戰、圍城、佔領、雙方死傷）。
+        var warStories = DemoWarReports.All(events, world.Sites).Where(r => r.EndEventId > 0)
+            .ToDictionary(r => r.EndEventId, r => DemoWarReports.Story(r, id => names.GetValueOrDefault(id, $"#{id}")));
+        string WithStory(DemoSettlementEvent e) => " " + DemoPlayerDetail.Clean(e.Cause) + (warStories.TryGetValue(e.EventId, out var story) ? "。" + story : "");
         foreach (var e in events.OrderBy(e => e.Week).ThenBy(e => e.EventId))
         {
             switch (e.Kind)
@@ -256,7 +260,11 @@ public static class DemoWorldChronicle
                             DemoSettlementEventKind.WarDeclared or DemoSettlementEventKind.CivilWar or DemoSettlementEventKind.SecessionArmed => WeightWar,
                             _ => 0
                         }, DemoChronicleCategory.Realm, e.EventId,
-                        Name(e.SettlementId), T(" " + DemoPlayerDetail.Clean(e.Cause)));
+                        Name(e.SettlementId), T(WithStory(e)));
+                    break;
+                case DemoSettlementEventKind.WarEnded when warStories.ContainsKey(e.EventId):
+                    // 第 08-47 章：沒有征服的戰爭（敗退、白和平）也寫成完整的一段，算重大事件。
+                    AddWorld(e.Week, 0, DemoChronicleCategory.Realm, e.EventId, Name(e.SettlementId), T(WithStory(e)));
                     break;
                 case DemoSettlementEventKind.VassalJoined:
                 case DemoSettlementEventKind.SecessionBattle:

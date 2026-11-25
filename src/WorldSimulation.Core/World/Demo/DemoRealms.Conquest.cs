@@ -84,6 +84,15 @@ public static partial class DemoRealms
         return (int)Math.Clamp(swing, -TempBattleScore, TempBattleScore);
     }
 
+    /// <summary>第 08-47 章：戰爭分數的各項（戰爭視窗的分項）：會戰、攻陷目標、佔領時間、又佔的聚落（加總前，未封頂）。</summary>
+    public static (int Battle, int Occupy, int Time, int Holdings) WarScoreParts(DemoWar war, int week)
+    {
+        ArgumentNullException.ThrowIfNull(war);
+        return (BattleScore(war), war.Occupied ? TempOccupyScore : 0,
+            war.Occupied ? Math.Min(TempTickMax, Math.Max(0, week - war.OccupiedWeek) * TempTickScore) : 0,
+            war.Holdings.Count * TempHoldingScore);
+    }
+
     /// <summary>第 08-22a 章：這一週的戰爭分數（正＝攻方佔上風）。</summary>
     public static int WarScore(DemoWar war, int week)
     {

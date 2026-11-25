@@ -1478,6 +1478,7 @@ public partial class ObserverRoot : Control
                 RestoreScroll(again, scrolled);
         }
         RefreshHoldingIfOpen(); // 第 08-33 章：領地大圖開著時每週更新
+        RefreshWarIfOpen(); // 第 08-47 章：戰爭總覽開著時每週更新
         _status.Text =
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +
