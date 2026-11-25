@@ -20,6 +20,9 @@ public partial class ObserverRoot
 
     private void BuildWarPage() => AddModalPage("war", "戰爭", _warPage);
 
+    /// <summary>視窗是羊皮紙底：標題用深紅褐（金色字在淺底上看不見）。</summary>
+    private static readonly Color TempWarInk = new(0.42f, 0.14f, 0.08f);
+
     /// <summary>打開戰爭總覽（已經開著就只更新）。</summary>
     private void OpenWar()
     {
@@ -65,7 +68,7 @@ public partial class ObserverRoot
         if (ended.Count > 0)
         {
             _warPage.AddChild(new HSeparator());
-            _warPage.AddChild(WarLabel("最近結束的戰爭", 18, TempGold));
+            _warPage.AddChild(WarLabel("最近結束的戰爭", 18, TempWarInk));
             foreach (var r in ended)
                 _warPage.AddChild(WarLabel($"第 {WarYear(r.StartWeek)}～{WarYear(r.EndWeek)} 年｜{r.EndText}。"
                     + DemoWarReports.Story(r, SiteName), 14));
@@ -80,7 +83,7 @@ public partial class ObserverRoot
         var block = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         block.AddThemeConstantOverride("separation", 4);
         _warPage.AddChild(block);
-        block.AddChild(WarLabel($"⚔ {SiteName(w.AttackerId)} 對 {SiteName(w.DefenderId)}：征服戰爭", 19, TempGold));
+        block.AddChild(WarLabel($"⚔ {SiteName(w.AttackerId)} 對 {SiteName(w.DefenderId)}：征服戰爭", 19, TempWarInk));
         block.AddChild(WarLabel($"宣戰：第 {WarYear(w.StartWeek)} 年（已打 {Math.Max(0, week - w.StartWeek)} 週）｜目標：{(w.WholeRealm ? $"整個{SiteName(w.DefenderId)}" : SiteName(w.TargetId))}"
             + (w.Cause.Length > 0 ? $"｜{w.Cause}" : "")));
         if (front is not null)
@@ -107,13 +110,14 @@ public partial class ObserverRoot
             + $"（滿 {DemoRealms.TempWinScore} 征服；打滿兩年 {DemoRealms.TempTermsScore} 以上議和割讓，{DemoRealms.TempLoseScore} 以下敗退）", 14));
         if (report is not null && report.Battles.Count > 0)
         {
-            block.AddChild(WarLabel("會戰：", 15, TempGold));
-            foreach (var b in report.Battles.Reverse().Take(TempWarBattleRows))
-                block.AddChild(WarLabel($"　第 {WarYear(b.Week)} 年｜{(b.Field ? "野戰" : "圍城")}｜{(b.Place.Length > 0 ? b.Place : SiteName(w.TargetId))}"
-                    + $"｜攻方死 {b.AttackerDeaths}、守方死 {b.DefenderDeaths}｜{(b.AttackerWon ? "攻方佔上風" : b.AttackerDeaths == b.DefenderDeaths ? "不分勝負" : "守方佔上風")}", 14,
-                    b.Field ? new Color(0.55f, 0.22f, 0.12f) : null));
-            if (report.Battles.Count > TempWarBattleRows)
-                block.AddChild(WarLabel($"　……共 {report.Battles.Count} 場", 13));
+            // 野戰一場一行；圍城每週的交戰依被圍的聚落合成一行（圍了幾週、雙方死傷）。
+            block.AddChild(WarLabel("會戰與圍城：", 15, TempWarInk));
+            foreach (var b in report.Battles.Where(b => b.Field).Reverse().Take(TempWarBattleRows))
+                block.AddChild(WarLabel($"　第 {WarYear(b.Week)} 年｜野戰｜{b.Place}｜攻方死 {b.AttackerDeaths}、守方死 {b.DefenderDeaths}｜"
+                    + (b.AttackerWon ? "攻方得勝" : b.AttackerDeaths == b.DefenderDeaths ? "不分勝負" : "守方得勝"), 14, new Color(0.50f, 0.16f, 0.08f)));
+            foreach (var g in report.Battles.Where(b => !b.Field).GroupBy(b => b.Besieged == 0 ? w.TargetId : b.Besieged))
+                block.AddChild(WarLabel($"　第 {WarYear(g.Min(b => b.Week))}～{WarYear(g.Max(b => b.Week))} 年｜圍城｜{SiteName(g.Key)}｜{g.Count()} 週交戰"
+                    + $"｜攻方死 {g.Sum(b => b.AttackerDeaths)}、守方死 {g.Sum(b => b.DefenderDeaths)}", 14));
         }
         if (report is not null && report.Occupations.Count > 0)
             block.AddChild(WarLabel("攻陷與佔領：" + string.Join("、", report.Occupations.Select(o => $"第 {WarYear(o.Week)} 年{SiteName(o.SettlementId)}")), 14));

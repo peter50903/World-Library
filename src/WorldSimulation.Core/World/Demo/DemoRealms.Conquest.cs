@@ -350,10 +350,15 @@ public static partial class DemoRealms
                 {
                     var since = besieged == w.TargetId ? arrive : Math.Max(arrive, w.LastOccupiedWeek);
                     var siege = SiegeNeed(besieged, ctx.Tier, ctx.Defense); // 第 08-34 章：城牆
-                    if (week - since >= siege && BattleScore(w) >= 0)
+                    // 第 08-47 章：會戰落下風時圍到兩倍週數，城內糧盡也會攻陷。
+                    var starved = BattleScore(w) < 0;
+                    if (week - since >= siege && (!starved || week - since >= siege * TempStarveTimes))
+                    {
+                        var how = starved ? $"（圍城 {week - since} 週，城內糧盡）" : $"（圍城 {week - since} 週）";
                         add(besieged, DemoSettlementEventKind.Occupied, w.AttackerId, besieged == w.TargetId
-                            ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {week - since} 週）"
-                            : $"{name(w.AttackerId)}的軍隊佔領了{name(w.DefenderId)}的{name(besieged)}（圍城 {week - since} 週）");
+                            ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}{how}"
+                            : $"{name(w.AttackerId)}的軍隊佔領了{name(w.DefenderId)}的{name(besieged)}{how}");
+                    }
                 }
                 fighting.Add(w.AttackerId);
                 fighting.Add(w.DefenderId);
