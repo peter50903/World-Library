@@ -762,6 +762,8 @@ internal static class DemoWeeklySettlement
         Func<int, bool>? isMarket = null, // 第 08-23 章：市集（城鎮以上、會以物易物或貨幣）
         Func<int, bool>? barters = null, // 第 08-23 章：會以物易物的聚落才賣糧
         Func<int, IEnumerable<(int Market, int Distance)>>? seaMarkets = null, // 第 08-42 章：海運（經港口與暢通的航線賣到對岸的市集）
+        Func<int, int>? sailReach = null, // 第 08-44 章：開拓隊渡海最遠幾格海路（0＝出不了海）
+        IReadOnlySet<DemoCellRef>? seaBlocked = null, // 第 08-44 章：海上怪物佔的海（航路避開）
         Func<int, int>? spoilageCutPercent = null) // 第 08-37 章：糧倉讓存糧腐敗少幾 %
     {
         // 第 08-6 章 b 節：希望時代的「不餓死」是時代特性——世界進入開拓時代後恢復餓死（使用者 2026-10-23）。
@@ -1216,6 +1218,16 @@ internal static class DemoWeeklySettlement
                     site = DemoMigrationRoutes.FindFoundingSite(map!, new DemoCellRef(settlement.Column, settlement.Row),
                         DemoMateTempSettings.MateRouteMaxSteps, SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
                         wells?.Invoke(settlement.Id) ?? false);
+                // 第 08-44 章【TEMP 規則】航海殖民：陸路找不到空地時，出得了海的聚落搭船到海外的空地開拓（航路避開海上怪物佔的海）。
+                var bySea = false;
+                var voyageReach = site.Length < 2 ? sailReach?.Invoke(settlement.Id) ?? 0 : 0;
+                if (voyageReach > 0)
+                {
+                    site = DemoSeaLanes.Voyage(map!, new DemoCellRef(settlement.Column, settlement.Row), voyageReach,
+                        seaBlocked ?? new HashSet<DemoCellRef>(), SiteOk, scoreSites ? (Func<DemoCellRef, long>)Score : null,
+                        wells?.Invoke(settlement.Id) ?? false);
+                    bySea = site.Length >= 2;
+                }
                 emigrants = site.Length >= 2 ? PlanEmigrants(settlement.Id, deaths + disasterDeaths, partyLimit, DemoEmigrationMode.Founding) : 0;
                 if (emigrants > 0)
                 {
@@ -1235,8 +1247,11 @@ internal static class DemoWeeklySettlement
                             ? $"人口接近附近來源上限：本週取用來源只剩 {slack}（＜需求 {demand} 的 TEMP {DemoCrowding.TempCrowdingSlackPercent}%），"
                               + "在挨餓之前分出一戶，"
                             : $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，")
-                        + $"前往 {destination} 開拓新聚落（TEMP 選址：{searchSteps} 格內有水源的空地），"
-                        + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}",
+                        + (bySea
+                            ? $"附近沒有空地，搭船渡海前往 {destination} 開拓新聚落（TEMP 選址：海路 {voyageReach} 格內海外有水源的空地），"
+                              + $"航程 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}"
+                            : $"前往 {destination} 開拓新聚落（TEMP 選址：{searchSteps} 格內有水源的空地），"
+                              + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}"),
                         batch.Id), crowded ? 0 : hungerEventId));
                     migrationLedgers.Add(new DemoMigrationWeekLedger(
                         week, batch.Id, settlement.Id, 0,

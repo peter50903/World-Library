@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace WorldSimulation.Core.World.Demo;
 
 /// <summary>
@@ -121,6 +123,103 @@ public static class DemoSeaLanes
             }
         }
         return lanes.Values.ToList();
+    }
+
+    /// <summary>【TEMP】第 08-44 章：開拓隊渡海最遠幾格海路（有港口的、只會基礎造船的）。</summary>
+    public const int TempPortVoyageReach = 16, TempBoatVoyageReach = 8;
+
+    /// <summary>
+    /// 第 08-44 章【TEMP 規則】航海殖民：從 <paramref name="home"/>（靠海的聚落）沿海（八方向、只走海、避開 <paramref name="blocked"/> 海上怪物佔的海）
+    /// 走 <paramref name="reach"/> 格內，找靠岸的**海外**空地（陸路走不到的陸地；<paramref name="siteOk"/> 允許、有水源）。
+    /// 給了 <paramref name="score"/> 就挑分數最高的（同分取先找到的、較近的），否則取第一個。
+    /// 回傳的路線：聚落 → 沿途每一格海（每週一格，與陸路一樣不瞬移，M1_MIG）→ 上岸的空地；找不到＝空。
+    /// </summary>
+    public static ImmutableArray<DemoCellRef> Voyage(DemoHexWorld map, DemoCellRef home, int reach,
+        IReadOnlySet<DemoCellRef> blocked, Func<DemoCellRef, bool> siteOk, Func<DemoCellRef, long>? score = null, bool wells = false)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(blocked);
+        ArgumentNullException.ThrowIfNull(siteOk);
+        var none = ImmutableArray<DemoCellRef>.Empty;
+        if (reach <= 0 || !map.Contains(home.Column, home.Row))
+            return none;
+        var homeland = map.LandTree(home);
+        var parent = new Dictionary<DemoCellRef, DemoCellRef?>();
+        var dist = new Dictionary<DemoCellRef, int>();
+        var queue = new Queue<DemoCellRef>();
+        bool Open(DemoCellRef c) => IsSea(map, c.Column, c.Row) && !blocked.Contains(c);
+        foreach (var n in Ring(home))
+            if (Open(n) && dist.TryAdd(n, 1))
+            {
+                parent[n] = null;
+                queue.Enqueue(n);
+            }
+        (DemoCellRef Sea, DemoCellRef Land)? best = null;
+        var bestScore = long.MinValue;
+        var looked = new HashSet<DemoCellRef>();
+        while (queue.Count > 0)
+        {
+            var here = queue.Dequeue();
+            foreach (var land in Ring(here))
+            {
+                if (!map.Contains(land.Column, land.Row) || map.GetCell(land.Column, land.Row).Terrain == DemoTerrain.Water
+                    || homeland.ContainsKey(land) || !looked.Add(land) || !siteOk(land) || !DemoMigrationRoutes.Habitable(map, land, wells))
+                    continue;
+                if (score is null)
+                    return Route(here, land);
+                var value = score(land);
+                if (value > bestScore)
+                {
+                    bestScore = value;
+                    best = (here, land);
+                }
+            }
+            if (dist[here] >= reach)
+                continue;
+            foreach (var n in Ring(here))
+                if (Open(n) && dist.TryAdd(n, dist[here] + 1))
+                {
+                    parent[n] = here;
+                    queue.Enqueue(n);
+                }
+        }
+        return best is { } b ? Route(b.Sea, b.Land) : none;
+
+        ImmutableArray<DemoCellRef> Route(DemoCellRef lastSea, DemoCellRef landing)
+        {
+            var sea = new List<DemoCellRef>();
+            for (DemoCellRef? at = lastSea; at is { } c; at = parent[c])
+                sea.Add(c);
+            sea.Reverse();
+            var path = new List<DemoCellRef> { home };
+            path.AddRange(sea);
+            path.Add(landing);
+            return path.ToImmutableArray();
+        }
+    }
+
+    private static IEnumerable<DemoCellRef> Ring(DemoCellRef c)
+    {
+        for (var dr = -1; dr <= 1; dr++)
+            for (var dc = -1; dc <= 1; dc++)
+                if (dr != 0 || dc != 0)
+                    yield return new DemoCellRef(c.Column + dc, c.Row + dr);
+    }
+
+    /// <summary>
+    /// 第 08-44 章：路線上相鄰兩點走得通——陸路路線段，或上下船（陸地與相鄰的海），或海上一步（相鄰的兩格海）。
+    /// </summary>
+    public static bool Passable(DemoHexWorld map, DemoCellRef a, DemoCellRef b)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        if (map.Routes.IsLandPassable(a, b))
+            return true;
+        if (!map.Contains(a.Column, a.Row) || !map.Contains(b.Column, b.Row))
+            return false;
+        var (seaA, seaB) = (IsSea(map, a.Column, a.Row), IsSea(map, b.Column, b.Row));
+        var d = DemoHexWorld.Distance(a, b);
+        return seaA && seaB ? d == 1
+            : seaA != seaB && d == 1 && map.GetCell((seaA ? b : a).Column, (seaA ? b : a).Row).Terrain != DemoTerrain.Water;
     }
 
     /// <summary>
