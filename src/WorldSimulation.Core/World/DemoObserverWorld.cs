@@ -996,6 +996,8 @@ public sealed partial class DemoObserverWorld
                         && (_knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)) || _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.CurrencyTech))),
                 barters: _demography is null ? null : id => _knowledge.Knows(id, DemoTechnology.Of(DemoFoodTrade.BarterTech)),
                 seaMarkets: SeaTrade(nestsNow), // 第 08-42 章：海運（本週開始時的航線）
+                sailReach: id => IsPort(id) ? DemoSeaLanes.TempPortVoyageReach : CanSail(id) ? DemoSeaLanes.TempBoatVoyageReach : 0, // 第 08-44 章：航海殖民
+                seaBlocked: nestsNow.Where(n => n.AtSea && !n.Dormant && n.Monsters > 0).SelectMany(n => n.Cells).ToHashSet(),
                 spoilageCutPercent: id => BuildingBonus(id).SpoilageCutPercent); // 第 08-37 章：糧倉
             DemoPerf.Mark("週結算");
             commit.StageLedger(outcome);

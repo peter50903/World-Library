@@ -640,7 +640,7 @@ public sealed partial class DemoObserverWorld
             var path = batch.Path;
             var from = sites.Settlements.Single(s => s.Id == batch.FromSettlementId);
             if (path.IsDefault || path.Length < 2 || path.Any(c => !map.Contains(c.Column, c.Row))
-                || path.Zip(path.Skip(1)).Any(p => !map.Routes.IsLandPassable(p.First, p.Second)) // 第 06 章 a 節：每步都要有陸路路線段
+                || path.Zip(path.Skip(1)).Any(p => !DemoSeaLanes.Passable(map, p.First, p.Second)) // 第 06 章 a 節：每步都要有陸路路線段；第 08-44 章：或渡海
                 || path[0] != new DemoCellRef(from.Column, from.Row))
                 Reject($"途中隊伍 #{batch.Id} 的路線不合法");
 
