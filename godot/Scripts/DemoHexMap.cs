@@ -51,11 +51,8 @@ public partial class DemoHexMap : Control
     {
         if (faithId == 0)
             return TempNoFaithColor;
-        var index = 0;
-        for (var i = 0; i < FaithOrder.Count; i++)
-            if (FaithOrder[i] == faithId) index = i;
-        // 與家系錯開四分之一圈、與文化錯開，三個模式切換時顏色不同。
-        return TempLineagePalette[(index + TempLineagePalette.Length / 4) % TempLineagePalette.Length];
+        // 第 08-54 章：同一家族（分裂出來的）顏色相近；源頭信仰與家系錯開四分之一圈。
+        return FamilyFaithColor(faithId);
     }
 
     /// <summary>第 08-8 章 B1：聚落的主要文化編號（文化模式著色）。</summary>

@@ -24,7 +24,7 @@ public partial class DemoHexMap
     private ColorRect? _politicalRect;
     private ShaderMaterial? _politicalMaterial;
     private ImageTexture? _idsTexture, _landTexture, _paletteTexture, _occupyTexture;
-    private (object? Fronts, DemoProvinceMap? Provinces) _occupyKey;
+    private (object? Fronts, DemoProvinceMap? Provinces, object? Faiths, object? Territory) _occupyKey;
     private DemoProvinceMap? _provinces;
     private (DemoHexWorld? World, object? Sites, object? Territory, object? Nests, object? Ruins, object? Scale) _provinceKey;
     private ulong _provincesBuiltMs;
@@ -109,8 +109,10 @@ public partial class DemoHexMap
         DrawSeaLanes(origin, cellPx); // 第 08-42 章：航線
         DrawTradeLinks(origin, cellPx); // 第 08-23 章：商路
         DrawGroupLabels(origin, cellPx);
+        DrawFaithLabelBadges(origin, cellPx); // 第 08-54 章：信仰名字上面的符號
         DrawLairs(origin, cellPx);
         DrawHoldings(origin, cellPx);
+        DrawHolySites(origin, cellPx); // 第 08-54 章：聖地
         DrawBattlefields(start, radius); // 第 08-46 章：野戰的戰場
         DrawWars(start, radius);
         DrawMonsterFronts(start, radius); // 第 08-51 章：遠征軍、獸潮與地盤的變化
@@ -152,7 +154,7 @@ public partial class DemoHexMap
     /// <summary>戰爭中被圍攻的省份塗攻方顏色的斜紋（CK3 的佔領斜紋；戰線或省份變了才重建）。</summary>
     private void EnsureOccupation()
     {
-        var key = ((object?)WarFronts, _provinces);
+        var key = ((object?)WarFronts, _provinces, _mode == Mode.Faith ? (object?)FaithOf : null, _mode == Mode.Faith ? (object?)Territory : null);
         if (key.Equals(_occupyKey) || _politicalMaterial is null)
             return;
         _occupyKey = key;
@@ -167,7 +169,10 @@ public partial class DemoHexMap
             bytes[at + 2] = (byte)Mathf.Clamp(color.B * 255f, 0f, 255f);
             bytes[at + 3] = 255;
         }
-        foreach (var front in WarFronts)
+        // 第 08-54 章：信仰模式改畫「跟統治者信的不一樣」的條紋（CK3），不畫佔領。
+        foreach (var (settlement, color) in FaithStripes())
+            Stripe(settlement, color);
+        foreach (var front in _mode == Mode.Faith ? Array.Empty<WarFront>() : WarFronts)
         {
             // 第 08-22a 章：攻陷之後才畫佔領斜紋（圍城中只有行軍路線與軍旗）；獨立戰爭、內戰照舊整場都畫。
             if (front.Score is null || front.Occupied)

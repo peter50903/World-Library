@@ -1544,6 +1544,9 @@ public partial class ObserverRoot : Control
             .ToDictionary(s => s.Id, s => _world.Culture.Faith.MainFaithOf(s.Id)!.Value));
         _hexMap.FaithOrder = _world.Culture.Faith.Faiths.Select(f => f.Id).ToList();
         _hexMap.HolySites = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0).Select(f => f.FounderSettlementId).ToHashSet();
+        _hexMap.FaithParents = _world.Culture.Faith.Faiths.ToDictionary(f => f.Id, f => f.ParentId); // 第 08-54 章：信仰家族的顏色
+        _hexMap.HolySiteFaiths = _world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0)
+            .GroupBy(f => f.FounderSettlementId).ToDictionary(g => g.Key, g => g.OrderBy(f => f.Id).First().Id); // 第 08-54 章：聖地
         _hexMap.SettlementScale = Same(_hexMap.SettlementScale, _world.Sites.Settlements.ToDictionary(s => s.Id,
             s => (_world.SettlementPopulation(s.Id), _world.ChronicleOf(s.Id).Tier))); // 第 08-11 章：五級
         // 第 08-19 章、第 08-19a 章：勢力範圍與隸屬由 Core 依建築、工作地與人走的路推得（同一週沿用）。

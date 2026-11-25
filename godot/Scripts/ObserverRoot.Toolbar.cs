@@ -151,7 +151,7 @@ public partial class ObserverRoot
             DemoHexMap.Mode.Culture => Top(id => _hexMap.CultureOf.TryGetValue(id, out var c) ? c : null)
                 .Select(x => Swatch(_hexMap.CultureColor(x.Key), _hexMap.CultureNames.GetValueOrDefault(x.Key, "？"), $"culture:{x.Key}")),
             DemoHexMap.Mode.Faith => Top(id => _hexMap.FaithOf.TryGetValue(id, out var f) && f > 0 ? f : null)
-                .Select(x => Swatch(_hexMap.FaithColor(x.Key), _hexMap.FaithNames.GetValueOrDefault(x.Key, "？"), $"faith:{x.Key}")),
+                .Select(x => FaithIcon(x.Key) + Swatch(_hexMap.FaithColor(x.Key), _hexMap.FaithNames.GetValueOrDefault(x.Key, "？"), $"faith:{x.Key}")),
             DemoHexMap.Mode.Realm => Top(id => _hexMap.Territory.Realm.ContainsKey(id) ? _hexMap.Territory.RealmOf(id) : null)
                 .Select(x => Swatch(_hexMap.RealmColor(x.Key), Name(x.Key), $"realm:{x.Key}")),
             DemoHexMap.Mode.Lineage => Top(id => DemoLineageMap.LineageRoot(_world.Sites, id))
@@ -179,7 +179,8 @@ public partial class ObserverRoot
         DemoHexMap.Mode.Culture => ("文化", "看各地的人屬於哪個文化",
             "每個顏色是一個文化（聚落裡人數最多的那個）。文化會隨遷徙、通婚慢慢擴散，顏色的交界就是文化的交界。點空地或下面的名字看那個文化。"),
         DemoHexMap.Mode.Faith => ("信仰", "看各地的人信什麼",
-            "每個顏色是一個信仰（聚落裡信徒最多的那個），灰色＝還沒有信仰；石陣祭火的標記＝信仰誕生的聖地。點空地或下面的名字看那個信仰。"),
+            "每個顏色是一個信仰，分裂出來的信仰跟母信仰顏色相近；灰色＝還沒有信仰。斜紋＝這裡的人跟統治者信的不一樣（斜紋是統治者的信仰色）；"
+            + "金色光圈＝聖地。點空地或下面的名字看那個信仰，它的聖地會閃。"),
         DemoHexMap.Mode.Knowledge => ("知識", "看誰的技術最多、技術從哪裡傳開",
             "顏色＝這個聚落最擅長的領域，越深學會的技術越多，灰色＝還沒有技術。點聚落看它會哪些技術。"),
         DemoHexMap.Mode.Lineage => ("家系", "看每個聚落是從哪個開局的聚落分出去的",
@@ -187,6 +188,11 @@ public partial class ObserverRoot
         DemoHexMap.Mode.Food => ("糧食", "看哪裡在挨餓", "依最近一週的帳：綠＝充足、黃＝存糧快不夠、紅＝挨餓、灰＝還沒結算。"),
         _ => ("地形", "看山川地勢", "不塗勢力色，只留國界線：平原、森林、丘陵、高山、河流與海一目了然；地形影響農田、行軍與各地擅長的技術。點聚落看聚落。")
     };
+
+    /// <summary>第 08-54 章：圖例裡的信仰符號（白色剪影染深一點的信仰色，羊皮紙上看得清楚）。</summary>
+    private string FaithIcon(int faithId)
+        => _hexMap.FaithSymbolsById.TryGetValue(faithId, out var symbol)
+            ? $"[img width=18 height=18 color=#{_hexMap.FaithColor(faithId).Darkened(0.35f).ToHtml(false)}]res://assets/emblems/faith_{symbol}.png[/img]" : "";
 
     /// <summary>【TEMP】圖例最多列幾個。</summary>
     private const int TempLegendEntries = 6;
