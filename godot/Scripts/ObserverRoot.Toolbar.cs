@@ -102,7 +102,7 @@ public partial class ObserverRoot
         _foodLegend = new RichTextLabel
         {
             BbcodeEnabled = true,
-            FitContent = true,
+            FitContent = false, // 第 08-52 章：高度由 FitLegend 依內容算（自動長高會蓋到功能列）
             ScrollActive = false,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             MouseFilter = MouseFilterEnum.Pass, // 第 08-18i 章：圖例的名稱可以點
@@ -218,7 +218,10 @@ public partial class ObserverRoot
             return;
         var text = LegendFor(_hexMap.MapMode);
         if (text != _foodLegend.Text)
+        {
             _foodLegend.Text = text;
+            Callable.From(FitLegend).CallDeferred();
+        }
     }
 
     private string KnowledgeLegend()
@@ -525,8 +528,20 @@ public partial class ObserverRoot
         _modalPanel.CustomMinimumSize = new Vector2(Math.Min(640f, size.X - 32f), Math.Min(520f, size.Y - 96f)); // TEMP
     }
 
-    /// <summary>【TEMP】第 08-52 章：圖例小框的寬上限與高（四行字）。</summary>
-    private const int TempLegendWidth = 760, TempLegendHeight = 96;
+    /// <summary>【TEMP】第 08-52 章：圖例小框的寬上限與預設高（排好字之後依內容調整，最高 TempLegendMaxHeight）。</summary>
+    private const int TempLegendWidth = 900, TempLegendHeight = 96, TempLegendMaxHeight = 150;
+
+    private int _legendBottom;
+
+    /// <summary>第 08-52 章：圖例小框的高度跟著字的行數，底邊貼在功能列上方。</summary>
+    private void FitLegend()
+    {
+        if (_legendPanel is null || !_legendPanel.Visible)
+            return;
+        var height = Math.Clamp(_foodLegend.GetContentHeight() + 14f, 30f, TempLegendMaxHeight);
+        _legendPanel.Size = new Vector2(_legendPanel.Size.X, height);
+        _legendPanel.Position = new Vector2(_legendPanel.Position.X, Math.Max(0f, _legendBottom - height));
+    }
 
     /// <summary>由 <see cref="ApplyHudLayout"/> 呼叫：放工具列、地圖模式列與糧食圖例。</summary>
     private void PlaceToolbarRow(HudFrame frame)
@@ -536,8 +551,13 @@ public partial class ObserverRoot
         Place(_toolbarPanel, frame.Toolbar, true);
         // 圖例放在功能列正上方（糧食模式才顯示）。
         var showLegend = true; // 第 08-18i 章：每個模式都有圖例（至少寫出目前是哪個模式）
-        var legendWidth = Math.Max(1, Math.Min(frame.Toolbar.Width, TempLegendWidth));
-        Place(_legendPanel, new HudRect(frame.Toolbar.X, Math.Max(0, frame.Toolbar.Y - TempLegendHeight - 4), legendWidth, TempLegendHeight), showLegend);
+        // 第 08-52 章：放在功能列上方、詳情面板右邊（不壓到左邊的聚落頁），寬到右側面板為止；高度依內容（FitLegend）。
+        var left = _detailOpen ? Math.Max(frame.Toolbar.X, frame.Detail.X + frame.Detail.Width + 8) : frame.Toolbar.X;
+        var right = _rightView != RightView.None ? frame.Console.X - 8 : (int)_hud.Size.X - 8;
+        var legendWidth = Math.Max(1, Math.Min(TempLegendWidth, right - left));
+        _legendBottom = Math.Max(0, frame.Toolbar.Y - 4);
+        Place(_legendPanel, new HudRect(left, Math.Max(0, _legendBottom - TempLegendHeight), legendWidth, TempLegendHeight), showLegend);
+        Callable.From(FitLegend).CallDeferred();
         SizeModal();
     }
 
