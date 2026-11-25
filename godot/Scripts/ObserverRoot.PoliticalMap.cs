@@ -213,12 +213,12 @@ public partial class ObserverRoot
             waited++;
         }
         if (Front() is { } front && (front.Swarm ?? front.Expedition) is { } trip
-            && world.Sites.Settlements.FirstOrDefault(s => s.Id == trip.SettlementId) is { } site)
+            && world.Sites.Settlements.FirstOrDefault(s => s.Id == trip.SettlementId) is { } frontSite)
         {
             Refresh();
-            var mid = new DemoCellRef((front.Dungeon.Cell.Column + site.Column) / 2, (front.Dungeon.Cell.Row + site.Row) / 2);
+            var mid = new DemoCellRef((front.Dungeon.Cell.Column + frontSite.Column) / 2, (front.Dungeon.Cell.Row + frontSite.Row) / 2);
             _hexMap.ZoomToCell(world.Map.GetCell(mid.Column, mid.Row), 44f);
-            GD.Print($"WORLD_SIM_MAP_SHOT: Front={(front.Swarm is not null ? "swarm" : "expedition")} Lair={front.Dungeon.Name} Site={site.Name} "
+            GD.Print($"WORLD_SIM_MAP_SHOT: Front={(front.Swarm is not null ? "swarm" : "expedition")} Lair={front.Dungeon.Name} Site={frontSite.Name} "
                 + $"Week={world.CommittedWeeks} Depart={trip.DepartWeek} Arrive={trip.ArriveWeek} Layers={front.Dungeon.Layers} Waited={waited}w "
                 + $"Trips={world.MonsterNests(world.CommittedWeeks).Count(n => n.Swarm is not null || n.Expedition is not null)}");
             await Shot("12_monster_front_mid");
