@@ -126,13 +126,13 @@ public static class DemoSeaLanes
     }
 
     /// <summary>【TEMP】第 08-44 章：開拓隊渡海最遠幾格海路（有港口的、只會基礎造船的）。</summary>
-    public const int TempPortVoyageReach = 30, TempBoatVoyageReach = 10;
+    public const int TempPortVoyageReach = 16, TempBoatVoyageReach = 8;
 
     /// <summary>
     /// 第 08-44 章【TEMP 規則】航海殖民：從 <paramref name="home"/>（靠海的聚落）沿海（八方向、只走海、避開 <paramref name="blocked"/> 海上怪物佔的海）
     /// 走 <paramref name="reach"/> 格內，找靠岸的**海外**空地（陸路走不到的陸地；<paramref name="siteOk"/> 允許、有水源）。
     /// 給了 <paramref name="score"/> 就挑分數最高的（同分取先找到的、較近的），否則取第一個。
-    /// 回傳的路線：聚落 → 第一格海 → 海路每 <see cref="TempSeaCellsPerStep"/> 格一步 → 最後一格海 → 上岸的空地；找不到＝空。
+    /// 回傳的路線：聚落 → 沿途每一格海（每週一格，與陸路一樣不瞬移，M1_MIG）→ 上岸的空地；找不到＝空。
     /// </summary>
     public static ImmutableArray<DemoCellRef> Voyage(DemoHexWorld map, DemoCellRef home, int reach,
         IReadOnlySet<DemoCellRef> blocked, Func<DemoCellRef, bool> siteOk, Func<DemoCellRef, long>? score = null, bool wells = false)
@@ -192,10 +192,7 @@ public static class DemoSeaLanes
                 sea.Add(c);
             sea.Reverse();
             var path = new List<DemoCellRef> { home };
-            for (var i = 0; i < sea.Count; i += TempSeaCellsPerStep)
-                path.Add(sea[i]);
-            if (path[^1] != sea[^1])
-                path.Add(sea[^1]);
+            path.AddRange(sea);
             path.Add(landing);
             return path.ToImmutableArray();
         }
@@ -210,7 +207,7 @@ public static class DemoSeaLanes
     }
 
     /// <summary>
-    /// 第 08-44 章：路線上相鄰兩點走得通——陸路路線段，或上下船（陸地與相鄰的海），或海上一步（兩格海、相距不超過 <see cref="TempSeaCellsPerStep"/> 格）。
+    /// 第 08-44 章：路線上相鄰兩點走得通——陸路路線段，或上下船（陸地與相鄰的海），或海上一步（相鄰的兩格海）。
     /// </summary>
     public static bool Passable(DemoHexWorld map, DemoCellRef a, DemoCellRef b)
     {
@@ -221,7 +218,7 @@ public static class DemoSeaLanes
             return false;
         var (seaA, seaB) = (IsSea(map, a.Column, a.Row), IsSea(map, b.Column, b.Row));
         var d = DemoHexWorld.Distance(a, b);
-        return seaA && seaB ? d is >= 1 and <= TempSeaCellsPerStep
+        return seaA && seaB ? d == 1
             : seaA != seaB && d == 1 && map.GetCell((seaA ? b : a).Column, (seaA ? b : a).Row).Terrain != DemoTerrain.Water;
     }
 

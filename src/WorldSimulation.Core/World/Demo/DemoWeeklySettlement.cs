@@ -1249,7 +1249,7 @@ internal static class DemoWeeklySettlement
                             : $"本週缺糧 {shortage}；TEMP {config.KnownRouteMaxSteps} 格內可達聚落的消息都已傳到、沒有一個有糧，")
                         + (bySea
                             ? $"附近沒有空地，搭船渡海前往 {destination} 開拓新聚落（TEMP 選址：海路 {voyageReach} 格內海外有水源的空地），"
-                              + $"航程 {site.Length - 1} 步（TEMP 每週 1 步、海上一步 {DemoSeaLanes.TempSeaCellsPerStep} 格），攜帶糧食 {foodOut}"
+                              + $"航程 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}"
                             : $"前往 {destination} 開拓新聚落（TEMP 選址：{searchSteps} 格內有水源的空地），"
                               + $"路線 {site.Length - 1} 格（TEMP 每週 1 格），攜帶糧食 {foodOut}"),
                         batch.Id), crowded ? 0 : hungerEventId));
