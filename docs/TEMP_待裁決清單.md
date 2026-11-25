@@ -627,6 +627,7 @@
 | `godot/Scripts/DemoHexMap.Battles.cs` | 2 | 第 08-18h 章戰鬥動畫：長度 4 秒（行軍佔 55%）、只畫 ⚔ 的格半徑門檻 14、同時最多 8 場；第 08-18j 章死亡每 4 人多倒下一個、兵力條的格半徑門檻 18 |
 | `godot/Scripts/DemoHexMap.Wars.cs` | 2 | 第 08-18m 章戰爭表現：軍旗 14 像素、比分條寬 52 像素、佔領斜線間距 0.32 格半徑；第 08-46 章軍隊每週移動花 0.9 秒、比分條寬 76 像素 |
 | `godot/Scripts/ObserverRoot.War.cs` | 1 | 第 08-47 章戰爭總覽：視窗最大 780×640、每場最多列 10 場會戰、列 3 場最近結束的戰爭 |
+| `godot/Scripts/ObserverRoot.Contrast.cs` | 1 | 第 08-48 章文字對比最低 3:1（WCAG 大字與介面元件） |
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
 | `godot/Scripts/ObserverRoot.Saga.cs` | 1 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9） |

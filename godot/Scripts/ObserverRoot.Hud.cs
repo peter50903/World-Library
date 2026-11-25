@@ -1275,6 +1275,7 @@ public partial class ObserverRoot
         var toolbar = VerifyToolbarSmoke(Fail, PressKey);
         GD.Print($"WORLD_SIM_HOLDING_OK: {VerifyHoldingSmoke(Fail)}"); // 第 08-33 章：領地面板
         VerifyWarSmoke(Fail); // 第 08-47 章：戰爭總覽
+        VerifyContrastSmoke(Fail); // 第 08-48 章：文字與底色的對比
 
         if (_world.ExportTempSave() != before)
             Fail("HUD operations changed the world.");
