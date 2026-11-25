@@ -143,18 +143,18 @@ public partial class ObserverRoot
                 await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var image = GetViewport().GetTexture().GetImage();
             var screen = new Rect2I(0, 0, image.GetWidth(), image.GetHeight());
-            // 第 08-38 章：整個視窗頁（插圖＋資訊＋卡片）；放大圖是卡片區左上角的原尺寸。
-            var page = _holdingPage.GetGlobalRect();
+            // 第 08-52 章：聚落頁（左邊詳情：示意圖、數值、建築、戰況、現況…同一頁）；放大圖是頁面上半的原尺寸。
+            var page = _detailPanel.GetGlobalRect();
             var rect = new Rect2I((Vector2I)page.Position, (Vector2I)page.Size).Intersection(screen);
             if (rect.Size.X < 32 || rect.Size.Y < 32)
                 return;
             image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, name + ".png"));
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 320, Math.Max(32, 320 * rect.Size.Y / rect.Size.X), rect));
-            var cards = _holdingCards.GetGlobalRect();
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 170, Math.Max(32, 170 * rect.Size.Y / rect.Size.X), rect));
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
-                new Rect2I((Vector2I)cards.Position, new Vector2I(320, 200)).Intersection(screen)));
-            var scene = _world.HoldingScene(_holdingSettlement);
-            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Art={System.IO.Path.GetFileName(_holdingArt.WantedPath)} Delivered={_holdingArt.ArtPath is not null} Tier={scene?.Tier} "
+                new Rect2I((Vector2I)page.Position + new Vector2I(0, 40), new Vector2I(Math.Min(320, rect.Size.X), 200)).Intersection(screen)));
+            var art = FindHoldingArt(_detailTabs.GetCurrentTabControl());
+            var scene = _world.HoldingScene(_detailCell is { } cell && _world.Sites.SettlementAt(cell.Column, cell.Row) is { } shown ? shown.Id : 0);
+            GD.Print($"WORLD_SIM_MAP_SHOT: {name} {rect.Size.X}x{rect.Size.Y} Art={System.IO.Path.GetFileName(art?.WantedPath)} Delivered={art?.ArtPath is not null} Tier={scene?.Tier} "
                 + $"Buildings={scene?.Holding.Buildings.Count} Houses={scene?.Holding.Dwellings}+{scene?.Holding.LargeDwellings} Fields={scene?.Fields}");
         }
         var holdings = world.Sites.Settlements.Where(s => !s.IsRuin)
@@ -167,9 +167,9 @@ public partial class ObserverRoot
         {
             if (site is null)
                 continue;
-            OpenHolding(site.Id);
+            ShowDetailAt(site.Column, site.Row);
             await HoldingShot(name);
-            CloseModal();
+            HideDetail();
         }
         // 第 08-47 章：戰爭總覽視窗（整個視窗頁縮圖）。
         OpenWar();

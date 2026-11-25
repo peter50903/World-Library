@@ -303,6 +303,8 @@ jobs:
         env:
           # 第 08-20i 章：大地圖一百年約 18 分鐘，只在手動執行或 PR 貼「large-saga」「long-run」標籤時跑（Actions 額度）。
           LARGE_SAGA: ${{ env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'large-saga') }}
+          # 第 08-52 章：整個工作最多 50 則註記；貼了 map-shot 時不貼小地圖史書全文，留給截圖。
+          MAP_SHOT: ${{ contains(github.event.pull_request.labels.*.name, 'map-shot') }}
         run: |
           set -uo pipefail
           if ! timeout 900 dotnet run --project src/WorldSimulation.ObserverCli --configuration Release --no-build -- --saga --seed 1 --years 100 > /tmp/saga.txt 2>&1; then
@@ -311,9 +313,11 @@ jobs:
           # 註記每則約 4 KB、每步驟最多 10 則：依行切成每則最多 3000 位元組，只貼前 10 則。
           split -C 3000 -d /tmp/saga.txt /tmp/saga-part-
           echo "::notice title=文字史書 大小::$(wc -l < /tmp/saga.txt) 行、$(wc -c < /tmp/saga.txt) 位元組、$(ls /tmp/saga-part-* | wc -l) 則"
-          for part in $(ls /tmp/saga-part-* | head -9); do
-            echo "::notice title=文字史書 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
-          done
+          if [ "$MAP_SHOT" != "true" ]; then
+            for part in $(ls /tmp/saga-part-* | head -9); do
+              echo "::notice title=文字史書 $(basename "$part")::$(sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g' "$part")"
+            done
+          fi
           if [ "$LARGE_SAGA" = "true" ]; then
             # 第 08-20i 章（使用者 2026-11-17：小、中地圖是小規模測試，本來就停在王國之前；正式內容以大、巨大地圖為主）：
             # 驗收看大地圖種子 1 的一百年——摘要、勢力結局計數與耗時貼成註記，全文印在這一步的紀錄裡（原本的中地圖一百年拿掉）。
@@ -611,7 +615,7 @@ jobs:
         run: |
           mkdir -p /tmp/shot-notes
           : > /tmp/shot-notes/all.txt
-          for name in 12_monster_front_mid_crop 12_monster_front_mid 11_war_window_crop 10_war_mid_crop 8_holding_big 8_holding_big_crop 9_holding_village 1_realms_far 2_realms_mid_crop 3_realms_close_crop 4_terrain_far 7_trade_close_crop 6_dark_age 2_realms_mid 5_culture_far 3_realms_close 9_holding_village_crop 11_war_window; do
+          for name in 2_realms_mid_crop 3_realms_close_crop 1_realms_far 8_holding_big 2_realms_mid 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 2_realms_mid_crop 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
             f="/tmp/map-shots/$name.thumb"
             [ -f "$f" ] || continue
             { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"

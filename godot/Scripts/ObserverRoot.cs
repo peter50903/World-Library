@@ -210,6 +210,7 @@ public partial class ObserverRoot : Control
         _hexMap = new DemoHexMap { World = _world.Map, Sites = _world.Sites };
         _hexMap.CellSelected += OnCellSelected;
         _hexMap.RealmSelected += ShowRealmDetail; // 試玩回饋 2026-11-07 之 2、4：遠看點到勢力
+        _hexMap.WarSelected += ShowWarDetail; // 第 08-52 章：點到軍隊、圍城、比分條看戰況
         _hexMap.CultureSelected += id => ShowBeliefDetail(false, id);
         _hexMap.FaithSelected += id => ShowBeliefDetail(true, id);
         mapPanel.AddChild(_hexMap);
@@ -1285,6 +1286,7 @@ public partial class ObserverRoot : Control
         var days = _playback.Tick(delta);
         if (days > 0)
             AdvancePlayback(days); // #95: stops on the day a major event appears.
+        ExpireLetters(); // 第 08-52 章：通知照時間淡出（暫停時也會消失）
     }
 
     private void TogglePlayback()
@@ -1511,21 +1513,25 @@ public partial class ObserverRoot : Control
         _hexMap.KnowledgeDomain = _world.Sites.Settlements.Where(s => _world.Knowledge.LeadingDomain(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Knowledge.LeadingDomain(s.Id)!); // 第 08-13 章：擅長領域
         _hexMap.FadedRuins = DemoRuins.Faded(_world); // 第 08-11 章：不重要的遺跡還原成原本的土地
+        Part("M_Knowledge");
         _hexMap.WorldAge = _world.Age; // 第 12-2j 章：政治地圖的時代氛圍
         _hexMap.TradeLinks = DemoFoodTrade.Links(_world); // 第 08-23 章：商路
         _hexMap.SeaLanes = _world.SeaLanes(); // 第 08-42 章：航線
         _hexMap.Battlefields = Battlefields(); // 第 08-46 章：野戰的戰場
         _hexMap.Kingdoms = _world.KingdomHeads().ToHashSet(); // 第 08-24 章：王國的名字寫「某某王國」
+        Part("M_Trade");
         var dungeonCells = _world.Dungeons.Select(d => d.Cell).ToArray();
         if (!dungeonCells.SequenceEqual(_hexMap.Dungeons))
             _hexMap.Dungeons = dungeonCells; // 第 12-1 章 C4（沒變就沿用，地圖的生物快取才不會每次重算）
         _hexMap.MonsterNests = _world.MonsterNests(_world.CommittedWeeks); // 第 12-2 章：怪物數與勢力範圍
         _hexMap.CurrentWeek = _world.CommittedWeeks;
+        Part("M_Monsters");
         _struggles = _world.Realms().Struggles.Values.ToList(); // 第 08-19b 章：進行中的脫離鬥爭（勢力頁與地圖交戰用）
         _wars = _world.Realms().Wars.Values.ToList(); // 第 08-19e 章：進行中的征服戰爭
         _hexMap.BattleMarks = BattleMarks(); // 第 08-18h 章：戰鬥畫在地圖上
         _hexMap.WarFronts = WarFronts(); // 第 08-18m 章：進行中的戰線
         PlayEventSounds(); // 第 08-16 章：建村號角、時代轉換
+        Part("M_Wars");
         _hexMap.CultureOf = Same(_hexMap.CultureOf, _world.Sites.Settlements.Where(s => _world.Culture.MainCultureOf(s.Id) is not null)
             .ToDictionary(s => s.Id, s => _world.Culture.MainCultureOf(s.Id)!.Value)); // 第 08-8 章 B1
         _hexMap.CultureOrder = _world.Culture.Cultures.Select(c => c.Id).ToList();
@@ -1545,13 +1551,16 @@ public partial class ObserverRoot : Control
             _hexMap.Territory = _world.Territory();
         Part("MapData");
         RefreshLegend(); // 第 08-18i 章：地圖模式圖例
+        Part("Legend"); // 第 08-52 章：面板拆開量
         RefreshLetters(); // 第 08-18i 章：重大事件通知
         RefreshTracked(); // 第 08-18i 章：追蹤清單
+        Part("Letters");
         // 第 08-21 章（使用者 2026-11-17：巨大地圖超級卡）：實際遊玩時右側清單只在看得到時更新（換到該分頁時補上）。
         if (RealtimeThrottle && _rightView != RightView.Outliner)
             _outlinerStale = true;
         else
             RefreshOutliner(); // 第 05 章 b2：右側聚落清單。
+        Part("Outliner");
         RefreshChronicle(); // 第 08-10b 章：編年史（分頁開著才重算）。
         RefreshSaga(); // 第 05-1 章：史書（分頁開著、換了一年才重寫）
         RefreshYearChartIfOpen(); // 第 08 章 b 節：圖表開著時跟著推進更新。

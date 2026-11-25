@@ -12,8 +12,12 @@ namespace WorldSimulation.GodotClient;
 public partial class ObserverRoot
 {
     /// <summary>【TEMP】通知停留秒數、最多幾張、寬度。</summary>
-    private const double TempLetterSeconds = 25;
-    private const int TempMaxLetters = 5;
+    /// <summary>
+    /// 【TEMP】第 08-52 章（試玩回饋 2026-11-26 之 5：右上角的資訊一直卡著不會消失）：通知 8 秒後自己淡出消失（最後 2 秒淡出；滑鼠停在上面時不消失），
+    /// 同時最多 3 封；一次來太多時只留最重要的 3 封（壞消息優先、新的優先）。原本 25 秒、5 封，而且只在畫面更新時才收，暫停時永遠不會消失。
+    /// </summary>
+    private const double TempLetterSeconds = 8, TempLetterFadeSeconds = 2;
+    private const int TempMaxLetters = 3;
     private const float TempLetterWidth = 300f;
 
     private VBoxContainer? _letters;
@@ -89,17 +93,53 @@ public partial class ObserverRoot
         if (_letters is null)
             return;
         var now = _letterClock.Elapsed.TotalSeconds;
-        foreach (var expired in _letterCards.Where(x => now - x.Born > TempLetterSeconds).ToList())
-            DropLetter(expired.Button);
+        ExpireLetters();
         var latest = _world.EventHistory.LastEventId;
         if (latest <= _letterWatermark)
             return;
         var fresh = _world.WeekReports().Where(w => w.Week >= _world.CommittedWeeks - 2).SelectMany(w => w.Events)
             .Where(e => e.EventId > _letterWatermark).OrderBy(e => e.EventId).ToList();
         _letterWatermark = latest;
-        foreach (var e in fresh)
-            if (LetterOf(e) is { } letter)
-                AddLetter(e, letter.Icon, letter.Text, letter.Bad, now);
+        // 第 08-52 章：一次來太多時只留最重要的幾封（壞消息優先、新的優先），舊的照原順序顯示。
+        var picked = fresh.Select(e => (Event: e, Letter: LetterOf(e))).Where(x => x.Letter is not null)
+            .OrderByDescending(x => x.Letter!.Value.Bad).ThenByDescending(x => x.Event.EventId).Take(TempMaxLetters)
+            .OrderBy(x => x.Event.EventId).ToList();
+        foreach (var (e, letter) in picked)
+            AddLetter(e, letter!.Value.Icon, letter.Value.Text, letter.Value.Bad, now);
+    }
+
+    /// <summary>
+    /// 第 08-52 章：每幀由 <see cref="_Process"/> 呼叫——到時間的通知淡出、收掉（暫停時也會消失）；滑鼠停在上面的那封重新計時。
+    /// </summary>
+    private void ExpireLetters()
+    {
+        if (_letterCards.Count == 0)
+            return;
+        var now = _letterClock.Elapsed.TotalSeconds;
+        var mouse = GetViewport().GetMousePosition();
+        for (var i = _letterCards.Count - 1; i >= 0; i--)
+        {
+            var (button, born) = _letterCards[i];
+            if (!IsInstanceValid(button))
+            {
+                _letterCards.RemoveAt(i);
+                continue;
+            }
+            if (button.IsVisibleInTree() && button.GetGlobalRect().HasPoint(mouse))
+            {
+                _letterCards[i] = (button, now - TempLetterFadeSeconds); // 滑鼠移開後再留一會兒
+                button.Modulate = Colors.White;
+                continue;
+            }
+            var age = now - born;
+            if (age > TempLetterSeconds)
+            {
+                DropLetter(button);
+                continue;
+            }
+            var fade = (float)Math.Clamp((TempLetterSeconds - age) / TempLetterFadeSeconds, 0, 1);
+            button.Modulate = new Color(1f, 1f, 1f, fade);
+        }
     }
 
     private void AddLetter(DemoSettlementEvent e, string icon, string text, bool bad, double now)

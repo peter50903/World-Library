@@ -63,7 +63,7 @@ public partial class ObserverRoot
         if (wars.Count == 0)
             _warPage.AddChild(WarLabel("現在沒有進行中的征服戰爭。", 16));
         foreach (var w in wars)
-            AddWarBlock(w, ongoing.GetValueOrDefault(w.AttackerId), week);
+            AddWarBlock(_warPage, w, ongoing.GetValueOrDefault(w.AttackerId), week);
         var ended = reports.Where(r => r.EndWeek > 0).TakeLast(TempWarRecentEnded).Reverse().ToList();
         if (ended.Count > 0)
         {
@@ -75,14 +75,14 @@ public partial class ObserverRoot
         }
     }
 
-    private void AddWarBlock(DemoWar w, DemoWarReport? report, int week)
+    private void AddWarBlock(Container parent, DemoWar w, DemoWarReport? report, int week)
     {
         var front = _hexMap.WarFronts.FirstOrDefault(f => f.Key == w.AttackerId);
         var attackerColor = _hexMap.PoliticalRealmColor(_hexMap.Territory.RealmOf(w.AttackerId));
         var defenderColor = _hexMap.PoliticalRealmColor(_hexMap.Territory.RealmOf(w.TargetId));
         var block = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         block.AddThemeConstantOverride("separation", 4);
-        _warPage.AddChild(block);
+        parent.AddChild(block);
         block.AddChild(WarLabel($"⚔ {SiteName(w.AttackerId)} 對 {SiteName(w.DefenderId)}：征服戰爭", 19, TempWarInk));
         block.AddChild(WarLabel($"宣戰：第 {WarYear(w.StartWeek)} 年（已打 {Math.Max(0, week - w.StartWeek)} 週）｜目標：{(w.WholeRealm ? $"整個{SiteName(w.DefenderId)}" : SiteName(w.TargetId))}"
             + (w.Cause.Length > 0 ? $"｜{w.Cause}" : "")));
@@ -131,6 +131,47 @@ public partial class ObserverRoot
         };
         block.AddChild(look);
         block.AddChild(new HSeparator());
+    }
+
+    /// <summary>
+    /// 第 08-52 章（試玩回饋 2026-11-26 之 2：看不到戰況，點選時只會出現勢力資訊）：這個聚落的勢力正在打的征服戰爭
+    /// （攻方、守方或目標是它），每場一塊，跟戰爭總覽同一套內容；沒有戰爭＝null。
+    /// </summary>
+    private Control? WarSection(int settlementId)
+    {
+        if (_wars.Count == 0)
+            return null;
+        var top = _hexMap.Territory.RealmOf(settlementId);
+        var mine = _wars.Where(w => w.TargetId == settlementId || w.AttackerId == settlementId || w.DefenderId == settlementId
+            || _hexMap.Territory.RealmOf(w.AttackerId) == top || _hexMap.Territory.RealmOf(w.DefenderId) == top).ToList();
+        if (mine.Count == 0)
+            return null;
+        var reports = DemoWarReports.All(_world.SettlementEvents(), _world.Sites).Where(r => r.EndWeek == 0)
+            .GroupBy(r => r.AttackerId).ToDictionary(g => g.Key, g => g.Last());
+        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        foreach (var w in mine)
+            AddWarBlock(box, w, reports.GetValueOrDefault(w.AttackerId), _world.CommittedWeeks);
+        return box;
+    }
+
+    /// <summary>第 08-52 章：在地圖上點到軍隊、圍城、比分條時，左邊的詳情直接換成這場戰爭的戰況（不另開視窗）。</summary>
+    private void ShowWarDetail(int key)
+    {
+        if (key < 0)
+        {
+            // 獨立戰爭、內戰：開叛離的聚落（現況寫著戰爭）。
+            if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == -key) is { } rebel)
+                ShowDetailAt(rebel.Column, rebel.Row);
+            return;
+        }
+        if (_wars.FirstOrDefault(w => w.AttackerId == key) is not { } war
+            || _world.Sites.Settlements.FirstOrDefault(s => s.Id == war.TargetId) is not { } target)
+        {
+            OpenWar();
+            return;
+        }
+        ShowDetailAt(target.Column, target.Row);
+        SelectDetailTab("戰況");
     }
 
     /// <summary>第 08-47 章冒煙測試：打開戰爭視窗、有內容、關掉；世界不變（由呼叫端檢查）。</summary>

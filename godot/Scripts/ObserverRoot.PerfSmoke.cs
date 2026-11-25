@@ -85,8 +85,13 @@ public partial class ObserverRoot
         var mapWatch = System.Diagnostics.Stopwatch.StartNew();
         for (var d = 0; d < 7; d++)
             _world.AdvanceOneDay();
+        var coreDone = mapWatch.Elapsed.TotalMilliseconds;
+        _refreshParts.Clear();
+        _refreshPartWatch.Restart();
         Refresh();
-        var map = $"MapWeekMs={Ms(mapWatch.Elapsed.TotalMilliseconds)}";
+        // 第 08-52 章：只看換週那一次整套更新（快轉時每週卡一下的就是它），各段分開印 W_*。
+        var weekParts = string.Join(" ", _refreshParts.Select(kv => $"W_{kv.Key}={Ms(kv.Value)}"));
+        var map = $"MapWeekMs={Ms(mapWatch.Elapsed.TotalMilliseconds)} WeekRefreshMs={Ms(mapWatch.Elapsed.TotalMilliseconds - coreDone)} {weekParts}";
         var settlements = _world.Sites.Settlements.Count(s => !s.IsRuin);
         var politicalMs = _hexMap.PoliticalBuildMs(); // 第 08-21 章：政治地圖每週重算的成本
         GD.Print("WORLD_SIM_PERF: "

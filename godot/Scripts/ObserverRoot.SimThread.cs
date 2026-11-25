@@ -17,7 +17,11 @@ public partial class ObserverRoot
     /// <summary>【TEMP】背景一批最多算多少毫秒（超過就先交回畫面，剩下的日子下一批再算）。</summary>
     private const double TempSimBatchMs = 250;
 
-    private sealed record SimBatch(DemoObserverWorld World, int Advanced, DemoDayAdvance? Last, DemoSettlementEvent? Alert, Exception? Error);
+    private sealed record SimBatch(DemoObserverWorld World, int Advanced, DemoDayAdvance? Last, DemoSettlementEvent? Alert, Exception? Error)
+    {
+        /// <summary>第 08-52 章：換了一週時順便在背景算好的世界總覽（同 <see cref="OverviewText"/> 的快取鍵）；沒算＝null。</summary>
+        public (int Week, int Year, bool Debug, string Text)? Overview { get; init; }
+    }
 
     private System.Threading.Tasks.Task<SimBatch>? _simTask;
     private int _queuedDays;
@@ -41,7 +45,11 @@ public partial class ObserverRoot
         _queuedDays = 0;
         var world = _world;
         var autoPause = _autoPauseOnMajor.ButtonPressed;
-        _simTask = System.Threading.Tasks.Task.Run(() => RunBatch(world, count, autoPause));
+        // 第 08-52 章：世界總覽（右側清單上方）換週時要重算整份年帳與人口結構，大地圖約 0.2 秒——改在背景這一批算完時順便算。
+        var overview = (DaysPerYear: _calendar?.DaysPerYear ?? 365, Debug: _showDebugInfo, Wanted: _rightView == RightView.Outliner);
+        _simTask = System.Threading.Tasks.Task.Run(() => RunBatch(world, count, autoPause) is var batch && batch.Error is null && overview.Wanted
+            ? batch with { Overview = BackgroundOverview(world, overview.DaysPerYear, overview.Debug) }
+            : batch);
     }
 
     private SimBatch RunBatch(DemoObserverWorld world, int days, bool autoPause)
@@ -68,6 +76,17 @@ public partial class ObserverRoot
         }
     }
 
+    /// <summary>第 08-52 章：在背景執行緒算世界總覽（這時主執行緒不碰世界）；同一週算過就不再算。</summary>
+    private (int Week, int Year, bool Debug, string Text)? BackgroundOverview(DemoObserverWorld world, int daysPerYear, bool debug)
+    {
+        var week = world.LatestWeek?.Week ?? 0;
+        var year = Math.Max(0, world.Snapshot().DaysElapsed - 1) / daysPerYear;
+        if (_overviewKey is { } cached && ReferenceEquals(cached.World, world) && cached.Week == week && cached.Year == year && cached.Debug == debug)
+            return null;
+        var o = DemoWorldOverview.Of(world, daysPerYear);
+        return (week, year, debug, string.Join("\n", debug ? o.Lines() : o.PlayerLines()));
+    }
+
     /// <summary>上一批算完了就在主執行緒交給畫面（沒算完什麼都不做）。</summary>
     private void FinishSimulation()
     {
@@ -92,6 +111,11 @@ public partial class ObserverRoot
             _speedDays = 0;
             _speedWatch.Restart();
         }
+        if (batch.Overview is { } ready)
+        {
+            _overviewKey = (batch.World, ready.Week, ready.Year, ready.Debug); // 第 08-52 章：背景算好的總覽直接用
+            _overviewCache = ready.Text;
+        }
         AfterPlayback(batch.Advanced, batch.Last, batch.Alert);
     }
 
@@ -112,9 +136,9 @@ public partial class ObserverRoot
     {
         if (_simTask is null || @event is not (InputEventMouseButton or InputEventKey or InputEventScreenTouch))
             return;
-        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown or MouseButton.Middle }
+        if (@event is InputEventMouseButton { ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown or MouseButton.Middle or MouseButton.Right }
             && GetViewport().GuiGetHoveredControl() == _hexMap)
-            return;
+            return; // 第 08-52 章：右鍵在地圖上也只是拖曳畫面（原本按下右鍵要等背景這一批算完，最多約 0.25 秒）
         WaitForSimulation();
     }
 

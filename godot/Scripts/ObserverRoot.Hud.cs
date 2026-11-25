@@ -502,7 +502,7 @@ public partial class ObserverRoot
         if (_world.Sites.Settlements.FirstOrDefault(s => s.Id == top) is not { } capital)
             return;
         ShowDetailAt(capital.Column, capital.Row);
-        SelectDetailTab("勢力"); // 點勢力就直接看到勢力頁
+        SelectDetailTab(_detailSections.ContainsKey("戰況") ? "戰況" : "勢力"); // 點勢力就直接看到勢力頁；第 08-52 章：在打仗就先看戰況
     }
 
     private string TitledName(DemoSettlement site)
@@ -590,6 +590,11 @@ public partial class ObserverRoot
     /// <summary>切到標題相符的分頁（沒有就不動）。</summary>
     private void SelectDetailTab(string title)
     {
+        if (_detailPage is not null && _detailSections.ContainsKey(title))
+        {
+            ScrollToSection(title); // 第 08-52 章：聚落頁是同一頁，捲到那一段
+            return;
+        }
         for (var i = 0; i < _detailTabs.GetTabCount(); i++)
             if (_detailTabs.GetTabTitle(i) == title)
             {
@@ -638,8 +643,112 @@ public partial class ObserverRoot
         if (_detailTabRow is null)
             return;
         foreach (var child in _detailTabRow.GetChildren())
-            if (child is Button button)
+            if (child is Button button && button.HasMeta("tab_index")) // 第 08-52 章：聚落頁的跳段按鈕沒有分頁
                 button.SetPressedNoSignal((int)button.GetMeta("tab_index") == _detailTabs.CurrentTab);
+    }
+
+    /// <summary>一個分頁的內容（領地、技術、人口金字塔、人物、紋章或文字）。</summary>
+    private Control TabBody(DemoDetailTab tab)
+    {
+        Control content;
+        if (tab.HoldingId is { } holdingId && _world.HoldingScene(holdingId) is { } holdingScene)
+            content = HoldingTabContent(holdingScene); // 第 08-33 章：領地圖縮圖＋分區建築列表
+        else if (tab.Badges.Count > 0)
+            content = TechBadgeGrid(tab); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
+        else if (tab.Pyramid.Any(b => b.Total > 0))
+            content = PyramidView(tab); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
+        else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
+            content = peopleList; // 第 08-16 章：代表人物有人像
+        else if ((tab.Emblem is not null || tab.FaithSymbol is not null || tab.CultureId > 0) && HeraldryHeader(tab) is { } header)
+            content = header; // 第 08-16 章：文化紋章與信仰符號
+        else
+            content = new Label
+            {
+                Text = string.Join("\n", tab.Lines),
+                AutowrapMode = TextServer.AutowrapMode.WordSmart,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill
+            };
+        if (tab.Links.Count > 0)
+        {
+            // 第 05-2 章：分頁底下一排連結（家族、父母、發源地…）。
+            var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            box.AddChild(content);
+            box.AddChild(LinkRow(tab.Links));
+            content = box;
+        }
+        return content;
+    }
+
+    /// <summary>
+    /// 第 08-52 章（試玩回饋 2026-11-26 之 3：點聚落先看到領地裡的狀況，不要再打開領地視窗，一次顯示好，不要一層一層疊）：
+    /// 聚落的詳情是同一頁由上往下排——領地（示意圖、數值、建築）、戰況（勢力在打仗時）、現況、勢力、人物、人口……；
+    /// 上面一排按鈕只是跳到那一段，不換頁。這個順序是 TEMP。
+    /// </summary>
+    private static readonly string[] TempSettlementSections = { "領地", "戰況", "現況", "勢力", "代表人物", "人物", "人口", "概況", "隸屬" };
+
+    /// <summary>聚落頁各段的標題列（跳到那一段用）。</summary>
+    private readonly Dictionary<string, Control> _detailSections = new(StringComparer.Ordinal);
+
+    private ScrollContainer? _detailPage;
+
+    private Control SectionHeading(string title)
+    {
+        var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        box.AddThemeConstantOverride("separation", 2);
+        box.AddChild(new HSeparator());
+        var label = new Label { Text = title };
+        label.AddThemeFontSizeOverride("font_size", 18);
+        label.AddThemeColorOverride("font_color", TempWarInk);
+        box.AddChild(label);
+        return box;
+    }
+
+    private void RenderSettlementPage(int settlementId, List<DemoDetailTab> tabs)
+    {
+        var scroll = new ScrollContainer { Name = "領地", HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var page = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        page.AddThemeConstantOverride("separation", 8);
+        scroll.AddChild(page);
+        _detailSections.Clear();
+        int Rank(string title) => Array.IndexOf(TempSettlementSections, title) is var k && k >= 0 ? k : TempSettlementSections.Length;
+        var bodies = tabs.Select(t => (t.Title, Body: TabBody(t))).ToList();
+        if (WarSection(settlementId) is { } war)
+            bodies.Add(("戰況", war));
+        foreach (var (title, body) in bodies.OrderBy(b => Rank(b.Title)))
+        {
+            if (title != "領地")
+            {
+                var heading = SectionHeading(title);
+                page.AddChild(heading);
+                _detailSections[title] = heading;
+            }
+            else
+                _detailSections[title] = body;
+            page.AddChild(body);
+        }
+        _detailTabs.AddChild(scroll);
+        _detailPage = scroll;
+        // 上面一排是跳到各段的按鈕（不換頁）。
+        foreach (var child in _detailTabRow.GetChildren())
+        {
+            _detailTabRow.RemoveChild(child);
+            child.QueueFree();
+        }
+        foreach (var title in _detailSections.Keys.OrderBy(Rank))
+        {
+            var jump = new Button { Text = title, FocusMode = FocusModeEnum.None, TooltipText = $"跳到「{title}」" };
+            jump.Pressed += () => ScrollToSection(title);
+            _detailTabRow.AddChild(jump);
+        }
+        _detailTabRow.Visible = _detailSections.Count > 1;
+    }
+
+    /// <summary>聚落頁捲到某一段（排好版之後才知道位置）。</summary>
+    private async void ScrollToSection(string title)
+    {
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (_detailPage is { } scroll && IsInstanceValid(scroll) && _detailSections.TryGetValue(title, out var at) && IsInstanceValid(at))
+            scroll.ScrollVertical = (int)at.Position.Y;
     }
 
     private void RenderDetail(DemoPlayerDetail detail, List<DemoDetailTab> tabs, int keep)
@@ -650,44 +759,25 @@ public partial class ObserverRoot
             _detailTabs.RemoveChild(child);
             child.QueueFree();
         }
+        _detailPage = null;
+        _detailSections.Clear();
         _detailBack.Visible = _detailBelief is not null && _detailCell is not null;
-        foreach (var tab in tabs)
-        {
-            var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-            Control content;
-            if (tab.HoldingId is { } holdingId && _world.HoldingScene(holdingId) is { } holdingScene)
-                content = HoldingTabContent(holdingScene); // 第 08-33 章：領地圖縮圖＋分區建築列表
-            else if (tab.Badges.Count > 0)
-                content = TechBadgeGrid(tab); // 第 08-11 章：技術畫成 RPG 技能那樣的方形小圖示
-            else if (tab.Pyramid.Any(b => b.Total > 0))
-                content = PyramidView(tab); // 第 08-18b 章第 5 節：人口金字塔畫成橫條圖
-            else if (tab.People.Count > 0 && PeopleList(tab) is { } peopleList)
-                content = peopleList; // 第 08-16 章：代表人物有人像
-            else if ((tab.Emblem is not null || tab.FaithSymbol is not null || tab.CultureId > 0) && HeraldryHeader(tab) is { } header)
-                content = header; // 第 08-16 章：文化紋章與信仰符號
-            else
-                content = new Label
-                {
-                    Text = string.Join("\n", tab.Lines),
-                    AutowrapMode = TextServer.AutowrapMode.WordSmart,
-                    SizeFlagsHorizontal = SizeFlags.ExpandFill
-                };
-            if (tab.Links.Count > 0)
+        var settlementPage = detail.SettlementId is not null && tabs.Any(t => t.HoldingId is not null);
+        if (settlementPage)
+            RenderSettlementPage(detail.SettlementId!.Value, tabs);
+        else
+            foreach (var tab in tabs)
             {
-                // 第 05-2 章：分頁底下一排連結（家族、父母、發源地…）。
-                var box = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-                box.AddChild(content);
-                box.AddChild(LinkRow(tab.Links));
-                content = box;
+                var scroll = new ScrollContainer { Name = tab.Title, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+                scroll.AddChild(TabBody(tab));
+                _detailTabs.AddChild(scroll);
             }
-            scroll.AddChild(content);
-            _detailTabs.AddChild(scroll);
-        }
         _tabSoundMuted = true; // 程式切的分頁不播音效
-        if (keep >= 0 && keep < tabs.Count)
+        if (!settlementPage && keep >= 0 && keep < tabs.Count)
             _detailTabs.CurrentTab = keep;
         _tabSoundMuted = false;
-        BuildTabButtons(tabs.Select(t => t.Title).ToList());
+        if (!settlementPage)
+            BuildTabButtons(tabs.Select(t => t.Title).ToList());
         _detailTitle.Text = detail.Title;
         _detailShown = detail.Text;
         // 第 08-18i 章：聚落詳情與人物頁可以追蹤。

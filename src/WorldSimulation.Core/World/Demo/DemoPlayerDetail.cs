@@ -171,6 +171,17 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
                 lines.Add(nest.Dormant
                     ? $"怪物已被殺光，地下城沉寂中（約 {Math.Max(0, DemoMonsters.DormantWeeks(world.Age) - (world.CommittedWeeks - nest.DormantSinceWeek)) / 52 + 1} 年內再生）"
                     : $"怪物：{nest.Monsters} 隻（{DemoCombat.MonsterLevel(nest.Dungeon)} 級）｜佔據 {nest.Cells.Count} 格（會襲擊鄰近的聚落，也會被討伐；範圍內不能建村）");
+            // 第 08-52 章：遠征軍、獸潮（第 08-50 章）。
+            if (world.MonsterNests(world.CommittedWeeks).FirstOrDefault(n => n.Dungeon.EventId == dungeon.EventId) is { } busy)
+            {
+                var now = world.CommittedWeeks;
+                if (busy.Expedition is { } exp)
+                    lines.Add(now < exp.ArriveWeek
+                        ? $"{NameOf(world, exp.SettlementId)}的遠征軍正在路上（還要 {exp.ArriveWeek - now} 週）"
+                        : $"{NameOf(world, exp.SettlementId)}的遠征軍攻到第 {Math.Clamp(now - exp.ArriveWeek + 1, 1, busy.Dungeon.Layers)}/{busy.Dungeon.Layers} 層");
+                if (busy.Swarm is { } wave)
+                    lines.Add($"獸潮出巢，正朝{NameOf(world, wave.SettlementId)}湧來（還要 {Math.Max(1, wave.ArriveWeek - now)} 週）");
+            }
         }
         if (DemoWildlife.CellNote(world.Wildlife, world.Map, cell) is { } note)
             lines.Add(note); // 第 12-1 章 C1
@@ -215,6 +226,22 @@ public sealed record DemoPlayerDetail(string Title, IReadOnlyList<DemoDetailTab>
             crises.Add(struggle.Armed ? "獨立戰爭" : "請願抗議");
         else if (world.Realms().Faction.ContainsKey(id))
             crises.Add("加入了獨立派系");
+        // 第 08-52 章（試玩回饋 2026-11-26 之 2：看不到戰況）：勢力在打的征服戰爭；獸潮將至、遠征中。
+        var top = territory.RealmOf(id);
+        foreach (var war in world.Realms().Wars.Values.OrderBy(w => w.StartWeek).ThenBy(w => w.AttackerId))
+        {
+            if (territory.RealmOf(war.AttackerId) == top)
+                crises.Add($"征討{Name(war.TargetId)}中");
+            else if (territory.RealmOf(war.DefenderId) == top || war.TargetId == id)
+                crises.Add($"遭{Name(war.AttackerId)}征討");
+        }
+        foreach (var nest in world.MonsterNests(world.CommittedWeeks))
+        {
+            if (nest.Swarm is { } coming && coming.SettlementId == id)
+                crises.Add($"{nest.Dungeon.Name}的獸潮將至（{Math.Max(1, coming.ArriveWeek - world.CommittedWeeks)} 週）");
+            if (nest.Expedition is { } away && away.SettlementId == id)
+                crises.Add($"遠征{nest.Dungeon.Name}中");
+        }
         var here = new DemoCellRef(settlement.Column, settlement.Row);
         if (world.MonsterNests(world.CommittedWeeks).Any(n => n.Cells.Count > 0 && n.Cells.Min(c => DemoHexWorld.Distance(c, here)) <= DemoMonsters.TempRaidReach))
             crises.Add("緊鄰怪物地盤");

@@ -23,6 +23,7 @@ public partial class ObserverRoot
     private string _foodLegendText = string.Empty;
     private Button _devToolsToggle = null!;
     private RichTextLabel _foodLegend = null!;
+    private PanelContainer _legendPanel = null!;
     private PanelContainer _toolbarPanel = null!;
     private Button _toolScenario = null!;
     private Button _toolSave = null!;
@@ -65,7 +66,7 @@ public partial class ObserverRoot
     private void AddMapModeButtons(HBoxContainer row)
     {
 
-        _mapTerrainButton = ToolButton(ArtAssets.UiMapTerrain, "地形", "地圖模式：地形（細節地圖：不塗勢力色、只留邊界，看山川地形）");
+        _mapTerrainButton = ToolButton(ArtAssets.UiMapTerrain, "地形", "地形模式：看山川地勢——平原、森林、丘陵、高山、河流與海（不塗勢力色，只留國界線）");
         _mapTerrainButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Terrain);
         row.AddChild(_mapTerrainButton);
         _mapFoodButton = ToolButton(ArtAssets.UiMapFood, "糧食",
@@ -75,46 +76,60 @@ public partial class ObserverRoot
         row.AddChild(_mapFoodButton);
         // 第 08-10a 章 V2：家系模式（圖示素材 UI_ICON_MAPMODE_LINEAGE 未到前顯示文字）。
         _mapLineageButton = ToolButton(ArtAssets.UiMapLineage, "家系",
-            "地圖模式：家系（聚落與採集範圍依源自哪個開局聚落著色；同一家系連成一片，家系之間畫邊界）");
+            "家系模式：看每個聚落是從哪個開局的聚落分出去的（同一個顏色＝同一個祖先）");
         _mapLineageButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Lineage);
         row.AddChild(_mapLineageButton);
         // 第 08-10a 章 V4：知識模式（圖示素材 UI_ICON_MAPMODE_KNOWLEDGE 未到前顯示文字）。
         _mapKnowledgeButton = ToolButton(ArtAssets.UiMapKnowledge, "知識",
-            "地圖模式：知識（聚落與採集範圍依已習得的技術數著色；看得出技術從哪裡傳開）");
+            "知識模式：看誰的技術最多、擅長什麼（顏色＝擅長的領域，越深技術越多）");
         _mapKnowledgeButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Knowledge);
         row.AddChild(_mapKnowledgeButton);
         // 第 08-8 章 B1：文化模式。
         _mapCultureButton = ToolButton(ArtAssets.UiMapCulture, "文化",
-            "地圖模式：文化（聚落與採集範圍依主要文化著色；遷徙與婚嫁會讓文化比例流動）");
+            "文化模式：看各地的人屬於哪個文化（每個顏色一個文化）");
         _mapCultureButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Culture);
         row.AddChild(_mapCultureButton);
         // 第 08-8 章 B3：信仰模式。
         _mapFaithButton = ToolButton(ArtAssets.UiMapFaith, "信仰",
-            "地圖模式：信仰（聚落與採集範圍依主要信仰著色，灰色＝尚無信仰；石陣祭火標記＝信仰的創立地）");
+            "信仰模式：看各地的人信什麼（每個顏色一個信仰，灰色＝還沒有信仰）");
         _mapFaithButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Faith);
         row.AddChild(_mapFaithButton);
         // 第 08-19 章：勢力模式。
         _mapRealmButton = ToolButton("", "勢力",
-            "地圖模式：勢力（每個聚落有自己的勢力範圍；落在城鎮範圍內的村莊隸屬城鎮、城鎮隸屬城市，以此類推。同一勢力一個顏色，細線分出各聚落直屬的地）");
+            "勢力模式：看誰統治哪裡（每個顏色一個勢力：國王連同歸附他的城鎮、村莊）");
         _mapRealmButton.Pressed += () => SetMapMode(DemoHexMap.Mode.Realm);
         row.AddChild(_mapRealmButton);
         _foodLegend = new RichTextLabel
         {
             BbcodeEnabled = true,
-            FitContent = true,
+            FitContent = false, // 第 08-52 章：高度由 FitLegend 依內容算（自動長高會蓋到功能列）
             ScrollActive = false,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
             MouseFilter = MouseFilterEnum.Pass, // 第 08-18i 章：圖例的名稱可以點
-            Visible = false
+            SizeFlagsHorizontal = SizeFlags.ExpandFill
         };
+        // 第 08-52 章（試玩回饋 2026-11-26 之 6：各模式的說明文字太不清楚）：圖例改成羊皮紙小框——模式名稱與一句話「看什麼」、
+        // 顏色與記號代表什麼、點了會開什麼，最後一行是人口最多的幾個（色塊＋名稱，可以點）。
+        _legendPanel = new PanelContainer { MouseFilter = MouseFilterEnum.Pass, Visible = false };
+        _legendPanel.AddThemeStyleboxOverride("panel", new StyleBoxFlat
+        {
+            BgColor = new Color(0.95f, 0.90f, 0.78f, 0.95f), BorderColor = new Color(0.36f, 0.25f, 0.12f), BorderWidthLeft = 2, BorderWidthTop = 2,
+            BorderWidthRight = 2, BorderWidthBottom = 2, CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4, CornerRadiusBottomRight = 4,
+            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 6, ContentMarginBottom = 6
+        });
+        _foodLegend.AddThemeColorOverride("default_color", TempInk);
+        _foodLegend.AddThemeFontSizeOverride("normal_font_size", 14);
+        _foodLegend.AddThemeFontSizeOverride("bold_font_size", 16);
+        _legendPanel.AddChild(_foodLegend);
         _foodLegend.MetaClicked += meta => OpenLegendEntry(meta.AsString());
         // 第 08-18i 章：滑鼠移到圖例的某一項時，地圖上其他群淡化。
         _foodLegend.MetaHoverStarted += meta => _hexMap.FocusGroup = LegendGroup(meta.AsString());
         _foodLegend.MetaHoverEnded += _ => _hexMap.FocusGroup = null;
         var legend = string.Join("  ", new[] { FoodStatus.Ample, FoodStatus.Tight, FoodStatus.Starving, FoodStatus.Unsettled }
             .Select(s => $"[color=#{DemoHexMap.FoodStatusColor(s).ToHtml(false)}]■[/color] {MapFoodStatus.Label(s)}"));
-        _foodLegendText = $"[outline_size=4][outline_color=#000000]{legend}[/outline_color][/outline_size]";
+        _foodLegendText = legend;
         _foodLegend.Text = _foodLegendText;
-        _hud.AddChild(_foodLegend);
+        _hud.AddChild(_legendPanel);
         // 第 08-21 章：預設是政治地圖的勢力模式（CK3）；第 08-25 章：既有的冒煙測試用地形模式（點一下就選到格）。
         SetMapMode(SmokeTerrainMode ? DemoHexMap.Mode.Terrain : DemoHexMap.Mode.Realm);
     }
@@ -125,7 +140,6 @@ public partial class ObserverRoot
     /// </summary>
     private string LegendFor(DemoHexMap.Mode mode)
     {
-        string Wrap(string body) => $"[outline_size=4][outline_color=#000000]{body}[/outline_color][/outline_size]";
         string Swatch(Color c, string name, string meta) => $"[color=#{c.ToHtml(false)}]■[/color] [url={meta}]{name}[/url]";
         IEnumerable<(int Key, long People)> Top(Func<int, int?> groupOf)
             => _hexMap.SettlementScale.Select(kv => (Group: groupOf(kv.Key), People: kv.Value.Item1)).Where(x => x.Group is not null && x.People > 0)
@@ -144,23 +158,35 @@ public partial class ObserverRoot
                 .Select(x => Swatch(_hexMap.LineageColor(x.Key), Name(x.Key) + "家系", $"site:{x.Key}")),
             _ => Array.Empty<string>()
         };
-        var title = mode switch
+        var (title, what, how) = ModeHelp(mode);
+        var top = mode switch
         {
-            DemoHexMap.Mode.Food => "糧食模式",
-            DemoHexMap.Mode.Knowledge => "知識模式",
-            DemoHexMap.Mode.Culture => "文化模式（人口最多的文化）",
-            DemoHexMap.Mode.Faith => "信仰模式（人口最多的信仰）",
-            DemoHexMap.Mode.Realm => "勢力模式（政治地圖；人口最多的勢力）",
-            DemoHexMap.Mode.Lineage => "家系模式（源自哪個開局聚落）",
-            _ => "地形模式（看得出地形；點聚落、名牌或勢力範圍看聚落）"
+            DemoHexMap.Mode.Food => _foodLegendText,
+            DemoHexMap.Mode.Knowledge => KnowledgeLegend(),
+            _ => entries.Any() ? "人口最多：" + string.Join("　", entries) : ""
         };
-        return mode switch
-        {
-            DemoHexMap.Mode.Food => Wrap($"[b]{title}[/b]　") + _foodLegendText,
-            DemoHexMap.Mode.Knowledge => Wrap($"[b]{title}[/b]　") + KnowledgeLegend(),
-            _ => Wrap($"[b]{title}[/b]　" + string.Join("　", entries))
-        };
+        return $"[b]{title}模式[/b]｜{what}\n{how}" + (top.Length > 0 ? "\n" + top : "");
     }
+
+    /// <summary>
+    /// 【TEMP】第 08-52 章：每個地圖模式的說明——名稱、一句話看什麼、顏色與記號代表什麼、點了會開什麼（圖例小框與按鈕提示共用）。
+    /// </summary>
+    private static (string Title, string What, string How) ModeHelp(DemoHexMap.Mode mode) => mode switch
+    {
+        DemoHexMap.Mode.Realm => ("勢力", "看誰統治哪裡",
+            "同一個顏色＝同一個勢力（國王連同歸附他的城鎮、村莊）。深色粗線是勢力之間的國界，淡細線分出每個聚落直接管的地；"
+            + "斜紋＝被敵軍佔領，暗紫色＝怪物的地盤。點空地看勢力、點聚落看聚落；點軍隊或比分條看戰況。"),
+        DemoHexMap.Mode.Culture => ("文化", "看各地的人屬於哪個文化",
+            "每個顏色是一個文化（聚落裡人數最多的那個）。文化會隨遷徙、通婚慢慢擴散，顏色的交界就是文化的交界。點空地或下面的名字看那個文化。"),
+        DemoHexMap.Mode.Faith => ("信仰", "看各地的人信什麼",
+            "每個顏色是一個信仰（聚落裡信徒最多的那個），灰色＝還沒有信仰；石陣祭火的標記＝信仰誕生的聖地。點空地或下面的名字看那個信仰。"),
+        DemoHexMap.Mode.Knowledge => ("知識", "看誰的技術最多、技術從哪裡傳開",
+            "顏色＝這個聚落最擅長的領域，越深學會的技術越多，灰色＝還沒有技術。點聚落看它會哪些技術。"),
+        DemoHexMap.Mode.Lineage => ("家系", "看每個聚落是從哪個開局的聚落分出去的",
+            "同一個顏色＝同一個祖先聚落分出來的子孫，看得出開拓的路線。點聚落看它的來歷。"),
+        DemoHexMap.Mode.Food => ("糧食", "看哪裡在挨餓", "依最近一週的帳：綠＝充足、黃＝存糧快不夠、紅＝挨餓、灰＝還沒結算。"),
+        _ => ("地形", "看山川地勢", "不塗勢力色，只留國界線：平原、森林、丘陵、高山、河流與海一目了然；地形影響農田、行軍與各地擅長的技術。點聚落看聚落。")
+    };
 
     /// <summary>【TEMP】圖例最多列幾個。</summary>
     private const int TempLegendEntries = 6;
@@ -192,7 +218,10 @@ public partial class ObserverRoot
             return;
         var text = LegendFor(_hexMap.MapMode);
         if (text != _foodLegend.Text)
+        {
             _foodLegend.Text = text;
+            Callable.From(FitLegend).CallDeferred();
+        }
     }
 
     private string KnowledgeLegend()
@@ -201,7 +230,7 @@ public partial class ObserverRoot
         var domains = _hexMap.KnowledgeDomain.Values.Distinct().OrderBy(d => d, StringComparer.Ordinal).ToList();
         var parts = domains.Select(d => $"[color=#{DemoHexMap.DomainMapColor(d).ToHtml(false)}]■[/color] 擅長{DemoPlayerDetail.DomainName(d)}")
             .Append($"[color=#{DemoHexMap.DomainMapColor(null).ToHtml(false)}]■[/color] 尚無技術");
-        return $"[outline_size=4][outline_color=#000000]{string.Join("  ", parts)}（顏色越淡技術越少）[/outline_color][/outline_size]";
+        return $"{string.Join("　", parts)}（顏色越淡技術越少）";
     }
 
     private void SetMapMode(DemoHexMap.Mode mode)
@@ -499,6 +528,21 @@ public partial class ObserverRoot
         _modalPanel.CustomMinimumSize = new Vector2(Math.Min(640f, size.X - 32f), Math.Min(520f, size.Y - 96f)); // TEMP
     }
 
+    /// <summary>【TEMP】第 08-52 章：圖例小框的寬上限與預設高（排好字之後依內容調整，最高 TempLegendMaxHeight）。</summary>
+    private const int TempLegendWidth = 900, TempLegendHeight = 96, TempLegendMaxHeight = 150;
+
+    private int _legendBottom;
+
+    /// <summary>第 08-52 章：圖例小框的高度跟著字的行數，底邊貼在功能列上方。</summary>
+    private void FitLegend()
+    {
+        if (_legendPanel is null || !_legendPanel.Visible)
+            return;
+        var height = Math.Clamp(_foodLegend.GetContentHeight() + 14f, 30f, TempLegendMaxHeight);
+        _legendPanel.Size = new Vector2(_legendPanel.Size.X, height);
+        _legendPanel.Position = new Vector2(_legendPanel.Position.X, Math.Max(0f, _legendBottom - height));
+    }
+
     /// <summary>由 <see cref="ApplyHudLayout"/> 呼叫：放工具列、地圖模式列與糧食圖例。</summary>
     private void PlaceToolbarRow(HudFrame frame)
     {
@@ -507,7 +551,13 @@ public partial class ObserverRoot
         Place(_toolbarPanel, frame.Toolbar, true);
         // 圖例放在功能列正上方（糧食模式才顯示）。
         var showLegend = true; // 第 08-18i 章：每個模式都有圖例（至少寫出目前是哪個模式）
-        Place(_foodLegend, new HudRect(frame.Toolbar.X, Math.Max(0, frame.Toolbar.Y - 32), Math.Max(frame.Toolbar.Width, 1), 28), showLegend);
+        // 第 08-52 章：放在功能列上方、詳情面板右邊（不壓到左邊的聚落頁），寬到右側面板為止；高度依內容（FitLegend）。
+        var left = _detailOpen ? Math.Max(frame.Toolbar.X, frame.Detail.X + frame.Detail.Width + 8) : frame.Toolbar.X;
+        var right = _rightView != RightView.None ? frame.Console.X - 8 : (int)_hud.Size.X - 8;
+        var legendWidth = Math.Max(1, Math.Min(TempLegendWidth, right - left));
+        _legendBottom = Math.Max(0, frame.Toolbar.Y - 4);
+        Place(_legendPanel, new HudRect(left, Math.Max(0, _legendBottom - TempLegendHeight), legendWidth, TempLegendHeight), showLegend);
+        Callable.From(FitLegend).CallDeferred();
         SizeModal();
     }
 
