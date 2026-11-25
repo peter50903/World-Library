@@ -91,7 +91,10 @@ public partial class ObserverRoot
     {
         if (_outlinerRows is null)
             return;
-        _overviewText.Text = OverviewText();
+        var overviewText = OverviewText();
+        if (_overviewText.Text != overviewText)
+            _overviewText.Text = overviewText;
+        Part("O_Overview"); // 第 08-52 章：清單拆開量
         var entries = OutlinerEntries();
         var signature = string.Join("|", entries.Select(e => $"{e.Id},{e.Population},{e.Food}"));
         if (signature == _outlinerSignature)
@@ -113,14 +116,19 @@ public partial class ObserverRoot
                 row.TooltipText = $"聚落 #{entry.Id}：點一下地圖置中並開詳情";
                 if (line.GetChild(0) is ColorRect swatch)
                     swatch.Color = DemoHexMap.FoodStatusColor(entry.Food);
-                row.Text = ruinNow[i] ? entry.Name : string.Create(CultureInfo.InvariantCulture, $"{entry.Name}　人口 {entry.Population}");
+                var text = ruinNow[i] ? entry.Name : string.Create(CultureInfo.InvariantCulture, $"{entry.Name}　人口 {entry.Population}");
+                if (row.Text != text)
+                    row.Text = text;
                 if (ink)
                 {
+                    // 第 08-52 章：顏色沒變就不再設（每設一次主題覆寫，整列都要重新排版）。
                     var color = entry.Food == FoodStatus.Starving ? new Color(0.70f, 0.12f, 0.10f) : TempInk;
-                    foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
-                        row.AddThemeColorOverride(state, color);
+                    if (!row.HasThemeColorOverride("font_color") || row.GetThemeColor("font_color") != color)
+                        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
+                            row.AddThemeColorOverride(state, color);
                 }
             }
+            Part("O_Rows");
             return;
         }
         _outlinerRuins = ruinNow;

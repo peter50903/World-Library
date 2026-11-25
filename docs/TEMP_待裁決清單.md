@@ -676,7 +676,7 @@
 | `src/WorldSimulation.Core/Config/OfficialConfig.cs` | 4 | 第 02 章 b 節：config/demo 的 TEMP 設定雜湊與 29 表【TEMP】列計數（只計數，不是待裁決值） |
 | `src/WorldSimulation.Core/Config/TunableParameterRegistry.cs` | 4 | 第 02 章 b 節：辨識 29 表說明開頭【TEMP】的暫定參數（只標示，不是待裁決值） |
 | `godot/Scripts/ObserverRoot.MajorEventAlert.cs` | 5 | #95 重大事件種類（TEMP，待裁決）；第 08-3 章快轉每幀時間預算與面板刷新間隔 |
-| `godot/Scripts/DemoHexMap.cs` | 9 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度；第 08-25 章舊像素地圖移除後只剩政治地圖的縮放與配色 |
+| `godot/Scripts/DemoHexMap.cs` | 10 | D9；第 05 章 b 節糧食狀況地圖配色；第 06-1 章海洋與河流、淺灘；第 08-10a 章 V2 家系配色與聚落圖示大小；第 08-10a 章 V4 知識模式配色；第 08-11 章格線不透明度與線寬；第 08-13 章圖塊取樣內縮與外擴、天災外觀染色、大地圖開場每格像素與最大格像素 ；森林聚落空地開發度；第 08-25 章舊像素地圖移除後只剩政治地圖的縮放與配色；第 08-52 章滾輪後 0.4 秒內算在移動畫面 |
 | `godot/Scripts/DemoHexMap.Shared.cs` | 3 | 第 08-25 章：舊地圖移除後搬來的音效音量與間隔、有東西在動時的重畫間隔（原第 08-16、09-1e 章）；第 08-28 章軍隊棋子大小 30 像素、行軍 2.6 秒 |
 | `godot/Scripts/PlaybackClock.cs` | 7 | 第 3 節 #87 播放速度 |
 | `src/WorldSimulation.Core/World/Demo/DemoEventFilter.cs` | 2 | 第 3 節 #96 歷史篩選畫面預設 |
