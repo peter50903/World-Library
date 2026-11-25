@@ -231,6 +231,85 @@ public static class DemoKnowledge
         return p;
     }
 
+    /// <summary>
+    /// 【TEMP】第 08-43 章（使用者 2026-11-25：地形會影響勢力的科技發展——靠海、河的地方捕魚、造船、航行較快，靠山的地方冶鐵、打獵較快，諸如此類）：
+    /// 聚落本格與周圍一格的地形讓相應技術的從業者與專家研究點增加：
+    /// 靠水（河、湖、海）→漁撈、造船、航行、陶瓷；靠海再加航行與鹽漬；靠山（丘陵）→採礦冶金、狩獵、石造；
+    /// 靠森林→木工、藥學、皮革；靠草原→作物、畜牧、紡織。同一項技術符合幾種地形都只算一次（取 <see cref="TempTerrainResearchPercent"/>）。
+    /// </summary>
+    public const int TempTerrainResearchPercent = 30, TempSeaResearchPercent = 20;
+
+    /// <summary>第 08-43 章：聚落周圍的地形（研究加成與詳情用）。</summary>
+    [Flags]
+    public enum TerrainSide
+    {
+        None = 0, Water = 1, Sea = 2, Hills = 4, Forest = 8, Grassland = 16
+    }
+
+    /// <summary>第 08-43 章：聚落本格與八鄰格的地形。</summary>
+    public static TerrainSide TerrainAround(DemoHexWorld map, DemoSettlement settlement)
+    {
+        ArgumentNullException.ThrowIfNull(map);
+        ArgumentNullException.ThrowIfNull(settlement);
+        var side = TerrainSide.None;
+        foreach (var c in Around(map, settlement))
+            side |= c.Terrain switch
+            {
+                DemoTerrain.Water => c.Sea ? TerrainSide.Water | TerrainSide.Sea : TerrainSide.Water,
+                DemoTerrain.Hills => TerrainSide.Hills,
+                DemoTerrain.Forest => TerrainSide.Forest,
+                DemoTerrain.Grassland => TerrainSide.Grassland,
+                _ => TerrainSide.None
+            };
+        return side;
+    }
+
+    /// <summary>第 08-43 章：這項技術受哪些地形帶動（沒有＝None）；航行（帆裝、遠洋、大型船塢）與鹽漬另外受海帶動。</summary>
+    public static TerrainSide TerrainFavours(DemoTechNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node.Domain switch
+        {
+            "HUNT" => node.Id == "TECH_NET_FISHING" ? TerrainSide.Water
+                : node.Id is "TECH_HUNTING" or "TECH_ARCHERY" or "TECH_WATCH_AND_HUNT" ? TerrainSide.Hills : TerrainSide.None,
+            "10E" => node.Branch == "造船" ? TerrainSide.Water : node.Branch == "木工" ? TerrainSide.Forest : TerrainSide.None,
+            "10C" => TerrainSide.Hills,
+            "10D" => node.Branch == "石造" ? TerrainSide.Hills : TerrainSide.None,
+            "10L" => node.Branch == "陶瓷" ? TerrainSide.Water : TerrainSide.None,
+            "10H" => node.Branch == "藥學" ? TerrainSide.Forest : TerrainSide.None,
+            "10F" => node.Branch is "皮革" or "皮革裝備" ? TerrainSide.Forest : node.Branch is "紡織" or "服裝" ? TerrainSide.Grassland : TerrainSide.None,
+            "10B" => TerrainSide.Grassland,
+            _ => TerrainSide.None
+        };
+    }
+
+    /// <summary>第 08-43 章：遠洋航行與鹽漬要靠海（另加 <see cref="TempSeaResearchPercent"/>）。</summary>
+    public static bool SeaFavours(DemoTechNode node)
+        => node.Id is "TECH_SAIL_RIGGING" or "TECH_OCEAN_SHIPBUILDING" or "TECH_ADVANCED_SHIPYARD" or "TECH_SALTING";
+
+    /// <summary>第 08-43 章：地形帶來的研究加成（%）。</summary>
+    public static long TerrainResearchPercent(DemoTechNode node, TerrainSide side)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        long p = (TerrainFavours(node) & side) != 0 ? TempTerrainResearchPercent : 0;
+        if (side.HasFlag(TerrainSide.Sea) && SeaFavours(node))
+            p += TempSeaResearchPercent;
+        return p;
+    }
+
+    /// <summary>第 08-43 章：詳情的一行，例如「地形：靠海、靠山——漁撈、造船、航行、陶瓷、採礦冶金、狩獵、石造發展較快」；沒有＝null。</summary>
+    public static string? TerrainLine(TerrainSide side)
+    {
+        var where = new List<string>();
+        var what = new List<string>();
+        if (side.HasFlag(TerrainSide.Water)) { where.Add(side.HasFlag(TerrainSide.Sea) ? "靠海" : "靠河湖"); what.AddRange(new[] { "漁撈", "造船", "航行", "陶瓷" }); }
+        if (side.HasFlag(TerrainSide.Sea)) what.Add("鹽漬");
+        if (side.HasFlag(TerrainSide.Hills)) { where.Add("靠山"); what.AddRange(new[] { "採礦冶鐵", "狩獵", "石造" }); }
+        if (side.HasFlag(TerrainSide.Forest)) { where.Add("靠森林"); what.AddRange(new[] { "木工", "藥學", "皮革" }); }
+        if (side.HasFlag(TerrainSide.Grassland)) { where.Add("靠草原"); what.AddRange(new[] { "農耕", "畜牧", "紡織" }); }
+        return where.Count == 0 ? null : $"地形：{string.Join("、", where)}——{string.Join("、", what)}發展較快";
+    }
+
     /// <summary>【TEMP】第 08-8 章 B2：鄰近傳播倍率（%）：守舊減半、開放加倍。</summary>
     public static long CultureDiffusionPercent(IReadOnlyCollection<string> traits)
         => traits.Contains("CT_TRADITIONAL") ? 50 : traits.Contains("CT_OPEN") ? 200 : 100;
@@ -566,6 +645,7 @@ public static class DemoKnowledge
             bool KnowsHere(string id) => state.Knows(settlement.Id, DemoTechnology.Of(id));
             var traits = cultureTraits?.Invoke(settlement.Id) ?? Array.Empty<string>(); // 第 08-8 章 B2
             var researchTraits = ResearchTraitsOf(traits);
+            var terrain = map is null ? TerrainSide.None : TerrainAround(map, settlement); // 第 08-43 章
             var diffusionPercent = CultureDiffusionPercent(traits);
             DemoPerf.Mark("知識：聚落條件");
 
@@ -597,7 +677,7 @@ public static class DemoKnowledge
                 var boostNow = !current.Boosted && node.PracticeBoostPercent > 0 && PracticeHappened(node, practice);
                 var boost = boostNow ? checked(threshold * BoostPercent(node) / 100) : 0;
                 // 第 08-14 章第 1 節：每輪累積 TempCycleWeeks 週的經驗與傳播；實踐加速與遷入帶來的經驗照原規則各算一次。
-                var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits)) / 100 // 第 08-8 章 B2
+                var gain = checked(((practitioners + experts) * (100 + CultureResearchPercent(node, researchTraits) + TerrainResearchPercent(node, terrain)) / 100 // 第 08-8 章 B2；第 08-43 章地形
                     + diffusion) * TempCycleWeeks + boost + carried * threshold * TempCarryPercent / 100) * researchPercent / 100
                     * (leaderResearchPercent?.Invoke(settlement.Id) ?? 100) / 100;
                 var progress = Math.Min(threshold, checked(current.Progress + gain));
