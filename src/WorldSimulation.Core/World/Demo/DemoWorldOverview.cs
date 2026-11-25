@@ -81,9 +81,25 @@ public sealed record DemoWorldOverview(
             Faiths = world.Culture.Faith.Faiths.Where(f => f.ExtinctWeek == 0)
                 .Select(f => (f.Name, People: active.Sum(s => world.SettlementPopulation(s.Id)
                     * (world.Culture.Faith.SharesOf(s.Id).FirstOrDefault(x => x.CultureId == f.Id)?.Permille ?? 0) / 1000)))
-                .Where(x => x.People > 0).OrderByDescending(x => x.People).ThenBy(x => x.Name, StringComparer.Ordinal).ToArray()
+                .Where(x => x.People > 0).OrderByDescending(x => x.People).ThenBy(x => x.Name, StringComparer.Ordinal).ToArray(),
+            Frontier = FrontierOf(world) // 第 08-51 章
         };
     }
+
+    /// <summary>第 08-51 章：人類與怪物的地盤（人類的勢力範圍格數、怪物佔據的格數、有怪物的巢穴與隻數、在路上的遠征軍與獸潮）。</summary>
+    public sealed record DemoFrontier(int HumanCells, int MonsterCells, int Lairs, int Monsters, int Expeditions, int Swarms);
+
+    private static DemoFrontier? FrontierOf(DemoObserverWorld world)
+    {
+        if (world.Era == DemoEra.Hope || world.Dungeons.Count == 0)
+            return null;
+        var nests = world.MonsterNests(world.CommittedWeeks).Where(n => !n.Dormant).ToList();
+        return new DemoFrontier(world.Territory().Cells.Count, nests.Sum(n => n.Cells.Count), nests.Count(n => n.Monsters > 0), nests.Sum(n => n.Monsters),
+            nests.Count(n => n.Expedition is not null), nests.Count(n => n.Swarm is not null));
+    }
+
+    /// <summary>第 08-51 章：人類與怪物的地盤（希望時代、沒有地下城＝null）。</summary>
+    public DemoFrontier? Frontier { get; init; }
 
     /// <summary>第 08-11 章：各等級的有人聚落數，依 <see cref="DemoSettlementTier"/> 順序。</summary>
     public IReadOnlyList<int> Tiers { get; init; } = Array.Empty<int>();
@@ -120,6 +136,13 @@ public sealed record DemoWorldOverview(
             lines.Add("文化：" + string.Join("、", Cultures.Take(MaxCultureLines).Select(c => c.Name)) + (Cultures.Count > MaxCultureLines ? "…" : ""));
         lines.Add(Faiths.Count == 0 ? "信仰：人人尚無信仰"
             : "信仰：" + string.Join("、", Faiths.Take(MaxCultureLines).Select(f => f.Name)) + (Faiths.Count > MaxCultureLines ? "…" : ""));
+        if (Frontier is { } f)
+        {
+            // 第 08-51 章：人類與怪物誰佔上風（地盤的比例）、正在路上的遠征與獸潮。
+            var total = f.HumanCells + f.MonsterCells;
+            lines.Add(I($"人類與怪物：人類 {f.HumanCells} 格（{(total == 0 ? 100 : f.HumanCells * 100 / total)}%）｜怪物 {f.MonsterCells} 格（{f.Lairs} 個巢穴、{f.Monsters} 隻）")
+                + (f.Expeditions + f.Swarms == 0 ? "" : I($"｜遠征 {f.Expeditions} 支、獸潮 {f.Swarms} 波在路上")));
+        }
         return lines;
     }
 

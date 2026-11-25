@@ -1614,6 +1614,13 @@ public partial class ObserverRoot : Control
         int Seed(DemoCellRef? c) => c is { } g ? g.Column * 31 + g.Row : 0;
         var nests = _world.MonsterNests(_world.CommittedWeeks);
         long MonstersAt(DemoCellRef? gate) => gate is { } g ? nests.FirstOrDefault(n => n.Dungeon.Cell == g)?.Monsters ?? 0 : 0; // 第 08-28 章：棋子上的怪物數
+        // 第 08-51 章：交戰的是哪一個地下城——看同一週同一個聚落的擊殺事件（遠征、獸潮可能來自較遠的地下城）；沒有才用最近的。
+        var lairs = _world.Dungeons.ToDictionary(d => DemoLandClearing.CellId(_world.Map, d.Cell), d => d.Cell);
+        var slainAt = reports.Where(w => w.Week >= _world.CommittedWeeks - 1).SelectMany(w => w.Events)
+            .Where(e => e.Kind == DemoSettlementEventKind.MonsterSlain)
+            .GroupBy(e => (e.Week, e.SettlementId))
+            .ToDictionary(g => g.Key, g => lairs.TryGetValue(DemoMonsters.DecodeKills(g.First().Count).CellId, out var c) ? c : (DemoCellRef?)null);
+        DemoCellRef? LairOf(DemoSettlementEvent e, DemoCellRef home) => slainAt.GetValueOrDefault((e.Week, e.SettlementId)) ?? Gate(home);
         var marks = new List<BattleMark>();
         foreach (var e in events)
         {
@@ -1621,13 +1628,19 @@ public partial class ObserverRoot : Control
                 continue;
             switch (e.Kind)
             {
-                case DemoSettlementEventKind.MonsterRaid or DemoSettlementEventKind.MonsterSwarm:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, Gate(home), e.Count, Seed(Gate(home)),
-                        e.Kind == DemoSettlementEventKind.MonsterSwarm ? $"獸潮襲擊{e.SettlementName}" : $"怪物襲擊{e.SettlementName}", MonstersAt(Gate(home))));
+                case DemoSettlementEventKind.MonsterRaid:
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, LairOf(e, home), e.Count, Seed(LairOf(e, home)),
+                        $"怪物襲擊{e.SettlementName}", MonstersAt(LairOf(e, home))));
                     break;
-                case DemoSettlementEventKind.MonsterHunt when Gate(home) is { } gate:
-                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, home, e.Count, Seed(gate), $"{e.SettlementName}出兵討伐地下城",
-                        _world.ExpeditionForceOf(e.SettlementId).Soldiers));
+                case DemoSettlementEventKind.MonsterSwarm:
+                    // 第 08-51 章：獸潮的棋子一路走過來了，到了只在聚落上畫交戰（不再從巢穴拉箭頭）。
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, home, null, e.Count, Seed(LairOf(e, home)), $"獸潮襲擊{e.SettlementName}"));
+                    break;
+                case DemoSettlementEventKind.MonsterHunt when LairOf(e, home) is { } gate:
+                    // 第 08-51 章：遠征軍守在地下城旁一層一層打，交戰畫在地下城上（不再從聚落拉箭頭）；民兵、海戰照舊。
+                    var siege = e.Cause.StartsWith("遠征軍", StringComparison.Ordinal);
+                    marks.Add(new BattleMark(e.EventId, e.Kind, e.Week, gate, siege ? null : home, e.Count, Seed(gate),
+                        siege ? $"{e.SettlementName}的遠征軍攻打地下城" : $"{e.SettlementName}出兵討伐地下城", _world.ExpeditionForceOf(e.SettlementId).Soldiers));
                     break;
                 case DemoSettlementEventKind.SecessionBattle:
                     // 上級那一筆：從上級出兵走到叛離的聚落；叛離方那一筆：守在自己的聚落。
