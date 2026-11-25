@@ -338,6 +338,10 @@ public static partial class DemoRealms
             }
             else if (fought >= TempWarMinWeeks && warScore <= TempLoseScore)
                 End($"{name(w.AttackerId)}的大軍在{name(w.TargetId)}城下敗退{score}");
+            else if (Routed(w, week, ctx))
+                End($"{name(w.AttackerId)}的大軍在野戰中被{name(w.TargetId)}的守軍擊潰，撤兵回國{score}"); // 第 08-49 章
+            else if (OutNumbered(w, ctx, lieges, alive))
+                End($"{name(w.AttackerId)}兵力不支，從{name(w.TargetId)}撤兵{score}"); // 第 08-49 章
             else if (week >= w.EndWeek)
                 End($"征服{name(w.TargetId)}的戰爭打了兩年不分勝負，{name(w.AttackerId)}與{name(w.DefenderId)}白和平{score}");
             else
@@ -433,6 +437,23 @@ public static partial class DemoRealms
             fighting.Add(king);
             fighting.Add(defender);
         }
+    }
+
+    /// <summary>第 08-49 章：野戰的下一週，攻方死傷達守方的 TempRoutPercent% 以上＝潰敗（行軍途中只有野戰的死傷）。</summary>
+    private static bool Routed(DemoWar w, int week, DemoRealmContext ctx)
+    {
+        var campaign = Campaign(w, ctx.Map, ctx.Sites);
+        return campaign.FieldWeek > 0 && week == campaign.FieldWeek + 1 && week <= w.StartWeek + campaign.MarchWeeks + 1
+            && w.AttackerLosses > 0 && w.AttackerLosses * 100 >= w.DefenderLosses * TempRoutPercent;
+    }
+
+    /// <summary>第 08-49 章：攻方兵力掉到守方（含本土加成）的 TempRetreatPercent% 以下。</summary>
+    private static bool OutNumbered(DemoWar w, DemoRealmContext ctx, IReadOnlyDictionary<int, int> lieges, Func<int, bool> alive)
+    {
+        var living = ctx.Sites.Settlements.Where(s => !s.IsRuin && alive(s.Id)).Select(s => s.Id).ToList();
+        var attack = RealmArmy(w.AttackerId, lieges, living, ctx.Residents);
+        var defend = RealmArmy(Top(w.TargetId, lieges), lieges, living, ctx.Residents) * TempHomePercent / 100;
+        return defend > 0 && attack * 100 < defend * TempRetreatPercent;
     }
 
     /// <summary>勢力頁與聚落詳情的戰爭說明（雙方與目標 → 起因 → 進展 → 損失）。</summary>
