@@ -72,6 +72,13 @@ public static partial class DemoRealms
     /// </summary>
     public const int TempStarveTimes = 2;
 
+    /// <summary>
+    /// 【TEMP】第 08-49 章（大地圖一百年驗證：55 場征服戰爭攻方贏了 51 場、敗退 0 場——會戰分數最多扣到 −40，敗退門檻 −60 永遠到不了）：
+    /// 野戰攻方死傷達守方的 <see cref="TempRoutPercent"/>% 以上＝大軍潰敗，撤兵回國；
+    /// 打仗途中攻方兵力掉到守方（含本土加成）的 <see cref="TempRetreatPercent"/>% 以下就撤兵。
+    /// </summary>
+    public const int TempRoutPercent = 150, TempRetreatPercent = 70;
+
     /// <summary>第 08-45 章：這場戰爭的行軍（沒有地圖或找不到雙方＝<see cref="DemoCampaign.None"/>）。</summary>
     public static DemoCampaign Campaign(DemoWar war, DemoHexWorld? map, DemoWorldSites sites)
     {

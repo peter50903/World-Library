@@ -111,6 +111,42 @@ public sealed class DemoCampaignTests
     }
 
     [Fact]
+    public void ARoutedOrOutnumberedArmyGoesHome()
+    {
+        // 第 08-49 章：野戰攻方死傷達守方 150% 以上＝潰敗撤兵；兵力掉到守方（含本土加成）70% 以下也撤兵。
+        var world = World.Value;
+        var (map, sites) = (world.Map, world.Sites);
+        var alive = sites.Settlements.Where(s => !s.IsRuin).OrderBy(s => s.Id).ToList();
+        DemoCellRef At(DemoSettlement s) => new(s.Column, s.Row);
+        var (a, c) = alive.SelectMany(x => alive.Where(y => y.Id != x.Id).Select(y => (x, y)))
+            .First(p => DemoRealms.WarRoute(map, At(p.x), At(p.y)).Count - 1 >= 3 * DemoRealms.TempMarchCellsPerWeek);
+        IReadOnlyList<DemoSettlementEvent> Advance(DemoRealms.Fold fold, int week, Func<int, long> residents, DemoHexWorld? withMap)
+            => DemoRealms.Advance(week, TimeSpan.FromDays(week * 7), fold,
+                new DemoRealmContext(sites, residents, _ => 1, _ => null, id => id == a.Id ? DemoSettlementTier.City : DemoSettlementTier.Village, _ => false) { Map = withMap },
+                new Dictionary<int, int>(), RngRegistry.Create(3), false, week * 100 + 50, conquestEra: false, wars: false);
+        long Even(int id) => id == a.Id || id == c.Id ? 300 : 0;
+
+        var routed = new DemoRealms.Fold();
+        routed.Apply(Ev(5, a.Id, DemoSettlementEventKind.WarDeclared, c.Id));
+        var field = DemoRealms.Campaign(routed.Wars[a.Id], map, sites).FieldWeek;
+        routed.Apply(Ev(field, a.Id, DemoSettlementEventKind.ConquestBattle, 30));
+        routed.Apply(Ev(field, c.Id, DemoSettlementEventKind.ConquestBattle, 10));
+        var end = Assert.Single(Advance(routed, field + 1, Even, map), e => e.Kind == DemoSettlementEventKind.WarEnded);
+        Assert.Contains("野戰中被", end.Cause, StringComparison.Ordinal);
+        // 野戰打贏（或打平）就照常行軍。
+        var held = new DemoRealms.Fold();
+        held.Apply(Ev(5, a.Id, DemoSettlementEventKind.WarDeclared, c.Id));
+        held.Apply(Ev(field, a.Id, DemoSettlementEventKind.ConquestBattle, 10));
+        held.Apply(Ev(field, c.Id, DemoSettlementEventKind.ConquestBattle, 10));
+        Assert.DoesNotContain(Advance(held, field + 1, Even, map), e => e.Kind == DemoSettlementEventKind.WarEnded);
+
+        var weak = new DemoRealms.Fold();
+        weak.Apply(Ev(5, a.Id, DemoSettlementEventKind.WarDeclared, c.Id));
+        var retreat = Assert.Single(Advance(weak, 6, id => id == a.Id ? 100 : id == c.Id ? 200 : 0, null), e => e.Kind == DemoSettlementEventKind.WarEnded);
+        Assert.Contains("兵力不支", retreat.Cause, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AfterTheTargetFallsTheArmyOccupiesNearbyHoldingsForWarScore()
     {
         var world = World.Value;
