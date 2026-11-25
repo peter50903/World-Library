@@ -10,8 +10,8 @@ namespace WorldSimulation.GodotClient;
 /// </summary>
 public partial class DemoHexMap
 {
-    /// <summary>【TEMP】每格幾像素開始畫樹（之下淡入）、樹的高度（格）、山的高度（格）。</summary>
-    private const float TempTreeCellPx = 44f, TempTreeFadePx = 16f, TempTreeHeight = 0.36f, TempMountainHeight = 0.62f;
+    /// <summary>【TEMP】每格幾像素畫滿樹（往下 16 像素內淡入；中距離是勢力層，不畫）、樹的高度（格）、山的高度（格）。</summary>
+    private const float TempTreeCellPx = 60f, TempTreeFadePx = 16f, TempTreeHeight = 0.36f, TempMountainHeight = 0.62f;
 
     /// <summary>第 08-56 章：第十四批的山、丘、灌木素材都到了沒（到了就不再由著色器畫山形）。</summary>
     private bool CloseupArt => PixelParts.Texture("b14_mtn_1") is not null && PixelParts.Texture("b14_hill_1") is not null;

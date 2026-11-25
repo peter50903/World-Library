@@ -129,6 +129,50 @@ public partial class DemoHexMap
                 queue.Enqueue(next);
             }
         }
+        // 第 08-56 章：河格連成一大片時（沼澤、河網）會畫出一格一格的方圈——只留一棵樹（從河口往上游走到的最短路），
+        // 再剪掉從分岔點長出來不到 3 格的短枝，留下主河道。
+        var tree = new Dictionary<Vector2I, List<Vector2I>>();
+        foreach (var cell in links.Keys)
+            tree[cell] = new List<Vector2I>();
+        var seen = new HashSet<Vector2I>();
+        foreach (var root in mouths.Keys.OrderBy(k => k.Y).ThenBy(k => k.X).Concat(links.Keys.OrderBy(k => k.Y).ThenBy(k => k.X)))
+        {
+            if (!seen.Add(root))
+                continue;
+            var walk = new Queue<Vector2I>();
+            walk.Enqueue(root);
+            while (walk.Count > 0)
+            {
+                var at = walk.Dequeue();
+                foreach (var next in links[at].OrderBy(n => Math.Abs(n.X - at.X) + Math.Abs(n.Y - at.Y)).ThenBy(n => n.Y).ThenBy(n => n.X))
+                    if (seen.Add(next))
+                    {
+                        tree[at].Add(next);
+                        tree[next].Add(at);
+                        walk.Enqueue(next);
+                    }
+            }
+        }
+        for (var pass = 0; pass < 2; pass++)
+            foreach (var leaf in tree.Keys.Where(k => tree[k].Count == 1 && !mouths.ContainsKey(k)).ToList())
+            {
+                var spur = new List<Vector2I> { leaf };
+                var (prev, cur) = (leaf, tree[leaf][0]);
+                while (tree[cur].Count == 2 && spur.Count < 3)
+                {
+                    spur.Add(cur);
+                    var next = tree[cur][0] == prev ? tree[cur][1] : tree[cur][0];
+                    (prev, cur) = (cur, next);
+                }
+                if (tree[cur].Count >= 3 && spur.Count < 3)
+                    foreach (var dead in spur)
+                    {
+                        foreach (var n in tree[dead])
+                            tree[n].Remove(dead);
+                        tree[dead].Clear();
+                    }
+            }
+        links = tree.Where(kv => kv.Value.Count > 0 || mouths.ContainsKey(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
         float WidthOf(Vector2I cell) => Mathf.Lerp(1f, TempRiverNarrow, Mathf.Clamp(steps.GetValueOrDefault(cell, (int)TempRiverFullSteps) / TempRiverFullSteps, 0f, 1f));
         // 串成河段：從分岔點、端點出發走到下一個分岔點或端點；剩下的是環。
         var used = new HashSet<(Vector2I, Vector2I)>();
