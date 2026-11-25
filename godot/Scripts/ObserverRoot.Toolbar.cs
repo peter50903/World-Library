@@ -208,7 +208,7 @@ public partial class ObserverRoot
         switch (parts[0])
         {
             case "culture": ShowBeliefDetail(false, id); break;
-            case "faith": ShowBeliefDetail(true, id); break;
+            case "faith": OpenFaith(id); break; // 第 08-55 章：信仰視窗
             case "realm": ShowRealmDetail(id); break;
             case "site" when _world.Sites.Settlements.FirstOrDefault(s => s.Id == id) is { } site:
                 _hexMap.FocusCell(_world.Map.GetCell(site.Column, site.Row));
@@ -297,6 +297,10 @@ public partial class ObserverRoot
         var war = ToolButton("res://assets/ui/ui_icon_war.png", "戰爭", "戰爭總覽：進行中的征服戰爭——雙方、目標、戰況、戰爭分數、會戰與佔領；最近結束的戰爭");
         war.Pressed += () => ToggleModal("war");
         row.AddChild(war);
+        // 第 08-55 章：信仰視窗（參考 CK3 的信仰介面；圖示 UI_ICON_FAITH 交件前顯示文字）。
+        var faithWindow = ToolButton("res://assets/ui/ui_icon_faith.png", "信仰", "信仰：全世界的信仰依家族排列——符號、顏色、信徒、聖地在誰手裡、信條與教義、歷史");
+        faithWindow.Pressed += () => ToggleModal("faith");
+        row.AddChild(faithWindow);
         // 第 08-3 章：開發資訊（原右側世界控制台：狀態、帳目、診斷、逐日推進、週結算文字）。
         _toolDev = ToolButton(ArtAssets.UiDev, "開發", "開發資訊：世界狀態、本週帳目、糧食診斷、逐日推進與週結算文字（開發用）");
         _toolDev.Pressed += () => ToggleModal("dev");
@@ -320,6 +324,7 @@ public partial class ObserverRoot
         BuildModalHost();
         BuildHoldingPage(); // 第 08-33 章：領地大圖（從聚落詳情打開）
         BuildWarPage(); // 第 08-47 章：戰爭總覽
+        BuildFaithPage(); // 第 08-55 章：信仰視窗
         AddModalPage("scenario", "情境與新世界", scenarioPage);
         AddModalPage("save", "存檔／讀檔", savePage);
         AddModalPage("chart", "年度圖表", BuildYearChartPage());
@@ -420,6 +425,8 @@ public partial class ObserverRoot
             RefreshLaws();
         if (key == "war")
             RefreshWarWindow(); // 第 08-47 章
+        if (key == "faith")
+            RefreshFaithWindow(); // 第 08-55 章
     }
 
     /// <summary>第 08-19c 章：世界法則頁（每條法則一個勾選框；改了從下一個結算週起生效）。</summary>
@@ -524,6 +531,14 @@ public partial class ObserverRoot
             var panel = new Vector2(Math.Min(TempHoldingWindowWidth, size.X - 32f), Math.Min(TempHoldingWindowHeight, size.Y - 64f));
             _modalPanel.CustomMinimumSize = panel;
             _holdingPage.CustomMinimumSize = new Vector2(0, Math.Max(200f, panel.Y - 80f));
+            return;
+        }
+        if (_modalOpen == "faith")
+        {
+            // 第 08-55 章：左右兩欄各自捲動，頁面要給定高度。
+            var panel = new Vector2(Math.Min(TempFaithWindowWidth, size.X - 32f), Math.Min(TempFaithWindowHeight, size.Y - 64f));
+            _modalPanel.CustomMinimumSize = panel;
+            _faithPage.CustomMinimumSize = new Vector2(0, Math.Max(240f, panel.Y - 80f));
             return;
         }
         if (_modalOpen == "war")

@@ -212,7 +212,7 @@ public partial class ObserverRoot : Control
         _hexMap.RealmSelected += ShowRealmDetail; // 試玩回饋 2026-11-07 之 2、4：遠看點到勢力
         _hexMap.WarSelected += ShowWarDetail; // 第 08-52 章：點到軍隊、圍城、比分條看戰況
         _hexMap.CultureSelected += id => ShowBeliefDetail(false, id);
-        _hexMap.FaithSelected += id => ShowBeliefDetail(true, id);
+        _hexMap.FaithSelected += id => OpenFaith(id); // 第 08-55 章：信仰模式點到信仰＝打開信仰視窗（CK3）
         mapPanel.AddChild(_hexMap);
 
         _hud = new Control { MouseFilter = MouseFilterEnum.Ignore };
@@ -1481,6 +1481,7 @@ public partial class ObserverRoot : Control
         }
         RefreshHoldingIfOpen(); // 第 08-33 章：領地大圖開著時每週更新
         RefreshWarIfOpen(); // 第 08-47 章：戰爭總覽開著時每週更新
+        RefreshFaithIfOpen(); // 第 08-55 章：信仰視窗開著時每週更新
         _status.Text =
             // #81: scenario and actual seed always visible; always marked TEMP, never "official".
             $"目前情境：【TEMP 示範】{_world.TempScenarioDisplayName}（非正式規則）\n" +

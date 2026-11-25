@@ -470,7 +470,7 @@ public partial class ObserverRoot
             if (_hexMap.CultureOf.TryGetValue(h, out var culture))
                 crumbs.Add(($"文化：{_hexMap.CultureNames.GetValueOrDefault(culture, $"#{culture}")}", () => ShowBeliefDetail(false, culture)));
             if (_hexMap.FaithOf.TryGetValue(h, out var faith))
-                crumbs.Add(($"信仰：{_hexMap.FaithNames.GetValueOrDefault(faith, $"#{faith}")}", () => ShowBeliefDetail(true, faith)));
+                crumbs.Add(($"信仰：{_hexMap.FaithNames.GetValueOrDefault(faith, $"#{faith}")}", () => OpenFaith(faith))); // 第 08-55 章
         }
         SetCrumbs(crumbs);
     }
@@ -1021,7 +1021,7 @@ public partial class ObserverRoot
         {
             var id = tab.FaithId;
             var link = new Button { Text = $"信仰：{faith.Name} ▸", Flat = true, TooltipText = "查看這個信仰的信條、信徒與歷史" };
-            link.Pressed += () => ShowBeliefDetail(true, id);
+            link.Pressed += () => OpenFaith(id); // 第 08-55 章：信仰視窗
             links.AddChild(link);
         }
         if (icons.GetChildCount() == 0 && links.GetChildCount() == 0)
@@ -1384,6 +1384,7 @@ public partial class ObserverRoot
         var toolbar = VerifyToolbarSmoke(Fail, PressKey);
         GD.Print($"WORLD_SIM_HOLDING_OK: {VerifyHoldingSmoke(Fail)}"); // 第 08-33 章：領地面板
         VerifyWarSmoke(Fail); // 第 08-47 章：戰爭總覽
+        VerifyFaithSmoke(Fail); // 第 08-55 章：信仰視窗
         VerifyContrastSmoke(Fail); // 第 08-48 章：文字與底色的對比
 
         if (_world.ExportTempSave() != before)

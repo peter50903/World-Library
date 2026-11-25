@@ -24,6 +24,16 @@ public partial class DemoHexMap
     /// <summary>【TEMP】分裂出來的信仰每一代色相偏多少、明度變多少。</summary>
     private const float TempSchismHueStep = 0.035f, TempSchismValueStep = 0.16f;
 
+    /// <summary>第 08-55 章：從信仰視窗「在地圖上看」——框起這個信仰的範圍、聖地閃動（鏡頭不動）。</summary>
+    public void SelectFaith(int faithId)
+    {
+        var holy = HolySiteFaiths.FirstOrDefault(kv => kv.Value == faithId).Key;
+        Highlight = holy != 0 && SiteCell(holy) is { } cell ? (cell.Column, cell.Row) : null;
+        _selectedFaith = faithId; // 要在 Highlight 之後（換框選會清掉選到的信仰）
+        _areaPick = null;
+        QueueRedraw();
+    }
+
     /// <summary>信仰的源頭與第幾代（最多追 8 代）。</summary>
     private (int Root, int Depth) FaithRoot(int faithId)
     {
