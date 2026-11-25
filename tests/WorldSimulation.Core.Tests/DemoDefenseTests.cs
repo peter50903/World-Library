@@ -71,12 +71,14 @@ public sealed class DemoDefenseTests
         var walls = DemoDefense.Of(Holding(B(1, DemoBuildings.WallWood), B(2, DemoBuildings.GateWood)));
         DemoDisasterStrike? Swarm(Func<int, DemoDefense>? defense)
         {
+            var current = full;
             for (var week = 1; week <= 400; week++)
             {
-                var p = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 10, new[] { full }, new HashSet<int>(), RngRegistry.Create(11),
+                var p = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 10, new[] { current }, new HashSet<int>(), RngRegistry.Create(11),
                     tierOf: _ => DemoSettlementTier.Village, age: DemoAge.Dark, lastStand: 0, defense: defense);
                 if (p.Strikes.Values.FirstOrDefault(s => s.Kind == DemoSettlementEventKind.MonsterSwarm) is { } hit)
                     return hit;
+                current = MonsterTrips.After(current, p, week); // 第 08-50 章：獸潮先出巢
             }
             return null;
         }

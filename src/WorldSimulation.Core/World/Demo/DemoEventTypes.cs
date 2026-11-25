@@ -77,7 +77,10 @@ public static class DemoEventTypes
         [DemoSettlementEventKind.FaithSchism] = new("TEMP_EV_FAITH_SCHISM", "異端分裂", CauseRootCategory.Culture), // 第 08-22d 章
         [DemoSettlementEventKind.FaithConverted] = new("TEMP_EV_FAITH_CONVERTED", "改宗", CauseRootCategory.Culture), // 第 08-22g 章
         [DemoSettlementEventKind.BuildingCompleted] = new("TEMP_EV_BUILDING_COMPLETED", "建成", CauseRootCategory.Resource), // 第 08-35 章
-        [DemoSettlementEventKind.BuildingRuined] = new("TEMP_EV_BUILDING_RUINED", "建築毀損", CauseRootCategory.Disaster)
+        [DemoSettlementEventKind.BuildingRuined] = new("TEMP_EV_BUILDING_RUINED", "建築毀損", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.ExpeditionSetOut] = new("TEMP_EV_EXPEDITION_SET_OUT", "遠征出發", CauseRootCategory.Disaster), // 第 08-50 章
+        [DemoSettlementEventKind.SwarmSetOut] = new("TEMP_EV_SWARM_SET_OUT", "獸潮出巢", CauseRootCategory.Disaster),
+        [DemoSettlementEventKind.ExpeditionReturned] = new("TEMP_EV_EXPEDITION_RETURNED", "遠征撤回", CauseRootCategory.Disaster)
     };
 
     private static readonly HashSet<string> Known = ByKind.Values.Select(e => e.TypeId).ToHashSet(StringComparer.Ordinal);

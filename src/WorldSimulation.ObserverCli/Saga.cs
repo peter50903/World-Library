@@ -54,7 +54,28 @@ public static class Saga
         output.WriteLine();
         output.WriteLine("人類與怪物消長：" + balance.Line(seed, size));
         output.WriteLine("海與戰爭：" + SeaAndWar(world, blockedLaneYears));
+        output.WriteLine("遠征與獸潮：" + Expeditions(world));
         return 0;
+    }
+
+    /// <summary>
+    /// 第 08-50 章：大地圖驗證用的一行——遠征出發、殺光、撤回與攻打的層數，獸潮出巢與真的打到的次數、攻破幾個聚落。
+    /// </summary>
+    private static string Expeditions(DemoObserverWorld world)
+    {
+        var events = world.SettlementEvents();
+        var setOut = events.Count(e => e.Kind == DemoSettlementEventKind.ExpeditionSetOut);
+        var returned = events.Count(e => e.Kind == DemoSettlementEventKind.ExpeditionReturned);
+        var repelled = events.Count(e => e.Kind == DemoSettlementEventKind.ExpeditionReturned && e.Cause.Contains("攻不下", StringComparison.Ordinal));
+        var assaults = events.Count(e => e.Kind == DemoSettlementEventKind.MonsterHunt && e.Cause.StartsWith("遠征軍", StringComparison.Ordinal));
+        var cleared = events.Count(e => e.Kind == DemoSettlementEventKind.DungeonCleared);
+        var waves = events.Count(e => e.Kind == DemoSettlementEventKind.SwarmSetOut);
+        var struck = events.Count(e => e.Kind == DemoSettlementEventKind.MonsterSwarm);
+        var broken = events.Count(e => e.Kind == DemoSettlementEventKind.MonsterSwarm && e.Cause.Contains("攻破", StringComparison.Ordinal));
+        var slain = events.Where(e => e.Kind == DemoSettlementEventKind.MonsterSlain).Sum(e => DemoMonsters.DecodeKills(e.Count).Kills);
+        return string.Create(CultureInfo.InvariantCulture,
+            $"遠征出發 {setOut} 次、攻打 {assaults} 層、撤回 {returned}（攻不下 {repelled}）｜地下城殺光 {cleared} 次｜獸潮出巢 {waves} 次、打到 {struck} 次、攻破 {broken} 個"
+            + $"｜歷年殺死怪物 {slain} 隻");
     }
 
     /// <summary>

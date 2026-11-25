@@ -133,15 +133,17 @@ public sealed class DemoMonsterTests
         DemoDisasterStrike? Swarm(DemoMonsterNest nest, DemoSettlementTier tier, int weeks, out DemoMonsters.Plan? plan, int lastStand = 0)
         {
             plan = null;
+            var current = nest;
             for (var week = 1; week <= weeks; week++)
             {
-                var p = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 10, new[] { nest }, new HashSet<int>(), RngRegistry.Create(11),
+                var p = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 10, new[] { current }, new HashSet<int>(), RngRegistry.Create(11),
                     tierOf: _ => tier, age: DemoAge.Dark, lastStand: lastStand);
                 if (p.Strikes.Values.FirstOrDefault(s => s.Kind == DemoSettlementEventKind.MonsterSwarm) is { } hit)
                 {
                     plan = p;
                     return hit;
                 }
+                current = MonsterTrips.After(current, p, week); // 第 08-50 章：獸潮先出巢、到了才打
             }
             return null;
         }
@@ -205,7 +207,7 @@ public sealed class DemoMonsterTests
                 hunts++;
             }
             cleared = plan.Cleared.Count == 1;
-            current = current with { Monsters = Math.Max(0, current.Monsters - plan.Kills.Sum(k => k.Kills)) }; // 擊殺照事件扣掉
+            current = MonsterTrips.After(current with { Monsters = Math.Max(0, current.Monsters - plan.Kills.Sum(k => k.Kills)) }, plan, week); // 擊殺照事件扣掉；第 08-50 章：遠征
         }
         Assert.True(hunts > 0);
         Assert.True(cleared);
@@ -281,7 +283,11 @@ public sealed class DemoMonsterTests
         var rng = RngRegistry.Create(8);
         var cleared = false;
         for (var week = 1; week <= 300 && !cleared; week++)
-            cleared = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 120, new[] { nest }, new HashSet<int>(), rng, _ => heroes).Cleared.Count == 1;
+        {
+            var plan = DemoMonsters.Roll(week, DemoEra.Pioneer, world.Map, world.Sites, _ => 120, new[] { nest }, new HashSet<int>(), rng, _ => heroes);
+            cleared = plan.Cleared.Count == 1;
+            nest = MonsterTrips.After(nest, plan, week); // 第 08-50 章：遠征軍先出發、到了才攻
+        }
         Assert.True(cleared);
     }
 
