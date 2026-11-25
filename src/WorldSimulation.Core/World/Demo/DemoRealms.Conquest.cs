@@ -23,6 +23,12 @@ public sealed record DemoWar(int AttackerId, int DefenderId, int TargetId, int S
     public string Cause { get; init; } = "";
 
     public bool WholeRealm => TargetId == DefenderId;
+
+    /// <summary>第 08-45 章：攻下戰爭目標之後又佔領的守方聚落（依佔領先後）；戰爭結束就歸還（只割讓戰爭目標）。</summary>
+    public IReadOnlyList<int> Holdings { get; init; } = Array.Empty<int>();
+
+    /// <summary>第 08-45 章：最近一次攻陷（戰爭目標或其他聚落）的週次；下一座從這週開始圍。</summary>
+    public int LastOccupiedWeek { get; init; }
 }
 
 /// <summary>
@@ -83,7 +89,7 @@ public static partial class DemoRealms
     {
         ArgumentNullException.ThrowIfNull(war);
         var occupation = war.Occupied ? TempOccupyScore + Math.Min(TempTickMax, Math.Max(0, week - war.OccupiedWeek) * TempTickScore) : 0;
-        return Math.Clamp(BattleScore(war) + occupation, -100, 100);
+        return Math.Clamp(BattleScore(war) + occupation + war.Holdings.Count * TempHoldingScore, -100, 100); // 第 08-45 章：每多佔一座
     }
 
     /// <summary>
@@ -136,13 +142,15 @@ public static partial class DemoRealms
                     {
                         if (id == attacker)
                             _wars[attacker] = w with { AttackerLosses = w.AttackerLosses + e.Count };
-                        else if (id == w.TargetId)
+                        else if (id == w.TargetId || w.Holdings.Contains(id) || Top(id, _liege) == w.DefenderId) // 第 08-45 章：圍攻守方的其他聚落
                             _wars[attacker] = w with { DefenderLosses = w.DefenderLosses + e.Count };
                     }
                     break;
                 case DemoSettlementEventKind.Occupied: // 第 08-22a 章：攻方攻陷戰爭目標，之後每週加分
                     if (_wars.TryGetValue((int)e.Count, out var sieged) && sieged.TargetId == id && !sieged.Occupied)
-                        _wars[(int)e.Count] = sieged with { OccupiedWeek = e.Week };
+                        _wars[(int)e.Count] = sieged with { OccupiedWeek = e.Week, LastOccupiedWeek = e.Week };
+                    else if (sieged is not null && sieged.TargetId != id && !sieged.Holdings.Contains(id)) // 第 08-45 章：又佔領一座
+                        _wars[(int)e.Count] = sieged with { Holdings = sieged.Holdings.Append(id).ToArray(), LastOccupiedWeek = e.Week };
                     break;
                 case DemoSettlementEventKind.Conquered:
                     // 第 08-22e 章：原本屬於別的勢力（不是自己獨立）就記下來，原本的勢力之後可以收復。
@@ -243,32 +251,54 @@ public static partial class DemoRealms
             return;
         string Name(int id) => sites.Settlements.FirstOrDefault(s => s.Id == id)?.Name ?? $"#{id}";
         var alive = sites.Settlements.Where(s => !s.IsRuin && residents(s.Id) > 0).Select(s => s.Id).ToList();
+        var living = alive.ToHashSet();
         foreach (var w in fold.Wars.Values.Where(x => week > x.StartWeek && week <= x.EndWeek).OrderBy(x => x.AttackerId))
         {
             var attack = RealmArmy(w.AttackerId, fold.Liege, alive, residents);
             var defend = RealmArmy(Top(w.TargetId, fold.Liege), fold.Liege, alive, residents) * TempHomePercent / 100;
             long Deaths(long enemy, long here, int k) => WarDeaths(enemy, here, Draw(rng, week, w.AttackerId, k)); // 第 08-19h 章
-            var (terrain, note) = BattleTerrain(map, sites.Settlements.FirstOrDefault(s => s.Id == w.AttackerId), sites.Settlements.FirstOrDefault(s => s.Id == w.TargetId)); // 第 08-22b 章
+            // 第 08-45 章：行軍——還沒到城下就不交戰；守方兵力夠時出城，在半路打一場野戰。
+            var campaign = Campaign(w, map, sites);
+            if (week <= w.StartWeek + campaign.MarchWeeks)
+            {
+                if (week == campaign.FieldWeek && defend * 100 >= attack * TempSallyPercent
+                    && !taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0
+                    && !taken.Contains(w.AttackerId) && !strikes.ContainsKey(w.AttackerId) && residents(w.AttackerId) > 0)
+                {
+                    var at = campaign.FieldAt;
+                    var (field, fieldNote) = BattleTerrain(map, sites.Settlements.FirstOrDefault(s => s.Id == w.AttackerId), new DemoSettlement(0, "", at.Column, at.Row));
+                    strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
+                        Deaths(attack * field / 100 * TempFieldBattlePercent / 100, residents(w.TargetId), 8),
+                        $"野戰：{Name(w.TargetId)}的守軍出城，在 ({at.Column},{at.Row}) 迎擊{Name(w.AttackerId)}的大軍{fieldNote}");
+                    strikes[w.AttackerId] = new DemoDisasterStrike(w.AttackerId, DemoSettlementEventKind.ConquestBattle,
+                        Deaths(defend * TempFieldBattlePercent / 100, residents(w.AttackerId), 9),
+                        $"野戰：征討{Name(w.TargetId)}的大軍行至 ({at.Column},{at.Row})，遭守軍迎擊");
+                }
+                continue;
+            }
+            // 第 08-45 章：圍攻戰爭目標；攻下後轉攻守方附近的其他聚落。
+            var besieged = NextHolding(w, sites, fold.Liege, living.Contains) is var next && next != 0 ? next : w.TargetId;
+            var (terrain, note) = BattleTerrain(map, sites.Settlements.FirstOrDefault(s => s.Id == w.AttackerId), sites.Settlements.FirstOrDefault(s => s.Id == besieged)); // 第 08-22b 章
             // 第 08-22f 章：英雄帶兵。
             var attackHero = heroOf?.Invoke(w.AttackerId);
-            var defendHero = heroOf?.Invoke(w.TargetId);
+            var defendHero = heroOf?.Invoke(besieged);
             var attackBoost = attackHero is null ? 100 : TempHeroBattlePercent;
             var defendBoost = defendHero is null ? 100 : TempHeroBattlePercent;
             // 第 08-34 章：戰爭目標的城牆讓攻方造成的死傷變少。
-            var walls = defense?.Invoke(w.TargetId) ?? new DemoDefense(0, false, 100, 0, 0, null);
+            var walls = defense?.Invoke(besieged) ?? new DemoDefense(0, false, 100, 0, 0, null);
             if (walls.Wall is not null)
             {
                 terrain = terrain * walls.WarDamagePercent / 100;
                 note = note.Length == 0 ? $"（據{walls.Wall}而守）" : note.Insert(note.Length - 1, $"、據{walls.Wall}而守");
             }
-            if (!taken.Contains(w.TargetId) && !strikes.ContainsKey(w.TargetId) && residents(w.TargetId) > 0)
-                strikes[w.TargetId] = new DemoDisasterStrike(w.TargetId, DemoSettlementEventKind.ConquestBattle,
-                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100 * attackBoost / 100, residents(w.TargetId), 6),
+            if (!taken.Contains(besieged) && !strikes.ContainsKey(besieged) && residents(besieged) > 0)
+                strikes[besieged] = new DemoDisasterStrike(besieged, DemoSettlementEventKind.ConquestBattle,
+                    Deaths(attack * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.AttackerId)) ?? DemoTrait.None) / 100 * terrain / 100 * attackBoost / 100, residents(besieged), 6),
                     $"征服戰爭：抵抗{Name(w.AttackerId)}的大軍" + (attackHero is null ? "" : $"，敵方英雄{attackHero}率軍") + (defendHero is null ? "" : $"，英雄{defendHero}領軍守城") + note);
             if (!taken.Contains(w.AttackerId) && !strikes.ContainsKey(w.AttackerId) && residents(w.AttackerId) > 0)
                 strikes[w.AttackerId] = new DemoDisasterStrike(w.AttackerId, DemoSettlementEventKind.ConquestBattle,
                     Deaths(defend * DemoTraits.BattlePercent(temper?.Invoke(fold.Seat(w.DefenderId)) ?? DemoTrait.None) / 100 * defendBoost / 100, residents(w.AttackerId), 7),
-                    $"出兵征討{Name(w.TargetId)}" + (attackHero is null ? "" : $"，英雄{attackHero}率軍") + (defendHero is null ? "" : $"，遭遇敵方英雄{defendHero}守城"));
+                    $"出兵征討{Name(besieged)}" + (attackHero is null ? "" : $"，英雄{attackHero}率軍") + (defendHero is null ? "" : $"，遭遇敵方英雄{defendHero}守城"));
         }
     }
 
@@ -304,9 +334,18 @@ public static partial class DemoRealms
             else
             {
                 // 圍城：打滿圍城週數、會戰沒有落下風，就攻陷戰爭目標（之後每週加分，CK3 的佔領）。
-                var siege = Math.Max(2, TempSiegeWeeks(ctx.Tier(w.TargetId)) + (ctx.Defense?.Invoke(w.TargetId).SiegeWeeks ?? 0)); // 第 08-34 章：城牆
-                if (!w.Occupied && fought >= siege && BattleScore(w) >= 0)
-                    add(w.TargetId, DemoSettlementEventKind.Occupied, w.AttackerId, $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {fought} 週）");
+                // 第 08-45 章：行軍到城下才開始圍；攻下目標後接著圍守方附近的其他聚落（每座從上一座攻陷的那週算起）。
+                var arrive = w.StartWeek + Campaign(w, ctx.Map, ctx.Sites).MarchWeeks;
+                var besieged = NextHolding(w, ctx.Sites, lieges, alive);
+                if (besieged != 0 && week > arrive)
+                {
+                    var since = besieged == w.TargetId ? arrive : Math.Max(arrive, w.LastOccupiedWeek);
+                    var siege = Math.Max(2, TempSiegeWeeks(ctx.Tier(besieged)) + (ctx.Defense?.Invoke(besieged).SiegeWeeks ?? 0)); // 第 08-34 章：城牆
+                    if (week - since >= siege && BattleScore(w) >= 0)
+                        add(besieged, DemoSettlementEventKind.Occupied, w.AttackerId, besieged == w.TargetId
+                            ? $"{name(w.AttackerId)}攻陷了{name(w.TargetId)}（圍城 {week - since} 週）"
+                            : $"{name(w.AttackerId)}的軍隊佔領了{name(w.DefenderId)}的{name(besieged)}（圍城 {week - since} 週）");
+                }
                 fighting.Add(w.AttackerId);
                 fighting.Add(w.DefenderId);
                 continue;

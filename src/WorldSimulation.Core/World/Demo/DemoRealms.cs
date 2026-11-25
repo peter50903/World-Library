@@ -52,6 +52,9 @@ public sealed record DemoRealmContext(
     /// <summary>第 08-34 章：聚落的城防（圍城週數依城牆增減）；沒給＝不增減（測試）。</summary>
     public Func<int, DemoDefense>? Defense { get; init; }
 
+    /// <summary>第 08-45 章：地圖（行軍路線與週數）；沒給＝不行軍，開戰下一週就在城下交戰（測試）。</summary>
+    public DemoHexWorld? Map { get; init; }
+
     /// <summary>兩個信仰的敵意（同一個＝0）。</summary>
     public int HostilityOf(int a, int b) => a == b ? 0 : FaithHostility?.Invoke(a, b) ?? 2;
 
