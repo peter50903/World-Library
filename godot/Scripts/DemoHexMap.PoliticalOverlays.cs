@@ -54,59 +54,224 @@ public partial class DemoHexMap
 
     // ── 河流 ──────────────────────────────────────────────────────────────
 
-    /// <summary>河流線段（格座標，已依扭曲對齊）；換世界才重算。</summary>
-    private List<(Vector2 A, Vector2 B, bool Mouth)>? _rivers;
+    /// <summary>
+    /// 第 08-56 章（試玩回饋 2026-11-26 第二次之 2：近看時河流醜到不行——原本是格中心之間的直線段，一折一折、粗細都一樣）：
+    /// 河流改成一條條平滑的曲線——相連的河格串成河段，角切圓（Chaikin 三次），再沿河道加一點蜿蜒；
+    /// 越靠近出海口越寬（沿河道離河口幾格）。每點記寬度比例。換世界才重算。
+    /// </summary>
+    private List<(Vector2[] Points, float[] Widths)>? _rivers;
+
+    /// <summary>【TEMP】河流：最窄與最寬的比例、幾格之後就是最窄、蜿蜒幅度（格）、切圓次數。</summary>
+    private const float TempRiverNarrow = 0.45f, TempRiverFullSteps = 24f, TempRiverMeander = 0.16f;
+    private const int TempRiverSmooth = 3;
+
+    private static float RiverNoise(float x, int seed)
+    {
+        static float H(int i, int s) => ((i * 374761393 + s * 668265263) & 0x7fffffff) % 10007 / 10007f;
+        var i0 = (int)MathF.Floor(x);
+        var f = x - i0;
+        var u = f * f * (3f - 2f * f);
+        return Mathf.Lerp(H(i0, seed), H(i0 + 1, seed), u) - 0.5f;
+    }
 
     private void EnsureRivers()
     {
         if (_rivers is not null || World is null)
             return;
         var world = World;
-        _rivers = new List<(Vector2, Vector2, bool)>();
+        _rivers = new List<(Vector2[], float[])>();
         bool River(int x, int y) => world.Contains(x, y) && DemoProvinceMap.IsRiver(world.GetCell(x, y));
         bool Sea(int x, int y) => world.Contains(x, y) && world.GetCell(x, y) is { Terrain: DemoTerrain.Water } w && !DemoProvinceMap.IsRiver(w);
-        Vector2 At(int x, int y) => Unwarp(new Vector2(x + 0.5f, y + 0.5f));
-        foreach (var cell in world.Cells)
+        Vector2 At(Vector2I c) => Unwarp(new Vector2(c.X + 0.5f, c.Y + 0.5f));
+        // 河格之間的相連（右、下直接相連；斜角只在兩邊都不是河時才連，同原本）。
+        var links = new Dictionary<Vector2I, List<Vector2I>>();
+        void Link(Vector2I a, Vector2I b)
         {
-            if (!DemoProvinceMap.IsRiver(cell))
-                continue;
+            (links.TryGetValue(a, out var la) ? la : links[a] = new List<Vector2I>()).Add(b);
+            (links.TryGetValue(b, out var lb) ? lb : links[b] = new List<Vector2I>()).Add(a);
+        }
+        foreach (var cell in world.Cells.Where(DemoProvinceMap.IsRiver))
+        {
             var (c, r) = (cell.Column, cell.Row);
-            // 右、下直接相連；斜角只在兩邊都不是河時才連（不畫出三角形）。
+            var here = new Vector2I(c, r);
+            if (!links.ContainsKey(here))
+                links[here] = new List<Vector2I>();
             if (River(c + 1, r))
-                _rivers.Add((At(c, r), At(c + 1, r), false));
+                Link(here, new Vector2I(c + 1, r));
             if (River(c, r + 1))
-                _rivers.Add((At(c, r), At(c, r + 1), false));
+                Link(here, new Vector2I(c, r + 1));
             if (River(c + 1, r + 1) && !River(c + 1, r) && !River(c, r + 1))
-                _rivers.Add((At(c, r), At(c + 1, r + 1), false));
+                Link(here, new Vector2I(c + 1, r + 1));
             if (River(c - 1, r + 1) && !River(c - 1, r) && !River(c, r + 1))
-                _rivers.Add((At(c, r), At(c - 1, r + 1), false));
-            // 河口：流到海的那一邊畫半段。
-            foreach (var (dc, dr) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
-                if (Sea(c + dc, r + dr))
-                    _rivers.Add((At(c, r), At(c, r) + new Vector2(dc, dr) * 0.6f, true));
+                Link(here, new Vector2I(c - 1, r + 1));
+        }
+        if (links.Count == 0)
+            return;
+        // 河口：靠海的河格往海那邊伸出去；沿河道算離河口幾格（越近越寬）。
+        var mouths = new Dictionary<Vector2I, Vector2>();
+        foreach (var cell in links.Keys)
+            foreach (var d in new[] { new Vector2I(1, 0), new Vector2I(-1, 0), new Vector2I(0, 1), new Vector2I(0, -1) })
+                if (Sea(cell.X + d.X, cell.Y + d.Y) && !mouths.ContainsKey(cell))
+                    mouths[cell] = At(cell) + new Vector2(d.X, d.Y) * 0.7f;
+        var steps = new Dictionary<Vector2I, int>();
+        var queue = new Queue<Vector2I>();
+        foreach (var m in mouths.Keys)
+        {
+            steps[m] = 0;
+            queue.Enqueue(m);
+        }
+        while (queue.Count > 0)
+        {
+            var at = queue.Dequeue();
+            foreach (var next in links[at].Where(n => !steps.ContainsKey(n)))
+            {
+                steps[next] = steps[at] + 1;
+                queue.Enqueue(next);
+            }
+        }
+        float WidthOf(Vector2I cell) => Mathf.Lerp(1f, TempRiverNarrow, Mathf.Clamp(steps.GetValueOrDefault(cell, (int)TempRiverFullSteps) / TempRiverFullSteps, 0f, 1f));
+        // 串成河段：從分岔點、端點出發走到下一個分岔點或端點；剩下的是環。
+        var used = new HashSet<(Vector2I, Vector2I)>();
+        bool Take(Vector2I a, Vector2I b) => used.Add((a, b)) && used.Add((b, a));
+        var chains = new List<List<Vector2I>>();
+        foreach (var start in links.Keys.Where(k => links[k].Count != 2).OrderBy(k => k.Y).ThenBy(k => k.X))
+            foreach (var first in links[start])
+            {
+                if (!Take(start, first))
+                    continue;
+                var chain = new List<Vector2I> { start, first };
+                var prev = start;
+                var cur = first;
+                while (links[cur].Count == 2)
+                {
+                    var next = links[cur][0] == prev ? links[cur][1] : links[cur][0];
+                    if (!Take(cur, next))
+                        break;
+                    chain.Add(next);
+                    (prev, cur) = (cur, next);
+                }
+                chains.Add(chain);
+            }
+        foreach (var start in links.Keys.OrderBy(k => k.Y).ThenBy(k => k.X))
+            foreach (var first in links[start])
+            {
+                if (!Take(start, first))
+                    continue;
+                var chain = new List<Vector2I> { start, first };
+                var (prev, cur) = (start, first);
+                while (true)
+                {
+                    Vector2I? next = null;
+                    foreach (var n in links[cur])
+                        if (n != prev && !used.Contains((cur, n)))
+                        {
+                            next = n;
+                            break;
+                        }
+                    if (next is not { } step || !Take(cur, step))
+                        break;
+                    chain.Add(step);
+                    (prev, cur) = (cur, step);
+                }
+                chains.Add(chain);
+            }
+        // 單獨一格的河（沒有相連）：只畫河口那一小段。
+        foreach (var lone in links.Keys.Where(k => links[k].Count == 0 && mouths.ContainsKey(k)))
+            chains.Add(new List<Vector2I> { lone });
+        var seed = 0;
+        foreach (var chain in chains)
+        {
+            seed++;
+            var points = chain.Select(At).ToList();
+            var widths = chain.Select(WidthOf).ToList();
+            if (mouths.TryGetValue(chain[^1], out var tail))
+            {
+                points.Add(tail);
+                widths.Add(widths[^1] * 1.15f);
+            }
+            if (mouths.TryGetValue(chain[0], out var head))
+            {
+                points.Insert(0, head);
+                widths.Insert(0, widths[0] * 1.15f);
+            }
+            if (points.Count < 2)
+                continue;
+            // 角切圓（端點不動）。
+            for (var k = 0; k < TempRiverSmooth; k++)
+            {
+                var p2 = new List<Vector2> { points[0] };
+                var w2 = new List<float> { widths[0] };
+                for (var i = 0; i + 1 < points.Count; i++)
+                {
+                    p2.Add(points[i].Lerp(points[i + 1], 0.25f));
+                    p2.Add(points[i].Lerp(points[i + 1], 0.75f));
+                    w2.Add(Mathf.Lerp(widths[i], widths[i + 1], 0.25f));
+                    w2.Add(Mathf.Lerp(widths[i], widths[i + 1], 0.75f));
+                }
+                p2.Add(points[^1]);
+                w2.Add(widths[^1]);
+                (points, widths) = (p2, w2);
+            }
+            // 蜿蜒：沿河道走過的長度取雜訊，往法線方向偏一點（兩端不動）。
+            var walked = 0f;
+            var bent = new Vector2[points.Count];
+            for (var i = 0; i < points.Count; i++)
+            {
+                if (i > 0)
+                    walked += points[i].DistanceTo(points[i - 1]);
+                var dir = (points[Math.Min(i + 1, points.Count - 1)] - points[Math.Max(i - 1, 0)]).Normalized();
+                var normal = new Vector2(-dir.Y, dir.X);
+                var fade = Mathf.Min(1f, Mathf.Min(i, points.Count - 1 - i) / 6f);
+                bent[i] = points[i] + normal * RiverNoise(walked * 1.3f, seed) * 2f * TempRiverMeander * fade;
+            }
+            _rivers.Add((bent, widths.ToArray()));
         }
     }
 
+    /// <summary>
+    /// 第 08-56 章：河流三層——深色河岸、藍色河水、拉近時河心一道亮光；寬度照河段每點的比例分段畫（同寬的一段用一條折線）。
+    /// </summary>
     private void DrawRivers(Vector2 origin, float cellPx)
     {
         EnsureRivers();
         if (_rivers is null || _rivers.Count == 0)
             return;
-        var width = Mathf.Clamp(cellPx * 0.085f, 1.1f, 4.6f);
-        var color = new Color(0.22f, 0.34f, 0.45f, 0.95f);
-        var core = new Color(0.36f, 0.50f, 0.60f, 0.9f);
-        var view = new Rect2(Vector2.Zero, Size).Grow(cellPx);
-        foreach (var (a, b, mouth) in _rivers)
+        var full = Mathf.Clamp(cellPx * 0.16f, 1.6f, 15f);
+        var bank = new Color(0.20f, 0.27f, 0.25f, 0.85f);
+        var water = new Color(0.33f, 0.56f, 0.70f, 1f);
+        var shine = new Color(0.66f, 0.84f, 0.92f, 0.75f);
+        var close = Mathf.Clamp((cellPx - TempMidCellPx) / (TempCloseCellPx - TempMidCellPx), 0f, 1f);
+        var view = new Rect2(Vector2.Zero, Size).Grow(cellPx * 2f);
+        foreach (var (points, widths) in _rivers)
         {
-            var pa = origin + a * cellPx;
-            var pb = origin + b * cellPx;
-            if (!view.HasPoint(pa) && !view.HasPoint(pb))
+            var screen = new Vector2[points.Length];
+            var any = false;
+            for (var i = 0; i < points.Length; i++)
+            {
+                screen[i] = origin + points[i] * cellPx;
+                any |= view.HasPoint(screen[i]);
+            }
+            if (!any)
                 continue;
-            var w = mouth ? width * 1.2f : width;
-            DrawLine(pa, pb, color, w, true);
-            DrawCircle(pa, w * 0.5f, color);
-            if (cellPx >= TempCloseCellPx)
-                DrawLine(pa, pb, core, w * 0.4f, true);
+            // 依寬度分段（量化成 6 階），每段一條折線；相鄰兩段共用一點，接縫看不出來。
+            var startAt = 0;
+            for (var i = 1; i <= screen.Length; i++)
+            {
+                var band = (int)MathF.Round(widths[startAt] * 6f);
+                if (i < screen.Length && (int)MathF.Round(widths[i] * 6f) == band && i - startAt < 64)
+                    continue;
+                var end = Math.Min(i, screen.Length - 1);
+                if (end > startAt)
+                {
+                    var run = screen[startAt..(end + 1)];
+                    var w = full * band / 6f;
+                    DrawPolyline(run, bank, w + Mathf.Max(1.2f, w * 0.45f), true);
+                    DrawPolyline(run, water, w, true);
+                    if (close > 0.01f && w > 3f)
+                        DrawPolyline(run, new Color(shine, shine.A * close), Mathf.Max(1f, w * 0.28f), true);
+                }
+                startAt = end;
+            }
         }
     }
 

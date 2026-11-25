@@ -106,8 +106,11 @@ public partial class DemoHexMap
         m.SetShaderParameter("age_tint", tint);
         m.SetShaderParameter("age_vignette", vignette);
         m.SetShaderParameter("age_shimmer", shimmer);
+        m.SetShaderParameter("sprite_trees", PixelParts.Texture("b12_n_tree_oak_1") is not null ? 1f : 0f); // 第 08-56 章
+        m.SetShaderParameter("sprite_mountains", CloseupArt ? 1f : 0f);
 
         DrawRivers(origin, cellPx);
+        DrawCloseTerrain(origin, cellPx); // 第 08-56 章：近看的樹、山、灌木
         DrawSeaLanes(origin, cellPx); // 第 08-42 章：航線
         DrawTradeLinks(origin, cellPx); // 第 08-23 章：商路
         DrawGroupLabels(origin, cellPx);

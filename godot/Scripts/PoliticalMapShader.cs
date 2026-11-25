@@ -34,6 +34,9 @@ uniform int sel_nest = 0;
 uniform vec4 age_tint = vec4(1.0, 1.0, 1.0, 0.0);
 uniform float age_vignette = 0.0;
 uniform float age_shimmer = 0.0;
+// 第 08-56 章：拉近時改用素材畫樹、畫山（1＝有素材，著色器就不畫樹叢、山形）。
+uniform float sprite_trees = 0.0;
+uniform float sprite_mountains = 0.0;
 
 varying vec2 map_pos;
 
@@ -274,14 +277,18 @@ void fragment() {
 	float fmask = smoothstep(0.30, 0.70, forest);
 	float hmask = smoothstep(0.45, 0.75, hill);
 	shade -= fmask * 0.06;
-	float sym = clamp((cell_px - 40.0) / 24.0, 0.0, 1.0);
+	float sym = clamp((cell_px - 40.0) / 24.0, 0.0, 1.0) * (1.0 - sprite_trees);
 	vec3 tr = tree_glyph(cell, 2.2);
 	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
 	shade += fmask * sym * tr.z * 0.22;
-	float msym = clamp((cell_px - 56.0) / 24.0, 0.0, 1.0);
+	float msym = clamp((cell_px - 56.0) / 24.0, 0.0, 1.0) * (1.0 - sprite_mountains);
 	vec3 mtn = mountain_glyph(cell, 0.9);
 	shade += hmask * msym * mtn.x * (mtn.y > 0.5 ? 0.18 : -0.20);
 	shade -= hmask * msym * mtn.z * 0.35;
+	// 第 08-56 章：拉近時草地有很淡的細紋與深淺斑（像草，不是迷彩：沒有硬門檻，幅度很小）。
+	float near = clamp((cell_px - 48.0) / 32.0, 0.0, 1.0) * (1.0 - fmask) * (1.0 - hmask * 0.5);
+	shade += near * ((vnoise(c * 16.0) - 0.5) * 0.05 + (vnoise(c * 4.5 + vec2(5.0, 3.0)) - 0.5) * 0.06);
+	tcol = mix(tcol, tcol * vec3(1.06, 1.03, 0.86), near * smoothstep(0.55, 0.75, vnoise(c * 0.8 + vec2(9.0, 4.0))) * 0.6);
 	vec3 ground = tcol * shade;
 	// 第 08-41 章：沙灘——陸地靠海的一窄條偏暖（丘陵、森林少一點）。
 	float beach = (1.0 - smoothstep(0.0, 0.42, -sd)) * (1.0 - is_water) * (1.0 - hill * 0.6) * (1.0 - fmask * 0.5);
