@@ -202,6 +202,29 @@ public partial class ObserverRoot
             world.AdvanceOneDay();
         Refresh();
         await Shot("6_dark_age");
+        // 第 08-51 章：人類與怪物爭地——黑暗時代再推進到有遠征軍或獸潮在路上（最多一年），拉近到行動的中途。
+        DemoMonsterNest? Front() => world.MonsterNests(world.CommittedWeeks)
+            .Where(n => n.Swarm is not null || n.Expedition is not null).OrderByDescending(n => n.Swarm is not null).ThenBy(n => n.Dungeon.EventId).FirstOrDefault();
+        var waited = 0;
+        while (Front() is null && waited < 52)
+        {
+            for (var d = 0; d < 7; d++)
+                world.AdvanceOneDay();
+            waited++;
+        }
+        if (Front() is { } front && (front.Swarm ?? front.Expedition) is { } trip
+            && world.Sites.Settlements.FirstOrDefault(s => s.Id == trip.SettlementId) is { } site)
+        {
+            Refresh();
+            var mid = new DemoCellRef((front.Dungeon.Cell.Column + site.Column) / 2, (front.Dungeon.Cell.Row + site.Row) / 2);
+            _hexMap.ZoomToCell(world.Map.GetCell(mid.Column, mid.Row), 44f);
+            GD.Print($"WORLD_SIM_MAP_SHOT: Front={(front.Swarm is not null ? "swarm" : "expedition")} Lair={front.Dungeon.Name} Site={site.Name} "
+                + $"Week={world.CommittedWeeks} Depart={trip.DepartWeek} Arrive={trip.ArriveWeek} Layers={front.Dungeon.Layers} Waited={waited}w "
+                + $"Trips={world.MonsterNests(world.CommittedWeeks).Count(n => n.Swarm is not null || n.Expedition is not null)}");
+            await Shot("12_monster_front_mid");
+        }
+        else
+            GD.Print($"WORLD_SIM_MAP_SHOT: Front=none Waited={waited}w");
         GD.Print("WORLD_SIM_MAP_SHOT_OK");
         GetTree().Quit();
     }

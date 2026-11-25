@@ -113,6 +113,7 @@ public partial class DemoHexMap
         DrawHoldings(origin, cellPx);
         DrawBattlefields(start, radius); // 第 08-46 章：野戰的戰場
         DrawWars(start, radius);
+        DrawMonsterFronts(start, radius); // 第 08-51 章：遠征軍、獸潮與地盤的變化
         DrawBattles(start, radius);
         // 第 08-31 章（使用者 2026-11-19：不要圈出正方形的地塊）：選到的勢力範圍、勢力、怪物地盤由著色器整片框起；
         // 沒有範圍可框的（遺跡、沒有地盤的地下城）在標記外圍畫一圈金環，不畫格子的方框。
@@ -605,6 +606,8 @@ public partial class DemoHexMap
             text = battle + "\n" + text;
         else if (WarTip(cell.Column, cell.Row) is { Length: > 0 } war)
             text = war + "\n" + text;
+        if (MonsterFrontTip(cell.Column, cell.Row) is { Length: > 0 } front)
+            text = front + "\n" + text; // 第 08-51 章：遠征軍、獸潮
         var meaning = ColorMeaning(home);
         _tipRows.Insert(0, (IcRealm, meaning));
         return $"{text}\n{meaning}";

@@ -19,8 +19,18 @@ public partial class DemoHexMap
     /// <summary>某勢力的代表色（政治地圖的勢力色；圖例、戰線同色）。</summary>
     public Color RealmColor(int realmId) => PoliticalRealmColor(realmId);
 
-    /// <summary>第 12-2 章：每個地下城的怪物（由觀察者介面每次刷新時給）。</summary>
-    public IReadOnlyList<DemoMonsterNest> MonsterNests { get; set; } = Array.Empty<DemoMonsterNest>();
+    /// <summary>第 12-2 章：每個地下城的怪物（由觀察者介面每次刷新時給）。第 08-51 章：換上新資料時比對怪物地盤的變化（閃一下）。</summary>
+    public IReadOnlyList<DemoMonsterNest> MonsterNests
+    {
+        get => _monsterNests;
+        set
+        {
+            _monsterNests = value;
+            NoteTerritoryChanges();
+        }
+    }
+
+    private IReadOnlyList<DemoMonsterNest> _monsterNests = Array.Empty<DemoMonsterNest>();
 
     /// <summary>第 08-15 章：文化、信仰的名稱（滑鼠提示用；ObserverRoot 刷新時注入）。</summary>
     public IReadOnlyDictionary<int, string> CultureNames { get; set; } = new Dictionary<int, string>();
