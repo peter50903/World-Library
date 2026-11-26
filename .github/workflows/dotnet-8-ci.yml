@@ -534,7 +534,7 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=364 Toolbar=1 MapMode=6 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=367 Toolbar=1 MapMode=6 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
           # 第 08-33 章：領地面板（縮圖畫出每一棟建築、大圖與列表、不改世界）。
           grep -Eq 'WORLD_SIM_HOLDING_OK: Holding=[1-9][0-9]* Buildings=[0-9]+ Cards=[0-9]+ Art=b13_[a-z]+_[a-z]+_[ab] Delivered=(yes|no)' /tmp/godot-hud.log
           echo "::notice title=領地面板::$(grep -o 'WORLD_SIM_HOLDING_OK:.*' /tmp/godot-hud.log)"
