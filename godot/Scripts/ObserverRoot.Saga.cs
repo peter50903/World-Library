@@ -61,7 +61,11 @@ public partial class ObserverRoot
         "王國", "征服", "收服", "滅亡", "英雄", "傳說", "肅清", "攻克", "創立", "內戰", "篡位", "獨立", "第一", "世界進入", "王朝"
     };
 
-    private const string SagaGold = "#e2bd6b", SagaInk = "#e6dfd0", SagaDim = "#a39a8a", SagaYear = "#d9a95a";
+    /// <summary>
+    /// 【TEMP】第 08-58 章（使用者 2026-11-26：史書的字太不清楚）：史書配色。原本是給深色面板的淺色字（米白、金、灰），
+    /// 面板改成羊皮紙後只剩 1.1～1.9 倍對比；改成深色墨水——內文深褐、卷名與要事深紅褐、年份深琥珀、統計深灰褐（羊皮紙中央 6.8～11 倍）。
+    /// </summary>
+    private const string SagaGold = "#6b2414", SagaInk = "#2b1d10", SagaDim = "#4a3f31", SagaYear = "#633800", SagaKey = "#1a0f05";
 
     /// <summary>
     /// 第 08-21 章（使用者 2026-11-17：史書排版不佳，沒有重點）：分頁裡的史書排版——
@@ -111,7 +115,7 @@ public partial class ObserverRoot
                 var key = TempSagaKeyWords.Any(k => plain.Contains(k, StringComparison.Ordinal));
                 var text = code[year.Length..];
                 var mark = key ? $"[color={SagaGold}]◆[/color] " : "　";
-                var color = key ? "#f4e6c2" : SagaInk;
+                var color = key ? SagaKey : SagaInk;
                 body.Add($"{mark}[color={SagaYear}][b]第 {year.Groups[1].Value} 年[/b][/color]　[color={color}]{(key ? "[b]" + text + "[/b]" : text)}[/color]");
                 continue;
             }

@@ -634,7 +634,7 @@
 | `godot/Scripts/ObserverRoot.Faith.cs` | 1 | 第 08-55 章信仰視窗的寬高、左邊清單寬 280、大符號 84 |
 | `godot/Scripts/ObserverRoot.PerfSmoke.cs` | 1 | 第 09-1 章效能量測的年數（5）與種子（7） |
 | `godot/Scripts/ObserverRoot.PoliticalMap.cs` | 1 | 第 08-21 章政治地圖截圖的種子與年數（D9） |
-| `godot/Scripts/ObserverRoot.Saga.cs` | 1 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9） |
+| `godot/Scripts/ObserverRoot.Saga.cs` | 2 | 第 08-21 章史書分頁的要事關鍵字（王國、征服、英雄、傳說…以◆標出；D9）；第 08-58 章史書配色（深色墨水） |
 | `godot/Scripts/DemoHexMap.Political.cs` | 7 | 第 08-21 章政治地圖最大放大、省份重算間隔、填色濃度、勢力色票、獨立小聚落混羊皮紙色（D9）；第 12-2j 章世界時代的氛圍（黑暗時代夜色與四角壓暗、烈日偏暖、霜雪偏冷、混沌偏紅、奇蹟微光）；第 08-41 章到海岸的距離算到 16 格 |
 | `godot/Scripts/DemoHexMap.PoliticalOverlays.cs` | 5 | 第 08-21 章政治地圖三層分界、勢力名字級（D9）；第 08-23 章商路（中距離以上、流動的金色虛線）；第 08-56 章河流最窄比例、幾格後最窄、蜿蜒幅度、切圓次數 |
 | `src/WorldSimulation.Core/World/Demo/DemoProvinceMap.cs` | 4 | 第 08-21 章省份往外長的代價與最遠距離（D9） |
