@@ -313,7 +313,7 @@ void fragment() {
 		vec3 gtex = tex_notile(tex_grass, cell / 4.0) * mix(vec3(0.90, 0.96, 1.06), vec3(1.07, 1.03, 0.90), macro) * (0.93 + 0.14 * macro2);
 		vec3 ftex = tex_notile(tex_forest, cell / 3.0) * (0.90 + 0.20 * macro2);
 		// 丘陵暫時是偏土褐的乾草地（越密越褐）；真正的岩地、山與雪線是第 2 步（高度圖）。
-		vec3 htex = mix(gtex, vec3(0.64, 0.54, 0.38) * (luma(gtex) / 0.47), 0.40 + 0.35 * hmask);
+		vec3 htex = mix(gtex, vec3(0.50, 0.45, 0.31) * (luma(gtex) / 0.47), 0.30 + 0.30 * hmask);
 		vec3 base = mix(gtex, htex, clamp(hill * 1.3, 0.0, 1.0));
 		// 森林邊緣依樹冠的明暗一叢叢咬進草原（高度混合），不是兩種顏色的漸層。
 		float crown = (luma(ftex) / 0.25 - 1.0) * 0.30;
@@ -343,7 +343,10 @@ void fragment() {
 	float band_w = clamp(cell_px * 0.55, 3.0, 16.0);
 	float band = (1.0 - smoothstep(realm_w, realm_w + band_w, dg)) * has_fill;
 	vec3 political = fill.rgb * clamp(0.62 + 0.80 * luma(ground), 0.70, 1.18);
-	float wash = has_fill * clamp(politics + band * 0.25, 0.0, 0.92);
+	// 第 08-59 章：寫實地形上照中距離樣張——勢力色只換色相、保留地面的明暗與紋理（草原、森林看得出來），濃度也淡一些。
+	vec3 hue_only = clamp(fill.rgb / max(luma(fill.rgb), 0.08) * luma(ground) * 1.08, 0.0, 1.0);
+	political = mix(political, hue_only, tex_ready);
+	float wash = has_fill * clamp(politics * mix(1.0, 0.72, tex_ready) + band * 0.25, 0.0, 0.92);
 	vec3 col = mix(ground, political, wash);
 
 	// 第 08-41 章：紙地圖（遠看）——羊皮紙底、勢力是淡淡的水彩（邊界附近較濃）、丘陵畫墨線山形。

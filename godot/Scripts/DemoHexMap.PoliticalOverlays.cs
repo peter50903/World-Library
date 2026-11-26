@@ -281,9 +281,10 @@ public partial class DemoHexMap
         if (_rivers is null || _rivers.Count == 0)
             return;
         var full = Mathf.Clamp(cellPx * 0.16f, 1.6f, 15f);
-        var bank = new Color(0.20f, 0.27f, 0.25f, 0.85f);
-        var water = new Color(0.33f, 0.56f, 0.70f, 1f);
-        var shine = new Color(0.66f, 0.84f, 0.92f, 0.75f);
+        // 第 08-59 章：先換成跟寫實地形同一組的水色與濕土河岸（河道本身第 3 步重做）。
+        var bank = new Color(0.22f, 0.25f, 0.16f, 0.70f);
+        var water = new Color(0.22f, 0.47f, 0.52f, 1f);
+        var shine = new Color(0.46f, 0.66f, 0.66f, 0.45f);
         var close = Mathf.Clamp((cellPx - TempMidCellPx) / (TempCloseCellPx - TempMidCellPx), 0f, 1f);
         var view = new Rect2(Vector2.Zero, Size).Grow(cellPx * 2f);
         foreach (var (points, widths) in _rivers)
