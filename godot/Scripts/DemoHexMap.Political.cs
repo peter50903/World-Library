@@ -106,11 +106,8 @@ public partial class DemoHexMap
         m.SetShaderParameter("age_tint", tint);
         m.SetShaderParameter("age_vignette", vignette);
         m.SetShaderParameter("age_shimmer", shimmer);
-        m.SetShaderParameter("sprite_trees", PixelParts.Texture("b12_n_tree_oak_1") is not null ? 1f : 0f); // 第 08-56 章
-        m.SetShaderParameter("sprite_mountains", CloseupArt ? 1f : 0f);
 
         DrawRivers(origin, cellPx);
-        DrawCloseTerrain(origin, cellPx); // 第 08-56 章：近看的樹、山、灌木
         DrawSeaLanes(origin, cellPx); // 第 08-42 章：航線
         DrawTradeLinks(origin, cellPx); // 第 08-23 章：商路
         DrawGroupLabels(origin, cellPx);
@@ -154,7 +151,32 @@ public partial class DemoHexMap
         // 沒有戰爭時也要綁一張全透明的佔領圖（沒綁的取樣器是白色，會整張變斜紋）。
         _occupyTexture = Upload(null, 256, 256, new byte[256 * 256 * 4]);
         _politicalMaterial.SetShaderParameter("occupy", _occupyTexture);
+        // 第 08-59 章：地面材質（從定樣的近景樣張切的無縫貼圖）；三張都讀得到才換掉純色地面。
+        var grass = MipTexture(ArtAssets.MapGrass);
+        var forest = MipTexture(ArtAssets.MapForest);
+        var water = MipTexture(ArtAssets.MapWater);
+        if (grass is not null && forest is not null && water is not null)
+        {
+            _politicalMaterial.SetShaderParameter("tex_grass", grass);
+            _politicalMaterial.SetShaderParameter("tex_forest", forest);
+            _politicalMaterial.SetShaderParameter("tex_water", water);
+            _politicalMaterial.SetShaderParameter("tex_ready", 1f);
+        }
     }
+
+    /// <summary>第 08-59 章：讀貼圖並產生縮小版（mipmap）——遠一點看時取平均色，不會閃爍、出現摩爾紋。</summary>
+    private static Texture2D? MipTexture(string path)
+    {
+        if (ArtAssets.Texture(path)?.GetImage() is not { } image || image.IsEmpty())
+            return null;
+        if (image.IsCompressed())
+            image.Decompress();
+        image.GenerateMipmaps();
+        return ArtAssets.Track(ImageTexture.CreateFromImage(image));
+    }
+
+    /// <summary>第 08-59 章：地面材質都讀到了沒（冒煙測試用）。</summary>
+    public bool GroundTexturesReady => _politicalMaterial?.GetShaderParameter("tex_ready").AsSingle() > 0.5f;
 
     /// <summary>戰爭中被圍攻的省份塗攻方顏色的斜紋（CK3 的佔領斜紋；戰線或省份變了才重建）。</summary>
     private void EnsureOccupation()

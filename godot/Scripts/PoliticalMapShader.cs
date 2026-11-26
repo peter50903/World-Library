@@ -8,6 +8,8 @@ namespace WorldSimulation.GodotClient;
 /// 資料：<c>ids</c>（RG＝省份索引、BA＝分組索引）、<c>land</c>（R＝地形、G＝地盤編號、B＝到海岸的有號距離，第 08-41 章）、<c>palette</c>（省份索引→填色）。
 /// 第 08-41 章：照 CK3 的三層縮放改畫法——看全世界是紙地圖（羊皮紙、水彩勢力色、墨線山與樹），拉近是地形圖淡淡蓋上勢力色；
 /// 海依離岸距離由淺到深、近岸畫等距線（取代原本一塊塊的雜訊）。
+/// 第 08-59 章（地圖改寫實地形第 1 步）：中、近距離的地面改用寫實材質（從定樣的近景樣張切的草原、森林、水面無縫貼圖，<c>tex_*</c>），
+/// 森林邊緣依樹冠明暗咬進草原、往右下投影子；水色照樣張；勢力界照中距離樣張（深色線＋內側亮的勢力色線）。遠看的紙地圖不變。
 /// </summary>
 public static class PoliticalMapShader
 {
@@ -34,9 +36,11 @@ uniform int sel_nest = 0;
 uniform vec4 age_tint = vec4(1.0, 1.0, 1.0, 0.0);
 uniform float age_vignette = 0.0;
 uniform float age_shimmer = 0.0;
-// 第 08-56 章：拉近時改用素材畫樹、畫山（1＝有素材，著色器就不畫樹叢、山形）。
-uniform float sprite_trees = 0.0;
-uniform float sprite_mountains = 0.0;
+// 第 08-59 章：地面材質（從定樣的近景樣張切的無縫貼圖）；tex_ready＝1 才用，缺貼圖時照舊用純色。
+uniform sampler2D tex_grass : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex_forest : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex_water : source_color, filter_linear_mipmap, repeat_enable;
+uniform float tex_ready = 0.0;
 
 varying vec2 map_pos;
 
@@ -92,20 +96,6 @@ vec3 mountain_glyph(vec2 c, float density) {
 	return vec3(inside, step(f.x, cx), edge);
 }
 
-// 第 08-26 章：一叢樹（每 1/density 格一棵）：x＝樹冠、y＝影子（樹冠外的右下）、z＝亮面。
-vec3 tree_glyph(vec2 c, float density) {
-	vec2 g = c * density;
-	vec2 id = floor(g);
-	vec2 f = fract(g);
-	vec2 ctr = vec2(0.5) + (vec2(hash(id + 1.3), hash(id + 5.9)) - 0.5) * 0.36;
-	float r = 0.24 + 0.10 * hash(id + 9.4);
-	vec2 d = f - ctr;
-	float crown = 1.0 - smoothstep(r - 0.04, r + 0.02, length(d * vec2(1.0, 1.15)));
-	float shadow = (1.0 - smoothstep(r - 0.04, r + 0.02, length((d - vec2(0.09, 0.12)) * vec2(1.0, 1.15)))) * (1.0 - crown);
-	float lit = clamp(1.0 - length(d + vec2(0.08, 0.09)) / max(r, 0.001), 0.0, 1.0) * crown;
-	return vec3(crown, shadow, lit);
-}
-
 // 第 08-41 章：紙地圖的樹（墨線畫的小圓樹冠＋樹幹）：x＝墨線、y＝樹冠內。
 vec2 paper_tree(vec2 c, float density) {
 	vec2 g = c * density;
@@ -148,6 +138,42 @@ vec3 terrain_color(int t) {
 
 float luma(vec3 c) {
 	return dot(c, vec3(0.30, 0.59, 0.11));
+}
+
+// 第 08-59 章：不會一眼看出重複的貼圖取樣（Inigo Quilez「texture repetition」第三法）：低頻雜訊決定錯開多少，
+// 兩種錯法的交界依顏色差混合；傳入原本的導數，交界不會取錯縮小版。
+vec3 tex_notile(sampler2D s, vec2 uv) {
+	vec2 dx = dFdx(uv);
+	vec2 dy = dFdy(uv);
+	float l = vnoise(uv * 0.85) * 8.0;
+	float i = floor(l);
+	float f = fract(l);
+	vec3 a = textureGrad(s, uv + sin(vec2(3.0, 7.0) * i), dx, dy).rgb;
+	vec3 b = textureGrad(s, uv + sin(vec2(3.0, 7.0) * (i + 1.0)), dx, dy).rgb;
+	return mix(a, b, smoothstep(0.2, 0.8, f - 0.1 * dot(a - b, vec3(1.0))));
+}
+
+// 第 08-59 章：某一點的地形權重（x＝丘陵、y＝森林；四格平滑加權，只算陸地）——森林往右下投的影子要在偏移的位置再算一次。
+vec2 land_mix(vec2 cs) {
+	ivec2 size = ivec2(grid);
+	vec2 qs = cs - 0.5;
+	vec2 fls = floor(qs);
+	vec2 fs = qs - fls;
+	vec2 us = fs * fs * (3.0 - 2.0 * fs);
+	float wt[4] = float[](
+		(1.0 - us.x) * (1.0 - us.y), us.x * (1.0 - us.y),
+		(1.0 - us.x) * us.y, us.x * us.y);
+	ivec2 offs[4] = ivec2[](ivec2(0, 0), ivec2(1, 0), ivec2(0, 1), ivec2(1, 1));
+	ivec2 j0 = ivec2(fls);
+	float lw = 0.0;
+	vec2 hf = vec2(0.0);
+	for (int k = 0; k < 4; k++) {
+		int t = int(texelFetch(land, clamp(j0 + offs[k], ivec2(0), size - ivec2(1)), 0).r * 255.0 + 0.5);
+		if (t == 2) continue;
+		lw += wt[k];
+		hf += wt[k] * vec2(t == 3 ? 1.0 : 0.0, t == 1 ? 1.0 : 0.0);
+	}
+	return lw > 0.0 ? hf / lw : vec2(0.0);
 }
 
 void fragment() {
@@ -277,22 +303,36 @@ void fragment() {
 	float fmask = smoothstep(0.30, 0.70, forest);
 	float hmask = smoothstep(0.45, 0.75, hill);
 	shade -= fmask * 0.06;
-	float sym = clamp((cell_px - 40.0) / 24.0, 0.0, 1.0) * (1.0 - sprite_trees);
-	vec3 tr = tree_glyph(cell, 2.2);
-	shade -= fmask * sym * (tr.y * 0.30 + tr.x * 0.10);
-	shade += fmask * sym * tr.z * 0.22;
-	float msym = clamp((cell_px - 56.0) / 24.0, 0.0, 1.0) * (1.0 - sprite_mountains);
-	vec3 mtn = mountain_glyph(cell, 0.9);
-	shade += hmask * msym * mtn.x * (mtn.y > 0.5 ? 0.18 : -0.20);
-	shade -= hmask * msym * mtn.z * 0.35;
-	// 第 08-56 章：拉近時草地有很淡的細紋與深淺斑（像草，不是迷彩：沒有硬門檻，幅度很小）。
-	float near = clamp((cell_px - 48.0) / 32.0, 0.0, 1.0) * (1.0 - fmask) * (1.0 - hmask * 0.5);
-	shade += near * ((vnoise(c * 16.0) - 0.5) * 0.05 + (vnoise(c * 4.5 + vec2(5.0, 3.0)) - 0.5) * 0.06);
-	tcol = mix(tcol, tcol * vec3(1.06, 1.03, 0.86), near * smoothstep(0.55, 0.75, vnoise(c * 0.8 + vec2(9.0, 4.0))) * 0.6);
+	// 第 08-59 章（地圖改寫實地形第 1 步）：拿掉程式畫的樹叢、山的三角形、草地雜紋與第 08-56 章的像素樹，改用材質。
 	vec3 ground = tcol * shade;
-	// 第 08-41 章：沙灘——陸地靠海的一窄條偏暖（丘陵、森林少一點）。
-	float beach = (1.0 - smoothstep(0.0, 0.42, -sd)) * (1.0 - is_water) * (1.0 - hill * 0.6) * (1.0 - fmask * 0.5);
-	ground = mix(ground, vec3(0.80, 0.74, 0.54) * (0.97 + grain), beach * 0.55);
+	if (tex_ready > 0.5) {
+		// 草原、森林各一張無縫貼圖，貼在世界座標上（草原一張 4 格、森林 3 格，照樣張的比例），拖地圖時不會滑動；
+		// 大範圍的深淺、冷暖另外加，遠看不會像同一塊磁磚。
+		float macro = vnoise(cell * 0.16 + vec2(3.0, 11.0));
+		float macro2 = vnoise(cell * 0.45 + vec2(17.0, 5.0));
+		vec3 gtex = tex_notile(tex_grass, cell / 4.0) * mix(vec3(0.90, 0.96, 1.06), vec3(1.07, 1.03, 0.90), macro) * (0.93 + 0.14 * macro2);
+		vec3 ftex = tex_notile(tex_forest, cell / 3.0) * (0.90 + 0.20 * macro2);
+		// 丘陵暫時是偏土褐的乾草地（越密越褐）；真正的岩地、山與雪線是第 2 步（高度圖）。
+		vec3 htex = mix(gtex, vec3(0.64, 0.54, 0.38) * (luma(gtex) / 0.47), 0.40 + 0.35 * hmask);
+		vec3 base = mix(gtex, htex, clamp(hill * 1.3, 0.0, 1.0));
+		// 森林邊緣依樹冠的明暗一叢叢咬進草原（高度混合），不是兩種顏色的漸層。
+		float crown = (luma(ftex) / 0.25 - 1.0) * 0.30;
+		float fwt = smoothstep(0.40, 0.60, forest + crown);
+		// 樹林往右下投影子到草地上（光從左上）。
+		float fshadow = smoothstep(0.40, 0.60, land_mix(cs - vec2(0.16, 0.16)).y + crown);
+		base *= 1.0 - max(fshadow - fwt, 0.0) * 0.38;
+		base = mix(base, ftex, fwt);
+		// 地勢的明暗沿用雜訊高度（丘陵越密越明顯）；第 2 步改成由地形推的高度圖。
+		vec3 rground = base * (1.0 + (lit - 0.5) * (0.03 + hill * 0.65));
+		// 沙灘：陸地靠海的一窄條（樣張的沙色）。
+		float rbeach = (1.0 - smoothstep(0.0, 0.34, -sd)) * (1.0 - is_water) * (1.0 - hill * 0.6) * (1.0 - fwt * 0.7);
+		rground = mix(rground, vec3(0.84, 0.76, 0.62) * (0.95 + 0.10 * vnoise(cell * 7.0)), rbeach * 0.80);
+		ground = rground;
+	} else {
+		// 第 08-41 章：沙灘——陸地靠海的一窄條偏暖（丘陵、森林少一點）。
+		float beach = (1.0 - smoothstep(0.0, 0.42, -sd)) * (1.0 - is_water) * (1.0 - hill * 0.6) * (1.0 - fmask * 0.5);
+		ground = mix(ground, vec3(0.80, 0.74, 0.54) * (0.97 + grain), beach * 0.55);
+	}
 
 	// 政治填色：省份索引查色票；荒野（0）不填。
 	vec4 fill = texelFetch(palette, ivec2(bp % 256, bp / 256), 0);
@@ -333,9 +373,13 @@ void fragment() {
 	float pline = (1.0 - smoothstep(0.35, 1.25, dp)) * province_lines * (1.0 - paper);
 	col = mix(col, col * 0.50, pline * (1.0 - step(dg, realm_w + 0.5)));
 	float gline = 1.0 - smoothstep(realm_w - 0.6, realm_w + 0.6, dg);
-	vec3 edge = has_fill > 0.5 ? fill.rgb * 0.38 : vec3(0.16, 0.13, 0.10);
+	vec3 edge = has_fill > 0.5 ? fill.rgb * mix(0.38, 0.22, tex_ready) : vec3(0.16, 0.13, 0.10);
 	edge = mix(edge, vec3(0.32, 0.22, 0.16), paper);
 	col = mix(col, edge, gline * (0.55 + 0.45 * max(politics, paper)));
+	// 第 08-59 章：照中距離樣張——深色邊界線內側再一條亮的勢力色線（紙地圖不畫）。
+	float iw = clamp(cell_px * 0.035, 1.0, 2.4);
+	float inner = (1.0 - smoothstep(realm_w + iw - 0.5, realm_w + iw + 0.5, dg)) * (1.0 - gline) * has_fill * (1.0 - paper) * tex_ready;
+	col = mix(col, min(fill.rgb * 1.18 + 0.05, vec3(1.0)), inner * mix(0.45, 0.85, clamp(politics / 0.8, 0.0, 1.0)));
 	if (sel) {
 		float gold_w = realm_w + 1.4;
 		float gd = (bg == sel_group && sel_group > 0) ? dg : dp;
@@ -358,6 +402,16 @@ void fragment() {
 	sea = mix(sea, sea * 1.18 + 0.03, rings);
 	float foam = (1.0 - smoothstep(0.0, 0.3, sd)) * is_water;
 	sea = mix(sea, vec3(0.62, 0.72, 0.72), foam * 0.4);
+	if (tex_ready > 0.5) {
+		// 第 08-59 章：水色照定樣樣張（近岸青綠、離岸深藍），水面細紋是樣張切的貼圖（拉近才看得清楚）；不再畫等距線與一圈亮邊。
+		float rdepth = smoothstep(0.0, 1.0, pow(clamp(sd / 4.5, 0.0, 1.0), 0.6));
+		vec3 rsea = mix(vec3(0.24, 0.55, 0.57), vec3(0.11, 0.31, 0.41), rdepth);
+		rsea = mix(rsea, vec3(0.40, 0.64, 0.60), (1.0 - smoothstep(0.0, 0.45, sd)) * is_water * 0.55);
+		float wl = luma(tex_notile(tex_water, cell / 1.5 + vec2(TIME * 0.006, TIME * 0.003))) / 0.286;
+		rsea *= 1.0 + (wl - 1.0) * 0.55 * smoothstep(18.0, 60.0, cell_px);
+		rsea *= 0.96 + 0.08 * vnoise(cell * 0.3 + vec2(TIME * 0.01, 0.0));
+		sea = rsea;
+	}
 	vec3 psea = mix(vec3(0.71, 0.78, 0.79), vec3(0.57, 0.66, 0.71), depth);
 	psea = mix(psea, vec3(0.40, 0.50, 0.55), ring(sd, fw, 0.9, 1.0) * 0.45 + ring(sd, fw, 2.1, 1.0) * 0.2);
 	sea = mix(sea, psea, paper);
@@ -365,7 +419,7 @@ void fragment() {
 	// 海岸線：地形圖是深色細線，紙地圖是墨線（拉近時粗一點）。
 	float cw = clamp(cell_px * 0.06, 0.7, 1.8);
 	float coast_line = 1.0 - smoothstep(cw, cw + 1.0, sdpx);
-	col = mix(col, mix(vec3(0.10, 0.12, 0.14), vec3(0.24, 0.19, 0.14), paper), coast_line * 0.85);
+	col = mix(col, mix(vec3(0.10, 0.12, 0.14), vec3(0.24, 0.19, 0.14), paper), coast_line * mix(0.85, mix(0.18, 0.85, paper), tex_ready)); // 第 08-59 章：寫實地形的海岸不畫深色線
 
 	// 怪物地盤：暗紅、斜紋（世界座標，拖地圖時不會滑動）。第 08-41 章：移到海後面畫，海上的地盤也看得到。
 	float bmask = smoothstep(0.42, 0.58, bl);
