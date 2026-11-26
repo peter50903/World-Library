@@ -319,8 +319,8 @@ void fragment() {
 		float crown = (luma(ftex) / 0.25 - 1.0) * 0.30;
 		float fwt = smoothstep(0.40, 0.60, forest + crown);
 		// 樹林往右下投影子到草地上（光從左上）。
-		float fshadow = smoothstep(0.40, 0.60, land_mix(cs - vec2(0.16, 0.16)).y + crown);
-		base *= 1.0 - max(fshadow - fwt, 0.0) * 0.38;
+		float fshadow = smoothstep(0.40, 0.60, land_mix(cs - vec2(0.10, 0.10)).y + crown);
+		base *= 1.0 - max(fshadow - fwt, 0.0) * 0.26;
 		base = mix(base, ftex, fwt);
 		// 地勢的明暗沿用雜訊高度（丘陵越密越明顯）；第 2 步改成由地形推的高度圖。
 		vec3 rground = base * (1.0 + (lit - 0.5) * (0.03 + hill * 0.65));
