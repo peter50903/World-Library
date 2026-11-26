@@ -190,6 +190,27 @@ public partial class ObserverRoot
             GD.Print($"WORLD_SIM_MAP_SHOT: 11_war_window {rect.Size.X}x{rect.Size.Y} Wars={_wars.Count}");
         }
         CloseModal();
+        // 第 08-58 章：右側的史書（整個面板縮圖）。
+        SetRightView(RightView.Saga);
+        _sagaKey = default;
+        RefreshSaga();
+        for (var i = 0; i < 6; i++)
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        {
+            var image = GetViewport().GetTexture().GetImage();
+            var screen = new Rect2I(0, 0, image.GetWidth(), image.GetHeight());
+            var page = _sagaPanel.GetGlobalRect();
+            var rect = new Rect2I((Vector2I)page.Position, (Vector2I)page.Size).Intersection(screen);
+            if (rect.Size.X >= 32 && rect.Size.Y >= 32)
+            {
+                image.GetRegion(rect).SavePng(System.IO.Path.Combine(dir, "15_saga.png"));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "15_saga.thumb"), Thumb(image, 200, Math.Max(32, 200 * rect.Size.Y / rect.Size.X), rect));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "15_saga_crop.thumb"), Thumb(image, 300, 200,
+                    new Rect2I((Vector2I)page.Position + new Vector2I(0, 60), new Vector2I(Math.Min(300, rect.Size.X), 200)).Intersection(screen)));
+            }
+            GD.Print($"WORLD_SIM_MAP_SHOT: 15_saga {rect.Size.X}x{rect.Size.Y}");
+        }
+        SetRightView(RightView.Outliner);
         // 第 08-55 章：信仰視窗（整個視窗頁縮圖）。
         OpenFaith();
         for (var i = 0; i < 6; i++)

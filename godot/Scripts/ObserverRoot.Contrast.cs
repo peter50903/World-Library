@@ -89,6 +89,19 @@ public partial class ObserverRoot
     }
 
     /// <summary>掃過 <paramref name="root"/> 底下看得到的文字，回傳對比不足的（說明）與檢查了幾個。</summary>
+    /// <summary>第 08-58 章：BBCode 的 [color=#xxxxxx] 字色與它後面那段字（同一種顏色只取第一段；只有色塊符號的跳過）。</summary>
+    private static IEnumerable<(Color Ink, string Text)> BbcodeColors(string bbcode)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(bbcode, @"\[color=(#?[0-9a-fA-F]{6})\]([^\[]*)"))
+        {
+            var text = m.Groups[2].Value;
+            if (string.IsNullOrWhiteSpace(text.Replace("■", "", StringComparison.Ordinal).Replace("◆", "", StringComparison.Ordinal)) || !seen.Add(m.Groups[1].Value))
+                continue;
+            yield return (Color.FromHtml(m.Groups[1].Value), text);
+        }
+    }
+
     private (List<string> Low, int Checked) AuditContrast(Control root, string where)
     {
         var low = new List<string>();
@@ -118,6 +131,9 @@ public partial class ObserverRoot
                     break;
                 case RichTextLabel rich:
                     Check(rich, rich.GetParsedText(), rich.GetThemeColor("default_color"));
+                    // 第 08-58 章：BBCode 裡另外上色的字也要查（史書原本就是這樣漏掉的）；只有色塊（■◆）的不算字。
+                    foreach (var (ink, text) in BbcodeColors(rich.Text))
+                        Check(rich, text, ink);
                     break;
                 case Button button:
                     Check(button, button.Text, button.GetThemeColor("font_color"));
@@ -145,6 +161,19 @@ public partial class ObserverRoot
             checkedCount += n;
         }
         Audit(_hud, "主畫面");
+        // 第 08-58 章：右側的每一個面板（聚落清單、編年史、史書）也切過去查。
+        var right = _rightView;
+        foreach (var view in new[] { RightView.Outliner, RightView.Chronicle, RightView.Saga })
+        {
+            _rightView = RightView.None;
+            SetRightView(view);
+            _sagaKey = default;
+            RefreshSaga();
+            Audit(_hud, $"右側・{view}");
+        }
+        _rightView = RightView.None;
+        if (right != RightView.None)
+            SetRightView(right);
         // 聚落詳情：每個分頁。
         var settlement = _world.Sites.Settlements.First(s => !s.IsRuin);
         ShowDetailAt(settlement.Column, settlement.Row);
