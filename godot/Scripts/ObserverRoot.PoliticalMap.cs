@@ -46,33 +46,31 @@ public partial class ObserverRoot
             throw new InvalidOperationException($"點省份陸地應選到勢力（實際 {realmClicks} 次）");
         if (string.IsNullOrWhiteSpace(_hexMap._GetTooltip(land)))
             throw new InvalidOperationException("政治地圖的滑鼠提示是空的");
-        GD.Print($"WORLD_SIM_POLITICAL_OK: Provinces={check.Provinces} Realms={check.Realms} Labels={check.Labels} Hit={check.Hits}/{check.Sites} Realm=1 Tooltip=1");
+        // 第 08-59 章：地面材質（草原、森林、水面）都要讀得到，否則地圖退回純色。
+        if (!_hexMap.GroundTexturesReady)
+            throw new InvalidOperationException("地圖的地面材質沒有讀到（godot/assets/map/）");
+        GD.Print($"WORLD_SIM_POLITICAL_OK: Provinces={check.Provinces} Realms={check.Realms} Labels={check.Labels} Hit={check.Hits}/{check.Sites} Realm=1 Tooltip=1 Ground=1");
     }
 
+    /// <summary>第 08-59 章：陸地格的上下左右有海（截圖找一段海岸用）。</summary>
+    private static bool CoastCell(DemoHexWorld map, DemoHexCell cell)
+        => new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }.Any(d => map.Contains(cell.Column + d.Item1, cell.Row + d.Item2)
+            && map.GetCell(cell.Column + d.Item1, cell.Row + d.Item2) is { Sea: true });
+
     /// <summary>
-    /// 截圖縮成 <paramref name="width"/>×<paramref name="height"/>（或取 <paramref name="crop"/> 那一塊），每個像素量化成 6×7×6＝252 色之一（一個位元組），
-    /// zlib 壓縮後 base64：「寬x高:資料」。註記一則只收 4KB，原圖太大，這樣一張約十幾 KB。
+    /// 截圖縮成 <paramref name="width"/>×<paramref name="height"/>（或取 <paramref name="crop"/> 那一塊），存成有損 WebP 後 base64：「webp:資料」。
+    /// 註記一則只收 4KB，原圖太大。第 08-59 章：地面改成寫實材質後，原本 252 色量化＋zlib 的縮圖又大又失真，改用 WebP（同樣大小約小一半、顏色正確）。
     /// </summary>
     private static string Thumb(Image image, int width, int height, Rect2I? crop)
     {
         var src = crop is { } region ? image.GetRegion(region) : (Image)image.Duplicate();
         if (src.GetWidth() != width || src.GetHeight() != height)
             src.Resize(width, height, Image.Interpolation.Lanczos);
-        var bytes = new byte[width * height];
-        for (var y = 0; y < height; y++)
-            for (var x = 0; x < width; x++)
-            {
-                var c = src.GetPixel(x, y);
-                var r = Math.Clamp((int)Math.Round(c.R * 5f), 0, 5);
-                var g = Math.Clamp((int)Math.Round(c.G * 6f), 0, 6);
-                var b = Math.Clamp((int)Math.Round(c.B * 5f), 0, 5);
-                bytes[y * width + x] = (byte)(r * 42 + g * 6 + b);
-            }
-        using var memory = new System.IO.MemoryStream();
-        using (var zlib = new System.IO.Compression.ZLibStream(memory, System.IO.Compression.CompressionLevel.SmallestSize))
-            zlib.Write(bytes);
-        return $"{width}x{height}:{Convert.ToBase64String(memory.ToArray())}";
+        return "webp:" + Convert.ToBase64String(src.SaveWebpToBuffer(true, TempThumbQuality));
     }
+
+    /// <summary>【TEMP】截圖縮圖的 WebP 品質（0～1）：0.8 看得清材質，一張全圖縮圖約 3～4 則註記。</summary>
+    private const float TempThumbQuality = 0.8f;
 
     /// <summary>【TEMP】截圖的種子與年數（大地圖）。</summary>
     private const ulong TempShotSeed = 7;
@@ -100,7 +98,7 @@ public partial class ObserverRoot
             var image = GetViewport().GetTexture().GetImage();
             var path = System.IO.Path.Combine(dir, name + ".png");
             image.SavePng(path);
-            // CI 另存小縮圖（252 色、壓縮後 base64），轉成註記給讀不到 artifact 的工作階段看；近景另存畫面中央一塊原尺寸。
+            // CI 另存小縮圖（WebP、base64；第 08-59 章），轉成註記給讀不到 artifact 的工作階段看；近景另存畫面中央一塊原尺寸。
             System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + ".thumb"), Thumb(image, 288, 180, null));
             if (name.Contains("close", StringComparison.Ordinal) || name.Contains("mid", StringComparison.Ordinal)) // 第 08-26 章：中距離也另存一塊原尺寸
                 System.IO.File.WriteAllText(System.IO.Path.Combine(dir, name + "_crop.thumb"), Thumb(image, 320, 200,
@@ -231,6 +229,20 @@ public partial class ObserverRoot
         _hexMap.ShowWholeWorld();
         SetMapMode(DemoHexMap.Mode.Terrain);
         await Shot("4_terrain_far");
+        // 第 08-59 章：地形模式拉近（只看地面材質，沒有勢力色）——跟定樣的近景樣張並排比；再看一段海岸（沙灘、淺水、深水）。
+        if (capital is { } home)
+        {
+            _hexMap.ZoomToCell(home, 96f);
+            await Shot("16_terrain_close");
+            var coast = world.Map.Cells.Where(x => x.Terrain != DemoTerrain.Water && CoastCell(world.Map, x))
+                .OrderBy(x => Math.Abs(x.Column - home.Column) + Math.Abs(x.Row - home.Row)).ThenBy(x => x.Row).ThenBy(x => x.Column)
+                .FirstOrDefault();
+            if (coast is not null)
+            {
+                _hexMap.ZoomToCell(coast, 96f);
+                await Shot("17_coast_close");
+            }
+        }
         SetMapMode(DemoHexMap.Mode.Culture);
         await Shot("5_culture_far");
         // 第 08-54 章：信仰模式（信仰家族的顏色、名字上的符號、聖地、跟統治者不同的條紋）。

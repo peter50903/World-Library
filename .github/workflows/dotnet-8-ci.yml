@@ -534,7 +534,7 @@ jobs:
             echo "Godot reported a runtime error in the observer HUD smoke."
             exit 1
           fi
-          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=364 Toolbar=1 MapMode=6 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
+          grep -Eq 'WORLD_SIM_HUD_OK: TopBar=1 Time=1 Detail=1 Record=1 Keys=1 Resize=2 Art=367 Toolbar=1 MapMode=6 Modal=3 Outliner=[1-9][0-9]* Speeds=5' /tmp/godot-hud.log
           # 第 08-33 章：領地面板（縮圖畫出每一棟建築、大圖與列表、不改世界）。
           grep -Eq 'WORLD_SIM_HOLDING_OK: Holding=[1-9][0-9]* Buildings=[0-9]+ Cards=[0-9]+ Art=b13_[a-z]+_[a-z]+_[ab] Delivered=(yes|no)' /tmp/godot-hud.log
           echo "::notice title=領地面板::$(grep -o 'WORLD_SIM_HOLDING_OK:.*' /tmp/godot-hud.log)"
@@ -611,41 +611,6 @@ jobs:
           echo "::notice title=遠征與獸潮截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Front.*' /tmp/godot-mapshot.log | head -1)"
           echo "::notice title=信仰模式截圖::$(grep -o 'WORLD_SIM_MAP_SHOT: Faiths.*' /tmp/godot-mapshot.log | head -1)"
 
-      - name: 政治地圖截圖轉成註記（準備；註記一則只收 4KB，縮圖量化壓縮後分段）
-        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
-        run: |
-          mkdir -p /tmp/shot-notes
-          : > /tmp/shot-notes/all.txt
-          for name in 15_saga_crop 15_saga 3_realms_close_crop 2_realms_mid_crop 3_realms_close 14_faith_window 1_realms_far 13_faith_far 8_holding_big 2_realms_mid 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 4_terrain_far 7_trade_close_crop 6_dark_age 5_culture_far 3_realms_close 9_holding_village_crop 12_monster_front_mid 11_war_window; do
-            f="/tmp/map-shots/$name.thumb"
-            [ -f "$f" ] || continue
-            { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"
-            n="$(wc -l < "/tmp/shot-notes/$name.txt")"
-            k=0
-            while IFS= read -r chunk; do
-              k=$((k + 1))
-              echo "::notice title=shot $name $k/$n::$chunk" >> /tmp/shot-notes/all.txt
-            done < "/tmp/shot-notes/$name.txt"
-          done
-          wc -l /tmp/shot-notes/all.txt
-          split -l 9 -d /tmp/shot-notes/all.txt /tmp/shot-notes/part-
-
-      - name: 政治地圖截圖註記 1
-        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
-        run: cat /tmp/shot-notes/part-00 2>/dev/null || true
-
-      - name: 政治地圖截圖註記 2
-        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
-        run: cat /tmp/shot-notes/part-01 2>/dev/null || true
-
-      - name: 政治地圖截圖註記 3
-        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
-        run: cat /tmp/shot-notes/part-02 2>/dev/null || true
-
-      - name: 政治地圖截圖註記 4
-        if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
-        run: cat /tmp/shot-notes/part-03 2>/dev/null || true
-
       - name: Upload political map shots (第 08-21 章)
         if: always() && (env.FULL == 'true' || contains(github.event.pull_request.labels.*.name, 'map-shot'))
         uses: actions/upload-artifact@v4
@@ -672,3 +637,52 @@ jobs:
             methods="$(grep -oE '^\s+Failed WorldSimulation[^ (]*' /tmp/observer-tests.log | sed 's/^ *Failed //' | sort | uniq -c | head -60)"
             [ -z "$methods" ] || echo "::error title=FAILED METHODS::$(printf '%s' "$methods" | sed ':a;N;$!ba;s/%/%25/g;s/\n/%0A/g')"
           fi
+
+  # 第 08-59 章：截圖註記移到獨立的工作——一個工作最多 50 則註記，主工作的編譯警告與各項統計會先吃掉大半，
+  # 地面換成材質後縮圖變大，截圖只剩兩三張看得到。這個工作只下載同一次執行的截圖並轉成註記（不需要額外權限）。
+  map-shot-notes:
+    name: 政治地圖截圖註記
+    needs: dotnet
+    if: always() && (github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'long-run') || contains(github.event.pull_request.labels.*.name, 'map-shot'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 下載截圖
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: map-shots
+          path: /tmp/map-shots
+
+      - name: 截圖轉成註記（準備；註記一則只收 4KB，縮圖分段）
+        run: |
+          mkdir -p /tmp/shot-notes
+          : > /tmp/shot-notes/all.txt
+          for name in 16_terrain_close_crop 3_realms_close_crop 2_realms_mid_crop 17_coast_close_crop 1_realms_far 16_terrain_close 2_realms_mid 17_coast_close 3_realms_close 4_terrain_far 15_saga_crop 14_faith_window 13_faith_far 8_holding_big 12_monster_front_mid_crop 11_war_window_crop 10_war_mid_crop 8_holding_big_crop 9_holding_village 7_trade_close_crop 6_dark_age 5_culture_far 15_saga 9_holding_village_crop 12_monster_front_mid 11_war_window; do
+            f="/tmp/map-shots/$name.thumb"
+            [ -f "$f" ] || continue
+            { fold -w 3900 "$f"; echo; } | grep -v '^$' > "/tmp/shot-notes/$name.txt"
+            n="$(wc -l < "/tmp/shot-notes/$name.txt")"
+            k=0
+            while IFS= read -r chunk; do
+              k=$((k + 1))
+              echo "::notice title=shot $name $k/$n::$chunk" >> /tmp/shot-notes/all.txt
+            done < "/tmp/shot-notes/$name.txt"
+          done
+          wc -l /tmp/shot-notes/all.txt
+          split -l 9 -d /tmp/shot-notes/all.txt /tmp/shot-notes/part-
+
+      - name: 政治地圖截圖註記 1
+        run: cat /tmp/shot-notes/part-00 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 2
+        run: cat /tmp/shot-notes/part-01 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 3
+        run: cat /tmp/shot-notes/part-02 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 4
+        run: cat /tmp/shot-notes/part-03 2>/dev/null || true
+
+      - name: 政治地圖截圖註記 5
+        run: cat /tmp/shot-notes/part-04 2>/dev/null || true

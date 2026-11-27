@@ -29,6 +29,11 @@ public static class ArtAssets
     public const string SfxEra = "res://assets/audio/sfx_era.ogg";
 
     /// <summary>第 08-11 章：技術領域圖示（技術分頁的方形小圖示；未交付時畫領域字）。</summary>
+    /// <summary>第 08-59 章：地圖的地面材質（從定樣的近景樣張切的無縫貼圖，tools/map_c_textures.py）。</summary>
+    public const string MapGrass = "res://assets/map/terrain_grass.png";
+    public const string MapForest = "res://assets/map/terrain_forest.png";
+    public const string MapWater = "res://assets/map/water_detail.png";
+
     public static string TechDomainIcon(string domain) => $"res://assets/icons/tech_{domain.ToLowerInvariant()}.png";
 
     /// <summary>第 08-11 章：居住地五級的地圖圖示（村莊沿用 icon_settlement_village.png）。</summary>
@@ -129,7 +134,8 @@ public static class ArtAssets
         UiMapCulture, // 第 08-8 章 B1：文化模式
         UiMapFaith, // 第 08-8 章 B3：信仰模式（美術收件匣 2026-10-30）
         SfxFire, SfxEarthquake, SfxMeteor, SfxFlood, SfxTornado, SfxFounding, SfxEra, // 第 08-16 章：天災與事件音效
-        SfxClick, SfxEventAlert, MusicObserverLoop
+        SfxClick, SfxEventAlert, MusicObserverLoop,
+        MapGrass, MapForest, MapWater // 第 08-59 章：地面材質
     }.Concat(PixelParts.Batch5.Select(PixelParts.Path)) // 第 08-18d 章：像素素材（第 08-29 章：只留用到與保留的）
         .Concat(Batch5Audio)
         .Concat(Heraldry.AllParts()) // 第 08-16 章：人像、紋章、信仰符號部件
